@@ -303,5 +303,13 @@ Adições para alinhar o processo às referências do setor (SAP Activate, TOTVS
   registro de defeitos e **sign-off** como gate da virada. Skill `testes-sit-uat` (gera os
   *Roteiros SIT/UAT* e o *Termo de Aceite* em Office).
 
-> Próximas camadas (P1/P2), ainda **não** implementadas: validação/reconciliação de conversão,
-> hypercare com critério de saída, log de fit/gap, métricas/KPIs, RAID e dossiê do cliente.
+**Camada P1 (implementada):**
+- **Validação de conversão** — reconciliação origem×destino, mock loads e aceite dos dados.
+  Skill `validacao-conversao` (gera a *Reconciliação de Conversão*).
+- **Hypercare** — estabilização pós-virada com governança diária e critério de saída. Skill
+  `hypercare` (gera o *Painel de Hypercare*).
+- **Fit/Gap** — log de aderência (padrão/configuração/desenvolvimento/fora de escopo) na skill
+  `aderencia-siger` (gera o *Log de Fit/Gap*).
+
+> Próxima camada (P2), ainda **não** implementada: métricas/KPIs, RAID (riscos/issues) e dossiê
+> do cliente.

@@ -57,6 +57,11 @@ Cada etapa numerada do processo é uma skill acionável (passo a passo + templat
 - `gestao-mudanca` — OCM/ADKAR: stakeholders, comunicação, prontidão, treino por papel, adoção
 - `testes-sit-uat` — testes formais SIT/UAT, registro de defeitos e sign-off (gate da virada)
 
+**Qualidade de dados e estabilização (robustez P1)**
+- `validacao-conversao` — reconciliação origem×destino, mock loads e aceite dos dados convertidos
+- `hypercare` — estabilização pós-virada com governança diária e critério de saída
+- fit/gap — log de aderência (dentro da skill `aderencia-siger`)
+
 ## Convenções do processo (resumo operacional)
 
 - **SICLA — tipos de atividade:** `12 = apoio Comercial` (pré-implantação) · `13 = Implantação`.
@@ -95,6 +100,9 @@ Alguns agentes são **geradores**: produzem artefatos em **Excel/Word** a partir
 | `python tools/gerar_kit_mudanca.py` | `Kit_Gestao_Mudanca_<cliente>.xlsx` |
 | `python tools/gerar_roteiros_teste.py` | `Roteiros_SIT_UAT_<cliente>.xlsx` |
 | `python tools/gerar_aceite_uat.py` | `Termo_Aceite_UAT_<cliente>.docx` |
+| `python tools/gerar_reconciliacao_conversao.py` | `Reconciliacao_Conversao_<cliente>.xlsx` |
+| `python tools/gerar_painel_hypercare.py` | `Painel_Hypercare_<cliente>.xlsx` |
+| `python tools/gerar_log_fitgap.py` | `Log_FitGap_<cliente>.xlsx` |
 
 Instalar dependências uma vez: `python -m pip install -r tools/requirements.txt`.
 Detalhes em [tools/README.md](tools/README.md).

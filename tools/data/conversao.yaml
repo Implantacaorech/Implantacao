@@ -1,0 +1,32 @@
+# Validação e reconciliação das conversões.
+# Origem = sistema antigo do cliente · Destino = SIGER®.
+entidades:
+  - nome: "Clientes/Fornecedores"
+    rns_cob: "222222-01"
+    chave: "CNPJ/CPF"
+    obs: "Conferir grupo de cadastros, representantes e local de cobrança (de/para)"
+  - nome: "Produtos"
+    rns_cob: "555555-01"
+    chave: "Código / EAN"
+    obs: "Conferir saldo de estoque e custo médio na data de corte"
+  - nome: "Financeiro a Pagar/Receber (em aberto)"
+    rns_cob: "777777-01"
+    chave: "Nº do título"
+    obs: "Soma dos saldos em aberto deve bater origem × destino"
+  - nome: "Notas Fiscais emitidas"
+    rns_cob: "88888-01"
+    chave: "Chave NF-e"
+    obs: "Conferir numeração e totais por série"
+
+# Cargas de teste antes da oficial (mock loads)
+cargas:
+  - tipo: "Prévia 1"
+  - tipo: "Prévia 2"
+  - tipo: "Conversão oficial"
+
+criterios_aceite:
+  - "Diferença de contagem (origem × destino) = 0 nas entidades-chave"
+  - "Soma de valores financeiros confere (origem × destino)"
+  - "Amostra de 20 registros validada manualmente por entidade"
+  - "Divergências conhecidas documentadas e aceitas pelo cliente"
+  - "Ponto de corte definido e comunicado"

@@ -1,0 +1,36 @@
+# Log de Fit/Gap — aderência ao SIGER (padrão x lacuna) e decisão.
+# Regra de governança: preferir Padrão > Configuração > Desenvolvimento.
+# Gap só vira Desenvolvimento com aprovação do Gerente do Projeto + RNS ORC.
+governanca: >
+  Preferir sempre o padrão do SIGER®. Gap só vira Desenvolvimento com aprovação do Gerente
+  do Projeto e RNS ORC aprovada. Customização aumenta custo e risco da implantação.
+
+itens:
+  - processo: "Apuração de impostos do período"
+    area: "Fiscal/Contábil"
+    aderencia: "Standard"
+    decisao: "Usar padrão"
+    rns: ""
+    esforco_h: 0
+    prioridade: "—"
+  - processo: "Remessa bancária CNAB 240"
+    area: "Financeiro"
+    aderencia: "Standard (configuração)"
+    decisao: "Configuração"
+    rns: ""
+    esforco_h: 4
+    prioridade: "Média"
+  - processo: "Emissão de NF com comissão escalonada por faixa"
+    area: "Faturamento"
+    aderencia: "Gap"
+    decisao: "Desenvolvimento"
+    rns: "ORC 444444"
+    esforco_h: 16
+    prioridade: "Alta"
+  - processo: "Relatório gerencial específico do cliente"
+    area: "Controladoria"
+    aderencia: "Gap"
+    decisao: "Fora de escopo"
+    rns: ""
+    esforco_h: 0
+    prioridade: "Baixa"

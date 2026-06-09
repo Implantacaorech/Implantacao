@@ -1,0 +1,17 @@
+# Hypercare — acompanhamento intensivo pós-virada com critério de saída.
+janela_semanas: 4
+
+governanca:
+  - "Stand-up diário às 9h nas 2 primeiras semanas; 2x/semana depois"
+  - "Command center: consultor + usuário líder + suporte"
+  - "Escalonamento: incidente Crítico tratado em até 2h"
+  - "Reporte de status à liderança ao fim de cada semana"
+
+criterios_saida:
+  - "1º fechamento mensal concluído com sucesso"
+  - "Volume de chamados em queda por 2 semanas consecutivas"
+  - "0 incidentes de severidade Crítica em aberto"
+  - ">= 80% de adesão de uso na última semana"
+  - "Usuário responsável pela atualização definido (cadastro de contatos)"
+  - "Remessas bancárias e integrações estáveis em produção"
+  - "Termo de encerramento aceito (transição para o Suporte)"

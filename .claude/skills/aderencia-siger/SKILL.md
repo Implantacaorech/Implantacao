@@ -29,6 +29,17 @@ Sincronizar o que foi mapeado com o uso efetivo do SIGER®:
    (`encaminhar-desenvolvimentos`).
 4. Registre pontos a simular antes da virada.
 
+## Log de Fit/Gap (robustez P1)
+Formalize a aderência num **log de fit/gap**: para cada processo, registre se é **Standard**,
+**Configuração**, **Parcial** ou **Gap**, e a **decisão** (usar padrão / configuração /
+desenvolvimento / fora de escopo). Governança: preferir **padrão > configuração >
+desenvolvimento**; Gap só vira desenvolvimento com aprovação do Gerente do Projeto + RNS ORC.
+
+```bash
+# ajuste tools/data/fitgap.yaml
+python tools/gerar_log_fitgap.py   # -> exemplos/Log_FitGap_<cliente>.xlsx
+```
+
 ## Saída
 Lista de recursos/rotinas definidos + configurações estratégicas + lacunas (conversão/
-desenvolvimento) — base para o `projeto-implantacao`.
+desenvolvimento) + **log de fit/gap** — base para o `projeto-implantacao`.
