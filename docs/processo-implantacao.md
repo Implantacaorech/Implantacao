@@ -311,5 +311,13 @@ Adições para alinhar o processo às referências do setor (SAP Activate, TOTVS
 - **Fit/Gap** — log de aderência (padrão/configuração/desenvolvimento/fora de escopo) na skill
   `aderencia-siger` (gera o *Log de Fit/Gap*).
 
-> Próxima camada (P2), ainda **não** implementada: métricas/KPIs, RAID (riscos/issues) e dossiê
-> do cliente.
+**Camada P2 (implementada):**
+- **Métricas/KPIs** — indicadores de resultado (prazo, orçamento, adoção, time-to-value, CSAT).
+  Skill `metricas-kpi` (gera o *Painel de KPIs*).
+- **RAID** — riscos, premissas, issues, decisões e dependências. Skill `gestao-riscos-raid`
+  (gera o *RAID*).
+- **Dossiê do cliente** — estado consolidado da implantação. Skill `dossie-cliente` (gera o
+  *Dossiê* em Word).
+
+> Camadas P0, P1 e P2 **implementadas**. A estrutura cobre o ciclo completo, alinhada às
+> referências do setor (SAP Activate, TOTVS, boas práticas de OCM/testes/hypercare).

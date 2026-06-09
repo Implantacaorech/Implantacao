@@ -62,6 +62,11 @@ Cada etapa numerada do processo é uma skill acionável (passo a passo + templat
 - `hypercare` — estabilização pós-virada com governança diária e critério de saída
 - fit/gap — log de aderência (dentro da skill `aderencia-siger`)
 
+**Gestão e medição (robustez P2)**
+- `metricas-kpi` — KPIs de resultado (prazo, orçamento, adoção, time-to-value, CSAT)
+- `gestao-riscos-raid` — RAID: riscos, premissas, issues, decisões e dependências
+- `dossie-cliente` — documento vivo com o estado consolidado da implantação
+
 ## Convenções do processo (resumo operacional)
 
 - **SICLA — tipos de atividade:** `12 = apoio Comercial` (pré-implantação) · `13 = Implantação`.
@@ -103,6 +108,9 @@ Alguns agentes são **geradores**: produzem artefatos em **Excel/Word** a partir
 | `python tools/gerar_reconciliacao_conversao.py` | `Reconciliacao_Conversao_<cliente>.xlsx` |
 | `python tools/gerar_painel_hypercare.py` | `Painel_Hypercare_<cliente>.xlsx` |
 | `python tools/gerar_log_fitgap.py` | `Log_FitGap_<cliente>.xlsx` |
+| `python tools/gerar_painel_kpi.py` | `Painel_KPIs_<cliente>.xlsx` |
+| `python tools/gerar_raid.py` | `RAID_<cliente>.xlsx` |
+| `python tools/gerar_dossie_cliente.py` | `Dossie_<cliente>.docx` |
 
 Instalar dependências uma vez: `python -m pip install -r tools/requirements.txt`.
 Detalhes em [tools/README.md](tools/README.md).

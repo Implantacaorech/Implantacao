@@ -40,6 +40,7 @@ O processo de implantação foi traduzido para três camadas que o Claude Code e
 | Encerramento | `encerramento-implantacao` |
 | Qualidade e adoção (P0) | `gestao-mudanca`, `testes-sit-uat` |
 | Dados e estabilização (P1) | `validacao-conversao`, `hypercare`, fit/gap em `aderencia-siger` |
+| Gestão e medição (P2) | `metricas-kpi`, `gestao-riscos-raid`, `dossie-cliente` |
 
 ## Geradores Office (.xlsx/.docx)
 
@@ -53,6 +54,9 @@ python tools/gerar_aceite_uat.py                  # Termo de Aceite (Word)
 python tools/gerar_reconciliacao_conversao.py     # Reconciliação de Conversão (Excel)
 python tools/gerar_painel_hypercare.py            # Painel de Hypercare (Excel)
 python tools/gerar_log_fitgap.py                  # Log de Fit/Gap (Excel)
+python tools/gerar_painel_kpi.py                  # Painel de KPIs (Excel)
+python tools/gerar_raid.py                        # RAID — riscos/issues (Excel)
+python tools/gerar_dossie_cliente.py              # Dossiê do cliente (Word)
 ```
 
 Saída em `exemplos/`. Detalhes em [tools/README.md](tools/README.md).

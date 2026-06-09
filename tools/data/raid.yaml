@@ -1,0 +1,36 @@
+# RAID — Riscos, Premissas (Assumptions), Issues, Decisões e Dependências.
+riscos:
+  - descricao: "Atraso na entrega de dados para conversão pelo cliente"
+    impacto: "Alto"
+    probabilidade: "Média"
+    mitigacao: "Definir SLA de entrega no projeto; cobrar o usuário líder semanalmente"
+    responsavel: "Consultor"
+  - descricao: "Baixa disponibilidade dos usuários-chave para treinamento"
+    impacto: "Alto"
+    probabilidade: "Média"
+    mitigacao: "Formalizar no projeto a alocação; envolver o patrocinador"
+    responsavel: "Gerente do Projeto"
+
+premissas:
+  - descricao: "Cliente disponibilizará usuários-chave nos treinamentos conforme cronograma"
+    validada: "Não"
+  - descricao: "Infraestrutura/instalação do SIGER® concluída antes da visita inicial"
+    validada: "Sim"
+
+issues:
+  - descricao: "Remessa bancária não homologada pelo banco"
+    severidade: "Alta"
+    acao: "Abrir RNS; acionar o banco; testar arquivo CNAB"
+    responsavel: "Consultor"
+    status: "Aberto"
+
+decisoes:
+  - descricao: "Relatório gerencial específico fica fora do escopo (usar padrão)"
+    data: "2026-06-09"
+    por: "Gerente do Projeto"
+
+dependencias:
+  - descricao: "Desenvolvimento da comissão escalonada (RNS ORC 444444) antes da virada"
+    de_quem: "Equipe de Desenvolvimento"
+    prazo: "2026-07-20"
+    status: "Em andamento"
