@@ -1,0 +1,8 @@
+# Normaliza fim de linha para LF no repositório (evita ruído CRLF no Windows)
+* text=auto eol=lf
+
+# Arquivos binários do Office — não normalizar
+*.docx binary
+*.xlsx binary
+*.pptx binary
+*.pdf  binary
