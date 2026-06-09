@@ -64,3 +64,34 @@ def run_saude():
     with contextlib.redirect_stdout(buf):
         code = verificar.main()
     return code, buf.getvalue()
+
+
+def catalogo_por_area():
+    """[(area, [módulos])] de TODO o catálogo, para a tela de seleção."""
+    import catalogo as CAT
+    return CAT.por_area(CAT.load())
+
+
+def gerar_levantamento_form(form, modulos):
+    """Monta o levantamento.yaml a partir do formulário (campos + módulos marcados)
+    e gera o documento. Retorna (caminho, log)."""
+    import yaml as _yaml
+    nome = (form.get("cliente") or "Cliente").strip()
+    doc = {
+        "cliente": nome,
+        "data": form.get("data", ""),
+        "responsaveis": form.get("responsaveis", ""),
+        "identificacao": {
+            "razao_social": nome,
+            "ramo": form.get("ramo", ""),
+            "produto": form.get("produto", ""),
+            "fornecedor_atual": form.get("fornecedor_atual", ""),
+            "localizacao": form.get("localizacao", ""),
+            "observacoes_objetivos": form.get("observacoes", ""),
+        },
+        "modulos_contratados": modulos,
+    }
+    base = "lev_" + C.slug(nome) + ".yaml"
+    with open(os.path.join(DATA, base), "w", encoding="utf-8") as f:
+        _yaml.safe_dump(doc, f, allow_unicode=True, sort_keys=False, width=120)
+    return run_generator("gerar_levantamento", base)

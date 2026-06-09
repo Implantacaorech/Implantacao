@@ -116,8 +116,11 @@ def main(lev_path="data/levantamento.yaml"):
 
     # Mapeamento por área — AUTOMÁTICO a partir dos módulos contratados (catálogo);
     # ou manual (campo 'areas') quando não houver 'modulos_contratados'.
+    nao_processo = {"BI e Integrações", "Outros"}
     if areas_auto:
         for area, mods in areas_auto:
+            if area in nao_processo:
+                continue   # tecnologia/integração: aparece no Resumo, não vira bloco de processo
             H(f"Mapeamento de processo – {area.upper()}", 2)
             P("Módulos Previstos:", bold=True)
             B([m["descricao"] for m in mods])

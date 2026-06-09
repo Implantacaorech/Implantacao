@@ -57,6 +57,16 @@ def acao(rid, aid):
         abort(404)
     res = None
 
+    if a["tipo"] == "form_levantamento":
+        if request.method == "POST":
+            mods = request.form.getlist("modulos")
+            path, _log = runner.gerar_levantamento_form(request.form, mods)
+            res = {"ok": bool(path), "arquivo": path,
+                   "erro": None if path else "Não foi possível gerar o documento."}
+        return render_template("levantamento_form.html", role=r, acao=a,
+                               grupos=runner.catalogo_por_area(), res=res,
+                               cliente_nome=session.get("cliente_nome"))
+
     if a["tipo"] == "verbal":
         if request.method == "POST":
             texto = request.form.get("texto", "")

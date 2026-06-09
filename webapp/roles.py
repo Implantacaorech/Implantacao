@@ -27,8 +27,10 @@ ROLES = [
     {"id": "adm", "nome": "Setor Adm", "icone": "🗂️",
      "desc": "Documentos, RNS e encaminhamentos.",
      "acoes": [
-         {"id": "levantamento", "nome": "Gerar Levantamento (template)", "tipo": "gerar",
-          "mod": "gerar_levantamento", "desc": "Documento Word do mapeamento."},
+         {"id": "levform", "nome": "Gerar Levantamento (selecionar módulos)", "tipo": "form_levantamento",
+          "desc": "Marque os módulos contratados; o Resumo e os “Módulos Previstos” por área são preenchidos automaticamente pelo catálogo."},
+         {"id": "levantamento", "nome": "Gerar Levantamento (dados de exemplo)", "tipo": "gerar",
+          "mod": "gerar_levantamento", "desc": "Documento Word do mapeamento com os dados de exemplo/YAML."},
          {"id": "importar", "nome": "Importar Levantamento → Projeto", "tipo": "import",
           "desc": "Gera o projeto_<cliente>.yaml a partir do mapeamento."},
      ]},

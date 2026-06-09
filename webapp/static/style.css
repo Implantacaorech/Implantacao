@@ -51,3 +51,10 @@ textarea{resize:vertical}
   font-family:Consolas,monospace;font-size:.82rem;line-height:1.45}
 .voltar{display:inline-block;margin-top:18px}
 .rodape{text-align:center;color:var(--muted);font-size:.82rem;padding:24px}
+.grade2{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.area-box{border:1px solid var(--line);border-radius:10px;padding:10px 16px;margin:12px 0;background:#fcfdff}
+.area-box legend{font-weight:700;color:var(--navy);padding:0 8px}
+.mods{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:4px}
+.mod{display:flex;gap:8px;align-items:flex-start;font-size:.9rem;padding:4px 6px;border-radius:6px}
+.mod:hover{background:#eef2f7}
+.mod input{margin-top:3px}

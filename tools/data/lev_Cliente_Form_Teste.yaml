@@ -1,0 +1,19 @@
+cliente: Cliente Form Teste
+data: '2026-06-10'
+responsaveis: ''
+identificacao:
+  razao_social: Cliente Form Teste
+  ramo: Indústria
+  produto: ''
+  fornecedor_atual: ''
+  localizacao: ''
+  observacoes_objetivos: ''
+modulos_contratados:
+- CTB
+- CCC
+- FAT
+- NFE
+- FIN
+- EST
+- GIN
+- DBC
