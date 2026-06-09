@@ -111,6 +111,8 @@ Alguns agentes são **geradores**: produzem artefatos em **Excel/Word** a partir
 | `python tools/gerar_painel_kpi.py` | `Painel_KPIs_<cliente>.xlsx` |
 | `python tools/gerar_raid.py` | `RAID_<cliente>.xlsx` |
 | `python tools/gerar_dossie_cliente.py` | `Dossie_<cliente>.docx` |
+| `python tools/gerar_projeto_implantacao.py` | `Projeto_Implantacao_<cliente>.docx` (**fiel ao template Rech**) |
+| `python tools/extrair_levantamento.py <doc>` | `projeto_seed.yaml` (ponte Levantamento→Projeto, p/ IA) |
 
 Instalar dependências uma vez: `python -m pip install -r tools/requirements.txt`.
 Detalhes em [tools/README.md](tools/README.md).

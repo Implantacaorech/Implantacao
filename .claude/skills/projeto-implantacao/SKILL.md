@@ -35,8 +35,29 @@ será** atendido.
 Consultor redige → e-mail ao **Setor Adm** → **assinatura digital** (ambas as partes) →
 **arquivamento** na pasta do cliente (`XXXX-Cliente`).
 
-## Template
-- Template/exemplo `.docx`: ver `docs/recursos-e-caminhos.md`.
+## Geração do documento (fiel ao template Rech)
+O Projeto é gerado em **.docx fiel ao template oficial** a partir de `tools/data/projeto.yaml`:
+```bash
+python tools/gerar_projeto_implantacao.py   # -> exemplos/Projeto_Implantacao_<cliente>.docx
+```
+O YAML cobre os campos do ADM (cliente, CNPJ, equipe, usuários, cronograma macro, horas) e, por
+**área** (grupo/sub), os blocos: *Módulos Previstos · Detalhamento · Particularidade · Não previsto*.
+O boilerplate (Responsabilidades, Protocolos digitais) é fixo e reproduzido automaticamente.
+
+## Auto-preenchimento a partir do Levantamento (IA)
+Replica e melhora o gerador interno da Rech:
+1. Extraia o conteúdo do levantamento:
+   ```bash
+   python tools/extrair_levantamento.py "<caminho do Levantamento.docx>"
+   # -> tools/data/projeto_seed.yaml (notas por área)
+   ```
+2. **A IA redige** as descrições no formato do Projeto (Detalhamento / Particularidade / Não
+   previsto) a partir das notas do seed, preenchendo `tools/data/projeto.yaml`.
+3. **O Gerente de Projeto revisa/altera** o YAML antes de gerar.
+4. Gere o `.docx` (comando acima).
+
+> Cores do template original: 🟩 verde = campo do ADM · 🟥 vermelho = instrução (não vai no
+> documento) · 🟨 amarelo = ponto a validar. O gerador já entrega a versão final (sem instruções).
 
 ## Próximo passo
 `cronograma-implantacao` (em conjunto, mesmo prazo de 5 dias úteis).

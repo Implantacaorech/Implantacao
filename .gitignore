@@ -31,3 +31,4 @@ exemplos/
 
 # Dados específicos de cliente (derivados do exemplo)
 tools/data/cliente_*.yaml
+tools/data/projeto_seed.yaml

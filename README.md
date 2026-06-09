@@ -57,6 +57,8 @@ python tools/gerar_log_fitgap.py                  # Log de Fit/Gap (Excel)
 python tools/gerar_painel_kpi.py                  # Painel de KPIs (Excel)
 python tools/gerar_raid.py                        # RAID — riscos/issues (Excel)
 python tools/gerar_dossie_cliente.py              # Dossiê do cliente (Word)
+python tools/gerar_projeto_implantacao.py         # Projeto de Implantação (Word, FIEL ao template Rech)
+python tools/extrair_levantamento.py <doc.docx>   # Ponte Levantamento -> Projeto (seed p/ IA)
 ```
 
 Saída em `exemplos/`. Detalhes em [tools/README.md](tools/README.md).

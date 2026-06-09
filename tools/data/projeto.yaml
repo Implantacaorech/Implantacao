@@ -1,0 +1,123 @@
+# Dados do Projeto de Implantação — entrada do gerador fiel ao template Rech.
+# Campos = campos "verdes" (ADM) + descrições por área (auto-preenchidas do levantamento,
+# revisadas pelo Gerente de Projeto). Exemplo preenchido com o caso real GRX EMBALAGENS.
+
+cliente: "3694 – GRX EMBALAGENS LTDA"
+cliente_nome_curto: "GRX EMBALAGENS LTDA"   # usado nas Responsabilidades
+cidade_data: "Novo Hamburgo, 25 de maio de 2026."
+
+objetivos:
+  - "Aumentar o nível de controle das informações, de forma mais detalhada, centralizando no ERP SIGER®. Buscando aperfeiçoar os controles internos em todas as áreas da empresa e gerar as informações relevantes para a tomada de decisões dos administradores;"
+  - "Ter um controle maior de estoque de forma automatizada, integrando as rotinas dos módulos de controle de estoque e faturamento;"
+  - "Consolidar e automatizar controles financeiros, tornando fácil o acesso às movimentações financeiras e controles de fluxo de caixa."
+
+empresas:
+  - "CNPJ: 55.433.537/0001-37 - GRX EMBALAGENS LTDA"
+
+conversoes:
+  nota: "Não será realizada conversão dos dados de Cadastro de Produtos, Clientes/Fornecedores, Histórico Financeiro e Histórico de Vendas. Os cadastros serão realizados manualmente seguindo padronizações disponíveis no SIGER®, conforme validado com a responsável pelo projeto de implantação."
+  tabela:
+    - {modulo: "Clientes e Fornecedores", converter: "Não", dados: "Não se aplicará", obs: ""}
+    - {modulo: "Cadastros de Produtos", converter: "Não", dados: "Não se aplicará", obs: ""}
+    - {modulo: "Documentos em Aberto", converter: "Não", dados: "Não se aplicará", obs: ""}
+    - {modulo: "Históricos de Notas de Venda", converter: "Não", dados: "Não se aplicará", obs: ""}
+    - {modulo: "Outras Conversões", converter: "Não", dados: "Não se aplicará", obs: ""}
+
+cadastros:
+  clientes_fornecedores:
+    - "Vencimento padrão: vinculado ao cadastro do cliente;"
+    - "Vendedores: vinculado ao cadastro do cliente e podendo ser informado na inclusão de pedido;"
+    - "Transportador: utilizarão transporte próprio com uso da emissão do manifesto;"
+    - "Espécie de saída: vincular ao cadastro do cliente."
+  produtos:
+    - "Grupo de produtos - segregar por clientes;"
+    - "Farão o cadastro de produtos por cliente - possuem clientes que compram o produto em KG e outros por UN;"
+    - "Utilizarão cadastro do Peso do produto para controlar o peso mínimo do produto."
+  outros:
+    - "Irão precificar o custo pela medida do produto com base na matéria prima e produção para depois formatar o preço de venda com margens de lucro."
+
+areas:
+  - grupo: "Gestão Comercial"
+    sub: "Vendas e Faturamento"
+    modulos_previstos:
+      - "Vendas e Faturamento;"
+      - "Geração/Autenticação de NF-e – Nota Fiscal Eletrônica;"
+      - "Geração do XML do Manifesto Eletrônico de Documentos Fiscais (MDF-e)."
+    detalhamento:
+      - "Utilizarão a manutenção consolidada de pedidos (2-1-G) para lançarem os pedidos com origem das ordens de compra de clientes ou via WhatsApp;"
+      - "Farão uso da data de Entrega prevista nos pedidos para controlar entrega dos pedidos que será de 7 dias úteis;"
+      - "Utilizarão cadastro de equivalência de produtos para listar no modelo de pedidos interno e NF o código de produtos do cliente;"
+      - "Comissão: controlarão as vendas do Gustavo (Diretor) e 2 vendedores, com percentual fixo por vendedor e pagamento por liquidação do financeiro;"
+      - "Emissão de NF: emitirão a NF e boleto juntas para envio; tipos de NF de venda, amostra, remessa e descarte;"
+      - "MDF-e: emitirão o MDF-e para transporte próprio entre municípios."
+    particularidades:
+      - "Continuarão realizando a programação de produção no EXCEL;"
+      - "Configurar no modelo de pedido interno para listar o Peso Unitário dos produtos;"
+      - "Trabalharão com espécies de saídas (vendas) por clientes para diferenciar o tipo de ICMS."
+    nao_previsto:
+      - "Processo de beneficiamento interno e de terceiros;"
+      - "Uso de listas de preços de produtos e por clientes."
+
+  - grupo: "Gestão de Materiais"
+    sub: "Controle de Estoque"
+    modulos_previstos:
+      - "Controle de Estoques;"
+      - "Integração de Movimentos via Formulação/Estruturará."
+    detalhamento:
+      - "Utilizarão o controle de estoque via formulação/estruturará, onde a inclusão de registro de produção pelo menu (2-1-B – Estoque) fará o consumo de matéria prima vinculada à ficha técnica do produto e gerará saldo de estoque do produto pronto;"
+      - "Controlarão a baixa de estoque por requisição dos produtos a partir do processo de expedição/embalagem;"
+      - "Deverão cadastrar as fichas técnicas de produtos com os recursos disponibilizados pelo SIGER®."
+    particularidades:
+      - "Passarão a emitir as etiquetas por produto e etiqueta de volumes (irão adquirir impressora Zebra ou Argox);"
+      - "Poderão utilizar os relatórios de sugestão de compras (Estoque 3-2-P e Faturamento 3-1-L)."
+    nao_previsto:
+      - "Controle de compras pelo SIGER®, para gerar cotações ou Ordem de compra."
+
+  - grupo: "Gestão Financeira"
+    sub: "Controle Financeiro"
+    modulos_previstos:
+      - "Controle Financeiro."
+    detalhamento:
+      - "Bancos: utilizarão Banco Sicredi (em tratativas de abertura de conta) e Nubank (atual); passarão a emitir boleto pelo Sicredi via SIGER® e usarão remessa bancária;"
+      - "Contas a pagar: controlarão despesas fixas via lançamento manual e comissões via relatório (2-5-L);"
+      - "Contas a receber: controlarão via menu (2-2-M) por semana, com filtros previamente configurados;"
+      - "Adiantamentos: realizarão adiantamentos para clientes (encomendas)."
+    particularidades:
+      - "As rotinas de controle do financeiro serão controladas de forma simplificada, atendendo os movimentos solicitados pela contabilidade (contas recebidas e pagas)."
+    nao_previsto:
+      - "Uso do recurso do plano de contas do planejamento financeiro;"
+      - "Controles de saldo dos bancos e conciliação bancária."
+
+  - grupo: "Gestão de Controladoria"
+    sub: "Livros Fiscais"
+    modulos_previstos:
+      - "Repositório de DF-e Rech."
+    detalhamento:
+      - "Utilizarão o recurso do Repositório DF-e Rech para realizar controle de notas emitidas contra o CNPJ da empresa."
+    particularidades:
+      - "Nenhuma particularidade que confronte com o que fora mapeado."
+    nao_previsto:
+      - "Uso de recursos fora do escopo de detalhamento das rotinas fiscais aplicáveis à empresa."
+
+equipe:
+  gerente_contas: "Rafael Brito"
+  redator: "Rafael Brito"
+  consultor: "Cassiano"
+  encarregado_cliente: "Gustavo Zenglein"
+
+usuarios:
+  - {nome: "Gustavo Zenglein", email: "gzgestaocomercial@gmail.com", area: "Comercial", assina: "Sim"}
+  - {nome: "Carlos Roberto de Souza filho", email: "degabatata1991@gmail.com", area: "Produção", assina: ""}
+  - {nome: "Gilmar", email: "adriano.mja@gmail.com", area: "Sócio Diretor", assina: "Sim"}
+
+cronograma_macro:
+  - {fase: "Planejamento", etapa: "Levantamento de requisitos", periodo: "04/05/2026"}
+  - {fase: "Planejamento", etapa: "Elaboração do Cronograma", periodo: "22/05/2026"}
+  - {fase: "Planejamento", etapa: "Parametrização", periodo: "28/05/2026"}
+  - {fase: "Execução", etapa: "Treinamento", periodo: "01/06/26 - 30/06/2026"}
+  - {fase: "Execução", etapa: "Simulação", periodo: "25/06 a 30/06"}
+  - {fase: "Execução", etapa: "Data de Início do Uso oficial", periodo: "01/07/2026"}
+  - {fase: "Encerramento", etapa: "Data estimada para Finalização", periodo: "07/08/2026"}
+
+horas:
+  - "68 horas bonificadas"
