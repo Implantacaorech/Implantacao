@@ -63,8 +63,8 @@ def main():
         print("AVISO: faltam templates em tools/templates/:", ", ".join(faltando))
         print("       (o gerador de Projeto não funcionará no .exe sem eles)")
 
-    final_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
-        os.path.expanduser("~"), "Desktop", "PainelImplantacao")
+    # Destino padrão fixo (por solicitação): Desktop LOCAL (fora do OneDrive).
+    final_dir = sys.argv[1] if len(sys.argv) > 1 else r"C:\Users\everton\Desktop\PainelImplantacao"
     os.makedirs(final_dir, exist_ok=True)
 
     workdir = os.path.join(tempfile.gettempdir(), "painel_build")
