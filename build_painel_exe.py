@@ -26,7 +26,7 @@ NAME = "PainelImplantacao"
 # Módulos importados dinamicamente (importlib) — o PyInstaller não os detecta.
 HIDDEN = [
     "roles", "runner", "forms", "_common", "schema_projeto", "conversor_verbal",
-    "importar_mapeamento", "verificar", "catalogo",
+    "importar_mapeamento", "verificar", "catalogo", "checklist",
     "gerar_kit_mudanca", "gerar_roteiros_teste", "gerar_aceite_uat",
     "gerar_reconciliacao_conversao", "gerar_painel_hypercare", "gerar_log_fitgap",
     "gerar_painel_kpi", "gerar_raid", "gerar_dossie_cliente",

@@ -13,6 +13,7 @@ from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 import _common as C
 import catalogo as CAT
+import checklist as CK
 
 NAVY = RGBColor(0x1F, 0x4E, 0x78)
 
@@ -136,6 +137,28 @@ def main(lev_path="data/levantamento.yaml"):
             B(a.get("aspectos"))
             P("Dúvidas e Observações", bold=True)
             B(a.get("duvidas"))
+
+    # Guia do Consultor — Roteiro e Check List por módulo (página landscape ao final).
+    chk_rows = CK.rows_for(d.get("modulos_contratados")) if contratados else []
+    if chk_rows:
+        from docx.enum.section import WD_ORIENT, WD_SECTION
+        sec = doc.add_section(WD_SECTION.NEW_PAGE)
+        sec.orientation = WD_ORIENT.LANDSCAPE
+        sec.page_width, sec.page_height = sec.page_height, sec.page_width
+        C.docx_heading(doc, "Guia de Implantação — Roteiro e Check List por Módulo", size=14)
+        P("Roteiro de configuração e treinamento dos módulos contratados — referência para o "
+          "Consultor que assumirá a implantação.")
+        gcols = ["Módulo", "Adicional", "Tipo", "Integrações", "Item de Go-Live",
+                 "Menu", "Item", "Ação/Observação", "Seq"]
+        grows = [[r.get("modulo", ""), r.get("adicional", ""), r.get("tipo", ""),
+                  r.get("integracoes", ""), r.get("golive", ""), r.get("menu", ""),
+                  r.get("item", ""), r.get("acao", ""), r.get("seq", "")] for r in chk_rows]
+        gt = table(gcols, grows)
+        for grow in gt.rows:                          # fonte compacta p/ caber 9 colunas
+            for cell in grow.cells:
+                for gp in cell.paragraphs:
+                    for run in gp.runs:
+                        run.font.size = Pt(8)
 
     C.ensure_out()
     fname = f"Levantamento_{C.slug(d.get('cliente'))}.docx"

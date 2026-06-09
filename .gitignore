@@ -37,6 +37,10 @@ tools/data/lev_*.yaml
 # Templates .docx reais da Rech (letterhead/logo) — manter local, não publicar
 tools/templates/*.docx
 
+# Check List detalhado por módulo (roteiro interno) — manter local; o catálogo
+# (catalogo_modulos.yaml) é versionado, o checklist detalhado não.
+tools/data/checklist_modulos.yaml
+
 # Painel web: uploads e dados de cliente gerados pelo painel
 webapp/_uploads/
 tools/data/upload_*.yaml
