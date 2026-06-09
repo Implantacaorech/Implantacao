@@ -39,8 +39,12 @@ Item **h** (negociações em aberto) é do **Gerente do Projeto**.
 
 ### 5. Termo de Encerramento
 Elaborar (referenciar o projeto, ratificar o atendido + ressalvas, alterações de escopo por área,
-quadro de módulos). Enviar ao **Setor Adm** → assinatura digital → arquivamento.
-Use `templates/termo-encerramento.md`.
+quadro de módulos). Gere o documento **fiel ao template Rech**:
+```bash
+# edite tools/data/termo.yaml
+python tools/gerar_termo_encerramento.py   # -> exemplos/Termo_Encerramento_<cliente>.docx
+```
+Depois envie ao **Setor Adm** → assinatura digital → arquivamento.
 
 ### 6. E-mails (3.8.4)
 - **Ao cliente** (dá dinâmica; **registrar no SICLA**) — não dispensa o termo assinado.

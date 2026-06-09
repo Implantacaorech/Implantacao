@@ -58,6 +58,8 @@ python tools/gerar_painel_kpi.py                  # Painel de KPIs (Excel)
 python tools/gerar_raid.py                        # RAID — riscos/issues (Excel)
 python tools/gerar_dossie_cliente.py              # Dossiê do cliente (Word)
 python tools/gerar_projeto_implantacao.py         # Projeto de Implantação (Word, FIEL ao template Rech)
+python tools/gerar_termo_encerramento.py          # Termo de Encerramento (Word, FIEL ao template Rech)
+python tools/gerar_levantamento.py                # Levantamento/Mapeamento (Word, FIEL ao template Rech)
 python tools/extrair_levantamento.py <doc.docx>   # Ponte Levantamento -> Projeto (seed p/ IA)
 ```
 

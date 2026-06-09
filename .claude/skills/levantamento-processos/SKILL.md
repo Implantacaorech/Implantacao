@@ -41,5 +41,11 @@ apoiar demonstrações do SIGER® quando solicitado.
 ## Templates
 - `templates/email-encaminhamento-levantamento.md`
 
+## Geração do documento (fiel ao template Rech)
+```bash
+# edite tools/data/levantamento.yaml
+python tools/gerar_levantamento.py   # -> exemplos/Levantamento_<cliente>.docx
+```
+
 ## Próximo passo
 `apoio-comercial-demonstracao` (devolutiva) → na contratação, `abertura-implantacao`.

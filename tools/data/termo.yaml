@@ -1,0 +1,27 @@
+# Dados do Termo de Encerramento — entrada do gerador fiel ao template Rech (versão nova).
+cliente: "GRX EMBALAGENS LTDA"
+numero_projeto: "123456"          # vazio se não se aplicar
+data_validacao: "25 de maio de 2026"
+cidade_data: "Novo Hamburgo, ____ de ____________ de 2026."
+
+# Alterações/incrementos fora do escopo original.
+# Lista vazia => usa o texto padrão "Não houve alterações significativas...".
+alteracoes:
+  - modulo: "Módulo Vendas e Faturamento"
+    rotina: "Rotina de separação e conferência"
+    descricao: "Originalmente as rotinas de depósito, separação e conferência eram realizadas utilizando diretamente o ERP, posteriormente foi incrementado o uso do WMS de terceiros e realizada a integração com o SIGER®."
+
+# Quadro de módulos/adicionais (resumo geral da implantação).
+resumo_modulos:
+  - {modulo: "Vendas e Faturamento", adicional: "NF-e / MDF-e", processo: "Implantado", status_uso: "Sim", obs: ""}
+  - {modulo: "Controle de Estoque", adicional: "Formulação/Estruturará", processo: "Implantado", status_uso: "Sim", obs: ""}
+  - {modulo: "Controle Financeiro", adicional: "—", processo: "Implantado", status_uso: "Sim", obs: ""}
+  - {modulo: "Livros Fiscais", adicional: "Repositório DF-e", processo: "Implantado", status_uso: "Sim", obs: ""}
+
+observacoes: []   # ex.: ["Cliente optou por não utilizar X", ...]
+
+# Pendências sequenciadas (entregues após o encerramento). Vazio => texto padrão.
+pendencias: []
+  # - pendencia: "Ajuste no modelo de pedido interno"
+  #   tecnico: "Cassiano"
+  #   detalhamento: "Inclusão do peso unitário no layout."

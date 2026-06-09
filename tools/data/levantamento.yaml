@@ -1,0 +1,57 @@
+# Dados do Levantamento (Mapeamento de Processos) — gerador fiel ao template Rech.
+cliente: "Indústria Alfa Ltda"
+data: "09/06/2026"
+responsaveis: "Sandri"
+
+identificacao:
+  razao_social: "Indústria Alfa Ltda"
+  ramo: "Indústria de embalagens"
+  produto: "Embalagens plásticas"
+  fornecedor_atual: "Sistema X"
+  localizacao: "Novo Hamburgo/RS — matriz"
+  observacoes_objetivos: "Centralizar controles no SIGER® e automatizar estoque e financeiro."
+
+usuarios:
+  - {nome: "Gustavo", email: "gustavo@alfa.com", atribuicoes: "Comercial"}
+  - {nome: "Carlos", email: "carlos@alfa.com", atribuicoes: "Produção"}
+
+# (A) Previstos antes do levantamento / (B) Identificados no levantamento
+modulos_previstos_antes:
+  - {modulo: "Vendas e Faturamento", necessidade: "Sim", obs: ""}
+  - {modulo: "Controle de Estoque", necessidade: "Sim", obs: ""}
+modulos_identificados:
+  - {modulo: "Repositório DF-e", necessidade: "Sim", obs: "Identificado no levantamento"}
+
+horas:
+  cobradas: ""
+  bonificadas: "68"
+  total: "68"
+
+conversoes:
+  horas: "0"
+  itens:
+    - {item: "Imp. Cad. clientes e fornecedores", estimativa: "Não se aplica"}
+    - {item: "Imp. Cad. produtos", estimativa: "Não se aplica"}
+    - {item: "Imp. Mov. Financeiro doc. em aberto", estimativa: "Não se aplica"}
+    - {item: "Imp. Notas Fiscais já emitidas", estimativa: "Não se aplica"}
+
+desenvolvimentos: "A definir"
+
+# Mapeamento por área (aspectos preenchidos durante o levantamento).
+areas:
+  - nome: "VENDAS E FATURAMENTO"
+    modulos_previstos: "Vendas e Faturamento; NF-e; MDF-e"
+    aspectos:
+      - "Lançam pedidos via manutenção consolidada (2-1-G);"
+      - "Comissão por percentual fixo, paga por liquidação do financeiro."
+    duvidas: ["Validar tipos de NF utilizados."]
+  - nome: "COMPRAS/ESTOQUE"
+    modulos_previstos: "Controle de Estoque; Formulação/Estruturará"
+    aspectos:
+      - "Baixa de estoque por requisição na expedição;"
+      - "Fichas técnicas para consumo de matéria prima."
+    duvidas: []
+  - nome: "GESTÃO FINANCEIRA"
+    modulos_previstos: "Controle Financeiro"
+    aspectos: ["Emissão de boleto via Sicredi; remessa bancária."]
+    duvidas: []

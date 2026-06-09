@@ -1,5 +1,9 @@
 # Template — Termo de Encerramento de Implantação
 
+> ⚠️ **Versão oficial:** o Termo agora é gerado **fiel ao template real da Rech** por
+> `tools/gerar_termo_encerramento.py` (dados em `tools/data/termo.yaml`). Este markdown
+> permanece apenas como referência de conteúdo/checklist.
+
 **Etapa:** 3.8 · **Responsável:** Consultor (elabora) → Setor Adm (assinatura digital + arquivamento)
 **Template corporativo (.docx):** ver [recursos-e-caminhos.md](../docs/recursos-e-caminhos.md)
 
