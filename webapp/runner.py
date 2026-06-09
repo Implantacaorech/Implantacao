@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Executor: roda os geradores, o importador, o conversor e o verificador."""
+"""Executor: roda os geradores, o importador, o conversor e o verificador.
+Ciente de empacotamento (.exe): grava em pasta gravável via _common."""
 import os
 import re
 import io
@@ -8,12 +9,14 @@ import contextlib
 import importlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.dirname(HERE)
-TOOLS = os.path.join(REPO, "tools")
-DATA = os.path.join(TOOLS, "data")
-EXEMPLOS = os.path.join(REPO, "exemplos")
-if TOOLS not in sys.path:
-    sys.path.insert(0, TOOLS)
+if not getattr(sys, "frozen", False):
+    TOOLS = os.path.join(os.path.dirname(HERE), "tools")
+    if TOOLS not in sys.path:
+        sys.path.insert(0, TOOLS)
+
+import _common as C   # noqa: E402
+
+DATA = C.DATA_WRITE   # pasta gravável (= tools/data no modo normal)
 
 
 def run_generator(modname, yaml_basename=None):
@@ -28,7 +31,7 @@ def run_generator(modname, yaml_basename=None):
 
 
 def save_upload_yaml(file_storage, slug_fn):
-    """Salva um .yaml enviado em tools/data/upload_<slug>.yaml e devolve o basename."""
+    """Salva um .yaml enviado em <gravável>/upload_<slug>.yaml e devolve o basename."""
     base = "upload_" + slug_fn(os.path.splitext(file_storage.filename)[0]) + ".yaml"
     file_storage.save(os.path.join(DATA, base))
     return base
@@ -37,7 +40,6 @@ def save_upload_yaml(file_storage, slug_fn):
 def run_import(docx_path):
     """Importa o levantamento .docx -> projeto_<cliente>.yaml (com conversão verbal)."""
     import importar_mapeamento as I
-    import _common as C
     import yaml as _yaml
     data = I.extract(docx_path)
     ydict = I.to_yaml_dict(data, aplicar_verbal=True)

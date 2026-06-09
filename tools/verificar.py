@@ -20,8 +20,10 @@ import importlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
-OUT = os.path.join(REPO, "exemplos")
-sys.path.insert(0, HERE)
+if not getattr(sys, "frozen", False):
+    sys.path.insert(0, HERE)
+import _common as C   # noqa: E402
+OUT = C.OUT
 
 R = []  # (area, nome, status, detalhe)
 
@@ -153,10 +155,13 @@ def check_estrutura():
     ruins = [os.path.basename(os.path.dirname(p)) or os.path.basename(p)
              for p in ag + sk
              if not (fm(p) and fm(p).get("name") and fm(p).get("description"))]
-    reg("Estrutura", "agentes", "OK" if ag else "FALHA", "%d encontrados" % len(ag))
-    reg("Estrutura", "skills", "OK" if sk else "FALHA", "%d encontradas" % len(sk))
-    reg("Estrutura", "frontmatter (name+description)", "OK" if not ruins else "FALHA",
-        "todos válidos" if not ruins else ("inválidos: " + ", ".join(ruins[:5])))
+    if not ag and not sk:
+        reg("Estrutura", "agentes/skills", "PULAR", "não encontrados (modo .exe)")
+    else:
+        reg("Estrutura", "agentes", "OK" if ag else "PULAR", "%d encontrados" % len(ag))
+        reg("Estrutura", "skills", "OK" if sk else "PULAR", "%d encontradas" % len(sk))
+        reg("Estrutura", "frontmatter (name+description)", "OK" if not ruins else "FALHA",
+            "todos válidos" if not ruins else ("inválidos: " + ", ".join(ruins[:5])))
 
 
 # Relatório -------------------------------------------------------------------

@@ -333,7 +333,7 @@ def main(path=None):
     data = extract(path)
     ydict = to_yaml_dict(data, aplicar_verbal=True)
     nome = data.get("client_name") or os.path.splitext(os.path.basename(path))[0]
-    out = os.path.join(C.DATA, f"projeto_{C.slug(nome)}.yaml")
+    out = os.path.join(C.DATA_WRITE, f"projeto_{C.slug(nome)}.yaml")
     with open(out, "w", encoding="utf-8") as f:
         f.write(f"# Gerado de: {os.path.basename(path)}\n")
         f.write("# Revisar (Gerente de Projeto) antes de gerar. Texto já no FUTURO.\n")

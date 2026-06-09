@@ -14,21 +14,27 @@ from flask import (Flask, render_template, request, send_file, abort,
                    session, redirect, url_for)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.dirname(HERE)
-sys.path.insert(0, HERE)
-sys.path.insert(0, os.path.join(REPO, "tools"))
+FROZEN = getattr(sys, "frozen", False)
+if FROZEN:
+    WEBBASE = os.path.join(sys._MEIPASS, "webapp")        # noqa
+else:
+    WEBBASE = HERE
+    sys.path.insert(0, HERE)
+    sys.path.insert(0, os.path.join(os.path.dirname(HERE), "tools"))
 
 import roles            # noqa: E402
 import runner           # noqa: E402
 import forms            # noqa: E402
 import _common as C     # noqa: E402
 
-app = Flask(__name__)
+app = Flask(__name__,
+            template_folder=os.path.join(WEBBASE, "templates"),
+            static_folder=os.path.join(WEBBASE, "static"))
 app.secret_key = "painel-implantacao-rech"
 
-UPLOADS = os.path.join(HERE, "_uploads")
+UPLOADS = os.path.join(C.DATA_WRITE if FROZEN else HERE, "_uploads")
 os.makedirs(UPLOADS, exist_ok=True)
-ALLOWED_DIRS = [os.path.join(REPO, "exemplos"), os.path.join(REPO, "tools", "data")]
+ALLOWED_DIRS = [C.OUT, C.DATA_WRITE, C.DATA]
 
 
 @app.route("/")

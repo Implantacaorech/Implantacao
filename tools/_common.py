@@ -1,16 +1,31 @@
 # -*- coding: utf-8 -*-
 """Helpers compartilhados pelos geradores Office (.xlsx/.docx)."""
 import os
+import sys
 import re
 import unicodedata
 import datetime
 import yaml
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-DATA = os.path.join(HERE, "data")
-REPO = os.path.dirname(HERE)
-OUT = os.path.join(REPO, "exemplos")
+FROZEN = getattr(sys, "frozen", False)
+if FROZEN:
+    # Empacotado (.exe): os defaults vêm do bundle (somente leitura); as saídas e
+    # os arquivos de cliente vão para %LOCALAPPDATA%\PainelImplantacao (gravável).
+    HERE = os.path.join(sys._MEIPASS, "tools")                          # noqa
+    _APP = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"),
+                        "PainelImplantacao")
+    DATA = os.path.join(HERE, "data")          # defaults (leitura)
+    DATA_WRITE = os.path.join(_APP, "data")    # cliente/projeto (gravável)
+    OUT = os.path.join(_APP, "exemplos")
+else:
+    HERE = os.path.dirname(os.path.abspath(__file__))
+    REPO = os.path.dirname(HERE)
+    DATA = os.path.join(HERE, "data")
+    DATA_WRITE = DATA
+    OUT = os.path.join(REPO, "exemplos")
+TEMPLATES = os.path.join(HERE, "templates")
+os.makedirs(DATA_WRITE, exist_ok=True)
 
 # Estilos
 HEADER_FILL = PatternFill("solid", fgColor="1F4E78")
@@ -24,6 +39,12 @@ CENTER = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
 
 def load_yaml(name):
+    name = os.path.basename(name)
+    for d in (DATA_WRITE, DATA):          # gravável primeiro, depois os defaults do bundle
+        p = os.path.join(d, name)
+        if os.path.exists(p):
+            with open(p, encoding="utf-8") as fh:
+                return yaml.safe_load(fh)
     with open(os.path.join(DATA, name), encoding="utf-8") as fh:
         return yaml.safe_load(fh)
 
@@ -93,8 +114,7 @@ def title_block(ws, title, subtitle=None, span=6):
         s.font = SUB_FONT
 
 
-# --- Word (.docx) helpers ---
-TEMPLATES = os.path.join(HERE, "templates")
+# --- Word (.docx) helpers --- (TEMPLATES definido no topo, ciente de frozen)
 
 
 def style_base(tipo):

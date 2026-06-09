@@ -29,6 +29,15 @@ Gestão da Mudança, Coordenação. Cada papel mostra apenas **suas ações**:
 ## Observações
 - Uso **local** (127.0.0.1) — não exponha na rede sem autenticação.
 - Uploads em `webapp/_uploads/` e dados de cliente em `tools/data/` ficam **fora do git**.
-- Os documentos saem em `exemplos/`. Letterhead vem de `tools/templates/` (ver README de lá).
-- **Próximo passo:** empacotar como `.exe` (PyInstaller), como os utilitários internos da Rech;
-  e formulários por campo (hoje: exemplo ou upload de YAML).
+- Os documentos saem em `exemplos/` (no `.exe`: `%LOCALAPPDATA%\PainelImplantacao\exemplos`);
+  o download é pelo navegador. Letterhead vem de `tools/templates/`.
+
+## Gerar o `.exe` (distribuição)
+Na máquina que **gera** o executável:
+```bash
+pip install pyinstaller flask python-docx openpyxl pyyaml
+python build_painel_exe.py              # gera em Desktop\PainelImplantacao\
+python build_painel_exe.py "D:\dest"    # ou outra pasta (fora do OneDrive)
+```
+Distribua **apenas** `PainelImplantacao.exe` (~17 MB; Python e tudo embutido, inclusive o
+letterhead). O usuário final dá dois cliques — sem instalar nada.

@@ -39,3 +39,9 @@ tools/templates/*.docx
 # Painel web: uploads e dados de cliente gerados pelo painel
 webapp/_uploads/
 tools/data/upload_*.yaml
+
+# Executável empacotado e artefatos de build (PyInstaller)
+*.exe
+build/
+dist/
+*.spec
