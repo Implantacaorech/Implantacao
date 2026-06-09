@@ -12,6 +12,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 import _common as C
+import catalogo as CAT
 
 NAVY = RGBColor(0x1F, 0x4E, 0x78)
 
@@ -28,6 +29,10 @@ def shade_header(row, fill="1F4E78"):
 
 def main(lev_path="data/levantamento.yaml"):
     d = C.load_yaml(os.path.basename(lev_path))
+    # Automação: resolve os módulos contratados (códigos/abreviações) no catálogo
+    # e agrupa por área para preencher o Resumo e os "Módulos Previstos".
+    contratados, _faltam = CAT.resolve(d.get("modulos_contratados"))
+    areas_auto = CAT.por_area(contratados) if contratados else None
     doc, based = C.style_base("levantamento")
     if not based:
         doc.styles["Normal"].font.name = "Calibri"
@@ -82,12 +87,17 @@ def main(lev_path="data/levantamento.yaml"):
           [[u.get("nome",""), u.get("email",""), u.get("atribuicoes","")] for u in d.get("usuarios", [])],
           empty=2)
 
-    # Módulos A e B
+    # Resumo dos Módulos e Adicionais Contratados (A)
     P("Resumo dos Módulos e Adicionais Contratados", bold=True)
-    table(["Módulos/Adicionais (A) — Previstos antes do Levantamento", "Necessidade", "Observações"],
-          [[m.get("modulo",""), m.get("necessidade",""), m.get("obs","")] for m in d.get("modulos_previstos_antes", [])])
-    table(["Módulos/Adicionais (B) — Identificados no Levantamento", "Necessidade", "Observações"],
-          [[m.get("modulo",""), m.get("necessidade",""), m.get("obs","")] for m in d.get("modulos_identificados", [])])
+    if contratados:
+        rows_a = [[f"{m['abrev']} — {m['descricao']}", "X", "", ""] for m in contratados]
+    else:
+        rows_a = [[m.get("modulo", ""), m.get("necessidade", ""), "", m.get("obs", "")]
+                  for m in d.get("modulos_previstos_antes", [])]
+    table(["Módulos/Adicionais (A) — Previstos antes do Levantamento", "Sim", "Não", "Observações"], rows_a)
+    table(["Módulos/Adicionais (B) — Identificados no Levantamento", "Sim", "Não", "Observações"],
+          [[m.get("modulo", ""), m.get("necessidade", ""), "", m.get("obs", "")]
+           for m in d.get("modulos_identificados", [])])
 
     # Horas
     H("Implantação/Treinamento", 2)
@@ -104,15 +114,25 @@ def main(lev_path="data/levantamento.yaml"):
     H("Desenvolvimentos Específicos", 2)
     P(d.get("desenvolvimentos", "A definir"))
 
-    # Mapeamento por área
-    for a in d.get("areas", []):
-        H(f"Mapeamento de processo – {a.get('nome','')}", 2)
-        P("Módulos Previstos:", bold=True)
-        P(a.get("modulos_previstos", ""))
-        P("Aspectos identificados", bold=True)
-        B(a.get("aspectos"))
-        P("Dúvidas e Observações", bold=True)
-        B(a.get("duvidas"))
+    # Mapeamento por área — AUTOMÁTICO a partir dos módulos contratados (catálogo);
+    # ou manual (campo 'areas') quando não houver 'modulos_contratados'.
+    if areas_auto:
+        for area, mods in areas_auto:
+            H(f"Mapeamento de processo – {area.upper()}", 2)
+            P("Módulos Previstos:", bold=True)
+            B([m["descricao"] for m in mods])
+            P("Aspectos identificados", bold=True)
+            P("<Colar aqui o quadro com as perguntas para ir preenchendo as respostas>")
+            P("Dúvidas e Observações", bold=True)
+    else:
+        for a in d.get("areas", []):
+            H(f"Mapeamento de processo – {a.get('nome','')}", 2)
+            P("Módulos Previstos:", bold=True)
+            P(a.get("modulos_previstos", ""))
+            P("Aspectos identificados", bold=True)
+            B(a.get("aspectos"))
+            P("Dúvidas e Observações", bold=True)
+            B(a.get("duvidas"))
 
     C.ensure_out()
     fname = f"Levantamento_{C.slug(d.get('cliente'))}.docx"

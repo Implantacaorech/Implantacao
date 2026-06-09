@@ -15,7 +15,12 @@ usuarios:
   - {nome: "Gustavo", email: "gustavo@alfa.com", atribuicoes: "Comercial"}
   - {nome: "Carlos", email: "carlos@alfa.com", atribuicoes: "Produção"}
 
-# (A) Previstos antes do levantamento / (B) Identificados no levantamento
+# Módulos contratados (códigos OU abreviações do catálogo — catalogo_modulos.yaml).
+# Preenchido => o gerador monta AUTOMATICAMENTE o Resumo (A) e os "Módulos Previstos"
+# em cada "Mapeamento de processo – ÁREA" (agrupando pelo catálogo).
+modulos_contratados: [CTB, CCC, LAL, GPA, LFI, DFR, FAT, NFE, NSE, UFX, EDI, MVA, CRF, SEP, FIN, EST, COM, GIN]
+
+# (A)/(B) manuais — usados como fallback quando 'modulos_contratados' estiver vazio.
 modulos_previstos_antes:
   - {modulo: "Vendas e Faturamento", necessidade: "Sim", obs: ""}
   - {modulo: "Controle de Estoque", necessidade: "Sim", obs: ""}

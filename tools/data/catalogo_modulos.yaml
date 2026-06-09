@@ -1,0 +1,555 @@
+# Catálogo de módulos/adicionais do SIGER (extraído do Roteiro e Check List).
+# 'area' = área do Levantamento. EDITÁVEL: ajuste o agrupamento se necessário.
+modulos:
+- codigo: 1
+  abrev: CTB
+  descricao: Contabilidade Geral
+  area: Gestão Fiscal, Contábil e Patrimonial
+- codigo: 28
+  abrev: CCC
+  descricao: ''
+  area: Gestão Fiscal, Contábil e Patrimonial
+- codigo: 30
+  abrev: LAL
+  descricao: Lalur
+  area: Gestão Fiscal, Contábil e Patrimonial
+- codigo: 53
+  abrev: CSI
+  descricao: Contabilidade Somente Integração
+  area: Gestão Fiscal, Contábil e Patrimonial
+- codigo: 2
+  abrev: GPA
+  descricao: Gestão Patrimonial
+  area: Gestão Fiscal, Contábil e Patrimonial
+- codigo: 3
+  abrev: FPA
+  descricao: Folha de Pagamento
+  area: Folha de Pagamento
+- codigo: 26
+  abrev: FSE
+  descricao: FPA - Cálculo Semanal
+  area: Folha de Pagamento
+- codigo: 27
+  abrev: CMO
+  descricao: Folha de Pagamento por Centros de Custo e Tipos de Mão de Obra
+  area: Folha de Pagamento
+- codigo: 219
+  abrev: CEF
+  descricao: Controle de Estoques de EPI (Integração Folha-Estoque)
+  area: Folha de Pagamento
+- codigo: 14
+  abrev: RHU
+  descricao: Recursos Humanos
+  area: Recursos Humanos
+- codigo: 109
+  abrev: SER
+  descricao: Recrutamento e Seleção
+  area: Recrutamento e Seleção
+- codigo: 110
+  abrev: TRN
+  descricao: Treinamento
+  area: Treinamentos
+- codigo: 114
+  abrev: SAO
+  descricao: Saúde Ocupacional
+  area: Saúde Ocupacional
+- codigo: 115
+  abrev: STR
+  descricao: Segurança do Trabalho
+  area: Segurança do Trabalho
+- codigo: 116
+  abrev: CSA
+  descricao: Cargos e Salários
+  area: Cargos e Salários
+- codigo: 137
+  abrev: AVF
+  descricao: Avaliação e Feedback
+  area: Avaliação e Feedback
+- codigo: 177
+  abrev: STT
+  descricao: SST eSocial Simplificado
+  area: Segurança do Trabalho
+- codigo: 4
+  abrev: LFI
+  descricao: Livros Fiscais
+  area: Gestão Fiscal, Contábil e Patrimonial
+- codigo: 24
+  abrev: ERR
+  descricao: Controle de Empréstimos, Remessas e Retornos
+  area: Gestão Fiscal, Contábil e Patrimonial
+- codigo: 41
+  abrev: SIN
+  descricao: Importação de Movimentos Fiscais via layout Sintegra
+  area: Gestão Fiscal, Contábil e Patrimonial
+- codigo: 65
+  abrev: ISP
+  descricao: Importação SPED
+  area: Gestão Fiscal, Contábil e Patrimonial
+- codigo: 37
+  abrev: LSI
+  descricao: Livros Fiscais Somente para Integração
+  area: Gestão Fiscal, Contábil e Patrimonial
+- codigo: 136
+  abrev: PGK
+  descricao: Geração SPED Fiscal Bloco K - somente registros K200 e K280
+  area: Gestão Fiscal, Contábil e Patrimonial
+- codigo: 215
+  abrev: DFR
+  descricao: Repositório de DF-e Rech
+  area: Gestão Fiscal, Contábil e Patrimonial
+- codigo: 5
+  abrev: FAT
+  descricao: Vendas e Faturamento
+  area: Vendas e Faturamento
+- codigo: 48
+  abrev: NFE
+  descricao: Geração/Autenticação de NF-e – Nota Fiscal Eletrônica
+  area: Vendas e Faturamento
+- codigo: 58
+  abrev: NSE
+  descricao: Geração/Autenticação de NFS-e – Nota Fiscal Serviços Eletrônica
+  area: Vendas e Faturamento
+- codigo: 179
+  abrev: DSE
+  descricao: Danfe Simplificado-Etiqueta
+  area: Vendas e Faturamento
+- codigo: 108
+  abrev: UFX
+  descricao: Frente de Caixa
+  area: Vendas e Faturamento
+- codigo: 132
+  abrev: VEB
+  descricao: Venda Balcão
+  area: Vendas e Faturamento
+- codigo: 210
+  abrev: RMP
+  descricao: Rech Marketplace/Integração E-commerce
+  area: Vendas e Faturamento
+- codigo: 29
+  abrev: EDI
+  descricao: EDI (Intercâmbio Eletrônico de Dados)
+  area: Vendas e Faturamento
+- codigo: 69
+  abrev: PWE
+  descricao: Sistema de Pedidos via Web/Mobile on-line
+  area: Vendas e Faturamento
+- codigo: 103
+  abrev: PMO
+  descricao: Pedidos Mobile Web Offline
+  area: Vendas e Faturamento
+- codigo: 212
+  abrev: MNE
+  descricao: APP SIGER Mobile NF-e
+  area: Vendas e Faturamento
+- codigo: 213
+  abrev: MTE
+  descricao: APP Telemarketing - Mobile
+  area: Vendas e Faturamento
+- codigo: 161
+  abrev: MVA
+  descricao: Metas de Venda Avançado
+  area: Vendas e Faturamento
+- codigo: 66
+  abrev: CRF
+  descricao: Controle de Reservas de Fat/Vendas
+  area: Vendas e Faturamento
+- codigo: 43
+  abrev: SEP
+  descricao: Controle Separação de Pedidos Faturamento
+  area: Vendas e Faturamento
+- codigo: 44
+  abrev: AOC
+  descricao: Controle Acerto Ordens de Carga
+  area: Vendas e Faturamento
+- codigo: 24
+  abrev: ERR
+  descricao: Controle de Empréstimos, Remessas e Retornos
+  area: Vendas e Faturamento
+- codigo: 21
+  abrev: BEI
+  descricao: Beneficiamento Interno
+  area: Vendas e Faturamento
+- codigo: 32
+  abrev: BTE
+  descricao: Beneficiamento em Terceiros
+  area: Vendas e Faturamento
+- codigo: 25
+  abrev: RAG
+  descricao: Controle Recebimento Armazenamento de Grãos
+  area: Vendas e Faturamento
+- codigo: 59
+  abrev: CPR
+  descricao: Configurador de Produtos
+  area: Vendas e Faturamento
+- codigo: 47
+  abrev: FLX
+  descricao: Controle Flexível de Descontos e Acréscimos
+  area: Vendas e Faturamento
+- codigo: 51
+  abrev: BRO
+  descricao: Integração Balança Rodoviária
+  area: Vendas e Faturamento
+- codigo: 34
+  abrev: FPV
+  descricao: Formação de Preço de Venda
+  area: Vendas e Faturamento
+- codigo: 68
+  abrev: CME
+  descricao: Controle de Metas de Entrega
+  area: Vendas e Faturamento
+- codigo: 20
+  abrev: FTR
+  descricao: Controles Específicos / Faturas
+  area: Vendas e Faturamento
+- codigo: 126
+  abrev: INC
+  descricao: Integração com Correios
+  area: Vendas e Faturamento
+- codigo: 197
+  abrev: CVU
+  descricao: Cálculo de Valor Unitário com/sem Impostos
+  area: Vendas e Faturamento
+- codigo: 121
+  abrev: TLO
+  descricao: Transporte / Logística
+  area: Vendas e Faturamento
+- codigo: 131
+  abrev: VCF
+  descricao: Cotação de Fretes
+  area: Vendas e Faturamento
+- codigo: 125
+  abrev: GMD
+  descricao: Geração do XML do Manifesto Eletrônico de Documentos Fiscais (MDF-e)
+  area: Vendas e Faturamento
+- codigo: 119
+  abrev: GCT
+  descricao: Geração do XML do Conhecimento de Transporte Eletrônico (CT-e)
+  area: Vendas e Faturamento
+- codigo: 196
+  abrev: CTA
+  descricao: Emissão Aut. do Conh. de Transp. Elet. (CT-e) e do Manif. Elet. de Doc. (MDF-e)
+  area: Vendas e Faturamento
+- codigo: 52
+  abrev: FSI
+  descricao: Emissor de NF-e com Controle de Cobranças
+  area: Vendas e Faturamento
+- codigo: 6
+  abrev: FIN
+  descricao: Controle Financeiro
+  area: Gestão Financeira
+- codigo: 23
+  abrev: PFI
+  descricao: Planejamento Financeiro
+  area: Gestão Financeira
+- codigo: 56
+  abrev: PFP
+  descricao: Planejamento Financeiro por Produto
+  area: Gestão Financeira
+- codigo: 60
+  abrev: ICO
+  descricao: Integracao Compor 90 PFI
+  area: Gestão Financeira
+- codigo: 64
+  abrev: PFO
+  descricao: Monitoramento On-line no Planejamento Financeiro
+  area: Gestão Financeira
+- codigo: 36
+  abrev: MOE
+  descricao: Variação Cambial para Financeiro/Compras (Outras Moedas)
+  area: Gestão Financeira
+- codigo: 44
+  abrev: AOC
+  descricao: Acertos de Ordens de Cargas
+  area: Gestão Financeira
+- codigo: 63
+  abrev: CCH
+  descricao: Controle Cheques de Terceiros
+  area: Gestão Financeira
+- codigo: 101
+  abrev: RDV
+  descricao: Renegociação de Dívidas
+  area: Gestão Financeira
+- codigo: 7
+  abrev: EST
+  descricao: Controle de Estoques
+  area: Compras/Estoque
+- codigo: 33
+  abrev: CLT
+  descricao: Rastreabilidade / Controle de Lotes de Estoques
+  area: Compras/Estoque
+- codigo: 38
+  abrev: CFE
+  descricao: Controle Custo Integrado de Estoque
+  area: Compras/Estoque
+- codigo: 127
+  abrev: PEP
+  descricao: Controle de Estoque pelo método PEPS
+  area: Compras/Estoque
+- codigo: 45
+  abrev: ARE
+  descricao: Controle Alçada para Requisições de Estoques
+  area: Compras/Estoque
+- codigo: 118
+  abrev: EFE
+  descricao: Integração de Movimentos via Formulação/Estrutura
+  area: Compras/Estoque
+- codigo: 128
+  abrev: EDE
+  descricao: Integração de Movimentos via Desmontagem de Formulação/Estrutura
+  area: Compras/Estoque
+- codigo: 49
+  abrev: ECB
+  descricao: Controle Estoque por Combinação/Configuração
+  area: Compras/Estoque
+- codigo: 218
+  abrev: PIE
+  descricao: Planejamento de Inventário de Estoques
+  area: Compras/Estoque
+- codigo: 8
+  abrev: COM
+  descricao: Controle de Compras - Geral/Básico
+  area: Compras/Estoque
+- codigo: 31
+  abrev: CAC
+  descricao: Controles Avançados
+  area: Compras/Estoque
+- codigo: 39
+  abrev: CSE
+  descricao: Controle de Serviços Externos
+  area: Compras/Estoque
+- codigo: 46
+  abrev: ARC
+  descricao: Controle Alçadas para Requisição de Compras
+  area: Compras/Estoque
+- codigo: 17
+  abrev: WMS
+  descricao: Warehouse Management System (WMS)
+  area: Compras/Estoque
+- codigo: 133
+  abrev: ICW
+  descricao: Integração com Coletor
+  area: Compras/Estoque
+- codigo: 176
+  abrev: CVL
+  descricao: Controle de Volumes por LPN
+  area: Compras/Estoque
+- codigo: 10
+  abrev: AUE
+  descricao: Automação de Escritórios
+  area: Gestão Financeira
+- codigo: 61
+  abrev: NSA
+  descricao: Geração/Autenticação de NFS-e – Automação Escritórios
+  area: Gestão Financeira
+- codigo: 122
+  abrev: GCO
+  descricao: Gestão de Contratos
+  area: Gestão Financeira
+- codigo: 11
+  abrev: GCA
+  descricao: Gestão de Cardápios
+  area: Vendas e Faturamento
+- codigo: 225
+  abrev: PDC
+  descricao: Planejamento de Cardápios
+  area: Vendas e Faturamento
+- codigo: 12
+  abrev: GIN
+  descricao: Gestão Industrial
+  area: Produção
+- codigo: 117
+  abrev: PMP
+  descricao: Plano Mestre de Produção
+  area: Produção
+- codigo: 67
+  abrev: CRG
+  descricao: Controle de Reservas para Ordens de Produção (GIN/OSE)
+  area: Produção
+- codigo: 76
+  abrev: IMT
+  descricao: Integracao com Microterminais
+  area: Produção
+- codigo: 77
+  abrev: ICD
+  descricao: Integração com Sistemas de Coleta de Dados
+  area: Produção
+- codigo: 39
+  abrev: CSE
+  descricao: Controle de Serviços Externos
+  area: Produção
+- codigo: 35
+  abrev: PCA
+  descricao: Programação de Fábrica
+  area: Produção
+- codigo: 73
+  abrev: PMQ
+  descricao: Programação por Máquinas
+  area: Produção
+- codigo: 195
+  abrev: MRP
+  descricao: Planejamento de Materiais - MRP
+  area: Produção
+- codigo: 71
+  abrev: CPA
+  descricao: Controle de Paradas
+  area: Produção
+- codigo: 78
+  abrev: COR
+  descricao: Controle de Refugos
+  area: Produção
+- codigo: 55
+  abrev: CAP
+  descricao: Controle de Aparas
+  area: Produção
+- codigo: 50
+  abrev: ROM
+  descricao: Romaneio de Embarque (GIN)
+  area: Produção
+- codigo: 62
+  abrev: DPR
+  descricao: Controle Desenvolvimento de Produto (GIN)
+  area: Produção
+- codigo: 70
+  abrev: OAC
+  descricao: Emissão de Ordens de Acondicionamento
+  area: Produção
+- codigo: 74
+  abrev: CSC
+  descricao: Controle de Saldos por Centro de Custo
+  area: Produção
+- codigo: 57
+  abrev: PPG
+  descricao: Controle de Planilha Projetos (GIN)
+  area: Produção
+- codigo: 75
+  abrev: ODC
+  descricao: Controle de Ordem de Corte (GIN)
+  area: Produção
+- codigo: 92
+  abrev: VPG
+  descricao: Controle Automático de Vinculação de Pedidos (GIN)
+  area: Produção
+- codigo: 13
+  abrev: PDV
+  descricao: Ponto de Venda (PDV/ECF/PAF)
+  area: Vendas e Faturamento
+- codigo: 93
+  abrev: BAN
+  descricao: Integracao TEF
+  area: Vendas e Faturamento
+- codigo: 100
+  abrev: NFC
+  descricao: Emissão de NFC-e - Nota Fiscal de Consumidor Eletrônica
+  area: Vendas e Faturamento
+- codigo: 15
+  abrev: OSE
+  descricao: Gestão de Serviços
+  area: Vendas e Faturamento
+- codigo: 67
+  abrev: CRG
+  descricao: Controle de Reservas para Ordem de Serviço
+  area: Vendas e Faturamento
+- codigo: 204
+  abrev: RPP
+  descricao: RechPay NFC-e Mobile
+  area: Vendas e Faturamento
+- codigo: 205
+  abrev: RPC
+  descricao: RechPay Comandas Mobile
+  area: Vendas e Faturamento
+- codigo: 16
+  abrev: TEL
+  descricao: Televendas/Telemarketing
+  area: Vendas e Faturamento
+- codigo: 135
+  abrev: SAC
+  descricao: SAC/Controle de Protocolos
+  area: Vendas e Faturamento
+- codigo: 18
+  abrev: CEE
+  descricao: Comércio Exterior – Exportação
+  area: Comércio Exterior
+- codigo: 42
+  abrev: CEI
+  descricao: Comércio Exterior – Importação
+  area: Comércio Exterior
+- codigo: 104
+  abrev: MHB
+  descricao: Portal BI - Rech
+  area: BI e Integrações
+- codigo: 188
+  abrev: DCR
+  descricao: Dashboard Customizada
+  area: BI e Integrações
+- codigo: 166
+  abrev: DBC
+  descricao: Dashboard Comercial
+  area: BI e Integrações
+- codigo: 167
+  abrev: DBF
+  descricao: Dashboard Financeiro
+  area: BI e Integrações
+- codigo: 181
+  abrev: DBM
+  descricao: Dashboard Estoque/Materiais
+  area: BI e Integrações
+- codigo: 182
+  abrev: DBR
+  descricao: Dashboard Folha de Pagamento
+  area: BI e Integrações
+- codigo: 198
+  abrev: VIB
+  descricao: Dashboard Gestão Industrial
+  area: BI e Integrações
+- codigo: 199
+  abrev: DBP
+  descricao: Dashboard Compras
+  area: BI e Integrações
+- codigo: 202
+  abrev: DBA
+  descricao: Dashboard Contabilidade
+  area: BI e Integrações
+- codigo: 203
+  abrev: DBL
+  descricao: Dashboard Livros Fiscais
+  area: BI e Integrações
+- codigo: 192
+  abrev: DBG
+  descricao: Dashboard Gerencial
+  area: BI e Integrações
+- codigo: 185
+  abrev: DBT
+  descricao: Dashboard Customizada Terceiros
+  area: BI e Integrações
+- codigo: 120
+  abrev: GVT
+  descricao: Acesso Externo ao banco de Dados via SQL (para consulta)
+  area: BI e Integrações
+- codigo: 172
+  abrev: CCR
+  descricao: Conector Rech
+  area: BI e Integrações
+- codigo: 165
+  abrev: AWR
+  descricao: API Webservice Rech
+  area: BI e Integrações
+- codigo: 220
+  abrev: EDU
+  descricao: Acesso portal RechEdu
+  area: BI e Integrações
+- codigo: 221
+  abrev: RME
+  descricao: Rech Messenger – Integração com WhatsApp
+  area: BI e Integrações
+- codigo: 129
+  abrev: PWC
+  descricao: Portal Web de Comunicação
+  area: Portal de Funcionários
+- codigo: 168
+  abrev: PGP
+  descricao: Portal Web de Gestão de Pessoas
+  area: Portal de Funcionários
+- codigo: 160
+  abrev: PVA
+  descricao: Portal Web de Vagas
+  area: Portal de Vagas
