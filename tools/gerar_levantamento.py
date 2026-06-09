@@ -28,14 +28,15 @@ def shade_header(row, fill="1F4E78"):
 
 def main(lev_path="data/levantamento.yaml"):
     d = C.load_yaml(os.path.basename(lev_path))
-    doc = Document()
-    doc.styles["Normal"].font.name = "Calibri"
-    doc.styles["Normal"].font.size = Pt(11)
+    doc, based = C.style_base("levantamento")
+    if not based:
+        doc.styles["Normal"].font.name = "Calibri"
+        doc.styles["Normal"].font.size = Pt(11)
+
+    _HS = {1: 13, 2: 12, 3: 11}
 
     def H(txt, level=1):
-        h = doc.add_heading(txt, level=level)
-        for r in h.runs: r.font.color.rgb = NAVY
-        return h
+        return C.docx_heading(doc, txt, size=_HS.get(level, 12))
 
     def P(txt="", bold=False):
         p = doc.add_paragraph(); p.add_run(txt).bold = bold
@@ -43,7 +44,7 @@ def main(lev_path="data/levantamento.yaml"):
 
     def B(items):
         for it in items or []:
-            doc.add_paragraph(str(it), style="List Bullet")
+            C.docx_bullet(doc, it)
 
     def table(headers, rows, empty=0):
         t = doc.add_table(rows=1, cols=len(headers)); t.style = "Table Grid"
@@ -58,8 +59,7 @@ def main(lev_path="data/levantamento.yaml"):
         return t
 
     # Título
-    tt = doc.add_heading("Mapeamento de Processos", level=0)
-    tt.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    C.docx_heading(doc, "Mapeamento de Processos", size=16, center=True)
     P("").add_run(d.get("cliente", "")).bold = True
     P(f"Data: {d.get('data','')}")
     P(f"Responsáveis: {d.get('responsaveis','')}")

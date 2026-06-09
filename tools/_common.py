@@ -83,3 +83,52 @@ def title_block(ws, title, subtitle=None, span=6):
         ws.merge_cells(f"A2:{get_column_letter(span)}2")
         s = ws.cell(row=2, column=1, value=subtitle)
         s.font = SUB_FONT
+
+
+# --- Word (.docx) helpers ---
+TEMPLATES = os.path.join(HERE, "templates")
+
+
+def style_base(tipo):
+    """Document com cabeçalho/rodapé/estilos do template real da Rech
+    (tools/templates/base_<tipo>.docx), com o corpo limpo. Se o template não
+    existir, retorna um Document novo. Retorna (doc, usou_base)."""
+    from docx import Document
+    from docx.oxml.ns import qn
+    path = os.path.join(TEMPLATES, "base_%s.docx" % tipo)
+    if os.path.exists(path):
+        doc = Document(path)
+        body = doc.element.body
+        for child in list(body):
+            if child.tag != qn("w:sectPr"):   # preserva seção (margens, header/footer)
+                body.remove(child)
+        return doc, True
+    return Document(), False
+
+
+def docx_heading(doc, txt, size=13, center=False):
+    """Título em negrito (estilo Rech: parágrafo manual, não 'Heading')."""
+    from docx.shared import Pt
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    p = doc.add_paragraph()
+    if center:
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r = p.add_run(txt)
+    r.bold = True
+    r.font.size = Pt(size)
+    return p
+
+
+def docx_bullet(doc, text):
+    """Marcador resiliente: usa 'List Bullet' quando existe (doc novo); senão
+    'List Paragraph' (template Rech) com glifo manual. Evita KeyError de estilo."""
+    try:
+        return doc.add_paragraph(str(text), style="List Bullet")
+    except KeyError:
+        pass
+    try:
+        p = doc.add_paragraph(style="List Paragraph")
+    except KeyError:
+        p = doc.add_paragraph()
+    p.add_run("•  " + str(text))
+    return p

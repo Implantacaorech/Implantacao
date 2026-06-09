@@ -33,15 +33,15 @@ def main(termo_path="data/termo.yaml"):
     num = d.get("numero_projeto", "")
     num_txt = f" (nº {num})" if num else ""
 
-    doc = Document()
-    doc.styles["Normal"].font.name = "Calibri"
-    doc.styles["Normal"].font.size = Pt(11)
+    doc, based = C.style_base("termo")
+    if not based:
+        doc.styles["Normal"].font.name = "Calibri"
+        doc.styles["Normal"].font.size = Pt(11)
+
+    _HS = {1: 13, 2: 12, 3: 11}
 
     def H(txt, level=1):
-        h = doc.add_heading(txt, level=level)
-        for r in h.runs:
-            r.font.color.rgb = NAVY
-        return h
+        return C.docx_heading(doc, txt, size=_HS.get(level, 12))
 
     def P(txt="", bold=False):
         p = doc.add_paragraph(); p.add_run(txt).bold = bold
@@ -49,10 +49,9 @@ def main(termo_path="data/termo.yaml"):
 
     def B(items):
         for it in items or []:
-            doc.add_paragraph(str(it), style="List Bullet")
+            C.docx_bullet(doc, it)
 
-    t = doc.add_heading("Termo de encerramento do projeto de implantação do SIGER®", level=0)
-    t.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    C.docx_heading(doc, "Termo de encerramento do projeto de implantação do SIGER®", size=16, center=True)
     P("").add_run(f"Cliente: {cliente}").bold = True
 
     H("Processo de transição e finalização da implantação", 1)

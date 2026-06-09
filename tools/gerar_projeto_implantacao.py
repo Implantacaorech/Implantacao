@@ -46,15 +46,15 @@ def main(projeto_path="data/projeto.yaml"):
     cliente = d.get("cliente", "")
     nome_curto = d.get("cliente_nome_curto", cliente)
 
-    doc = Document()
-    doc.styles["Normal"].font.name = "Calibri"
-    doc.styles["Normal"].font.size = Pt(11)
+    doc, based = C.style_base("projeto")
+    if not based:
+        doc.styles["Normal"].font.name = "Calibri"
+        doc.styles["Normal"].font.size = Pt(11)
+
+    _HS = {1: 13, 2: 12, 3: 11}
 
     def H(txt, level=1):
-        h = doc.add_heading(txt, level=level)
-        for r in h.runs:
-            r.font.color.rgb = NAVY
-        return h
+        return C.docx_heading(doc, txt, size=_HS.get(level, 12))
 
     def P(txt="", bold=False):
         p = doc.add_paragraph()
@@ -63,11 +63,10 @@ def main(projeto_path="data/projeto.yaml"):
 
     def B(items):
         for it in items or []:
-            doc.add_paragraph(str(it), style="List Bullet")
+            C.docx_bullet(doc, it)
 
     # --- Título e identificação ---
-    t = doc.add_heading("Projeto de Implantação do SIGER®", level=0)
-    t.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    C.docx_heading(doc, "Projeto de Implantação do SIGER®", size=16, center=True)
     P("").add_run(f"Nome do Cliente: {cliente}").bold = True
 
     # --- Objetivos ---
