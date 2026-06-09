@@ -1,0 +1,88 @@
+# Implantação Rech — Time de Implantação do SIGER®
+
+Este repositório modela o **time de implantação** da Rech como uma estrutura de
+**agentes** (papéis), **skills** (etapas do processo) e **documentação** (processo,
+glossário e templates). O objetivo é permitir que o Claude Code execute, oriente e
+padronize as tarefas de cada etapa do processo de implantação do ERP **SIGER®**.
+
+> Fonte de verdade do processo: [docs/processo-implantacao.md](docs/processo-implantacao.md)
+> (transcrição organizada do GRM:Implantação).
+
+## Idioma
+
+Todo o conteúdo deste repositório é em **português do Brasil (pt-BR)**. Mantenha esse
+padrão em qualquer arquivo novo (agentes, skills, docs, e-mails, templates).
+
+## Como o time está organizado
+
+### Papéis → Agentes (`.claude/agents/`)
+
+Cada papel do processo é um subagente especializado. Use o agente certo para a tarefa:
+
+| Agente | Papel | Quando acionar |
+|--------|-------|----------------|
+| `coordenador-implantacao` | Coordenação da Implantação | Designar consultores, abrir/controlar RNS de Implantação, decisões de escopo, transição p/ manutenção |
+| `setor-adm` | Setor Adm | Preparar documentos, abrir RNS (templates), assinatura digital, arquivamento, links no Drive/SharePoint |
+| `consultor-implantacao` | Consultor de Implantação (GCI) | Executar levantamento, aderência, parametrização, treinamento, simulação, virada e encerramento |
+| `gerente-projeto` | Gerente do Projeto | Datas de uso oficial/encerramento, negociações em aberto, comunicação de encerramento |
+| `equipe-conversao` | Equipe de Conversão | Tratar RNS de conversão redigidas, layouts, de/para, prévia e conversão oficial |
+
+### Etapas → Skills (`.claude/skills/`)
+
+Cada etapa numerada do processo é uma skill acionável (passo a passo + templates):
+
+**Pré-implantação**
+- `levantamento-processos` — mapeamento/levantamento macro (apoio comercial)
+- `apoio-comercial-demonstracao` — demonstrações + devolutiva ao comercial
+
+**Implantação**
+- `abertura-implantacao` — ações de início e abertura da RNS de Implantação
+- `manutencao-rns-implantacao` — ajuste dos campos/status da RNS(I)
+- `registros-sicla` — registros no SICLA (tipos 12 e 13)
+- `levantamento-micro` — refinamento/detalhamento do levantamento
+- `aderencia-siger` — definição dos recursos do SIGER que serão usados
+- `encaminhar-conversoes` — RNS de Conversão (ORC/COB), de/para, layouts
+- `encaminhar-desenvolvimentos` — RNS COB de desenvolvimentos específicos
+- `projeto-implantacao` — elaboração do Projeto de Implantação
+- `cronograma-implantacao` — elaboração do Cronograma (5 dias úteis)
+- `parametrizacoes` — criação de empresas e parametrizações (1.1.P / 1.2.A / 1.2.M)
+- `treinamento-rotinas` — treinamento de tabelas e rotinas
+- `simulacoes` — micro e macroprocessos
+- `virada-oficial` — preparação de dados + checklist de virada
+- `acompanhamento-producao` — uso oficial e micro ajustes
+- `encerramento-implantacao` — pendências, RNS, termo de encerramento e e-mail final
+
+## Convenções do processo (resumo operacional)
+
+- **SICLA — tipos de atividade:** `12 = apoio Comercial` (pré-implantação) · `13 = Implantação`.
+  Agenda interna de treinamento/parametrização usa o **tipo 84**.
+- **RNS:** `RNS(I)` = RNS de Implantação · `ORC` = orçamento · `COB` = cobrança/execução.
+  Conversões e desenvolvimentos seguem o par **ORC → COB**.
+- **Prazo do Projeto + Cronograma:** até **5 dias úteis** após a liberação do levantamento
+  (com a RNS de Implantação já criada).
+- **Sigla da empresa:** 3 caracteres (letras/números, ex.: `A01`) + CNPJ + código do cliente no SICLA.
+- **Documentos obrigatórios (não opcionais):** Projeto de Implantação, Cronograma, Termo de Encerramento.
+- Caminhos de templates corporativos (rede `R:\`) e pastas de cliente estão em
+  [docs/recursos-e-caminhos.md](docs/recursos-e-caminhos.md).
+
+## Estrutura de pastas
+
+```
+Implantacao/
+├── CLAUDE.md                  # este guia
+├── README.md                  # visão geral do time
+├── docs/                      # processo, glossário, papéis, fluxo, caminhos
+├── templates/                 # e-mails, termos e checklists prontos para uso
+└── .claude/
+    ├── agents/                # papéis do time (subagentes)
+    └── skills/                # etapas do processo (skills)
+```
+
+## Princípios ao executar tarefas
+
+1. **Sempre referencie a etapa do processo** ([docs/processo-implantacao.md](docs/processo-implantacao.md))
+   e o papel responsável antes de agir.
+2. **Não pule documentos obrigatórios.** Projeto, Cronograma e Termo são requisitos.
+3. **Registre no SICLA** com o tipo de atividade correto (12 ou 13).
+4. **Aponte horas na RNS correta** (conversão na RNS de conversão; implantação na RNS(I)).
+5. Quando faltar dado do cliente, **gere a pergunta para o consultor/cliente** em vez de assumir.
