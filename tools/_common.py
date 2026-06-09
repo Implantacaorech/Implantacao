@@ -120,15 +120,17 @@ def docx_heading(doc, txt, size=13, center=False):
 
 
 def docx_bullet(doc, text):
-    """Marcador resiliente: usa 'List Bullet' quando existe (doc novo); senão
-    'List Paragraph' (template Rech) com glifo manual. Evita KeyError de estilo."""
+    """Marcador resiliente: usa 'List Bullet' quando disponível (doc novo); senão
+    'List Paragraph' (template Rech) com glifo manual. Cria UM parágrafo só
+    (define o estilo antes do texto para não deixar parágrafo órfão)."""
+    p = doc.add_paragraph()
     try:
-        return doc.add_paragraph(str(text), style="List Bullet")
+        p.style = "List Bullet"
+        p.add_run(str(text))
     except KeyError:
-        pass
-    try:
-        p = doc.add_paragraph(style="List Paragraph")
-    except KeyError:
-        p = doc.add_paragraph()
-    p.add_run("•  " + str(text))
+        try:
+            p.style = "List Paragraph"
+        except KeyError:
+            pass
+        p.add_run("•  " + str(text))
     return p
