@@ -43,6 +43,14 @@ def slug(text):
     return text or "cliente"
 
 
+def norm_doc(s):
+    """Normaliza texto para comparar cabeçalhos (sem acento, minúsculo, sem pontas)."""
+    s = unicodedata.normalize("NFKD", s or "")
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = re.sub(r"\s+", " ", s.strip().lower())
+    return s.strip(" .:-")
+
+
 def safe_sheet(name):
     """Sanitiza nome de aba do Excel (proíbe \\ / ? * [ ] : e máx. 31 chars)."""
     name = re.sub(r"[\\/?*\[\]:]", "-", str(name))

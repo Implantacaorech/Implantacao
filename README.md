@@ -57,10 +57,11 @@ python tools/gerar_log_fitgap.py                  # Log de Fit/Gap (Excel)
 python tools/gerar_painel_kpi.py                  # Painel de KPIs (Excel)
 python tools/gerar_raid.py                        # RAID — riscos/issues (Excel)
 python tools/gerar_dossie_cliente.py              # Dossiê do cliente (Word)
-python tools/gerar_projeto_implantacao.py         # Projeto de Implantação (Word, FIEL ao template Rech)
+python tools/gerar_projeto_implantacao.py         # Projeto de Implantação (engine de tokens, FIEL ao template Rech)
 python tools/gerar_termo_encerramento.py          # Termo de Encerramento (Word, FIEL ao template Rech)
 python tools/gerar_levantamento.py                # Levantamento/Mapeamento (Word, FIEL ao template Rech)
-python tools/extrair_levantamento.py <doc.docx>   # Ponte Levantamento -> Projeto (seed p/ IA)
+python tools/importar_mapeamento.py <doc.docx>    # Levantamento -> projeto_<cliente>.yaml (+ conversão verbal)
+python tools/conversor_verbal.py "<texto>"        # Converte Presente -> Futuro (motor offline)
 ```
 
 Saída em `exemplos/`. Detalhes em [tools/README.md](tools/README.md).

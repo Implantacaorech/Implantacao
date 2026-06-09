@@ -5,7 +5,7 @@ Coloque aqui os `.docx` oficiais da Rech para que os geradores produzam document
 
 | Arquivo esperado | Usado por |
 |------------------|-----------|
-| `base_projeto.docx` | `gerar_projeto_implantacao.py` |
+| `base_projeto_tokenizado.docx` | `gerar_projeto_implantacao.py` (engine de tokens `{{...}}`) |
 | `base_termo.docx` | `gerar_termo_encerramento.py` |
 | `base_levantamento.docx` | `gerar_levantamento.py` |
 
@@ -17,9 +17,9 @@ estilo limpo padrão (sem o letterhead), sem quebrar.
 ## Como preparar (uma vez)
 Copie os templates em branco da Rech para esta pasta com os nomes acima. Ex.:
 ```
-base_projeto.docx        <- "Projeto de Implantação_xxxx.docx"
-base_termo.docx          <- "Termo de Encerramento_XXXXX.docx"
-base_levantamento.docx   <- "Mapeamento levantamento de processos_XXXX.docx"
+base_projeto_tokenizado.docx  <- GeradorProjetoSIGER/assets/template.docx (modelo com {{tokens}})
+base_termo.docx               <- "Termo de Encerramento_XXXXX.docx"
+base_levantamento.docx        <- "Mapeamento levantamento de processos_XXXX.docx"
 ```
 
 > ⚠️ Estes `.docx` **não são versionados** (contêm o logo/letterhead da Rech) — regra

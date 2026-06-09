@@ -111,10 +111,11 @@ Alguns agentes são **geradores**: produzem artefatos em **Excel/Word** a partir
 | `python tools/gerar_painel_kpi.py` | `Painel_KPIs_<cliente>.xlsx` |
 | `python tools/gerar_raid.py` | `RAID_<cliente>.xlsx` |
 | `python tools/gerar_dossie_cliente.py` | `Dossie_<cliente>.docx` |
-| `python tools/gerar_projeto_implantacao.py` | `Projeto_Implantacao_<cliente>.docx` (**fiel ao template Rech**) |
+| `python tools/gerar_projeto_implantacao.py` | `Projeto_Implantacao_<cliente>.docx` (**engine de tokens, fiel ao template Rech**) |
 | `python tools/gerar_termo_encerramento.py` | `Termo_Encerramento_<cliente>.docx` (**fiel ao template Rech**) |
 | `python tools/gerar_levantamento.py` | `Levantamento_<cliente>.docx` (**fiel ao template Rech**) |
-| `python tools/extrair_levantamento.py <doc>` | `projeto_seed.yaml` (ponte Levantamento→Projeto, p/ IA) |
+| `python tools/importar_mapeamento.py <doc>` | `projeto_<cliente>.yaml` (Levantamento→Projeto + **conversão verbal**) |
+| `python tools/conversor_verbal.py "<texto>"` | Converte Presente→Futuro (motor offline) |
 
 Instalar dependências uma vez: `python -m pip install -r tools/requirements.txt`.
 Detalhes em [tools/README.md](tools/README.md).

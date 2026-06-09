@@ -35,29 +35,33 @@ será** atendido.
 Consultor redige → e-mail ao **Setor Adm** → **assinatura digital** (ambas as partes) →
 **arquivamento** na pasta do cliente (`XXXX-Cliente`).
 
-## Geração do documento (fiel ao template Rech)
-O Projeto é gerado em **.docx fiel ao template oficial** a partir de `tools/data/projeto.yaml`:
+## Geração do documento (engine de tokens, portada do gerador interno Rech)
+O Projeto é gerado pela **engine de tokens** portada do `GeradorProjetoSIGER`: preenche o
+template tokenizado, **remove as áreas não usadas**, reconstrói a tabela de usuários, **limpa os
+marcadores do modelo** (vermelho/realce) e corrige o typo "Da de Início":
 ```bash
-python tools/gerar_projeto_implantacao.py   # -> exemplos/Projeto_Implantacao_<cliente>.docx
+python tools/gerar_projeto_implantacao.py [data/projeto_<cliente>.yaml]
+# -> exemplos/Projeto_Implantacao_<cliente>.docx
 ```
-O YAML cobre os campos do ADM (cliente, CNPJ, equipe, usuários, cronograma macro, horas) e, por
-**área** (grupo/sub), os blocos: *Módulos Previstos · Detalhamento · Particularidade · Não previsto*.
-O boilerplate (Responsabilidades, Protocolos digitais) é fixo e reproduzido automaticamente.
+Dados em YAML, campos = **tokens** (`client_name`, `cnpj`, `conv_N_*`, `<area>_<subcampo>`,
+`crono_*`, `horas_*`, `usuarios`, `equipe`, `areas_incluidas`). Requer o template tokenizado em
+`tools/templates/base_projeto_tokenizado.docx` (ver README de lá). Estrutura canônica (áreas,
+subcampos, 6 linhas de conversão incl. "Cadastro de Formulações") em `tools/schema_projeto.py`.
 
-## Auto-preenchimento a partir do Levantamento (IA)
-Replica e melhora o gerador interno da Rech:
-1. Extraia o conteúdo do levantamento:
+## Pipeline Levantamento → Projeto (com conversão verbal)
+Replica o fluxo do `.exe` + IA:
+1. **Importar** o levantamento (port do `mapping_import`):
    ```bash
-   python tools/extrair_levantamento.py "<caminho do Levantamento.docx>"
-   # -> tools/data/projeto_seed.yaml (notas por área)
+   python tools/importar_mapeamento.py "<Levantamento.docx>"
+   # -> tools/data/projeto_<cliente>.yaml (rotinas já no FUTURO)
    ```
-2. **A IA redige** as descrições no formato do Projeto (Detalhamento / Particularidade / Não
-   previsto) a partir das notas do seed, preenchendo `tools/data/projeto.yaml`.
-3. **O Gerente de Projeto revisa/altera** o YAML antes de gerar.
-4. Gere o `.docx` (comando acima).
+   Aplica a **conversão verbal Presente→Futuro** (`tools/conversor_verbal.py`: *utiliza→utilizará*,
+   *é→será*, voz passiva só no auxiliar), preservando termos protegidos (*Formulação/Estrutura*).
+2. **Revisão do Gerente de Projeto** no YAML (ajustar/complementar rotinas por área).
+3. **Gerar** o `.docx` (comando acima).
 
-> Cores do template original: 🟩 verde = campo do ADM · 🟥 vermelho = instrução (não vai no
-> documento) · 🟨 amarelo = ponto a validar. O gerador já entrega a versão final (sem instruções).
+> Para redação com contexto, a IA (agente) pode reescrever as rotinas seguindo o prompt oficial
+> (Presente→Futuro; verdades atemporais permanecem no presente).
 
 ## Próximo passo
 `cronograma-implantacao` (em conjunto, mesmo prazo de 5 dias úteis).

@@ -31,7 +31,7 @@ exemplos/
 
 # Dados específicos de cliente (derivados do exemplo)
 tools/data/cliente_*.yaml
-tools/data/projeto_seed.yaml
+tools/data/projeto_*.yaml
 
 # Templates .docx reais da Rech (letterhead/logo) — manter local, não publicar
 tools/templates/*.docx
