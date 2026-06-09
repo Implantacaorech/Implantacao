@@ -72,3 +72,16 @@ def get_role(rid):
 def get_action(rid, aid):
     r = get_role(rid)
     return next((a for a in r["acoes"] if a["id"] == aid), None) if r else None
+
+
+# Geradores que usam o YAML do cliente (estrutura exemplo_cliente.yaml) como 1º
+# argumento — recebem os "Dados do Cliente" preenchidos na tela.
+CLIENTE_BASE = {
+    "gerar_kit_mudanca", "gerar_roteiros_teste", "gerar_aceite_uat",
+    "gerar_reconciliacao_conversao", "gerar_painel_hypercare", "gerar_log_fitgap",
+    "gerar_painel_kpi", "gerar_raid", "gerar_dossie_cliente",
+}
+
+
+def usa_cliente(acao):
+    return acao.get("mod") in CLIENTE_BASE

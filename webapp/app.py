@@ -10,7 +10,8 @@ Uso:
 import os
 import sys
 
-from flask import (Flask, render_template, request, send_file, abort)
+from flask import (Flask, render_template, request, send_file, abort,
+                   session, redirect, url_for)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
@@ -19,6 +20,7 @@ sys.path.insert(0, os.path.join(REPO, "tools"))
 
 import roles            # noqa: E402
 import runner           # noqa: E402
+import forms            # noqa: E402
 import _common as C     # noqa: E402
 
 app = Flask(__name__)
@@ -81,6 +83,8 @@ def acao(rid, aid):
         f = request.files.get("yaml")
         if f and f.filename and f.filename.lower().endswith((".yaml", ".yml")):
             yaml_base = runner.save_upload_yaml(f, C.slug)
+        elif roles.usa_cliente(a) and session.get("cliente_yaml"):
+            yaml_base = session["cliente_yaml"]
         try:
             path, log = runner.run_generator(a["mod"], yaml_base)
             res = {"ok": bool(path), "arquivo": path, "log": log,
@@ -89,7 +93,25 @@ def acao(rid, aid):
             res = {"ok": False, "erro": str(e)}
         except Exception as e:
             res = {"ok": False, "erro": "%s: %s" % (type(e).__name__, e)}
-    return render_template("action.html", role=r, acao=a, res=res, modo="gerar")
+    return render_template("action.html", role=r, acao=a, res=res, modo="gerar",
+                           usa_cliente=roles.usa_cliente(a),
+                           cliente_nome=session.get("cliente_nome"))
+
+
+@app.context_processor
+def inject_cliente():
+    return {"cliente_atual": session.get("cliente_nome")}
+
+
+@app.route("/cliente", methods=["GET", "POST"])
+def cliente():
+    if request.method == "POST":
+        base, nome = forms.build_cliente_yaml(request.form, runner.DATA, C.slug)
+        session["cliente_yaml"] = base
+        session["cliente_nome"] = nome
+        return redirect(request.args.get("next") or url_for("home"))
+    return render_template("cliente.html", campos=forms.CLIENTE_FIELDS,
+                           atual=session.get("cliente_nome"), valores={})
 
 
 @app.route("/download")
