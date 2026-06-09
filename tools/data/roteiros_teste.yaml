@@ -1,0 +1,144 @@
+# Roteiros de teste SIT/UAT por módulo — base dos "roteiros à construir" do processo.
+# SIT = Teste Integrado (consultor) · UAT = Aceite do Usuário (cliente).
+# Edite/adicione casos conforme o escopo de cada cliente.
+
+modulos:
+  - nome: "Macroprocesso (Integração)"
+    descricao: "Teste ponta a ponta que cruza vários módulos (SIT)."
+    casos:
+      - id: "INT-01"
+        tipo: "SIT"
+        criticidade: "Alta"
+        cenario: "Ciclo completo de venda: pedido → reserva → faturamento → boleto → financeiro → baixa de estoque"
+        pre_requisitos: "Cliente, produto, tabela de preço, tributação e local de cobrança cadastrados"
+        passos:
+          - "Incluir pedido de venda com reserva de estoque"
+          - "Faturar o pedido e emitir a NF-e"
+          - "Gerar boleto/remessa na emissão"
+          - "Conferir gravação do contas a receber"
+          - "Conferir baixa de estoque e custo"
+        resultado_esperado: "NF autorizada; título a receber gerado; boleto/remessa ok; estoque e custo baixados; comissão registrada"
+      - id: "INT-02"
+        tipo: "SIT"
+        criticidade: "Alta"
+        cenario: "Ciclo de compra: pedido de compra → entrada de NF → estoque → contas a pagar"
+        pre_requisitos: "Fornecedor e produto cadastrados; pedido de compra liberado"
+        passos:
+          - "Incluir pedido de compra"
+          - "Lançar entrada da NF do fornecedor"
+          - "Conferir movimentação e custo de estoque"
+          - "Conferir geração do contas a pagar"
+        resultado_esperado: "Estoque atualizado com custo correto; título a pagar gerado; impostos de entrada apurados"
+
+  - nome: "Faturamento/Emissão"
+    descricao: "Emissão e seus reflexos (tributação, comissão, baixa de estoque)."
+    casos:
+      - id: "FAT-01"
+        tipo: "UAT"
+        criticidade: "Alta"
+        cenario: "Emissão de NF-e de venda com tributação"
+        pre_requisitos: "Pedido liberado; tributação configurada"
+        passos:
+          - "Faturar pedido de venda"
+          - "Transmitir NF-e"
+          - "Conferir impostos calculados (ICMS/IPI/PIS/COFINS)"
+        resultado_esperado: "NF-e autorizada pela SEFAZ; impostos corretos; DANFE gerada"
+      - id: "FAT-02"
+        tipo: "UAT"
+        criticidade: "Média"
+        cenario: "Emissão com cálculo de comissão de representante"
+        pre_requisitos: "Representante e regra de comissão cadastrados"
+        passos:
+          - "Emitir NF com representante vinculado"
+          - "Conferir valor de comissão gerado"
+        resultado_esperado: "Comissão calculada conforme regra e registrada para o representante"
+      - id: "FAT-03"
+        tipo: "UAT"
+        criticidade: "Alta"
+        cenario: "Devolução/cancelamento de NF e reflexos"
+        pre_requisitos: "NF emitida no caso FAT-01"
+        passos:
+          - "Cancelar/dar entrada de devolução"
+          - "Conferir estorno de estoque e financeiro"
+        resultado_esperado: "Estoque retornado; título estornado; situação fiscal correta"
+
+  - nome: "Estoque/Compras"
+    descricao: "Entrada de notas e reflexos (estoque, custos, conversão de unidades)."
+    casos:
+      - id: "EST-01"
+        tipo: "UAT"
+        criticidade: "Alta"
+        cenario: "Entrada de NF de compra com conversão de unidade"
+        pre_requisitos: "Produto com fator de conversão configurado"
+        passos:
+          - "Lançar entrada de NF com unidade de compra diferente da de estoque"
+          - "Conferir quantidade convertida e custo unitário"
+        resultado_esperado: "Estoque atualizado na unidade correta; custo médio recalculado"
+      - id: "EST-02"
+        tipo: "UAT"
+        criticidade: "Média"
+        cenario: "Encerramento de estoque do período"
+        pre_requisitos: "Movimentações do período lançadas"
+        passos:
+          - "Executar rotina de encerramento de estoque"
+          - "Conferir saldos e custos"
+        resultado_esperado: "Saldos consistentes; custos apurados; período encerrado"
+
+  - nome: "Financeiro"
+    descricao: "Contas a pagar/receber, remessa bancária e baixas."
+    casos:
+      - id: "FIN-01"
+        tipo: "UAT"
+        criticidade: "Alta"
+        cenario: "Geração e homologação de remessa bancária"
+        pre_requisitos: "Local de cobrança configurado para remessa; convênio bancário"
+        passos:
+          - "Selecionar títulos a receber"
+          - "Gerar arquivo de remessa (CNAB)"
+          - "Validar com o banco / homologar"
+        resultado_esperado: "Arquivo de remessa aceito pelo banco; retorno processável"
+      - id: "FIN-02"
+        tipo: "UAT"
+        criticidade: "Alta"
+        cenario: "Baixa de título por retorno bancário"
+        pre_requisitos: "Arquivo de retorno disponível"
+        passos:
+          - "Importar retorno bancário"
+          - "Conferir baixa automática dos títulos"
+        resultado_esperado: "Títulos baixados; juros/descontos aplicados; conciliação correta"
+
+  - nome: "Fiscal/Contábil"
+    descricao: "Apuração de impostos e obrigações acessórias."
+    casos:
+      - id: "FIS-01"
+        tipo: "UAT"
+        criticidade: "Alta"
+        cenario: "Apuração de impostos do período"
+        pre_requisitos: "Notas de entrada e saída lançadas no período"
+        passos:
+          - "Executar apuração de ICMS/IPI"
+          - "Conferir valores a recolher/creditar"
+        resultado_esperado: "Apuração consistente com os movimentos; livros gerados"
+      - id: "FIS-02"
+        tipo: "SIT"
+        criticidade: "Média"
+        cenario: "Geração de obrigação acessória (SPED) de teste"
+        pre_requisitos: "Parâmetros fiscais e contábeis configurados"
+        passos:
+          - "Gerar arquivo SPED do período de teste"
+          - "Validar no PVA"
+        resultado_esperado: "Arquivo gerado sem erros de validação no PVA"
+
+  - nome: "Produção"
+    descricao: "Geração de demanda de produção e reflexos."
+    casos:
+      - id: "PRO-01"
+        tipo: "UAT"
+        criticidade: "Média"
+        cenario: "Ordem de produção: geração, apontamento e baixa de insumos"
+        pre_requisitos: "Estrutura de produto (ficha técnica) cadastrada"
+        passos:
+          - "Gerar ordem de produção"
+          - "Apontar consumo de insumos e produção acabada"
+          - "Conferir baixa de insumos e entrada do produto acabado"
+        resultado_esperado: "Insumos baixados; produto acabado em estoque; custo de produção apurado"

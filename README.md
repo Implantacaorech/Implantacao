@@ -38,6 +38,20 @@ O processo de implantação foi traduzido para três camadas que o Claude Code e
 | Simulações/Virada | `simulacoes`, `virada-oficial` |
 | Produção | `acompanhamento-producao` |
 | Encerramento | `encerramento-implantacao` |
+| Qualidade e adoção (P0) | `gestao-mudanca`, `testes-sit-uat` |
+
+## Geradores Office (.xlsx/.docx)
+
+Agentes geradores produzem artefatos prontos a partir de dados em `tools/data/*.yaml`:
+
+```bash
+python -m pip install -r tools/requirements.txt   # uma vez
+python tools/gerar_kit_mudanca.py                 # Kit de Gestão da Mudança (Excel)
+python tools/gerar_roteiros_teste.py              # Roteiros SIT/UAT (Excel)
+python tools/gerar_aceite_uat.py                  # Termo de Aceite (Word)
+```
+
+Saída em `exemplos/`. Detalhes em [tools/README.md](tools/README.md).
 
 ## Documentação
 

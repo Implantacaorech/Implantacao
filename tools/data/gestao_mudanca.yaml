@@ -1,0 +1,99 @@
+# Gestão da Mudança (OCM) — dados para o Kit de Gestão da Mudança.
+# Conteúdo padrão (método) + exemplos editáveis por cliente.
+
+# Mapa de stakeholders (influência x interesse + estratégia de engajamento)
+stakeholders:
+  - nome: "Diretor Industrial"
+    papel: "Patrocinador (Sponsor)"
+    influencia: "Alta"
+    interesse: "Alta"
+    postura: "Apoiador"
+    estrategia: "Manter engajado; reporte quinzenal de progresso e riscos"
+  - nome: "Usuário Líder (key user)"
+    papel: "Champion / multiplicador"
+    influencia: "Média"
+    interesse: "Alta"
+    postura: "Apoiador"
+    estrategia: "Treinar primeiro (train-the-trainer); dar protagonismo"
+  - nome: "Gerente Financeiro"
+    papel: "Dono de processo (Financeiro)"
+    influencia: "Alta"
+    interesse: "Média"
+    postura: "Neutro"
+    estrategia: "Envolver no desenho; demonstrar ganhos no fechamento"
+  - nome: "Equipe de Faturamento"
+    papel: "Usuário final"
+    influencia: "Baixa"
+    interesse: "Alta"
+    postura: "Resistente (medo da mudança)"
+    estrategia: "Treino por cenário do dia a dia; suporte reforçado na virada"
+
+# Plano de comunicação (o 'porquê' desde o dia 1)
+comunicacao:
+  - momento: "Kickoff"
+    publico: "Todos os envolvidos"
+    canal: "Reunião + e-mail"
+    mensagem: "Por que trocar de sistema (o 'porquê'), objetivos e cronograma macro"
+    responsavel: "Gerente do Projeto"
+    frequencia: "Único"
+  - momento: "Durante a execução"
+    publico: "Donos de processo + key users"
+    canal: "Reunião de status"
+    mensagem: "Progresso por módulo, decisões e pendências"
+    responsavel: "Consultor de Implantação"
+    frequencia: "Quinzenal"
+  - momento: "Pré-virada (D-7)"
+    publico: "Todos os usuários"
+    canal: "Comunicado + treino de reforço"
+    mensagem: "Data da virada, o que muda, plano de suporte (hypercare)"
+    responsavel: "Gerente do Projeto + Consultor"
+    frequencia: "Único"
+  - momento: "Pós-virada (hypercare)"
+    publico: "Usuários + liderança"
+    canal: "Stand-up diário + canal de dúvidas"
+    mensagem: "Status de estabilização, principais dúvidas e soluções"
+    responsavel: "Consultor de Implantação"
+    frequencia: "Diário (primeiras semanas)"
+
+# Avaliação de prontidão por grupo, modelo ADKAR
+# (Consciência, Desejo, Conhecimento, Habilidade, Reforço) — nota 1 a 5
+prontidao:
+  grupos: ["Financeiro", "Fiscal/Contábil", "Estoque/Compras", "Produção", "Faturamento"]
+  dimensoes:
+    - "Consciência (A) — entende por que a mudança ocorre"
+    - "Desejo (D) — quer participar e apoiar"
+    - "Conhecimento (K) — sabe como usar"
+    - "Habilidade (H) — consegue executar na rotina"
+    - "Reforço (R) — sustenta o novo jeito"
+
+# Plano de treinamento por papel (cenários, não telas)
+treinamento_papel:
+  - papel: "Faturista"
+    modulos: ["Faturamento/Emissão", "Financeiro"]
+    cenarios: ["Emitir NF de venda", "Gerar boleto/remessa", "Consultar título"]
+    carga_horaria: "8h"
+  - papel: "Comprador"
+    modulos: ["Estoque/Compras"]
+    cenarios: ["Pedido de compra", "Entrada de NF", "Conferência de estoque"]
+    carga_horaria: "6h"
+  - papel: "Analista Fiscal"
+    modulos: ["Fiscal/Contábil"]
+    cenarios: ["Apuração de impostos", "Geração de obrigações acessórias"]
+    carga_horaria: "8h"
+  - papel: "PCP / Produção"
+    modulos: ["Produção"]
+    cenarios: ["Gerar ordem de produção", "Apontar consumo e baixa"]
+    carga_horaria: "6h"
+
+# Indicadores de adoção (metas sugeridas — ajustar com o cliente)
+indicadores_adocao:
+  - indicador: "% de usuários treinados"
+    meta: "100% antes da virada"
+  - indicador: "% de cenários UAT aprovados"
+    meta: ">= 95% antes da virada"
+  - indicador: "Adesão no uso oficial (logins/transações vs. esperado)"
+    meta: ">= 80% na 1ª semana"
+  - indicador: "Chamados por usuário (tendência no hypercare)"
+    meta: "Queda semana a semana"
+  - indicador: "Satisfação do usuário (CSAT)"
+    meta: ">= 4 de 5 ao encerrar"

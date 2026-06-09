@@ -64,3 +64,9 @@ em aberto na transição; recebe a confirmação de encerramento.
 ### Equipe de Conversão
 Recebe RNS de conversão **redigidas e validadas** (backlog); trata layouts e de/para; executa
 prévia e conversão oficial conforme as datas indicadas pelo consultor.
+
+### Gestão da Mudança (OCM) — *robustez P0*
+Papel transversal (agente `gestao-mudanca`) responsável pela **adoção**: mapa de stakeholders,
+plano de comunicação, prontidão (ADKAR), treinamento por papel e indicadores de adoção. Atua do
+kickoff ao hypercare, em conjunto com o Gerente do Projeto e o Consultor. É um **agente gerador**
+(produz o *Kit de Gestão da Mudança* em Excel).

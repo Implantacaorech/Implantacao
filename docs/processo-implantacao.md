@@ -289,3 +289,19 @@ do e-mail de encerramento (registrar no SICLA) **não** dispensa o termo assinad
 #### 3.8.4 E-mail à Coordenação/Gerência
 Indicar o encerramento e formalizar o checklist. Ver
 [email-encerramento](../templates/email-encerramento.md).
+
+---
+
+## 4. Robustez (camada P0 — além do processo original)
+
+Adições para alinhar o processo às referências do setor (SAP Activate, TOTVS, boas práticas):
+
+- **Gestão da Mudança (OCM)** — transversal, modelo ADKAR. Trata adoção, stakeholders,
+  comunicação, prontidão, treino por papel e indicadores. Skill `gestao-mudanca` (gera o
+  *Kit de Gestão da Mudança* em Excel).
+- **Testes SIT/UAT** — formaliza as "simulações" (3.6) com roteiros versionados por módulo,
+  registro de defeitos e **sign-off** como gate da virada. Skill `testes-sit-uat` (gera os
+  *Roteiros SIT/UAT* e o *Termo de Aceite* em Office).
+
+> Próximas camadas (P1/P2), ainda **não** implementadas: validação/reconciliação de conversão,
+> hypercare com critério de saída, log de fit/gap, métricas/KPIs, RAID e dossiê do cliente.

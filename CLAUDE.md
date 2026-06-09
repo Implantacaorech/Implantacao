@@ -26,6 +26,7 @@ Cada papel do processo é um subagente especializado. Use o agente certo para a 
 | `consultor-implantacao` | Consultor de Implantação (GCI) | Executar levantamento, aderência, parametrização, treinamento, simulação, virada e encerramento |
 | `gerente-projeto` | Gerente do Projeto | Datas de uso oficial/encerramento, negociações em aberto, comunicação de encerramento |
 | `equipe-conversao` | Equipe de Conversão | Tratar RNS de conversão redigidas, layouts, de/para, prévia e conversão oficial |
+| `gestao-mudanca` | Gestão da Mudança (OCM) | **Gerador.** Adoção, stakeholders, comunicação, prontidão (ADKAR), treino por papel, indicadores |
 
 ### Etapas → Skills (`.claude/skills/`)
 
@@ -52,6 +53,10 @@ Cada etapa numerada do processo é uma skill acionável (passo a passo + templat
 - `acompanhamento-producao` — uso oficial e micro ajustes
 - `encerramento-implantacao` — pendências, RNS, termo de encerramento e e-mail final
 
+**Qualidade e adoção (robustez P0)**
+- `gestao-mudanca` — OCM/ADKAR: stakeholders, comunicação, prontidão, treino por papel, adoção
+- `testes-sit-uat` — testes formais SIT/UAT, registro de defeitos e sign-off (gate da virada)
+
 ## Convenções do processo (resumo operacional)
 
 - **SICLA — tipos de atividade:** `12 = apoio Comercial` (pré-implantação) · `13 = Implantação`.
@@ -73,10 +78,26 @@ Implantacao/
 ├── README.md                  # visão geral do time
 ├── docs/                      # processo, glossário, papéis, fluxo, caminhos
 ├── templates/                 # e-mails, termos e checklists prontos para uso
+├── tools/                     # geradores Office (.xlsx/.docx) + dados (YAML)
+├── exemplos/                  # artefatos gerados (não versionado)
 └── .claude/
     ├── agents/                # papéis do time (subagentes)
     └── skills/                # etapas do processo (skills)
 ```
+
+## Geradores Office (agentes geradores)
+
+Alguns agentes são **geradores**: produzem artefatos em **Excel/Word** a partir de dados em
+`tools/data/*.yaml` (modelo "dados entram → Office sai"). Saída em `exemplos/`.
+
+| Comando | Saída |
+|---------|-------|
+| `python tools/gerar_kit_mudanca.py` | `Kit_Gestao_Mudanca_<cliente>.xlsx` |
+| `python tools/gerar_roteiros_teste.py` | `Roteiros_SIT_UAT_<cliente>.xlsx` |
+| `python tools/gerar_aceite_uat.py` | `Termo_Aceite_UAT_<cliente>.docx` |
+
+Instalar dependências uma vez: `python -m pip install -r tools/requirements.txt`.
+Detalhes em [tools/README.md](tools/README.md).
 
 ## Princípios ao executar tarefas
 

@@ -1,0 +1,23 @@
+# Dados do cliente — entrada para os geradores Office.
+# Copie este arquivo para cada cliente (ex.: data/cliente_4521.yaml) e ajuste os valores.
+cliente:
+  codigo_sicla: "4521"
+  nome: "Indústria Alfa Ltda"
+  rns_implantacao: "654321"
+  usuario_lider: "Camila Bittencurt"
+  contato_fone: "(51) 9 9739.4656"
+  cnpjs:
+    - sigla: "A01"
+      cnpj: "12.345.678/0001-90"
+  data_virada_prevista: "2026-08-01"
+
+projeto:
+  numero: "123456"
+  consultor_responsavel: "Sandri"
+  area: "Negócios e Produção"
+  modulos:
+    - "Estoque/Compras"
+    - "Fiscal/Contábil"
+    - "Financeiro"
+    - "Faturamento/Emissão"
+    - "Produção"

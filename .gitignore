@@ -21,3 +21,13 @@ clientes/
 
 # Logs
 *.log
+
+# Python
+__pycache__/
+*.pyc
+
+# Saídas geradas pelos geradores (reproduzíveis)
+exemplos/
+
+# Dados específicos de cliente (derivados do exemplo)
+tools/data/cliente_*.yaml

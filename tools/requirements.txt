@@ -1,0 +1,4 @@
+# Dependências dos geradores Office
+python-docx>=1.1
+openpyxl>=3.1
+PyYAML>=6.0
