@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Painel de Implantação{% endblock %} · SIGER®</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topo">
+    <a class="marca" href="{{ url_for('home') }}">⚙️ Painel de Implantação <span>SIGER®</span></a>
+    <nav>
+      <a href="{{ url_for('home') }}">Início</a>
+      <a href="{{ url_for('acao', rid='coordenacao', aid='saude') }}">Saúde</a>
+    </nav>
+  </header>
+  <main class="conteudo">
+    {% block migalha %}{% endblock %}
+    {% block conteudo %}{% endblock %}
+  </main>
+  <footer class="rodape">
+    Estrutura interna · Rech Sistemas de Gestão — uso local.
+  </footer>
+</body>
+</html>

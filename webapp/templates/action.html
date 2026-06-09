@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block titulo %}{{ acao.nome }}{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('papel', rid=role.id) }}">{{ role.nome }}</a> › {{ acao.nome }}</div>{% endblock %}
+{% block conteudo %}
+  <h1>{{ acao.nome }}</h1>
+  <p class="sub">{{ acao.desc }}</p>
+
+  {% if modo == "import" %}
+  <form method="post" enctype="multipart/form-data" class="painel">
+    <label class="campo">
+      <span>Arquivo do Levantamento (.docx)</span>
+      <input type="file" name="arquivo" accept=".docx" required>
+    </label>
+    <button class="btn primario" type="submit">Importar e gerar YAML</button>
+    <p class="dica">O sistema mapeia as seções, separa compras/estoque, mapeia as conversões e
+      aplica a <strong>conversão verbal (Presente → Futuro)</strong> nas rotinas.</p>
+  </form>
+  {% if res %}
+    {% if res.ok %}
+    <div class="resultado ok">
+      <h3>✅ Importado com sucesso</h3>
+      <ul>
+        <li><strong>Cliente:</strong> {{ res.data.client_name or '(não detectado)' }}</li>
+        <li><strong>Áreas com conteúdo:</strong> {{ res.data.areas_incluidas|join(', ') or '—' }}</li>
+        <li><strong>Usuários:</strong> {{ res.data.usuarios|length }}</li>
+      </ul>
+      <a class="btn" href="{{ url_for('download', path=res.yaml) }}">⬇️ Baixar projeto_&lt;cliente&gt;.yaml</a>
+      <a class="btn primario" href="{{ url_for('acao', rid=role.id, aid='projeto') }}">Ir para “Gerar Projeto”</a>
+      <p class="dica">Revise o YAML (Gerente de Projeto) e depois gere o Projeto enviando esse arquivo.</p>
+    </div>
+    {% else %}
+    <div class="resultado erro"><h3>⚠️ Não deu certo</h3><p>{{ res.erro }}</p></div>
+    {% endif %}
+  {% endif %}
+
+  {% else %}
+  <form method="post" enctype="multipart/form-data" class="painel">
+    <label class="campo">
+      <span>Opcional: enviar seus dados (.yaml)</span>
+      <input type="file" name="yaml" accept=".yaml,.yml">
+      <small>Sem arquivo, gera com os <strong>dados de exemplo</strong> (para conferência).</small>
+    </label>
+    <button class="btn primario" type="submit">Gerar documento</button>
+  </form>
+  {% if res %}
+    {% if res.ok %}
+    <div class="resultado ok">
+      <h3>✅ Documento gerado</h3>
+      <p>{{ res.arquivo.split('\\')|last }}</p>
+      <a class="btn primario" href="{{ url_for('download', path=res.arquivo) }}">⬇️ Baixar arquivo</a>
+    </div>
+    {% else %}
+    <div class="resultado erro"><h3>⚠️ Não deu certo</h3><p>{{ res.erro }}</p></div>
+    {% endif %}
+  {% endif %}
+  {% endif %}
+
+  <a class="voltar" href="{{ url_for('papel', rid=role.id) }}">← Voltar para {{ role.nome }}</a>
+{% endblock %}

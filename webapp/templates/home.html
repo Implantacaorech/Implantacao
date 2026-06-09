@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block conteudo %}
+  <h1>Escolha o seu setor / função</h1>
+  <p class="sub">Cada papel vê e executa as suas ações do processo de implantação.</p>
+  <div class="grade">
+    {% for r in roles %}
+    <a class="card papel" href="{{ url_for('papel', rid=r.id) }}">
+      <div class="icone">{{ r.icone }}</div>
+      <div class="card-corpo">
+        <h3>{{ r.nome }}</h3>
+        <p>{{ r.desc }}</p>
+        <span class="badge">{{ r.acoes|length }} ação(ões)</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+{% endblock %}

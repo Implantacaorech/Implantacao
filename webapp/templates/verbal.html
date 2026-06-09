@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block titulo %}Conversor de Tempo Verbal{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('papel', rid=role.id) }}">{{ role.nome }}</a> › {{ acao.nome }}</div>{% endblock %}
+{% block conteudo %}
+  <h1>{{ acao.nome }}</h1>
+  <p class="sub">Converte verbos do Presente para o Futuro (utiliza→utilizará, é→será). Preserva
+    termos protegidos (Formulação/Estrutura).</p>
+  <form method="post" class="painel">
+    <label class="campo">
+      <span>Cole o texto</span>
+      <textarea name="texto" rows="6" placeholder="Ex.: A empresa utiliza o módulo de Vendas e possui controle de estoque.">{{ res.antes if res else '' }}</textarea>
+    </label>
+    <button class="btn primario" type="submit">Converter</button>
+  </form>
+  {% if res %}
+  <div class="resultado ok">
+    <h3>Resultado</h3>
+    <p class="bloco-texto">{{ res.depois }}</p>
+    {% if res.mudancas %}
+    <p class="dica">{{ res.mudancas|length }} alteração(ões):
+      {% for a, b in res.mudancas %}<span class="chip">{{ a }} → {{ b }}</span>{% endfor %}
+    </p>
+    {% else %}<p class="dica">Nenhum verbo no presente encontrado (modo offline).</p>{% endif %}
+  </div>
+  {% endif %}
+  <a class="voltar" href="{{ url_for('papel', rid=role.id) }}">← Voltar para {{ role.nome }}</a>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block titulo %}Saúde do Sistema{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › {{ acao.nome }}</div>{% endblock %}
+{% block conteudo %}
+  <h1>🩺 {{ acao.nome }}</h1>
+  <p class="sub">Resultado do verificador (ambiente, templates, 12 geradores, conversor, importador,
+    agentes e skills).</p>
+  <div class="resultado {{ 'ok' if code == 0 else 'erro' }}">
+    <h3>{{ 'Tudo funcionando ✅' if code == 0 else 'Há falhas ⚠️' }}</h3>
+  </div>
+  <pre class="relatorio">{{ relatorio }}</pre>
+  <a class="voltar" href="{{ url_for('home') }}">← Início</a>
+{% endblock %}

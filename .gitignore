@@ -35,3 +35,7 @@ tools/data/projeto_*.yaml
 
 # Templates .docx reais da Rech (letterhead/logo) — manter local, não publicar
 tools/templates/*.docx
+
+# Painel web: uploads e dados de cliente gerados pelo painel
+webapp/_uploads/
+tools/data/upload_*.yaml

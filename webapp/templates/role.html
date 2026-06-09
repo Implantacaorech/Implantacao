@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titulo %}{{ role.nome }}{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › {{ role.nome }}</div>{% endblock %}
+{% block conteudo %}
+  <h1>{{ role.icone }} {{ role.nome }}</h1>
+  <p class="sub">{{ role.desc }}</p>
+  <div class="grade">
+    {% for a in role.acoes %}
+    <a class="card acao" href="{{ url_for('acao', rid=role.id, aid=a.id) }}">
+      <div class="card-corpo">
+        <h3>{{ a.nome }}</h3>
+        <p>{{ a.desc }}</p>
+        <span class="tag tag-{{ a.tipo }}">{{ a.tipo }}</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+{% endblock %}
