@@ -14,8 +14,6 @@ ROLES = [
      "acoes": [
          {"id": "criar", "nome": "Criação dos Templates", "tipo": "criar_templates",
           "desc": "Tela única (abas Dados comuns / Termo / Mapeamento) que gera o Termo de Encerramento e o Mapeamento de Processos."},
-         {"id": "levform", "nome": "Gerar Levantamento (selecionar módulos)", "tipo": "form_modulos", "gera": "levantamento",
-          "desc": "Marque os módulos previstos; o Resumo e os “Módulos Previstos” por área são preenchidos automaticamente pelo catálogo."},
          {"id": "importar", "nome": "Importar Levantamento → tudo", "tipo": "import",
           "desc": "Envie o Levantamento (.docx): gera em sequência o Projeto, o Check List do Consultor e o Termo — passando por tempo verbal + ortografia."},
          {"id": "verbal", "nome": "Tempo Verbal e Ortografia", "tipo": "verbal",

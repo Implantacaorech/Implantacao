@@ -118,26 +118,31 @@ def main(lev_path="data/levantamento.yaml"):
     # Conversões — bloco padrão fiel ao template (estimativas vêm do YAML/formulário)
     conv = d.get("conversoes", {})
     e = conv.get("estimativas", {}) if isinstance(conv.get("estimativas"), dict) else {}
+
+    def _h(v):   # acrescenta " horas" quando o valor é só número (informar apenas os números)
+        v = (str(v) if v is not None else "").strip()
+        return (v + " horas") if v and v.replace(".", "").replace(",", "").isdigit() else v
+
     H(f"CONVERSÕES ({conv.get('horas','')} horas)", 2)
     P("Detalhamento e considerações levantadas:", bold=True)
     P("Considerações Gerais -> Reforçar que a conversão depende do acesso aos dados ou da "
       "exportação das informações necessárias para que se torne viável (exceto histórico de "
       "venda que pode ser feito por importação de XML).")
-    P(f"Imp. Cad. clientes e fornecedores – Estimativa: {e.get('clientes_fornecedores','')}")
-    P(f"Imp. Cad. produtos – Estimativa: {e.get('produtos','')}")
-    P(f"Imp. Mov. Financeiro doc. em aberto – Estimativa: {e.get('financeiro','')}")
+    P(f"Imp. Cad. clientes e fornecedores – Estimativa: {_h(e.get('clientes_fornecedores',''))}")
+    P(f"Imp. Cad. produtos – Estimativa: {_h(e.get('produtos',''))}")
+    P(f"Imp. Mov. Financeiro doc. em aberto – Estimativa: {_h(e.get('financeiro',''))}")
     P("Validar aspectos como:", bold=True)
     B(["Numero Bancário",
        "Comissão (se mais de um representante por documento)",
        "Conta de Planejamento Financeiro (se mais de uma conta por documento – idem com Centro de custo do planejamento)",
        "Conta Contábil (se mais de uma conta por documento – idem com Centro de custo da contabilidade)"])
-    P(f"Imp. Notas Fiscais já emitidas – Estimativa: {e.get('notas_fiscais','')}")
+    P(f"Imp. Notas Fiscais já emitidas – Estimativa: {_h(e.get('notas_fiscais',''))}")
     B(["Validar período desejado (impacto no tempo e na necessidade de ter os arquivos)",
        "Validar aspectos de mudança de códigos – necessidade de montar equivalência"])
     P("Importação de Histórico de Compras, por nota de entradas", bold=True)
     P("Não convertemos. (no máximo que temos é poder importar histórico de Ordens de Compra, "
       "mas não de notas de entrada em função das equivalências).")
-    P(f"Importação de movimentos da Folha de Pagamento: {e.get('folha','')}")
+    P(f"Importação de movimentos da Folha de Pagamento: {_h(e.get('folha',''))}")
 
     H("Desenvolvimentos Específicos", 2)
     P(d.get("desenvolvimentos", "A definir"))

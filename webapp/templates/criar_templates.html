@@ -85,13 +85,22 @@
       <button type="button" class="btn" onclick="addRow('tb-user')">+ Adicionar usuário</button>
 
       <h3>Módulos/Adicionais (A) — Previstos antes do Levantamento</h3>
-      <p class="dica">Use a sigla ou o código do módulo (ex.: FAT, CTB) — a descrição é completada pelo catálogo.</p>
-      <table class="form-tab"><thead><tr><th>Módulo/Adicional</th><th>Necessidade</th><th>Observações</th><th></th></tr></thead>
-      <tbody id="tb-ma"><tr>
-        <td><input name="ma_mod"></td>
-        <td><select name="ma_nec"><option>Sim</option><option>Não</option></select></td>
-        <td><input name="ma_obs"></td><td><button type="button" onclick="delRow(this)">✕</button></td></tr></tbody></table>
-      <button type="button" class="btn" onclick="addRow('tb-ma')">+ Adicionar módulo</button>
+      <p class="dica">Marque os módulos contratados. O Resumo (A) e os “Módulos Previstos” por área saem automáticos do catálogo.</p>
+      <input type="text" id="buscaModulo" oninput="filtrarModulos()"
+             placeholder="🔎 Pesquisar módulo (sigla ou descrição)…"
+             style="width:100%;padding:9px;margin:4px 0;border:1px solid #e2e8f0;border-radius:8px;font:inherit;box-sizing:border-box">
+      <p id="buscaInfo" class="dica" style="margin-top:2px"></p>
+      {% for area, mods in grupos %}
+      <fieldset class="area-box">
+        <legend>{{ area }} <span class="badge">{{ mods|length }}</span></legend>
+        <div class="mods">
+          {% for m in mods %}
+          <label class="mod"><input type="checkbox" name="modulos" value="{{ m.abrev }}">
+            <span><strong>{{ m.abrev }}</strong> — {{ m.descricao or '(sem descrição)' }}</span></label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      {% endfor %}
 
       <h3>Módulos/Adicionais (B) — Identificados no Levantamento</h3>
       <table class="form-tab"><thead><tr><th>Módulo/Adicional</th><th>Necessidade</th><th>Observações</th><th></th></tr></thead>
@@ -102,14 +111,14 @@
       <button type="button" class="btn" onclick="addRow('tb-mb')">+ Adicionar módulo</button>
 
       <h3>Conversões (horas)</h3>
-      <p class="dica">Informe apenas os números — a palavra "horas" é incluída automaticamente.</p>
-      <div class="grade2">
-        <label class="campo"><span>Total de horas</span><input name="cv_total"></label>
-        <label class="campo"><span>Imp. Cad. Cliente e Fornecedor — Estimativa</span><input name="cv_cli"></label>
-        <label class="campo"><span>Imp. Cad. Produtos — Estimativa</span><input name="cv_prod"></label>
-        <label class="campo"><span>Imp. Mov. Financeiro (doc. em aberto) — Estimativa</span><input name="cv_fin"></label>
-        <label class="campo"><span>Imp. Notas Fiscais já emitidas — Estimativa</span><input name="cv_nf"></label>
-        <label class="campo"><span>Importação movimentos da Folha de Pagamento — Estimativa</span><input name="cv_folha"></label>
+      <p class="dica">Informe apenas os números — a palavra “horas” é incluída automaticamente nos documentos.</p>
+      <div class="conv-list">
+        <label class="conv-row"><span>Total de horas</span><input name="cv_total"><em>horas</em></label>
+        <label class="conv-row"><span>Imp. Cad. Cliente e Fornecedor — Estimativa</span><input name="cv_cli"><em>horas</em></label>
+        <label class="conv-row"><span>Imp. Cad. Produtos — Estimativa</span><input name="cv_prod"><em>horas</em></label>
+        <label class="conv-row"><span>Imp. Mov. Financeiro (doc. em aberto) — Estimativa</span><input name="cv_fin"><em>horas</em></label>
+        <label class="conv-row"><span>Imp. Notas Fiscais já emitidas — Estimativa</span><input name="cv_nf"><em>horas</em></label>
+        <label class="conv-row"><span>Importação movimentos da Folha de Pagamento — Estimativa</span><input name="cv_folha"><em>horas</em></label>
       </div>
 
       <h3>Horas do projeto</h3>
@@ -144,5 +153,13 @@
     tb.appendChild(r);
   }
   function delRow(btn){ var tb=btn.closest('tbody'); if(tb.rows.length>1){ btn.closest('tr').remove(); } }
+  function filtrarModulos(){
+    var q=document.getElementById('buscaModulo').value.toLowerCase().trim(), tot=0;
+    document.querySelectorAll('.area-box').forEach(function(b){
+      var v=0; b.querySelectorAll('.mod').forEach(function(m){
+        var ok=m.innerText.toLowerCase().indexOf(q)>=0; m.style.display=ok?'':'none'; if(ok)v++; });
+      b.style.display=v?'':'none'; tot+=v; });
+    document.getElementById('buscaInfo').innerText=q?(tot+' módulo(s) encontrado(s)'):'';
+  }
   </script>
 {% endblock %}

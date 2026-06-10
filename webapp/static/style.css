@@ -84,3 +84,9 @@ textarea{resize:vertical}
 .mm-leaf{padding:6px 13px;margin:4px 0;background:#f8fafc;border:1px solid var(--line);border-radius:8px;font-size:.92rem;color:var(--ink)}
 .mm>.mm-node>summary{background:var(--navy);color:#fff;border-color:var(--navy);font-size:1.1rem;padding:9px 20px}
 .mm>.mm-node>summary::before{color:#cfe0f0}
+.conv-list{display:flex;flex-direction:column;gap:7px;margin:6px 0}
+.conv-row{display:grid;grid-template-columns:1fr 120px auto;align-items:center;gap:12px}
+.conv-row>span{color:var(--ink);font-size:.92rem}
+.conv-row>input{padding:7px;border:1px solid #e2e8f0;border-radius:6px;font:inherit}
+.conv-row>em{color:var(--muted);font-style:normal;font-size:.85rem}
+.badge{background:var(--navy);color:#fff;border-radius:10px;padding:1px 8px;font-size:.72rem}

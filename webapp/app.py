@@ -78,6 +78,7 @@ def acao(rid, aid):
                  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
         return render_template("criar_templates.html", role=r, acao=a, res=res,
                                cliente_nome=session.get("cliente_nome"), meses=meses,
+                               grupos=runner.catalogo_por_area(),
                                hoje_dia=hoje.day, hoje_mes=hoje.month, hoje_ano=hoje.year)
 
     if a["tipo"] == "verbal":

@@ -210,7 +210,6 @@ def criar_templates(form):
         return out
 
     if form.get("gen_mapa"):
-        moda = [{"modulo": m, "necessidade": nec, "obs": o} for m, nec, o in rows("ma_mod", "ma_nec", "ma_obs")]
         modb = [{"modulo": m, "necessidade": nec, "obs": o} for m, nec, o in rows("mb_mod", "mb_nec", "mb_obs")]
         lev = {
             "cliente": cliente, "data": data, "responsaveis": form.get("responsaveis", ""),
@@ -220,8 +219,7 @@ def criar_templates(form):
                 "localizacao": form.get("localizacao", ""), "observacoes_objetivos": form.get("observacoes", ""),
             },
             "usuarios": [{"nome": n, "email": e, "atribuicoes": a} for n, e, a in rows("u_nome", "u_email", "u_atrib")],
-            "modulos_contratados": [m["modulo"] for m in moda if m["modulo"].strip()],
-            "modulos_previstos_antes": moda,
+            "modulos_contratados": [x for x in g("modulos") if x and x.strip()],
             "modulos_identificados": modb,
             "conversoes": {"horas": form.get("cv_total", ""), "estimativas": {
                 "clientes_fornecedores": form.get("cv_cli", ""), "produtos": form.get("cv_prod", ""),
