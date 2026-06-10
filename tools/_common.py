@@ -130,8 +130,14 @@ def style_base(tipo):
         for child in list(body):
             if child.tag != qn("w:sectPr"):   # preserva seção (margens, header/footer)
                 body.remove(child)
-        return doc, True
-    return Document(), False
+        used = True
+    else:
+        doc, used = Document(), False
+    try:
+        doc.styles["Normal"].paragraph_format.line_spacing = 1.15   # espaçamento padrão Rech
+    except Exception:
+        pass
+    return doc, used
 
 
 def docx_heading(doc, txt, size=13, center=False):

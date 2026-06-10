@@ -105,11 +105,29 @@ def main(lev_path="data/levantamento.yaml"):
     table(["Quantidade de horas Cobradas", "Quantidade de horas Bonificadas", "Total de Horas previstas"],
           [[h.get("cobradas",""), h.get("bonificadas",""), h.get("total","")]])
 
-    # Conversões
+    # Conversões — bloco padrão fiel ao template (estimativas vêm do YAML/formulário)
     conv = d.get("conversoes", {})
-    H(f"Conversões ({conv.get('horas','')} horas)", 2)
+    e = conv.get("estimativas", {}) if isinstance(conv.get("estimativas"), dict) else {}
+    H(f"CONVERSÕES ({conv.get('horas','')} horas)", 2)
     P("Detalhamento e considerações levantadas:", bold=True)
-    B([f"{it.get('item','')} – Estimativa: {it.get('estimativa','')}" for it in conv.get("itens", [])])
+    P("Considerações Gerais -> Reforçar que a conversão depende do acesso aos dados ou da "
+      "exportação das informações necessárias para que se torne viável (exceto histórico de "
+      "venda que pode ser feito por importação de XML).")
+    P(f"Imp. Cad. clientes e fornecedores – Estimativa: {e.get('clientes_fornecedores','')}")
+    P(f"Imp. Cad. produtos – Estimativa: {e.get('produtos','')}")
+    P(f"Imp. Mov. Financeiro doc. em aberto – Estimativa: {e.get('financeiro','')}")
+    P("Validar aspectos como:", bold=True)
+    B(["Numero Bancário",
+       "Comissão (se mais de um representante por documento)",
+       "Conta de Planejamento Financeiro (se mais de uma conta por documento – idem com Centro de custo do planejamento)",
+       "Conta Contábil (se mais de uma conta por documento – idem com Centro de custo da contabilidade)"])
+    P(f"Imp. Notas Fiscais já emitidas – Estimativa: {e.get('notas_fiscais','')}")
+    B(["Validar período desejado (impacto no tempo e na necessidade de ter os arquivos)",
+       "Validar aspectos de mudança de códigos – necessidade de montar equivalência"])
+    P("Importação de Histórico de Compras, por nota de entradas", bold=True)
+    P("Não convertemos. (no máximo que temos é poder importar histórico de Ordens de Compra, "
+      "mas não de notas de entrada em função das equivalências).")
+    P(f"Importação de movimentos da Folha de Pagamento: {e.get('folha','')}")
 
     H("Desenvolvimentos Específicos", 2)
     P(d.get("desenvolvimentos", "A definir"))
@@ -117,28 +135,36 @@ def main(lev_path="data/levantamento.yaml"):
     # Mapeamento por área — AUTOMÁTICO a partir dos módulos contratados (catálogo);
     # ou manual (campo 'areas') quando não houver 'modulos_contratados'.
     nao_processo = {"BI e Integrações", "Outros"}
+    base_cadastros = ("Cliente/Fornecedor", "Produto")   # sempre presentes, sem "Módulos Previstos"
     try:
         perg_areas = (C.load_yaml("perguntas_levantamento.yaml") or {}).get("areas", {}) or {}
     except Exception:
         perg_areas = {}
-    if areas_auto:
-        for area, mods in areas_auto:
-            if area in nao_processo:
-                continue   # tecnologia/integração: aparece no Resumo, não vira bloco de processo
-            H(f"Mapeamento de processo – {area.upper()}", 2)
+
+    def map_area(area, mods=None):
+        H(f"Mapeamento de processo – {area.upper()}", 2)
+        if mods is not None:
             P("Módulos Previstos:", bold=True)
             B([m["descricao"] for m in mods])
-            for asp in (perg_areas.get(area) or [{"subtitulo": ""}]):
-                sub = asp.get("subtitulo", "")
-                P("Aspectos identificados" + (f" – {sub}" if sub else ""), bold=True)
-                perguntas = asp.get("perguntas") or []
-                if perguntas:
-                    B(perguntas)
-                else:
-                    P("<Colar aqui o quadro com as perguntas para ir preenchendo as respostas>")
-                if asp.get("nota"):
-                    P(asp["nota"])
-            P("Dúvidas e Observações", bold=True)
+        for asp in (perg_areas.get(area) or [{"subtitulo": ""}]):
+            sub = asp.get("subtitulo", "")
+            P("Aspectos identificados" + (f" – {sub}" if sub else ""), bold=True)
+            perguntas = asp.get("perguntas") or []
+            if perguntas:
+                B(perguntas)
+            else:
+                P("<Colar aqui o quadro com as perguntas para ir preenchendo as respostas>")
+            if asp.get("nota"):
+                P(asp["nota"])
+        P("Dúvidas e Observações", bold=True)
+
+    if areas_auto:
+        for area in base_cadastros:           # Cliente/Fornecedor e Produto (cadastros base)
+            map_area(area)
+        for area, mods in areas_auto:
+            if area in nao_processo or area in base_cadastros:
+                continue
+            map_area(area, mods)
     else:
         for a in d.get("areas", []):
             H(f"Mapeamento de processo – {a.get('nome','')}", 2)
