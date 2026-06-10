@@ -9,8 +9,9 @@
   {% if res %}
     {% if res.ok %}
     <div class="resultado ok">
-      <h3>✅ Levantamento gerado</h3>
-      <a class="btn primario" href="{{ url_for('download', path=res.arquivo) }}">⬇️ Baixar documento</a>
+      <h3>✅ Gerado com sucesso</h3>
+      {% if res.doc %}<a class="btn primario" href="{{ url_for('download', path=res.doc) }}">⬇️ Levantamento (Word)</a>{% endif %}
+      {% if res.xls %}<a class="btn primario" href="{{ url_for('download', path=res.xls) }}">⬇️ Check List do Consultor (Excel)</a>{% endif %}
     </div>
     {% else %}
     <div class="resultado erro"><h3>⚠️ Não deu certo</h3><p>{{ res.erro }}</p></div>

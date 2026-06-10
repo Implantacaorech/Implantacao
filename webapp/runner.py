@@ -94,4 +94,6 @@ def gerar_levantamento_form(form, modulos):
     base = "lev_" + C.slug(nome) + ".yaml"
     with open(os.path.join(DATA, base), "w", encoding="utf-8") as f:
         _yaml.safe_dump(doc, f, allow_unicode=True, sort_keys=False, width=120)
-    return run_generator("gerar_levantamento", base)
+    doc_path, _ = run_generator("gerar_levantamento", base)          # Levantamento (Word)
+    xls_path, _ = run_generator("gerar_checklist_consultor", base)   # Check List (Excel)
+    return doc_path, xls_path

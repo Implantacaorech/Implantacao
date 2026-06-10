@@ -60,9 +60,9 @@ def acao(rid, aid):
     if a["tipo"] == "form_levantamento":
         if request.method == "POST":
             mods = request.form.getlist("modulos")
-            path, _log = runner.gerar_levantamento_form(request.form, mods)
-            res = {"ok": bool(path), "arquivo": path,
-                   "erro": None if path else "Não foi possível gerar o documento."}
+            doc_path, xls_path = runner.gerar_levantamento_form(request.form, mods)
+            res = {"ok": bool(doc_path or xls_path), "doc": doc_path, "xls": xls_path,
+                   "erro": None if (doc_path or xls_path) else "Não foi possível gerar."}
         return render_template("levantamento_form.html", role=r, acao=a,
                                grupos=runner.catalogo_por_area(), res=res,
                                cliente_nome=session.get("cliente_nome"))

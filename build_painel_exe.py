@@ -31,6 +31,7 @@ HIDDEN = [
     "gerar_reconciliacao_conversao", "gerar_painel_hypercare", "gerar_log_fitgap",
     "gerar_painel_kpi", "gerar_raid", "gerar_dossie_cliente",
     "gerar_projeto_implantacao", "gerar_termo_encerramento", "gerar_levantamento",
+    "gerar_checklist_consultor",
 ]
 
 # Dados embutidos (origem -> destino no bundle).
