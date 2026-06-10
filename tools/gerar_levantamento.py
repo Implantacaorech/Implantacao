@@ -117,6 +117,10 @@ def main(lev_path="data/levantamento.yaml"):
     # Mapeamento por área — AUTOMÁTICO a partir dos módulos contratados (catálogo);
     # ou manual (campo 'areas') quando não houver 'modulos_contratados'.
     nao_processo = {"BI e Integrações", "Outros"}
+    try:
+        perg_areas = (C.load_yaml("perguntas_levantamento.yaml") or {}).get("areas", {}) or {}
+    except Exception:
+        perg_areas = {}
     if areas_auto:
         for area, mods in areas_auto:
             if area in nao_processo:
@@ -124,8 +128,16 @@ def main(lev_path="data/levantamento.yaml"):
             H(f"Mapeamento de processo – {area.upper()}", 2)
             P("Módulos Previstos:", bold=True)
             B([m["descricao"] for m in mods])
-            P("Aspectos identificados", bold=True)
-            P("<Colar aqui o quadro com as perguntas para ir preenchendo as respostas>")
+            for asp in (perg_areas.get(area) or [{"subtitulo": ""}]):
+                sub = asp.get("subtitulo", "")
+                P("Aspectos identificados" + (f" – {sub}" if sub else ""), bold=True)
+                perguntas = asp.get("perguntas") or []
+                if perguntas:
+                    B(perguntas)
+                else:
+                    P("<Colar aqui o quadro com as perguntas para ir preenchendo as respostas>")
+                if asp.get("nota"):
+                    P(asp["nota"])
             P("Dúvidas e Observações", bold=True)
     else:
         for a in d.get("areas", []):

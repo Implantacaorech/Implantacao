@@ -1,0 +1,72 @@
+# -------------------------------------------------------------------------
+# Perguntas do Levantamento / Mapeamento de Processos, por ÁREA.
+# Estrutura fiel ao template Rech ("Aspectos identificados – <subtítulo>").
+# Os MÓDULOS são automáticos (catálogo). Estas são "o restante": as perguntas
+# de descoberta por área. Preencha 'perguntas:' em cada bloco (uma por linha).
+# Vazio -> sai o marcador "<Colar aqui...>" no documento.
+# -------------------------------------------------------------------------
+areas:
+  Cliente/Fornecedor:
+    - subtitulo: "Cadastro do cliente/fornecedor"
+      perguntas: []
+      nota: "Tabelas Genéricas e por Empresas identificadas para uso (com viabilidade de vínculo ou não de forma direta no cadastro de clientes/Fornecedores)."
+
+  Produto:
+    - subtitulo: "Cadastro do produto"
+      perguntas: []
+      nota: "Tabelas Genéricas e por Empresas identificadas para uso (com viabilidade de vínculo ou não de forma direta no cadastro de produtos)."
+
+  Vendas e Faturamento:
+    - subtitulo: "Processo de faturamento"
+      perguntas: []
+
+  Produção:
+    - subtitulo: "Engenharia de produto"
+      perguntas: []
+    - subtitulo: "Engenharia de Processo"
+      perguntas: []
+
+  Compras/Estoque:
+    - subtitulo: "Processo de compras"
+      perguntas: []
+    - subtitulo: "Controle de estoque"
+      perguntas: []
+
+  Gestão Financeira:
+    - subtitulo: "Gestão financeira"
+      perguntas: []
+
+  Gestão Fiscal, Contábil e Patrimonial:
+    - subtitulo: "Gestão fiscal"
+      perguntas: []
+
+  Folha de Pagamento:
+    - subtitulo: "Visão geral"
+      perguntas: ["<Explicar de forma geral o processo>"]
+    - subtitulo: "Folha de Pagamento"
+      perguntas: []
+
+  Recrutamento e Seleção:
+    - subtitulo: ""
+      perguntas: []
+  Portal de Funcionários:
+    - subtitulo: ""
+      perguntas: []
+  Portal de Vagas:
+    - subtitulo: ""
+      perguntas: []
+  Treinamentos:
+    - subtitulo: ""
+      perguntas: []
+  Saúde Ocupacional:
+    - subtitulo: ""
+      perguntas: []
+  Segurança do Trabalho:
+    - subtitulo: ""
+      perguntas: []
+  Avaliação e Feedback:
+    - subtitulo: ""
+      perguntas: []
+  Cargos e Salários:
+    - subtitulo: ""
+      perguntas: []

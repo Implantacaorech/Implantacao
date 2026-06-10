@@ -16,6 +16,8 @@ ROLES = [
           "desc": "Marque os módulos previstos; o Resumo e os “Módulos Previstos” por área são preenchidos automaticamente pelo catálogo."},
          {"id": "importar", "nome": "Importar Levantamento → tudo", "tipo": "import",
           "desc": "Envie o Levantamento (.docx): gera em sequência o Projeto, o Check List do Consultor e o Termo — passando por tempo verbal + ortografia."},
+         {"id": "verbal", "nome": "Tempo Verbal e Ortografia", "tipo": "verbal",
+          "desc": "Converte Presente→Futuro e corrige ortografia. Cole o texto OU envie um documento (.docx) para verificação."},
      ]},
     {"id": "consultor", "nome": "Consultor de Implantação", "icone": "🛠️",
      "desc": "Importação automática, projeto, termo e check list.",
@@ -28,8 +30,6 @@ ROLES = [
           "mod": "gerar_termo_encerramento", "desc": "Gera só o Termo de Encerramento."},
          {"id": "chkform", "nome": "Check List do Consultor (após o Projeto)", "tipo": "form_modulos", "gera": "checklist",
           "desc": "Selecione os módulos FINAIS (com inclusões/retiradas do levantamento) e gere a planilha-guia (Roteiro e Check List)."},
-         {"id": "verbal", "nome": "Tempo Verbal e Ortografia", "tipo": "verbal",
-          "desc": "Converte Presente→Futuro e corrige ortografia. Cole o texto OU envie um documento (.docx) para verificação."},
      ]},
 ]
 
