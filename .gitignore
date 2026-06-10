@@ -33,6 +33,8 @@ exemplos/
 tools/data/cliente_*.yaml
 tools/data/projeto_*.yaml
 tools/data/lev_*.yaml
+tools/data/termo_*.yaml
+tools/data/_in_*.docx
 
 # Templates .docx reais da Rech (letterhead/logo) — manter local, não publicar
 tools/templates/*.docx
