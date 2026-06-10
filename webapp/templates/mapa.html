@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block titulo %}Mapa do Setor{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › Mapa do Setor</div>{% endblock %}
+{% block conteudo %}
+  {% macro no(n, nivel) %}
+    {% if n.filhos %}
+    <details class="mm-node mm-l{{ nivel }}" {% if nivel < 1 %}open{% endif %}>
+      <summary>{{ n.nome }}</summary>
+      <div class="mm-kids">
+        {% for f in n.filhos %}{{ no(f, nivel + 1) }}{% endfor %}
+      </div>
+    </details>
+    {% else %}
+    <div class="mm-leaf">{{ n.nome }}</div>
+    {% endif %}
+  {% endmacro %}
+
+  <h1>🧠 Mapa Mental — Setor de Implantação</h1>
+  <p class="sub">Visão do processo <strong>GRM:Implantação</strong> (papéis, etapas e robustez P0/P1/P2). Clique para expandir/recolher.</p>
+  <div class="mm-acoes">
+    <button type="button" class="btn" onclick="document.querySelectorAll('.mm details').forEach(function(d){d.open=true;})">Expandir tudo</button>
+    <button type="button" class="btn" onclick="document.querySelectorAll('.mm details').forEach(function(d){d.open=false;})">Recolher tudo</button>
+  </div>
+  <div class="mm">{{ no(mapa, 0) }}</div>
+{% endblock %}

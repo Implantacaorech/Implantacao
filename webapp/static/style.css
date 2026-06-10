@@ -73,3 +73,14 @@ textarea{resize:vertical}
 .rodape-form{display:flex;gap:8px;align-items:center;margin-top:16px;padding:10px 14px;background:#f1f5f9;border-radius:8px;flex-wrap:wrap}
 .rodape-form select{padding:6px;border:1px solid #e2e8f0;border-radius:6px;font:inherit}
 .painel-aba h3{color:var(--navy);margin:16px 0 4px}
+.mm{margin-top:10px}
+.mm-acoes{display:flex;gap:8px;margin:10px 0}
+.mm-node{margin:5px 0}
+.mm-node>summary{cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:7px;padding:7px 16px;border-radius:22px;font-weight:600;border:1px solid var(--line);background:#eaf1f8;color:var(--navy)}
+.mm-node>summary::-webkit-details-marker{display:none}
+.mm-node>summary::before{content:"▸";color:var(--navy2);font-size:.8rem}
+.mm-node[open]>summary::before{content:"▾"}
+.mm-kids{margin:5px 0 6px 20px;padding-left:16px;border-left:2px solid var(--line)}
+.mm-leaf{padding:6px 13px;margin:4px 0;background:#f8fafc;border:1px solid var(--line);border-radius:8px;font-size:.92rem;color:var(--ink)}
+.mm>.mm-node>summary{background:var(--navy);color:#fff;border-color:var(--navy);font-size:1.1rem;padding:9px 20px}
+.mm>.mm-node>summary::before{color:#cfe0f0}
