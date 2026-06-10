@@ -37,24 +37,90 @@ def save_upload_yaml(file_storage, slug_fn):
     return base
 
 
-def run_import(docx_path):
-    """Importa o levantamento .docx -> projeto_<cliente>.yaml (com conversão verbal)."""
+def run_sequencia(docx_path):
+    """Importa o Levantamento e gera EM SEQUÊNCIA: Projeto + Check List + Termo,
+    aplicando tempo verbal + ortografia. Retorna um dict com os caminhos."""
     import importar_mapeamento as I
+    import catalogo as CAT
     import yaml as _yaml
     data = I.extract(docx_path)
-    ydict = I.to_yaml_dict(data, aplicar_verbal=True)
+    ydict = I.to_yaml_dict(data, aplicar_verbal=True)      # verbal + ortografia
     nome = data.get("client_name") or "cliente"
-    out = os.path.join(DATA, "projeto_%s.yaml" % C.slug(nome))
-    with open(out, "w", encoding="utf-8") as f:
-        f.write("# Gerado pelo Painel a partir do levantamento. Revisar antes de gerar.\n")
-        f.write("# Rotinas já no FUTURO (conversão verbal aplicada).\n")
+    slug = C.slug(nome)
+    modulos = data.get("modulos") or []
+
+    # 1) Projeto de Implantação
+    proj_base = "projeto_%s.yaml" % slug
+    with open(os.path.join(DATA, proj_base), "w", encoding="utf-8") as f:
+        f.write("# Importação automática (tempo verbal + ortografia). Revisar antes de usar.\n")
         _yaml.safe_dump(ydict, f, allow_unicode=True, sort_keys=False, width=100)
-    return out, data
+    proj_path, _ = run_generator("gerar_projeto_implantacao", proj_base)
+
+    # 2) Check List do Consultor (a partir dos módulos do levantamento)
+    lev_base = "lev_%s.yaml" % slug
+    with open(os.path.join(DATA, lev_base), "w", encoding="utf-8") as f:
+        _yaml.safe_dump({"cliente": nome, "modulos_contratados": modulos},
+                        f, allow_unicode=True, sort_keys=False)
+    chk_path, _ = run_generator("gerar_checklist_consultor", lev_base)
+
+    # 3) Termo de Encerramento (quadro de módulos a partir do catálogo)
+    mods, _ = CAT.resolve(modulos)
+    resumo = [{"modulo": m.get("descricao") or m.get("abrev"), "adicional": "",
+               "processo": "Implantado", "status_uso": "Sim", "obs": ""} for m in mods]
+    termo_base = "termo_%s.yaml" % slug
+    with open(os.path.join(DATA, termo_base), "w", encoding="utf-8") as f:
+        _yaml.safe_dump({"cliente": nome, "resumo_modulos": resumo, "alteracoes": [],
+                         "observacoes": [], "pendencias": [],
+                         "cidade_data": "Novo Hamburgo, ____ de ____________ de 2026."},
+                        f, allow_unicode=True, sort_keys=False)
+    termo_path, _ = run_generator("gerar_termo_encerramento", termo_base)
+
+    return {"cliente": nome, "modulos": len(modulos), "projeto": proj_path,
+            "checklist": chk_path, "termo": termo_path,
+            "yaml": os.path.join(DATA, proj_base)}
 
 
 def converter_verbal(texto):
+    """Presente→Futuro + correção ortográfica. Retorna (texto, mudanças_verbais)."""
     import conversor_verbal as V
-    return V.converter_texto(texto)
+    import ortografia as O
+    novo, mudancas = V.converter_texto(texto)
+    return O.corrigir(novo), mudancas
+
+
+def converter_docx(file_storage):
+    """Lê um .docx, aplica tempo verbal + ortografia em todo o texto (preservando o
+    layout) e salva uma cópia '(corrigido)'. Retorna o caminho."""
+    import os
+    import conversor_verbal as V
+    import ortografia as O
+    from docx import Document
+
+    slug = C.slug(os.path.splitext(file_storage.filename or "documento")[0])
+    src = os.path.join(C.DATA_WRITE, "_in_" + slug + ".docx")
+    file_storage.save(src)
+    doc = Document(src)
+
+    def conv(t):
+        return O.corrigir(V.converter(t)) if t else t
+
+    def trata(par):
+        for r in par.runs:
+            if r.text:
+                r.text = conv(r.text)
+
+    for p in doc.paragraphs:
+        trata(p)
+    for t in doc.tables:
+        for row in t.rows:
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    trata(p)
+
+    C.ensure_out()
+    out = os.path.join(C.OUT, "%s_corrigido.docx" % slug)
+    doc.save(out)
+    return out
 
 
 def run_saude():

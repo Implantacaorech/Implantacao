@@ -72,9 +72,13 @@ def acao(rid, aid):
 
     if a["tipo"] == "verbal":
         if request.method == "POST":
-            texto = request.form.get("texto", "")
-            novo, mudancas = runner.converter_verbal(texto)
-            res = {"antes": texto, "depois": novo, "mudancas": mudancas}
+            f = request.files.get("arquivo")
+            if f and f.filename and f.filename.lower().endswith(".docx"):
+                res = {"arquivo": runner.converter_docx(f)}
+            else:
+                texto = request.form.get("texto", "")
+                novo, mudancas = runner.converter_verbal(texto)
+                res = {"antes": texto, "depois": novo, "mudancas": mudancas}
         return render_template("verbal.html", role=r, acao=a, res=res)
 
     if a["tipo"] == "saude":
@@ -88,8 +92,7 @@ def acao(rid, aid):
                 path = os.path.join(UPLOADS, "lev_" + C.slug(f.filename) + ".docx")
                 f.save(path)
                 try:
-                    yaml_path, data = runner.run_import(path)
-                    res = {"ok": True, "yaml": yaml_path, "data": data}
+                    res = {"ok": True, "seq": runner.run_sequencia(path)}
                 except Exception as e:
                     res = {"ok": False, "erro": "%s: %s" % (type(e).__name__, e)}
             else:

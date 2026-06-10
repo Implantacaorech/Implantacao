@@ -30,6 +30,10 @@
 
     <h3 style="color:#1F4E78">Módulos e adicionais</h3>
     <p class="dica">Marque os módulos. As áreas seguem o catálogo (editável em <code>catalogo_modulos.yaml</code>).</p>
+    <input type="text" id="buscaModulo" oninput="filtrarModulos()"
+           placeholder="🔎 Pesquisar módulo (sigla ou descrição)…"
+           style="width:100%;padding:10px;margin:6px 0 4px;border:1px solid #e2e8f0;border-radius:8px;font:inherit">
+    <p id="buscaInfo" class="dica" style="margin-top:2px"></p>
     {% for area, mods in grupos %}
     <fieldset class="area-box">
       <legend>{{ area }} <span class="badge">{{ mods|length }}</span></legend>
@@ -45,4 +49,21 @@
     <button class="btn primario" type="submit" style="margin-top:16px">Gerar</button>
   </form>
   <a class="voltar" href="{{ url_for('papel', rid=role.id) }}">← Voltar para {{ role.nome }}</a>
+  <script>
+  function filtrarModulos(){
+    var q = document.getElementById('buscaModulo').value.toLowerCase().trim();
+    var total = 0;
+    document.querySelectorAll('.area-box').forEach(function(box){
+      var vis = 0;
+      box.querySelectorAll('.mod').forEach(function(m){
+        var ok = m.innerText.toLowerCase().indexOf(q) >= 0;
+        m.style.display = ok ? '' : 'none';
+        if (ok) vis++;
+      });
+      box.style.display = vis ? '' : 'none';
+      total += vis;
+    });
+    document.getElementById('buscaInfo').innerText = q ? (total + ' módulo(s) encontrado(s)') : '';
+  }
+  </script>
 {% endblock %}

@@ -24,6 +24,7 @@ from docx.table import Table
 import _common as C
 import schema_projeto as S
 import conversor_verbal as V
+import ortografia as O
 
 
 def norm(s):
@@ -182,6 +183,33 @@ def detect_conv_item(n):
     return None
 
 
+def _extrair_modulos(doc):
+    """Extrai as abreviações dos módulos contratados a partir das tabelas de
+    'Resumo dos Módulos e Adicionais' (linhas 'ABREV — Descrição' ou pela descrição)."""
+    import catalogo as CAT
+    cat = CAT.load()
+    by_ab = {str(m["abrev"]).upper(): m["abrev"] for m in cat}
+    by_desc = {norm(m["descricao"]): m["abrev"] for m in cat if m.get("descricao")}
+    achados, vistos = [], set()
+    for kind, obj in _walk(doc):
+        if kind != 'tbl' or "modulos/adicionais" not in _table_sig(obj):
+            continue
+        for row in obj.rows:
+            cell = row.cells[0].text.strip()
+            if not cell:
+                continue
+            ab = None
+            m = re.match(r"^([A-Za-z]{2,4})\s*[—–-]\s*", cell)
+            if m and m.group(1).upper() in by_ab:
+                ab = by_ab[m.group(1).upper()]
+            else:
+                desc = re.split(r"[—–-]", cell, 1)[-1].strip()
+                ab = by_desc.get(norm(desc)) or by_desc.get(norm(cell))
+            if ab and ab not in vistos:
+                achados.append(ab); vistos.add(ab)
+    return achados
+
+
 def extract(path):
     doc = docx.Document(path)
     buckets = defaultdict(list)
@@ -288,6 +316,7 @@ def extract(path):
     data["livros_particularidade"] = J("fiscal:duvidas")
     data.update(horas)
     data["usuarios"] = usuarios
+    data["modulos"] = _extrair_modulos(doc)
     incluidas = [aid for aid in ("vendas", "estoque", "compras", "industrial", "financeiro", "livros")
                  if (data.get(f"{aid}_modulos") or data.get(f"{aid}_detalhamento")
                      or data.get(f"{aid}_particularidade"))]
@@ -309,11 +338,15 @@ def to_yaml_dict(data, aplicar_verbal=True):
     block = set(S.BLOCK_TOKENS) | {"conversoes_detalhe"}
     out = {}
     for k, v in data.items():
-        if k in ("usuarios", "areas_incluidas") or k == "_resumo":
+        if k in ("usuarios", "areas_incluidas", "modulos") or k == "_resumo":
             continue
         if isinstance(v, str):
-            if aplicar_verbal and k in VERBAL_FIELDS and v.strip():
-                v = "\n".join(V.converter(ln) for ln in v.split("\n"))
+            if v.strip():
+                linhas = v.split("\n")
+                if aplicar_verbal and k in VERBAL_FIELDS:
+                    linhas = [V.converter(ln) for ln in linhas]      # tempo verbal
+                linhas = [O.corrigir(ln) for ln in linhas]           # ortografia (em tudo)
+                v = "\n".join(linhas)
             if k in block and "\n" in v:
                 out[k] = v.split("\n")
             else:

@@ -11,22 +11,20 @@
       <span>Arquivo do Levantamento (.docx)</span>
       <input type="file" name="arquivo" accept=".docx" required>
     </label>
-    <button class="btn primario" type="submit">Importar e gerar YAML</button>
-    <p class="dica">O sistema mapeia as seções, separa compras/estoque, mapeia as conversões e
-      aplica a <strong>conversão verbal (Presente → Futuro)</strong> nas rotinas.</p>
+    <button class="btn primario" type="submit">Importar e gerar tudo</button>
+    <p class="dica">Gera em sequência o <strong>Projeto</strong>, o <strong>Check List do Consultor</strong>
+      e o <strong>Termo</strong>, aplicando <strong>tempo verbal + ortografia</strong> antes. Não precisa abrir outra aba.</p>
   </form>
   {% if res %}
     {% if res.ok %}
     <div class="resultado ok">
-      <h3>✅ Importado com sucesso</h3>
-      <ul>
-        <li><strong>Cliente:</strong> {{ res.data.client_name or '(não detectado)' }}</li>
-        <li><strong>Áreas com conteúdo:</strong> {{ res.data.areas_incluidas|join(', ') or '—' }}</li>
-        <li><strong>Usuários:</strong> {{ res.data.usuarios|length }}</li>
-      </ul>
-      <a class="btn" href="{{ url_for('download', path=res.yaml) }}">⬇️ Baixar projeto_&lt;cliente&gt;.yaml</a>
-      <a class="btn primario" href="{{ url_for('acao', rid=role.id, aid='projeto') }}">Ir para “Gerar Projeto”</a>
-      <p class="dica">Revise o YAML (Gerente de Projeto) e depois gere o Projeto enviando esse arquivo.</p>
+      <h3>✅ Gerado em sequência</h3>
+      <p><strong>Cliente:</strong> {{ res.seq.cliente }} · {{ res.seq.modulos }} módulo(s) detectado(s).
+         Texto passado por <strong>tempo verbal + ortografia</strong>.</p>
+      {% if res.seq.projeto %}<a class="btn primario" href="{{ url_for('download', path=res.seq.projeto) }}">⬇️ Projeto (Word)</a>{% endif %}
+      {% if res.seq.checklist %}<a class="btn primario" href="{{ url_for('download', path=res.seq.checklist) }}">⬇️ Check List do Consultor (Excel)</a>{% endif %}
+      {% if res.seq.termo %}<a class="btn primario" href="{{ url_for('download', path=res.seq.termo) }}">⬇️ Termo de Encerramento (Word)</a>{% endif %}
+      <p class="dica">Para ajustar: baixe o <a href="{{ url_for('download', path=res.seq.yaml) }}">projeto.yaml</a>, edite e use “Gerar Projeto de Implantação (manual)”.</p>
     </div>
     {% else %}
     <div class="resultado erro"><h3>⚠️ Não deu certo</h3><p>{{ res.erro }}</p></div>

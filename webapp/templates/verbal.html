@@ -1,26 +1,46 @@
 {% extends "base.html" %}
-{% block titulo %}Conversor de Tempo Verbal{% endblock %}
+{% block titulo %}Tempo Verbal e Ortografia{% endblock %}
 {% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('papel', rid=role.id) }}">{{ role.nome }}</a> › {{ acao.nome }}</div>{% endblock %}
 {% block conteudo %}
   <h1>{{ acao.nome }}</h1>
-  <p class="sub">Converte verbos do Presente para o Futuro (utiliza→utilizará, é→será). Preserva
-    termos protegidos (Formulação/Estrutura).</p>
+  <p class="sub">Converte verbos do Presente para o Futuro (utiliza→utilizará, é→será) e aplica
+    correção ortográfica. Preserva termos técnicos (Formulação/Estrutura, SIGER, NF-e…).</p>
+
+  {% if res and res.arquivo %}
+  <div class="resultado ok">
+    <h3>✅ Documento corrigido</h3>
+    <a class="btn primario" href="{{ url_for('download', path=res.arquivo) }}">⬇️ Baixar .docx corrigido</a>
+  </div>
+  {% endif %}
+
+  <h3 style="color:#1F4E78">Verificar um documento (.docx)</h3>
+  <form method="post" enctype="multipart/form-data" class="painel">
+    <label class="campo">
+      <span>Envie o documento</span>
+      <input type="file" name="arquivo" accept=".docx" required>
+      <small>Mantém o layout (logos, tabelas, formatação); só o texto é ajustado.</small>
+    </label>
+    <button class="btn primario" type="submit">Corrigir documento</button>
+  </form>
+
+  <h3 style="color:#1F4E78">Ou cole um texto</h3>
   <form method="post" class="painel">
     <label class="campo">
-      <span>Cole o texto</span>
-      <textarea name="texto" rows="6" placeholder="Ex.: A empresa utiliza o módulo de Vendas e possui controle de estoque.">{{ res.antes if res else '' }}</textarea>
+      <span>Texto</span>
+      <textarea name="texto" rows="5" placeholder="Ex.: A empresa utiliza o módulo e possui controle de estoque.">{{ res.antes if res and res.antes else '' }}</textarea>
     </label>
-    <button class="btn primario" type="submit">Converter</button>
+    <button class="btn primario" type="submit">Converter texto</button>
   </form>
-  {% if res %}
+
+  {% if res and res.depois is defined %}
   <div class="resultado ok">
     <h3>Resultado</h3>
     <p class="bloco-texto">{{ res.depois }}</p>
     {% if res.mudancas %}
-    <p class="dica">{{ res.mudancas|length }} alteração(ões):
+    <p class="dica">{{ res.mudancas|length }} alteração(ões) verbais:
       {% for a, b in res.mudancas %}<span class="chip">{{ a }} → {{ b }}</span>{% endfor %}
     </p>
-    {% else %}<p class="dica">Nenhum verbo no presente encontrado (modo offline).</p>{% endif %}
+    {% endif %}
   </div>
   {% endif %}
   <a class="voltar" href="{{ url_for('papel', rid=role.id) }}">← Voltar para {{ role.nome }}</a>
