@@ -213,6 +213,7 @@ def criar_templates(form):
         modb = [{"modulo": m, "necessidade": nec, "obs": o} for m, nec, o in rows("mb_mod", "mb_nec", "mb_obs")]
         lev = {
             "cliente": cliente, "data": data, "responsaveis": form.get("responsaveis", ""),
+            "total_usuarios": form.get("total_usuarios", ""),
             "identificacao": {
                 "razao_social": cliente, "ramo": form.get("ramo", ""),
                 "produto": form.get("produto", ""), "fornecedor_atual": form.get("fornecedor_atual", ""),

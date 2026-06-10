@@ -1,202 +1,139 @@
 # -*- coding: utf-8 -*-
-"""Gera o Levantamento (Mapeamento de Processos) (.docx) fiel ao template Rech.
+"""Gera o Levantamento (Mapeamento de Processos) (.docx) PREENCHENDO O MODELO REAL
+da Rech (tools/templates/base_levantamento_modelo.docx). O layout, as seções, as
+áreas, a formatação e o espaçamento vêm do PRÓPRIO modelo — só os campos dinâmicos
+são preenchidos. Não reconstrói nada do zero.
 
 Uso:
     python gerar_levantamento.py [data/levantamento.yaml]
 """
 import os
+import re
 import sys
+import unicodedata
 from docx import Document
-from docx.shared import Pt, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml.ns import qn
-from docx.oxml import OxmlElement
 import _common as C
 import catalogo as CAT
 
-NAVY = RGBColor(0x1F, 0x4E, 0x78)
+MODELO = os.path.join(C.TEMPLATES, "base_levantamento_modelo.docx")
 
 
-def shade_header(row, fill="1F4E78"):
-    for cell in row.cells:
-        tcPr = cell._tc.get_or_add_tcPr()
-        shd = OxmlElement("w:shd"); shd.set(qn("w:val"), "clear"); shd.set(qn("w:fill"), fill)
-        tcPr.append(shd)
-        for p in cell.paragraphs:
-            for r in p.runs:
-                r.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF); r.font.bold = True
+def _set_text(p, text):
+    """Substitui o texto do parágrafo preservando o estilo do 1º run."""
+    if p.runs:
+        p.runs[0].text = text
+        for r in p.runs[1:]:
+            r.text = ""
+    else:
+        p.add_run(text)
+
+
+def _norm_area(s):
+    s = re.sub(r"\(rhu\)", "", (s or "").lower())
+    s = "".join(ch for ch in unicodedata.normalize("NFKD", s) if not unicodedata.combining(ch))
+    return re.sub(r"[^a-z0-9]+", " ", s).strip()
+
+
+def _h(v):
+    """Acrescenta ' horas' quando o valor é só número (informar apenas os números)."""
+    v = (str(v) if v is not None else "").strip()
+    return (v + " horas") if v and v.replace(".", "").replace(",", "").isdigit() else v
+
+
+def _fill_table(tbl, rows_data, start=1):
+    """Preenche as linhas a partir de 'start' (reaproveita linhas vazias; acrescenta o resto)."""
+    for i, row in enumerate(rows_data):
+        r = start + i
+        cells = tbl.rows[r].cells if r < len(tbl.rows) else tbl.add_row().cells
+        for j, v in enumerate(row):
+            if j < len(cells):
+                cells[j].text = str(v) if v is not None else ""
 
 
 def main(lev_path="data/levantamento.yaml"):
     d = C.load_yaml(os.path.basename(lev_path))
-    # Automação: resolve os módulos contratados (códigos/abreviações) no catálogo
-    # e agrupa por área para preencher o Resumo e os "Módulos Previstos".
-    contratados, _faltam = CAT.resolve(d.get("modulos_contratados"))
-    areas_auto = CAT.por_area(contratados) if contratados else None
-    doc, based = C.style_base("levantamento")
-    if not based:
-        doc.styles["Normal"].font.name = "Calibri"
-        doc.styles["Normal"].font.size = Pt(11)
-
-    _HS = {1: 13, 2: 12, 3: 11}
-
-    def H(txt, level=1):
-        return C.docx_heading(doc, txt, size=_HS.get(level, 12))
-
-    def P(txt="", bold=False):
-        p = doc.add_paragraph(); p.add_run(txt).bold = bold
-        return p
-
-    def B(items):
-        for it in items or []:
-            C.docx_bullet(doc, it)
-
-    def table(headers, rows, empty=0):
-        t = doc.add_table(rows=1, cols=len(headers)); t.style = "Table Grid"
-        for i, h in enumerate(headers):
-            t.rows[0].cells[i].paragraphs[0].add_run(h)
-        shade_header(t.rows[0])
-        for row in rows:
-            cells = t.add_row().cells
-            for i, v in enumerate(row): cells[i].text = str(v) if v is not None else ""
-        for _ in range(empty):
-            t.add_row()
-        return t
-
-    # Título
-    C.docx_heading(doc, "Mapeamento de Processos", size=16, center=True)
-    P("").add_run(d.get("cliente", "")).bold = True
-    P(f"Data: {d.get('data','')}")
-    P(f"Responsáveis: {d.get('responsaveis','')}")
-
-    H("Revisões", 2)
-    table(["Data", "Revisão", "Redator", "Motivo da Alteração"], [], empty=5)
-
-    # Identificação
-    H("Informações da empresa", 1)
-    H("Identificação da Empresa", 2)
     idf = d.get("identificacao", {})
-    for label, key in [("Razão Social", "razao_social"), ("Ramo Atividade", "ramo"),
-                       ("Produto", "produto"), ("Fornecedor Atual Software", "fornecedor_atual"),
-                       ("Localização / Filiais", "localizacao"),
-                       ("Observações / Objetivos", "observacoes_objetivos")]:
-        P(f"{label}: {idf.get(key,'')}")
-
-    P("Quantidade usuários e identificação:", bold=True)
-    table(["Nome", "E-mail", "Atribuições"],
-          [[u.get("nome",""), u.get("email",""), u.get("atribuicoes","")] for u in d.get("usuarios", [])],
-          empty=2)
-
-    # Resumo dos Módulos e Adicionais Contratados (A) e (B)
-    P("Resumo dos Módulos e Adicionais Contratados", bold=True)
-
-    def _resumo_rows(lista, fallback=None):
-        if lista:
-            rows = []
-            for m in lista:
-                ach, _ = CAT.resolve([m.get("modulo", "")])
-                nome = f"{ach[0]['abrev']} — {ach[0]['descricao']}" if ach else m.get("modulo", "")
-                nec = (m.get("necessidade", "") or "").strip().lower()
-                rows.append([nome, "X" if nec == "sim" else "",
-                             "X" if nec in ("não", "nao") else "", m.get("obs", "")])
-            return rows
-        if fallback:
-            return [[f"{m['abrev']} — {m['descricao']}", "X", "", ""] for m in fallback]
-        return []
-
-    table(["Módulos/Adicionais (A) — Previstos antes do Levantamento", "Sim", "Não", "Observações"],
-          _resumo_rows(d.get("modulos_previstos_antes"), contratados))
-    table(["Módulos/Adicionais (B) — Identificados no Levantamento", "Sim", "Não", "Observações"],
-          _resumo_rows(d.get("modulos_identificados")))
-
-    # Horas
-    H("Implantação/Treinamento", 2)
-    h = d.get("horas", {})
-    table(["Quantidade de horas Cobradas", "Quantidade de horas Bonificadas", "Total de Horas previstas"],
-          [[h.get("cobradas",""), h.get("bonificadas",""), h.get("total","")]])
-
-    # Conversões — bloco padrão fiel ao template (estimativas vêm do YAML/formulário)
+    contratados, _ = CAT.resolve(d.get("modulos_contratados"))
+    por_area = {}
+    for area, mods in (CAT.por_area(contratados) if contratados else []):
+        por_area[_norm_area(area)] = "; ".join(m["descricao"] for m in mods if m.get("descricao"))
     conv = d.get("conversoes", {})
     e = conv.get("estimativas", {}) if isinstance(conv.get("estimativas"), dict) else {}
 
-    def _h(v):   # acrescenta " horas" quando o valor é só número (informar apenas os números)
-        v = (str(v) if v is not None else "").strip()
-        return (v + " horas") if v and v.replace(".", "").replace(",", "").isdigit() else v
+    if not os.path.exists(MODELO):
+        sys.exit("ERRO: modelo 'tools/templates/base_levantamento_modelo.docx' não encontrado.")
+    doc = Document(MODELO)
 
-    H(f"CONVERSÕES ({conv.get('horas','')} horas)", 2)
-    P("Detalhamento e considerações levantadas:", bold=True)
-    P("Considerações Gerais -> Reforçar que a conversão depende do acesso aos dados ou da "
-      "exportação das informações necessárias para que se torne viável (exceto histórico de "
-      "venda que pode ser feito por importação de XML).")
-    P(f"Imp. Cad. clientes e fornecedores – Estimativa: {_h(e.get('clientes_fornecedores',''))}")
-    P(f"Imp. Cad. produtos – Estimativa: {_h(e.get('produtos',''))}")
-    P(f"Imp. Mov. Financeiro doc. em aberto – Estimativa: {_h(e.get('financeiro',''))}")
-    P("Validar aspectos como:", bold=True)
-    B(["Numero Bancário",
-       "Comissão (se mais de um representante por documento)",
-       "Conta de Planejamento Financeiro (se mais de uma conta por documento – idem com Centro de custo do planejamento)",
-       "Conta Contábil (se mais de uma conta por documento – idem com Centro de custo da contabilidade)"])
-    P(f"Imp. Notas Fiscais já emitidas – Estimativa: {_h(e.get('notas_fiscais',''))}")
-    B(["Validar período desejado (impacto no tempo e na necessidade de ter os arquivos)",
-       "Validar aspectos de mudança de códigos – necessidade de montar equivalência"])
-    P("Importação de Histórico de Compras, por nota de entradas", bold=True)
-    P("Não convertemos. (no máximo que temos é poder importar histórico de Ordens de Compra, "
-      "mas não de notas de entrada em função das equivalências).")
-    P(f"Importação de movimentos da Folha de Pagamento: {_h(e.get('folha',''))}")
+    EST = {
+        "Imp. Cad. clientes e fornecedores – Estimativa:": _h(e.get("clientes_fornecedores", "")),
+        "Imp. Cad. produtos – Estimativa:": _h(e.get("produtos", "")),
+        "Imp. Mov. Financeiro doc. em aberto – Estimativa:": _h(e.get("financeiro", "")),
+        "Imp. Notas Fiscais já emitidas – Estimativa:": _h(e.get("notas_fiscais", "")),
+        "Importação de movimentos da Folha de Pagamento:": _h(e.get("folha", "")),
+    }
 
-    H("Desenvolvimentos Específicos", 2)
-    P(d.get("desenvolvimentos", "A definir"))
+    area_atual = None
+    for p in doc.paragraphs:
+        t = p.text.replace("\xa0", " ").strip()   # normaliza espaço não-quebrável
+        if not t:
+            continue
+        if t.startswith("Mapeamento de processo"):
+            area_atual = _norm_area(re.split(r"[–-]", t, 1)[-1])
+            continue
+        if t == "< Nome Cliente >":
+            _set_text(p, d.get("cliente", ""))
+        elif t.startswith("Data:"):
+            _set_text(p, "Data: " + str(d.get("data", "")))
+        elif t.startswith("Responsáveis:"):
+            _set_text(p, "Responsáveis: " + str(d.get("responsaveis", "")))
+        elif t.startswith("<Razão Social"):
+            _set_text(p, "Razão Social: " + (idf.get("razao_social") or d.get("cliente", "")))
+        elif t.startswith("Ramo Atividade:"):
+            _set_text(p, "Ramo Atividade: " + idf.get("ramo", ""))
+        elif t.startswith("Produto:"):
+            _set_text(p, "Produto: " + idf.get("produto", ""))
+        elif t.startswith("Fornecedor Atual Software:"):
+            _set_text(p, "Fornecedor Atual Software: " + idf.get("fornecedor_atual", ""))
+        elif t.startswith("<Localização"):
+            _set_text(p, "Localização / Filiais: " + idf.get("localizacao", ""))
+        elif t.startswith("Observações / Objetivos:"):
+            _set_text(p, "Observações / Objetivos: " + idf.get("observacoes_objetivos", ""))
+        elif t.startswith("<Quantidade usuários"):
+            tot = d.get("total_usuarios") or (len(d.get("usuarios", [])) or "")
+            _set_text(p, "Quantidade usuários e identificação: " + (str(tot) + " usuários" if tot else ""))
+        elif t.startswith("CONVERSÕES"):
+            _set_text(p, "CONVERSÕES (%s horas)" % conv.get("horas", ""))
+        elif any(t.startswith(pref) for pref in EST):
+            pref = next(pr for pr in EST if t.startswith(pr))
+            _set_text(p, pref + " " + EST[pref])
+        elif re.fullmatch(r"<x+\s*>", t) or t == "XX":
+            _set_text(p, por_area.get(area_atual, ""))
+        # "<Colar aqui...>" e demais textos: mantidos como no modelo
 
-    # Mapeamento por área — AUTOMÁTICO a partir dos módulos contratados (catálogo);
-    # ou manual (campo 'areas') quando não houver 'modulos_contratados'.
-    nao_processo = {"BI e Integrações", "Outros"}
-    base_cadastros = ("Cliente/Fornecedor", "Produto")   # sempre presentes, sem "Módulos Previstos"
-    try:
-        perg_areas = (C.load_yaml("perguntas_levantamento.yaml") or {}).get("areas", {}) or {}
-    except Exception:
-        perg_areas = {}
+    for tbl in doc.tables:
+        h0 = tbl.rows[0].cells[0].text.strip() if tbl.rows else ""
+        if h0 == "Nome":
+            _fill_table(tbl, [[u.get("nome", ""), u.get("email", ""), u.get("atribuicoes", "")]
+                              for u in d.get("usuarios", [])], start=1)
+        elif h0.startswith("Módulos/Adicionais (A)"):
+            rows = [[f"{m['abrev']} — {m['descricao']}", "X", "", ""] for m in contratados]
+            for m in (d.get("modulos_previstos_antes") or []) if not rows else []:
+                nec = (m.get("necessidade", "") or "").strip().lower()
+                rows.append([m.get("modulo", ""), "X" if nec == "sim" else "",
+                             "X" if nec in ("não", "nao") else "", m.get("obs", "")])
+            _fill_table(tbl, rows, start=2)
+        elif h0.startswith("Módulos/Adicionais (B)"):
+            _fill_table(tbl, [[m.get("modulo", ""), m.get("necessidade", ""), m.get("obs", "")]
+                              for m in (d.get("modulos_identificados") or [])], start=2)
+        elif h0.startswith("Quantidade de horas"):
+            h = d.get("horas", {})
+            _fill_table(tbl, [[_h(h.get("cobradas", "")), _h(h.get("bonificadas", "")), _h(h.get("total", ""))]], start=1)
 
-    def map_area(area, mods=None):
-        H(f"Mapeamento de processo – {area.upper()}", 2)
-        if mods is not None:
-            P("Módulos Previstos:", bold=True)
-            B([m["descricao"] for m in mods])
-        for asp in (perg_areas.get(area) or [{"subtitulo": ""}]):
-            sub = asp.get("subtitulo", "")
-            P("Aspectos identificados" + (f" – {sub}" if sub else ""), bold=True)
-            perguntas = asp.get("perguntas") or []
-            if perguntas:
-                B(perguntas)
-            else:
-                P("<Colar aqui o quadro com as perguntas para ir preenchendo as respostas>")
-            if asp.get("nota"):
-                P(asp["nota"])
-        P("Dúvidas e Observações", bold=True)
-
-    if areas_auto:
-        for area in base_cadastros:           # Cliente/Fornecedor e Produto (cadastros base)
-            map_area(area)
-        for area, mods in areas_auto:
-            if area in nao_processo or area in base_cadastros:
-                continue
-            map_area(area, mods)
-    else:
-        for a in d.get("areas", []):
-            H(f"Mapeamento de processo – {a.get('nome','')}", 2)
-            P("Módulos Previstos:", bold=True)
-            P(a.get("modulos_previstos", ""))
-            P("Aspectos identificados", bold=True)
-            B(a.get("aspectos"))
-            P("Dúvidas e Observações", bold=True)
-            B(a.get("duvidas"))
-
-    # (O Roteiro/Check List por módulo é gerado em planilha separada —
-    #  gerar_checklist_consultor.py — como guia do Consultor.)
     C.ensure_out()
     fname = f"Levantamento_{C.slug(d.get('cliente'))}.docx"
     path = os.path.join(C.OUT, fname)
     doc.save(path)
-    print(f"OK: {fname} ({len(d.get('areas', []))} áreas) -> {path}")
+    print(f"OK: {fname} -> {path}")
 
 
 if __name__ == "__main__":
