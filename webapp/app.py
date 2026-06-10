@@ -150,8 +150,13 @@ def config():
         ia.salvar_key(request.form.get("api_key", ""))
         salvo = True
     via_env = bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("CONVERSOR_API_KEY"))
+    try:
+        import anthropic  # noqa: F401
+        sdk_ok = True
+    except Exception:
+        sdk_ok = False
     return render_template("config.html", ativa=ia.disponivel(), modelo=ia.MODELO,
-                           salvo=salvo, via_env=via_env)
+                           salvo=salvo, via_env=via_env, sdk_ok=sdk_ok)
 
 
 @app.route("/download")
