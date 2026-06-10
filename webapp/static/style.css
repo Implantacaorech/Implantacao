@@ -58,3 +58,18 @@ textarea{resize:vertical}
 .mod{display:flex;gap:8px;align-items:flex-start;font-size:.9rem;padding:4px 6px;border-radius:6px}
 .mod:hover{background:#eef2f7}
 .mod input{margin-top:3px}
+.docs-gerar{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin:6px 0 14px;padding:10px 14px;background:#f1f5f9;border-radius:8px}
+.docs-gerar label{display:flex;gap:6px;align-items:center;font-weight:600}
+.abas{display:flex;gap:4px;border-bottom:2px solid var(--line);margin-bottom:14px;flex-wrap:wrap}
+.aba{background:#eef2f7;border:1px solid var(--line);border-bottom:none;border-radius:8px 8px 0 0;padding:8px 16px;cursor:pointer;font:inherit;font-weight:600;color:var(--muted)}
+.aba.ativa{background:#fff;color:var(--navy);border-bottom:2px solid #fff;margin-bottom:-2px}
+.painel-aba{display:none}
+.painel-aba.ativa{display:block}
+.form-tab{width:100%;border-collapse:collapse;margin:6px 0}
+.form-tab th{background:#1F4E78;color:#fff;font-size:.82rem;padding:6px 8px;text-align:left}
+.form-tab td{border:1px solid var(--line);padding:3px}
+.form-tab input,.form-tab select{width:100%;border:1px solid #e2e8f0;border-radius:5px;padding:5px;font:inherit;box-sizing:border-box}
+.form-tab td button{border:1px solid var(--line);background:#fff;border-radius:5px;cursor:pointer;padding:4px 9px}
+.rodape-form{display:flex;gap:8px;align-items:center;margin-top:16px;padding:10px 14px;background:#f1f5f9;border-radius:8px;flex-wrap:wrap}
+.rodape-form select{padding:6px;border:1px solid #e2e8f0;border-radius:6px;font:inherit}
+.painel-aba h3{color:var(--navy);margin:16px 0 4px}

@@ -70,6 +70,16 @@ def acao(rid, aid):
                                grupos=runner.catalogo_por_area(), res=res,
                                cliente_nome=session.get("cliente_nome"))
 
+    if a["tipo"] == "criar_templates":
+        res = runner.criar_templates(request.form) if request.method == "POST" else None
+        import datetime
+        hoje = datetime.date.today()
+        meses = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
+                 "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
+        return render_template("criar_templates.html", role=r, acao=a, res=res,
+                               cliente_nome=session.get("cliente_nome"), meses=meses,
+                               hoje_dia=hoje.day, hoje_mes=hoje.month, hoje_ano=hoje.year)
+
     if a["tipo"] == "verbal":
         if request.method == "POST":
             f = request.files.get("arquivo")

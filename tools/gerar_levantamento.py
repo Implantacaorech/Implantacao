@@ -87,17 +87,27 @@ def main(lev_path="data/levantamento.yaml"):
           [[u.get("nome",""), u.get("email",""), u.get("atribuicoes","")] for u in d.get("usuarios", [])],
           empty=2)
 
-    # Resumo dos Módulos e Adicionais Contratados (A)
+    # Resumo dos Módulos e Adicionais Contratados (A) e (B)
     P("Resumo dos Módulos e Adicionais Contratados", bold=True)
-    if contratados:
-        rows_a = [[f"{m['abrev']} — {m['descricao']}", "X", "", ""] for m in contratados]
-    else:
-        rows_a = [[m.get("modulo", ""), m.get("necessidade", ""), "", m.get("obs", "")]
-                  for m in d.get("modulos_previstos_antes", [])]
-    table(["Módulos/Adicionais (A) — Previstos antes do Levantamento", "Sim", "Não", "Observações"], rows_a)
+
+    def _resumo_rows(lista, fallback=None):
+        if lista:
+            rows = []
+            for m in lista:
+                ach, _ = CAT.resolve([m.get("modulo", "")])
+                nome = f"{ach[0]['abrev']} — {ach[0]['descricao']}" if ach else m.get("modulo", "")
+                nec = (m.get("necessidade", "") or "").strip().lower()
+                rows.append([nome, "X" if nec == "sim" else "",
+                             "X" if nec in ("não", "nao") else "", m.get("obs", "")])
+            return rows
+        if fallback:
+            return [[f"{m['abrev']} — {m['descricao']}", "X", "", ""] for m in fallback]
+        return []
+
+    table(["Módulos/Adicionais (A) — Previstos antes do Levantamento", "Sim", "Não", "Observações"],
+          _resumo_rows(d.get("modulos_previstos_antes"), contratados))
     table(["Módulos/Adicionais (B) — Identificados no Levantamento", "Sim", "Não", "Observações"],
-          [[m.get("modulo", ""), m.get("necessidade", ""), "", m.get("obs", "")]
-           for m in d.get("modulos_identificados", [])])
+          _resumo_rows(d.get("modulos_identificados")))
 
     # Horas
     H("Implantação/Treinamento", 2)

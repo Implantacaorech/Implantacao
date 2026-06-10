@@ -186,3 +186,74 @@ def gerar_levantamento_form(form, modulos):
 def gerar_checklist_form(form, modulos):
     """Gera SÓ o Check List do Consultor (Excel) — após o Projeto, módulos finais."""
     return run_generator("gerar_checklist_consultor", _yaml_de_form(form, modulos))
+
+
+_MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
+          "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
+
+
+def criar_templates(form):
+    """Tela 'Criação dos Templates': monta os YAMLs do Mapeamento (Levantamento)
+    e do Termo a partir do formulário tabbado e gera os documentos marcados."""
+    import yaml as _yaml
+    g = form.getlist
+    cliente = (form.get("cliente") or "Cliente").strip()
+    slug = C.slug(cliente)
+    data = "%s/%s/%s" % (form.get("data_dia", ""), form.get("data_mes", ""), form.get("data_ano", ""))
+    res = {"ok": True, "mapa": None, "termo": None}
+
+    def rows(*names):
+        out = []
+        for vals in zip(*[g(n) for n in names]):
+            if any((v or "").strip() for v in vals):
+                out.append(vals)
+        return out
+
+    if form.get("gen_mapa"):
+        moda = [{"modulo": m, "necessidade": nec, "obs": o} for m, nec, o in rows("ma_mod", "ma_nec", "ma_obs")]
+        modb = [{"modulo": m, "necessidade": nec, "obs": o} for m, nec, o in rows("mb_mod", "mb_nec", "mb_obs")]
+        lev = {
+            "cliente": cliente, "data": data, "responsaveis": form.get("responsaveis", ""),
+            "identificacao": {
+                "razao_social": cliente, "ramo": form.get("ramo", ""),
+                "produto": form.get("produto", ""), "fornecedor_atual": form.get("fornecedor_atual", ""),
+                "localizacao": form.get("localizacao", ""), "observacoes_objetivos": form.get("observacoes", ""),
+            },
+            "usuarios": [{"nome": n, "email": e, "atribuicoes": a} for n, e, a in rows("u_nome", "u_email", "u_atrib")],
+            "modulos_contratados": [m["modulo"] for m in moda if m["modulo"].strip()],
+            "modulos_previstos_antes": moda,
+            "modulos_identificados": modb,
+            "conversoes": {"horas": form.get("cv_total", ""), "estimativas": {
+                "clientes_fornecedores": form.get("cv_cli", ""), "produtos": form.get("cv_prod", ""),
+                "financeiro": form.get("cv_fin", ""), "notas_fiscais": form.get("cv_nf", ""),
+                "folha": form.get("cv_folha", "")}},
+            "horas": {"cobradas": form.get("h_cob", ""), "bonificadas": form.get("h_bon", ""), "total": form.get("h_tot", "")},
+        }
+        base = "lev_%s.yaml" % slug
+        with open(os.path.join(DATA, base), "w", encoding="utf-8") as f:
+            _yaml.safe_dump(lev, f, allow_unicode=True, sort_keys=False, width=200)
+        res["mapa"], _ = run_generator("gerar_levantamento", base)
+
+    if form.get("gen_termo"):
+        mes = form.get("data_mes", "")
+        mes_nome = _MESES[int(mes) - 1] if mes.isdigit() and 1 <= int(mes) <= 12 else ""
+        termo = {
+            "cliente": cliente, "numero_projeto": form.get("numero_projeto", ""),
+            "data_validacao": form.get("data_validacao", ""),
+            "alteracoes": [{"modulo": m, "rotina": r, "descricao": dsc}
+                           for m, r, dsc in rows("alt_modulo", "alt_rotina", "alt_desc")],
+            "resumo_modulos": [{"modulo": m, "adicional": a, "processo": p, "status_uso": s, "obs": o}
+                               for m, a, p, s, o in rows("tr_modulo", "tr_adic", "tr_proc", "tr_status", "tr_obs")],
+            "observacoes": [l.strip() for l in (form.get("termo_obs", "") or "").splitlines() if l.strip()],
+            "pendencias": [{"pendencia": p, "tecnico": t, "detalhamento": d2}
+                           for p, t, d2 in rows("pend_p", "pend_t", "pend_d")],
+            "cidade_data": "Novo Hamburgo, %s de %s de %s." % (form.get("data_dia", ""), mes_nome, form.get("data_ano", "")),
+        }
+        base = "termo_%s.yaml" % slug
+        with open(os.path.join(DATA, base), "w", encoding="utf-8") as f:
+            _yaml.safe_dump(termo, f, allow_unicode=True, sort_keys=False, width=200)
+        res["termo"], _ = run_generator("gerar_termo_encerramento", base)
+
+    if not (res["mapa"] or res["termo"]):
+        return {"ok": False, "erro": "Marque ao menos um documento a gerar."}
+    return res
