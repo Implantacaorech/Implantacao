@@ -14,8 +14,8 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo Verificando dependencias (flask, python-docx, openpyxl, pyyaml)...
-python -m pip install --quiet flask python-docx openpyxl pyyaml
+echo Verificando dependencias (flask, python-docx, openpyxl, pyyaml, anthropic)...
+python -m pip install --quiet flask python-docx openpyxl pyyaml anthropic
 
 echo.
 echo Iniciando o Painel... o navegador abrira em alguns segundos.

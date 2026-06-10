@@ -79,7 +79,13 @@ def acao(rid, aid):
                 texto = request.form.get("texto", "")
                 novo, mudancas = runner.converter_verbal(texto)
                 res = {"antes": texto, "depois": novo, "mudancas": mudancas}
-        return render_template("verbal.html", role=r, acao=a, res=res)
+        try:
+            import ia
+            ia_ativa, ia_modelo = ia.disponivel(), ia.MODELO
+        except Exception:
+            ia_ativa, ia_modelo = False, ""
+        return render_template("verbal.html", role=r, acao=a, res=res,
+                               ia_ativa=ia_ativa, ia_modelo=ia_modelo)
 
     if a["tipo"] == "saude":
         code, relatorio = runner.run_saude()
@@ -134,6 +140,18 @@ def cliente():
         return redirect(request.args.get("next") or url_for("home"))
     return render_template("cliente.html", campos=forms.CLIENTE_FIELDS,
                            atual=session.get("cliente_nome"), valores={})
+
+
+@app.route("/config", methods=["GET", "POST"])
+def config():
+    import ia
+    salvo = False
+    if request.method == "POST":
+        ia.salvar_key(request.form.get("api_key", ""))
+        salvo = True
+    via_env = bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("CONVERSOR_API_KEY"))
+    return render_template("config.html", ativa=ia.disponivel(), modelo=ia.MODELO,
+                           salvo=salvo, via_env=via_env)
 
 
 @app.route("/download")

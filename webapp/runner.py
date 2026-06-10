@@ -81,11 +81,18 @@ def run_sequencia(docx_path):
 
 
 def converter_verbal(texto):
-    """Presente→Futuro + correção ortográfica. Retorna (texto, mudanças_verbais)."""
+    """Presente→Futuro + ortografia (offline) e, havendo chave de API, reconferência
+    pela IA (Claude). Retorna (texto, mudanças_verbais do offline)."""
     import conversor_verbal as V
     import ortografia as O
     novo, mudancas = V.converter_texto(texto)
-    return O.corrigir(novo), mudancas
+    novo = O.corrigir(novo)
+    try:
+        import ia
+        novo = ia.revisar(novo)          # reconferência IA (no-op sem chave)
+    except Exception:
+        pass
+    return novo, mudancas
 
 
 def converter_docx(file_storage):
@@ -101,21 +108,30 @@ def converter_docx(file_storage):
     file_storage.save(src)
     doc = Document(src)
 
-    def conv(t):
-        return O.corrigir(V.converter(t)) if t else t
+    runs = []
 
-    def trata(par):
+    def coleta(par):
         for r in par.runs:
             if r.text:
-                r.text = conv(r.text)
+                runs.append(r)
 
     for p in doc.paragraphs:
-        trata(p)
+        coleta(p)
     for t in doc.tables:
         for row in t.rows:
             for cell in row.cells:
                 for p in cell.paragraphs:
-                    trata(p)
+                    coleta(p)
+
+    textos = [O.corrigir(V.converter(r.text)) for r in runs]   # offline (verbal+ortografia)
+    try:
+        import ia
+        if ia.disponivel():
+            textos = ia.revisar_lote(textos)                   # reconferência IA em lote
+    except Exception:
+        pass
+    for r, t in zip(runs, textos):
+        r.text = t
 
     C.ensure_out()
     out = os.path.join(C.OUT, "%s_corrigido.docx" % slug)

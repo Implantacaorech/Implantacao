@@ -26,7 +26,7 @@ NAME = "PainelImplantacao"
 # Módulos importados dinamicamente (importlib) — o PyInstaller não os detecta.
 HIDDEN = [
     "roles", "runner", "forms", "_common", "schema_projeto", "conversor_verbal",
-    "importar_mapeamento", "verificar", "catalogo", "checklist", "ortografia",
+    "importar_mapeamento", "verificar", "catalogo", "checklist", "ortografia", "ia",
     "gerar_kit_mudanca", "gerar_roteiros_teste", "gerar_aceite_uat",
     "gerar_reconciliacao_conversao", "gerar_painel_hypercare", "gerar_log_fitgap",
     "gerar_painel_kpi", "gerar_raid", "gerar_dossie_cliente",
@@ -77,6 +77,8 @@ def main():
            "--paths", os.path.join(BASE, "tools"),
            "--paths", os.path.join(BASE, "webapp"),
            "--collect-data", "docx",            # default.docx do python-docx
+           "--collect-all", "anthropic",        # SDK do modo IA (Claude)
+           "--collect-data", "certifi",         # bundle de CAs p/ HTTPS
            "--workpath", os.path.join(workdir, "build"),
            "--distpath", os.path.join(workdir, "dist"),
            "--specpath", workdir]

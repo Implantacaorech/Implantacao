@@ -6,6 +6,11 @@
   <p class="sub">Converte verbos do Presente para o Futuro (utiliza→utilizará, é→será) e aplica
     correção ortográfica. Preserva termos técnicos (Formulação/Estrutura, SIGER, NF-e…).</p>
 
+  <div class="resultado {{ 'ok' if ia_ativa else '' }}" style="padding:10px 16px">
+    {% if ia_ativa %}🟢 <strong>Reconferência por IA ativa</strong> (modelo <code>{{ ia_modelo }}</code>) — futuro do presente do indicativo.
+    {% else %}⚪ Só corretor <strong>offline</strong>. <a href="{{ url_for('config') }}">Ativar reconferência por IA</a> para uma 2ª revisão.{% endif %}
+  </div>
+
   {% if res and res.arquivo %}
   <div class="resultado ok">
     <h3>✅ Documento corrigido</h3>

@@ -346,6 +346,13 @@ def to_yaml_dict(data, aplicar_verbal=True):
                 if aplicar_verbal and k in VERBAL_FIELDS:
                     linhas = [V.converter(ln) for ln in linhas]      # tempo verbal
                 linhas = [O.corrigir(ln) for ln in linhas]           # ortografia (em tudo)
+                if aplicar_verbal and k in VERBAL_FIELDS:
+                    try:
+                        import ia
+                        if ia.disponivel():
+                            linhas = ia.revisar_lote(linhas)         # reconferência IA
+                    except Exception:
+                        pass
                 v = "\n".join(linhas)
             if k in block and "\n" in v:
                 out[k] = v.split("\n")
