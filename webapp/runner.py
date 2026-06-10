@@ -72,9 +72,8 @@ def catalogo_por_area():
     return CAT.por_area(CAT.load())
 
 
-def gerar_levantamento_form(form, modulos):
-    """Monta o levantamento.yaml a partir do formulário (campos + módulos marcados)
-    e gera o documento. Retorna (caminho, log)."""
+def _yaml_de_form(form, modulos):
+    """Escreve um YAML (cliente + identificação + modulos_contratados) e devolve o basename."""
     import yaml as _yaml
     nome = (form.get("cliente") or "Cliente").strip()
     doc = {
@@ -94,6 +93,14 @@ def gerar_levantamento_form(form, modulos):
     base = "lev_" + C.slug(nome) + ".yaml"
     with open(os.path.join(DATA, base), "w", encoding="utf-8") as f:
         _yaml.safe_dump(doc, f, allow_unicode=True, sort_keys=False, width=120)
-    doc_path, _ = run_generator("gerar_levantamento", base)          # Levantamento (Word)
-    xls_path, _ = run_generator("gerar_checklist_consultor", base)   # Check List (Excel)
-    return doc_path, xls_path
+    return base
+
+
+def gerar_levantamento_form(form, modulos):
+    """Gera SÓ o Levantamento (Word). Retorna (caminho, log)."""
+    return run_generator("gerar_levantamento", _yaml_de_form(form, modulos))
+
+
+def gerar_checklist_form(form, modulos):
+    """Gera SÓ o Check List do Consultor (Excel) — após o Projeto, módulos finais."""
+    return run_generator("gerar_checklist_consultor", _yaml_de_form(form, modulos))

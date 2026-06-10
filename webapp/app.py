@@ -57,13 +57,16 @@ def acao(rid, aid):
         abort(404)
     res = None
 
-    if a["tipo"] == "form_levantamento":
+    if a["tipo"] == "form_modulos":
         if request.method == "POST":
             mods = request.form.getlist("modulos")
-            doc_path, xls_path = runner.gerar_levantamento_form(request.form, mods)
-            res = {"ok": bool(doc_path or xls_path), "doc": doc_path, "xls": xls_path,
-                   "erro": None if (doc_path or xls_path) else "Não foi possível gerar."}
-        return render_template("levantamento_form.html", role=r, acao=a,
+            if a.get("gera") == "checklist":
+                xls, _ = runner.gerar_checklist_form(request.form, mods)
+                res = {"ok": bool(xls), "xls": xls, "erro": None if xls else "Não foi possível gerar."}
+            else:
+                doc, _ = runner.gerar_levantamento_form(request.form, mods)
+                res = {"ok": bool(doc), "doc": doc, "erro": None if doc else "Não foi possível gerar."}
+        return render_template("selecao_modulos.html", role=r, acao=a,
                                grupos=runner.catalogo_por_area(), res=res,
                                cliente_nome=session.get("cliente_nome"))
 

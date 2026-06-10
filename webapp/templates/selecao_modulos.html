@@ -1,10 +1,9 @@
 {% extends "base.html" %}
-{% block titulo %}Gerar Levantamento{% endblock %}
+{% block titulo %}{{ acao.nome }}{% endblock %}
 {% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('papel', rid=role.id) }}">{{ role.nome }}</a> › {{ acao.nome }}</div>{% endblock %}
 {% block conteudo %}
   <h1>{{ acao.nome }}</h1>
-  <p class="sub">Preencha os dados e <strong>marque os módulos contratados</strong>. O Resumo e os
-    “Módulos Previstos” por área são preenchidos automaticamente pelo catálogo.</p>
+  <p class="sub">{{ acao.desc }}</p>
 
   {% if res %}
     {% if res.ok %}
@@ -29,7 +28,7 @@
       <label class="campo"><span>Observações / Objetivos</span><input type="text" name="observacoes"></label>
     </div>
 
-    <h3 style="color:#1F4E78">Módulos e adicionais contratados</h3>
+    <h3 style="color:#1F4E78">Módulos e adicionais</h3>
     <p class="dica">Marque os módulos. As áreas seguem o catálogo (editável em <code>catalogo_modulos.yaml</code>).</p>
     {% for area, mods in grupos %}
     <fieldset class="area-box">
@@ -43,7 +42,7 @@
     </fieldset>
     {% endfor %}
 
-    <button class="btn primario" type="submit" style="margin-top:16px">Gerar Levantamento</button>
+    <button class="btn primario" type="submit" style="margin-top:16px">Gerar</button>
   </form>
   <a class="voltar" href="{{ url_for('papel', rid=role.id) }}">← Voltar para {{ role.nome }}</a>
 {% endblock %}
