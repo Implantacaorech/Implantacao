@@ -39,6 +39,10 @@ ALLOWED_DIRS = [C.OUT, C.DATA_WRITE, C.DATA, UPLOADS]
 db.init_db()   # cria o banco do hub (Projetos por Cliente) se não existir
 
 
+def _autor():
+    return session.get("perfil_nome") or ""
+
+
 @app.route("/")
 def home():
     return render_template("home.html", roles=roles.ROLES)
@@ -211,7 +215,12 @@ def projeto_ficha(pid):
         if not p:
             abort(404)
         if request.method == "POST":
+            etapa_old, sit_old = p.etapa, p.situacao
             db.aplicar_form(p, request.form)
+            if p.etapa != etapa_old:
+                db.registrar_evento(s, pid, "etapa", "Etapa: %s → %s" % (etapa_old, p.etapa), _autor())
+            if p.situacao != sit_old:
+                db.registrar_evento(s, pid, "etapa", "Situação: %s → %s" % (sit_old, p.situacao), _autor())
             s.commit()
             docs = [db.to_dict(x) for x in s.query(db.Documento).filter_by(projeto_id=pid).all()]
             g = db.gate_status(p.etapa, docs)
@@ -223,10 +232,12 @@ def projeto_ficha(pid):
         docs = [db.to_dict(x) for x in s.query(db.Documento)
                 .filter_by(projeto_id=pid).order_by(db.Documento.criado_em.desc()).all()]
         gate = db.gate_status(d["etapa"], docs)
+        eventos = [db.to_dict(x) for x in s.query(db.Evento)
+                   .filter_by(projeto_id=pid).order_by(db.Evento.criado_em.desc()).all()]
     return render_template("projeto_ficha.html", p=d, docs=docs, etapas=db.ETAPAS,
                            situacoes=db.SITUACOES, salvo=request.args.get("salvo"),
                            erro=request.args.get("erro"), aviso=request.args.get("aviso"),
-                           gate=gate, doc_tipos=db.DOC_LABELS)
+                           gate=gate, doc_tipos=db.DOC_LABELS, eventos=eventos)
 
 
 @app.route("/projetos/<int:pid>/excluir", methods=["POST"])
@@ -254,6 +265,8 @@ def projeto_gerar(pid, tipo):
         with db.Session() as s:
             s.add(db.Documento(projeto_id=pid, tipo=tipo,
                                arquivo=os.path.basename(path), caminho=path))
+            db.registrar_evento(s, pid, "documento",
+                                "Gerou %s (%s)" % (os.path.basename(path), tipo), _autor())
             s.commit()
     return redirect(url_for("projeto_ficha", pid=pid))
 
@@ -278,6 +291,8 @@ def projeto_gerar_projeto(pid):
         with db.Session() as s:
             s.add(db.Documento(projeto_id=pid, tipo="projeto",
                                arquivo=os.path.basename(proj_path), caminho=proj_path))
+            db.registrar_evento(s, pid, "documento",
+                                "Gerou %s (projeto, pelo Mapeamento)" % os.path.basename(proj_path), _autor())
             s.commit()
     return redirect(url_for("projeto_ficha", pid=pid))
 
@@ -299,8 +314,22 @@ def projeto_anexar(pid):
     with db.Session() as s:
         s.add(db.Documento(projeto_id=pid, tipo=tipo,
                            arquivo=os.path.basename(path), caminho=path))
+        db.registrar_evento(s, pid, "documento",
+                            "Anexou %s (%s)" % (os.path.basename(path), tipo), _autor())
         s.commit()
     return redirect(url_for("projeto_ficha", pid=pid, salvo=1))
+
+
+@app.route("/projetos/<int:pid>/nota", methods=["POST"])
+def projeto_nota(pid):
+    texto = (request.form.get("nota") or "").strip()
+    if texto:
+        with db.Session() as s:
+            if not s.get(db.Projeto, pid):
+                abort(404)
+            db.registrar_evento(s, pid, "nota", texto, _autor())
+            s.commit()
+    return redirect(url_for("projeto_ficha", pid=pid))
 
 
 @app.route("/mapa")

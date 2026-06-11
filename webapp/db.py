@@ -120,13 +120,32 @@ class Documento(Base):
     criado_em = Column(DateTime, default=datetime.now)
 
 
+class Evento(Base):
+    """Item da timeline/histórico de um projeto (auditoria + passagem de bastão)."""
+    __tablename__ = "eventos"
+    id = Column(Integer, primary_key=True)
+    projeto_id = Column(Integer, index=True)
+    tipo = Column(String(30), default="nota")   # nota, etapa, documento, email, alerta
+    descricao = Column(Text, default="")
+    autor = Column(String(120), default="")
+    criado_em = Column(DateTime, default=datetime.now)
+
+
+def registrar_evento(s, projeto_id, tipo, descricao, autor=""):
+    """Adiciona um evento à timeline (na sessão aberta `s`; o commit é do chamador)."""
+    s.add(Evento(projeto_id=projeto_id, tipo=tipo, descricao=descricao, autor=autor or ""))
+
+
 def to_dict(obj):
     return {c.name: getattr(obj, c.name) for c in obj.__table__.columns}
 
 
 def aplicar_form(p, form):
     for c in CAMPOS:
-        setattr(p, c, (form.get(c) or "").strip())
+        v = (form.get(c) or "").strip()
+        if c in ("etapa", "situacao") and not v:
+            continue   # não zera os defaults (Levantamento / Em andamento) se vierem vazios
+        setattr(p, c, v)
     if not p.cliente:
         p.cliente = "Cliente"
     return p

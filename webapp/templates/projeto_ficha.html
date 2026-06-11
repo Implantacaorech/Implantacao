@@ -84,6 +84,21 @@
   </table>
   {% endif %}
 
+  <h3 style="color:var(--navy);margin-top:22px">🕒 Histórico do projeto</h3>
+  <form method="post" action="{{ url_for('projeto_nota', pid=p.id) }}" style="display:flex;gap:8px;margin-bottom:10px">
+    <input name="nota" placeholder="Anotar uma observação na timeline…" style="flex:1;padding:8px;border:1px solid var(--line);border-radius:8px">
+    <button class="btn" type="submit">📝 Anotar</button>
+  </form>
+  {% if eventos %}
+  <ul class="timeline">
+  {% for ev in eventos %}
+    <li><span class="tl-ico">{{ {'nota':'📝','etapa':'🔀','documento':'📄','email':'✉️','alerta':'⚠️'}.get(ev.tipo,'•') }}</span>
+      <div><div>{{ ev.descricao }}</div>
+      <small class="dica" style="margin:0">{{ ev.criado_em.strftime('%d/%m/%Y %H:%M') if ev.criado_em else '' }}{% if ev.autor %} · {{ ev.autor }}{% endif %}</small></div></li>
+  {% endfor %}
+  </ul>
+  {% else %}<p class="dica">Sem eventos ainda.</p>{% endif %}
+
   <form method="post" action="{{ url_for('projeto_excluir', pid=p.id) }}" onsubmit="return confirm('Excluir este projeto?')" style="margin-top:16px">
     <button class="btn" type="submit">🗑️ Excluir projeto</button>
   </form>
