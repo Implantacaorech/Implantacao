@@ -70,8 +70,19 @@ class Projeto(Base):
     atualizado_em = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
-def to_dict(p):
-    return {c.name: getattr(p, c.name) for c in Projeto.__table__.columns}
+class Documento(Base):
+    """Documento gerado e anexado a um projeto (histórico/versionado)."""
+    __tablename__ = "documentos"
+    id = Column(Integer, primary_key=True)
+    projeto_id = Column(Integer, index=True)
+    tipo = Column(String(40), default="")
+    arquivo = Column(String(255), default="")
+    caminho = Column(Text, default="")
+    criado_em = Column(DateTime, default=datetime.now)
+
+
+def to_dict(obj):
+    return {c.name: getattr(obj, c.name) for c in obj.__table__.columns}
 
 
 def aplicar_form(p, form):

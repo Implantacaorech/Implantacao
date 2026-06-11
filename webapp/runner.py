@@ -256,3 +256,40 @@ def criar_templates(form):
     if not (res["mapa"] or res["termo"]):
         return {"ok": False, "erro": "Marque ao menos um documento a gerar."}
     return res
+
+
+def _dump_yaml(d, base):
+    import yaml as _yaml
+    with open(os.path.join(DATA, base), "w", encoding="utf-8") as f:
+        _yaml.safe_dump(d, f, allow_unicode=True, sort_keys=False, width=200)
+    return base
+
+
+def gerar_do_projeto(proj, tipo):
+    """Gera um documento a partir do registro do Projeto (hub): usa cliente + módulos +
+    horas + nº do projeto. Retorna (caminho, log)."""
+    cliente = (proj.get("cliente") or "Cliente").strip()
+    slug = C.slug(cliente)
+    mods = [m.strip() for m in re.split(r"[,;\n\s]+", proj.get("modulos", "") or "") if m.strip()]
+    if tipo == "levantamento":
+        lev = {"cliente": cliente, "data": proj.get("data_inicio", ""),
+               "responsaveis": proj.get("responsavel", ""),
+               "identificacao": {"razao_social": cliente, "ramo": proj.get("ramo", ""),
+                                 "observacoes_objetivos": proj.get("observacoes", "")},
+               "modulos_contratados": mods,
+               "horas": {"cobradas": proj.get("horas_cobradas", ""),
+                         "bonificadas": proj.get("horas_bonificadas", ""), "total": ""}}
+        return run_generator("gerar_levantamento", _dump_yaml(lev, "lev_%s.yaml" % slug))
+    if tipo == "checklist":
+        return run_generator("gerar_checklist_consultor",
+                             _dump_yaml({"cliente": cliente, "modulos_contratados": mods}, "lev_%s.yaml" % slug))
+    if tipo == "termo":
+        import catalogo as CAT
+        achados, _ = CAT.resolve(mods)
+        resumo = [{"modulo": m.get("descricao") or m.get("abrev"), "adicional": "",
+                   "processo": "Implantado", "status_uso": "Sim", "obs": ""} for m in achados]
+        termo = {"cliente": cliente, "numero_projeto": proj.get("numero_projeto", ""),
+                 "resumo_modulos": resumo, "alteracoes": [], "observacoes": [], "pendencias": [],
+                 "cidade_data": "Novo Hamburgo, ____ de ____________ de 2026."}
+        return run_generator("gerar_termo_encerramento", _dump_yaml(termo, "termo_%s.yaml" % slug))
+    return None, ""

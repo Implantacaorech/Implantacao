@@ -28,8 +28,28 @@
   </form>
 
   {% if p %}
-  <form method="post" action="{{ url_for('projeto_excluir', pid=p.id) }}" onsubmit="return confirm('Excluir este projeto?')" style="margin-top:10px">
-    <button class="btn" type="submit">🗑️ Excluir</button>
+  <h3 style="color:var(--navy);margin-top:22px">Documentos do projeto</h3>
+  <p class="dica">Gera a partir dos dados salvos deste cliente (módulos, horas, nº) e anexa abaixo.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='levantamento') }}"><button class="btn" type="submit">📄 Gerar Mapeamento</button></form>
+    <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='checklist') }}"><button class="btn" type="submit">📊 Gerar Check List</button></form>
+    <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='termo') }}"><button class="btn" type="submit">📑 Gerar Termo</button></form>
+  </div>
+  {% if docs %}
+  <table class="form-tab" style="margin-top:10px">
+    <thead><tr><th>Arquivo</th><th>Tipo</th><th>Gerado em</th><th></th></tr></thead>
+    <tbody>
+    {% for d in docs %}
+      <tr><td>{{ d.arquivo }}</td><td>{{ d.tipo }}</td>
+          <td><small>{{ d.criado_em.strftime('%d/%m/%Y %H:%M') if d.criado_em else '' }}</small></td>
+          <td><a class="btn" href="{{ url_for('download', path=d.caminho) }}">⬇️ Baixar</a></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('projeto_excluir', pid=p.id) }}" onsubmit="return confirm('Excluir este projeto?')" style="margin-top:16px">
+    <button class="btn" type="submit">🗑️ Excluir projeto</button>
   </form>
   {% endif %}
   <a class="voltar" href="{{ url_for('projetos') }}">← Voltar para Projetos</a>

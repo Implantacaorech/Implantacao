@@ -203,7 +203,9 @@ def projeto_ficha(pid):
             s.commit()
             return redirect(url_for("projeto_ficha", pid=pid, salvo=1))
         d = db.to_dict(p)
-    return render_template("projeto_ficha.html", p=d, etapas=db.ETAPAS,
+        docs = [db.to_dict(x) for x in s.query(db.Documento)
+                .filter_by(projeto_id=pid).order_by(db.Documento.criado_em.desc()).all()]
+    return render_template("projeto_ficha.html", p=d, docs=docs, etapas=db.ETAPAS,
                            situacoes=db.SITUACOES, salvo=request.args.get("salvo"))
 
 
@@ -215,6 +217,25 @@ def projeto_excluir(pid):
             s.delete(p)
             s.commit()
     return redirect(url_for("projetos"))
+
+
+@app.route("/projetos/<int:pid>/gerar/<tipo>", methods=["POST"])
+def projeto_gerar(pid, tipo):
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        if not p:
+            abort(404)
+        proj = db.to_dict(p)
+    try:
+        path, _log = runner.gerar_do_projeto(proj, tipo)
+    except Exception:
+        path = None
+    if path:
+        with db.Session() as s:
+            s.add(db.Documento(projeto_id=pid, tipo=tipo,
+                               arquivo=os.path.basename(path), caminho=path))
+            s.commit()
+    return redirect(url_for("projeto_ficha", pid=pid))
 
 
 @app.route("/mapa")
