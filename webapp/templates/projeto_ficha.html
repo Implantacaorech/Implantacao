@@ -39,7 +39,7 @@
     {% endfor %}
   </div>
   <div class="kpis-ficha">
-    <div class="kpi-f"><div class="l">Fase atual</div><div class="n">{{ cab.fase }}</div></div>
+    <div class="kpi-f"><div class="l">Etapa atual</div><div class="n" style="font-size:1.15rem">{{ cab.etapa }}</div></div>
     <div class="kpi-f"><div class="l">Go-live previsto</div><div class="n {{ 'alerta' if cab.atraso }}" style="font-size:1.05rem">{% set g = cab.go_live %}{% if g|length == 10 %}{{ g[8:10] }}/{{ g[5:7] }}/{{ g[0:4] }}{% else %}—{% endif %}{% if cab.atraso %} · {{ cab.atraso }}d atraso{% endif %}</div></div>
     <div class="kpi-f"><div class="l">Horas contratadas</div><div class="n">{{ cab.horas_total|int }}{% if cab.horas_bon %} <span style="font-size:.62rem;color:var(--muted);font-weight:400">({{ cab.horas_cob|int }}+{{ cab.horas_bon|int }})</span>{% endif %}</div></div>
     <div class="kpi-f"><div class="l">Docs obrigatórios</div><div class="n {{ 'alerta' if cab.docs_ok < cab.docs_total }}">{{ cab.docs_ok }} / {{ cab.docs_total }}</div></div>
@@ -48,15 +48,21 @@
   <div class="proxima">
     <span class="ic">⚠️</span>
     <div class="txt"><div style="font-weight:700;color:var(--navy)">Próxima ação: gerar o {{ cab.proxima.label }}</div>
-      <div class="dica" style="margin:0">Documento obrigatório desta fase — clique para resolver agora.</div></div>
+      <div class="dica" style="margin:0">{% if cab.prox_etapa %}Necessário para avançar para {{ cab.prox_etapa }}.{% else %}Documento obrigatório para encerrar.{% endif %}</div></div>
     {% if cab.proxima.tipo in ['levantamento','checklist','cronograma','termo'] %}
       <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo=cab.proxima.tipo) }}"><button class="btn primario" type="submit">Gerar agora</button></form>
     {% elif cab.proxima.tipo == 'projeto' %}
       <button class="btn primario" type="button" onclick="aba('t-docs')">Importar Mapeamento</button>
     {% endif %}
   </div>
+  {% elif cab.prox_etapa %}
+  <div class="proxima ok">
+    <span class="ic">✅</span>
+    <div class="txt"><div style="font-weight:700;color:var(--ok)">Fase liberada — pronto para avançar.</div></div>
+    <form method="post" action="{{ url_for('projeto_avancar', pid=p.id) }}"><button class="btn primario" type="submit">Avançar para {{ cab.prox_etapa }} →</button></form>
+  </div>
   {% else %}
-  <div class="proxima ok"><span class="ic">✅</span><div class="txt"><div style="font-weight:700;color:var(--ok)">Fase liberada — documentos obrigatórios em dia.</div></div></div>
+  <div class="proxima ok"><span class="ic">🏁</span><div class="txt"><div style="font-weight:700;color:var(--ok)">Projeto na fase final.</div></div></div>
   {% endif %}
   {% endif %}
 
@@ -120,6 +126,11 @@
 
   <section id="t-docs" class="painel-aba {{ 'ativa' if ini=='t-docs' }}">
     <p class="dica" style="margin-top:0">Gera a partir dos dados salvos (módulos, horas, nº) e anexa abaixo. Os documentos obrigatórios da fase aparecem no cabeçalho.</p>
+    {% if cab and cab.docs_ok < cab.docs_total %}
+    <form method="post" action="{{ url_for('projeto_gerar_pendentes', pid=p.id) }}" style="margin:0 0 12px">
+      <button class="btn primario" type="submit">⚡ Gerar pendentes ({{ cab.docs_total - cab.docs_ok }})</button>
+    </form>
+    {% endif %}
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='levantamento') }}"><button class="btn" type="submit">📄 Gerar Levantamento</button></form>
       <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='checklist') }}"><button class="btn" type="submit">📊 Gerar Check List</button></form>

@@ -324,7 +324,7 @@ def projeto_ficha(pid):
                            situacoes=db.SITUACOES, salvo=request.args.get("salvo"),
                            erro=request.args.get("erro"), aviso=request.args.get("aviso"),
                            gate=gate, doc_tipos=db.DOC_LABELS, eventos=eventos,
-                           cab=db.cabecalho(d, gate))
+                           cab=db.cabecalho(d, docs))
 
 
 @app.route("/projetos/<int:pid>/excluir", methods=["POST"])
@@ -337,6 +337,54 @@ def projeto_excluir(pid):
             s.delete(p)
             s.commit()
     return redirect(url_for("projetos"))
+
+
+@app.route("/projetos/<int:pid>/avancar", methods=["POST"])
+def projeto_avancar(pid):
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        if not p:
+            abort(404)
+        docs = [db.to_dict(x) for x in s.query(db.Documento).filter_by(projeto_id=pid).all()]
+        prox = db.proxima_etapa(p.etapa)
+        if prox and db.gate_status(prox, docs)["ok"]:
+            old = p.etapa
+            p.etapa = prox
+            db.registrar_evento(s, pid, "etapa", "Avançou de fase: %s → %s" % (old, prox), _autor())
+            s.commit()
+            return redirect(url_for("projeto_ficha", pid=pid, salvo=1))
+    return redirect(url_for("projeto_ficha", pid=pid,
+                            aviso="Não dá para avançar: faltam documentos obrigatórios da próxima etapa."))
+
+
+@app.route("/projetos/<int:pid>/gerar_pendentes", methods=["POST"])
+def projeto_gerar_pendentes(pid):
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        if not p:
+            abort(404)
+        proj = db.to_dict(p)
+        docs = [db.to_dict(x) for x in s.query(db.Documento).filter_by(projeto_id=pid).all()]
+    prox = db.proxima_etapa(proj["etapa"])
+    gate = db.gate_status(prox or proj["etapa"], docs)
+    gerados = 0
+    for it in gate["itens"]:
+        if it["ok"] or it["tipo"] not in ("levantamento", "checklist", "cronograma", "termo"):
+            continue   # 'projeto' precisa do Mapeamento preenchido (upload)
+        try:
+            path, _log = runner.gerar_do_projeto(proj, it["tipo"])
+        except Exception:
+            path = None
+        if path:
+            with db.Session() as s:
+                s.add(db.Documento(projeto_id=pid, tipo=it["tipo"],
+                                   arquivo=os.path.basename(path), caminho=path))
+                db.registrar_evento(s, pid, "documento",
+                                    "Gerou %s (%s)" % (os.path.basename(path), it["tipo"]), _autor())
+                s.commit()
+            gerados += 1
+    aviso = None if gerados else "Nada a gerar automaticamente (o pendente pode ser o Projeto, que precisa do Mapeamento preenchido)."
+    return redirect(url_for("projeto_ficha", pid=pid, salvo=1, aviso=aviso))
 
 
 @app.route("/projetos/<int:pid>/gerar/<tipo>", methods=["POST"])

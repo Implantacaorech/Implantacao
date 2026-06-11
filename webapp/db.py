@@ -73,6 +73,14 @@ def macro_idx(etapa):
     return _ETAPA_MACRO.get(etapa, 0)
 
 
+def proxima_etapa(etapa):
+    try:
+        i = ETAPAS.index(etapa)
+    except ValueError:
+        return None
+    return ETAPAS[i + 1] if i + 1 < len(ETAPAS) else None
+
+
 def gate_status(etapa, docs):
     """Avalia o gate da etapa: quais documentos obrigatórios existem/faltam.
     `docs` = lista de dicts com a chave 'tipo'. Retorna dict pronto p/ o template."""
@@ -287,21 +295,26 @@ def alertas(projetos, docs_map=None):
     return out
 
 
-def cabecalho(d, gate):
-    """Dados do cabeçalho da ficha (stepper de fases + KPIs + próxima ação)."""
-    cur = macro_idx(d.get("etapa"))
+def cabecalho(d, docs):
+    """Dados do cabeçalho da ficha (stepper + KPIs + próxima ação + avançar).
+    O que se cobra é o gate da PRÓXIMA etapa = o que falta para avançar."""
+    etapa = d.get("etapa")
+    cur = macro_idx(etapa)
     stepper = [{"nome": f, "estado": ("done" if i < cur else "atual" if i == cur else "futuro")}
                for i, f in enumerate(MACRO_FASES)]
     cob, bon = _pnum(d.get("horas_cobradas")), _pnum(d.get("horas_bonificadas"))
     duso = _pdate(d.get("data_uso_oficial"))
-    encerrado = d.get("etapa") == "Encerrado" or d.get("situacao") == "Concluído"
+    encerrado = etapa == "Encerrado" or d.get("situacao") == "Concluído"
     hoje = datetime.now().date()
     atraso = (hoje - duso).days if (duso and not encerrado and duso < hoje) else None
-    itens = (gate or {}).get("itens", [])
+    prox = proxima_etapa(etapa)
+    gate_ref = gate_status(prox, docs) if prox else gate_status(etapa, docs)
+    itens = gate_ref["itens"]
     return {
-        "stepper": stepper, "fase": MACRO_FASES[cur],
+        "stepper": stepper, "fase": MACRO_FASES[cur], "etapa": etapa,
         "go_live": d.get("data_uso_oficial") or "", "atraso": atraso,
         "horas_cob": cob, "horas_bon": bon, "horas_total": cob + bon,
         "docs_ok": sum(1 for i in itens if i["ok"]), "docs_total": len(itens),
         "proxima": next((i for i in itens if not i["ok"]), None),
+        "prox_etapa": prox, "avancar_ok": bool(prox) and gate_ref["ok"],
     }
