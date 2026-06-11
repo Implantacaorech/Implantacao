@@ -180,6 +180,18 @@ def projetos():
     return render_template("projetos_lista.html", itens=itens)
 
 
+@app.route("/coordenacao")
+def coordenacao():
+    with db.Session() as s:
+        projetos = [db.to_dict(x) for x in s.query(db.Projeto).all()]
+        docs_map = {}
+        for dcto in s.query(db.Documento).all():
+            docs_map.setdefault(dcto.projeto_id, []).append({"tipo": dcto.tipo})
+    m = db.metricas(projetos, docs_map)
+    return render_template("painel_coordenacao.html", m=m,
+                           etapas=db.ETAPAS, situacoes=db.SITUACOES)
+
+
 @app.route("/projetos/novo", methods=["GET", "POST"])
 def projeto_novo():
     if request.method == "POST":

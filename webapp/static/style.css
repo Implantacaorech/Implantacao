@@ -97,3 +97,15 @@ textarea{resize:vertical}
 .badge-sit[data-s="Concluído"]{background:#dcfce7;color:#166534}
 .linha-proj{cursor:pointer}
 .linha-proj:hover{background:#eef2f7}
+/* Painel Coordenação */
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:14px 0}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.kpi .n{font-size:1.7rem;font-weight:800;color:var(--navy);line-height:1.1}
+.kpi .l{color:var(--muted);font-size:.82rem;margin-top:3px}
+.kpi.alerta .n{color:var(--err)}
+.kpi.bom .n{color:var(--ok)}
+.barlist{display:flex;flex-direction:column;gap:6px;margin:6px 0}
+.barrow{display:grid;grid-template-columns:200px 1fr 36px;align-items:center;gap:10px;font-size:.9rem}
+.barrow>em{color:var(--muted);font-style:normal;text-align:right}
+.barra{background:#eef2f7;border-radius:6px;height:16px;overflow:hidden}
+.barra>span{display:block;height:100%;background:var(--navy2);border-radius:6px;min-width:0}

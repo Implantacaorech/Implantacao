@@ -15,7 +15,7 @@
 - [ ] Contatos/stakeholders por cliente (campo texto já existe; estruturar depois).
 - [x] **Feito:** gerar o **Projeto** a partir da ficha — anexa o Mapeamento (.docx) preenchido e gera o Projeto (verbal+ortografia), anexando-o ao cliente.
 - [ ] Perfis/permissões (Coordenação vê a carteira; Consultor vê os seus).
-- [ ] Painel do CEO: carteira (no prazo/atrasados, ocupação, time-to-value).
+- [x] **Feito:** **Painel Coordenação** (`/coordenacao`) — KPIs (total/ativos/no prazo/atrasados/em risco/docs pendentes/time-to-value/horas), funil por etapa, situação, atrasados (uso oficial vencido) e ocupação por consultor.
 - [ ] `Iniciar_Servidor.bat` (seta `PAINEL_HOST=0.0.0.0` + `PAINEL_DB` na pasta de rede) para subir o servidor interno.
 
 ## ✉️ E-mail interno ("comunicação registrada")

@@ -5,6 +5,7 @@
   <h1>📁 Projetos por Cliente</h1>
   <p class="sub">Carteira de implantações — dados salvos por cliente, status por etapa.</p>
   <a class="btn primario" href="{{ url_for('projeto_novo') }}">+ Novo projeto</a>
+  <a class="btn" href="{{ url_for('coordenacao') }}">📊 Painel Coordenação</a>
   <span class="dica" style="margin-left:10px">{{ itens|length }} projeto(s)</span>
 
   {% if itens %}

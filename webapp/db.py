@@ -10,6 +10,7 @@ Onde mora o banco:
   - padrão: <pasta gravável>/painel.db (local).
 """
 import os
+import re
 import sys
 from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime
@@ -133,3 +134,73 @@ def aplicar_form(p, form):
 
 def init_db():
     Base.metadata.create_all(engine)
+
+
+# --- Métricas da carteira (Painel Coordenação) ---
+def _pdate(s):
+    s = str(s or "").strip()
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            pass
+    return None
+
+
+def _pnum(s):
+    m = re.search(r"\d+(?:[.,]\d+)?", str(s or ""))
+    return float(m.group(0).replace(",", ".")) if m else 0.0
+
+
+def metricas(projetos, docs_map=None):
+    """Agrega a carteira para o Painel Coordenação.
+    `projetos` = lista de dicts; `docs_map` = {projeto_id: [ {tipo: ...}, ... ]}."""
+    docs_map = docs_map or {}
+    hoje = datetime.now().date()
+    por_situacao = {s: 0 for s in SITUACOES}
+    por_etapa = {e: 0 for e in ETAPAS}
+    consultores = {}
+    atrasados, em_risco, ttv = [], [], []
+    gate_pendente = concluidos = 0
+    horas_cob = horas_bon = 0.0
+
+    for p in projetos:
+        sit, et = p.get("situacao") or "", p.get("etapa") or ""
+        por_situacao[sit] = por_situacao.get(sit, 0) + 1
+        por_etapa[et] = por_etapa.get(et, 0) + 1
+        encerrado = (et == "Encerrado") or (sit == "Concluído")
+        cob, bon = _pnum(p.get("horas_cobradas")), _pnum(p.get("horas_bonificadas"))
+        horas_cob += cob; horas_bon += bon
+        cons = (p.get("consultor") or "").strip() or "— sem consultor —"
+
+        if encerrado:
+            concluidos += 1
+            di, df = _pdate(p.get("data_inicio")), _pdate(p.get("data_uso_oficial")) or _pdate(p.get("data_encerramento"))
+            if di and df and df >= di:
+                ttv.append((df - di).days)
+            continue
+
+        c = consultores.setdefault(cons, {"projetos": 0, "horas": 0.0})
+        c["projetos"] += 1; c["horas"] += cob + bon
+        duso = _pdate(p.get("data_uso_oficial"))
+        if duso and duso < hoje:
+            atrasados.append({"id": p.get("id"), "cliente": p.get("cliente"),
+                              "etapa": et, "consultor": cons, "dias": (hoje - duso).days})
+        if sit == "Em risco":
+            em_risco.append({"id": p.get("id"), "cliente": p.get("cliente"), "etapa": et})
+        if not gate_status(et, docs_map.get(p.get("id"), []))["ok"]:
+            gate_pendente += 1
+
+    ativos = len(projetos) - concluidos
+    atrasados.sort(key=lambda x: -x["dias"])
+    return {
+        "total": len(projetos), "ativos": ativos, "concluidos": concluidos,
+        "por_situacao": por_situacao, "por_etapa": por_etapa,
+        "atrasados": atrasados, "n_atrasados": len(atrasados),
+        "em_risco": em_risco, "n_risco": len(em_risco),
+        "gate_pendente": gate_pendente, "no_prazo": ativos - len(atrasados),
+        "consultores": sorted(([{"consultor": k, **v} for k, v in consultores.items()]),
+                              key=lambda x: -x["projetos"]),
+        "horas_cob": horas_cob, "horas_bon": horas_bon, "horas_total": horas_cob + horas_bon,
+        "ttv_medio": round(sum(ttv) / len(ttv)) if ttv else None,
+    }

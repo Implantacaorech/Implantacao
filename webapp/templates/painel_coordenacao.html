@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block titulo %}Painel Coordenação{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › Painel Coordenação</div>{% endblock %}
+{% block conteudo %}
+  <h1>📊 Painel Coordenação</h1>
+  <p class="sub">Carteira de implantações — visão de portfólio em tempo real.</p>
+
+  {% if m.total == 0 %}
+    <p class="dica">Nenhum projeto cadastrado ainda. <a href="{{ url_for('projeto_novo') }}">Criar o primeiro</a>.</p>
+  {% else %}
+  <div class="kpis">
+    <div class="kpi"><div class="n">{{ m.total }}</div><div class="l">Projetos</div></div>
+    <div class="kpi"><div class="n">{{ m.ativos }}</div><div class="l">Ativos</div></div>
+    <div class="kpi bom"><div class="n">{{ m.no_prazo }}</div><div class="l">No prazo</div></div>
+    <div class="kpi {{ 'alerta' if m.n_atrasados }}"><div class="n">{{ m.n_atrasados }}</div><div class="l">Atrasados</div></div>
+    <div class="kpi {{ 'alerta' if m.n_risco }}"><div class="n">{{ m.n_risco }}</div><div class="l">Em risco</div></div>
+    <div class="kpi {{ 'alerta' if m.gate_pendente }}"><div class="n">{{ m.gate_pendente }}</div><div class="l">Docs obrigatórios pendentes</div></div>
+    <div class="kpi"><div class="n">{{ m.ttv_medio if m.ttv_medio is not none else '—' }}</div><div class="l">Time-to-value médio (dias)</div></div>
+    <div class="kpi"><div class="n">{{ m.horas_total|int }}</div><div class="l">Horas na carteira</div></div>
+  </div>
+
+  <div class="painel">
+    <h3 style="color:var(--navy);margin-top:0">Funil por etapa</h3>
+    <div class="barlist">
+    {% for e in etapas %}{% set n = m.por_etapa.get(e, 0) %}
+      <div class="barrow"><span>{{ e }}</span>
+        <div class="barra"><span style="width:{{ (100*n)//m.total if m.total else 0 }}%"></span></div>
+        <em>{{ n }}</em></div>
+    {% endfor %}
+    </div>
+  </div>
+
+  <div class="painel">
+    <h3 style="color:var(--navy);margin-top:0">Situação</h3>
+    {% for s in situacoes %}
+      <span class="badge-sit" data-s="{{ s }}" style="margin-right:8px">{{ s }}: {{ m.por_situacao.get(s, 0) }}</span>
+    {% endfor %}
+  </div>
+
+  {% if m.atrasados %}
+  <div class="painel">
+    <h3 style="color:var(--err);margin-top:0">⚠️ Atrasados — uso oficial previsto vencido</h3>
+    <table class="form-tab">
+      <thead><tr><th>Cliente</th><th>Etapa</th><th>Consultor</th><th>Dias de atraso</th></tr></thead>
+      <tbody>
+      {% for a in m.atrasados %}
+        <tr class="linha-proj" onclick="location.href='{{ url_for('projeto_ficha', pid=a.id) }}'">
+          <td><strong>{{ a.cliente }}</strong></td><td>{{ a.etapa }}</td><td>{{ a.consultor }}</td>
+          <td><strong style="color:var(--err)">{{ a.dias }}</strong></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="painel">
+    <h3 style="color:var(--navy);margin-top:0">Ocupação por consultor (projetos ativos)</h3>
+    {% if m.consultores %}
+    <table class="form-tab">
+      <thead><tr><th>Consultor</th><th>Projetos ativos</th><th>Horas</th></tr></thead>
+      <tbody>
+      {% for c in m.consultores %}
+        <tr><td>{{ c.consultor }}</td><td>{{ c.projetos }}</td><td>{{ c.horas|int }} h</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="dica" style="margin:0">Sem projetos ativos.</p>{% endif %}
+  </div>
+  {% endif %}
+  <a class="voltar" href="{{ url_for('projetos') }}">← Ver carteira (lista)</a>
+{% endblock %}
