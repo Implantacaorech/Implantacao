@@ -11,7 +11,7 @@
 
   {% if itens %}
   <table class="form-tab" style="margin-top:12px">
-    <thead><tr><th>Cliente</th><th>Etapa</th><th>Situação</th><th>Consultor</th><th>Uso oficial</th><th>Atualizado</th></tr></thead>
+    <thead><tr><th>Cliente</th><th>Etapa</th><th>Status</th><th>Consultor (GCI)</th><th>Go-live</th><th>Atualizado</th></tr></thead>
     <tbody>
     {% for p in itens %}
       <tr class="linha-proj" onclick="location.href='{{ url_for('projeto_ficha', pid=p.id) }}'">

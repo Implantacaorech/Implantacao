@@ -42,7 +42,7 @@
   </div>
 
   <div class="painel">
-    <h3 style="color:var(--navy);margin-top:0">Situação</h3>
+    <h3 style="color:var(--navy);margin-top:0">Status</h3>
     {% for s in situacoes %}
       <span class="badge-sit" data-s="{{ s }}" style="margin-right:8px">{{ s }}: {{ m.por_situacao.get(s, 0) }}</span>
     {% endfor %}
