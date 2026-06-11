@@ -11,6 +11,7 @@
     <a class="marca" href="{{ url_for('home') }}">⚙️ Painel de Implantação <span>SIGER®</span></a>
     <nav>
       <a href="{{ url_for('home') }}">Início</a>
+      <a href="{{ url_for('projetos') }}">📁 Projetos</a>
       <a href="{{ url_for('cliente') }}">👤 {{ cliente_atual or 'Definir cliente' }}</a>
       <a href="{{ url_for('mapa') }}">🧠 Mapa do Setor</a>
       <a href="{{ url_for('acao', rid='coordenacao', aid='saude') }}">Saúde</a>

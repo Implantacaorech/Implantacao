@@ -90,3 +90,10 @@ textarea{resize:vertical}
 .conv-row>input{padding:7px;border:1px solid #e2e8f0;border-radius:6px;font:inherit}
 .conv-row>em{color:var(--muted);font-style:normal;font-size:.85rem}
 .badge{background:var(--navy);color:#fff;border-radius:10px;padding:1px 8px;font-size:.72rem}
+.badge-sit{padding:2px 9px;border-radius:10px;font-size:.8rem;font-weight:600;white-space:nowrap}
+.badge-sit[data-s="Em andamento"]{background:#dbeafe;color:#1e40af}
+.badge-sit[data-s="Em risco"]{background:#fee2e2;color:#b91c1c}
+.badge-sit[data-s="Pausado"]{background:#f1f5f9;color:#475569}
+.badge-sit[data-s="Concluído"]{background:#dcfce7;color:#166534}
+.linha-proj{cursor:pointer}
+.linha-proj:hover{background:#eef2f7}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block titulo %}Projetos por Cliente{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › Projetos por Cliente</div>{% endblock %}
+{% block conteudo %}
+  <h1>📁 Projetos por Cliente</h1>
+  <p class="sub">Carteira de implantações — dados salvos por cliente, status por etapa.</p>
+  <a class="btn primario" href="{{ url_for('projeto_novo') }}">+ Novo projeto</a>
+  <span class="dica" style="margin-left:10px">{{ itens|length }} projeto(s)</span>
+
+  {% if itens %}
+  <table class="form-tab" style="margin-top:12px">
+    <thead><tr><th>Cliente</th><th>Etapa</th><th>Situação</th><th>Consultor</th><th>Uso oficial</th><th>Atualizado</th></tr></thead>
+    <tbody>
+    {% for p in itens %}
+      <tr class="linha-proj" onclick="location.href='{{ url_for('projeto_ficha', pid=p.id) }}'">
+        <td><strong>{{ p.cliente }}</strong>{% if p.numero_projeto %} <small>({{ p.numero_projeto }})</small>{% endif %}</td>
+        <td>{{ p.etapa }}</td>
+        <td><span class="badge-sit" data-s="{{ p.situacao }}">{{ p.situacao }}</span></td>
+        <td>{{ p.consultor }}</td>
+        <td>{{ p.data_uso_oficial }}</td>
+        <td><small>{{ p.atualizado_em.strftime('%d/%m/%Y') if p.atualizado_em else '' }}</small></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="dica" style="margin-top:14px">Nenhum projeto ainda — clique em "Novo projeto".</p>
+  {% endif %}
+{% endblock %}

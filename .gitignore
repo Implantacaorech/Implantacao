@@ -39,6 +39,9 @@ tools/data/_in_*.docx
 # Chave de API da Anthropic (modo IA) — NUNCA versionar
 tools/data/anthropic_key.txt
 
+# Banco do Hub "Projetos por Cliente" — dados de cliente, NUNCA versionar
+*.db
+
 # Templates .docx reais da Rech (letterhead/logo) — manter local, não publicar
 tools/templates/*.docx
 

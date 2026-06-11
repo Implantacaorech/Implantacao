@@ -4,3 +4,4 @@ openpyxl>=3.1
 PyYAML>=6.0
 Flask>=3.0      # painel web (webapp/)
 anthropic>=0.40 # modo IA: reconferência de tempo verbal + ortografia (opcional, só com chave)
+SQLAlchemy>=2.0 # Hub "Projetos por Cliente" (banco; SQLite por padrão, agnóstico p/ Postgres)

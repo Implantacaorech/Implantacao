@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block titulo %}{{ p.cliente if p else 'Novo projeto' }}{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('projetos') }}">Projetos</a> › {{ p.cliente if p else 'Novo' }}</div>{% endblock %}
+{% block conteudo %}
+  <h1>📁 {{ p.cliente if p else 'Novo projeto' }}</h1>
+  {% if salvo %}<div class="resultado ok" style="padding:10px 16px">✅ Salvo.</div>{% endif %}
+
+  <form method="post" action="{{ url_for('projeto_ficha', pid=p.id) if p else url_for('projeto_novo') }}" class="painel">
+    <div class="grade2">
+      <label class="campo"><span>Cliente (Razão Social) *</span><input name="cliente" value="{{ p.cliente if p else '' }}" required></label>
+      <label class="campo"><span>CNPJ</span><input name="cnpj" value="{{ p.cnpj if p else '' }}"></label>
+      <label class="campo"><span>Nº do projeto</span><input name="numero_projeto" value="{{ p.numero_projeto if p else '' }}"></label>
+      <label class="campo"><span>Ramo</span><input name="ramo" value="{{ p.ramo if p else '' }}"></label>
+      <label class="campo"><span>Responsável (Adm)</span><input name="responsavel" value="{{ p.responsavel if p else '' }}"></label>
+      <label class="campo"><span>Consultor</span><input name="consultor" value="{{ p.consultor if p else '' }}"></label>
+      <label class="campo"><span>Etapa</span><select name="etapa">{% for e in etapas %}<option {{ 'selected' if p and p.etapa==e }}>{{ e }}</option>{% endfor %}</select></label>
+      <label class="campo"><span>Situação</span><select name="situacao">{% for s in situacoes %}<option {{ 'selected' if p and p.situacao==s }}>{{ s }}</option>{% endfor %}</select></label>
+      <label class="campo"><span>Início</span><input type="date" name="data_inicio" value="{{ p.data_inicio if p else '' }}"></label>
+      <label class="campo"><span>Uso oficial (previsto)</span><input type="date" name="data_uso_oficial" value="{{ p.data_uso_oficial if p else '' }}"></label>
+      <label class="campo"><span>Encerramento</span><input type="date" name="data_encerramento" value="{{ p.data_encerramento if p else '' }}"></label>
+      <label class="campo"><span>Horas cobradas</span><input name="horas_cobradas" value="{{ p.horas_cobradas if p else '' }}"></label>
+      <label class="campo"><span>Horas bonificadas</span><input name="horas_bonificadas" value="{{ p.horas_bonificadas if p else '' }}"></label>
+    </div>
+    <label class="campo"><span>Módulos (siglas)</span><input name="modulos" value="{{ p.modulos if p else '' }}" placeholder="FAT, CTB, FIN…"></label>
+    <label class="campo"><span>Contatos / Stakeholders</span><textarea name="contatos" rows="2">{{ p.contatos if p else '' }}</textarea></label>
+    <label class="campo"><span>Observações</span><textarea name="observacoes" rows="3">{{ p.observacoes if p else '' }}</textarea></label>
+    <button class="btn primario" type="submit" style="margin-top:8px">💾 Salvar</button>
+  </form>
+
+  {% if p %}
+  <form method="post" action="{{ url_for('projeto_excluir', pid=p.id) }}" onsubmit="return confirm('Excluir este projeto?')" style="margin-top:10px">
+    <button class="btn" type="submit">🗑️ Excluir</button>
+  </form>
+  {% endif %}
+  <a class="voltar" href="{{ url_for('projetos') }}">← Voltar para Projetos</a>
+{% endblock %}

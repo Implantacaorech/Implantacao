@@ -25,7 +25,7 @@ NAME = "PainelImplantacao"
 
 # Módulos importados dinamicamente (importlib) — o PyInstaller não os detecta.
 HIDDEN = [
-    "roles", "runner", "forms", "_common", "schema_projeto", "conversor_verbal",
+    "roles", "runner", "forms", "db", "_common", "schema_projeto", "conversor_verbal",
     "importar_mapeamento", "verificar", "catalogo", "checklist", "ortografia", "ia",
     "gerar_kit_mudanca", "gerar_roteiros_teste", "gerar_aceite_uat",
     "gerar_reconciliacao_conversao", "gerar_painel_hypercare", "gerar_log_fitgap",
@@ -43,7 +43,7 @@ DATA_ADDS = [
 ]
 
 EXCLUDES = ["numpy", "pandas", "scipy", "matplotlib", "PIL", "IPython",
-            "pytest", "PyQt5", "PySide2", "notebook", "sqlalchemy"]
+            "pytest", "PyQt5", "PySide2", "notebook"]
 
 
 def _is_reparse_point(path):

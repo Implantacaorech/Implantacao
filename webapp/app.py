@@ -25,6 +25,7 @@ else:
 import roles            # noqa: E402
 import runner           # noqa: E402
 import forms            # noqa: E402
+import db               # noqa: E402
 import _common as C     # noqa: E402
 
 app = Flask(__name__,
@@ -35,6 +36,7 @@ app.secret_key = "painel-implantacao-rech"
 UPLOADS = os.path.join(C.DATA_WRITE if FROZEN else HERE, "_uploads")
 os.makedirs(UPLOADS, exist_ok=True)
 ALLOWED_DIRS = [C.OUT, C.DATA_WRITE, C.DATA]
+db.init_db()   # cria o banco do hub (Projetos por Cliente) se não existir
 
 
 @app.route("/")
@@ -170,6 +172,51 @@ def config():
                            salvo=salvo, via_env=via_env, sdk_ok=sdk_ok)
 
 
+@app.route("/projetos")
+def projetos():
+    with db.Session() as s:
+        itens = [db.to_dict(x) for x in
+                 s.query(db.Projeto).order_by(db.Projeto.atualizado_em.desc()).all()]
+    return render_template("projetos_lista.html", itens=itens)
+
+
+@app.route("/projetos/novo", methods=["GET", "POST"])
+def projeto_novo():
+    if request.method == "POST":
+        with db.Session() as s:
+            p = db.aplicar_form(db.Projeto(), request.form)
+            s.add(p)
+            s.commit()
+            pid = p.id
+        return redirect(url_for("projeto_ficha", pid=pid, salvo=1))
+    return render_template("projeto_ficha.html", p=None, etapas=db.ETAPAS, situacoes=db.SITUACOES)
+
+
+@app.route("/projetos/<int:pid>", methods=["GET", "POST"])
+def projeto_ficha(pid):
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        if not p:
+            abort(404)
+        if request.method == "POST":
+            db.aplicar_form(p, request.form)
+            s.commit()
+            return redirect(url_for("projeto_ficha", pid=pid, salvo=1))
+        d = db.to_dict(p)
+    return render_template("projeto_ficha.html", p=d, etapas=db.ETAPAS,
+                           situacoes=db.SITUACOES, salvo=request.args.get("salvo"))
+
+
+@app.route("/projetos/<int:pid>/excluir", methods=["POST"])
+def projeto_excluir(pid):
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        if p:
+            s.delete(p)
+            s.commit()
+    return redirect(url_for("projetos"))
+
+
 @app.route("/mapa")
 def mapa():
     MAPA = {"nome": "Implantação SIGER®", "filhos": [
@@ -218,6 +265,8 @@ def _abrir_navegador():
 
 if __name__ == "__main__":
     import threading
-    if os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+    host = os.environ.get("PAINEL_HOST", "127.0.0.1")   # 0.0.0.0 = servir para a rede interna
+    port = int(os.environ.get("PAINEL_PORT", "5000"))
+    if os.environ.get("WERKZEUG_RUN_MAIN") != "true" and host in ("127.0.0.1", "localhost"):
         threading.Timer(1.3, _abrir_navegador).start()
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    app.run(host=host, port=port, debug=False)
