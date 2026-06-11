@@ -25,7 +25,7 @@
 - [ ] Log de cada e-mail na timeline do projeto.
 
 ## 🤖 Frentes de automação (roadmap)
-- [ ] **Cronograma automático** (fecha a tríade obrigatória) — *quick win*.
+- [x] **Feito:** **Cronograma automático** — distribui as agendas pelas horas (cobradas+bonificadas), macro tópicos por etapa/módulo, datas em dias úteis; gerado pela ficha e anexado (satisfaz o gate). Fecha a tríade obrigatória.
 - [ ] Integração **SICLA + RNS** (abrir/atualizar RNS(I), atividades 12/13/84). *Depende de API/banco.*
 - [ ] **Dossiê vivo + Painel de portfólio** (= a própria tela Projetos por Cliente).
 - [ ] **Copiloto do Consultor (IA)**: redigir rotinas, sugerir próximo passo, rascunhar e-mails, apontar riscos (RAID).

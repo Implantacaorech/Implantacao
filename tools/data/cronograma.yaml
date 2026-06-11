@@ -1,0 +1,13 @@
+# Exemplo do Cronograma de Implantação (usado pelo verificar.py).
+# As agendas são geradas automaticamente a partir das horas + módulos;
+# para um cronograma manual, preencha a lista "agendas:" (data/etapa/topicos/horas/modalidade).
+cliente: Indústria Exemplo Ltda
+numero_projeto: "3694"
+consultor: Consultor Rech
+data_inicio: "2026-06-15"
+cadencia_dias: 5
+modalidade_padrao: A combinar
+horas:
+  cobradas: "40"
+  bonificadas: "8"
+modulos_contratados: [FAT, EST, CTB, FIN]

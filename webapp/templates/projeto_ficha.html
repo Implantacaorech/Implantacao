@@ -51,6 +51,7 @@
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='levantamento') }}"><button class="btn" type="submit">📄 Gerar Mapeamento</button></form>
     <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='checklist') }}"><button class="btn" type="submit">📊 Gerar Check List</button></form>
+    <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='cronograma') }}"><button class="btn" type="submit">📅 Gerar Cronograma</button></form>
     <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='termo') }}"><button class="btn" type="submit">📑 Gerar Termo</button></form>
   </div>
   {% if erro %}<div class="resultado erro" style="padding:8px 14px;margin-top:8px">⚠️ {{ erro }}</div>{% endif %}

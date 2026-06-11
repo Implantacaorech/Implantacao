@@ -283,6 +283,14 @@ def gerar_do_projeto(proj, tipo):
     if tipo == "checklist":
         return run_generator("gerar_checklist_consultor",
                              _dump_yaml({"cliente": cliente, "modulos_contratados": mods}, "lev_%s.yaml" % slug))
+    if tipo == "cronograma":
+        crono = {"cliente": cliente, "numero_projeto": proj.get("numero_projeto", ""),
+                 "consultor": proj.get("consultor", ""),
+                 "data_inicio": proj.get("data_inicio", ""),
+                 "horas": {"cobradas": proj.get("horas_cobradas", ""),
+                           "bonificadas": proj.get("horas_bonificadas", "")},
+                 "modulos_contratados": mods}
+        return run_generator("gerar_cronograma", _dump_yaml(crono, "crono_%s.yaml" % slug))
     if tipo == "termo":
         import catalogo as CAT
         achados, _ = CAT.resolve(mods)

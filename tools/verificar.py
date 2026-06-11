@@ -65,6 +65,7 @@ GERADORES = [
     ("gerar_dossie_cliente", "Dossie_", "docx"),
     ("gerar_projeto_implantacao", "Projeto_Implantacao_", "docx"),
     ("gerar_termo_encerramento", "Termo_Encerramento_", "docx"),
+    ("gerar_cronograma", "Cronograma_Implantacao_", "docx"),
     ("gerar_levantamento", "Levantamento_", "docx"),
     ("gerar_checklist_consultor", "CheckList_Consultor_", "xlsx"),
 ]

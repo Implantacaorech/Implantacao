@@ -34,6 +34,7 @@ tools/data/cliente_*.yaml
 tools/data/projeto_*.yaml
 tools/data/lev_*.yaml
 tools/data/termo_*.yaml
+tools/data/crono_*.yaml
 tools/data/_in_*.docx
 
 # Chave de API da Anthropic (modo IA) — NUNCA versionar
