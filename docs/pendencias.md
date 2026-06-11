@@ -9,7 +9,7 @@
 
 ## 🏗️ Tela "Projetos por Cliente" (espinha dorsal — o "Dossiê vivo")
 - [x] **Fase 1 feita:** banco SQLite/SQLAlchemy (agnóstico) + carteira (status/etapa) + ficha CRUD por cliente + modo servidor interno (`PAINEL_HOST=0.0.0.0`).
-- [ ] Status por etapa com **gates** dos documentos obrigatórios (campo de etapa já existe; falta o gate).
+- [x] **Feito:** status por etapa com **gates** dos documentos obrigatórios — painel na ficha (✅/⬜), aviso ao mudar de etapa sem os docs e anexo manual (ex.: Cronograma). Tríade Projeto·Cronograma·Termo encadeada.
 - [x] **Feito:** gerar Mapeamento/Check List/Termo a partir da ficha + anexar (histórico + download). *(Projeto e links Drive/SICLA/RNS: depois.)*
 - [ ] Timeline/histórico por projeto (auditoria + passagem de bastão).
 - [ ] Contatos/stakeholders por cliente (campo texto já existe; estruturar depois).

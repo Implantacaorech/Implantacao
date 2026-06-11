@@ -35,7 +35,7 @@ app.secret_key = "painel-implantacao-rech"
 
 UPLOADS = os.path.join(C.DATA_WRITE if FROZEN else HERE, "_uploads")
 os.makedirs(UPLOADS, exist_ok=True)
-ALLOWED_DIRS = [C.OUT, C.DATA_WRITE, C.DATA]
+ALLOWED_DIRS = [C.OUT, C.DATA_WRITE, C.DATA, UPLOADS]
 db.init_db()   # cria o banco do hub (Projetos por Cliente) se não existir
 
 
@@ -201,13 +201,20 @@ def projeto_ficha(pid):
         if request.method == "POST":
             db.aplicar_form(p, request.form)
             s.commit()
+            docs = [db.to_dict(x) for x in s.query(db.Documento).filter_by(projeto_id=pid).all()]
+            g = db.gate_status(p.etapa, docs)
+            if not g["ok"]:
+                return redirect(url_for("projeto_ficha", pid=pid, salvo=1,
+                    aviso="Etapa “%s” salva, mas faltam documentos obrigatórios: %s." % (p.etapa, ", ".join(g["faltam"]))))
             return redirect(url_for("projeto_ficha", pid=pid, salvo=1))
         d = db.to_dict(p)
         docs = [db.to_dict(x) for x in s.query(db.Documento)
                 .filter_by(projeto_id=pid).order_by(db.Documento.criado_em.desc()).all()]
+        gate = db.gate_status(d["etapa"], docs)
     return render_template("projeto_ficha.html", p=d, docs=docs, etapas=db.ETAPAS,
                            situacoes=db.SITUACOES, salvo=request.args.get("salvo"),
-                           erro=request.args.get("erro"))
+                           erro=request.args.get("erro"), aviso=request.args.get("aviso"),
+                           gate=gate, doc_tipos=db.DOC_LABELS)
 
 
 @app.route("/projetos/<int:pid>/excluir", methods=["POST"])
@@ -261,6 +268,27 @@ def projeto_gerar_projeto(pid):
                                arquivo=os.path.basename(proj_path), caminho=proj_path))
             s.commit()
     return redirect(url_for("projeto_ficha", pid=pid))
+
+
+@app.route("/projetos/<int:pid>/anexar", methods=["POST"])
+def projeto_anexar(pid):
+    """Anexa um documento manualmente ao projeto (ex.: Cronograma) para satisfazer o gate."""
+    with db.Session() as s:
+        if not s.get(db.Projeto, pid):
+            abort(404)
+    f = request.files.get("arquivo")
+    tipo = (request.form.get("tipo") or "outro").strip().lower()
+    if not (f and f.filename):
+        return redirect(url_for("projeto_ficha", pid=pid, erro="Selecione um arquivo para anexar."))
+    base, ext = os.path.splitext(f.filename)
+    nome = "anexo_%d_%s_%s%s" % (pid, tipo, C.slug(base), ext.lower())
+    path = os.path.join(UPLOADS, nome)
+    f.save(path)
+    with db.Session() as s:
+        s.add(db.Documento(projeto_id=pid, tipo=tipo,
+                           arquivo=os.path.basename(path), caminho=path))
+        s.commit()
+    return redirect(url_for("projeto_ficha", pid=pid, salvo=1))
 
 
 @app.route("/mapa")

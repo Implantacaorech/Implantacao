@@ -30,6 +30,44 @@ CAMPOS = ["cliente", "cnpj", "numero_projeto", "ramo", "responsavel", "consultor
           "etapa", "situacao", "data_inicio", "data_uso_oficial", "data_encerramento",
           "horas_cobradas", "horas_bonificadas", "modulos", "contatos", "observacoes"]
 
+# --- Gates: documentos obrigatórios por etapa (controle de qualidade) ---
+DOC_LABELS = {
+    "levantamento": "Mapeamento (Levantamento)",
+    "projeto": "Projeto de Implantação",
+    "cronograma": "Cronograma",
+    "termo": "Termo de Encerramento",
+    "checklist": "Check List",
+}
+
+# Documentos que já devem existir para o projeto estar (corretamente) na etapa.
+# Acumulativo, encadeando a tríade obrigatória: Projeto · Cronograma · Termo.
+GATES = {
+    "Levantamento":     [],
+    "Projeto":          ["levantamento"],
+    "Cronograma":       ["levantamento", "projeto"],
+    "Parametrização":   ["levantamento", "projeto", "cronograma"],
+    "Treinamento":      ["levantamento", "projeto", "cronograma"],
+    "Testes/Simulação": ["levantamento", "projeto", "cronograma"],
+    "Conversão":        ["levantamento", "projeto", "cronograma"],
+    "Virada":           ["levantamento", "projeto", "cronograma"],
+    "Hypercare":        ["levantamento", "projeto", "cronograma"],
+    "Encerrado":        ["levantamento", "projeto", "cronograma", "termo"],
+}
+
+
+def docs_obrigatorios(etapa):
+    return GATES.get(etapa, [])
+
+
+def gate_status(etapa, docs):
+    """Avalia o gate da etapa: quais documentos obrigatórios existem/faltam.
+    `docs` = lista de dicts com a chave 'tipo'. Retorna dict pronto p/ o template."""
+    presentes = {(d.get("tipo") or "").lower() for d in (docs or [])}
+    itens = [{"tipo": t, "label": DOC_LABELS.get(t, t), "ok": t in presentes}
+             for t in docs_obrigatorios(etapa)]
+    faltam = [i["label"] for i in itens if not i["ok"]]
+    return {"etapa": etapa, "itens": itens, "faltam": faltam, "ok": not faltam}
+
 
 def _db_url():
     url = os.environ.get("PAINEL_DB_URL")

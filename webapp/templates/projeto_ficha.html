@@ -4,6 +4,7 @@
 {% block conteudo %}
   <h1>📁 {{ p.cliente if p else 'Novo projeto' }}</h1>
   {% if salvo %}<div class="resultado ok" style="padding:10px 16px">✅ Salvo.</div>{% endif %}
+  {% if aviso %}<div class="resultado erro" style="padding:10px 16px">⚠️ {{ aviso }}</div>{% endif %}
 
   <form method="post" action="{{ url_for('projeto_ficha', pid=p.id) if p else url_for('projeto_novo') }}" class="painel">
     <div class="grade2">
@@ -28,6 +29,23 @@
   </form>
 
   {% if p %}
+  {% if gate %}
+  <div class="painel" style="margin-top:18px">
+    <h3 style="color:var(--navy);margin:0 0 8px">🚦 Gate da etapa — "{{ p.etapa }}"</h3>
+    {% if gate.itens %}
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      {% for it in gate.itens %}
+        <span style="padding:4px 10px;border-radius:6px;font-size:.9em;background:{{ '#dcfce7' if it.ok else '#fef2f2' }};border:1px solid {{ '#86efac' if it.ok else '#fecaca' }}">{{ '✅' if it.ok else '⬜' }} {{ it.label }}</span>
+      {% endfor %}
+      </div>
+      {% if gate.ok %}<div class="resultado ok" style="padding:8px 14px;margin:0">✅ Etapa liberada — documentos obrigatórios presentes.</div>
+      {% else %}<div class="resultado erro" style="padding:8px 14px;margin:0">⚠️ Faltam para esta etapa: <strong>{{ gate.faltam|join(', ') }}</strong></div>{% endif %}
+    {% else %}
+      <p class="dica" style="margin:0">Nenhum documento obrigatório nesta etapa (início do fluxo).</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <h3 style="color:var(--navy);margin-top:22px">Documentos do projeto</h3>
   <p class="dica">Gera a partir dos dados salvos deste cliente (módulos, horas, nº) e anexa abaixo.</p>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -41,6 +59,16 @@
     <span class="dica" style="margin:0">Gerar o <strong>Projeto</strong> a partir do Mapeamento preenchido:</span>
     <input type="file" name="arquivo" accept=".docx" required>
     <button class="btn" type="submit">📘 Gerar Projeto</button>
+  </form>
+  <form method="post" action="{{ url_for('projeto_anexar', pid=p.id) }}" enctype="multipart/form-data"
+        style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <span class="dica" style="margin:0">Anexar documento manualmente (ex.: Cronograma):</span>
+    <select name="tipo" style="padding:6px;border:1px solid #cbd5e1;border-radius:6px">
+      {% for t, lbl in doc_tipos.items() %}<option value="{{ t }}">{{ lbl }}</option>{% endfor %}
+      <option value="outro">Outro</option>
+    </select>
+    <input type="file" name="arquivo" required>
+    <button class="btn" type="submit">📎 Anexar</button>
   </form>
   {% if docs %}
   <table class="form-tab" style="margin-top:10px">
