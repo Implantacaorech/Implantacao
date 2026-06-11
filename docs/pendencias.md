@@ -4,19 +4,19 @@
 > Digite **"Pendências"** a qualquer momento para ver esta lista. — Atualizado em 2026-06-10.
 
 ## 🔑 Decisão que destrava a arquitetura
-- [ ] **Onde os dados moram?** Só na máquina (local) × **compartilhado pela equipe** (pasta de
-  rede `R:\` com banco SQLite) × servidor interno (painel numa máquina, todos pelo navegador) ×
-  cloud. *Define toda a arquitetura do hub de Projetos por Cliente.*
+- [x] **Onde os dados moram?** → **DECIDIDO: rede INTERNA** (servidor na rede; app agnóstico de
+  banco — SQLite agora, Postgres/nuvem depois trocando só a conexão). *(2026-06-10)*
 
 ## 🏗️ Tela "Projetos por Cliente" (espinha dorsal — o "Dossiê vivo")
-- [ ] Banco real (SQLite) em vez de YAMLs soltos; dados salvos por cliente.
-- [ ] Status por etapa com **gates** dos documentos obrigatórios (Projeto/Cronograma/Termo).
+- [x] **Fase 1 feita:** banco SQLite/SQLAlchemy (agnóstico) + carteira (status/etapa) + ficha CRUD por cliente + modo servidor interno (`PAINEL_HOST=0.0.0.0`).
+- [ ] Status por etapa com **gates** dos documentos obrigatórios (campo de etapa já existe; falta o gate).
 - [ ] Documentos gerados anexados ao projeto (versionados) + links Drive/SICLA/RNS.
 - [ ] Timeline/histórico por projeto (auditoria + passagem de bastão).
-- [ ] Contatos/stakeholders por cliente.
-- [ ] Importar/anexar de uma vez Levantamento → Projeto → Check List → Termo.
+- [ ] Contatos/stakeholders por cliente (campo texto já existe; estruturar depois).
+- [ ] Botão "Gerar tudo a partir do projeto" (Levantamento → Projeto → Check List → Termo, anexando ao cliente).
 - [ ] Perfis/permissões (Coordenação vê a carteira; Consultor vê os seus).
 - [ ] Painel do CEO: carteira (no prazo/atrasados, ocupação, time-to-value).
+- [ ] `Iniciar_Servidor.bat` (seta `PAINEL_HOST=0.0.0.0` + `PAINEL_DB` na pasta de rede) para subir o servidor interno.
 
 ## ✉️ E-mail interno ("comunicação registrada")
 - [ ] Conta SMTP da Rech + credencial guardada com segurança (igual à chave da IA).
