@@ -119,3 +119,19 @@ textarea{resize:vertical}
 .alertas li{padding:7px 10px;border-radius:6px;margin:5px 0;background:#f8fafc;border-left:4px solid var(--muted)}
 .alertas li.al-alto{border-left-color:var(--err);background:#fef2f2}
 .alertas li.al-medio{border-left-color:#d97706;background:#fffbeb}
+/* Cabeçalho da ficha (redesenho — fase 1) */
+.stepper{display:grid;gap:6px;margin:16px 0 16px}
+.stepper .seg{height:6px;border-radius:4px;background:#e2e8f0}
+.stepper .seg.done{background:var(--navy2)}
+.stepper .seg.atual{background:var(--navy)}
+.stepper .lbl{font-size:.72rem;margin-top:6px;color:var(--muted);text-align:center}
+.stepper .lbl.atual{color:var(--navy);font-weight:700}
+.kpis-ficha{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+.kpi-f{background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.kpi-f .l{font-size:.78rem;color:var(--muted)}
+.kpi-f .n{font-size:1.4rem;font-weight:800;color:var(--navy);margin-top:2px}
+.kpi-f .n.alerta{color:var(--err)}
+.proxima{display:flex;align-items:center;gap:12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 16px;margin-bottom:18px}
+.proxima .ic{font-size:1.4rem;line-height:1}
+.proxima .txt{flex:1}
+.proxima.ok{background:#f0fdf4;border-color:#bbf7d0}

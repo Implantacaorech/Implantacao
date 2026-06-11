@@ -60,6 +60,19 @@ def docs_obrigatorios(etapa):
     return GATES.get(etapa, [])
 
 
+# Macro-fases da jornada (stepper do cabeçalho) e o mapa etapa -> fase
+MACRO_FASES = ["Cadastro", "Levantamento", "Projeto", "Execução", "Conversão", "Encerramento"]
+_ETAPA_MACRO = {
+    "Levantamento": 1, "Projeto": 2, "Cronograma": 2,
+    "Parametrização": 3, "Treinamento": 3, "Testes/Simulação": 3,
+    "Conversão": 4, "Virada": 4, "Hypercare": 5, "Encerrado": 5,
+}
+
+
+def macro_idx(etapa):
+    return _ETAPA_MACRO.get(etapa, 0)
+
+
 def gate_status(etapa, docs):
     """Avalia o gate da etapa: quais documentos obrigatórios existem/faltam.
     `docs` = lista de dicts com a chave 'tipo'. Retorna dict pronto p/ o template."""
@@ -272,3 +285,23 @@ def alertas(projetos, docs_map=None):
 
     out.sort(key=lambda a: 0 if a["nivel"] == "alto" else 1)
     return out
+
+
+def cabecalho(d, gate):
+    """Dados do cabeçalho da ficha (stepper de fases + KPIs + próxima ação)."""
+    cur = macro_idx(d.get("etapa"))
+    stepper = [{"nome": f, "estado": ("done" if i < cur else "atual" if i == cur else "futuro")}
+               for i, f in enumerate(MACRO_FASES)]
+    cob, bon = _pnum(d.get("horas_cobradas")), _pnum(d.get("horas_bonificadas"))
+    duso = _pdate(d.get("data_uso_oficial"))
+    encerrado = d.get("etapa") == "Encerrado" or d.get("situacao") == "Concluído"
+    hoje = datetime.now().date()
+    atraso = (hoje - duso).days if (duso and not encerrado and duso < hoje) else None
+    itens = (gate or {}).get("itens", [])
+    return {
+        "stepper": stepper, "fase": MACRO_FASES[cur],
+        "go_live": d.get("data_uso_oficial") or "", "atraso": atraso,
+        "horas_cob": cob, "horas_bon": bon, "horas_total": cob + bon,
+        "docs_ok": sum(1 for i in itens if i["ok"]), "docs_total": len(itens),
+        "proxima": next((i for i in itens if not i["ok"]), None),
+    }

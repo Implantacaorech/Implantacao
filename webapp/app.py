@@ -323,7 +323,8 @@ def projeto_ficha(pid):
     return render_template("projeto_ficha.html", p=d, docs=docs, etapas=db.ETAPAS,
                            situacoes=db.SITUACOES, salvo=request.args.get("salvo"),
                            erro=request.args.get("erro"), aviso=request.args.get("aviso"),
-                           gate=gate, doc_tipos=db.DOC_LABELS, eventos=eventos)
+                           gate=gate, doc_tipos=db.DOC_LABELS, eventos=eventos,
+                           cab=db.cabecalho(d, gate))
 
 
 @app.route("/projetos/<int:pid>/excluir", methods=["POST"])

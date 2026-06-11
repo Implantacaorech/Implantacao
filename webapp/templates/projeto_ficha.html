@@ -2,9 +2,40 @@
 {% block titulo %}{{ p.cliente if p else 'Novo projeto' }}{% endblock %}
 {% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('projetos') }}">Projetos</a> › {{ p.cliente if p else 'Novo' }}</div>{% endblock %}
 {% block conteudo %}
-  <h1>📁 {{ p.cliente if p else 'Novo projeto' }}</h1>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <h1 style="margin:0">📁 {{ p.cliente if p else 'Novo projeto' }}{% if p and p.numero_projeto %} <span style="font-size:.6em;color:var(--muted);font-weight:400">· {{ p.numero_projeto }}</span>{% endif %}</h1>
+    {% if p %}<span class="badge-sit" data-s="{{ p.situacao }}">{{ p.situacao }}</span>{% endif %}
+  </div>
   {% if salvo %}<div class="resultado ok" style="padding:10px 16px">✅ Salvo.</div>{% endif %}
   {% if aviso %}<div class="resultado erro" style="padding:10px 16px">⚠️ {{ aviso }}</div>{% endif %}
+
+  {% if p and cab %}
+  <div class="stepper" style="grid-template-columns:repeat({{ cab.stepper|length }},1fr)">
+    {% for f in cab.stepper %}
+    <div><div class="seg {{ f.estado }}"></div><div class="lbl {{ 'atual' if f.estado=='atual' }}">{{ f.nome }}</div></div>
+    {% endfor %}
+  </div>
+  <div class="kpis-ficha">
+    <div class="kpi-f"><div class="l">Fase atual</div><div class="n">{{ cab.fase }}</div></div>
+    <div class="kpi-f"><div class="l">Go-live previsto</div><div class="n {{ 'alerta' if cab.atraso }}" style="font-size:1.05rem">{% set g = cab.go_live %}{% if g|length == 10 %}{{ g[8:10] }}/{{ g[5:7] }}/{{ g[0:4] }}{% else %}—{% endif %}{% if cab.atraso %} · {{ cab.atraso }}d atraso{% endif %}</div></div>
+    <div class="kpi-f"><div class="l">Horas contratadas</div><div class="n">{{ cab.horas_total|int }}{% if cab.horas_bon %} <span style="font-size:.62rem;color:var(--muted);font-weight:400">({{ cab.horas_cob|int }}+{{ cab.horas_bon|int }})</span>{% endif %}</div></div>
+    <div class="kpi-f"><div class="l">Docs obrigatórios</div><div class="n {{ 'alerta' if cab.docs_ok < cab.docs_total }}">{{ cab.docs_ok }} / {{ cab.docs_total }}</div></div>
+  </div>
+  {% if cab.proxima %}
+  <div class="proxima">
+    <span class="ic">⚠️</span>
+    <div class="txt"><div style="font-weight:700;color:var(--navy)">Próxima ação: gerar o {{ cab.proxima.label }}</div>
+      <div class="dica" style="margin:0">Documento obrigatório desta fase — clique para resolver agora.</div></div>
+    {% if cab.proxima.tipo in ['levantamento','checklist','cronograma','termo'] %}
+      <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo=cab.proxima.tipo) }}"><button class="btn primario" type="submit">Gerar agora</button></form>
+    {% elif cab.proxima.tipo == 'projeto' %}
+      <a class="btn primario" href="#gerar-projeto">Importar Mapeamento</a>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="proxima ok"><span class="ic">✅</span><div class="txt"><div style="font-weight:700;color:var(--ok)">Fase liberada — documentos obrigatórios em dia.</div></div></div>
+  {% endif %}
+  {% endif %}
 
   <form method="post" action="{{ url_for('projeto_ficha', pid=p.id) if p else url_for('projeto_novo') }}" class="painel">
     <div class="grade2">
@@ -32,23 +63,6 @@
   <div style="margin-top:12px">
     <a class="btn" href="{{ url_for('projeto_email', pid=p.id) }}">✉️ Enviar e-mail</a>
   </div>
-  {% if gate %}
-  <div class="painel" style="margin-top:18px">
-    <h3 style="color:var(--navy);margin:0 0 8px">🚦 Gate da etapa — "{{ p.etapa }}"</h3>
-    {% if gate.itens %}
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-      {% for it in gate.itens %}
-        <span style="padding:4px 10px;border-radius:6px;font-size:.9em;background:{{ '#dcfce7' if it.ok else '#fef2f2' }};border:1px solid {{ '#86efac' if it.ok else '#fecaca' }}">{{ '✅' if it.ok else '⬜' }} {{ it.label }}</span>
-      {% endfor %}
-      </div>
-      {% if gate.ok %}<div class="resultado ok" style="padding:8px 14px;margin:0">✅ Etapa liberada — documentos obrigatórios presentes.</div>
-      {% else %}<div class="resultado erro" style="padding:8px 14px;margin:0">⚠️ Faltam para esta etapa: <strong>{{ gate.faltam|join(', ') }}</strong></div>{% endif %}
-    {% else %}
-      <p class="dica" style="margin:0">Nenhum documento obrigatório nesta etapa (início do fluxo).</p>
-    {% endif %}
-  </div>
-  {% endif %}
-
   <h3 style="color:var(--navy);margin-top:22px">Documentos do projeto</h3>
   <p class="dica">Gera a partir dos dados salvos deste cliente (módulos, horas, nº) e anexa abaixo.</p>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -58,7 +72,7 @@
     <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='termo') }}"><button class="btn" type="submit">📑 Gerar Termo</button></form>
   </div>
   {% if erro %}<div class="resultado erro" style="padding:8px 14px;margin-top:8px">⚠️ {{ erro }}</div>{% endif %}
-  <form method="post" action="{{ url_for('projeto_gerar_projeto', pid=p.id) }}" enctype="multipart/form-data"
+  <form id="gerar-projeto" method="post" action="{{ url_for('projeto_gerar_projeto', pid=p.id) }}" enctype="multipart/form-data"
         style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#f1f5f9;padding:10px 14px;border-radius:8px">
     <span class="dica" style="margin:0">Gerar o <strong>Projeto</strong> a partir do Mapeamento preenchido:</span>
     <input type="file" name="arquivo" accept=".docx" required>
