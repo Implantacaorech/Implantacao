@@ -29,6 +29,9 @@
   </form>
 
   {% if p %}
+  <div style="margin-top:12px">
+    <a class="btn" href="{{ url_for('projeto_email', pid=p.id) }}">✉️ Enviar e-mail</a>
+  </div>
   {% if gate %}
   <div class="painel" style="margin-top:18px">
     <h3 style="color:var(--navy);margin:0 0 8px">🚦 Gate da etapa — "{{ p.etapa }}"</h3>

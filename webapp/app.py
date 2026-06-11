@@ -176,6 +176,51 @@ def config():
                            salvo=salvo, via_env=via_env, sdk_ok=sdk_ok)
 
 
+@app.route("/config/email", methods=["GET", "POST"])
+def config_email():
+    import mailer
+    salvo = False
+    if request.method == "POST":
+        mailer.salvar_cfg(request.form)
+        salvo = True
+    return render_template("config_email.html", cfg=mailer.load_cfg(), salvo=salvo,
+                           configurado=mailer.configurado())
+
+
+@app.route("/projetos/<int:pid>/email", methods=["GET", "POST"])
+def projeto_email(pid):
+    import mailer
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        if not p:
+            abort(404)
+        proj = db.to_dict(p)
+    tpls = mailer.templates(proj)
+    if request.method == "POST":
+        destino = (request.form.get("destino") or "").strip()
+        assunto = (request.form.get("assunto") or "").strip()
+        corpo = request.form.get("corpo") or ""
+        if not mailer.configurado():
+            erro = "SMTP não configurado."
+        elif not destino:
+            erro = "Informe o destinatário."
+        else:
+            ok, err = mailer.enviar(destino, assunto, corpo)
+            with db.Session() as s:
+                db.registrar_evento(s, pid, "email",
+                    ("E-mail enviado a %s — %s" % (destino, assunto)) if ok
+                    else ("Falha ao enviar e-mail a %s: %s" % (destino, err)), _autor())
+                s.commit()
+            if ok:
+                return redirect(url_for("projeto_ficha", pid=pid, salvo=1))
+            erro = err
+        return render_template("projeto_email.html", p=proj, tpls=tpls,
+                               configurado=mailer.configurado(), erro=erro,
+                               destino=destino, assunto=assunto, corpo=corpo)
+    return render_template("projeto_email.html", p=proj, tpls=tpls,
+                           configurado=mailer.configurado())
+
+
 @app.route("/projetos")
 def projetos():
     with db.Session() as s:

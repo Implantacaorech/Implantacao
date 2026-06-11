@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block titulo %}E-mail — {{ p.cliente }}{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('projetos') }}">Projetos</a> › <a href="{{ url_for('projeto_ficha', pid=p.id) }}">{{ p.cliente }}</a> › E-mail</div>{% endblock %}
+{% block conteudo %}
+  <h1>✉️ Enviar e-mail — {{ p.cliente }}</h1>
+  {% if not configurado %}<div class="resultado erro" style="padding:10px 16px">SMTP não configurado. <a href="{{ url_for('config_email') }}">Configurar agora</a>.</div>{% endif %}
+  {% if erro %}<div class="resultado erro" style="padding:10px 16px">⚠️ {{ erro }}</div>{% endif %}
+  <form method="post" class="painel">
+    <label class="campo"><span>Destinatário</span><input name="destino" value="{{ destino or '' }}" placeholder="email@cliente.com.br" required></label>
+    <label class="campo"><span>Modelo</span>
+      <select id="tpl" onchange="fill()" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px">
+        <option value="">— escolher um modelo —</option>
+        {% for k, t in tpls.items() %}<option value="{{ k }}">{{ t.nome }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="campo"><span>Assunto</span><input id="assunto" name="assunto" value="{{ assunto or '' }}"></label>
+    <label class="campo"><span>Mensagem</span><textarea id="corpo" name="corpo" rows="12">{{ corpo or '' }}</textarea></label>
+    <button class="btn primario" type="submit">✉️ Enviar</button>
+    <a class="btn" href="{{ url_for('projeto_ficha', pid=p.id) }}">Cancelar</a>
+  </form>
+  <script>
+    var T = {{ tpls|tojson }};
+    function fill(){ var k = document.getElementById('tpl').value; if(!k) return;
+      document.getElementById('assunto').value = T[k].assunto;
+      document.getElementById('corpo').value = T[k].corpo; }
+  </script>
+{% endblock %}

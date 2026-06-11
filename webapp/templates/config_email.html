@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block titulo %}Config — E-mail{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › Configurar e-mail</div>{% endblock %}
+{% block conteudo %}
+  <h1>✉️ E-mail interno (SMTP)</h1>
+  <p class="sub">Conta de envio da Rech. A senha fica salva só nesta máquina (não é versionada).</p>
+  {% if salvo %}<div class="resultado ok" style="padding:10px 16px">✅ Configuração salva.{% if configurado %} Pronto para enviar.{% endif %}</div>{% endif %}
+  <form method="post" class="painel">
+    <div class="grade2">
+      <label class="campo"><span>Servidor SMTP (host)</span><input name="host" value="{{ cfg.host or '' }}" placeholder="smtp.rech.com.br"></label>
+      <label class="campo"><span>Porta</span><input name="port" value="{{ cfg.port or '587' }}" placeholder="587 (TLS) ou 465 (SSL)"></label>
+      <label class="campo"><span>Usuário</span><input name="user" value="{{ cfg.user or '' }}" placeholder="implantacao@rech.com.br"></label>
+      <label class="campo"><span>Senha</span><input type="password" name="senha" placeholder="{{ '•••••• (mantida)' if cfg.senha else '' }}"></label>
+      <label class="campo"><span>Remetente (From)</span><input name="remetente" value="{{ cfg.remetente or '' }}" placeholder="implantacao@rech.com.br"></label>
+      <label class="campo" style="align-self:end"><span><input type="checkbox" name="use_tls" {{ 'checked' if cfg.use_tls }}> Usar TLS (STARTTLS)</span></label>
+    </div>
+    <button class="btn primario" type="submit">💾 Salvar</button>
+  </form>
+  <p class="dica">Status: {{ '🟢 configurado' if configurado else '🔴 incompleto (informe host e remetente)' }}.</p>
+  <a class="voltar" href="{{ url_for('projetos') }}">← Voltar</a>
+{% endblock %}
