@@ -163,6 +163,20 @@ def inject_cliente():
             "perfil_nome_atual": session.get("perfil_nome", "")}
 
 
+@app.context_processor
+def inject_alertas():
+    try:
+        with db.Session() as s:
+            projetos = [db.to_dict(x) for x in s.query(db.Projeto).all()]
+            docs_map = {}
+            for dcto in s.query(db.Documento).all():
+                docs_map.setdefault(dcto.projeto_id, []).append({"tipo": dcto.tipo})
+        n = len(db.alertas(_so_meus(projetos), docs_map))
+    except Exception:
+        n = 0
+    return {"n_alertas": n}
+
+
 @app.route("/perfil", methods=["GET", "POST"])
 def perfil():
     if request.method == "POST":
@@ -262,8 +276,9 @@ def coordenacao():
         docs_map = {}
         for dcto in s.query(db.Documento).all():
             docs_map.setdefault(dcto.projeto_id, []).append({"tipo": dcto.tipo})
-    m = db.metricas(_so_meus(projetos), docs_map)
-    return render_template("painel_coordenacao.html", m=m,
+    meus = _so_meus(projetos)
+    m = db.metricas(meus, docs_map)
+    return render_template("painel_coordenacao.html", m=m, alertas=db.alertas(meus, docs_map),
                            etapas=db.ETAPAS, situacoes=db.SITUACOES)
 
 

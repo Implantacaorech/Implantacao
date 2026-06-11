@@ -12,7 +12,7 @@ Onde mora o banco:
 import os
 import re
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -223,3 +223,52 @@ def metricas(projetos, docs_map=None):
         "horas_cob": horas_cob, "horas_bon": horas_bon, "horas_total": horas_cob + horas_bon,
         "ttv_medio": round(sum(ttv) / len(ttv)) if ttv else None,
     }
+
+
+# --- Alertas proativos (SLA / hypercare / risco) ---
+ALERTA_PARADO_DIAS = 14
+ALERTA_HYPERCARE_DIAS = 15
+SLA_CRONOGRAMA_UTEIS = 5
+
+
+def _uteis(d, n):
+    while n > 0:
+        d += timedelta(days=1)
+        if d.weekday() < 5:
+            n -= 1
+    return d
+
+
+def alertas(projetos, docs_map=None):
+    """Lista de alertas acionáveis dos projetos ATIVOS.
+    Cada item: {nivel: alto|medio, projeto_id, cliente, tipo, msg}."""
+    docs_map = docs_map or {}
+    hoje = datetime.now().date()
+    out = []
+    for p in projetos:
+        sit, et = p.get("situacao") or "", p.get("etapa") or ""
+        if et == "Encerrado" or sit == "Concluído":
+            continue
+        pid, cli = p.get("id"), p.get("cliente")
+        tipos = {(d.get("tipo") or "").lower() for d in docs_map.get(pid, [])}
+        duso = _pdate(p.get("data_uso_oficial"))
+
+        def add(nivel, tipo, msg):
+            out.append({"nivel": nivel, "projeto_id": pid, "cliente": cli, "tipo": tipo, "msg": msg})
+
+        if duso and duso < hoje:
+            add("alto", "atraso", "Uso oficial previsto venceu há %d dia(s)" % (hoje - duso).days)
+        if sit == "Em risco":
+            add("alto", "risco", "Projeto marcado como Em risco")
+        di = _pdate(p.get("data_inicio"))
+        if di and "cronograma" not in tipos and hoje > _uteis(di, SLA_CRONOGRAMA_UTEIS):
+            add("medio", "sla", "Cronograma pendente além do SLA de %d dias úteis (início %s)"
+                % (SLA_CRONOGRAMA_UTEIS, di.strftime("%d/%m/%Y")))
+        if et == "Hypercare" and duso and hoje > duso + timedelta(days=ALERTA_HYPERCARE_DIAS):
+            add("medio", "hypercare", "Hypercare/produção há mais de %d dias — avaliar encerramento" % ALERTA_HYPERCARE_DIAS)
+        at = p.get("atualizado_em")
+        if isinstance(at, datetime) and (datetime.now() - at).days >= ALERTA_PARADO_DIAS:
+            add("medio", "parado", "Sem atualização há %d dias" % (datetime.now() - at).days)
+
+    out.sort(key=lambda a: 0 if a["nivel"] == "alto" else 1)
+    return out

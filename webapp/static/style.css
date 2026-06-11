@@ -113,3 +113,9 @@ textarea{resize:vertical}
 .timeline{list-style:none;padding:0;margin:6px 0;border-left:2px solid var(--line)}
 .timeline li{display:flex;gap:10px;padding:7px 0 7px 14px}
 .timeline .tl-ico{font-size:1rem;line-height:1.3}
+/* Alertas */
+.nav-alert{background:#fee2e2;color:#b91c1c;border-radius:10px;padding:0 6px;font-size:.74rem;font-weight:700}
+.alertas{list-style:none;padding:0;margin:6px 0}
+.alertas li{padding:7px 10px;border-radius:6px;margin:5px 0;background:#f8fafc;border-left:4px solid var(--muted)}
+.alertas li.al-alto{border-left-color:var(--err);background:#fef2f2}
+.alertas li.al-medio{border-left-color:#d97706;background:#fffbeb}

@@ -5,6 +5,17 @@
   <h1>📊 Painel Coordenação</h1>
   <p class="sub">Carteira de implantações — visão de portfólio em tempo real.</p>
 
+  {% if alertas %}
+  <div class="painel" style="border-left:5px solid var(--err)">
+    <h3 style="color:var(--err);margin-top:0">⚠️ Alertas proativos ({{ alertas|length }})</h3>
+    <ul class="alertas">
+    {% for a in alertas %}
+      <li class="al-{{ a.nivel }}"><a href="{{ url_for('projeto_ficha', pid=a.projeto_id) }}"><strong>{{ a.cliente }}</strong></a> — {{ a.msg }}</li>
+    {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
   {% if m.total == 0 %}
     <p class="dica">Nenhum projeto cadastrado ainda. <a href="{{ url_for('projeto_novo') }}">Criar o primeiro</a>.</p>
   {% else %}
