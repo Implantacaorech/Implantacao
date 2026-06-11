@@ -135,3 +135,7 @@ textarea{resize:vertical}
 .proxima .ic{font-size:1.4rem;line-height:1}
 .proxima .txt{flex:1}
 .proxima.ok{background:#f0fdf4;border-color:#bbf7d0}
+.resumo{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0 28px}
+.resumo .row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.92rem}
+.resumo .row .k{color:var(--muted)}
+.resumo .row .v{text-align:right;font-weight:600}
