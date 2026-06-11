@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block titulo %}Confirmar fluxo{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('fluxo_inicio') }}">Fluxo</a> › Confirmar</div>{% endblock %}
+{% block conteudo %}
+  <h1>✅ Confirmar e criar o fluxo</h1>
+  <p class="sub">Extraído de: <strong>{{ fonte }}</strong>{% if assunto %} — “{{ assunto }}”{% endif %}. Confira os dados, designe os 2 responsáveis e crie.</p>
+  <form method="post" action="{{ url_for('fluxo_criar') }}" class="painel">
+    <div class="grade2">
+      <label class="campo"><span>Cliente (Razão Social) *</span><input name="cliente" value="{{ proj.cliente }}" required></label>
+      <label class="campo"><span>CNPJ</span><input name="cnpj" value="{{ proj.cnpj }}"></label>
+      <label class="campo"><span>Ramo</span><input name="ramo" value="{{ proj.ramo }}"></label>
+      <label class="campo"><span>Nº do projeto</span><input name="numero_projeto" value="{{ proj.numero_projeto }}"></label>
+      <label class="campo"><span>Módulos (siglas)</span><input name="modulos" value="{{ proj.modulos }}"></label>
+      <label class="campo"><span>Horas cobradas</span><input name="horas_cobradas" value="{{ proj.horas_cobradas }}"></label>
+      <label class="campo"><span>Horas bonificadas</span><input name="horas_bonificadas" value="{{ proj.horas_bonificadas }}"></label>
+      <label class="campo"><span>Contatos do cliente</span><input name="contatos" value="{{ proj.contatos }}"></label>
+    </div>
+    <label class="campo"><span>Observações</span><textarea name="observacoes" rows="2">{{ proj.observacoes }}</textarea></label>
+
+    <h3 style="color:var(--navy)">Os 2 pontos manuais</h3>
+    <div class="grade2">
+      <label class="campo"><span>👤 GCI do Levantamento</span><input name="consultor" placeholder="nome do GCI"></label>
+      <label class="campo"><span>👷 Técnico(s) da implantação</span><input name="tecnicos" placeholder="nomes, separados por vírgula"></label>
+    </div>
+    <label class="campo"><span>✉️ E-mails dos responsáveis (recebem o pacote + resumo)</span>
+      <input name="emails_responsaveis" placeholder="gci@rech.com.br, tecnico@rech.com.br"></label>
+
+    <h3 style="color:var(--navy)">Pacote inicial a gerar</h3>
+    <div style="display:flex;gap:18px;flex-wrap:wrap">
+      <label><input type="checkbox" name="gerar" value="levantamento" checked> 📄 Mapeamento</label>
+      <label><input type="checkbox" name="gerar" value="checklist" checked> 📊 Check List</label>
+      <label><input type="checkbox" name="gerar" value="cronograma" checked> 📅 Cronograma</label>
+    </div>
+    <p class="dica">Ao criar: cria a ficha, gera o pacote, registra tudo na timeline e envia o e-mail aos responsáveis com os anexos + resumo do projeto.</p>
+    <button class="btn primario" type="submit" style="margin-top:8px">🚀 Criar fluxo e enviar pacote</button>
+    <a class="btn" href="{{ url_for('fluxo_inicio') }}">Cancelar</a>
+  </form>
+{% endblock %}

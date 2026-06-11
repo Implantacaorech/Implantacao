@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block titulo %}Config — Caixa de entrada{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › Caixa de entrada</div>{% endblock %}
+{% block conteudo %}
+  <h1>📥 Caixa de entrada (IMAP)</h1>
+  <p class="sub">Conta onde chega o e-mail de fechamento. A senha fica salva só nesta máquina (não é versionada).</p>
+  {% if salvo %}<div class="resultado ok" style="padding:10px 16px">✅ Salvo.{% if configurado %} Pronto para checar a caixa.{% endif %}</div>{% endif %}
+  <form method="post" class="painel">
+    <div class="grade2">
+      <label class="campo"><span>Servidor IMAP (host)</span><input name="host" value="{{ cfg.host or '' }}" placeholder="imap.rech.com.br"></label>
+      <label class="campo"><span>Porta</span><input name="port" value="{{ cfg.port or '993' }}" placeholder="993 (SSL)"></label>
+      <label class="campo"><span>Usuário</span><input name="user" value="{{ cfg.user or '' }}" placeholder="implantacao@rech.com.br"></label>
+      <label class="campo"><span>Senha</span><input type="password" name="senha" placeholder="{{ '•••••• (mantida)' if cfg.senha else '' }}"></label>
+      <label class="campo"><span>Pasta</span><input name="pasta" value="{{ cfg.pasta or 'INBOX' }}"></label>
+    </div>
+    <button class="btn primario" type="submit">💾 Salvar</button>
+  </form>
+  <p class="dica">Status: {{ '🟢 configurado' if configurado else '🔴 incompleto (informe host e usuário)' }}. Busca e-mails <strong>não lidos</strong> com “[IMPLANTAÇÃO]” no assunto, sem marcá-los como lidos.</p>
+  <a class="voltar" href="{{ url_for('fluxo_inicio') }}">← Voltar ao Fluxo</a>
+{% endblock %}

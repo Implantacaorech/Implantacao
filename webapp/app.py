@@ -331,6 +331,8 @@ def projeto_excluir(pid):
     with db.Session() as s:
         p = s.get(db.Projeto, pid)
         if p:
+            s.query(db.Documento).filter_by(projeto_id=pid).delete()
+            s.query(db.Evento).filter_by(projeto_id=pid).delete()
             s.delete(p)
             s.commit()
     return redirect(url_for("projetos"))
@@ -416,6 +418,114 @@ def projeto_nota(pid):
             db.registrar_evento(s, pid, "nota", texto, _autor())
             s.commit()
     return redirect(url_for("projeto_ficha", pid=pid))
+
+
+@app.route("/fluxo")
+def fluxo_inicio():
+    import fluxo as F, imap_intake, mailer
+    return render_template("fluxo.html", modelo=F.MODELO_FECHAMENTO,
+                           imap_ok=imap_intake.configurado(), smtp_ok=mailer.configurado(),
+                           erro=request.args.get("erro"))
+
+
+def _fluxo_confirmar(texto, assunto=None, fonte=""):
+    import fluxo as F
+    proj = F.para_projeto(F.parse_fechamento(texto))
+    return render_template("fluxo_confirmar.html", proj=proj, fonte=fonte,
+                           assunto=assunto, bruto=texto)
+
+
+@app.route("/fluxo/parse", methods=["POST"])
+def fluxo_parse():
+    return _fluxo_confirmar(request.form.get("texto", ""), fonte="e-mail colado")
+
+
+@app.route("/fluxo/inbox", methods=["POST"])
+def fluxo_inbox():
+    import imap_intake
+    corpo, assunto, erro = imap_intake.buscar_fechamento()
+    if erro:
+        return redirect(url_for("fluxo_inicio", erro=erro))
+    return _fluxo_confirmar(corpo, assunto=assunto, fonte="caixa de entrada")
+
+
+@app.route("/fluxo/criar", methods=["POST"])
+def fluxo_criar():
+    import re as _re
+    import datetime
+    import fluxo as F
+    import mailer
+    f = request.form
+    proj_fields = {k: (f.get(k) or "").strip() for k in
+                   ("cliente", "cnpj", "ramo", "numero_projeto", "modulos",
+                    "horas_cobradas", "horas_bonificadas", "contatos", "observacoes")}
+    gci = (f.get("consultor") or "").strip()
+    tecnicos = (f.get("tecnicos") or "").strip()
+    gerar = f.getlist("gerar") or ["levantamento", "checklist", "cronograma"]
+    proj_fields["consultor"] = gci
+    if tecnicos:
+        proj_fields["observacoes"] = (proj_fields["observacoes"]
+                                      + (" · " if proj_fields["observacoes"] else "")
+                                      + "Técnicos: " + tecnicos)
+    proj_fields["data_inicio"] = datetime.date.today().isoformat()
+
+    with db.Session() as s:
+        p = db.aplicar_form(db.Projeto(), proj_fields)
+        s.add(p)
+        s.commit()
+        pid = p.id
+        db.registrar_evento(s, pid, "etapa", "Fluxo iniciado pelo e-mail de fechamento (Comercial).", _autor())
+        if gci:
+            db.registrar_evento(s, pid, "nota", "GCI designado p/ Levantamento: %s" % gci, _autor())
+        if tecnicos:
+            db.registrar_evento(s, pid, "nota", "Técnico(s) da implantação: %s" % tecnicos, _autor())
+        s.commit()
+        proj = db.to_dict(p)
+
+    caminhos, nomes = [], []
+    for tipo in gerar:
+        try:
+            path, _log = runner.gerar_do_projeto(proj, tipo)
+        except Exception:
+            path = None
+        if path:
+            with db.Session() as s:
+                s.add(db.Documento(projeto_id=pid, tipo=tipo,
+                                   arquivo=os.path.basename(path), caminho=path))
+                db.registrar_evento(s, pid, "documento",
+                                    "Gerou %s (%s)" % (os.path.basename(path), tipo), _autor())
+                s.commit()
+            caminhos.append(path)
+            nomes.append(os.path.basename(path))
+
+    destinos = [e.strip() for e in _re.split(r"[;,]", f.get("emails_responsaveis") or "") if e.strip()]
+    enviado, erro_mail = False, None
+    if destinos and mailer.configurado():
+        resumo = F.resumo_projeto(proj, nomes, gci, tecnicos)
+        enviado, erro_mail = mailer.enviar(destinos, "Implantação iniciada — %s" % proj.get("cliente"),
+                                           resumo, anexos=caminhos)
+        with db.Session() as s:
+            db.registrar_evento(s, pid, "email",
+                ("Pacote inicial enviado a %s" % ", ".join(destinos)) if enviado
+                else ("Falha ao enviar o pacote: %s" % erro_mail), _autor())
+            s.commit()
+    aviso = None
+    if destinos and not enviado:
+        aviso = "Fluxo criado, mas o e-mail não saiu: %s" % (erro_mail or "configure o SMTP.")
+    elif not destinos:
+        aviso = "Fluxo criado. Nenhum destinatário informado — pacote não enviado por e-mail."
+    return redirect(url_for("projeto_ficha", pid=pid, salvo=1, aviso=aviso))
+
+
+@app.route("/config/imap", methods=["GET", "POST"])
+def config_imap():
+    import imap_intake
+    salvo = False
+    if request.method == "POST":
+        imap_intake.salvar_cfg(request.form)
+        salvo = True
+    return render_template("config_imap.html", cfg=imap_intake.load_cfg(), salvo=salvo,
+                           configurado=imap_intake.configurado())
 
 
 @app.route("/mapa")

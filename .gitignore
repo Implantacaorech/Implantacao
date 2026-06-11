@@ -40,8 +40,9 @@ tools/data/_in_*.docx
 # Chave de API da Anthropic (modo IA) — NUNCA versionar
 tools/data/anthropic_key.txt
 
-# Credenciais SMTP do e-mail interno — NUNCA versionar (senha em texto local)
+# Credenciais SMTP/IMAP do e-mail interno — NUNCA versionar (senha em texto local)
 tools/data/smtp.json
+tools/data/imap.json
 
 # Banco do Hub "Projetos por Cliente" — dados de cliente, NUNCA versionar
 *.db

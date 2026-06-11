@@ -47,17 +47,29 @@ def configurado():
     return bool(c.get("host") and c.get("remetente"))
 
 
-def enviar(destino, assunto, corpo):
-    """Envia um e-mail de texto. Retorna (ok, erro)."""
+def enviar(destino, assunto, corpo, anexos=None):
+    """Envia um e-mail de texto, com anexos opcionais (lista de caminhos).
+    `destino` pode ser string (1 ou vários separados por vírgula) ou lista. Retorna (ok, erro)."""
+    import mimetypes
     c = load_cfg()
     if not c.get("host"):
         return False, "SMTP não configurado (Config → E-mail)."
+    if isinstance(destino, (list, tuple, set)):
+        destino = ", ".join(x for x in destino if x)
     try:
         msg = EmailMessage()
         msg["From"] = c.get("remetente") or c.get("user")
         msg["To"] = destino
         msg["Subject"] = assunto
         msg.set_content(corpo)
+        for path in anexos or []:
+            if not (path and os.path.exists(path)):
+                continue
+            ctype, _ = mimetypes.guess_type(path)
+            maintype, subtype = (ctype or "application/octet-stream").split("/", 1)
+            with open(path, "rb") as fh:
+                msg.add_attachment(fh.read(), maintype=maintype, subtype=subtype,
+                                   filename=os.path.basename(path))
         port = int(c.get("port") or 587)
         ctx = ssl.create_default_context()
         if port == 465:

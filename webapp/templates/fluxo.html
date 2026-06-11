@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block titulo %}Fluxo de Fechamento{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › Fluxo automático</div>{% endblock %}
+{% block conteudo %}
+  <h1>🔄 Fluxo automático — Onboarding da Implantação</h1>
+  <p class="sub">Começa pelo e-mail de fechamento do Comercial: extrai os dados e cria o fluxo completo (ficha + pacote de documentos + e-mail aos responsáveis).</p>
+  {% if erro %}<div class="resultado erro" style="padding:10px 16px">⚠️ {{ erro }}</div>{% endif %}
+
+  <div class="painel">
+    <h3 style="color:var(--navy);margin-top:0">1) Modelo para o Comercial usar</h3>
+    <p class="dica" style="margin-top:0">Peça ao Comercial que envie o e-mail de fechamento neste formato (assunto com <code>[IMPLANTAÇÃO]</code>) — assim a extração é automática.</p>
+    <textarea id="modelo" rows="14" style="width:100%;font-family:Consolas,monospace;font-size:.85rem">{{ modelo }}</textarea>
+    <button class="btn" type="button" onclick="navigator.clipboard.writeText(document.getElementById('modelo').value)">📋 Copiar modelo</button>
+  </div>
+
+  <div class="painel">
+    <h3 style="color:var(--navy);margin-top:0">2) Trazer o e-mail de fechamento</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+      <form method="post" action="{{ url_for('fluxo_inbox') }}">
+        <button class="btn primario" type="submit" {{ '' if imap_ok else 'disabled' }}>📥 Checar caixa de entrada</button>
+      </form>
+      <span class="dica" style="margin:0">{{ '🟢 IMAP configurado' if imap_ok else '🔴 IMAP não configurado' }} · <a href="{{ url_for('config_imap') }}">configurar</a></span>
+    </div>
+    <form method="post" action="{{ url_for('fluxo_parse') }}">
+      <label class="campo"><span>…ou cole o corpo do e-mail de fechamento aqui</span>
+        <textarea name="texto" rows="10" placeholder="Cole o e-mail…"></textarea></label>
+      <button class="btn primario" type="submit">➡️ Extrair e continuar</button>
+    </form>
+  </div>
+  <p class="dica">E-mail final aos responsáveis (SMTP): {{ '🟢 pronto' if smtp_ok else '🔴 pendente' }} · <a href="{{ url_for('config_email') }}">configurar</a></p>
+{% endblock %}
