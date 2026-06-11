@@ -13,7 +13,7 @@
 - [x] **Feito:** gerar Mapeamento/Check List/Termo a partir da ficha + anexar (histórico + download). *(Projeto e links Drive/SICLA/RNS: depois.)*
 - [ ] Timeline/histórico por projeto (auditoria + passagem de bastão).
 - [ ] Contatos/stakeholders por cliente (campo texto já existe; estruturar depois).
-- [ ] Gerar o **Projeto** a partir da ficha (precisa do detalhe do levantamento — anexar/importar o Mapeamento preenchido).
+- [x] **Feito:** gerar o **Projeto** a partir da ficha — anexa o Mapeamento (.docx) preenchido e gera o Projeto (verbal+ortografia), anexando-o ao cliente.
 - [ ] Perfis/permissões (Coordenação vê a carteira; Consultor vê os seus).
 - [ ] Painel do CEO: carteira (no prazo/atrasados, ocupação, time-to-value).
 - [ ] `Iniciar_Servidor.bat` (seta `PAINEL_HOST=0.0.0.0` + `PAINEL_DB` na pasta de rede) para subir o servidor interno.

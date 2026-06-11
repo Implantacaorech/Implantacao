@@ -206,7 +206,8 @@ def projeto_ficha(pid):
         docs = [db.to_dict(x) for x in s.query(db.Documento)
                 .filter_by(projeto_id=pid).order_by(db.Documento.criado_em.desc()).all()]
     return render_template("projeto_ficha.html", p=d, docs=docs, etapas=db.ETAPAS,
-                           situacoes=db.SITUACOES, salvo=request.args.get("salvo"))
+                           situacoes=db.SITUACOES, salvo=request.args.get("salvo"),
+                           erro=request.args.get("erro"))
 
 
 @app.route("/projetos/<int:pid>/excluir", methods=["POST"])
@@ -234,6 +235,30 @@ def projeto_gerar(pid, tipo):
         with db.Session() as s:
             s.add(db.Documento(projeto_id=pid, tipo=tipo,
                                arquivo=os.path.basename(path), caminho=path))
+            s.commit()
+    return redirect(url_for("projeto_ficha", pid=pid))
+
+
+@app.route("/projetos/<int:pid>/gerar_projeto", methods=["POST"])
+def projeto_gerar_projeto(pid):
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        if not p:
+            abort(404)
+        cliente = p.cliente
+    f = request.files.get("arquivo")
+    if not (f and f.filename and f.filename.lower().endswith(".docx")):
+        return redirect(url_for("projeto_ficha", pid=pid, erro="Envie o Mapeamento (.docx) preenchido."))
+    path = os.path.join(UPLOADS, "map_" + C.slug(f.filename) + ".docx")
+    f.save(path)
+    try:
+        proj_path, _yaml = runner.gerar_projeto_de_docx(path, cliente=cliente)
+    except Exception as e:
+        return redirect(url_for("projeto_ficha", pid=pid, erro="Falha ao gerar o Projeto: %s" % type(e).__name__))
+    if proj_path:
+        with db.Session() as s:
+            s.add(db.Documento(projeto_id=pid, tipo="projeto",
+                               arquivo=os.path.basename(proj_path), caminho=proj_path))
             s.commit()
     return redirect(url_for("projeto_ficha", pid=pid))
 

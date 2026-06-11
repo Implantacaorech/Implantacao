@@ -35,6 +35,13 @@
     <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='checklist') }}"><button class="btn" type="submit">📊 Gerar Check List</button></form>
     <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='termo') }}"><button class="btn" type="submit">📑 Gerar Termo</button></form>
   </div>
+  {% if erro %}<div class="resultado erro" style="padding:8px 14px;margin-top:8px">⚠️ {{ erro }}</div>{% endif %}
+  <form method="post" action="{{ url_for('projeto_gerar_projeto', pid=p.id) }}" enctype="multipart/form-data"
+        style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#f1f5f9;padding:10px 14px;border-radius:8px">
+    <span class="dica" style="margin:0">Gerar o <strong>Projeto</strong> a partir do Mapeamento preenchido:</span>
+    <input type="file" name="arquivo" accept=".docx" required>
+    <button class="btn" type="submit">📘 Gerar Projeto</button>
+  </form>
   {% if docs %}
   <table class="form-tab" style="margin-top:10px">
     <thead><tr><th>Arquivo</th><th>Tipo</th><th>Gerado em</th><th></th></tr></thead>

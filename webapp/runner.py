@@ -293,3 +293,22 @@ def gerar_do_projeto(proj, tipo):
                  "cidade_data": "Novo Hamburgo, ____ de ____________ de 2026."}
         return run_generator("gerar_termo_encerramento", _dump_yaml(termo, "termo_%s.yaml" % slug))
     return None, ""
+
+
+def gerar_projeto_de_docx(docx_path, cliente=None):
+    """Importa o Mapeamento (.docx) preenchido e gera o Projeto de Implantação
+    (com conversão verbal + ortografia). Retorna (caminho_projeto, caminho_yaml)."""
+    import importar_mapeamento as I
+    import yaml as _yaml
+    data = I.extract(docx_path)
+    ydict = I.to_yaml_dict(data, aplicar_verbal=True)
+    nome = cliente or data.get("client_name") or "cliente"
+    if cliente:   # o registro do projeto é a fonte da verdade do nome do cliente
+        ydict["client_name"] = cliente
+        ydict["cliente"] = cliente
+    base = "projeto_%s.yaml" % C.slug(nome)
+    with open(os.path.join(DATA, base), "w", encoding="utf-8") as f:
+        f.write("# Gerado pelo Mapeamento anexado (tempo verbal + ortografia). Revisar antes de usar.\n")
+        _yaml.safe_dump(ydict, f, allow_unicode=True, sort_keys=False, width=100)
+    proj_path, _ = run_generator("gerar_projeto_implantacao", base)
+    return proj_path, os.path.join(DATA, base)
