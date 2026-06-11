@@ -39,8 +39,21 @@ ALLOWED_DIRS = [C.OUT, C.DATA_WRITE, C.DATA, UPLOADS]
 db.init_db()   # cria o banco do hub (Projetos por Cliente) se não existir
 
 
+PERFIS = ["Coordenação", "Consultor"]
+
+
 def _autor():
     return session.get("perfil_nome") or ""
+
+
+def _so_meus(projetos):
+    """Filtro de visão: Consultor vê só os projetos em que seu nome está no campo
+    'Consultor'; Coordenação vê todos."""
+    if session.get("perfil") == "Consultor":
+        nome = (session.get("perfil_nome") or "").strip().lower()
+        if nome:
+            return [p for p in projetos if nome in (p.get("consultor") or "").lower()]
+    return projetos
 
 
 @app.route("/")
@@ -145,7 +158,20 @@ def acao(rid, aid):
 
 @app.context_processor
 def inject_cliente():
-    return {"cliente_atual": session.get("cliente_nome")}
+    return {"cliente_atual": session.get("cliente_nome"),
+            "perfil_atual": session.get("perfil", "Coordenação"),
+            "perfil_nome_atual": session.get("perfil_nome", "")}
+
+
+@app.route("/perfil", methods=["GET", "POST"])
+def perfil():
+    if request.method == "POST":
+        session["perfil"] = request.form.get("perfil") or "Coordenação"
+        session["perfil_nome"] = (request.form.get("perfil_nome") or "").strip()
+        return redirect(request.args.get("next") or url_for("projetos"))
+    return render_template("perfil.html", perfis=PERFIS,
+                           perfil=session.get("perfil", "Coordenação"),
+                           perfil_nome=session.get("perfil_nome", ""))
 
 
 @app.route("/cliente", methods=["GET", "POST"])
@@ -226,7 +252,7 @@ def projetos():
     with db.Session() as s:
         itens = [db.to_dict(x) for x in
                  s.query(db.Projeto).order_by(db.Projeto.atualizado_em.desc()).all()]
-    return render_template("projetos_lista.html", itens=itens)
+    return render_template("projetos_lista.html", itens=_so_meus(itens))
 
 
 @app.route("/coordenacao")
@@ -236,7 +262,7 @@ def coordenacao():
         docs_map = {}
         for dcto in s.query(db.Documento).all():
             docs_map.setdefault(dcto.projeto_id, []).append({"tipo": dcto.tipo})
-    m = db.metricas(projetos, docs_map)
+    m = db.metricas(_so_meus(projetos), docs_map)
     return render_template("painel_coordenacao.html", m=m,
                            etapas=db.ETAPAS, situacoes=db.SITUACOES)
 

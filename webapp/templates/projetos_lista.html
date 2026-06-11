@@ -7,6 +7,7 @@
   <a class="btn primario" href="{{ url_for('projeto_novo') }}">+ Novo projeto</a>
   <a class="btn" href="{{ url_for('coordenacao') }}">📊 Painel Coordenação</a>
   <span class="dica" style="margin-left:10px">{{ itens|length }} projeto(s)</span>
+  {% if perfil_atual == 'Consultor' and perfil_nome_atual %}<span class="dica">· mostrando apenas os seus (Consultor: {{ perfil_nome_atual }})</span>{% endif %}
 
   {% if itens %}
   <table class="form-tab" style="margin-top:12px">

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block titulo %}Perfil de acesso{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › Perfil</div>{% endblock %}
+{% block conteudo %}
+  <h1>🧑‍💼 Perfil de acesso</h1>
+  <p class="sub">Define o que você vê na carteira e no Painel Coordenação. Ferramenta interna em rede — é um <strong>filtro de visão</strong>, não um login de segurança.</p>
+  <form method="post" class="painel">
+    <label class="campo"><span>Perfil</span>
+      <select name="perfil" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px">
+        {% for r in perfis %}<option {{ 'selected' if perfil==r }}>{{ r }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="campo"><span>Seu nome</span>
+      <input name="perfil_nome" value="{{ perfil_nome }}" placeholder="ex.: João Silva">
+      <small>Como <strong>Consultor</strong>, você vê só os projetos em que seu nome consta no campo "Consultor". Como <strong>Coordenação</strong>, vê toda a carteira. Seu nome também assina as anotações na timeline.</small>
+    </label>
+    <button class="btn primario" type="submit">Aplicar</button>
+  </form>
+  <a class="voltar" href="{{ url_for('projetos') }}">← Projetos</a>
+{% endblock %}
