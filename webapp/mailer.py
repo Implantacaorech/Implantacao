@@ -86,6 +86,10 @@ def enviar(destino, assunto, corpo, anexos=None):
                 srv.send_message(msg)
         return True, None
     except Exception as e:
+        if type(e).__name__ == "gaierror":
+            return False, ("Servidor SMTP não encontrado (%s). Confira o host em "
+                           "Config → E-mail — ex.: smtp.gmail.com (587, TLS) ou "
+                           "smtp.office365.com." % c.get("host"))
         return False, "%s: %s" % (type(e).__name__, e)
 
 

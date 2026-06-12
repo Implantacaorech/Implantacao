@@ -97,4 +97,8 @@ def buscar_fechamento(marcador="IMPLANTA"):
         M.logout()
         return corpo, assunto, None
     except Exception as e:
+        if type(e).__name__ == "gaierror":
+            return None, None, ("Servidor IMAP não encontrado (%s). Confira o host em "
+                                "Config → Caixa de entrada — ex.: imap.gmail.com ou "
+                                "outlook.office365.com." % c.get("host"))
         return None, None, "%s: %s" % (type(e).__name__, e)
