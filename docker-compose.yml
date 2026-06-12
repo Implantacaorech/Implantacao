@@ -1,0 +1,23 @@
+# Banco do Painel de Implantação (PostgreSQL em Docker).
+# Suba no servidor:  docker compose up -d
+# Aponte o painel:   PAINEL_DB_URL=postgresql+psycopg2://painel:SENHA@HOST:5432/painel
+services:
+  db:
+    image: postgres:16
+    container_name: painel-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: painel
+      POSTGRES_USER: painel
+      POSTGRES_PASSWORD: ${PAINEL_DB_SENHA:-painel2026}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U painel -d painel"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+volumes:
+  pgdata:

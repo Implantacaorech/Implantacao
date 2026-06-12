@@ -9,9 +9,12 @@ setlocal
 cd /d "%~dp0"
 
 REM --- Onde o banco de dados fica -----------------------------
-REM   Padrao: pasta "dados" ao lado deste .bat (facil de achar/backup).
-REM   Para guardar numa pasta de REDE, troque por algo como:
-REM        SET "PAINEL_DB=R:\Implantacao\painel.db"
+REM   OPCAO A (padrao): SQLite na pasta "dados" ao lado deste .bat.
+REM   OPCAO B (rede):   SET "PAINEL_DB=R:\Implantacao\painel.db"
+REM   OPCAO C (Docker/Postgres): suba o banco com "docker compose up -d"
+REM     (docker-compose.yml no repositorio) e descomente a linha abaixo,
+REM     ajustando SENHA e IP do servidor Docker:
+REM        SET "PAINEL_DB_URL=postgresql+psycopg2://painel:painel2026@localhost:5432/painel"
 SET "PAINEL_DB=%~dp0dados\painel.db"
 if not exist "%~dp0dados" mkdir "%~dp0dados"
 

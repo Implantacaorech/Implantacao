@@ -33,6 +33,7 @@ HIDDEN = [
     "gerar_painel_kpi", "gerar_raid", "gerar_dossie_cliente",
     "gerar_projeto_implantacao", "gerar_termo_encerramento", "gerar_levantamento",
     "gerar_checklist_consultor", "gerar_cronograma",
+    "psycopg2",   # driver Postgres (PAINEL_DB_URL; opcional em runtime)
 ]
 
 # Dados embutidos (origem -> destino no bundle).
