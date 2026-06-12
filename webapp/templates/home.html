@@ -1,17 +1,51 @@
 {% extends "base.html" %}
 {% block conteudo %}
-  <h1>Escolha o seu setor / função</h1>
-  <p class="sub">Cada papel vê e executa as suas ações do processo de implantação.</p>
-  <div class="grade">
-    {% for r in roles %}
-    <a class="card papel" href="{{ url_for('papel', rid=r.id) }}">
-      <div class="icone">{{ r.icone }}</div>
-      <div class="card-corpo">
-        <h3>{{ r.nome }}</h3>
-        <p>{{ r.desc }}</p>
-        <span class="badge">{{ r.acoes|length }} ação(ões)</span>
-      </div>
+  <h1>Painel de Implantação</h1>
+  <p class="sub">O fluxo começa no fechamento e termina no encerramento — siga os passos.</p>
+
+  <div class="hero-fluxo">
+    <a class="passo" href="{{ url_for('fluxo_inicio') }}">
+      <span class="num">1</span>
+      <div><h3>🔄 Iniciar pelo fechamento</h3>
+      <p>E-mail do Comercial → extrai os dados, cria o projeto e gera o pacote inicial.</p></div>
     </a>
-    {% endfor %}
+    <span class="seta">→</span>
+    <a class="passo" href="{{ url_for('projetos') }}">
+      <span class="num">2</span>
+      <div><h3>📁 Conduzir os projetos</h3>
+      <p>Carteira por cliente: fases, documentos obrigatórios, e-mails e histórico.</p></div>
+    </a>
+    <span class="seta">→</span>
+    <a class="passo" href="{{ url_for('coordenacao') }}">
+      <span class="num">3</span>
+      <div><h3>📊 Acompanhar a carteira</h3>
+      <p>KPIs, funil por etapa, atrasados, alertas e ocupação por consultor.</p></div>
+    </a>
+  </div>
+
+  <div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+    <div class="kpi"><div class="n">{{ stats.ativos }}</div><div class="l">Projetos ativos</div></div>
+    <div class="kpi {{ 'alerta' if stats.atrasados }}"><div class="n">{{ stats.atrasados }}</div><div class="l">Atrasados</div></div>
+    <div class="kpi {{ 'alerta' if stats.alertas }}"><div class="n">{{ stats.alertas }}</div><div class="l">Alertas ativos</div></div>
+  </div>
+
+  <h2 class="sec" id="ferramentas">🧰 Ferramentas</h2>
+  <p class="sub" style="margin-bottom:12px">Geradores e utilitários avulsos — para usar fora do fluxo.</p>
+  <div class="tools">
+    <a class="tool" href="{{ url_for('acao', rid='adm', aid='criar') }}"><span>📑</span><div><strong>Criação dos Templates</strong><small>Termo e Mapeamento em abas</small></div></a>
+    <a class="tool" href="{{ url_for('acao', rid='adm', aid='importar') }}"><span>📥</span><div><strong>Importar Levantamento</strong><small>.docx → Projeto + Check List + Termo</small></div></a>
+    <a class="tool" href="{{ url_for('acao', rid='adm', aid='verbal') }}"><span>✍️</span><div><strong>Tempo Verbal e Ortografia</strong><small>Presente→Futuro + correção</small></div></a>
+    <a class="tool" href="{{ url_for('acao', rid='consultor', aid='chkform') }}"><span>📊</span><div><strong>Check List do Consultor</strong><small>Planilha-guia por módulos</small></div></a>
+    <a class="tool" href="{{ url_for('mapa') }}"><span>🧠</span><div><strong>Mapa do Setor</strong><small>Processo de implantação em tela</small></div></a>
+    <a class="tool" href="{{ url_for('cliente') }}"><span>👤</span><div><strong>Cliente da sessão</strong><small>Define o cliente dos geradores avulsos</small></div></a>
+  </div>
+
+  <h2 class="sec">⚙️ Configurações e saúde</h2>
+  <div class="tools">
+    <a class="tool" href="{{ url_for('config_email') }}"><span>✉️</span><div><strong>E-mail (SMTP)</strong><small>Conta de envio</small></div></a>
+    <a class="tool" href="{{ url_for('config_imap') }}"><span>📬</span><div><strong>Caixa de entrada (IMAP)</strong><small>Detecta o e-mail de fechamento</small></div></a>
+    <a class="tool" href="{{ url_for('config') }}"><span>🤖</span><div><strong>Modo IA</strong><small>Chave da revisão por IA</small></div></a>
+    <a class="tool" href="{{ url_for('perfil') }}"><span>🧑‍💼</span><div><strong>Perfil de acesso</strong><small>Coordenação ou Consultor</small></div></a>
+    <a class="tool" href="{{ url_for('acao', rid='coordenacao', aid='saude') }}"><span>🩺</span><div><strong>Saúde do Sistema</strong><small>Verificador completo (30 testes)</small></div></a>
   </div>
 {% endblock %}

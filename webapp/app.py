@@ -58,7 +58,19 @@ def _so_meus(projetos):
 
 @app.route("/")
 def home():
-    return render_template("home.html", roles=roles.ROLES)
+    try:
+        with db.Session() as s:
+            projetos = [db.to_dict(x) for x in s.query(db.Projeto).all()]
+            docs_map = {}
+            for dcto in s.query(db.Documento).all():
+                docs_map.setdefault(dcto.projeto_id, []).append({"tipo": dcto.tipo})
+        meus = _so_meus(projetos)
+        m = db.metricas(meus, docs_map)
+        stats = {"ativos": m["ativos"], "atrasados": m["n_atrasados"],
+                 "alertas": len(db.alertas(meus, docs_map))}
+    except Exception:
+        stats = {"ativos": 0, "atrasados": 0, "alertas": 0}
+    return render_template("home.html", roles=roles.ROLES, stats=stats)
 
 
 @app.route("/papel/<rid>")
