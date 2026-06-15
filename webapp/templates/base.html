@@ -18,6 +18,7 @@
       <a href="{{ url_for('atividade') }}">📈 Atividade</a>
       <a href="{{ url_for('home') }}#ferramentas">🧰 Ferramentas</a>
       <a href="{{ url_for('perfil') }}">🧑‍💼 {{ perfil_atual }}{% if perfil_nome_atual %}: {{ perfil_nome_atual }}{% endif %}</a>
+      {% if login_ativo %}<a href="{{ url_for('logout') }}">🚪 Sair</a>{% endif %}
     </nav>
   </header>
   <main class="conteudo">

@@ -83,6 +83,41 @@ def _so_meus(projetos):
     return projetos
 
 
+def _senha_acesso():
+    """Senha de acesso ao painel: env PAINEL_SENHA ou arquivo acesso.txt. None = sem login."""
+    s = os.environ.get("PAINEL_SENHA")
+    if s:
+        return s
+    p = os.path.join(C.DATA_WRITE, "acesso.txt")
+    return open(p, encoding="utf-8").read().strip() if os.path.exists(p) else None
+
+
+@app.before_request
+def _exige_login():
+    if not _senha_acesso():
+        return  # login desabilitado (comportamento padrão)
+    if request.endpoint in ("login", "health", "static") or session.get("auth"):
+        return
+    return redirect(url_for("login", next=request.path))
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    erro = None
+    if request.method == "POST":
+        if request.form.get("senha", "") == _senha_acesso():
+            session["auth"] = True
+            return redirect(request.args.get("next") or url_for("home"))
+        erro = "Senha incorreta."
+    return render_template("login.html", erro=erro)
+
+
+@app.route("/logout")
+def logout():
+    session.pop("auth", None)
+    return redirect(url_for("login"))
+
+
 @app.route("/")
 def home():
     try:
@@ -200,7 +235,7 @@ def inject_cliente():
     return {"cliente_atual": session.get("cliente_nome"),
             "perfil_atual": session.get("perfil", "Coordenação"),
             "perfil_nome_atual": session.get("perfil_nome", ""),
-            "versao": VERSAO}
+            "versao": VERSAO, "login_ativo": bool(_senha_acesso())}
 
 
 @app.context_processor

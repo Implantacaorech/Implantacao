@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrar · Painel de Implantação</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div style="max-width:370px;margin:12vh auto;padding:0 20px">
+    <h1 style="text-align:center;color:var(--navy)">⚙️ Painel de Implantação</h1>
+    <form method="post" class="painel">
+      {% if erro %}<div class="resultado erro" style="padding:8px 14px">⚠️ {{ erro }}</div>{% endif %}
+      <label class="campo"><span>Senha de acesso</span>
+        <input type="password" name="senha" autofocus required style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px"></label>
+      <button class="btn primario" type="submit" style="width:100%">Entrar</button>
+    </form>
+    <p class="dica" style="text-align:center">Rech Sistemas de Gestão</p>
+  </div>
+</body>
+</html>

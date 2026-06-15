@@ -172,8 +172,29 @@ def aplicar_form(p, form):
     return p
 
 
+def _auto_migrar():
+    """Migração leve aditiva: cria colunas novas que faltarem (SQLite e Postgres).
+    Cobre a evolução de schema entre versões; só adiciona, nunca remove dados."""
+    from sqlalchemy import inspect, text
+    insp = inspect(engine)
+    tabelas = set(insp.get_table_names())
+    with engine.begin() as conn:
+        for tbl in Base.metadata.sorted_tables:
+            if tbl.name not in tabelas:
+                continue
+            cols = {c["name"] for c in insp.get_columns(tbl.name)}
+            for col in tbl.columns:
+                if col.name not in cols:
+                    tipo = col.type.compile(engine.dialect)
+                    conn.execute(text("ALTER TABLE %s ADD COLUMN %s %s" % (tbl.name, col.name, tipo)))
+
+
 def init_db():
     Base.metadata.create_all(engine)
+    try:
+        _auto_migrar()
+    except Exception:
+        pass
 
 
 # --- Métricas da carteira (Painel Coordenação) ---
