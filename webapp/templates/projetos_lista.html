@@ -10,11 +10,16 @@
   {% if perfil_atual == 'Consultor' and perfil_nome_atual %}<span class="dica">· mostrando apenas os seus (Consultor: {{ perfil_nome_atual }})</span>{% endif %}
 
   {% if itens %}
-  <table class="form-tab" style="margin-top:12px">
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+    <input id="busca" placeholder="🔎 buscar cliente…" oninput="filtra()" style="flex:1;min-width:180px;padding:8px;border:1px solid var(--line);border-radius:8px">
+    <select id="fetapa" onchange="filtra()" style="padding:8px;border:1px solid var(--line);border-radius:8px"><option value="">Etapa: todas</option>{% for e in etapas %}<option>{{ e }}</option>{% endfor %}</select>
+    <select id="fstatus" onchange="filtra()" style="padding:8px;border:1px solid var(--line);border-radius:8px"><option value="">Status: todos</option>{% for s in situacoes %}<option>{{ s }}</option>{% endfor %}</select>
+  </div>
+  <table class="form-tab" style="margin-top:10px">
     <thead><tr><th>Cliente</th><th>Etapa</th><th>Status</th><th>Consultor (GCI)</th><th>Go-live</th><th>Atualizado</th></tr></thead>
     <tbody>
     {% for p in itens %}
-      <tr class="linha-proj" onclick="location.href='{{ url_for('projeto_ficha', pid=p.id) }}'">
+      <tr class="linha-proj" data-cliente="{{ p.cliente|lower }}" data-etapa="{{ p.etapa }}" data-status="{{ p.situacao }}" onclick="location.href='{{ url_for('projeto_ficha', pid=p.id) }}'">
         <td><strong>{{ p.cliente }}</strong>{% if p.numero_projeto %} <small>({{ p.numero_projeto }})</small>{% endif %}</td>
         <td>{{ p.etapa }}</td>
         <td><span class="badge-sit" data-s="{{ p.situacao }}">{{ p.situacao }}</span></td>
@@ -25,6 +30,18 @@
     {% endfor %}
     </tbody>
   </table>
+  <p id="semres" class="dica" style="display:none;margin-top:10px">Nenhum projeto corresponde ao filtro.</p>
+  <script>
+  function filtra(){
+    var q=(document.getElementById('busca').value||'').toLowerCase();
+    var fe=document.getElementById('fetapa').value, fs=document.getElementById('fstatus').value, vis=0;
+    document.querySelectorAll('tr.linha-proj').forEach(function(tr){
+      var ok=(!q||tr.dataset.cliente.indexOf(q)>=0)&&(!fe||tr.dataset.etapa===fe)&&(!fs||tr.dataset.status===fs);
+      tr.style.display=ok?'':'none'; if(ok)vis++;
+    });
+    document.getElementById('semres').style.display=vis?'none':'';
+  }
+  </script>
   {% else %}
   <p class="dica" style="margin-top:14px">Nenhum projeto ainda — clique em "Novo projeto".</p>
   {% endif %}

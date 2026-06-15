@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block titulo %}Painel de Implantação{% endblock %} · SIGER®</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -24,7 +25,23 @@
     {% block conteudo %}{% endblock %}
   </main>
   <footer class="rodape">
-    Estrutura interna · Rech Sistemas de Gestão — uso local.
+    Painel de Implantação · Rech Sistemas de Gestão{% if versao %} · v{{ versao }}{% endif %}
   </footer>
+  <script>
+  (function(){
+    document.querySelectorAll('.resultado.ok').forEach(function(el){
+      if(el.textContent.trim().length < 42){
+        setTimeout(function(){ el.style.transition='opacity .5s'; el.style.opacity='0';
+          setTimeout(function(){ el.remove(); }, 500); }, 4000);
+      }
+    });
+    document.addEventListener('submit', function(e){
+      if(e.defaultPrevented) return;
+      var b=e.target.querySelector('button[type=submit]') || e.target.querySelector('button:not([type=button])');
+      if(b && !b.dataset.busy){ b.dataset.busy='1'; var t=b.innerHTML;
+        setTimeout(function(){ b.disabled=true; b.innerHTML='⏳ '+t; }, 0); }
+    });
+  })();
+  </script>
 </body>
 </html>

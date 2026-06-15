@@ -66,6 +66,7 @@ db.init_db()   # cria o banco do hub (Projetos por Cliente) se não existir
 
 
 PERFIS = ["Coordenação", "Consultor"]
+VERSAO = "1.0 · jun/2026"
 
 
 def _autor():
@@ -198,7 +199,8 @@ def acao(rid, aid):
 def inject_cliente():
     return {"cliente_atual": session.get("cliente_nome"),
             "perfil_atual": session.get("perfil", "Coordenação"),
-            "perfil_nome_atual": session.get("perfil_nome", "")}
+            "perfil_nome_atual": session.get("perfil_nome", ""),
+            "versao": VERSAO}
 
 
 @app.context_processor
@@ -304,7 +306,8 @@ def projetos():
     with db.Session() as s:
         itens = [db.to_dict(x) for x in
                  s.query(db.Projeto).order_by(db.Projeto.atualizado_em.desc()).all()]
-    return render_template("projetos_lista.html", itens=_so_meus(itens))
+    return render_template("projetos_lista.html", itens=_so_meus(itens),
+                           etapas=db.ETAPAS, situacoes=db.SITUACOES)
 
 
 @app.route("/coordenacao")

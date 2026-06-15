@@ -31,21 +31,10 @@
   </div>
 
   <div class="painel">
-    <h3 style="color:var(--navy);margin-top:0">Funil por etapa</h3>
-    <div class="barlist">
-    {% for e in etapas %}{% set n = m.por_etapa.get(e, 0) %}
-      <div class="barrow"><span>{{ e }}</span>
-        <div class="barra"><span style="width:{{ (100*n)//m.total if m.total else 0 }}%"></span></div>
-        <em>{{ n }}</em></div>
-    {% endfor %}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;align-items:center">
+      <div><h3 style="color:var(--navy);margin:0 0 8px">Funil por etapa</h3><canvas id="gFunil" height="220"></canvas></div>
+      <div><h3 style="color:var(--navy);margin:0 0 8px">Status</h3><canvas id="gStatus" height="220"></canvas></div>
     </div>
-  </div>
-
-  <div class="painel">
-    <h3 style="color:var(--navy);margin-top:0">Status</h3>
-    {% for s in situacoes %}
-      <span class="badge-sit" data-s="{{ s }}" style="margin-right:8px">{{ s }}: {{ m.por_situacao.get(s, 0) }}</span>
-    {% endfor %}
   </div>
 
   {% if m.atrasados %}
@@ -79,4 +68,17 @@
   </div>
   {% endif %}
   <a class="voltar" href="{{ url_for('projetos') }}">← Ver carteira (lista)</a>
+  <script src="{{ url_for('static', filename='chart.umd.min.js') }}"></script>
+  <script>
+  (function(){
+    if(typeof Chart==='undefined') return;
+    var etapas={{ etapas|tojson }}, porEtapa={{ m.por_etapa|tojson }};
+    var sits={{ situacoes|tojson }}, porSit={{ m.por_situacao|tojson }};
+    var f=document.getElementById('gFunil');
+    if(f) new Chart(f,{type:'bar',data:{labels:etapas,datasets:[{data:etapas.map(function(e){return porEtapa[e]||0;}),backgroundColor:'#2c6aa0'}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+    var cores={'Em andamento':'#3b82f6','Em risco':'#ef4444','Pausado':'#94a3b8','Concluído':'#22c55e'};
+    var st=document.getElementById('gStatus');
+    if(st) new Chart(st,{type:'doughnut',data:{labels:sits,datasets:[{data:sits.map(function(s){return porSit[s]||0;}),backgroundColor:sits.map(function(s){return cores[s]||'#1F4E78';})}]},options:{plugins:{legend:{position:'bottom'}}}});
+  })();
+  </script>
 {% endblock %}
