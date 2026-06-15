@@ -43,7 +43,8 @@
 - [x] **Feito:** suporte a **Postgres em Docker** (`docker-compose.yml` + `psycopg2` no build) — app agnóstico via `PAINEL_DB_URL`.
 - [x] **Feito:** **Docker Engine no WSL2** instalado; Postgres 16 (container `painel-db`) no ar; painel cria as tabelas; auto-start via pasta de Inicialização + keep-alive da VM (`painel-keepalive.sh`).
 - [x] **Feito:** persistência do keep-alive validada (VM viva 8 min ociosa) e **dados reais migrados** SQLite → Postgres. Painel aponta para o Postgres via `PAINEL_DB_URL` (variável de usuário); `.exe` confirmado lendo do banco.
-- [ ] **Trocar a senha padrão** do Postgres (`painel2026`) no `docker run` e na `PAINEL_DB_URL`.
+- [x] **Feito:** **backup automático** do Postgres — `pg_dump` diário (22:00) via cron do WSL para `C:\PainelBackups` (gzip, mantém 14 dias). Restauração documentada em `tools/painel-backup.sh`.
+- [ ] **Trocar a senha padrão** do Postgres (`painel2026`) no `docker run`, na `PAINEL_DB_URL` e no `painel-backup.sh`.
 
 ## ⚙️ Dependências / pré-requisitos honestos
 - [ ] Acesso ao SICLA/SIGER (API ou banco) para a integração.
