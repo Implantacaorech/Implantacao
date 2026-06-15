@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block titulo %}Config — Gmail API{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › Gmail API (envio)</div>{% endblock %}
+{% block conteudo %}
+  <h1>📤 Envio pela API do Gmail (OAuth)</h1>
+  <p class="sub">Envia e-mails por HTTPS (porta 443), contornando o bloqueio de SMTP da rede. Quando autorizado, todo o envio do painel (digest, pacote, encaminhamentos) passa a usar este caminho.</p>
+  {% if msg %}<div class="resultado {{ 'ok' if 'sucesso' in msg or 'salva' in msg else 'erro' }}" style="padding:8px 14px">{{ msg }}</div>{% endif %}
+
+  <div class="painel">
+    <p><strong>Status:</strong> {{ '🟢 Autorizado — pronto para enviar.' if autorizado else ('🟡 Credencial carregada — falta autorizar.' if tem_client else '🔴 Não configurado.') }}</p>
+  </div>
+
+  <div class="painel">
+    <h3 style="color:var(--navy);margin-top:0">1) Credencial do Google Cloud</h3>
+    <p class="dica" style="margin-top:0">Envie o arquivo <code>client_secret*.json</code> (OAuth Client ID, tipo "App para computador") baixado do Google Cloud Console.</p>
+    <form method="post" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input type="file" name="client" accept=".json" required>
+      <button class="btn" type="submit">📎 Carregar credencial</button>
+    </form>
+  </div>
+
+  <div class="painel">
+    <h3 style="color:var(--navy);margin-top:0">2) Autorizar</h3>
+    <p class="dica" style="margin-top:0">Abre o navegador para você entrar na conta <strong>implantacao.rechsistemas@gmail.com</strong> e permitir o envio. Faça isto <strong>na máquina onde o painel roda</strong>.</p>
+    <form method="post">
+      <input type="hidden" name="autorizar" value="1">
+      <button class="btn primario" type="submit" {{ '' if tem_client else 'disabled' }}>🔐 Autorizar acesso ao Gmail</button>
+    </form>
+  </div>
+
+  <div class="painel">
+    <h3 style="color:var(--navy);margin-top:0">Como criar a credencial (uma vez)</h3>
+    <ol class="dica" style="margin:0;padding-left:18px">
+      <li>Acesse <a href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a> (logado na conta de implantação) e <strong>crie um projeto</strong>.</li>
+      <li>Em <em>APIs e serviços → Biblioteca</em>, habilite a <strong>Gmail API</strong>.</li>
+      <li>Em <em>Tela de consentimento OAuth</em>: tipo <strong>Externo</strong>, modo <strong>Teste</strong>, adicione o e-mail como <strong>usuário de teste</strong>.</li>
+      <li>Em <em>Credenciais → Criar credenciais → ID do cliente OAuth</em>: tipo <strong>App para computador</strong> → <strong>baixe o JSON</strong>.</li>
+      <li>Volte aqui: carregue o JSON (passo 1) e clique em Autorizar (passo 2).</li>
+    </ol>
+  </div>
+  <a class="voltar" href="{{ url_for('home') }}">← Início</a>
+{% endblock %}

@@ -35,6 +35,7 @@ HIDDEN = [
     "gerar_checklist_consultor", "gerar_cronograma",
     "psycopg2",   # driver Postgres (PAINEL_DB_URL; opcional em runtime)
     "waitress",   # servidor WSGI de produção
+    "gmail_api", "httpx",   # envio pela API do Gmail (OAuth/HTTPS)
 ]
 
 # Dados embutidos (origem -> destino no bundle).
@@ -81,6 +82,9 @@ def main():
            "--paths", os.path.join(BASE, "webapp"),
            "--collect-data", "docx",            # default.docx do python-docx
            "--collect-all", "anthropic",        # SDK do modo IA (Claude)
+           "--collect-all", "google_auth_oauthlib",
+           "--collect-submodules", "google.auth",
+           "--collect-submodules", "google.oauth2",
            "--collect-data", "certifi",         # bundle de CAs p/ HTTPS
            "--workpath", os.path.join(workdir, "build"),
            "--distpath", os.path.join(workdir, "dist"),

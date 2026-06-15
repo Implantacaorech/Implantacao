@@ -43,6 +43,8 @@ tools/data/anthropic_key.txt
 # Credenciais SMTP/IMAP do e-mail interno — NUNCA versionar (senha em texto local)
 tools/data/smtp.json
 tools/data/imap.json
+tools/data/gmail_client.json
+tools/data/gmail_token.json
 tools/data/secret.key
 tools/data/acesso.txt
 tools/data/digest_para.txt

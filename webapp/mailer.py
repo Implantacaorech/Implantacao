@@ -43,14 +43,27 @@ def salvar_cfg(form):
 
 
 def configurado():
+    try:
+        import gmail_api
+        if gmail_api.configurado():
+            return True
+    except Exception:
+        pass
     c = load_cfg()
     return bool(c.get("host") and c.get("remetente"))
 
 
 def enviar(destino, assunto, corpo, anexos=None):
     """Envia um e-mail de texto, com anexos opcionais (lista de caminhos).
-    `destino` pode ser string (1 ou vários separados por vírgula) ou lista. Retorna (ok, erro)."""
+    `destino` pode ser string (1 ou vários separados por vírgula) ou lista. Retorna (ok, erro).
+    Se a API do Gmail estiver autorizada, usa ela (HTTPS); senão, SMTP."""
     import mimetypes
+    try:
+        import gmail_api
+        if gmail_api.configurado():
+            return gmail_api.enviar(destino, assunto, corpo, anexos)
+    except Exception:
+        pass
     c = load_cfg()
     if not c.get("host"):
         return False, "SMTP não configurado (Config → E-mail)."

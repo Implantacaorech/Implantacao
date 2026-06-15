@@ -721,6 +721,22 @@ def config_imap():
                            configurado=imap_intake.configurado())
 
 
+@app.route("/config/gmail", methods=["GET", "POST"])
+def config_gmail():
+    import gmail_api
+    msg = None
+    if request.method == "POST":
+        f = request.files.get("client")
+        if f and f.filename:
+            f.save(gmail_api.CLIENT)
+            msg = "Credencial salva. Agora clique em Autorizar."
+        elif request.form.get("autorizar"):
+            ok, err = gmail_api.autorizar()
+            msg = "Autorizado com sucesso. ✅" if ok else ("Falha: " + (err or "?"))
+    return render_template("config_gmail.html", autorizado=gmail_api.configurado(),
+                           tem_client=gmail_api.tem_client(), msg=msg)
+
+
 @app.route("/mapa")
 def mapa():
     MAPA = {"nome": "Implantação SIGER®", "filhos": [

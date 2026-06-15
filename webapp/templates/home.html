@@ -44,6 +44,7 @@
   <div class="tools">
     <a class="tool" href="{{ url_for('config_email') }}"><span>✉️</span><div><strong>E-mail (SMTP)</strong><small>Conta de envio</small></div></a>
     <a class="tool" href="{{ url_for('config_imap') }}"><span>📬</span><div><strong>Caixa de entrada (IMAP)</strong><small>Detecta o e-mail de fechamento</small></div></a>
+    <a class="tool" href="{{ url_for('config_gmail') }}"><span>📤</span><div><strong>Gmail API (envio)</strong><small>Envio por HTTPS (contorna SMTP)</small></div></a>
     <a class="tool" href="{{ url_for('config') }}"><span>🤖</span><div><strong>Modo IA</strong><small>Chave da revisão por IA</small></div></a>
     <a class="tool" href="{{ url_for('perfil') }}"><span>🧑‍💼</span><div><strong>Perfil de acesso</strong><small>Coordenação ou Consultor</small></div></a>
     <a class="tool" href="{{ url_for('acao', rid='coordenacao', aid='saude') }}"><span>🩺</span><div><strong>Saúde do Sistema</strong><small>Verificador completo (30 testes)</small></div></a>
