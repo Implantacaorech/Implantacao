@@ -1,7 +1,7 @@
 # Pendências — Evolução do Painel de Implantação
 
 > Backlog vivo dos assuntos em aberto (estratégia de automação, arquitetura e próximos passos).
-> Digite **"Pendências"** a qualquer momento para ver esta lista. — Atualizado em 2026-06-10.
+> Digite **"Pendências"** a qualquer momento para ver esta lista. — Atualizado em 2026-06-14.
 
 ## 🔑 Decisão que destrava a arquitetura
 - [x] **Onde os dados moram?** → **DECIDIDO: rede INTERNA** (servidor na rede; app agnóstico de
@@ -16,7 +16,7 @@
 - [x] **Feito:** gerar o **Projeto** a partir da ficha — anexa o Mapeamento (.docx) preenchido e gera o Projeto (verbal+ortografia), anexando-o ao cliente.
 - [x] **Feito:** **Perfis/permissões** — seletor Coordenação (vê tudo) / Consultor (vê os seus); filtra carteira e Painel Coordenação; assina a timeline. *(Filtro de visão, não login.)*
 - [x] **Feito:** **Painel Coordenação** (`/coordenacao`) — KPIs (total/ativos/no prazo/atrasados/em risco/docs pendentes/time-to-value/horas), funil por etapa, situação, atrasados (uso oficial vencido) e ocupação por consultor.
-- [ ] `Iniciar_Servidor.bat` (seta `PAINEL_HOST=0.0.0.0` + `PAINEL_DB` na pasta de rede) para subir o servidor interno.
+- [x] **Feito:** `Iniciar_Servidor.bat` (modo servidor interno) e `.exe` no Desktop.
 
 ## ✉️ E-mail interno ("comunicação registrada")
 - [x] **Feito:** conta SMTP (Config → E-mail) com senha guardada localmente (`smtp.json`, gitignored; env `SMTP_*` no servidor).
@@ -34,6 +34,16 @@
 - [ ] **Pipeline de Conversão + gate de virada** (reconciliação origem×destino, SIT/UAT, pendências, docs obrigatórios).
 - [ ] **Disparadores de fim de fluxo** (critério de saída do hypercare → Termo + e-mails + RNS para manutenção).
 - [x] **Feito:** **Alertas proativos** — uso oficial vencido, SLA de 5 dias úteis do Cronograma, Em risco, Hypercare prolongado e projeto parado; painel no Coordenação + badge no menu (respeita o perfil).
+
+## 🎨 UX / Navegação (redesenho)
+- [x] **Feito:** redesenho da **ficha** (4 fases) — cabeçalho com stepper + KPIs + "Próxima ação"; abas Resumo/Dados/Documentos/Comunicação/Histórico; **Avançar fase** (gated) + **Gerar pendentes**; nomenclatura (Fase/Status/Go-live/GCI).
+- [x] **Feito:** **Home** orientada ao fluxo (1 Onboarding → 2 Projetos → 3 Coordenação) + KPIs + ferramentas/config em cards; nav enxuta.
+
+## 🖥️ Infra / Banco em Docker
+- [x] **Feito:** suporte a **Postgres em Docker** (`docker-compose.yml` + `psycopg2` no build) — app agnóstico via `PAINEL_DB_URL`.
+- [x] **Feito:** **Docker Engine no WSL2** instalado; Postgres 16 (container `painel-db`) no ar; painel cria as tabelas; auto-start via pasta de Inicialização + keep-alive da VM (`painel-keepalive.sh`).
+- [ ] **Validar persistência** do keep-alive (VM não dormir) — *interrompido*; depois **migrar dados reais** SQLite → Postgres (`tools/migrar_sqlite_para_pg.py` pronto).
+- [ ] **Trocar a senha padrão** do Postgres (`painel2026`) no `docker run` e na `PAINEL_DB_URL`.
 
 ## ⚙️ Dependências / pré-requisitos honestos
 - [ ] Acesso ao SICLA/SIGER (API ou banco) para a integração.
