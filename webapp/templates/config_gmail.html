@@ -34,8 +34,9 @@
       <li>Acesse <a href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a> (logado na conta de implantação) e <strong>crie um projeto</strong>.</li>
       <li>Em <em>APIs e serviços → Biblioteca</em>, habilite a <strong>Gmail API</strong>.</li>
       <li>Em <em>Tela de consentimento OAuth</em>: tipo <strong>Externo</strong>, modo <strong>Teste</strong>, adicione o e-mail como <strong>usuário de teste</strong>.</li>
+      <li>Na <em>Tela de consentimento</em>, clique em <strong>Publicar app</strong> (status "Em produção") — senão o acesso <strong>expira a cada 7 dias</strong>. Aceite o aviso de "app não verificado".</li>
       <li>Em <em>Credenciais → Criar credenciais → ID do cliente OAuth</em>: tipo <strong>App para computador</strong> → <strong>baixe o JSON</strong>.</li>
-      <li>Volte aqui: carregue o JSON (passo 1) e clique em Autorizar (passo 2).</li>
+      <li>Volte aqui: carregue o JSON (passo 1) e clique em Autorizar (passo 2). No navegador, em "app não verificado", clique <strong>Avançado → Acessar (não seguro)</strong>.</li>
     </ol>
   </div>
   <a class="voltar" href="{{ url_for('home') }}">← Início</a>
