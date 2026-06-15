@@ -46,6 +46,14 @@
 - [x] **Feito:** **backup automático** do Postgres — `pg_dump` diário (22:00) via cron do WSL para `C:\PainelBackups` (gzip, mantém 14 dias). Restauração documentada em `tools/painel-backup.sh`.
 - [ ] **Trocar a senha padrão** do Postgres (`painel2026`) no `docker run`, na `PAINEL_DB_URL` e no `painel-backup.sh`.
 
+## 🚀 Evolução — visual, tecnologia e observabilidade (jun/2026)
+- [x] **Robustez:** servidor de produção **waitress**, `secret_key` por env/token, rota **/health**, logging em arquivo.
+- [x] **Observabilidade:** tela **Atividade** (`/atividade`) — feed global de tudo + métricas de uso (30 dias) + funil por fase.
+- [x] **Visual:** **gráficos Chart.js** no Coordenação (bundlado offline), favicon + versão, **toasts + spinners**, **busca/filtro** na carteira, responsivo (celular).
+- [x] **Qualidade/Segurança:** **login** opcional por senha, **suíte pytest** (7 testes), **CI GitHub Actions**, **auto-migração** aditiva de schema (no lugar do Alembic).
+- [x] **Notificações:** **digest diário por e-mail** (resumo de alertas) + agendador interno (DIGEST_HORA) + botão manual.
+- [ ] *Parcial/adiado:* consolidação ampla das cores em variáveis CSS (baixo ROI × risco); Alembic completo (substituído pela auto-migração).
+
 ## ⚙️ Dependências / pré-requisitos honestos
 - [ ] Acesso ao SICLA/SIGER (API ou banco) para a integração.
 - [ ] Chave da API da IA + teto de custo definido.
