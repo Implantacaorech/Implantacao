@@ -26,8 +26,9 @@ import _common as C   # noqa: E402
 ETAPAS = ["Levantamento", "Projeto", "Cronograma", "Parametrização", "Treinamento",
           "Testes/Simulação", "Conversão", "Virada", "Hypercare", "Encerrado"]
 SITUACOES = ["Em andamento", "Em risco", "Pausado", "Concluído"]
+PERFIS = ["ADM", "Coordenador", "GCI", "Consultor"]
 
-CAMPOS = ["cliente", "cnpj", "numero_projeto", "ramo", "responsavel", "consultor",
+CAMPOS = ["cliente", "cnpj", "numero_projeto", "ramo", "responsavel", "consultor", "gci",
           "etapa", "situacao", "data_inicio", "data_uso_oficial", "data_encerramento",
           "horas_cobradas", "horas_bonificadas", "modulos", "contatos", "observacoes"]
 
@@ -116,6 +117,7 @@ class Projeto(Base):
     ramo = Column(String(160), default="")
     responsavel = Column(String(160), default="")
     consultor = Column(String(160), default="")
+    gci = Column(String(160), default="")
     etapa = Column(String(40), default="Levantamento")
     situacao = Column(String(40), default="Em andamento")
     data_inicio = Column(String(20), default="")
@@ -155,6 +157,45 @@ class Evento(Base):
 def registrar_evento(s, projeto_id, tipo, descricao, autor=""):
     """Adiciona um evento à timeline (na sessão aberta `s`; o commit é do chamador)."""
     s.add(Evento(projeto_id=projeto_id, tipo=tipo, descricao=descricao, autor=autor or ""))
+
+
+class Usuario(Base):
+    """Usuário do painel: login + perfil (ADM/Coordenador/GCI/Consultor)."""
+    __tablename__ = "usuarios"
+    id = Column(Integer, primary_key=True)
+    login = Column(String(120), default="")
+    nome = Column(String(120), default="")
+    senha_hash = Column(Text, default="")
+    perfil = Column(String(20), default="Consultor")
+    ativo = Column(Integer, default=1)
+    criado_em = Column(DateTime, default=datetime.now)
+
+
+def set_senha(u, senha):
+    from werkzeug.security import generate_password_hash
+    u.senha_hash = generate_password_hash(senha or "")
+
+
+def checa_senha(u, senha):
+    from werkzeug.security import check_password_hash
+    try:
+        return bool(u.senha_hash) and check_password_hash(u.senha_hash, senha or "")
+    except Exception:
+        return False
+
+
+def autenticar(login, senha):
+    with Session() as s:
+        u = s.query(Usuario).filter(Usuario.login == (login or "").strip(),
+                                    Usuario.ativo == 1).first()
+        if u and checa_senha(u, senha):
+            return {"id": u.id, "login": u.login, "nome": u.nome, "perfil": u.perfil}
+    return None
+
+
+def ha_usuarios():
+    with Session() as s:
+        return s.query(Usuario).filter(Usuario.ativo == 1).count() > 0
 
 
 def to_dict(obj):

@@ -65,26 +65,62 @@ ALLOWED_DIRS = [C.OUT, C.DATA_WRITE, C.DATA, UPLOADS]
 db.init_db()   # cria o banco do hub (Projetos por Cliente) se não existir
 
 
-PERFIS = ["Coordenação", "Consultor"]
-VERSAO = "1.0 · jun/2026"
+VERSAO = "1.1 · jun/2026"
+
+# Quem pode GERAR cada documento (por perfil)
+_GERA = {"levantamento": ("ADM", "Coordenador", "GCI"),
+         "projeto": ("ADM", "Coordenador", "GCI"),
+         "checklist": ("ADM", "Coordenador", "Consultor"),
+         "cronograma": ("ADM", "Coordenador", "Consultor"),
+         "termo": ("ADM", "Coordenador", "Consultor")}
+
+
+def _perfil():
+    return session.get("perfil") or ""
 
 
 def _autor():
     return session.get("perfil_nome") or ""
 
 
+def _e_adm():
+    return _perfil() == "ADM"
+
+
+def pode_designar():
+    return (not _perfil()) or _perfil() in ("ADM", "Coordenador")
+
+
+def pode_gerar(tipo):
+    p = _perfil()
+    return (not p) or p in _GERA.get(tipo, ("ADM", "Coordenador"))
+
+
+def _casa(nome, campo):
+    """Casa o nome do usuário logado com o campo de responsável (tolerante)."""
+    nome = (nome or "").strip().lower()
+    campo = (campo or "").strip().lower()
+    if not nome or not campo:
+        return False
+    if campo in nome or nome in campo:
+        return True
+    return any(w in campo for w in nome.split() if len(w) > 2)
+
+
 def _so_meus(projetos):
-    """Filtro de visão: Consultor vê só os projetos em que seu nome está no campo
-    'Consultor'; Coordenação vê todos."""
-    if session.get("perfil") == "Consultor":
-        nome = (session.get("perfil_nome") or "").strip().lower()
-        if nome:
-            return [p for p in projetos if nome in (p.get("consultor") or "").lower()]
+    """Filtro de visão por perfil: ADM/Coordenador veem tudo; GCI vê onde é o GCI;
+    Consultor vê onde é consultor designado."""
+    p = _perfil()
+    nome = session.get("perfil_nome") or ""
+    if p == "GCI" and nome:
+        return [x for x in projetos if _casa(nome, x.get("gci"))]
+    if p == "Consultor" and nome:
+        return [x for x in projetos if _casa(nome, x.get("consultor"))]
     return projetos
 
 
 def _senha_acesso():
-    """Senha de acesso ao painel: env PAINEL_SENHA ou arquivo acesso.txt. None = sem login."""
+    """Senha mestra (1º acesso, antes de cadastrar usuários): env PAINEL_SENHA ou acesso.txt."""
     s = os.environ.get("PAINEL_SENHA")
     if s:
         return s
@@ -92,10 +128,14 @@ def _senha_acesso():
     return open(p, encoding="utf-8").read().strip() if os.path.exists(p) else None
 
 
+def _login_ativo():
+    return db.ha_usuarios() or bool(_senha_acesso())
+
+
 @app.before_request
 def _exige_login():
-    if not _senha_acesso():
-        return  # login desabilitado (comportamento padrão)
+    if not _login_ativo():
+        return  # login desabilitado (nenhum usuário e sem senha mestra)
     if request.endpoint in ("login", "health", "static") or session.get("auth"):
         return
     return redirect(url_for("login", next=request.path))
@@ -105,16 +145,22 @@ def _exige_login():
 def login():
     erro = None
     if request.method == "POST":
-        if request.form.get("senha", "") == _senha_acesso():
-            session["auth"] = True
+        usr = db.autenticar(request.form.get("login", ""), request.form.get("senha", ""))
+        if usr:
+            session.update(auth=True, user_id=usr["id"], perfil=usr["perfil"],
+                           perfil_nome=usr["nome"] or usr["login"])
             return redirect(request.args.get("next") or url_for("home"))
-        erro = "Senha incorreta."
-    return render_template("login.html", erro=erro)
+        # fallback: senha mestra (só enquanto não houver usuários) -> entra como ADM
+        if (not db.ha_usuarios()) and _senha_acesso() and request.form.get("senha", "") == _senha_acesso():
+            session.update(auth=True, perfil="ADM", perfil_nome="Administrador")
+            return redirect(url_for("usuarios"))
+        erro = "Login ou senha incorretos."
+    return render_template("login.html", erro=erro, tem_usuarios=db.ha_usuarios())
 
 
 @app.route("/logout")
 def logout():
-    session.pop("auth", None)
+    session.clear()
     return redirect(url_for("login"))
 
 
@@ -282,9 +328,10 @@ def acao(rid, aid):
 @app.context_processor
 def inject_cliente():
     return {"cliente_atual": session.get("cliente_nome"),
-            "perfil_atual": session.get("perfil", "Coordenação"),
+            "perfil_atual": session.get("perfil", ""),
             "perfil_nome_atual": session.get("perfil_nome", ""),
-            "versao": VERSAO, "login_ativo": bool(_senha_acesso())}
+            "versao": VERSAO, "login_ativo": _login_ativo(), "e_adm": (_perfil() == "ADM"),
+            "pode_gerar": pode_gerar, "pode_designar": pode_designar()}
 
 
 @app.context_processor
@@ -301,15 +348,35 @@ def inject_alertas():
     return {"n_alertas": n}
 
 
-@app.route("/perfil", methods=["GET", "POST"])
+@app.route("/perfil")
 def perfil():
+    return render_template("perfil.html", perfil=session.get("perfil", ""),
+                           perfil_nome=session.get("perfil_nome", ""), login_ativo=_login_ativo())
+
+
+@app.route("/usuarios", methods=["GET", "POST"])
+def usuarios():
+    if _login_ativo() and not _e_adm():
+        abort(403)
     if request.method == "POST":
-        session["perfil"] = request.form.get("perfil") or "Coordenação"
-        session["perfil_nome"] = (request.form.get("perfil_nome") or "").strip()
-        return redirect(request.args.get("next") or url_for("projetos"))
-    return render_template("perfil.html", perfis=PERFIS,
-                           perfil=session.get("perfil", "Coordenação"),
-                           perfil_nome=session.get("perfil_nome", ""))
+        with db.Session() as s:
+            uid = request.form.get("id")
+            u = s.get(db.Usuario, int(uid)) if uid else db.Usuario()
+            u.login = (request.form.get("login") or "").strip()
+            u.nome = (request.form.get("nome") or "").strip()
+            u.perfil = request.form.get("perfil") or "Consultor"
+            u.ativo = 1 if request.form.get("ativo") else 0
+            senha = request.form.get("senha") or ""
+            if senha:
+                db.set_senha(u, senha)
+            if not uid:
+                s.add(u)
+            s.commit()
+        return redirect(url_for("usuarios", salvo=1))
+    with db.Session() as s:
+        lista = [db.to_dict(x) for x in s.query(db.Usuario).order_by(db.Usuario.nome).all()]
+    return render_template("usuarios.html", usuarios=lista, perfis=db.PERFIS,
+                           salvo=request.args.get("salvo"))
 
 
 @app.route("/cliente", methods=["GET", "POST"])
@@ -513,8 +580,9 @@ def projeto_gerar_pendentes(pid):
     gate = db.gate_status(prox or proj["etapa"], docs)
     gerados = 0
     for it in gate["itens"]:
-        if it["ok"] or it["tipo"] not in ("levantamento", "checklist", "cronograma", "termo"):
-            continue   # 'projeto' precisa do Mapeamento preenchido (upload)
+        if (it["ok"] or it["tipo"] not in ("levantamento", "checklist", "cronograma", "termo")
+                or not pode_gerar(it["tipo"])):
+            continue   # 'projeto' precisa do Mapeamento; respeita a permissão do perfil
         try:
             path, _log = runner.gerar_do_projeto(proj, it["tipo"])
         except Exception:
@@ -533,6 +601,8 @@ def projeto_gerar_pendentes(pid):
 
 @app.route("/projetos/<int:pid>/gerar/<tipo>", methods=["POST"])
 def projeto_gerar(pid, tipo):
+    if not pode_gerar(tipo):
+        abort(403)
     with db.Session() as s:
         p = s.get(db.Projeto, pid)
         if not p:
@@ -554,6 +624,8 @@ def projeto_gerar(pid, tipo):
 
 @app.route("/projetos/<int:pid>/gerar_projeto", methods=["POST"])
 def projeto_gerar_projeto(pid):
+    if not pode_gerar("projeto"):
+        abort(403)
     with db.Session() as s:
         p = s.get(db.Projeto, pid)
         if not p:

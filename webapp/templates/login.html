@@ -8,13 +8,16 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <div style="max-width:370px;margin:12vh auto;padding:0 20px">
+  <div style="max-width:380px;margin:11vh auto;padding:0 20px">
     <h1 style="text-align:center;color:var(--navy)">⚙️ Painel de Implantação</h1>
     <form method="post" class="painel">
       {% if erro %}<div class="resultado erro" style="padding:8px 14px">⚠️ {{ erro }}</div>{% endif %}
-      <label class="campo"><span>Senha de acesso</span>
-        <input type="password" name="senha" autofocus required style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px"></label>
+      <label class="campo"><span>Login (e-mail)</span>
+        <input name="login" autofocus style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px"></label>
+      <label class="campo"><span>Senha</span>
+        <input type="password" name="senha" required style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px"></label>
       <button class="btn primario" type="submit" style="width:100%">Entrar</button>
+      {% if not tem_usuarios %}<p class="dica" style="text-align:center;margin-top:10px">Primeiro acesso: deixe o login em branco e use a <strong>senha mestra</strong> para entrar como Administrador e cadastrar os usuários.</p>{% endif %}
     </form>
     <p class="dica" style="text-align:center">Rech Sistemas de Gestão</p>
   </div>

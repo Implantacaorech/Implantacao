@@ -9,7 +9,8 @@
       <label class="campo"><span>Nº do projeto</span><input name="numero_projeto" value="{{ p.numero_projeto if p else '' }}"></label>
       <label class="campo"><span>Ramo</span><input name="ramo" value="{{ p.ramo if p else '' }}"></label>
       <label class="campo"><span>Responsável administrativo</span><input name="responsavel" value="{{ p.responsavel if p else '' }}"></label>
-      <label class="campo"><span>Consultor (GCI)</span><input name="consultor" value="{{ p.consultor if p else '' }}"></label>
+      <label class="campo"><span>GCI (Levantamento)</span><input name="gci" value="{{ p.gci if p else '' }}"></label>
+      <label class="campo"><span>Consultor(es)</span><input name="consultor" value="{{ p.consultor if p else '' }}"></label>
       <label class="campo"><span>Fase da implantação</span><select name="etapa">{% for e in etapas %}<option {{ 'selected' if p and p.etapa==e }}>{{ e }}</option>{% endfor %}</select></label>
       <label class="campo"><span>Status</span><select name="situacao">{% for s in situacoes %}<option {{ 'selected' if p and p.situacao==s }}>{{ s }}</option>{% endfor %}</select></label>
       <label class="campo"><span>Início</span><input type="date" name="data_inicio" value="{{ p.data_inicio if p else '' }}"></label>
@@ -132,18 +133,20 @@
     </form>
     {% endif %}
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='levantamento') }}"><button class="btn" type="submit">📄 Gerar Levantamento</button></form>
-      <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='checklist') }}"><button class="btn" type="submit">📊 Gerar Check List</button></form>
-      <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='cronograma') }}"><button class="btn" type="submit">📅 Gerar Cronograma</button></form>
-      <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='termo') }}"><button class="btn" type="submit">📑 Gerar Termo</button></form>
+      {% if pode_gerar('levantamento') %}<form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='levantamento') }}"><button class="btn" type="submit">📄 Gerar Levantamento</button></form>{% endif %}
+      {% if pode_gerar('checklist') %}<form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='checklist') }}"><button class="btn" type="submit">📊 Gerar Check List</button></form>{% endif %}
+      {% if pode_gerar('cronograma') %}<form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='cronograma') }}"><button class="btn" type="submit">📅 Gerar Cronograma</button></form>{% endif %}
+      {% if pode_gerar('termo') %}<form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='termo') }}"><button class="btn" type="submit">📑 Gerar Termo</button></form>{% endif %}
     </div>
     {% if erro %}<div class="resultado erro" style="padding:8px 14px;margin-top:8px">⚠️ {{ erro }}</div>{% endif %}
+    {% if pode_gerar('projeto') %}
     <form id="gerar-projeto" method="post" action="{{ url_for('projeto_gerar_projeto', pid=p.id) }}" enctype="multipart/form-data"
           style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#f1f5f9;padding:10px 14px;border-radius:8px">
       <span class="dica" style="margin:0">Gerar o <strong>Projeto</strong> a partir do Levantamento preenchido:</span>
       <input type="file" name="arquivo" accept=".docx" required>
       <button class="btn" type="submit">📘 Gerar Projeto</button>
     </form>
+    {% endif %}
     <form method="post" action="{{ url_for('projeto_anexar', pid=p.id) }}" enctype="multipart/form-data"
           style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span class="dica" style="margin:0">Anexar documento manualmente:</span>
