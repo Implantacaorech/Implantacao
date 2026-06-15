@@ -90,6 +90,9 @@ def enviar(destino, assunto, corpo, anexos=None):
             return False, ("Servidor SMTP não encontrado (%s). Confira o host em "
                            "Config → E-mail — ex.: smtp.gmail.com (587, TLS) ou "
                            "smtp.office365.com." % c.get("host"))
+        if "auth" in (type(e).__name__ + str(e)).lower():
+            return False, ("Falha de autenticação (usuário/senha rejeitados). Gmail e Outlook/365 "
+                           "exigem uma SENHA DE APP (não a senha normal). Confira em Config → E-mail.")
         return False, "%s: %s" % (type(e).__name__, e)
 
 

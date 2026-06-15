@@ -101,4 +101,9 @@ def buscar_fechamento(marcador="IMPLANTA"):
             return None, None, ("Servidor IMAP não encontrado (%s). Confira o host em "
                                 "Config → Caixa de entrada — ex.: imap.gmail.com ou "
                                 "outlook.office365.com." % c.get("host"))
+        if "authenticate" in str(e).lower() or "login" in str(e).lower():
+            return None, None, ("Falha de autenticação (usuário/senha rejeitados). Gmail e "
+                                "Outlook/365 exigem uma SENHA DE APP (não a senha normal da conta) "
+                                "e o IMAP habilitado. Confira o usuário e a senha em "
+                                "Config → Caixa de entrada.")
         return None, None, "%s: %s" % (type(e).__name__, e)
