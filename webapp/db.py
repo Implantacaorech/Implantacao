@@ -295,6 +295,35 @@ def alertas(projetos, docs_map=None):
     return out
 
 
+def metricas_uso(eventos, projetos, dias=30):
+    """Contagens de uso no período: projetos criados + eventos por tipo."""
+    corte = datetime.now() - timedelta(days=dias)
+    rec = [e for e in eventos if isinstance(e.get("criado_em"), datetime) and e["criado_em"] >= corte]
+    por = {}
+    for e in rec:
+        por[e.get("tipo")] = por.get(e.get("tipo"), 0) + 1
+    novos = sum(1 for p in projetos if isinstance(p.get("criado_em"), datetime) and p["criado_em"] >= corte)
+    return {"dias": dias, "projetos_novos": novos, "documentos": por.get("documento", 0),
+            "emails": por.get("email", 0), "notas": por.get("nota", 0),
+            "transicoes": por.get("etapa", 0), "total_eventos": len(rec)}
+
+
+def funil_macro(projetos):
+    """Projetos por macro-fase + idade média (dias desde a criação)."""
+    fases = {f: [] for f in MACRO_FASES}
+    hoje = datetime.now()
+    for p in projetos:
+        f = MACRO_FASES[macro_idx(p.get("etapa"))]
+        c = p.get("criado_em")
+        fases[f].append((hoje - c).days if isinstance(c, datetime) else None)
+    out = []
+    for f in MACRO_FASES:
+        idades = [d for d in fases[f] if d is not None]
+        out.append({"fase": f, "n": len(fases[f]),
+                    "idade_media": round(sum(idades) / len(idades)) if idades else None})
+    return out
+
+
 def cabecalho(d, docs):
     """Dados do cabeçalho da ficha (stepper + KPIs + próxima ação + avançar).
     O que se cobra é o gate da PRÓXIMA etapa = o que falta para avançar."""

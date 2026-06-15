@@ -320,6 +320,24 @@ def coordenacao():
                            etapas=db.ETAPAS, situacoes=db.SITUACOES)
 
 
+@app.route("/atividade")
+def atividade():
+    with db.Session() as s:
+        projetos = [db.to_dict(x) for x in s.query(db.Projeto).all()]
+        meus = _so_meus(projetos)
+        ids = {p["id"] for p in meus}
+        cli = {p["id"]: p["cliente"] for p in meus}
+        if ids:
+            eventos = [db.to_dict(x) for x in s.query(db.Evento)
+                       .filter(db.Evento.projeto_id.in_(ids))
+                       .order_by(db.Evento.criado_em.desc()).all()]
+        else:
+            eventos = []
+    feed = [{**e, "cliente": cli.get(e["projeto_id"], "?")} for e in eventos[:60]]
+    return render_template("atividade.html", feed=feed,
+                           uso=db.metricas_uso(eventos, meus), funil=db.funil_macro(meus))
+
+
 @app.route("/projetos/novo", methods=["GET", "POST"])
 def projeto_novo():
     if request.method == "POST":

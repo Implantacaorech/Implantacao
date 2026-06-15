@@ -14,6 +14,7 @@
       <a href="{{ url_for('fluxo_inicio') }}">🔄 Fluxo</a>
       <a href="{{ url_for('projetos') }}">📁 Projetos</a>
       <a href="{{ url_for('coordenacao') }}">📊 Coordenação{% if n_alertas %} <span class="nav-alert">⚠️ {{ n_alertas }}</span>{% endif %}</a>
+      <a href="{{ url_for('atividade') }}">📈 Atividade</a>
       <a href="{{ url_for('home') }}#ferramentas">🧰 Ferramentas</a>
       <a href="{{ url_for('perfil') }}">🧑‍💼 {{ perfil_atual }}{% if perfil_nome_atual %}: {{ perfil_nome_atual }}{% endif %}</a>
     </nav>
