@@ -4,6 +4,8 @@
 {% block conteudo %}
   <h1>📊 Painel Coordenação</h1>
   <p class="sub">Carteira de implantações — visão de portfólio em tempo real.</p>
+  {% if digest %}<div class="resultado {{ 'ok' if digest=='ok' else 'erro' }}" style="padding:8px 14px">{{ '✅ Resumo enviado por e-mail.' if digest=='ok' else '⚠️ Resumo não enviado: ' + digest }}</div>{% endif %}
+  <form method="post" action="{{ url_for('digest_enviar') }}" style="margin-bottom:12px"><button class="btn" type="submit">📧 Enviar resumo por e-mail agora</button></form>
 
   {% if alertas %}
   <div class="painel" style="border-left:5px solid var(--err)">

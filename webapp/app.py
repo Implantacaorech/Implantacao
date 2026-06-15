@@ -118,6 +118,55 @@ def logout():
     return redirect(url_for("login"))
 
 
+def _digest_destinos():
+    import re as _re
+    v = os.environ.get("DIGEST_PARA")
+    if not v:
+        p = os.path.join(C.DATA_WRITE, "digest_para.txt")
+        v = open(p, encoding="utf-8").read() if os.path.exists(p) else ""
+    return [e.strip() for e in _re.split(r"[;,\n]", v or "") if e.strip()]
+
+
+def _montar_digest():
+    import datetime
+    with db.Session() as s:
+        projetos = [db.to_dict(x) for x in s.query(db.Projeto).all()]
+        docs_map = {}
+        for dcto in s.query(db.Documento).all():
+            docs_map.setdefault(dcto.projeto_id, []).append({"tipo": dcto.tipo})
+    m = db.metricas(projetos, docs_map)
+    al = db.alertas(projetos, docs_map)
+    L = ["Resumo diário — Implantação", "=" * 30, "",
+         "Ativos: %d  ·  No prazo: %d  ·  Atrasados: %d  ·  Em risco: %d"
+         % (m["ativos"], m["no_prazo"], m["n_atrasados"], m["n_risco"]),
+         "Documentos obrigatórios pendentes: %d" % m["gate_pendente"], ""]
+    if al:
+        L.append("Alertas (%d):" % len(al))
+        L += ["  [%s] %s — %s" % (a["nivel"].upper(), a["cliente"], a["msg"]) for a in al[:30]]
+    else:
+        L.append("Sem alertas no momento.")
+    L += ["", "— Painel de Implantação · Rech"]
+    return ("Resumo diário da Implantação — %s" % datetime.date.today().strftime("%d/%m/%Y"),
+            "\n".join(L))
+
+
+def enviar_digest():
+    import mailer
+    destinos = _digest_destinos()
+    if not destinos:
+        return False, "Sem destinatários (defina DIGEST_PARA ou digest_para.txt)."
+    if not mailer.configurado():
+        return False, "SMTP não configurado."
+    assunto, corpo = _montar_digest()
+    return mailer.enviar(destinos, assunto, corpo)
+
+
+@app.route("/digest/enviar", methods=["POST"])
+def digest_enviar():
+    ok, err = enviar_digest()
+    return redirect(url_for("coordenacao", digest=("ok" if ok else (err or "erro"))))
+
+
 @app.route("/")
 def home():
     try:
@@ -355,7 +404,8 @@ def coordenacao():
     meus = _so_meus(projetos)
     m = db.metricas(meus, docs_map)
     return render_template("painel_coordenacao.html", m=m, alertas=db.alertas(meus, docs_map),
-                           etapas=db.ETAPAS, situacoes=db.SITUACOES)
+                           etapas=db.ETAPAS, situacoes=db.SITUACOES,
+                           digest=request.args.get("digest"))
 
 
 @app.route("/atividade")
@@ -723,6 +773,24 @@ def health():
         return {"status": "degraded", "erro": type(e).__name__}, 503
 
 
+def _agendador_digest():
+    """Thread diária: envia o resumo por e-mail na hora DIGEST_HORA (default 8h)."""
+    import time
+    import datetime
+    hora = int(os.environ.get("DIGEST_HORA", "8") or 8)
+    ultimo = None
+    while True:
+        try:
+            ag = datetime.datetime.now()
+            if ag.hour == hora and ultimo != ag.date() and _digest_destinos():
+                ok, _e = enviar_digest()
+                ultimo = ag.date()
+                logging.info("Digest diário: enviado=%s", ok)
+        except Exception as e:
+            logging.warning("Digest falhou: %s", e)
+        time.sleep(1800)   # checa a cada 30 min
+
+
 def _abrir_navegador():
     import webbrowser
     webbrowser.open("http://127.0.0.1:5000")
@@ -734,6 +802,9 @@ if __name__ == "__main__":
     port = int(os.environ.get("PAINEL_PORT", "5000"))
     if os.environ.get("WERKZEUG_RUN_MAIN") != "true" and host in ("127.0.0.1", "localhost"):
         threading.Timer(1.3, _abrir_navegador).start()
+    if _digest_destinos():
+        threading.Thread(target=_agendador_digest, daemon=True).start()
+        logging.info("Agendador de digest diário ativo (DIGEST_HORA=%s).", os.environ.get("DIGEST_HORA", "8"))
     try:
         from waitress import serve
         logging.info("Painel no ar em http://%s:%s  (waitress)", host, port)
