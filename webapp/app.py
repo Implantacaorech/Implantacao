@@ -31,7 +31,33 @@ import _common as C     # noqa: E402
 app = Flask(__name__,
             template_folder=os.path.join(WEBBASE, "templates"),
             static_folder=os.path.join(WEBBASE, "static"))
-app.secret_key = "painel-implantacao-rech"
+
+import logging       # noqa: E402
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s",
+    handlers=[logging.FileHandler(os.path.join(C.DATA_WRITE, "painel.log"), encoding="utf-8"),
+              logging.StreamHandler()])
+
+
+def _carrega_secret():
+    """Chave de sessão: env PAINEL_SECRET, senão um token aleatório persistido localmente."""
+    s = os.environ.get("PAINEL_SECRET")
+    if s:
+        return s
+    p = os.path.join(C.DATA_WRITE, "secret.key")
+    try:
+        if os.path.exists(p):
+            return open(p, encoding="utf-8").read().strip()
+        import secrets
+        s = secrets.token_hex(32)
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(s)
+        return s
+    except Exception:
+        return "painel-implantacao-rech"
+
+
+app.secret_key = _carrega_secret()
 
 UPLOADS = os.path.join(C.DATA_WRITE if FROZEN else HERE, "_uploads")
 os.makedirs(UPLOADS, exist_ok=True)
@@ -630,6 +656,17 @@ def download():
     return send_file(path, as_attachment=True)
 
 
+@app.route("/health")
+def health():
+    """Verificação de saúde (para monitoração): testa o banco."""
+    try:
+        with db.Session() as s:
+            s.query(db.Projeto).count()
+        return {"status": "ok", "db": db.engine.dialect.name}, 200
+    except Exception as e:
+        return {"status": "degraded", "erro": type(e).__name__}, 503
+
+
 def _abrir_navegador():
     import webbrowser
     webbrowser.open("http://127.0.0.1:5000")
@@ -641,4 +678,10 @@ if __name__ == "__main__":
     port = int(os.environ.get("PAINEL_PORT", "5000"))
     if os.environ.get("WERKZEUG_RUN_MAIN") != "true" and host in ("127.0.0.1", "localhost"):
         threading.Timer(1.3, _abrir_navegador).start()
-    app.run(host=host, port=port, debug=False)
+    try:
+        from waitress import serve
+        logging.info("Painel no ar em http://%s:%s  (waitress)", host, port)
+        serve(app, host=host, port=port, threads=8)
+    except ImportError:
+        logging.warning("waitress ausente — usando o servidor de desenvolvimento")
+        app.run(host=host, port=port, debug=False)

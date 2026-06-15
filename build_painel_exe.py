@@ -34,6 +34,7 @@ HIDDEN = [
     "gerar_projeto_implantacao", "gerar_termo_encerramento", "gerar_levantamento",
     "gerar_checklist_consultor", "gerar_cronograma",
     "psycopg2",   # driver Postgres (PAINEL_DB_URL; opcional em runtime)
+    "waitress",   # servidor WSGI de produção
 ]
 
 # Dados embutidos (origem -> destino no bundle).

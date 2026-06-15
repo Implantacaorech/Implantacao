@@ -43,6 +43,7 @@ tools/data/anthropic_key.txt
 # Credenciais SMTP/IMAP do e-mail interno — NUNCA versionar (senha em texto local)
 tools/data/smtp.json
 tools/data/imap.json
+tools/data/secret.key
 
 # Banco do Hub "Projetos por Cliente" — dados de cliente, NUNCA versionar
 *.db
