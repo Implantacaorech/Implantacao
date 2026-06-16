@@ -23,8 +23,7 @@ if not getattr(sys, "frozen", False):
         sys.path.insert(0, TOOLS)
 import _common as C   # noqa: E402
 
-ETAPAS = ["Levantamento", "Projeto", "Cronograma", "Parametrização", "Treinamento",
-          "Testes/Simulação", "Conversão", "Virada", "Hypercare", "Encerrado"]
+ETAPAS = ["Levantamento", "Projeto", "Cronograma e Check-list", "Encerramento"]
 SITUACOES = ["Em andamento", "Em risco", "Pausado", "Concluído"]
 PERFIS = ["ADM", "Coordenador", "GCI", "Consultor"]
 
@@ -44,16 +43,10 @@ DOC_LABELS = {
 # Documentos que já devem existir para o projeto estar (corretamente) na etapa.
 # Acumulativo, encadeando a tríade obrigatória: Projeto · Cronograma · Termo.
 GATES = {
-    "Levantamento":     [],
-    "Projeto":          ["levantamento"],
-    "Cronograma":       ["levantamento", "projeto"],
-    "Parametrização":   ["levantamento", "projeto", "cronograma"],
-    "Treinamento":      ["levantamento", "projeto", "cronograma"],
-    "Testes/Simulação": ["levantamento", "projeto", "cronograma"],
-    "Conversão":        ["levantamento", "projeto", "cronograma"],
-    "Virada":           ["levantamento", "projeto", "cronograma"],
-    "Hypercare":        ["levantamento", "projeto", "cronograma"],
-    "Encerrado":        ["levantamento", "projeto", "cronograma", "termo"],
+    "Levantamento":            [],
+    "Projeto":                 ["levantamento"],
+    "Cronograma e Check-list": ["levantamento", "projeto"],
+    "Encerramento":            ["levantamento", "projeto", "cronograma", "checklist"],
 }
 
 
@@ -61,13 +54,9 @@ def docs_obrigatorios(etapa):
     return GATES.get(etapa, [])
 
 
-# Macro-fases da jornada (stepper do cabeçalho) e o mapa etapa -> fase
-MACRO_FASES = ["Cadastro", "Levantamento", "Projeto", "Execução", "Conversão", "Encerramento"]
-_ETAPA_MACRO = {
-    "Levantamento": 1, "Projeto": 2, "Cronograma": 2,
-    "Parametrização": 3, "Treinamento": 3, "Testes/Simulação": 3,
-    "Conversão": 4, "Virada": 4, "Hypercare": 5, "Encerrado": 5,
-}
+# As 4 etapas SÃO as fases do stepper (modelo consolidado da proposta).
+MACRO_FASES = ETAPAS
+_ETAPA_MACRO = {e: i for i, e in enumerate(ETAPAS)}
 
 
 def macro_idx(etapa):
@@ -230,10 +219,29 @@ def _auto_migrar():
                     conn.execute(text("ALTER TABLE %s ADD COLUMN %s %s" % (tbl.name, col.name, tipo)))
 
 
+_MIGRA_ETAPA = {
+    "Cronograma": "Cronograma e Check-list", "Parametrização": "Cronograma e Check-list",
+    "Treinamento": "Cronograma e Check-list", "Testes/Simulação": "Cronograma e Check-list",
+    "Conversão": "Cronograma e Check-list", "Virada": "Cronograma e Check-list",
+    "Hypercare": "Cronograma e Check-list", "Encerrado": "Encerramento",
+}
+
+
+def _migrar_etapas():
+    """Converte etapas do modelo antigo (10) para o consolidado (4)."""
+    with Session() as s:
+        antigos = s.query(Projeto).filter(Projeto.etapa.in_(list(_MIGRA_ETAPA))).all()
+        for p in antigos:
+            p.etapa = _MIGRA_ETAPA[p.etapa]
+        if antigos:
+            s.commit()
+
+
 def init_db():
     Base.metadata.create_all(engine)
     try:
         _auto_migrar()
+        _migrar_etapas()
     except Exception:
         pass
 
@@ -270,7 +278,7 @@ def metricas(projetos, docs_map=None):
         sit, et = p.get("situacao") or "", p.get("etapa") or ""
         por_situacao[sit] = por_situacao.get(sit, 0) + 1
         por_etapa[et] = por_etapa.get(et, 0) + 1
-        encerrado = (et == "Encerrado") or (sit == "Concluído")
+        encerrado = (sit == "Concluído")
         cob, bon = _pnum(p.get("horas_cobradas")), _pnum(p.get("horas_bonificadas"))
         horas_cob += cob; horas_bon += bon
         cons = (p.get("consultor") or "").strip() or "— sem consultor —"
@@ -330,7 +338,7 @@ def alertas(projetos, docs_map=None):
     out = []
     for p in projetos:
         sit, et = p.get("situacao") or "", p.get("etapa") or ""
-        if et == "Encerrado" or sit == "Concluído":
+        if sit == "Concluído":
             continue
         pid, cli = p.get("id"), p.get("cliente")
         tipos = {(d.get("tipo") or "").lower() for d in docs_map.get(pid, [])}
@@ -347,8 +355,8 @@ def alertas(projetos, docs_map=None):
         if di and "cronograma" not in tipos and hoje > _uteis(di, SLA_CRONOGRAMA_UTEIS):
             add("medio", "sla", "Cronograma pendente além do SLA de %d dias úteis (início %s)"
                 % (SLA_CRONOGRAMA_UTEIS, di.strftime("%d/%m/%Y")))
-        if et == "Hypercare" and duso and hoje > duso + timedelta(days=ALERTA_HYPERCARE_DIAS):
-            add("medio", "hypercare", "Hypercare/produção há mais de %d dias — avaliar encerramento" % ALERTA_HYPERCARE_DIAS)
+        if et == "Encerramento" and duso and hoje > duso + timedelta(days=ALERTA_HYPERCARE_DIAS):
+            add("medio", "encerramento", "Em Encerramento há mais de %d dias após o go-live — concluir o projeto" % ALERTA_HYPERCARE_DIAS)
         at = p.get("atualizado_em")
         if isinstance(at, datetime) and (datetime.now() - at).days >= ALERTA_PARADO_DIAS:
             add("medio", "parado", "Sem atualização há %d dias" % (datetime.now() - at).days)
@@ -395,7 +403,7 @@ def cabecalho(d, docs):
                for i, f in enumerate(MACRO_FASES)]
     cob, bon = _pnum(d.get("horas_cobradas")), _pnum(d.get("horas_bonificadas"))
     duso = _pdate(d.get("data_uso_oficial"))
-    encerrado = etapa == "Encerrado" or d.get("situacao") == "Concluído"
+    encerrado = d.get("situacao") == "Concluído"
     hoje = datetime.now().date()
     atraso = (hoje - duso).days if (duso and not encerrado and duso < hoje) else None
     prox = proxima_etapa(etapa)
