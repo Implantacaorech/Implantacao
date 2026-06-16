@@ -315,6 +315,8 @@ def _auto_avancar(pid):
 
 @app.route("/")
 def home():
+    dados = {"ativos": 0, "no_prazo": 0, "atrasados": 0, "alertas": 0, "risco": 0}
+    alertas, pendencias, foco = [], [], None
     try:
         with db.Session() as s:
             projetos = [db.to_dict(x) for x in s.query(db.Projeto).all()]
@@ -323,11 +325,28 @@ def home():
                 docs_map.setdefault(dcto.projeto_id, []).append({"tipo": dcto.tipo})
         meus = _so_meus(projetos)
         m = db.metricas(meus, docs_map)
-        stats = {"ativos": m["ativos"], "atrasados": m["n_atrasados"],
-                 "alertas": len(db.alertas(meus, docs_map))}
+        alertas = db.alertas(meus, docs_map)
+        dados = {"ativos": m["ativos"], "no_prazo": m["no_prazo"], "atrasados": m["n_atrasados"],
+                 "alertas": len(alertas), "risco": m["n_risco"], "total": m["total"],
+                 "concluidos": m["concluidos"], "gate_pendente": m["gate_pendente"]}
+        ativos = [p for p in meus if p.get("situacao") != "Concluído"]
+        for p in ativos:
+            cab = db.cabecalho(p, docs_map.get(p["id"], []))
+            if cab.get("proxima"):
+                pendencias.append({"id": p["id"], "cliente": p["cliente"],
+                                   "acao": "Gerar " + cab["proxima"]["label"]})
+            elif cab.get("prox_etapa") and cab.get("avancar_ok"):
+                pendencias.append({"id": p["id"], "cliente": p["cliente"],
+                                   "acao": "Avançar para " + cab["prox_etapa"]})
+        ativos_ord = sorted(ativos, key=lambda p: (p.get("atualizado_em") is not None,
+                                                   p.get("atualizado_em")), reverse=True)
+        if ativos_ord:
+            f = ativos_ord[0]
+            foco = {"p": f, "cab": db.cabecalho(f, docs_map.get(f["id"], []))}
     except Exception:
-        stats = {"ativos": 0, "atrasados": 0, "alertas": 0}
-    return render_template("home.html", roles=roles.ROLES, stats=stats)
+        pass
+    return render_template("home.html", roles=roles.ROLES, dados=dados,
+                           alertas=alertas[:6], pendencias=pendencias[:6], foco=foco)
 
 
 @app.route("/papel/<rid>")
