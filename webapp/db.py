@@ -154,9 +154,23 @@ class Usuario(Base):
     id = Column(Integer, primary_key=True)
     login = Column(String(120), default="")
     nome = Column(String(120), default="")
+    email = Column(String(160), default="")
     senha_hash = Column(Text, default="")
     perfil = Column(String(20), default="Consultor")
     ativo = Column(Integer, default=1)
+    criado_em = Column(DateTime, default=datetime.now)
+
+
+class CadastroPendente(Base):
+    """Cadastro novo aguardando validação por código enviado ao e-mail."""
+    __tablename__ = "cadastros_pendentes"
+    id = Column(Integer, primary_key=True)
+    nome = Column(String(120), default="")
+    login = Column(String(120), default="")
+    email = Column(String(160), default="")
+    senha_hash = Column(Text, default="")
+    codigo = Column(String(12), default="")
+    tentativas = Column(Integer, default=0)
     criado_em = Column(DateTime, default=datetime.now)
 
 
@@ -192,6 +206,87 @@ def usuarios_por_perfil(perfil):
         return [{"id": u.id, "nome": u.nome or u.login, "login": u.login}
                 for u in s.query(Usuario).filter(Usuario.perfil == perfil, Usuario.ativo == 1)
                 .order_by(Usuario.nome).all()]
+
+
+def existe_usuario(login=None, email=None):
+    """True se já houver usuário (ativo ou não) com este login OU e-mail."""
+    from sqlalchemy import or_, func
+    conds = []
+    if login:
+        conds.append(func.lower(Usuario.login) == login.strip().lower())
+    if email:
+        conds.append(func.lower(Usuario.email) == email.strip().lower())
+    if not conds:
+        return False
+    with Session() as s:
+        return s.query(Usuario).filter(or_(*conds)).count() > 0
+
+
+# --- Autocadastro com validação por código (CadastroPendente) ---
+def limpar_pendentes(minutos=30):
+    with Session() as s:
+        s.query(CadastroPendente).filter(
+            CadastroPendente.criado_em < datetime.now() - timedelta(minutes=minutos)).delete()
+        s.commit()
+
+
+def salvar_pendente(nome, login, email, senha, codigo):
+    """Cria/substitui o cadastro pendente do e-mail (senha já guardada como hash)."""
+    from sqlalchemy import func
+    from werkzeug.security import generate_password_hash
+    with Session() as s:
+        s.query(CadastroPendente).filter(func.lower(CadastroPendente.email) == email.lower()).delete()
+        s.add(CadastroPendente(nome=nome, login=login, email=email,
+                               senha_hash=generate_password_hash(senha or ""), codigo=codigo))
+        s.commit()
+
+
+def atualizar_codigo(email, codigo):
+    """Reenvio: novo código, zera tentativas e renova o prazo."""
+    from sqlalchemy import func
+    with Session() as s:
+        p = s.query(CadastroPendente).filter(func.lower(CadastroPendente.email) == (email or "").lower()).first()
+        if p:
+            p.codigo = codigo
+            p.tentativas = 0
+            p.criado_em = datetime.now()
+            s.commit()
+            return True
+    return False
+
+
+def pendente_por_email(email):
+    from sqlalchemy import func
+    with Session() as s:
+        p = s.query(CadastroPendente).filter(func.lower(CadastroPendente.email) == (email or "").lower()).first()
+        return to_dict(p) if p else None
+
+
+def confirmar_pendente(email, codigo):
+    """Valida o código. Se OK, cria o Usuario (perfil inicial Consultor) e remove o
+    pendente. Retorna (usuario_dict | None, erro | None)."""
+    from sqlalchemy import func
+    with Session() as s:
+        p = s.query(CadastroPendente).filter(func.lower(CadastroPendente.email) == (email or "").lower())\
+            .order_by(CadastroPendente.criado_em.desc()).first()
+        if not p:
+            return None, "Cadastro não encontrado. Recomece o cadastro."
+        if (datetime.now() - p.criado_em) > timedelta(minutes=30):
+            s.delete(p); s.commit()
+            return None, "O código expirou. Recomece o cadastro."
+        if p.tentativas >= 5:
+            s.delete(p); s.commit()
+            return None, "Muitas tentativas. Recomece o cadastro."
+        if (codigo or "").strip() != (p.codigo or ""):
+            p.tentativas += 1
+            s.commit()
+            return None, "Código incorreto. Confira o e-mail e tente de novo."
+        u = Usuario(nome=p.nome, login=p.login or p.email, email=p.email,
+                    senha_hash=p.senha_hash, perfil="Consultor", ativo=1)
+        s.add(u)
+        s.delete(p)
+        s.commit()
+        return {"id": u.id, "login": u.login, "nome": u.nome or u.login, "perfil": u.perfil}, None
 
 
 class Designacao(Base):

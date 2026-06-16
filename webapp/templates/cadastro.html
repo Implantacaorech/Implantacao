@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Criar conta · Painel de Implantação</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div style="max-width:420px;margin:8vh auto;padding:0 20px">
+    <div style="text-align:center;margin-bottom:8px">
+      <span style="display:inline-flex;width:44px;height:44px;border-radius:12px;background:var(--brand);color:#fff;align-items:center;justify-content:center;font-weight:700;font-size:1.35rem">R</span>
+    </div>
+    <h1 style="text-align:center;margin:.1em 0">Criar conta</h1>
+    <p class="sub" style="text-align:center">Informe seus dados — enviaremos um código de validação ao seu e-mail.</p>
+    <form method="post" class="painel">
+      {% if erro %}<div class="resultado erro" style="padding:8px 14px">⚠️ {{ erro }}</div>{% endif %}
+      <label class="campo"><span>Nome completo</span><input name="nome" required autofocus></label>
+      <label class="campo"><span>E-mail</span><input type="email" name="email" required></label>
+      <label class="campo"><span>Senha (mín. 6 caracteres)</span><input type="password" name="senha" required minlength="6"></label>
+      <button class="btn primario" type="submit" style="width:100%">Receber código →</button>
+    </form>
+    <p class="dica" style="text-align:center">Já tem acesso? <a href="{{ url_for('login') }}">Entrar</a></p>
+    <p class="dica" style="text-align:center;margin-top:2px">Rech Sistemas de Gestão</p>
+  </div>
+</body>
+</html>

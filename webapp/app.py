@@ -142,7 +142,7 @@ def _login_ativo():
 def _exige_login():
     if not _login_ativo():
         return  # login desabilitado (nenhum usuário e sem senha mestra)
-    if request.endpoint in ("login", "health", "static") or session.get("auth"):
+    if request.endpoint in ("login", "cadastro", "cadastro_confirmar", "health", "static") or session.get("auth"):
         return
     return redirect(url_for("login", next=request.path))
 
@@ -168,6 +168,77 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for("login"))
+
+
+def _codigo_validacao():
+    import random
+    return "%06d" % random.randint(0, 999999)
+
+
+def _enviar_codigo(nome, email, codigo):
+    import mailer
+    corpo = ("Olá%s!\n\nSeu código de validação para o Painel de Implantação é:\n\n"
+             "        %s\n\nInforme-o na tela de cadastro para concluir o acesso. "
+             "O código expira em 30 minutos.\n\nSe você não solicitou este cadastro, ignore este e-mail.\n\n"
+             "— Painel de Implantação · Rech Sistemas de Gestão" % ((", " + nome) if nome else "", codigo))
+    return mailer.enviar([email], "Código de validação — Painel de Implantação", corpo)
+
+
+@app.route("/cadastro", methods=["GET", "POST"])
+def cadastro():
+    import re as _re
+    import mailer
+    db.limpar_pendentes()
+    erro = None
+    if request.method == "POST":
+        nome = (request.form.get("nome") or "").strip()
+        email = (request.form.get("email") or "").strip().lower()
+        senha = request.form.get("senha") or ""
+        if not nome or not email or not senha:
+            erro = "Preencha nome, e-mail e senha."
+        elif not _re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+            erro = "Informe um e-mail válido."
+        elif len(senha) < 6:
+            erro = "A senha precisa de pelo menos 6 caracteres."
+        elif db.existe_usuario(login=email, email=email):
+            erro = "Este e-mail já tem acesso. Use a tela de login."
+        elif not mailer.configurado():
+            erro = "O envio de e-mail ainda não está configurado — avise o Administrador (Config → Gmail API)."
+        else:
+            codigo = _codigo_validacao()
+            db.salvar_pendente(nome, email, email, senha, codigo)
+            ok, err = _enviar_codigo(nome, email, codigo)
+            if ok:
+                session["cad_email"] = email
+                return redirect(url_for("cadastro_confirmar"))
+            erro = "Não foi possível enviar o e-mail: %s" % (err or "erro")
+    return render_template("cadastro.html", erro=erro)
+
+
+@app.route("/cadastro/confirmar", methods=["GET", "POST"])
+def cadastro_confirmar():
+    email = session.get("cad_email")
+    if not email:
+        return redirect(url_for("cadastro"))
+    erro = aviso = None
+    if request.method == "POST":
+        if request.form.get("reenviar"):
+            codigo = _codigo_validacao()
+            if db.atualizar_codigo(email, codigo):
+                ok, err = _enviar_codigo("", email, codigo)
+                aviso = "Enviamos um novo código." if ok else ("Falha ao reenviar: %s" % (err or "erro"))
+            else:
+                return redirect(url_for("cadastro"))
+        else:
+            usr, e = db.confirmar_pendente(email, request.form.get("codigo", ""))
+            if usr:
+                session.pop("cad_email", None)
+                session.update(auth=True, user_id=usr["id"], perfil=usr["perfil"],
+                               perfil_nome=usr["nome"])
+                logging.info("Novo usuário cadastrado: %s (%s)", usr["login"], usr["perfil"])
+                return redirect(url_for("home"))
+            erro = e
+    return render_template("cadastro_confirmar.html", email=email, erro=erro, aviso=aviso)
 
 
 def _digest_destinos():
@@ -483,8 +554,11 @@ def usuarios():
             u = s.get(db.Usuario, int(uid)) if uid else db.Usuario()
             u.login = (request.form.get("login") or "").strip()
             u.nome = (request.form.get("nome") or "").strip()
+            u.email = (request.form.get("email") or "").strip()
             u.perfil = request.form.get("perfil") or "Consultor"
             u.ativo = 1 if request.form.get("ativo") else 0
+            if not u.login:
+                u.login = u.email
             senha = request.form.get("senha") or ""
             if senha:
                 db.set_senha(u, senha)

@@ -162,3 +162,51 @@ def test_f_checklist_salva(client):
     itens = db.checklist_do_projeto(pid)
     assert len(itens) == 2 and itens[1]["status"] == "Concluído"
     client.post("/projetos/%s/excluir" % pid)
+
+
+def _achar_usuario(email):
+    from sqlalchemy import func
+    with db.Session() as s:
+        return s.query(db.Usuario).filter(func.lower(db.Usuario.email) == email.lower()).first()
+
+
+def test_cadastro_valida_codigo():
+    db.salvar_pendente("Fulano", "fulano@x.com", "fulano@x.com", "segredo123", "123456")
+    u, e = db.confirmar_pendente("fulano@x.com", "000000")
+    assert u is None and e            # código errado
+    u, e = db.confirmar_pendente("fulano@x.com", "123456")
+    assert u and u["perfil"] == "Consultor"
+    achado = _achar_usuario("fulano@x.com")
+    assert achado and achado.email == "fulano@x.com" and achado.ativo == 1
+    with db.Session() as s:
+        s.delete(s.get(db.Usuario, achado.id)); s.commit()
+
+
+def test_cadastro_paginas(client):
+    assert client.get("/cadastro").status_code == 200
+    r = client.get("/cadastro/confirmar")   # sem sessão -> volta ao cadastro
+    assert r.status_code == 302 and "/cadastro" in r.headers["Location"]
+
+
+def test_cadastro_fluxo_completo(client, monkeypatch):
+    import mailer
+    monkeypatch.setattr(mailer, "configurado", lambda: True)
+    monkeypatch.setattr(mailer, "enviar", lambda dest, asn, corpo: (True, None))
+    r = client.post("/cadastro", data={"nome": "Beltrano", "email": "beltrano@x.com", "senha": "segredo1"})
+    assert r.status_code == 302 and "confirmar" in r.headers["Location"]
+    p = db.pendente_por_email("beltrano@x.com")
+    assert p and p["codigo"]
+    r2 = client.post("/cadastro/confirmar", data={"codigo": p["codigo"]})
+    assert r2.status_code == 302
+    u = _achar_usuario("beltrano@x.com")
+    assert u and u.perfil == "Consultor"
+    with db.Session() as s:
+        s.delete(s.get(db.Usuario, u.id)); s.commit()
+
+
+def test_usuarios_grava_email_e_perfil(client):
+    client.post("/usuarios", data={"nome": "Coord", "email": "coord@x.com", "perfil": "Coordenador", "ativo": "on"})
+    u = _achar_usuario("coord@x.com")
+    assert u and u.login == "coord@x.com" and u.perfil == "Coordenador"
+    with db.Session() as s:
+        s.delete(s.get(db.Usuario, u.id)); s.commit()

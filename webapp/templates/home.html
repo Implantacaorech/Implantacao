@@ -13,8 +13,8 @@
 
   {% if foco %}
   <div class="painel" style="margin-top:14px">
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:2px">
-      <span class="dica" style="margin:0">📌 Projeto em foco</span>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px">
+      <span class="dica" style="margin:0;display:inline-flex;align-items:center;gap:5px"><svg class="svgi" aria-hidden="true"><use href="#ic-pin"/></svg>Projeto em foco</span>
       <a href="{{ url_for('projeto_ficha', pid=foco.p.id) }}" style="font-weight:700;color:var(--navy);font-size:1.06rem">{{ foco.p.cliente }}</a>
       <span class="badge-sit" data-s="{{ foco.p.situacao }}">{{ foco.p.situacao }}</span>
     </div>
@@ -42,7 +42,7 @@
 
   <div class="vg-cols">
     <div class="painel" style="margin:0">
-      <h3 style="margin-top:0">⚡ Próximas ações</h3>
+      <h3 style="margin-top:0;display:flex;align-items:center;gap:7px"><svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg>Próximas ações</h3>
       {% if pendencias %}
       <ul class="lista-acoes">
         {% for it in pendencias %}
@@ -55,7 +55,7 @@
       {% else %}<p class="dica">Nenhuma ação pendente. Tudo encaminhado. 👏</p>{% endif %}
     </div>
     <div class="painel" style="margin:0">
-      <h3 style="margin-top:0">🔔 Alertas</h3>
+      <h3 style="margin-top:0;display:flex;align-items:center;gap:7px"><svg class="svgi" aria-hidden="true"><use href="#ic-bell"/></svg>Alertas</h3>
       {% if alertas %}
       <ul class="alertas">
         {% for a in alertas %}
@@ -67,7 +67,7 @@
     </div>
   </div>
 
-  <h2 class="sec">🧭 Como o fluxo funciona</h2>
+  <h2 class="sec"><svg class="svgi hi" aria-hidden="true"><use href="#ic-compass"/></svg> Como o fluxo funciona</h2>
   <div class="hero-fluxo">
     <a class="passo" href="{{ url_for('fluxo_inicio') }}">
       <span class="num">1</span>
@@ -88,25 +88,25 @@
     </a>
   </div>
 
-  <h2 class="sec" id="ferramentas">🧰 Ferramentas</h2>
+  <h2 class="sec" id="ferramentas"><svg class="svgi hi" aria-hidden="true"><use href="#ic-tools"/></svg> Ferramentas</h2>
   <p class="sub" style="margin-bottom:12px">Geradores e utilitários avulsos — para usar fora do fluxo.</p>
   <div class="tools">
-    <a class="tool" href="{{ url_for('acao', rid='adm', aid='criar') }}"><span>📑</span><div><strong>Criação dos Templates</strong><small>Termo e Mapeamento em abas</small></div></a>
-    <a class="tool" href="{{ url_for('acao', rid='adm', aid='importar') }}"><span>📥</span><div><strong>Importar Levantamento</strong><small>.docx → Projeto + Check List + Termo</small></div></a>
-    <a class="tool" href="{{ url_for('acao', rid='adm', aid='verbal') }}"><span>✍️</span><div><strong>Tempo Verbal e Ortografia</strong><small>Presente→Futuro + correção</small></div></a>
-    <a class="tool" href="{{ url_for('acao', rid='consultor', aid='chkform') }}"><span>📊</span><div><strong>Check List do Consultor</strong><small>Planilha-guia por módulos</small></div></a>
-    <a class="tool" href="{{ url_for('mapa') }}"><span>🧠</span><div><strong>Mapa do Setor</strong><small>Processo de implantação em tela</small></div></a>
-    <a class="tool" href="{{ url_for('cliente') }}"><span>👤</span><div><strong>Cliente da sessão</strong><small>Define o cliente dos geradores avulsos</small></div></a>
+    <a class="tool" href="{{ url_for('acao', rid='adm', aid='criar') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg><div><strong>Criação dos Templates</strong><small>Termo e Mapeamento em abas</small></div></a>
+    <a class="tool" href="{{ url_for('acao', rid='adm', aid='importar') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg><div><strong>Importar Levantamento</strong><small>.docx → Projeto + Check List + Termo</small></div></a>
+    <a class="tool" href="{{ url_for('acao', rid='adm', aid='verbal') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg><div><strong>Tempo Verbal e Ortografia</strong><small>Presente→Futuro + correção</small></div></a>
+    <a class="tool" href="{{ url_for('acao', rid='consultor', aid='chkform') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg><div><strong>Check List do Consultor</strong><small>Planilha-guia por módulos</small></div></a>
+    <a class="tool" href="{{ url_for('mapa') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-bulb"/></svg><div><strong>Mapa do Setor</strong><small>Processo de implantação em tela</small></div></a>
+    <a class="tool" href="{{ url_for('cliente') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-user"/></svg><div><strong>Cliente da sessão</strong><small>Define o cliente dos geradores avulsos</small></div></a>
   </div>
 
-  <h2 class="sec">⚙️ Configurações e saúde</h2>
+  <h2 class="sec"><svg class="svgi hi" aria-hidden="true"><use href="#ic-settings"/></svg> Configurações e saúde</h2>
   <div class="tools">
-    <a class="tool" href="{{ url_for('config_email') }}"><span>✉️</span><div><strong>E-mail (SMTP)</strong><small>Conta de envio</small></div></a>
-    <a class="tool" href="{{ url_for('config_imap') }}"><span>📬</span><div><strong>Caixa de entrada (IMAP)</strong><small>Detecta o e-mail de fechamento</small></div></a>
-    <a class="tool" href="{{ url_for('config_gmail') }}"><span>📤</span><div><strong>Gmail API (envio)</strong><small>Envio por HTTPS (contorna SMTP)</small></div></a>
-    <a class="tool" href="{{ url_for('config') }}"><span>🤖</span><div><strong>Modo IA</strong><small>Chave da revisão por IA</small></div></a>
-    <a class="tool" href="{{ url_for('perfil') }}"><span>🧑‍💼</span><div><strong>Perfil de acesso</strong><small>Coordenação ou Consultor</small></div></a>
-    <a class="tool" href="{{ url_for('acao', rid='coordenacao', aid='saude') }}"><span>🩺</span><div><strong>Saúde do Sistema</strong><small>Verificador completo (30 testes)</small></div></a>
+    <a class="tool" href="{{ url_for('config_email') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-mail"/></svg><div><strong>E-mail (SMTP)</strong><small>Conta de envio</small></div></a>
+    <a class="tool" href="{{ url_for('config_imap') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-inbox"/></svg><div><strong>Caixa de entrada (IMAP)</strong><small>Detecta o e-mail de fechamento</small></div></a>
+    <a class="tool" href="{{ url_for('config_gmail') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-send"/></svg><div><strong>Gmail API (envio)</strong><small>Envio por HTTPS (contorna SMTP)</small></div></a>
+    <a class="tool" href="{{ url_for('config') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-cpu"/></svg><div><strong>Modo IA</strong><small>Chave da revisão por IA</small></div></a>
+    <a class="tool" href="{{ url_for('perfil') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-user"/></svg><div><strong>Perfil de acesso</strong><small>Coordenação ou Consultor</small></div></a>
+    <a class="tool" href="{{ url_for('acao', rid='coordenacao', aid='saude') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-heart-pulse"/></svg><div><strong>Saúde do Sistema</strong><small>Verificador completo (30 testes)</small></div></a>
   </div>
 
   <style>
@@ -120,6 +120,8 @@
     .ac-cli{font-weight:600;flex:0 0 42%;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .ac-do{color:var(--muted);font-size:.9rem;flex:1}
     .ac-go{color:var(--faint);font-weight:700;font-size:1.1rem}
+    .sec .svgi.hi{width:18px;height:18px;vertical-align:-3px;margin-right:2px;color:var(--accent-700)}
+    .tool>.svgi{width:22px;height:22px;flex:none;color:var(--accent-700)}
     @media (max-width:760px){.vg-cols{grid-template-columns:1fr}}
   </style>
 {% endblock %}

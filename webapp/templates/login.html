@@ -19,7 +19,8 @@
       <button class="btn primario" type="submit" style="width:100%">Entrar</button>
       {% if not tem_usuarios %}<p class="dica" style="text-align:center;margin-top:10px">Primeiro acesso: deixe o login em branco e use a <strong>senha mestra</strong> para entrar como Administrador e cadastrar os usuários.</p>{% endif %}
     </form>
-    <p class="dica" style="text-align:center">Rech Sistemas de Gestão</p>
+    <p class="dica" style="text-align:center">Não tem acesso? <a href="{{ url_for('cadastro') }}">Criar conta</a></p>
+    <p class="dica" style="text-align:center;margin-top:2px">Rech Sistemas de Gestão</p>
   </div>
 </body>
 </html>

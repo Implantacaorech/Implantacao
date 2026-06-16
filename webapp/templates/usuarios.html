@@ -12,8 +12,9 @@
       <input type="hidden" name="id" id="u_id">
       <div class="grade2">
         <label class="campo"><span>Nome</span><input name="nome" id="u_nome"></label>
-        <label class="campo"><span>Login (e-mail)</span><input name="login" id="u_login" required></label>
-        <label class="campo"><span>Perfil</span><select name="perfil" id="u_perfil">{% for p in perfis %}<option>{{ p }}</option>{% endfor %}</select></label>
+        <label class="campo"><span>E-mail</span><input type="email" name="email" id="u_email" required></label>
+        <label class="campo"><span>Login</span><input name="login" id="u_login" placeholder="(em branco usa o e-mail)"></label>
+        <label class="campo"><span>Hierarquia (perfil)</span><select name="perfil" id="u_perfil">{% for p in perfis %}<option>{{ p }}</option>{% endfor %}</select></label>
         <label class="campo"><span>Senha</span><input type="password" name="senha" id="u_senha" placeholder="(em branco mantém a atual)"></label>
         <label class="campo" style="align-self:center"><span><input type="checkbox" name="ativo" id="u_ativo" checked> Ativo</span></label>
       </div>
@@ -24,10 +25,10 @@
 
   {% if usuarios %}
   <table class="form-tab">
-    <thead><tr><th>Nome</th><th>Login</th><th>Perfil</th><th>Ativo</th><th></th></tr></thead>
+    <thead><tr><th>Nome</th><th>E-mail</th><th>Login</th><th>Hierarquia</th><th>Ativo</th><th></th></tr></thead>
     <tbody>
     {% for u in usuarios %}
-      <tr><td>{{ u.nome }}</td><td>{{ u.login }}</td><td>{{ u.perfil }}</td><td>{{ '🟢' if u.ativo else '⚪' }}</td>
+      <tr><td>{{ u.nome }}</td><td>{{ u.email }}</td><td>{{ u.login }}</td><td>{{ u.perfil }}</td><td>{{ '🟢' if u.ativo else '⚪' }}</td>
         <td><button class="btn" type="button" onclick='edita({{ u|tojson }})'>✏️ Editar</button></td></tr>
     {% endfor %}
     </tbody>
@@ -37,12 +38,13 @@
   <script>
   function edita(u){
     document.getElementById('u_id').value=u.id; document.getElementById('u_nome').value=u.nome||'';
-    document.getElementById('u_login').value=u.login||''; document.getElementById('u_perfil').value=u.perfil||'Consultor';
+    document.getElementById('u_email').value=u.email||''; document.getElementById('u_login').value=u.login||'';
+    document.getElementById('u_perfil').value=u.perfil||'Consultor';
     document.getElementById('u_senha').value=''; document.getElementById('u_ativo').checked=!!u.ativo;
     window.scrollTo(0,0);
   }
   function limpa(){ document.getElementById('u_id').value='';
-    ['u_nome','u_login','u_senha'].forEach(function(i){document.getElementById(i).value='';});
+    ['u_nome','u_email','u_login','u_senha'].forEach(function(i){document.getElementById(i).value='';});
     document.getElementById('u_perfil').selectedIndex=0; document.getElementById('u_ativo').checked=true; }
   </script>
 {% endblock %}
