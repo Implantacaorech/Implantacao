@@ -8,6 +8,7 @@ import sys
 import tempfile
 
 os.environ.pop("PAINEL_DB_URL", None)
+os.environ.pop("PAINEL_SENHA", None)   # ignora a senha mestra do ambiente (login desativado nos testes)
 os.environ["PAINEL_DB"] = os.path.join(tempfile.gettempdir(), "painel_pytest.db")
 
 HERE = os.path.dirname(os.path.abspath(__file__))

@@ -76,11 +76,17 @@ _GERA = {"levantamento": ("ADM", "Coordenador", "GCI"),
 
 
 def _perfil():
-    return session.get("perfil") or ""
+    try:
+        return session.get("perfil") or ""
+    except Exception:
+        return ""   # fora de um request (threads do robô/digest)
 
 
 def _autor():
-    return session.get("perfil_nome") or ""
+    try:
+        return session.get("perfil_nome") or ""
+    except Exception:
+        return "sistema"   # ações automáticas em segundo plano
 
 
 def _e_adm():
