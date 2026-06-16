@@ -76,3 +76,47 @@ def test_metricas_alertas():
     proj = [{"id": 1, "etapa": "Projeto", "situacao": "Em risco", "horas_cobradas": "10"}]
     assert db.metricas(proj, {})["n_risco"] == 1
     assert any(a["tipo"] == "risco" for a in db.alertas(proj, {}))
+
+
+def test_d_etapa_bloqueia_geracao():
+    # D: a geração só é liberada na etapa do documento (ou depois)
+    assert A._etapa_permite_gerar("levantamento", "Levantamento")
+    assert not A._etapa_permite_gerar("projeto", "Levantamento")
+    assert not A._etapa_permite_gerar("termo", "Levantamento")
+    assert A._etapa_permite_gerar("projeto", "Projeto")
+    assert A._etapa_permite_gerar("cronograma", "Cronograma e Check-list")
+    assert A._etapa_permite_gerar("levantamento", "Encerramento")  # docs anteriores sempre ok
+
+
+def test_c_auto_avanca_com_gate(client):
+    pid = int(_novo(client, cliente="Auto Avanca", etapa="Projeto", modulos="FAT"))
+    with db.Session() as s:
+        for t in ("levantamento", "projeto"):   # satisfaz o gate de Cronograma e Check-list
+            s.add(db.Documento(projeto_id=pid, tipo=t, arquivo=t + ".docx", caminho=t + ".docx"))
+        s.commit()
+    A._auto_avancar(pid)
+    with db.Session() as s:
+        assert s.get(db.Projeto, pid).etapa == "Cronograma e Check-list"
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_c_nao_avanca_no_levantamento(client):
+    pid = int(_novo(client, cliente="Fica Levant", etapa="Levantamento", modulos="FAT"))
+    with db.Session() as s:
+        s.add(db.Documento(projeto_id=pid, tipo="levantamento", arquivo="l.docx", caminho="l.docx"))
+        s.commit()
+    A._auto_avancar(pid)   # Levantamento é confirmado pelo humano -> não avança sozinho
+    with db.Session() as s:
+        assert s.get(db.Projeto, pid).etapa == "Levantamento"
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_a_cria_projeto_de_fechamento():
+    corpo = ("Cliente (Razão Social): ROBO LTDA\nCNPJ: 99\n"
+             "Módulos contratados (siglas): FAT\nHoras cobradas: 20\n")
+    pid = A._criar_projeto_de_fechamento(corpo, "[IMPLANTACAO] ROBO")
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        assert p and "ROBO" in p.cliente
+        s.delete(p)
+        s.commit()

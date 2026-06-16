@@ -68,6 +68,40 @@ def _assunto(msg):
     return out
 
 
+def processar_fechamentos(criar_fn, marcador="IMPLANTA"):
+    """Para cada e-mail NÃO LIDO marcado, chama criar_fn(corpo, assunto) e o marca como
+    lido (para não reprocessar). Retorna quantos foram processados. Usado pelo robô."""
+    import imaplib
+    import email
+    c = load_cfg()
+    if not c.get("host"):
+        return 0
+    n = 0
+    try:
+        M = imaplib.IMAP4_SSL(c["host"], int(c.get("port") or 993))
+        M.login(c["user"], c.get("senha", ""))
+        M.select(c.get("pasta") or "INBOX")
+        typ, data = M.search(None, "UNSEEN")
+        ids = data[0].split() if data and data[0] else []
+        for mid in ids:
+            typ, md = M.fetch(mid, "(BODY.PEEK[HEADER.FIELDS (SUBJECT)])")
+            cab = b"".join(p[1] for p in md if isinstance(p, tuple)).decode("utf-8", "replace")
+            if marcador.lower() not in cab.lower():
+                continue
+            typ, md = M.fetch(mid, "(BODY.PEEK[])")
+            msg = email.message_from_bytes(md[0][1])
+            try:
+                criar_fn(_texto(msg), _assunto(msg))
+                M.store(mid, "+FLAGS", "\\Seen")
+                n += 1
+            except Exception:
+                pass
+        M.logout()
+    except Exception:
+        return n
+    return n
+
+
 def buscar_fechamento(marcador="IMPLANTA"):
     """Conecta no IMAP e devolve (corpo, assunto, erro) do último e-mail NÃO LIDO
     cujo assunto contém o marcador. Não marca como lido (PEEK)."""

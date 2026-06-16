@@ -59,6 +59,10 @@
 - [x] **F2 — 4 etapas:** Levantamento → Projeto → Cronograma e Check-list → Encerramento (gates encadeados + migração automática das etapas antigas).
 - [x] **F3 — Designação:** Coordenador designa GCI e Consultores **por módulo** (selects de usuários) → notifica os designados + timeline.
 - [x] **F4 — Notificações por evento:** os 10 eventos disparam e-mail à Coordenação (fechamento, conclusões de etapa, documentos gerados, encerramento) — usa o envio configurado (Gmail/SMTP).
+- [x] **A — Robô da caixa:** thread em segundo plano (a cada `IMAP_POLL_MIN`, default 10 min) lê os e-mails NÃO LIDOS marcados `[IMPLANTA…]`, **cria a ficha automaticamente**, marca o e-mail como lido (não reprocessa) e notifica a Coordenação. Liga sozinho no modo servidor quando o IMAP está configurado.
+- [x] **B — Levantamento ao designar:** ao designar o **GCI**, o sistema **gera o Levantamento automaticamente** (documento para o GCI preencher) e anexa à ficha.
+- [x] **C — Auto-avanço de etapa:** ao gerar o deliverable da etapa, o projeto **avança sozinho** (Projeto→Cronograma, Cronograma+Check-list→Encerramento). O **Levantamento** é a única conclusão confirmada pelo humano (botão Avançar), pois o documento é preenchido fora do sistema.
+- [x] **D — Geração só na etapa certa:** a geração de um documento é **bloqueada fora da sua etapa** (ex.: não gera Termo no Levantamento), com aviso amigável — reforça a sequência além do perfil.
 - [ ] *Adiado:* "simular visualmente o documento do Projeto" (WYSIWYG) — complexo; hoje é edição por formulário.
 - [ ] *Adiado:* histórico de modificações linha-a-linha dos documentos.
 

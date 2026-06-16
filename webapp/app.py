@@ -260,6 +260,53 @@ def _notificar_evento(pid, evento, proj=None):
     _notificar(pid, _emails_coordenacao(), assunto % cli, (corpo % cli) + "\n\n— Painel de Implantação")
 
 
+def _criar_projeto_de_fechamento(corpo, assunto=""):
+    """Cria a ficha do projeto a partir do corpo do e-mail de fechamento (robô da caixa)."""
+    import datetime
+    import fluxo as F
+    pf = F.para_projeto(F.parse_fechamento(corpo))
+    pf.pop("contato_email", None)
+    pf["data_inicio"] = datetime.date.today().isoformat()
+    with db.Session() as s:
+        p = db.aplicar_form(db.Projeto(), pf)
+        s.add(p)
+        s.commit()
+        pid = p.id
+        db.registrar_evento(s, pid, "etapa", "Fechamento recebido automaticamente da caixa.", "sistema")
+        s.commit()
+        proj = db.to_dict(p)
+    _notificar_evento(pid, "fechamento", proj)
+    return pid
+
+
+_ETAPA_DOC = {"levantamento": "Levantamento", "projeto": "Projeto",
+              "cronograma": "Cronograma e Check-list", "checklist": "Cronograma e Check-list",
+              "termo": "Encerramento"}
+
+
+def _etapa_permite_gerar(tipo, etapa):
+    """A geração de um documento só é liberada na etapa dele (ou depois)."""
+    return db.macro_idx(etapa) >= db.macro_idx(_ETAPA_DOC.get(tipo, etapa))
+
+
+def _auto_avancar(pid):
+    """Avança a etapa automaticamente enquanto o gate da próxima estiver satisfeito."""
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        if not p or p.etapa == "Levantamento":
+            return   # a conclusão do Levantamento é confirmada pelo GCI (botão Avançar)
+        docs = [db.to_dict(x) for x in s.query(db.Documento).filter_by(projeto_id=pid).all()]
+        prox = db.proxima_etapa(p.etapa)
+        mudou = False
+        while prox and db.gate_status(prox, docs)["ok"]:
+            db.registrar_evento(s, pid, "etapa", "Avançou automaticamente: %s → %s" % (p.etapa, prox), "sistema")
+            p.etapa = prox
+            prox = db.proxima_etapa(p.etapa)
+            mudou = True
+        if mudou:
+            s.commit()
+
+
 @app.route("/")
 def home():
     try:
@@ -630,8 +677,8 @@ def projeto_gerar_pendentes(pid):
     gerados = 0
     for it in gate["itens"]:
         if (it["ok"] or it["tipo"] not in ("levantamento", "checklist", "cronograma", "termo")
-                or not pode_gerar(it["tipo"])):
-            continue   # 'projeto' precisa do Mapeamento; respeita a permissão do perfil
+                or not pode_gerar(it["tipo"]) or not _etapa_permite_gerar(it["tipo"], proj["etapa"])):
+            continue   # respeita perfil e etapa; 'projeto' precisa do Mapeamento (upload)
         try:
             path, _log = runner.gerar_do_projeto(proj, it["tipo"])
         except Exception:
@@ -645,6 +692,8 @@ def projeto_gerar_pendentes(pid):
                 s.commit()
             gerados += 1
             _notificar_evento(pid, _EVT_DOC.get(it["tipo"]), proj)
+    if gerados:
+        _auto_avancar(pid)
     aviso = None if gerados else "Nada a gerar automaticamente (o pendente pode ser o Projeto, que precisa do Mapeamento preenchido)."
     return redirect(url_for("projeto_ficha", pid=pid, salvo=1, aviso=aviso))
 
@@ -658,6 +707,9 @@ def projeto_gerar(pid, tipo):
         if not p:
             abort(404)
         proj = db.to_dict(p)
+    if not _etapa_permite_gerar(tipo, proj.get("etapa")):
+        return redirect(url_for("projeto_ficha", pid=pid,
+            aviso="'%s' só pode ser gerado na etapa '%s' ou depois." % (db.DOC_LABELS.get(tipo, tipo), _ETAPA_DOC.get(tipo, "?"))))
     try:
         path, _log = runner.gerar_do_projeto(proj, tipo)
     except Exception:
@@ -670,6 +722,7 @@ def projeto_gerar(pid, tipo):
                                 "Gerou %s (%s)" % (os.path.basename(path), tipo), _autor())
             s.commit()
         _notificar_evento(pid, _EVT_DOC.get(tipo), proj)
+        _auto_avancar(pid)
     return redirect(url_for("projeto_ficha", pid=pid))
 
 
@@ -682,6 +735,9 @@ def projeto_gerar_projeto(pid):
         if not p:
             abort(404)
         cliente = p.cliente
+        etapa = p.etapa
+    if not _etapa_permite_gerar("projeto", etapa):
+        return redirect(url_for("projeto_ficha", pid=pid, erro="O Projeto só pode ser gerado na etapa 'Projeto' ou depois."))
     f = request.files.get("arquivo")
     if not (f and f.filename and f.filename.lower().endswith(".docx")):
         return redirect(url_for("projeto_ficha", pid=pid, erro="Envie o Mapeamento (.docx) preenchido."))
@@ -699,6 +755,7 @@ def projeto_gerar_projeto(pid):
                                 "Gerou %s (projeto, pelo Mapeamento)" % os.path.basename(proj_path), _autor())
             s.commit()
         _notificar_evento(pid, "projeto_ok")
+        _auto_avancar(pid)
     return redirect(url_for("projeto_ficha", pid=pid))
 
 
@@ -777,6 +834,22 @@ def projeto_designar(pid):
                 _notificar(pid, [email_de[cons]], "Implantação designada — %s" % cliente,
                            "Você foi designado para a implantação do projeto %s.\n"
                            "Módulos: %s.\nAcesse o Painel de Implantação." % (cliente, ", ".join(ms)))
+        # B: gera o Levantamento automaticamente ao designar o GCI (documento para o GCI preencher)
+        if gci:
+            with db.Session() as s:
+                ja = s.query(db.Documento).filter_by(projeto_id=pid, tipo="levantamento").count()
+            if not ja:
+                try:
+                    path, _l = runner.gerar_do_projeto({**proj, "gci": gci}, "levantamento")
+                except Exception:
+                    path = None
+                if path:
+                    with db.Session() as s:
+                        s.add(db.Documento(projeto_id=pid, tipo="levantamento",
+                                           arquivo=os.path.basename(path), caminho=path))
+                        db.registrar_evento(s, pid, "documento",
+                                            "Gerou %s (ao designar o GCI)" % os.path.basename(path), "sistema")
+                        s.commit()
         return redirect(url_for("projeto_ficha", pid=pid, salvo=1))
     atuais = {d["modulo"]: d["consultor"] for d in db.designacoes_do_projeto(pid)}
     return render_template("designar.html", p=proj, mods=mods, gcis=gcis,
@@ -978,6 +1051,22 @@ def _agendador_digest():
         time.sleep(1800)   # checa a cada 30 min
 
 
+def _agendador_caixa():
+    """Robô: a cada IMAP_POLL_MIN min, cria projeto para cada novo fechamento na caixa."""
+    import time
+    import imap_intake
+    mins = int(os.environ.get("IMAP_POLL_MIN", "10") or 10)
+    while True:
+        try:
+            if imap_intake.configurado():
+                n = imap_intake.processar_fechamentos(_criar_projeto_de_fechamento)
+                if n:
+                    logging.info("Robô da caixa: %d fechamento(s) criado(s).", n)
+        except Exception as e:
+            logging.warning("Robô da caixa falhou: %s", e)
+        time.sleep(max(120, mins * 60))
+
+
 def _abrir_navegador():
     import webbrowser
     webbrowser.open("http://127.0.0.1:5000")
@@ -992,6 +1081,13 @@ if __name__ == "__main__":
     if _digest_destinos():
         threading.Thread(target=_agendador_digest, daemon=True).start()
         logging.info("Agendador de digest diário ativo (DIGEST_HORA=%s).", os.environ.get("DIGEST_HORA", "8"))
+    try:
+        import imap_intake as _imap
+        if _imap.configurado():
+            threading.Thread(target=_agendador_caixa, daemon=True).start()
+            logging.info("Robô da caixa ativo (IMAP_POLL_MIN=%s).", os.environ.get("IMAP_POLL_MIN", "10"))
+    except Exception:
+        pass
     try:
         from waitress import serve
         logging.info("Painel no ar em http://%s:%s  (waitress)", host, port)
