@@ -186,19 +186,19 @@
     Chart.defaults.font.size = 12;
     var etapas={{ etapas|tojson }}, porEtapa={{ m.por_etapa|tojson }};
     var sits={{ situacoes|tojson }}, porSit={{ m.por_situacao|tojson }};
-    var cores_etapa=['#7C3AED','#2563EB','#0891B2','#15803D'];
+    var cores_etapa=['#7C3AED','#003399','#014980','#15803D'];
     var f=document.getElementById('gFunil');
     if(f) new Chart(f,{type:'bar',data:{
       labels:etapas,
       datasets:[{data:etapas.map(function(e){return porEtapa[e]||0;}),
         backgroundColor:cores_etapa,borderRadius:6,borderSkipped:false}]
     },options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0},grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}});
-    var cores_sit={'Em andamento':'#3b82f6','Em risco':'#ef4444','Pausado':'#94a3b8','Concluído':'#22c55e'};
+    var cores_sit={'Em andamento':'#003399','Em risco':'#ef4444','Pausado':'#94a3b8','Concluído':'#22c55e'};
     var st=document.getElementById('gStatus');
     if(st) new Chart(st,{type:'doughnut',data:{
       labels:sits,
       datasets:[{data:sits.map(function(s){return porSit[s]||0;}),
-        backgroundColor:sits.map(function(s){return cores_sit[s]||'#1F4E78';}),
+        backgroundColor:sits.map(function(s){return cores_sit[s]||'#003399';}),
         borderWidth:2,borderColor:'#fff'}]
     },options:{plugins:{legend:{position:'bottom',labels:{padding:16,usePointStyle:true}}},cutout:'60%'}});
   })();
