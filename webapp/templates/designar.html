@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block titulo %}Designar — {{ p.cliente }}{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('projetos') }}">Projetos</a> › <a href="{{ url_for('projeto_ficha', pid=p.id) }}">{{ p.cliente }}</a> › Designar</div>{% endblock %}
+{% block conteudo %}
+  <h1>👥 Designar responsáveis — {{ p.cliente }}</h1>
+  <p class="sub">Defina o GCI do Levantamento e os Consultores por módulo. Os designados são notificados por e-mail.</p>
+  <form method="post" class="painel">
+    <h3 style="color:var(--navy);margin-top:0">GCI (Levantamento)</h3>
+    <label class="campo"><span>GCI responsável</span>
+      <select name="gci" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px">
+        <option value="">— selecionar —</option>
+        {% for u in gcis %}<option {{ 'selected' if gci_atual==u.nome }}>{{ u.nome }}</option>{% endfor %}
+      </select>
+      {% if not gcis %}<small>Nenhum usuário com perfil GCI cadastrado. <a href="{{ url_for('usuarios') }}">Cadastrar</a>.</small>{% endif %}
+    </label>
+
+    <h3 style="color:var(--navy)">Consultores por módulo</h3>
+    {% if mods %}
+    <table class="form-tab">
+      <thead><tr><th>Módulo</th><th>Consultor responsável</th></tr></thead>
+      <tbody>
+      {% for m in mods %}
+        <tr><td>{{ m }}</td>
+          <td><select name="mod_{{ loop.index0 }}">
+            <option value="">— não designado —</option>
+            {% for u in consultores %}<option {{ 'selected' if atuais.get(m)==u.nome }}>{{ u.nome }}</option>{% endfor %}
+          </select></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="dica">O projeto não tem módulos definidos (preencha o campo "Módulos" na ficha).</p>{% endif %}
+    {% if not consultores %}<p class="dica">Nenhum usuário com perfil Consultor cadastrado. <a href="{{ url_for('usuarios') }}">Cadastrar</a>.</p>{% endif %}
+
+    <button class="btn primario" type="submit" style="margin-top:10px">💾 Designar e notificar</button>
+    <a class="btn" href="{{ url_for('projeto_ficha', pid=p.id) }}">Cancelar</a>
+  </form>
+{% endblock %}

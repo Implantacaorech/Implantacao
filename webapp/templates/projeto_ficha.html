@@ -87,7 +87,8 @@
       <div class="resumo">
         {% if p.cnpj %}<div class="row"><span class="k">CNPJ</span><span class="v">{{ p.cnpj }}</span></div>{% endif %}
         {% if p.ramo %}<div class="row"><span class="k">Ramo</span><span class="v">{{ p.ramo }}</span></div>{% endif %}
-        <div class="row"><span class="k">Consultor (GCI)</span><span class="v">{{ p.consultor or '—' }}</span></div>
+        <div class="row"><span class="k">GCI (Levantamento)</span><span class="v">{{ p.gci or '—' }}</span></div>
+        <div class="row"><span class="k">Consultor(es)</span><span class="v">{{ p.consultor or '—' }}</span></div>
         {% if p.responsavel %}<div class="row"><span class="k">Responsável</span><span class="v">{{ p.responsavel }}</span></div>{% endif %}
         <div class="row"><span class="k">Módulos</span><span class="v">{{ p.modulos or '—' }}</span></div>
         <div class="row"><span class="k">Horas</span><span class="v">{{ cab.horas_total|int }}{% if cab.horas_bon %} ({{ cab.horas_cob|int }}+{{ cab.horas_bon|int }}){% endif %}</span></div>
@@ -95,10 +96,12 @@
         <div class="row"><span class="k">Go-live previsto</span><span class="v">{{ p.data_uso_oficial or '—' }}</span></div>
         {% if p.contatos %}<div class="row"><span class="k">Contatos</span><span class="v">{{ p.contatos }}</span></div>{% endif %}
       </div>
+      {% if designacoes %}<div class="dica" style="margin-top:6px"><strong>Por módulo:</strong> {% for d in designacoes %}{{ d.modulo }} → {{ d.consultor }}{% if not loop.last %} · {% endif %}{% endfor %}</div>{% endif %}
       {% if p.observacoes %}<p class="dica" style="margin-top:10px"><strong>Obs.:</strong> {{ p.observacoes }}</p>{% endif %}
       <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn" type="button" onclick="aba('t-dados')">✏️ Editar dados</button>
         <button class="btn" type="button" onclick="aba('t-docs')">📁 Documentos</button>
+        {% if pode_designar %}<a class="btn" href="{{ url_for('projeto_designar', pid=p.id) }}">👥 Designar responsáveis</a>{% endif %}
       </div>
     </div>
     <h3 style="color:var(--navy)">Atividade recente</h3>

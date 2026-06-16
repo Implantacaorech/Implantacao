@@ -187,6 +187,28 @@ def ha_usuarios():
         return s.query(Usuario).filter(Usuario.ativo == 1).count() > 0
 
 
+def usuarios_por_perfil(perfil):
+    with Session() as s:
+        return [{"id": u.id, "nome": u.nome or u.login, "login": u.login}
+                for u in s.query(Usuario).filter(Usuario.perfil == perfil, Usuario.ativo == 1)
+                .order_by(Usuario.nome).all()]
+
+
+class Designacao(Base):
+    """Consultor responsável por um módulo de um projeto."""
+    __tablename__ = "designacoes"
+    id = Column(Integer, primary_key=True)
+    projeto_id = Column(Integer, index=True)
+    modulo = Column(String(80), default="")
+    consultor = Column(String(160), default="")
+
+
+def designacoes_do_projeto(pid):
+    with Session() as s:
+        return [{"modulo": d.modulo, "consultor": d.consultor}
+                for d in s.query(Designacao).filter_by(projeto_id=pid).order_by(Designacao.modulo).all()]
+
+
 def to_dict(obj):
     return {c.name: getattr(obj, c.name) for c in obj.__table__.columns}
 

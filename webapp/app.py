@@ -213,6 +213,22 @@ def digest_enviar():
     return redirect(url_for("coordenacao", digest=("ok" if ok else (err or "erro"))))
 
 
+def _notificar(pid, emails, assunto, corpo):
+    """Notifica por e-mail (se configurado) e registra na timeline. Reutilizado no fluxo."""
+    import mailer
+    emails = [e for e in emails if e]
+    if not emails:
+        return
+    ok, err = (False, "e-mail não configurado")
+    if mailer.configurado():
+        ok, err = mailer.enviar(emails, assunto, corpo)
+    with db.Session() as s:
+        db.registrar_evento(s, pid, "email",
+            ("Notificou %s — %s" % (", ".join(emails), assunto)) if ok
+            else ("Notificação pendente (%s): %s" % (assunto, err or "?")), _autor())
+        s.commit()
+
+
 @app.route("/")
 def home():
     try:
@@ -535,7 +551,7 @@ def projeto_ficha(pid):
                            situacoes=db.SITUACOES, salvo=request.args.get("salvo"),
                            erro=request.args.get("erro"), aviso=request.args.get("aviso"),
                            gate=gate, doc_tipos=db.DOC_LABELS, eventos=eventos,
-                           cab=db.cabecalho(d, docs))
+                           cab=db.cabecalho(d, docs), designacoes=db.designacoes_do_projeto(pid))
 
 
 @app.route("/projetos/<int:pid>/excluir", methods=["POST"])
@@ -683,6 +699,52 @@ def projeto_nota(pid):
             db.registrar_evento(s, pid, "nota", texto, _autor())
             s.commit()
     return redirect(url_for("projeto_ficha", pid=pid))
+
+
+@app.route("/projetos/<int:pid>/designar", methods=["GET", "POST"])
+def projeto_designar(pid):
+    if not pode_designar():
+        abort(403)
+    import re as _re
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        if not p:
+            abort(404)
+        proj = db.to_dict(p)
+    mods = [m.strip() for m in _re.split(r"[,;\n]+", proj.get("modulos", "") or "") if m.strip()]
+    gcis = db.usuarios_por_perfil("GCI")
+    consultores = db.usuarios_por_perfil("Consultor")
+    email_de = {u["nome"]: u["login"] for u in gcis + consultores}
+    if request.method == "POST":
+        gci = (request.form.get("gci") or "").strip()
+        por_consultor = {}
+        with db.Session() as s:
+            s.query(db.Designacao).filter_by(projeto_id=pid).delete()
+            for i, m in enumerate(mods):
+                cons = (request.form.get("mod_%d" % i) or "").strip()
+                if cons:
+                    s.add(db.Designacao(projeto_id=pid, modulo=m, consultor=cons))
+                    por_consultor.setdefault(cons, []).append(m)
+            p = s.get(db.Projeto, pid)
+            p.gci = gci
+            p.consultor = ", ".join(sorted(por_consultor.keys()))
+            cliente = p.cliente
+            db.registrar_evento(s, pid, "etapa",
+                "Designação — GCI: %s · Consultores: %s" % (gci or "—", p.consultor or "—"), _autor())
+            s.commit()
+        if gci and email_de.get(gci):
+            _notificar(pid, [email_de[gci]], "Levantamento designado — %s" % cliente,
+                       "Você foi designado para realizar o Levantamento do projeto %s.\n"
+                       "Acesse o Painel de Implantação para iniciar." % cliente)
+        for cons, ms in por_consultor.items():
+            if email_de.get(cons):
+                _notificar(pid, [email_de[cons]], "Implantação designada — %s" % cliente,
+                           "Você foi designado para a implantação do projeto %s.\n"
+                           "Módulos: %s.\nAcesse o Painel de Implantação." % (cliente, ", ".join(ms)))
+        return redirect(url_for("projeto_ficha", pid=pid, salvo=1))
+    atuais = {d["modulo"]: d["consultor"] for d in db.designacoes_do_projeto(pid)}
+    return render_template("designar.html", p=proj, mods=mods, gcis=gcis,
+                           consultores=consultores, atuais=atuais, gci_atual=proj.get("gci", ""))
 
 
 @app.route("/fluxo")
