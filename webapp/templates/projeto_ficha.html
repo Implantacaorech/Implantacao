@@ -101,6 +101,8 @@
       <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn" type="button" onclick="aba('t-dados')">✏️ Editar dados</button>
         <button class="btn" type="button" onclick="aba('t-docs')">📁 Documentos</button>
+        <a class="btn" href="{{ url_for('projeto_cronograma', pid=p.id) }}">📅 Cronograma</a>
+        <a class="btn" href="{{ url_for('projeto_checklist', pid=p.id) }}">✅ Check-list</a>
         {% if pode_designar %}<a class="btn" href="{{ url_for('projeto_designar', pid=p.id) }}">👥 Designar responsáveis</a>{% endif %}
       </div>
     </div>
@@ -141,6 +143,11 @@
       {% if pode_gerar('cronograma') %}<form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='cronograma') }}"><button class="btn" type="submit">📅 Gerar Cronograma</button></form>{% endif %}
       {% if pode_gerar('termo') %}<form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='termo') }}"><button class="btn" type="submit">📑 Gerar Termo</button></form>{% endif %}
     </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;border-top:1px dashed var(--line);padding-top:10px">
+      <span class="dica" style="margin:0;align-self:center">Editar no painel (com histórico):</span>
+      <a class="btn" href="{{ url_for('projeto_cronograma', pid=p.id) }}">📅 Cronograma editável</a>
+      <a class="btn" href="{{ url_for('projeto_checklist', pid=p.id) }}">✅ Check-list editável</a>
+    </div>
     {% if erro %}<div class="resultado erro" style="padding:8px 14px;margin-top:8px">⚠️ {{ erro }}</div>{% endif %}
     {% if pode_gerar('projeto') %}
     <form id="gerar-projeto" method="post" action="{{ url_for('projeto_gerar_projeto', pid=p.id) }}" enctype="multipart/form-data"
@@ -167,7 +174,7 @@
       {% for d in docs %}
         <tr><td>{{ d.arquivo }}</td><td>{{ d.tipo }}</td>
             <td><small>{{ d.criado_em.strftime('%d/%m/%Y %H:%M') if d.criado_em else '' }}</small></td>
-            <td><a class="btn" href="{{ url_for('download', path=d.caminho) }}">⬇️ Baixar</a></td></tr>
+            <td style="white-space:nowrap">{% if d.arquivo.lower().endswith(('.docx','.xlsx','.xlsm')) %}<a class="btn" href="{{ url_for('projeto_doc_ver', pid=p.id, doc_id=d.id) }}">👁 Ver</a> {% endif %}<a class="btn" href="{{ url_for('download', path=d.caminho) }}">⬇️ Baixar</a></td></tr>
       {% endfor %}
       </tbody>
     </table>

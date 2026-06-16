@@ -63,8 +63,8 @@
 - [x] **B — Levantamento ao designar:** ao designar o **GCI**, o sistema **gera o Levantamento automaticamente** (documento para o GCI preencher) e anexa à ficha.
 - [x] **C — Auto-avanço de etapa:** ao gerar o deliverable da etapa, o projeto **avança sozinho** (Projeto→Cronograma, Cronograma+Check-list→Encerramento). O **Levantamento** é a única conclusão confirmada pelo humano (botão Avançar), pois o documento é preenchido fora do sistema.
 - [x] **D — Geração só na etapa certa:** a geração de um documento é **bloqueada fora da sua etapa** (ex.: não gera Termo no Levantamento), com aviso amigável — reforça a sequência além do perfil.
-- [ ] *Adiado:* "simular visualmente o documento do Projeto" (WYSIWYG) — complexo; hoje é edição por formulário.
-- [ ] *Adiado:* histórico de modificações linha-a-linha dos documentos.
+- [x] **E — Pré-visualização (WYSIWYG):** visualizador embutido (`/projetos/<id>/doc/<doc_id>/ver`) renderiza o documento gerado (.docx/.xlsx) como **folha A4 na tela** — botão **👁 Ver** em cada documento da ficha. Serve para Projeto, Levantamento, Cronograma e Termo; sem precisar baixar/abrir o Office.
+- [x] **F — Cronograma e Check-list editáveis + histórico:** tabelas editáveis no painel (`/projetos/<id>/cronograma` e `/checklist`) — adicionar/remover/editar linhas, **seed** pelo plano automático/roteiro dos módulos, **histórico de modificações linha-a-linha** (quem mudou o quê, de→para) e botão **gerar o .docx do cronograma editado** (anexa e satisfaz o gate).
 
 ## ✉️ E-mail / Integração Gmail
 - [x] **Feito:** envio pela **API do Gmail (OAuth/HTTPS)** — contorna o bloqueio de SMTP da rede (porta 443). Config → Gmail API.

@@ -224,6 +224,121 @@ def aplicar_form(p, form):
     return p
 
 
+# --- F: Cronograma e Check-list EDITÁVEIS no painel (+ histórico de modificações) ---
+class CronogramaItem(Base):
+    """Linha do cronograma, editável durante a implantação."""
+    __tablename__ = "cronograma_itens"
+    id = Column(Integer, primary_key=True)
+    projeto_id = Column(Integer, index=True)
+    ordem = Column(Integer, default=0)
+    etapa = Column(Text, default="")
+    topicos = Column(Text, default="")
+    horas = Column(String(20), default="")
+    data = Column(String(20), default="")
+    modalidade = Column(String(40), default="")
+    status = Column(String(30), default="Previsto")
+
+
+class ChecklistItem(Base):
+    """Linha do check-list de acompanhamento, editável durante a implantação."""
+    __tablename__ = "checklist_itens"
+    id = Column(Integer, primary_key=True)
+    projeto_id = Column(Integer, index=True)
+    ordem = Column(Integer, default=0)
+    modulo = Column(String(80), default="")
+    item = Column(Text, default="")
+    responsavel = Column(String(160), default="")
+    status = Column(String(30), default="Pendente")
+    obs = Column(Text, default="")
+
+
+class Modificacao(Base):
+    """Histórico de modificações linha-a-linha do cronograma / check-list."""
+    __tablename__ = "modificacoes"
+    id = Column(Integer, primary_key=True)
+    projeto_id = Column(Integer, index=True)
+    entidade = Column(String(30), default="")   # cronograma | checklist
+    ref = Column(String(60), default="")
+    campo = Column(String(40), default="")
+    de = Column(Text, default="")
+    para = Column(Text, default="")
+    autor = Column(String(120), default="")
+    criado_em = Column(DateTime, default=datetime.now)
+
+
+CRONO_CAMPOS = ["etapa", "topicos", "horas", "data", "modalidade", "status"]
+CHECK_CAMPOS = ["modulo", "item", "responsavel", "status", "obs"]
+CRONO_LABELS = {"etapa": "Etapa / Treinamento", "topicos": "Macro tópicos", "horas": "Horas",
+                "data": "Data", "modalidade": "Modalidade", "status": "Status"}
+CHECK_LABELS = {"modulo": "Módulo", "item": "Item", "responsavel": "Responsável",
+                "status": "Status", "obs": "Observação"}
+CRONO_STATUS = ["Previsto", "Agendado", "Concluído", "Cancelado"]
+CHECK_STATUS = ["Pendente", "Em andamento", "Concluído", "N/A"]
+_MODELS = {"cronograma": (CronogramaItem, CRONO_CAMPOS),
+           "checklist": (ChecklistItem, CHECK_CAMPOS)}
+
+
+def cronograma_do_projeto(pid):
+    with Session() as s:
+        return [to_dict(x) for x in s.query(CronogramaItem)
+                .filter_by(projeto_id=pid).order_by(CronogramaItem.ordem).all()]
+
+
+def checklist_do_projeto(pid):
+    with Session() as s:
+        return [to_dict(x) for x in s.query(ChecklistItem)
+                .filter_by(projeto_id=pid).order_by(ChecklistItem.ordem).all()]
+
+
+def modificacoes_do_projeto(pid, entidade=None, limite=200):
+    with Session() as s:
+        q = s.query(Modificacao).filter_by(projeto_id=pid)
+        if entidade:
+            q = q.filter_by(entidade=entidade)
+        return [to_dict(x) for x in q.order_by(Modificacao.criado_em.desc()).limit(limite).all()]
+
+
+def registrar_modificacao(s, projeto_id, entidade, ref, campo, de, para, autor=""):
+    s.add(Modificacao(projeto_id=projeto_id, entidade=entidade, ref=ref, campo=campo,
+                      de=str(de or ""), para=str(para or ""), autor=autor or ""))
+
+
+def _resumo_linha(d, campos):
+    get = d.get if isinstance(d, dict) else (lambda c: getattr(d, c, ""))
+    parts = [str(get(c)).strip() for c in campos[:2] if str(get(c) or "").strip()]
+    return " · ".join(parts) or "(linha vazia)"
+
+
+def salvar_linhas(pid, entidade, novas, autor=""):
+    """Substitui as linhas (cronograma|checklist) do projeto pelas `novas` (lista de dicts),
+    registrando as diferenças linha a linha em Modificacao. Retorna o nº de alterações."""
+    Model, campos = _MODELS[entidade]
+    with Session() as s:
+        antigas = s.query(Model).filter_by(projeto_id=pid).order_by(Model.ordem).all()
+        mud = 0
+        for i in range(max(len(antigas), len(novas))):
+            old = antigas[i] if i < len(antigas) else None
+            new = novas[i] if i < len(novas) else None
+            if old is not None and new is None:
+                registrar_modificacao(s, pid, entidade, "linha %d" % (i + 1), "linha",
+                                      _resumo_linha(old, campos), "(removida)", autor); mud += 1
+            elif old is None and new is not None:
+                registrar_modificacao(s, pid, entidade, "linha %d" % (i + 1), "linha",
+                                      "(nova)", _resumo_linha(new, campos), autor); mud += 1
+            else:
+                for c in campos:
+                    ov, nv = str(getattr(old, c) or "").strip(), str(new.get(c) or "").strip()
+                    if ov != nv:
+                        registrar_modificacao(s, pid, entidade, "linha %d · %s" % (i + 1, c), c, ov, nv, autor)
+                        mud += 1
+        for old in antigas:
+            s.delete(old)
+        for i, new in enumerate(novas):
+            s.add(Model(projeto_id=pid, ordem=i, **{c: (new.get(c) or "") for c in campos}))
+        s.commit()
+        return mud
+
+
 def _auto_migrar():
     """Migração leve aditiva: cria colunas novas que faltarem (SQLite e Postgres).
     Cobre a evolução de schema entre versões; só adiciona, nunca remove dados."""

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block titulo %}Check-list — {{ p.cliente }}{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('projetos') }}">Projetos</a> › <a href="{{ url_for('projeto_ficha', pid=pid) }}">{{ p.cliente }}</a> › Check-list</div>{% endblock %}
+{% block conteudo %}
+  <h1 style="margin-bottom:2px">✅ Check-list — {{ p.cliente }}</h1>
+  <p class="sub">Acompanhe e atualize os itens da implantação. Cada alteração fica registrada no histórico.</p>
+  {% if salvo %}<div class="resultado ok" style="padding:10px 16px">✅ Salvo.</div>{% endif %}
+  {% if aviso %}<div class="resultado erro" style="padding:10px 16px">⚠️ {{ aviso }}</div>{% endif %}
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+    <form method="post" action="{{ url_for('projeto_checklist_seed', pid=pid) }}"
+          onsubmit="return confirm('Carregar o roteiro dos módulos? Isso substitui as linhas atuais.')">
+      <button class="btn" type="submit">✨ Carregar roteiro dos módulos</button></form>
+    <span style="flex:1"></span>
+    <a class="btn" href="{{ url_for('projeto_ficha', pid=pid) }}">← Voltar à ficha</a>
+  </div>
+
+  {% set conc = itens|selectattr('status','equalto','Concluído')|list|length %}
+  {% if itens %}<p class="dica" style="margin-top:0">Progresso: <strong>{{ conc }} / {{ itens|length }}</strong> concluídos.</p>{% endif %}
+
+  <form method="post" action="{{ url_for('projeto_checklist', pid=pid) }}">
+    <div style="overflow-x:auto">
+    <table class="editavel" id="tab">
+      <thead><tr>
+        <th style="width:28px">#</th>
+        {% for c in campos %}<th>{{ labels[c] }}</th>{% endfor %}
+        <th style="width:32px"></th>
+      </tr></thead>
+      <tbody>
+      {% for it in itens %}
+      <tr>
+        <td class="num"></td>
+        <td><input name="r_modulo" value="{{ it.modulo }}" style="width:74px"></td>
+        <td><textarea name="r_item" rows="2">{{ it.item }}</textarea></td>
+        <td><input name="r_responsavel" value="{{ it.responsavel }}" style="width:120px"></td>
+        <td><select name="r_status">{% for o in status_op %}<option {{ 'selected' if it.status==o }}>{{ o }}</option>{% endfor %}</select></td>
+        <td><textarea name="r_obs" rows="2">{{ it.obs }}</textarea></td>
+        <td><button class="btn-x" type="button" onclick="delLinha(this)" title="Remover">✕</button></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" type="button" onclick="addLinha()">➕ Adicionar linha</button>
+      <button class="btn primario" type="submit">💾 Salvar check-list</button>
+    </div>
+  </form>
+
+  <template id="tpl-linha">
+    <tr>
+      <td class="num"></td>
+      <td><input name="r_modulo" style="width:74px"></td>
+      <td><textarea name="r_item" rows="2"></textarea></td>
+      <td><input name="r_responsavel" style="width:120px"></td>
+      <td><select name="r_status">{% for o in status_op %}<option>{{ o }}</option>{% endfor %}</select></td>
+      <td><textarea name="r_obs" rows="2"></textarea></td>
+      <td><button class="btn-x" type="button" onclick="delLinha(this)" title="Remover">✕</button></td>
+    </tr>
+  </template>
+
+  {% if hist %}
+  <details style="margin-top:18px">
+    <summary style="cursor:pointer;font-weight:700;color:var(--navy)">📜 Histórico de modificações ({{ hist|length }})</summary>
+    <ul class="timeline" style="margin-top:10px">
+    {% for h in hist %}
+      <li><span class="tl-ico">✏️</span><div>
+        <div><strong>{{ h.ref }}</strong>: {{ h.de }} → {{ h.para }}</div>
+        <small class="dica" style="margin:0">{{ h.criado_em.strftime('%d/%m/%Y %H:%M') if h.criado_em else '' }}{% if h.autor %} · {{ h.autor }}{% endif %}</small>
+      </div></li>
+    {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+
+  <style>
+    table.editavel{width:100%;border-collapse:collapse;font-size:.85rem}
+    table.editavel th{background:#1f4e78;color:#fff;padding:6px 8px;text-align:left;font-size:.78rem}
+    table.editavel td{border:1px solid #e2e8f0;padding:4px}
+    table.editavel textarea,table.editavel input,table.editavel select{width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:5px;font:inherit;box-sizing:border-box;resize:vertical}
+    td.num{text-align:center;color:var(--muted);font-weight:700}
+    .btn-x{border:none;background:#fee2e2;color:#b91c1c;border-radius:6px;width:26px;height:26px;cursor:pointer;font-weight:700}
+  </style>
+  <script>
+    function renum(){var i=1;document.querySelectorAll('#tab tbody tr td.num').forEach(function(n){n.textContent=i++;});}
+    function addLinha(){var t=document.getElementById('tpl-linha');document.querySelector('#tab tbody').appendChild(t.content.cloneNode(true));renum();}
+    function delLinha(b){var tr=b.closest('tr');tr.parentNode.removeChild(tr);renum();}
+    renum();
+  </script>
+{% endblock %}

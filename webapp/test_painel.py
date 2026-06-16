@@ -120,3 +120,44 @@ def test_a_cria_projeto_de_fechamento():
         assert p and "ROBO" in p.cliente
         s.delete(p)
         s.commit()
+
+
+def test_e_docview_docx(tmp_path):
+    from docx import Document
+    import docview
+    f = tmp_path / "amostra.docx"
+    doc = Document()
+    doc.add_heading("Projeto de Implantação", level=0)
+    doc.add_paragraph("Cliente: ACME")
+    t = doc.add_table(rows=2, cols=2)
+    t.rows[0].cells[0].text = "Etapa"; t.rows[0].cells[1].text = "Horas"
+    t.rows[1].cells[0].text = "Abertura"; t.rows[1].cells[1].text = "2"
+    doc.save(str(f))
+    h = docview.to_html(str(f))
+    assert "Projeto de Implantação" in h
+    assert "<table" in h and "Abertura" in h
+
+
+def test_f_cronograma_seed_edita_e_historia(client):
+    pid = int(_novo(client, cliente="Plano PT", modulos="FAT, CTB", horas_cobradas="20"))
+    client.post("/projetos/%s/cronograma/seed" % pid)
+    itens = db.cronograma_do_projeto(pid)
+    assert len(itens) >= 3
+    data = {("r_" + c): [(("Concluído" if (c == "status" and i == 0) else it[c]))
+                         for i, it in enumerate(itens)] for c in db.CRONO_CAMPOS}
+    client.post("/projetos/%s/cronograma" % pid, data=data)
+    hist = db.modificacoes_do_projeto(pid, "cronograma")
+    assert any("status" in h["campo"] for h in hist)
+    assert db.cronograma_do_projeto(pid)[0]["status"] == "Concluído"
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_f_checklist_salva(client):
+    pid = int(_novo(client, cliente="Check PT", modulos="FAT"))
+    data = {"r_modulo": ["FAT", "FAT"], "r_item": ["Cadastro", "Pedido"],
+            "r_responsavel": ["Ana", "Bia"], "r_status": ["Pendente", "Concluído"],
+            "r_obs": ["", "ok"]}
+    client.post("/projetos/%s/checklist" % pid, data=data)
+    itens = db.checklist_do_projeto(pid)
+    assert len(itens) == 2 and itens[1]["status"] == "Concluído"
+    client.post("/projetos/%s/excluir" % pid)
