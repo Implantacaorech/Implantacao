@@ -8,28 +8,55 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <header class="topo">
-    <a class="marca" href="{{ url_for('home') }}">⚙️ Painel de Implantação <span>SIGER®</span></a>
-    <nav>
-      <a href="{{ url_for('home') }}">Início</a>
-      <a href="{{ url_for('fluxo_inicio') }}">🔄 Fluxo</a>
-      <a href="{{ url_for('projetos') }}">📁 Projetos</a>
-      <a href="{{ url_for('coordenacao') }}">📊 Coordenação{% if n_alertas %} <span class="nav-alert">⚠️ {{ n_alertas }}</span>{% endif %}</a>
-      <a href="{{ url_for('atividade') }}">📈 Atividade</a>
-      <a href="{{ url_for('home') }}#ferramentas">🧰 Ferramentas</a>
-      {% if e_adm %}<a href="{{ url_for('usuarios') }}">👥 Usuários</a>{% endif %}
-      <a href="{{ url_for('perfil') }}">🧑‍💼 {{ perfil_nome_atual or perfil_atual or 'Perfil' }}</a>
-      {% if login_ativo %}<a href="{{ url_for('logout') }}">🚪 Sair</a>{% endif %}
-    </nav>
-  </header>
-  <main class="conteudo">
-    {% block migalha %}{% endblock %}
-    {% block conteudo %}{% endblock %}
-  </main>
-  <footer class="rodape">
-    Painel de Implantação · Rech Sistemas de Gestão{% if versao %} · v{{ versao }}{% endif %}
-  </footer>
+  <div class="app" id="app">
+    <div class="side-scrim" onclick="toggleSide(false)"></div>
+    <aside class="side">
+      <a class="side-marca" href="{{ url_for('home') }}">
+        <span class="side-mark">R</span>
+        <span class="side-name">Rech <small>Implantação · SIGER®</small></span>
+      </a>
+      <nav class="side-nav">
+        <div class="side-grp">Operação</div>
+        <a class="side-link {{ 'on' if request.endpoint=='home' }}" href="{{ url_for('home') }}"><span class="ic">🏠</span>Visão geral</a>
+        <a class="side-link {{ 'on' if request.endpoint in ('fluxo_inicio','fluxo_criar') }}" href="{{ url_for('fluxo_inicio') }}"><span class="ic">🔄</span>Fluxo</a>
+        <a class="side-link {{ 'on' if request.endpoint in ('projetos','projeto_ficha','projeto_novo','projeto_designar','projeto_cronograma','projeto_checklist') }}" href="{{ url_for('projetos') }}"><span class="ic">📁</span>Projetos</a>
+        <div class="side-grp">Gestão</div>
+        <a class="side-link {{ 'on' if request.endpoint=='coordenacao' }}" href="{{ url_for('coordenacao') }}"><span class="ic">📊</span>Coordenação{% if n_alertas %}<span class="side-badge">{{ n_alertas }}</span>{% endif %}</a>
+        <a class="side-link {{ 'on' if request.endpoint=='atividade' }}" href="{{ url_for('atividade') }}"><span class="ic">📈</span>Atividade</a>
+        <div class="side-grp">Sistema</div>
+        <a class="side-link" href="{{ url_for('home') }}#ferramentas"><span class="ic">🧰</span>Ferramentas</a>
+        {% if e_adm %}<a class="side-link {{ 'on' if request.endpoint=='usuarios' }}" href="{{ url_for('usuarios') }}"><span class="ic">👥</span>Usuários</a>{% endif %}
+      </nav>
+      <div class="side-rod">{% if versao %}v{{ versao }}{% endif %}</div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <button class="side-toggle" type="button" onclick="toggleSide()" aria-label="Abrir menu">☰</button>
+        <div class="topbar-title">{{ self.titulo() }}</div>
+        <form class="topbar-busca" method="get" action="{{ url_for('projetos') }}" role="search">
+          <span class="ic" aria-hidden="true">🔎</span>
+          <input name="q" placeholder="Buscar cliente…" aria-label="Buscar cliente">
+        </form>
+        <a class="topbar-ico" href="{{ url_for('coordenacao') }}" title="Alertas" aria-label="Alertas">🔔{% if n_alertas %}<span class="topbar-badge">{{ n_alertas }}</span>{% endif %}</a>
+        <a class="topbar-perfil" href="{{ url_for('perfil') }}">
+          <span class="avatar">{{ (perfil_nome_atual or perfil_atual or 'P')[:2]|upper }}</span>
+          <span class="topbar-perfil-txt">{{ perfil_nome_atual or perfil_atual or 'Perfil' }}{% if perfil_atual %}<small>{{ perfil_atual }}</small>{% endif %}</span>
+        </a>
+        {% if login_ativo %}<a class="topbar-ico" href="{{ url_for('logout') }}" title="Sair" aria-label="Sair">🚪</a>{% endif %}
+      </header>
+      <main class="conteudo">
+        {% block migalha %}{% endblock %}
+        {% block conteudo %}{% endblock %}
+      </main>
+      <footer class="rodape">Painel de Implantação · Rech Sistemas de Gestão{% if versao %} · v{{ versao }}{% endif %}</footer>
+    </div>
+  </div>
   <script>
+  function toggleSide(force){
+    var a=document.getElementById('app');
+    if(force===false){ a.classList.remove('side-open'); } else { a.classList.toggle('side-open'); }
+  }
   (function(){
     document.querySelectorAll('.resultado.ok').forEach(function(el){
       if(el.textContent.trim().length < 42){

@@ -41,6 +41,8 @@
     });
     document.getElementById('semres').style.display=vis?'none':'';
   }
+  (function(){ var q=new URLSearchParams(location.search).get('q');
+    if(q){ var b=document.getElementById('busca'); if(b){ b.value=q; filtra(); } } })();
   </script>
   {% else %}
   <p class="dica" style="margin-top:14px">Nenhum projeto ainda — clique em "Novo projeto".</p>
