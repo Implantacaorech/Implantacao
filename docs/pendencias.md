@@ -38,6 +38,11 @@
 ## 🎨 UX / Navegação (redesenho)
 - [x] **Feito:** redesenho da **ficha** (4 fases) — cabeçalho com stepper + KPIs + "Próxima ação"; abas Resumo/Dados/Documentos/Comunicação/Histórico; **Avançar fase** (gated) + **Gerar pendentes**; nomenclatura (Fase/Status/Go-live/GCI).
 - [x] **Feito:** **Home** orientada ao fluxo (1 Onboarding → 2 Projetos → 3 Coordenação) + KPIs + ferramentas/config em cards; nav enxuta.
+- [x] **Redesenho premium (identidade Rech) — Fases 1→4:**
+  - **F1 · Tokens + tipografia:** paleta Rech em variáveis (brand `#163E66` / accent `#2563EB` / semânticas), fonte `Inter → Segoe UI Variable` (offline-safe), numerais tabulares, foco acessível.
+  - **F2 · App shell:** menu lateral categorizado (Operação/Gestão/Sistema) + topbar (busca global, alertas, perfil) no lugar da nav horizontal; responsivo (drawer).
+  - **F3 · Home "Visão geral":** dashboard de entrada — KPIs + projeto em foco (stepper) + próximas ações + alertas.
+  - **F4 · Kanban por fase:** carteira com vista Kanban (4 colunas) ⇄ Tabela, filtro nas duas vistas.
 
 ## 🖥️ Infra / Banco em Docker
 - [x] **Feito:** suporte a **Postgres em Docker** (`docker-compose.yml` + `psycopg2` no build) — app agnóstico via `PAINEL_DB_URL`.
