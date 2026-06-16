@@ -34,6 +34,11 @@
     <symbol id="ic-send" viewBox="0 0 24 24"><path d="M10 14l11 -11"/><path d="M21 3l-6.5 18l-4 -8l-8 -4z"/></symbol>
     <symbol id="ic-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 3v3"/><path d="M15 3v3"/><path d="M9 18v3"/><path d="M15 18v3"/><path d="M3 9h3"/><path d="M3 15h3"/><path d="M18 9h3"/><path d="M18 15h3"/></symbol>
     <symbol id="ic-heart-pulse" viewBox="0 0 24 24"><path d="M19.5 13l-7.5 7l-7.5 -7a4.8 4.8 0 0 1 6.5 -7a4.8 4.8 0 0 1 8.5 3"/><path d="M3 12h3l1.5 -3l2 5l1.5 -2h3"/></symbol>
+    <symbol id="ic-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2l4 -4"/></symbol>
+    <symbol id="ic-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></symbol>
+    <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11v-4a4 4 0 0 1 8 0v4"/></symbol>
+    <symbol id="ic-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M15 8l4 4l-4 4"/></symbol>
+    <symbol id="ic-layers" viewBox="0 0 24 24"><path d="M12 2l9 4.5l-9 4.5l-9 -4.5z"/><path d="M3 11.5l9 4.5l9 -4.5"/><path d="M3 17l9 4.5l9 -4.5"/></symbol>
   </defs></svg>
 
   <div class="app" id="app">
@@ -44,19 +49,36 @@
         <span class="side-name">Rech <small>Implantação · SIGER®</small></span>
       </a>
       <nav class="side-nav">
-        <div class="side-grp">Operação</div>
-        <a class="side-link {{ 'on' if request.endpoint=='home' }}" href="{{ url_for('home') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg>Visão geral</a>
-        <a class="side-link {{ 'on' if request.endpoint in ('fluxo_inicio','fluxo_criar') }}" href="{{ url_for('fluxo_inicio') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg>Fluxo</a>
-        <a class="side-link {{ 'on' if request.endpoint in ('projetos','projeto_ficha','projeto_novo','projeto_designar','projeto_cronograma','projeto_checklist') }}" href="{{ url_for('projetos') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-folder"/></svg>Projetos</a>
+        <div class="side-grp">Execução</div>
+        <a class="side-link {{ 'on' if request.endpoint=='home' }}" href="{{ url_for('home') }}">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg>Visão Geral
+        </a>
+        <a class="side-link {{ 'on' if request.endpoint in ('fluxo_inicio','fluxo_criar') }}" href="{{ url_for('fluxo_inicio') }}">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg>Novo Projeto
+          <span class="side-tip">Onboarding</span>
+        </a>
+        <a class="side-link {{ 'on' if request.endpoint in ('projetos','projeto_ficha','projeto_novo','projeto_designar','projeto_cronograma','projeto_checklist') }}" href="{{ url_for('projetos') }}">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-folder"/></svg>Carteira
+          <span class="side-tip">Projetos</span>
+        </a>
         {% if pode_ver('gestao') %}
         <div class="side-grp">Gestão</div>
-        <a class="side-link {{ 'on' if request.endpoint=='coordenacao' }}" href="{{ url_for('coordenacao') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-chart"/></svg>Coordenação{% if n_alertas %}<span class="side-badge">{{ n_alertas }}</span>{% endif %}</a>
-        <a class="side-link {{ 'on' if request.endpoint=='atividade' }}" href="{{ url_for('atividade') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-activity"/></svg>Atividade</a>
+        <a class="side-link {{ 'on' if request.endpoint=='coordenacao' }}" href="{{ url_for('coordenacao') }}">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-chart"/></svg>Coordenação
+          {% if n_alertas %}<span class="side-badge">{{ n_alertas }}</span>{% endif %}
+        </a>
+        <a class="side-link {{ 'on' if request.endpoint=='atividade' }}" href="{{ url_for('atividade') }}">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-activity"/></svg>Atividade
+        </a>
         {% endif %}
         {% if pode_ver('sistema') %}
         <div class="side-grp">Sistema</div>
-        <a class="side-link" href="{{ url_for('home') }}#ferramentas"><svg class="svgi" aria-hidden="true"><use href="#ic-tools"/></svg>Ferramentas</a>
-        <a class="side-link {{ 'on' if request.endpoint=='usuarios' }}" href="{{ url_for('usuarios') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg>Usuários</a>
+        <a class="side-link" href="{{ url_for('home') }}#ferramentas">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-tools"/></svg>Ferramentas
+        </a>
+        <a class="side-link {{ 'on' if request.endpoint=='usuarios' }}" href="{{ url_for('usuarios') }}">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg>Usuários
+        </a>
         {% endif %}
       </nav>
       <div class="side-rod">{% if versao %}v{{ versao }}{% endif %}</div>
@@ -70,7 +92,10 @@
           <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>
           <input name="q" placeholder="Buscar cliente…" aria-label="Buscar cliente">
         </form>
-        <a class="topbar-ico" href="{{ url_for('coordenacao') if pode_ver('gestao') else url_for('home') }}" title="Alertas" aria-label="Alertas"><svg class="svgi" aria-hidden="true"><use href="#ic-bell"/></svg>{% if n_alertas %}<span class="topbar-badge">{{ n_alertas }}</span>{% endif %}</a>
+        <a class="topbar-ico" href="{{ url_for('coordenacao') if pode_ver('gestao') else url_for('home') }}" title="Alertas" aria-label="Alertas">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-bell"/></svg>
+          {% if n_alertas %}<span class="topbar-badge">{{ n_alertas }}</span>{% endif %}
+        </a>
         <a class="topbar-perfil" href="{{ url_for('perfil') }}">
           <span class="avatar">{{ (perfil_nome_atual or perfil_atual or 'P')[:2]|upper }}</span>
           <span class="topbar-perfil-txt">{{ perfil_nome_atual or perfil_atual or 'Perfil' }}{% if perfil_atual %}<small>{{ perfil_atual }}</small>{% endif %}</span>
@@ -90,18 +115,27 @@
     if(force===false){ a.classList.remove('side-open'); } else { a.classList.toggle('side-open'); }
   }
   (function(){
+    // Auto-dismiss mensagens curtas de sucesso
     document.querySelectorAll('.resultado.ok').forEach(function(el){
       if(el.textContent.trim().length < 42){
         setTimeout(function(){ el.style.transition='opacity .5s'; el.style.opacity='0';
           setTimeout(function(){ el.remove(); }, 500); }, 4000);
       }
     });
+    // Estado "ocupado" nos botões de submit
     document.addEventListener('submit', function(e){
       if(e.defaultPrevented) return;
       var b=e.target.querySelector('button[type=submit]') || e.target.querySelector('button:not([type=button])');
       if(b && !b.dataset.busy){ b.dataset.busy='1'; var t=b.innerHTML;
         setTimeout(function(){ b.disabled=true; b.innerHTML='⏳ '+t; }, 0); }
     });
+    // Aba ativa: função global
+    window.aba = function(id){
+      document.querySelectorAll('.painel-aba').forEach(function(s){ s.classList.remove('ativa'); });
+      document.querySelectorAll('.aba').forEach(function(b){ b.classList.remove('ativa'); });
+      var s=document.getElementById(id); if(s) s.classList.add('ativa');
+      var b=document.querySelector('[data-t="'+id+'"]'); if(b) b.classList.add('ativa');
+    };
   })();
   </script>
 </body>

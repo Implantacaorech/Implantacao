@@ -1,222 +1,582 @@
 {% extends "base.html" %}
 {% block titulo %}{{ p.cliente if p else 'Novo projeto' }}{% endblock %}
-{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('projetos') }}">Projetos</a> › {{ p.cliente if p else 'Novo' }}</div>{% endblock %}
+{% block migalha %}
+<div class="migalha">
+  <a href="{{ url_for('home') }}">Início</a>
+  <svg class="svgi" style="width:12px;height:12px;color:var(--faint)" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <a href="{{ url_for('projetos') }}">Carteira</a>
+  <svg class="svgi" style="width:12px;height:12px;color:var(--faint)" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  {{ p.cliente if p else 'Novo' }}
+</div>
+{% endblock %}
 {% block conteudo %}
+
+{# ===== MACRO: campos do formulário de dados ===== #}
 {% macro campos_form(p, etapas, situacoes) %}
-    <div class="grade2">
-      <label class="campo"><span>Cliente (Razão Social) *</span><input name="cliente" value="{{ p.cliente if p else '' }}" required></label>
-      <label class="campo"><span>CNPJ</span><input name="cnpj" value="{{ p.cnpj if p else '' }}"></label>
-      <label class="campo"><span>Nº do projeto</span><input name="numero_projeto" value="{{ p.numero_projeto if p else '' }}"></label>
-      <label class="campo"><span>Ramo</span><input name="ramo" value="{{ p.ramo if p else '' }}"></label>
-      <label class="campo"><span>Responsável administrativo</span><input name="responsavel" value="{{ p.responsavel if p else '' }}"></label>
-      <label class="campo"><span>GCI (Levantamento)</span><input name="gci" value="{{ p.gci if p else '' }}"></label>
-      <label class="campo"><span>Consultor(es)</span><input name="consultor" value="{{ p.consultor if p else '' }}"></label>
-      <label class="campo"><span>Fase da implantação</span><select name="etapa">{% for e in etapas %}<option {{ 'selected' if p and p.etapa==e }}>{{ e }}</option>{% endfor %}</select></label>
-      <label class="campo"><span>Status</span><select name="situacao">{% for s in situacoes %}<option {{ 'selected' if p and p.situacao==s }}>{{ s }}</option>{% endfor %}</select></label>
-      <label class="campo"><span>Início</span><input type="date" name="data_inicio" value="{{ p.data_inicio if p else '' }}"></label>
-      <label class="campo"><span>Go-live previsto</span><input type="date" name="data_uso_oficial" value="{{ p.data_uso_oficial if p else '' }}"></label>
-      <label class="campo"><span>Encerramento</span><input type="date" name="data_encerramento" value="{{ p.data_encerramento if p else '' }}"></label>
-      <label class="campo"><span>Horas cobradas</span><input name="horas_cobradas" value="{{ p.horas_cobradas if p else '' }}"></label>
-      <label class="campo"><span>Horas bonificadas</span><input name="horas_bonificadas" value="{{ p.horas_bonificadas if p else '' }}"></label>
-    </div>
-    <label class="campo"><span>Módulos (siglas)</span><input name="modulos" value="{{ p.modulos if p else '' }}" placeholder="FAT, CTB, FIN…"></label>
-    <label class="campo"><span>Contatos / Stakeholders</span><textarea name="contatos" rows="2">{{ p.contatos if p else '' }}</textarea></label>
-    <label class="campo"><span>Observações</span><textarea name="observacoes" rows="3">{{ p.observacoes if p else '' }}</textarea></label>
+  <div class="grade2">
+    <label class="campo"><span>Cliente (Razão Social) *</span><input name="cliente" value="{{ p.cliente if p else '' }}" required></label>
+    <label class="campo"><span>CNPJ</span><input name="cnpj" value="{{ p.cnpj if p else '' }}"></label>
+    <label class="campo"><span>Nº do projeto</span><input name="numero_projeto" value="{{ p.numero_projeto if p else '' }}"></label>
+    <label class="campo"><span>Ramo de atividade</span><input name="ramo" value="{{ p.ramo if p else '' }}"></label>
+    <label class="campo"><span>Responsável administrativo</span><input name="responsavel" value="{{ p.responsavel if p else '' }}"></label>
+    <label class="campo"><span>GCI (Levantamento)</span><input name="gci" value="{{ p.gci if p else '' }}"></label>
+    <label class="campo"><span>Consultor(es)</span><input name="consultor" value="{{ p.consultor if p else '' }}"></label>
+    <label class="campo"><span>Fase da implantação</span>
+      <select name="etapa">{% for e in etapas %}<option {{ 'selected' if p and p.etapa==e }}>{{ e }}</option>{% endfor %}</select>
+    </label>
+    <label class="campo"><span>Status</span>
+      <select name="situacao">{% for s in situacoes %}<option {{ 'selected' if p and p.situacao==s }}>{{ s }}</option>{% endfor %}</select>
+    </label>
+    <label class="campo"><span>Data de início</span><input type="date" name="data_inicio" value="{{ p.data_inicio if p else '' }}"></label>
+    <label class="campo"><span>Go-live previsto</span><input type="date" name="data_uso_oficial" value="{{ p.data_uso_oficial if p else '' }}"></label>
+    <label class="campo"><span>Data de encerramento</span><input type="date" name="data_encerramento" value="{{ p.data_encerramento if p else '' }}"></label>
+    <label class="campo"><span>Horas cobradas</span><input name="horas_cobradas" value="{{ p.horas_cobradas if p else '' }}"></label>
+    <label class="campo"><span>Horas bonificadas</span><input name="horas_bonificadas" value="{{ p.horas_bonificadas if p else '' }}"></label>
+  </div>
+  <label class="campo"><span>Módulos contratados (siglas)</span><input name="modulos" value="{{ p.modulos if p else '' }}" placeholder="FAT, CTB, FIN…"></label>
+  <label class="campo"><span>Contatos / Stakeholders</span><textarea name="contatos" rows="2">{{ p.contatos if p else '' }}</textarea></label>
+  <label class="campo"><span>Observações</span><textarea name="observacoes" rows="3">{{ p.observacoes if p else '' }}</textarea></label>
 {% endmacro %}
 
+{# ===== Ícone por tipo de evento ===== #}
 {% set _ico = {'nota':'📝','etapa':'🔀','documento':'📄','email':'✉️','alerta':'⚠️'} %}
 
-  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <h1 style="margin:0">📁 {{ p.cliente if p else 'Novo projeto' }}{% if p and p.numero_projeto %} <span style="font-size:.6em;color:var(--muted);font-weight:400">· {{ p.numero_projeto }}</span>{% endif %}</h1>
-    {% if p %}<span class="badge-sit" data-s="{{ p.situacao }}">{{ p.situacao }}</span>{% endif %}
-  </div>
-  {% if salvo %}<div class="resultado ok" style="padding:10px 16px">✅ Salvo.</div>{% endif %}
-  {% if aviso %}<div class="resultado erro" style="padding:10px 16px">⚠️ {{ aviso }}</div>{% endif %}
+{# ===== Mapeamento de fase para classe CSS ===== #}
+{% set _fase_cls = {'Levantamento':'fase-1','Projeto':'fase-2','Cronograma e Check-list':'fase-3','Encerramento':'fase-4'} %}
+{% set _fase_num = {'Levantamento':'1','Projeto':'2','Cronograma e Check-list':'3','Encerramento':'4'} %}
 
-  {% if p and cab %}
-  <div class="stepper" style="grid-template-columns:repeat({{ cab.stepper|length }},1fr)">
-    {% for f in cab.stepper %}
-    <div><div class="seg {{ f.estado }}"></div><div class="lbl {{ 'atual' if f.estado=='atual' }}">{{ f.nome }}</div></div>
-    {% endfor %}
-  </div>
-  <div class="kpis-ficha">
-    <div class="kpi-f"><div class="l">Etapa atual</div><div class="n" style="font-size:1.15rem">{{ cab.etapa }}</div></div>
-    <div class="kpi-f"><div class="l">Go-live previsto</div><div class="n {{ 'alerta' if cab.atraso }}" style="font-size:1.05rem">{% set g = cab.go_live %}{% if g|length == 10 %}{{ g[8:10] }}/{{ g[5:7] }}/{{ g[0:4] }}{% else %}—{% endif %}{% if cab.atraso %} · {{ cab.atraso }}d atraso{% endif %}</div></div>
-    <div class="kpi-f"><div class="l">Horas contratadas</div><div class="n">{{ cab.horas_total|int }}{% if cab.horas_bon %} <span style="font-size:.62rem;color:var(--muted);font-weight:400">({{ cab.horas_cob|int }}+{{ cab.horas_bon|int }})</span>{% endif %}</div></div>
-    <div class="kpi-f"><div class="l">Docs obrigatórios</div><div class="n {{ 'alerta' if cab.docs_ok < cab.docs_total }}">{{ cab.docs_ok }} / {{ cab.docs_total }}</div></div>
-  </div>
-  {% if cab.proxima %}
-  <div class="proxima">
-    <span class="ic">⚠️</span>
-    <div class="txt"><div style="font-weight:700;color:var(--navy)">Próxima ação: gerar o {{ cab.proxima.label }}</div>
-      <div class="dica" style="margin:0">{% if cab.prox_etapa %}Necessário para avançar para {{ cab.prox_etapa }}.{% else %}Documento obrigatório para encerrar.{% endif %}</div></div>
-    {% if cab.proxima.tipo in ['levantamento','checklist','cronograma','termo'] %}
-      <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo=cab.proxima.tipo) }}"><button class="btn primario" type="submit">Gerar agora</button></form>
-    {% elif cab.proxima.tipo == 'projeto' %}
-      <button class="btn primario" type="button" onclick="aba('t-docs')">Importar Mapeamento</button>
+{# ===== CABEÇALHO DO PROJETO ===== #}
+<div class="proj-header">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <h1 style="margin:0">
+      {{ p.cliente if p else 'Novo projeto' }}
+      {% if p and p.numero_projeto %}
+        <span style="font-size:.55em;color:var(--muted);font-weight:400;margin-left:6px">· {{ p.numero_projeto }}</span>
+      {% endif %}
+    </h1>
+    {% if p %}
+      <span class="badge-sit" data-s="{{ p.situacao }}">{{ p.situacao }}</span>
+      {% if p.etapa %}
+        <span class="workspace-header fase-badge {{ _fase_cls.get(p.etapa,'') }}" style="display:inline-flex">
+          Fase {{ _fase_num.get(p.etapa,'') }} · {{ p.etapa }}
+        </span>
+      {% endif %}
     {% endif %}
   </div>
-  {% elif cab.prox_etapa %}
-  <div class="proxima ok">
-    <span class="ic">✅</span>
-    <div class="txt"><div style="font-weight:700;color:var(--ok)">Fase liberada — pronto para avançar.</div></div>
-    <form method="post" action="{{ url_for('projeto_avancar', pid=p.id) }}"><button class="btn primario" type="submit">Avançar para {{ cab.prox_etapa }} →</button></form>
-  </div>
-  {% else %}
-  <div class="proxima ok"><span class="ic">🏁</span><div class="txt"><div style="font-weight:700;color:var(--ok)">Projeto na fase final.</div></div></div>
-  {% endif %}
-  {% endif %}
+</div>
 
-  {% if not p %}
-  <form method="post" action="{{ url_for('projeto_novo') }}" class="painel">
+{# ===== FEEDBACK DE AÇÕES ===== #}
+{% if salvo %}<div class="resultado ok" style="padding:10px 16px;margin:10px 0">✅ Dados salvos com sucesso.</div>{% endif %}
+{% if aviso %}<div class="resultado erro" style="padding:10px 16px;margin:10px 0">⚠️ {{ aviso }}</div>{% endif %}
+
+{# ===== MODO: NOVO PROJETO ===== #}
+{% if not p %}
+<div class="painel">
+  <h2 style="margin-top:0;color:var(--navy)">Novo projeto de implantação</h2>
+  <p class="dica">Preencha os dados principais. O projeto será criado na fase <strong>Levantamento</strong>.</p>
+  <form method="post" action="{{ url_for('projeto_novo') }}">
     {{ campos_form(p, etapas, situacoes) }}
-    <button class="btn primario" type="submit" style="margin-top:8px">💾 Criar projeto</button>
+    <button class="btn primario" type="submit" style="margin-top:8px">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg> Criar projeto
+    </button>
   </form>
-  {% else %}
-  {% set ini = 't-docs' if erro else 't-resumo' %}
-  <div class="abas" style="margin-top:6px">
-    <button class="aba {{ 'ativa' if ini=='t-resumo' }}" data-t="t-resumo" type="button" onclick="aba('t-resumo')">Resumo</button>
-    <button class="aba" data-t="t-dados" type="button" onclick="aba('t-dados')">Dados</button>
-    <button class="aba {{ 'ativa' if ini=='t-docs' }}" data-t="t-docs" type="button" onclick="aba('t-docs')">Documentos</button>
-    <button class="aba" data-t="t-com" type="button" onclick="aba('t-com')">Comunicação</button>
-    <button class="aba" data-t="t-hist" type="button" onclick="aba('t-hist')">Histórico</button>
+</div>
+
+{# ===== MODO: PROJETO EXISTENTE ===== #}
+{% else %}
+
+{# ===== STEPPER DE FASES ===== #}
+{% if p and cab %}
+<div class="stepper" style="grid-template-columns:repeat({{ cab.stepper|length }},1fr)">
+  {% for f in cab.stepper %}
+  <div>
+    <div class="seg {{ f.estado }}"></div>
+    <div class="lbl {{ 'atual' if f.estado=='atual' }}">{{ f.nome }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+{# ===== KPIs DA FICHA ===== #}
+<div class="kpis-ficha">
+  <div class="kpi-f">
+    <div class="l">Fase atual</div>
+    <div class="n" style="font-size:1.05rem">{{ cab.etapa }}</div>
+  </div>
+  <div class="kpi-f">
+    <div class="l">Go-live previsto</div>
+    <div class="n {{ 'alerta' if cab.atraso }}" style="font-size:1rem">
+      {% set g = cab.go_live %}
+      {% if g|length == 10 %}{{ g[8:10] }}/{{ g[5:7] }}/{{ g[0:4] }}{% else %}—{% endif %}
+      {% if cab.atraso %}<br><small style="font-size:.65rem;font-weight:400;color:var(--err)">{{ cab.atraso }}d de atraso</small>{% endif %}
+    </div>
+  </div>
+  <div class="kpi-f">
+    <div class="l">Horas contratadas</div>
+    <div class="n">{{ cab.horas_total|int }}
+      {% if cab.horas_bon %}
+        <small style="font-size:.6rem;color:var(--muted);font-weight:400">({{ cab.horas_cob|int }}+{{ cab.horas_bon|int }})</small>
+      {% endif %}
+    </div>
+  </div>
+  <div class="kpi-f">
+    <div class="l">Docs obrigatórios</div>
+    <div class="n {{ 'alerta' if cab.docs_ok < cab.docs_total else 'ok' }}">
+      {{ cab.docs_ok }} / {{ cab.docs_total }}
+    </div>
+  </div>
+</div>
+
+{# ===== BLOCO PRÓXIMA AÇÃO ===== #}
+{% if cab.proxima %}
+<div class="proxima">
+  <span class="ic">⚠️</span>
+  <div class="txt">
+    <div class="titulo">Próxima ação: {{ cab.proxima.label }}</div>
+    <p class="dica" style="margin:2px 0 0">
+      {% if cab.prox_etapa %}Necessário para avançar para a fase <strong>{{ cab.prox_etapa }}</strong>.{% else %}Documento obrigatório para concluir a implantação.{% endif %}
+    </p>
+  </div>
+  {% if cab.proxima.tipo in ['levantamento','checklist','cronograma','termo'] %}
+    <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo=cab.proxima.tipo) }}">
+      <button class="btn primario" type="submit">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg> Gerar agora
+      </button>
+    </form>
+  {% elif cab.proxima.tipo == 'projeto' %}
+    <button class="btn primario" type="button" onclick="aba('t-execucao')">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> Processar Levantamento
+    </button>
+  {% endif %}
+</div>
+{% elif cab.prox_etapa %}
+<div class="proxima ok">
+  <span class="ic">✅</span>
+  <div class="txt">
+    <div class="titulo">Fase liberada — todos os documentos obrigatórios estão prontos.</div>
+    <p class="dica" style="margin:2px 0 0">Avance para a próxima fase quando estiver pronto.</p>
+  </div>
+  <form method="post" action="{{ url_for('projeto_avancar', pid=p.id) }}">
+    <button class="btn primario" type="submit">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Avançar para {{ cab.prox_etapa }}
+    </button>
+  </form>
+</div>
+{% else %}
+<div class="proxima ok">
+  <span class="ic">🏁</span>
+  <div class="txt">
+    <div class="titulo">Projeto na fase final de encerramento.</div>
+  </div>
+</div>
+{% endif %}
+{% endif %}{# fim if cab #}
+
+{# ===== ABAS DE NAVEGAÇÃO ===== #}
+{% set ini = 't-execucao' if erro else 't-resumo' %}
+<div class="abas" style="margin-top:4px">
+  <button class="aba {{ 'ativa' if ini=='t-resumo' }}" data-t="t-resumo" type="button" onclick="aba('t-resumo')">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-dashboard"/></svg> Resumo
+  </button>
+  <button class="aba {{ 'ativa' if ini=='t-execucao' }}" data-t="t-execucao" type="button" onclick="aba('t-execucao')">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bolt"/></svg> Execução
+  </button>
+  <button class="aba" data-t="t-dados" type="button" onclick="aba('t-dados')">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-pencil"/></svg> Dados
+  </button>
+  <button class="aba" data-t="t-com" type="button" onclick="aba('t-com')">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-mail"/></svg> Comunicação
+  </button>
+  <button class="aba" data-t="t-hist" type="button" onclick="aba('t-hist')">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-activity"/></svg> Histórico
+  </button>
+</div>
+
+{# ===== ABA: RESUMO ===== #}
+<section id="t-resumo" class="painel-aba {{ 'ativa' if ini=='t-resumo' }}">
+  <div class="painel">
+    <div class="resumo">
+      {% if p.cnpj %}<div class="row"><span class="k">CNPJ</span><span class="v">{{ p.cnpj }}</span></div>{% endif %}
+      {% if p.ramo %}<div class="row"><span class="k">Ramo</span><span class="v">{{ p.ramo }}</span></div>{% endif %}
+      <div class="row"><span class="k">GCI (Levantamento)</span><span class="v">{{ p.gci or '—' }}</span></div>
+      <div class="row"><span class="k">Consultor(es)</span><span class="v">{{ p.consultor or '—' }}</span></div>
+      {% if p.responsavel %}<div class="row"><span class="k">Resp. administrativo</span><span class="v">{{ p.responsavel }}</span></div>{% endif %}
+      <div class="row"><span class="k">Módulos</span><span class="v">{{ p.modulos or '—' }}</span></div>
+      <div class="row"><span class="k">Horas contratadas</span><span class="v">{{ cab.horas_total|int }}{% if cab.horas_bon %} ({{ cab.horas_cob|int }}+{{ cab.horas_bon|int }}){% endif %}</span></div>
+      {% if p.data_inicio %}<div class="row"><span class="k">Início</span><span class="v">{{ p.data_inicio }}</span></div>{% endif %}
+      <div class="row"><span class="k">Go-live previsto</span><span class="v">{{ p.data_uso_oficial or '—' }}</span></div>
+      {% if p.contatos %}<div class="row"><span class="k">Contatos</span><span class="v">{{ p.contatos }}</span></div>{% endif %}
+    </div>
+    {% if designacoes %}
+    <div class="dica" style="margin-top:10px;padding:8px 12px;background:var(--surface-2);border-radius:var(--r-sm);border:1px solid var(--line)">
+      <strong>Designações por módulo:</strong>
+      {% for d in designacoes %}
+        <span style="margin-right:10px">{{ d.modulo }} <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-arrow-right"/></svg> {{ d.consultor }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if p.observacoes %}<p class="dica" style="margin-top:10px;padding:8px 12px;background:var(--warn-bg);border-radius:var(--r-sm);border-left:3px solid var(--warn)"><strong>Obs.:</strong> {{ p.observacoes }}</p>{% endif %}
+    <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--line)">
+      <button class="btn" type="button" onclick="aba('t-dados')">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Editar dados
+      </button>
+      <button class="btn" type="button" onclick="aba('t-execucao')">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Área de execução
+      </button>
+      <a class="btn" href="{{ url_for('projeto_cronograma', pid=p.id) }}">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg> Cronograma editável
+      </a>
+      <a class="btn" href="{{ url_for('projeto_checklist', pid=p.id) }}">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Check-list editável
+      </a>
+      {% if pode_designar %}
+      <a class="btn" href="{{ url_for('projeto_designar', pid=p.id) }}">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg> Designar responsáveis
+      </a>
+      {% endif %}
+    </div>
   </div>
 
-  <section id="t-resumo" class="painel-aba {{ 'ativa' if ini=='t-resumo' }}">
-    <div class="painel">
-      <div class="resumo">
-        {% if p.cnpj %}<div class="row"><span class="k">CNPJ</span><span class="v">{{ p.cnpj }}</span></div>{% endif %}
-        {% if p.ramo %}<div class="row"><span class="k">Ramo</span><span class="v">{{ p.ramo }}</span></div>{% endif %}
-        <div class="row"><span class="k">GCI (Levantamento)</span><span class="v">{{ p.gci or '—' }}</span></div>
-        <div class="row"><span class="k">Consultor(es)</span><span class="v">{{ p.consultor or '—' }}</span></div>
-        {% if p.responsavel %}<div class="row"><span class="k">Responsável</span><span class="v">{{ p.responsavel }}</span></div>{% endif %}
-        <div class="row"><span class="k">Módulos</span><span class="v">{{ p.modulos or '—' }}</span></div>
-        <div class="row"><span class="k">Horas</span><span class="v">{{ cab.horas_total|int }}{% if cab.horas_bon %} ({{ cab.horas_cob|int }}+{{ cab.horas_bon|int }}){% endif %}</span></div>
-        {% if p.data_inicio %}<div class="row"><span class="k">Início</span><span class="v">{{ p.data_inicio }}</span></div>{% endif %}
-        <div class="row"><span class="k">Go-live previsto</span><span class="v">{{ p.data_uso_oficial or '—' }}</span></div>
-        {% if p.contatos %}<div class="row"><span class="k">Contatos</span><span class="v">{{ p.contatos }}</span></div>{% endif %}
-      </div>
-      {% if designacoes %}<div class="dica" style="margin-top:6px"><strong>Por módulo:</strong> {% for d in designacoes %}{{ d.modulo }} → {{ d.consultor }}{% if not loop.last %} · {% endif %}{% endfor %}</div>{% endif %}
-      {% if p.observacoes %}<p class="dica" style="margin-top:10px"><strong>Obs.:</strong> {{ p.observacoes }}</p>{% endif %}
-      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn" type="button" onclick="aba('t-dados')">✏️ Editar dados</button>
-        <button class="btn" type="button" onclick="aba('t-docs')">📁 Documentos</button>
-        <a class="btn" href="{{ url_for('projeto_cronograma', pid=p.id) }}">📅 Cronograma</a>
-        <a class="btn" href="{{ url_for('projeto_checklist', pid=p.id) }}">✅ Check-list</a>
-        {% if pode_designar %}<a class="btn" href="{{ url_for('projeto_designar', pid=p.id) }}">👥 Designar responsáveis</a>{% endif %}
-      </div>
-    </div>
-    <h3 style="color:var(--navy)">Atividade recente</h3>
-    {% if eventos %}
-    <ul class="timeline">
+  <h3 style="color:var(--navy);margin:20px 0 8px;display:flex;align-items:center;gap:7px">
+    <svg class="svgi" aria-hidden="true"><use href="#ic-activity"/></svg> Atividade recente
+  </h3>
+  {% if eventos %}
+  <ul class="timeline">
     {% for ev in eventos[:5] %}
-      <li><span class="tl-ico">{{ _ico.get(ev.tipo,'•') }}</span>
-        <div><div>{{ ev.descricao }}</div><small class="dica" style="margin:0">{{ ev.criado_em.strftime('%d/%m/%Y %H:%M') if ev.criado_em else '' }}{% if ev.autor %} · {{ ev.autor }}{% endif %}</small></div></li>
+    <li>
+      <span class="tl-ico">{{ _ico.get(ev.tipo,'•') }}</span>
+      <div>
+        <div style="font-size:.9rem">{{ ev.descricao }}</div>
+        <small class="dica" style="margin:0">{{ ev.criado_em.strftime('%d/%m/%Y %H:%M') if ev.criado_em else '' }}{% if ev.autor %} · {{ ev.autor }}{% endif %}</small>
+      </div>
+    </li>
     {% endfor %}
-    </ul>
-    {% else %}<p class="dica">Sem atividade ainda.</p>{% endif %}
-  </section>
+  </ul>
+  {% if eventos|length > 5 %}
+  <button class="btn" type="button" onclick="aba('t-hist')" style="margin-top:6px">Ver histórico completo →</button>
+  {% endif %}
+  {% else %}<p class="dica">Sem atividade registrada ainda.</p>{% endif %}
+</section>
 
-  <section id="t-dados" class="painel-aba">
-    <form method="post" action="{{ url_for('projeto_ficha', pid=p.id) }}" class="painel">
-      {{ campos_form(p, etapas, situacoes) }}
-      <button class="btn primario" type="submit" style="margin-top:8px">💾 Salvar</button>
-    </form>
-    <div style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px">
-      <p class="dica" style="margin:0 0 8px">Zona de risco</p>
-      <form method="post" action="{{ url_for('projeto_excluir', pid=p.id) }}" onsubmit="return confirm('Excluir este projeto e todo o seu histórico?')">
-        <button class="btn" type="submit" style="color:var(--err);border-color:#fecaca">🗑️ Excluir projeto</button>
+{# ===== ABA: EXECUÇÃO (WORKSPACE CENTRAL) ===== #}
+<section id="t-execucao" class="painel-aba {{ 'ativa' if ini=='t-execucao' }}">
+
+  {# Workspace orientado pela etapa atual #}
+  {% if p and cab %}
+  <div class="workspace">
+    <div class="workspace-header">
+      <span class="fase-badge {{ _fase_cls.get(p.etapa,'') }}">
+        Fase {{ _fase_num.get(p.etapa,'') }} — {{ p.etapa }}
+      </span>
+      <span class="titulo-fase">Ações desta fase</span>
+      <span class="sub-fase">{{ p.situacao }}</span>
+    </div>
+    <div class="workspace-body">
+
+      {# ===== FASE 1: LEVANTAMENTO ===== #}
+      {% if p.etapa == 'Levantamento' %}
+      <div class="acao-principal {{ 'ativa' if not designacoes }}">
+        <div class="titulo">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg>
+          Passo 1 — Designar responsáveis
+          {% if designacoes %}<span style="color:var(--ok);font-size:.8rem">✅ Concluído</span>{% endif %}
+        </div>
+        <p class="descricao">Defina o GCI e os consultores por módulo. O sistema gera o Levantamento automaticamente ao designar o GCI.</p>
+        <div class="acoes-row">
+          {% if pode_designar %}
+          <a class="btn {{ '' if designacoes else 'primario' }}" href="{{ url_for('projeto_designar', pid=p.id) }}">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg>
+            {{ 'Rever designações' if designacoes else 'Designar agora' }}
+          </a>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="acao-principal">
+        <div class="titulo">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>
+          Passo 2 — Levantamento de processos
+        </div>
+        <p class="descricao">O GCI preenche o documento de Levantamento externamente. Quando concluído, avance para a fase Projeto.</p>
+        <div class="acoes-row">
+          {% if pode_gerar('levantamento') %}
+          <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='levantamento') }}">
+            <button class="btn" type="submit">
+              <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg> Gerar modelo de Levantamento
+            </button>
+          </form>
+          {% endif %}
+          {% if cab.prox_etapa %}
+          <form method="post" action="{{ url_for('projeto_avancar', pid=p.id) }}">
+            <button class="btn primario" type="submit">
+              <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Levantamento concluído → Avançar para Projeto
+            </button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+
+      {# ===== FASE 2: PROJETO ===== #}
+      {% elif p.etapa == 'Projeto' %}
+      <div class="acao-principal ativa">
+        <div class="titulo">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg>
+          Processar Levantamento e gerar Projeto de Implantação
+        </div>
+        <p class="descricao">Importe o arquivo de Levantamento preenchido (.docx). O sistema converte o tempo verbal, aplica ortografia e gera o Projeto automaticamente.</p>
+        {% if erro %}<div class="resultado erro" style="padding:8px 14px;margin:8px 0">⚠️ {{ erro }}</div>{% endif %}
+        {% if pode_gerar('projeto') %}
+        <form id="gerar-projeto" method="post" action="{{ url_for('projeto_gerar_projeto', pid=p.id) }}" enctype="multipart/form-data">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+            <input type="file" name="arquivo" accept=".docx" required style="flex:1;min-width:200px">
+            <button class="btn primario" type="submit">
+              <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg> Gerar Projeto
+            </button>
+          </div>
+        </form>
+        {% endif %}
+      </div>
+
+      {# ===== FASE 3: CRONOGRAMA E CHECK-LIST ===== #}
+      {% elif p.etapa == 'Cronograma e Check-list' %}
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+        <div class="acao-principal {{ 'ativa' if not docs or not docs|selectattr('tipo','equalto','cronograma')|list }}">
+          <div class="titulo">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-clock"/></svg>
+            Cronograma de implantação
+            {% set tem_cron = docs|selectattr('tipo','equalto','cronograma')|list %}
+            {% if tem_cron %}<span style="color:var(--ok);font-size:.8rem">✅ Gerado</span>{% endif %}
+          </div>
+          <p class="descricao">Distribui as horas contratadas em dias úteis por módulo e etapa.</p>
+          <div class="acoes-row">
+            {% if pode_gerar('cronograma') %}
+            <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='cronograma') }}">
+              <button class="btn {{ '' if tem_cron else 'primario' }}" type="submit">
+                <svg class="svgi" aria-hidden="true"><use href="#ic-clock"/></svg>
+                {{ 'Regenerar' if tem_cron else 'Gerar Cronograma' }}
+              </button>
+            </form>
+            {% endif %}
+            <a class="btn" href="{{ url_for('projeto_cronograma', pid=p.id) }}">
+              <svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg> Editar no painel
+            </a>
+          </div>
+        </div>
+
+        <div class="acao-principal {{ 'ativa' if not docs or not docs|selectattr('tipo','equalto','checklist')|list }}">
+          <div class="titulo">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+            Check-list de atividades
+            {% set tem_chk = docs|selectattr('tipo','equalto','checklist')|list %}
+            {% if tem_chk %}<span style="color:var(--ok);font-size:.8rem">✅ Gerado</span>{% endif %}
+          </div>
+          <p class="descricao">Lista de verificação por módulo para acompanhar a execução.</p>
+          <div class="acoes-row">
+            {% if pode_gerar('checklist') %}
+            <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='checklist') }}">
+              <button class="btn {{ '' if tem_chk else 'primario' }}" type="submit">
+                <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+                {{ 'Regenerar' if tem_chk else 'Gerar Check-list' }}
+              </button>
+            </form>
+            {% endif %}
+            <a class="btn" href="{{ url_for('projeto_checklist', pid=p.id) }}">
+              <svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg> Editar no painel
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {% if cab.prox_etapa %}
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
+        <form method="post" action="{{ url_for('projeto_avancar', pid=p.id) }}">
+          <button class="btn primario" type="submit">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Avançar para Encerramento
+          </button>
+        </form>
+      </div>
+      {% endif %}
+
+      {# ===== FASE 4: ENCERRAMENTO ===== #}
+      {% elif p.etapa == 'Encerramento' %}
+      <div class="acao-principal ativa">
+        <div class="titulo">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>
+          Gerar Termo de Encerramento
+          {% set tem_termo = docs|selectattr('tipo','equalto','termo')|list if docs else [] %}
+          {% if tem_termo %}<span style="color:var(--ok);font-size:.8rem">✅ Gerado</span>{% endif %}
+        </div>
+        <p class="descricao">Documento oficial que formaliza a conclusão da implantação. Após gerado, envie ao cliente para assinatura.</p>
+        <div class="acoes-row">
+          {% if pode_gerar('termo') %}
+          <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='termo') }}">
+            <button class="btn primario" type="submit">
+              <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>
+              {{ 'Regenerar Termo' if tem_termo else 'Gerar Termo de Encerramento' }}
+            </button>
+          </form>
+          {% endif %}
+          <a class="btn" href="{{ url_for('projeto_email', pid=p.id) }}">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-mail"/></svg> Enviar e-mail de encerramento
+          </a>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>{# fim workspace-body #}
+  </div>{# fim workspace #}
+  {% endif %}
+
+  {# ===== DOCUMENTOS GERADOS (LISTA COMPACTA) ===== #}
+  <div class="painel" style="margin-top:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <h3 style="margin:0;color:var(--navy);display:flex;align-items:center;gap:7px">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg> Documentos do projeto
+      </h3>
+      {% if cab and cab.docs_ok < cab.docs_total %}
+      <form method="post" action="{{ url_for('projeto_gerar_pendentes', pid=p.id) }}" style="margin:0">
+        <button class="btn primario" type="submit" style="margin:0">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Preparar {{ cab.docs_total - cab.docs_ok }} doc(s) pendente(s)
+        </button>
+      </form>
+      {% endif %}
+    </div>
+
+    {# Status dos gates #}
+    {% if cab and cab.gate %}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      {% for item in cab.gate.itens %}
+      <div class="doc-gate {{ 'ok' if item.ok else 'pendente' }}">
+        {% if item.ok %}✅{% else %}⬜{% endif %} {{ item.label }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {# Lista de documentos gerados #}
+    {% if docs %}
+    <div class="docs-lista">
+      {% for d in docs %}
+      <div class="doc-item">
+        <span class="doc-ico">📄</span>
+        <div class="doc-info">
+          <div class="doc-nome">{{ d.arquivo }}</div>
+          <div class="doc-meta">{{ d.tipo }} · {{ d.criado_em.strftime('%d/%m/%Y %H:%M') if d.criado_em else '' }}</div>
+        </div>
+        <div class="doc-acoes">
+          {% if d.arquivo.lower().endswith(('.docx','.xlsx','.xlsm')) %}
+          <a class="btn" href="{{ url_for('projeto_doc_ver', pid=p.id, doc_id=d.id) }}" title="Visualizar">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg> Ver
+          </a>
+          {% endif %}
+          <a class="btn" href="{{ url_for('download', path=d.caminho) }}" title="Baixar">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> Baixar
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="dica">Nenhum documento gerado ainda. Use a área de execução acima.</p>
+    {% endif %}
+
+    {# Anexo manual #}
+    <div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)">
+      <p class="dica" style="margin:0 0 8px">Anexar documento manualmente:</p>
+      <form method="post" action="{{ url_for('projeto_anexar', pid=p.id) }}" enctype="multipart/form-data"
+            style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select name="tipo" style="padding:7px 10px;border:1.5px solid var(--line-2);border-radius:var(--r-sm);font:inherit;font-size:.88rem">
+          {% for t, lbl in doc_tipos.items() %}<option value="{{ t }}">{{ lbl }}</option>{% endfor %}
+          <option value="outro">Outro</option>
+        </select>
+        <input type="file" name="arquivo" required style="flex:1;min-width:180px">
+        <button class="btn" type="submit">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> Anexar
+        </button>
       </form>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section id="t-docs" class="painel-aba {{ 'ativa' if ini=='t-docs' }}">
-    <p class="dica" style="margin-top:0">Gera a partir dos dados salvos (módulos, horas, nº) e anexa abaixo. Os documentos obrigatórios da fase aparecem no cabeçalho.</p>
-    {% if cab and cab.docs_ok < cab.docs_total %}
-    <form method="post" action="{{ url_for('projeto_gerar_pendentes', pid=p.id) }}" style="margin:0 0 12px">
-      <button class="btn primario" type="submit">⚡ Gerar pendentes ({{ cab.docs_total - cab.docs_ok }})</button>
+{# ===== ABA: DADOS ===== #}
+<section id="t-dados" class="painel-aba">
+  <div class="painel">
+    <h3 style="margin-top:0;color:var(--navy)">Dados do projeto</h3>
+    <form method="post" action="{{ url_for('projeto_ficha', pid=p.id) }}">
+      {{ campos_form(p, etapas, situacoes) }}
+      <button class="btn primario" type="submit" style="margin-top:8px">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvar dados
+      </button>
     </form>
-    {% endif %}
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      {% if pode_gerar('levantamento') %}<form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='levantamento') }}"><button class="btn" type="submit">📄 Gerar Levantamento</button></form>{% endif %}
-      {% if pode_gerar('checklist') %}<form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='checklist') }}"><button class="btn" type="submit">📊 Gerar Check List</button></form>{% endif %}
-      {% if pode_gerar('cronograma') %}<form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='cronograma') }}"><button class="btn" type="submit">📅 Gerar Cronograma</button></form>{% endif %}
-      {% if pode_gerar('termo') %}<form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='termo') }}"><button class="btn" type="submit">📑 Gerar Termo</button></form>{% endif %}
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;border-top:1px dashed var(--line);padding-top:10px">
-      <span class="dica" style="margin:0;align-self:center">Editar no painel (com histórico):</span>
-      <a class="btn" href="{{ url_for('projeto_cronograma', pid=p.id) }}">📅 Cronograma editável</a>
-      <a class="btn" href="{{ url_for('projeto_checklist', pid=p.id) }}">✅ Check-list editável</a>
-    </div>
-    {% if erro %}<div class="resultado erro" style="padding:8px 14px;margin-top:8px">⚠️ {{ erro }}</div>{% endif %}
-    {% if pode_gerar('projeto') %}
-    <form id="gerar-projeto" method="post" action="{{ url_for('projeto_gerar_projeto', pid=p.id) }}" enctype="multipart/form-data"
-          style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#f1f5f9;padding:10px 14px;border-radius:8px">
-      <span class="dica" style="margin:0">Gerar o <strong>Projeto</strong> a partir do Levantamento preenchido:</span>
-      <input type="file" name="arquivo" accept=".docx" required>
-      <button class="btn" type="submit">📘 Gerar Projeto</button>
+  </div>
+  <div class="painel" style="border-left:3px solid var(--err)">
+    <h3 style="margin-top:0;color:var(--err)">Zona de risco</h3>
+    <p class="dica">Esta ação é irreversível. Todo o histórico, documentos e dados do projeto serão excluídos permanentemente.</p>
+    <form method="post" action="{{ url_for('projeto_excluir', pid=p.id) }}" onsubmit="return confirm('Tem certeza? Esta ação não pode ser desfeita. Excluir o projeto e todo o seu histórico?')">
+      <button class="btn perigo" type="submit">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-lock"/></svg> Excluir projeto permanentemente
+      </button>
     </form>
-    {% endif %}
-    <form method="post" action="{{ url_for('projeto_anexar', pid=p.id) }}" enctype="multipart/form-data"
-          style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <span class="dica" style="margin:0">Anexar documento manualmente:</span>
-      <select name="tipo" style="padding:6px;border:1px solid #cbd5e1;border-radius:6px">
-        {% for t, lbl in doc_tipos.items() %}<option value="{{ t }}">{{ lbl }}</option>{% endfor %}
-        <option value="outro">Outro</option>
-      </select>
-      <input type="file" name="arquivo" required>
-      <button class="btn" type="submit">📎 Anexar</button>
-    </form>
-    {% if docs %}
-    <table class="form-tab" style="margin-top:12px">
-      <thead><tr><th>Arquivo</th><th>Tipo</th><th>Gerado em</th><th></th></tr></thead>
-      <tbody>
-      {% for d in docs %}
-        <tr><td>{{ d.arquivo }}</td><td>{{ d.tipo }}</td>
-            <td><small>{{ d.criado_em.strftime('%d/%m/%Y %H:%M') if d.criado_em else '' }}</small></td>
-            <td style="white-space:nowrap">{% if d.arquivo.lower().endswith(('.docx','.xlsx','.xlsm')) %}<a class="btn" href="{{ url_for('projeto_doc_ver', pid=p.id, doc_id=d.id) }}">👁 Ver</a> {% endif %}<a class="btn" href="{{ url_for('download', path=d.caminho) }}">⬇️ Baixar</a></td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
-    {% else %}<p class="dica">Nenhum documento ainda.</p>{% endif %}
-  </section>
+  </div>
+</section>
 
-  <section id="t-com" class="painel-aba">
-    <p class="dica" style="margin-top:0">E-mails enviados pelo painel ficam registrados aqui e no Histórico.</p>
-    <a class="btn primario" href="{{ url_for('projeto_email', pid=p.id) }}">✉️ Novo e-mail</a>
-    <h3 style="color:var(--navy);margin-top:18px">E-mails enviados</h3>
+{# ===== ABA: COMUNICAÇÃO ===== #}
+<section id="t-com" class="painel-aba">
+  <div class="painel">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+      <h3 style="margin:0;color:var(--navy)">Comunicação com o cliente</h3>
+      <a class="btn primario" href="{{ url_for('projeto_email', pid=p.id) }}">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-send"/></svg> Novo e-mail
+      </a>
+    </div>
+    <p class="dica" style="margin:0 0 12px">E-mails enviados pelo painel ficam registrados aqui e no histórico do projeto.</p>
     {% set emails = eventos|selectattr('tipo','equalto','email')|list %}
     {% if emails %}
     <ul class="timeline">
-    {% for ev in emails %}<li><span class="tl-ico">✉️</span><div><div>{{ ev.descricao }}</div><small class="dica" style="margin:0">{{ ev.criado_em.strftime('%d/%m/%Y %H:%M') if ev.criado_em else '' }}{% if ev.autor %} · {{ ev.autor }}{% endif %}</small></div></li>{% endfor %}
+      {% for ev in emails %}
+      <li>
+        <span class="tl-ico">✉️</span>
+        <div>
+          <div style="font-size:.9rem">{{ ev.descricao }}</div>
+          <small class="dica" style="margin:0">{{ ev.criado_em.strftime('%d/%m/%Y %H:%M') if ev.criado_em else '' }}{% if ev.autor %} · {{ ev.autor }}{% endif %}</small>
+        </div>
+      </li>
+      {% endfor %}
     </ul>
-    {% else %}<p class="dica">Nenhum e-mail enviado ainda.</p>{% endif %}
-  </section>
+    {% else %}
+    <p class="dica">Nenhum e-mail enviado ainda.</p>
+    {% endif %}
+  </div>
+</section>
 
-  <section id="t-hist" class="painel-aba">
-    <form method="post" action="{{ url_for('projeto_nota', pid=p.id) }}" style="display:flex;gap:8px;margin-bottom:10px">
-      <input name="nota" placeholder="Anotar uma observação na timeline…" style="flex:1;padding:8px;border:1px solid var(--line);border-radius:8px">
-      <button class="btn" type="submit">📝 Anotar</button>
-    </form>
+{# ===== ABA: HISTÓRICO ===== #}
+<section id="t-hist" class="painel-aba">
+  <div class="painel">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+      <h3 style="margin:0;color:var(--navy)">Histórico completo</h3>
+      <form method="post" action="{{ url_for('projeto_nota', pid=p.id) }}" style="display:flex;gap:8px;align-items:center;flex:1;max-width:500px;margin:0">
+        <input name="nota" placeholder="Adicionar anotação…" style="flex:1;padding:8px 12px;border:1.5px solid var(--line-2);border-radius:var(--r-sm);font:inherit;font-size:.88rem">
+        <button class="btn" type="submit">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Registrar
+        </button>
+      </form>
+    </div>
     {% if eventos %}
     <ul class="timeline">
-    {% for ev in eventos %}
-      <li><span class="tl-ico">{{ _ico.get(ev.tipo,'•') }}</span>
-        <div><div>{{ ev.descricao }}</div><small class="dica" style="margin:0">{{ ev.criado_em.strftime('%d/%m/%Y %H:%M') if ev.criado_em else '' }}{% if ev.autor %} · {{ ev.autor }}{% endif %}</small></div></li>
-    {% endfor %}
+      {% for ev in eventos %}
+      <li>
+        <span class="tl-ico">{{ _ico.get(ev.tipo,'•') }}</span>
+        <div>
+          <div style="font-size:.9rem">{{ ev.descricao }}</div>
+          <small class="dica" style="margin:0">{{ ev.criado_em.strftime('%d/%m/%Y %H:%M') if ev.criado_em else '' }}{% if ev.autor %} · {{ ev.autor }}{% endif %}</small>
+        </div>
+      </li>
+      {% endfor %}
     </ul>
-    {% else %}<p class="dica">Sem eventos ainda.</p>{% endif %}
-  </section>
-  {% endif %}
+    {% else %}
+    <p class="dica">Sem eventos registrados ainda.</p>
+    {% endif %}
+  </div>
+</section>
 
-  <a class="voltar" href="{{ url_for('projetos') }}">← Voltar para Projetos</a>
-
-  <script>
-  function aba(id){
-    document.querySelectorAll('.painel-aba').forEach(function(x){x.classList.remove('ativa');});
-    document.querySelectorAll('.abas .aba').forEach(function(x){x.classList.remove('ativa');});
-    var s=document.getElementById(id); if(s){s.classList.add('ativa');}
-    var b=document.querySelector('.abas .aba[data-t="'+id+'"]'); if(b){b.classList.add('ativa');}
-  }
-  </script>
+{% endif %}{# fim if not p #}
 {% endblock %}

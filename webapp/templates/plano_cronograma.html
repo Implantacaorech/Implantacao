@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block titulo %}Cronograma — {{ p.cliente }}{% endblock %}
-{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('projetos') }}">Projetos</a> › <a href="{{ url_for('projeto_ficha', pid=pid) }}">{{ p.cliente }}</a> › Cronograma</div>{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> <svg class="svgi" style="width:12px;height:12px;color:var(--faint)" aria-hidden="true"><use href="#ic-arrow-right"/></svg> <a href="{{ url_for('projetos') }}">Carteira</a> <svg class="svgi" style="width:12px;height:12px;color:var(--faint)" aria-hidden="true"><use href="#ic-arrow-right"/></svg> <a href="{{ url_for('projeto_ficha', pid=pid) }}">{{ p.cliente }}</a> <svg class="svgi" style="width:12px;height:12px;color:var(--faint)" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Cronograma</div>{% endblock %}
 {% block conteudo %}
-  <h1 style="margin-bottom:2px">📅 Cronograma — {{ p.cliente }}</h1>
+  <h1 style="margin-bottom:2px">Cronograma — {{ p.cliente }}</h1>
   <p class="sub">Edite as agendas durante a implantação. Cada alteração fica registrada no histórico.</p>
   {% if salvo %}<div class="resultado ok" style="padding:10px 16px">✅ Salvo.</div>{% endif %}
   {% if aviso %}<div class="resultado erro" style="padding:10px 16px">⚠️ {{ aviso }}</div>{% endif %}
@@ -10,13 +10,13 @@
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
     <form method="post" action="{{ url_for('projeto_cronograma_seed', pid=pid) }}"
           onsubmit="return confirm('Carregar o plano automático? Isso substitui as linhas atuais.')">
-      <button class="btn" type="submit">✨ Gerar plano automático</button></form>
+      <button class="btn" type="submit"><svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Gerar plano automático</button></form>
     {% if pode_ger %}
     <form method="post" action="{{ url_for('projeto_cronograma_gerar', pid=pid) }}">
-      <button class="btn primario" type="submit">📄 Gerar documento (.docx) desta versão</button></form>
+      <button class="btn primario" type="submit"><svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg> Gerar documento (.docx)</button></form>
     {% endif %}
     <span style="flex:1"></span>
-    <a class="btn" href="{{ url_for('projeto_ficha', pid=pid) }}">← Voltar à ficha</a>
+    <a class="btn" href="{{ url_for('projeto_ficha', pid=pid) }}"><svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Voltar à ficha</a>
   </div>
 
   <form method="post" action="{{ url_for('projeto_cronograma', pid=pid) }}">
@@ -44,8 +44,8 @@
     </table>
     </div>
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn" type="button" onclick="addLinha()">➕ Adicionar linha</button>
-      <button class="btn primario" type="submit">💾 Salvar cronograma</button>
+      <button class="btn" type="button" onclick="addLinha()"><svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Adicionar linha</button>
+      <button class="btn primario" type="submit"><svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvar cronograma</button>
     </div>
   </form>
 

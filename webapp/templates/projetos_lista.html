@@ -1,34 +1,79 @@
 {% extends "base.html" %}
-{% block titulo %}Projetos por Cliente{% endblock %}
-{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › Projetos por Cliente</div>{% endblock %}
+{% block titulo %}Carteira de Projetos{% endblock %}
+{% block migalha %}
+<div class="migalha">
+  <a href="{{ url_for('home') }}">Início</a>
+  <svg class="svgi" style="width:12px;height:12px;color:var(--faint)" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  Carteira de Projetos
+</div>
+{% endblock %}
 {% block conteudo %}
-  <h1>📁 Projetos por Cliente</h1>
-  <p class="sub">Carteira de implantações — dados salvos por cliente, status por fase.</p>
-  <a class="btn primario" href="{{ url_for('projeto_novo') }}">+ Novo projeto</a>
-  <a class="btn" href="{{ url_for('coordenacao') }}">📊 Painel Coordenação</a>
-  <span class="dica" style="margin-left:10px">{{ itens|length }} projeto(s)</span>
-  {% if perfil_atual == 'Consultor' and perfil_nome_atual %}<span class="dica">· mostrando apenas os seus (Consultor: {{ perfil_nome_atual }})</span>{% endif %}
-
-  {% if itens %}
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center">
-    <input id="busca" placeholder="🔎 buscar cliente…" oninput="filtra()" style="flex:1;min-width:180px;padding:8px;border:1px solid var(--line-2);border-radius:8px">
-    <select id="fstatus" onchange="filtra()" style="padding:8px;border:1px solid var(--line-2);border-radius:8px;width:auto"><option value="">Status: todos</option>{% for s in situacoes %}<option>{{ s }}</option>{% endfor %}</select>
-    <span style="flex:1"></span>
-    <div class="vista-toggle">
-      <button class="btn" id="bt-kanban" type="button" onclick="setVista('kanban')">▦ Kanban</button>
-      <button class="btn" id="bt-tabela" type="button" onclick="setVista('tabela')">☰ Tabela</button>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:4px">
+    <div>
+      <h1 style="margin-bottom:4px">Carteira de Projetos</h1>
+      <p class="sub" style="margin:0">
+        {{ itens|length }} projeto(s) na carteira
+        {% if perfil_atual == 'Consultor' and perfil_nome_atual %} · mostrando apenas os seus ({{ perfil_nome_atual }}){% endif %}
+      </p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-self:center">
+      <a class="btn primario" href="{{ url_for('fluxo_inicio') }}">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg> Novo projeto
+      </a>
+      <a class="btn" href="{{ url_for('coordenacao') }}">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-chart"/></svg> Coordenação
+      </a>
     </div>
   </div>
 
+  {% if itens %}
+  {# ===== FILTROS E TOGGLE DE VISTA ===== #}
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center;padding:12px 16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-1)">
+    <div style="display:flex;align-items:center;gap:7px;flex:1;min-width:180px;background:var(--surface-2);border:1.5px solid var(--line);border-radius:22px;padding:6px 14px">
+      <svg class="svgi" style="width:15px;height:15px;color:var(--faint)" aria-hidden="true"><use href="#ic-search"/></svg>
+      <input id="busca" placeholder="Buscar cliente…" oninput="filtra()" style="border:none;background:none;padding:2px 0;font:inherit;font-size:.9rem;width:100%">
+    </div>
+    <select id="fstatus" onchange="filtra()" style="padding:8px 12px;border:1.5px solid var(--line-2);border-radius:var(--r-sm);font:inherit;font-size:.88rem;width:auto">
+      <option value="">Todos os status</option>
+      {% for s in situacoes %}<option>{{ s }}</option>{% endfor %}
+    </select>
+    <select id="fetapa" onchange="filtra()" style="padding:8px 12px;border:1.5px solid var(--line-2);border-radius:var(--r-sm);font:inherit;font-size:.88rem;width:auto">
+      <option value="">Todas as fases</option>
+      {% for e in etapas %}<option>{{ e }}</option>{% endfor %}
+    </select>
+    <div class="vista-toggle">
+      <button class="btn" id="bt-kanban" type="button" onclick="setVista('kanban')">
+        <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-layers"/></svg> Kanban
+      </button>
+      <button class="btn" id="bt-tabela" type="button" onclick="setVista('tabela')">
+        <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-table"/></svg> Tabela
+      </button>
+    </div>
+  </div>
+
+  {# ===== VISTA KANBAN ===== #}
   <div id="vista-kanban">
     <div class="kanban">
       {% for e in etapas %}
+      {% set _fase_cls = {'Levantamento':'fase-1','Projeto':'fase-2','Cronograma e Check-list':'fase-3','Encerramento':'fase-4'} %}
       <div class="kan-col" data-etapa="{{ e }}">
-        <div class="kan-head">{{ e }} <span class="cnt">{{ itens|selectattr('etapa','equalto',e)|list|length }}</span></div>
+        <div class="kan-head">
+          <span style="display:flex;align-items:center;gap:6px">
+            <span style="width:8px;height:8px;border-radius:50%;background:var(--{{ _fase_cls.get(e,'accent') }});flex:none"></span>
+            {{ e }}
+          </span>
+          <span class="cnt">{{ itens|selectattr('etapa','equalto',e)|list|length }}</span>
+        </div>
         {% for p in itens if p.etapa == e %}
         <a class="kan-card" data-cliente="{{ p.cliente|lower }}" data-etapa="{{ p.etapa }}" data-status="{{ p.situacao }}" href="{{ url_for('projeto_ficha', pid=p.id) }}">
-          <div class="cli"><span>{{ p.cliente }}{% if p.numero_projeto %} <span class="num">({{ p.numero_projeto }})</span>{% endif %}</span><span class="badge-sit" data-s="{{ p.situacao }}">{{ p.situacao }}</span></div>
-          <div class="meta"><span>{{ p.consultor or '— sem consultor —' }}</span><span>{% if p.data_uso_oficial %}🏁 {{ p.data_uso_oficial }}{% endif %}</span></div>
+          <div class="cli">
+            <span>{{ p.cliente }}{% if p.numero_projeto %} <span class="num">({{ p.numero_projeto }})</span>{% endif %}</span>
+            <span class="badge-sit" data-s="{{ p.situacao }}">{{ p.situacao }}</span>
+          </div>
+          <div class="meta">
+            <span>{{ p.consultor or '— sem consultor —' }}</span>
+            <span>{% if p.data_uso_oficial %}🏁 {{ p.data_uso_oficial }}{% endif %}</span>
+          </div>
         </a>
         {% endfor %}
         <div class="kan-vazio"{% if itens|selectattr('etapa','equalto',e)|list|length %} style="display:none"{% endif %}>— sem projetos —</div>
@@ -37,22 +82,46 @@
     </div>
   </div>
 
+  {# ===== VISTA TABELA ===== #}
   <div id="vista-tabela" style="display:none">
-    <table class="form-tab" style="margin-top:12px">
-      <thead><tr><th>Cliente</th><th>Fase</th><th>Status</th><th>Consultor (GCI)</th><th>Go-live</th><th>Atualizado</th></tr></thead>
-      <tbody>
-      {% for p in itens %}
-        <tr class="linha-proj" data-cliente="{{ p.cliente|lower }}" data-etapa="{{ p.etapa }}" data-status="{{ p.situacao }}" onclick="location.href='{{ url_for('projeto_ficha', pid=p.id) }}'">
-          <td><strong>{{ p.cliente }}</strong>{% if p.numero_projeto %} <small>({{ p.numero_projeto }})</small>{% endif %}</td>
-          <td>{{ p.etapa }}</td>
-          <td><span class="badge-sit" data-s="{{ p.situacao }}">{{ p.situacao }}</span></td>
-          <td>{{ p.consultor }}</td>
-          <td>{{ p.data_uso_oficial }}</td>
-          <td><small>{{ p.atualizado_em.strftime('%d/%m/%Y') if p.atualizado_em else '' }}</small></td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
+    <div class="painel" style="padding:0;overflow:hidden">
+      <table class="form-tab" style="margin:0">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Fase</th>
+            <th>Status</th>
+            <th>Consultor / GCI</th>
+            <th>Go-live</th>
+            <th>Atualizado</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for p in itens %}
+          <tr class="linha-proj" data-cliente="{{ p.cliente|lower }}" data-etapa="{{ p.etapa }}" data-status="{{ p.situacao }}" onclick="location.href='{{ url_for('projeto_ficha', pid=p.id) }}'">
+            <td>
+              <strong>{{ p.cliente }}</strong>
+              {% if p.numero_projeto %}<small style="color:var(--muted)"> ({{ p.numero_projeto }})</small>{% endif %}
+            </td>
+            <td>
+              <span style="font-size:.8rem;font-weight:600;color:var(--muted)">{{ p.etapa }}</span>
+            </td>
+            <td><span class="badge-sit" data-s="{{ p.situacao }}">{{ p.situacao }}</span></td>
+            <td>
+              <span style="font-size:.88rem">{{ p.consultor or '—' }}</span>
+              {% if p.gci and p.gci != p.consultor %}<br><small style="color:var(--muted)">GCI: {{ p.gci }}</small>{% endif %}
+            </td>
+            <td>
+              {% if p.data_uso_oficial %}
+              <span style="font-size:.85rem;font-variant-numeric:tabular-nums">{{ p.data_uso_oficial }}</span>
+              {% else %}—{% endif %}
+            </td>
+            <td><small style="color:var(--muted)">{{ p.atualizado_em.strftime('%d/%m/%Y') if p.atualizado_em else '' }}</small></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
     <p id="semres" class="dica" style="display:none;margin-top:10px">Nenhum projeto corresponde ao filtro.</p>
   </div>
 
@@ -60,7 +129,8 @@
   function filtra(){
     var q=(document.getElementById('busca').value||'').toLowerCase();
     var fs=document.getElementById('fstatus').value||'';
-    function vis(el){ return (!q||el.dataset.cliente.indexOf(q)>=0)&&(!fs||el.dataset.status===fs); }
+    var fe=document.getElementById('fetapa').value||'';
+    function vis(el){ return (!q||el.dataset.cliente.indexOf(q)>=0)&&(!fs||el.dataset.status===fs)&&(!fe||el.dataset.etapa===fe); }
     var tvis=0;
     document.querySelectorAll('#vista-tabela tr.linha-proj').forEach(function(tr){
       var ok=vis(tr); tr.style.display=ok?'':'none'; if(ok)tvis++;
@@ -88,11 +158,19 @@
     var v='kanban'; try{ v=localStorage.getItem('vista_carteira')||'kanban'; }catch(e){}
     setVista(v);
     var q=new URLSearchParams(location.search).get('q');
-    if(q){ var b=document.getElementById('busca'); if(b) b.value=q; }
-    filtra();
+    if(q){ var b=document.getElementById('busca'); if(b) b.value=q; filtra(); }
   })();
   </script>
+
   {% else %}
-  <p class="dica" style="margin-top:14px">Nenhum projeto ainda — clique em "Novo projeto".</p>
+  <div class="painel" style="text-align:center;padding:40px 24px;margin-top:20px">
+    <div style="font-size:3rem;margin-bottom:12px">📁</div>
+    <h3 style="color:var(--navy);margin:0 0 8px">Nenhum projeto ainda</h3>
+    <p class="dica" style="margin:0 0 20px">Comece criando o primeiro projeto de implantação.</p>
+    <a class="btn primario" href="{{ url_for('fluxo_inicio') }}">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg> Criar primeiro projeto
+    </a>
+    <a class="btn" href="{{ url_for('projeto_novo') }}" style="margin-left:8px">Cadastro manual</a>
+  </div>
   {% endif %}
 {% endblock %}
