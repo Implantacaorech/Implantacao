@@ -204,6 +204,19 @@ def test_cadastro_fluxo_completo(client, monkeypatch):
         s.delete(s.get(db.Usuario, u.id)); s.commit()
 
 
+def test_dedup_fechamento():
+    corpo = ("Cliente (Razão Social): DEDUP LTDA\nCNPJ: 11.222.333/0001-44\n"
+             "Módulos contratados (siglas): FAT\n")
+    pid1 = A._criar_projeto_de_fechamento(corpo, "[IMPLANTACAO] DEDUP")
+    pid2 = A._criar_projeto_de_fechamento(corpo, "[IMPLANTACAO] DEDUP")   # mesmo cliente/CNPJ
+    assert pid1 == pid2                                                   # não duplicou
+    corpo2 = "Cliente (Razão Social): OUTRA RAZAO\nCNPJ: 11222333000144\n"  # mesmo CNPJ, sem máscara
+    assert A._criar_projeto_de_fechamento(corpo2, "x") == pid1
+    assert db.projeto_existe("qualquer", "11.222.333/0001-44") == pid1
+    with db.Session() as s:
+        s.delete(s.get(db.Projeto, pid1)); s.commit()
+
+
 def test_usuarios_grava_email_e_perfil(client):
     client.post("/usuarios", data={"nome": "Coord", "email": "coord@x.com", "perfil": "Coordenador", "ativo": "on"})
     u = _achar_usuario("coord@x.com")

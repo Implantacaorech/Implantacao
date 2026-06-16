@@ -343,6 +343,11 @@ def _criar_projeto_de_fechamento(corpo, assunto=""):
     import fluxo as F
     pf = F.para_projeto(F.parse_fechamento(corpo))
     pf.pop("contato_email", None)
+    ja = db.projeto_existe(pf.get("cliente"), pf.get("cnpj"))
+    if ja:
+        logging.info("Fechamento ignorado (já cadastrado, id=%s): %s | CNPJ %s",
+                     ja, pf.get("cliente") or "?", pf.get("cnpj") or "-")
+        return ja   # já existe: não cria de novo nem notifica
     pf["data_inicio"] = datetime.date.today().isoformat()
     with db.Session() as s:
         p = db.aplicar_form(db.Projeto(), pf)
@@ -1004,6 +1009,11 @@ def fluxo_criar():
                                       + (" · " if proj_fields["observacoes"] else "")
                                       + "Técnicos: " + tecnicos)
     proj_fields["data_inicio"] = datetime.date.today().isoformat()
+
+    ja = db.projeto_existe(proj_fields.get("cliente"), proj_fields.get("cnpj"))
+    if ja:
+        return redirect(url_for("projeto_ficha", pid=ja,
+            aviso="Já existe um projeto para este cliente/CNPJ — abri o existente em vez de duplicar."))
 
     with db.Session() as s:
         p = db.aplicar_form(db.Projeto(), proj_fields)

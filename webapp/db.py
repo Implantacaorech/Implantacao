@@ -319,6 +319,23 @@ def aplicar_form(p, form):
     return p
 
 
+def projeto_existe(cliente=None, cnpj=None):
+    """ID de um projeto já cadastrado com o mesmo CNPJ (preferência, comparando só os
+    dígitos) ou, na falta de CNPJ, o mesmo nome de cliente. None se não houver.
+    Usado para NÃO duplicar o mesmo fechamento."""
+    cnpj_d = re.sub(r"\D", "", str(cnpj or ""))
+    cli = re.sub(r"\s+", " ", (cliente or "").strip().lower())
+    if not cnpj_d and not cli:
+        return None
+    with Session() as s:
+        for p in s.query(Projeto).all():
+            if cnpj_d and re.sub(r"\D", "", p.cnpj or "") == cnpj_d:
+                return p.id
+            if cli and not cnpj_d and re.sub(r"\s+", " ", (p.cliente or "").strip().lower()) == cli:
+                return p.id
+    return None
+
+
 # --- F: Cronograma e Check-list EDITÁVEIS no painel (+ histórico de modificações) ---
 class CronogramaItem(Base):
     """Linha do cronograma, editável durante a implantação."""
