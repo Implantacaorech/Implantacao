@@ -88,6 +88,7 @@
     </a>
   </div>
 
+  {% if pode_ver('sistema') %}
   <h2 class="sec" id="ferramentas"><svg class="svgi hi" aria-hidden="true"><use href="#ic-tools"/></svg> Ferramentas</h2>
   <p class="sub" style="margin-bottom:12px">Geradores e utilitários avulsos — para usar fora do fluxo.</p>
   <div class="tools">
@@ -108,6 +109,7 @@
     <a class="tool" href="{{ url_for('perfil') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-user"/></svg><div><strong>Perfil de acesso</strong><small>Coordenação ou Consultor</small></div></a>
     <a class="tool" href="{{ url_for('acao', rid='coordenacao', aid='saude') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-heart-pulse"/></svg><div><strong>Saúde do Sistema</strong><small>Verificador completo (30 testes)</small></div></a>
   </div>
+  {% endif %}
 
   <style>
     .vg-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}

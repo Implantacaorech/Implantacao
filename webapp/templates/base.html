@@ -48,12 +48,16 @@
         <a class="side-link {{ 'on' if request.endpoint=='home' }}" href="{{ url_for('home') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg>Visão geral</a>
         <a class="side-link {{ 'on' if request.endpoint in ('fluxo_inicio','fluxo_criar') }}" href="{{ url_for('fluxo_inicio') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg>Fluxo</a>
         <a class="side-link {{ 'on' if request.endpoint in ('projetos','projeto_ficha','projeto_novo','projeto_designar','projeto_cronograma','projeto_checklist') }}" href="{{ url_for('projetos') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-folder"/></svg>Projetos</a>
+        {% if pode_ver('gestao') %}
         <div class="side-grp">Gestão</div>
         <a class="side-link {{ 'on' if request.endpoint=='coordenacao' }}" href="{{ url_for('coordenacao') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-chart"/></svg>Coordenação{% if n_alertas %}<span class="side-badge">{{ n_alertas }}</span>{% endif %}</a>
         <a class="side-link {{ 'on' if request.endpoint=='atividade' }}" href="{{ url_for('atividade') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-activity"/></svg>Atividade</a>
+        {% endif %}
+        {% if pode_ver('sistema') %}
         <div class="side-grp">Sistema</div>
         <a class="side-link" href="{{ url_for('home') }}#ferramentas"><svg class="svgi" aria-hidden="true"><use href="#ic-tools"/></svg>Ferramentas</a>
-        {% if e_adm %}<a class="side-link {{ 'on' if request.endpoint=='usuarios' }}" href="{{ url_for('usuarios') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg>Usuários</a>{% endif %}
+        <a class="side-link {{ 'on' if request.endpoint=='usuarios' }}" href="{{ url_for('usuarios') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg>Usuários</a>
+        {% endif %}
       </nav>
       <div class="side-rod">{% if versao %}v{{ versao }}{% endif %}</div>
     </aside>
@@ -66,7 +70,7 @@
           <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>
           <input name="q" placeholder="Buscar cliente…" aria-label="Buscar cliente">
         </form>
-        <a class="topbar-ico" href="{{ url_for('coordenacao') }}" title="Alertas" aria-label="Alertas"><svg class="svgi" aria-hidden="true"><use href="#ic-bell"/></svg>{% if n_alertas %}<span class="topbar-badge">{{ n_alertas }}</span>{% endif %}</a>
+        <a class="topbar-ico" href="{{ url_for('coordenacao') if pode_ver('gestao') else url_for('home') }}" title="Alertas" aria-label="Alertas"><svg class="svgi" aria-hidden="true"><use href="#ic-bell"/></svg>{% if n_alertas %}<span class="topbar-badge">{{ n_alertas }}</span>{% endif %}</a>
         <a class="topbar-perfil" href="{{ url_for('perfil') }}">
           <span class="avatar">{{ (perfil_nome_atual or perfil_atual or 'P')[:2]|upper }}</span>
           <span class="topbar-perfil-txt">{{ perfil_nome_atual or perfil_atual or 'Perfil' }}{% if perfil_atual %}<small>{{ perfil_atual }}</small>{% endif %}</span>

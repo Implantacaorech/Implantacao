@@ -102,6 +102,18 @@ def pode_gerar(tipo):
     return (not p) or p in _GERA.get(tipo, ("ADM", "Coordenador"))
 
 
+# Visibilidade por área do menu (e bloqueio no backend)
+#  - gestao  = Coordenação + Atividade  -> ADM, Coordenador, GCI
+#  - sistema = Ferramentas + Usuários + Configurações -> só ADM
+_AREA_PERFIS = {"gestao": ("ADM", "Coordenador", "GCI"), "sistema": ("ADM",)}
+
+
+def pode_ver(area):
+    """True se o perfil atual pode ver a área. Sem login (perfil vazio) = acesso total."""
+    p = _perfil()
+    return (not p) or p in _AREA_PERFIS.get(area, ())
+
+
 def _casa(nome, campo):
     """Casa o nome do usuário logado com o campo de responsável (tolerante)."""
     nome = (nome or "").strip().lower()
@@ -156,8 +168,8 @@ def login():
             session.update(auth=True, user_id=usr["id"], perfil=usr["perfil"],
                            perfil_nome=usr["nome"] or usr["login"])
             return redirect(request.args.get("next") or url_for("home"))
-        # fallback: senha mestra (só enquanto não houver usuários) -> entra como ADM
-        if (not db.ha_usuarios()) and _senha_acesso() and request.form.get("senha", "") == _senha_acesso():
+        # senha mestra: acesso de emergência como ADM (sempre válida — evita bloqueio)
+        if _senha_acesso() and request.form.get("senha", "") == _senha_acesso():
             session.update(auth=True, perfil="ADM", perfil_nome="Administrador")
             return redirect(url_for("usuarios"))
         erro = "Login ou senha incorretos."
@@ -435,6 +447,8 @@ def papel(rid):
 
 @app.route("/acao/<rid>/<aid>", methods=["GET", "POST"])
 def acao(rid, aid):
+    if not pode_ver("sistema"):
+        abort(403)
     r, a = roles.get_role(rid), roles.get_action(rid, aid)
     if not r or not a:
         abort(404)
@@ -526,7 +540,7 @@ def inject_cliente():
             "perfil_atual": session.get("perfil", ""),
             "perfil_nome_atual": session.get("perfil_nome", ""),
             "versao": VERSAO, "login_ativo": _login_ativo(), "e_adm": (_perfil() == "ADM"),
-            "pode_gerar": pode_gerar, "pode_designar": pode_designar()}
+            "pode_gerar": pode_gerar, "pode_designar": pode_designar(), "pode_ver": pode_ver}
 
 
 @app.context_processor
@@ -551,7 +565,7 @@ def perfil():
 
 @app.route("/usuarios", methods=["GET", "POST"])
 def usuarios():
-    if _login_ativo() and not _e_adm():
+    if not pode_ver("sistema"):
         abort(403)
     if request.method == "POST":
         with db.Session() as s:
@@ -579,6 +593,8 @@ def usuarios():
 
 @app.route("/cliente", methods=["GET", "POST"])
 def cliente():
+    if not pode_ver("sistema"):
+        abort(403)
     if request.method == "POST":
         base, nome = forms.build_cliente_yaml(request.form, runner.DATA, C.slug)
         session["cliente_yaml"] = base
@@ -590,6 +606,8 @@ def cliente():
 
 @app.route("/config", methods=["GET", "POST"])
 def config():
+    if not pode_ver("sistema"):
+        abort(403)
     import ia
     salvo = False
     if request.method == "POST":
@@ -607,6 +625,8 @@ def config():
 
 @app.route("/config/email", methods=["GET", "POST"])
 def config_email():
+    if not pode_ver("sistema"):
+        abort(403)
     import mailer
     salvo = False
     if request.method == "POST":
@@ -661,6 +681,8 @@ def projetos():
 
 @app.route("/coordenacao")
 def coordenacao():
+    if not pode_ver("gestao"):
+        abort(403)
     with db.Session() as s:
         projetos = [db.to_dict(x) for x in s.query(db.Projeto).all()]
         docs_map = {}
@@ -675,6 +697,8 @@ def coordenacao():
 
 @app.route("/atividade")
 def atividade():
+    if not pode_ver("gestao"):
+        abort(403)
     with db.Session() as s:
         projetos = [db.to_dict(x) for x in s.query(db.Projeto).all()]
         meus = _so_meus(projetos)
@@ -1066,6 +1090,8 @@ def fluxo_criar():
 
 @app.route("/config/imap", methods=["GET", "POST"])
 def config_imap():
+    if not pode_ver("sistema"):
+        abort(403)
     import imap_intake
     salvo = False
     if request.method == "POST":
@@ -1077,6 +1103,8 @@ def config_imap():
 
 @app.route("/config/gmail", methods=["GET", "POST"])
 def config_gmail():
+    if not pode_ver("sistema"):
+        abort(403)
     import gmail_api
     msg = None
     if request.method == "POST":
@@ -1093,6 +1121,8 @@ def config_gmail():
 
 @app.route("/mapa")
 def mapa():
+    if not pode_ver("sistema"):
+        abort(403)
     MAPA = {"nome": "Implantação SIGER®", "filhos": [
         {"nome": "👥 Papéis (Agentes)", "filhos": [
             {"nome": "Coordenação da Implantação"}, {"nome": "Setor Adm"},

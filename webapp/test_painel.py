@@ -204,6 +204,35 @@ def test_cadastro_fluxo_completo(client, monkeypatch):
         s.delete(s.get(db.Usuario, u.id)); s.commit()
 
 
+def _login_como(client, perfil):
+    with client.session_transaction() as sess:
+        sess["auth"] = True
+        sess["perfil"] = perfil
+        sess["perfil_nome"] = perfil
+
+
+def test_acesso_por_perfil(client):
+    _login_como(client, "Consultor")          # só Operação
+    assert client.get("/coordenacao").status_code == 403
+    assert client.get("/atividade").status_code == 403
+    assert client.get("/usuarios").status_code == 403
+    h = client.get("/").get_data(as_text=True)
+    assert ">Gestão<" not in h and ">Sistema<" not in h
+
+    _login_como(client, "GCI")                 # Operação + Gestão
+    assert client.get("/coordenacao").status_code == 200
+    assert client.get("/usuarios").status_code == 403
+    h = client.get("/").get_data(as_text=True)
+    assert ">Gestão<" in h and ">Sistema<" not in h
+
+    _login_como(client, "ADM")                 # tudo
+    assert client.get("/coordenacao").status_code == 200
+    assert client.get("/usuarios").status_code == 200
+    assert ">Sistema<" in client.get("/").get_data(as_text=True)
+    with client.session_transaction() as sess:
+        sess.clear()
+
+
 def test_dedup_fechamento():
     corpo = ("Cliente (Razão Social): DEDUP LTDA\nCNPJ: 11.222.333/0001-44\n"
              "Módulos contratados (siglas): FAT\n")
