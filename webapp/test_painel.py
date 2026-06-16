@@ -63,7 +63,7 @@ def test_defaults_nao_zeram(client):
     pid = _novo(client, cliente="Defaults PT")   # sem etapa/situacao no form
     with db.Session() as s:
         p = s.get(db.Projeto, int(pid))
-        assert p.etapa == "Levantamento" and p.situacao == "Em andamento"
+        assert p.etapa == "Agendamento" and p.situacao == "Em andamento"
     client.post("/projetos/%s/excluir" % pid)
 
 
@@ -90,15 +90,58 @@ def test_d_etapa_bloqueia_geracao():
 
 
 def test_c_auto_avanca_com_gate(client):
-    pid = int(_novo(client, cliente="Auto Avanca", etapa="Projeto", modulos="FAT"))
+    # com docs + consultor designado, avança Projeto → Designação → Cronograma e Check-list
+    pid = int(_novo(client, cliente="Auto Avanca", etapa="Projeto", modulos="FAT", consultor="Ana"))
     with db.Session() as s:
-        for t in ("levantamento", "projeto"):   # satisfaz o gate de Cronograma e Check-list
+        for t in ("levantamento", "projeto"):
             s.add(db.Documento(projeto_id=pid, tipo=t, arquivo=t + ".docx", caminho=t + ".docx"))
         s.commit()
     A._auto_avancar(pid)
     with db.Session() as s:
         assert s.get(db.Projeto, pid).etapa == "Cronograma e Check-list"
     client.post("/projetos/%s/excluir" % pid)
+
+
+def test_etapas_seis_e_gates_acao():
+    assert db.ETAPAS[0] == "Agendamento" and "Designação" in db.ETAPAS
+    assert db.proxima_etapa("Agendamento") == "Levantamento"
+    assert db.proxima_etapa("Projeto") == "Designação"
+    assert not db.acao_entrada_ok("Levantamento", {"data_levantamento": ""})
+    assert db.acao_entrada_ok("Levantamento", {"data_levantamento": "2026-07-01"})
+    assert not db.acao_entrada_ok("Cronograma e Check-list", {"consultor": ""})
+    assert db.acao_entrada_ok("Cronograma e Check-list", {"consultor": "Ana"})
+    cab = db.cabecalho({"etapa": "Agendamento", "data_levantamento": "", "situacao": "Em andamento"}, [])
+    assert cab["proxima"] and cab["proxima"]["tipo"] == "acao:data_levantamento"
+
+
+def test_agendamento_define_data_e_avanca(client):
+    _login_como(client, "Administrativo")
+    pid = int(_novo(client, cliente="Agendar Co", modulos="FAT"))   # inicia em Agendamento
+    r = client.post("/projetos/%s/agendar" % pid, data={"gci": "", "data_levantamento": "2026-07-15"})
+    assert r.status_code == 302
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        assert p.data_levantamento == "2026-07-15" and p.etapa == "Levantamento"
+    client.post("/projetos/%s/excluir" % pid)
+    with client.session_transaction() as sess:
+        sess.clear()
+
+
+def test_designacao_consultores_avanca(client):
+    _login_como(client, "GCI")
+    pid = int(_novo(client, cliente="Consult Co", etapa="Designação", modulos="FAT, CTB"))
+    with db.Session() as s:
+        for t in ("levantamento", "projeto"):
+            s.add(db.Documento(projeto_id=pid, tipo=t, arquivo=t, caminho=t))
+        s.commit()
+    r = client.post("/projetos/%s/consultores" % pid, data={"mod_0": "Ana C", "mod_1": "Ana C"})
+    assert r.status_code == 302
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        assert "Ana C" in (p.consultor or "") and p.etapa == "Cronograma e Check-list"
+    client.post("/projetos/%s/excluir" % pid)
+    with client.session_transaction() as sess:
+        sess.clear()
 
 
 def test_c_nao_avanca_no_levantamento(client):

@@ -383,16 +383,23 @@ def _etapa_permite_gerar(tipo, etapa):
     return db.macro_idx(etapa) >= db.macro_idx(_ETAPA_DOC.get(tipo, etapa))
 
 
+def _data_br(s):
+    s = (s or "").strip()
+    return "%s/%s/%s" % (s[8:10], s[5:7], s[0:4]) if (len(s) == 10 and s[4] == "-") else s
+
+
 def _auto_avancar(pid):
-    """Avança a etapa automaticamente enquanto o gate da próxima estiver satisfeito."""
+    """Avança a etapa automaticamente enquanto o gate da próxima (documentos + ação)
+    estiver satisfeito."""
     with db.Session() as s:
         p = s.get(db.Projeto, pid)
         if not p or p.etapa == "Levantamento":
             return   # a conclusão do Levantamento é confirmada pelo GCI (botão Avançar)
         docs = [db.to_dict(x) for x in s.query(db.Documento).filter_by(projeto_id=pid).all()]
+        proj = db.to_dict(p)
         prox = db.proxima_etapa(p.etapa)
         mudou = False
-        while prox and db.gate_status(prox, docs)["ok"]:
+        while prox and db.gate_status(prox, docs)["ok"] and db.acao_entrada_ok(prox, proj):
             db.registrar_evento(s, pid, "etapa", "Avançou automaticamente: %s → %s" % (p.etapa, prox), "sistema")
             p.etapa = prox
             prox = db.proxima_etapa(p.etapa)
@@ -777,20 +784,30 @@ def projeto_excluir(pid):
 
 @app.route("/projetos/<int:pid>/avancar", methods=["POST"])
 def projeto_avancar(pid):
+    destino = None
     with db.Session() as s:
         p = s.get(db.Projeto, pid)
         if not p:
             abort(404)
+        proj = db.to_dict(p)
         docs = [db.to_dict(x) for x in s.query(db.Documento).filter_by(projeto_id=pid).all()]
         prox = db.proxima_etapa(p.etapa)
-        if prox and db.gate_status(prox, docs)["ok"]:
+        docs_ok = bool(prox) and db.gate_status(prox, docs)["ok"]
+        acao_ok = (not prox) or db.acao_entrada_ok(prox, proj)
+        if prox and docs_ok and acao_ok:
             old = p.etapa
             p.etapa = prox
             db.registrar_evento(s, pid, "etapa", "Avançou de fase: %s → %s" % (old, prox), _autor())
             s.commit()
             return redirect(url_for("projeto_ficha", pid=pid, salvo=1))
+        if prox and docs_ok and not acao_ok:   # falta a AÇÃO -> leva à página dela
+            req = (db.ACAO_ENTRADA.get(prox) or (None,))[0]
+            destino = {"data_levantamento": "projeto_agendar",
+                       "consultores": "projeto_consultores"}.get(req)
+    if destino:
+        return redirect(url_for(destino, pid=pid))
     return redirect(url_for("projeto_ficha", pid=pid,
-                            aviso="Não dá para avançar: faltam documentos obrigatórios da próxima etapa."))
+                            aviso="Não dá para avançar: faltam itens obrigatórios da próxima etapa."))
 
 
 @app.route("/projetos/<int:pid>/gerar_pendentes", methods=["POST"])
@@ -983,6 +1000,89 @@ def projeto_designar(pid):
     atuais = {d["modulo"]: d["consultor"] for d in db.designacoes_do_projeto(pid)}
     return render_template("designar.html", p=proj, mods=mods, gcis=gcis,
                            consultores=consultores, atuais=atuais, gci_atual=proj.get("gci", ""))
+
+
+@app.route("/projetos/<int:pid>/agendar", methods=["GET", "POST"])
+def projeto_agendar(pid):
+    """Fase Agendamento (Administrativo): define o GCI e a Data do Levantamento; avisa o GCI."""
+    if _perfil() and _perfil() not in ("ADM", "Administrativo"):
+        abort(403)
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        if not p:
+            abort(404)
+        proj = db.to_dict(p)
+    gcis = db.usuarios_por_perfil("GCI")
+    if request.method == "POST":
+        gci = (request.form.get("gci") or "").strip()
+        data_lev = (request.form.get("data_levantamento") or "").strip()
+        if not data_lev:
+            return redirect(url_for("projeto_agendar", pid=pid, erro="Informe a data do Levantamento."))
+        with db.Session() as s:
+            p = s.get(db.Projeto, pid)
+            if gci:
+                p.gci = gci
+            p.data_levantamento = data_lev
+            cliente, gci_nome = p.cliente, p.gci
+            db.registrar_evento(s, pid, "etapa",
+                "Data do Levantamento definida: %s (GCI: %s)" % (_data_br(data_lev), gci_nome or "—"), _autor())
+            s.commit()
+        em = db.email_do_usuario(gci_nome)
+        if em:
+            _notificar(pid, [em], "Levantamento agendado — %s" % cliente,
+                       "O Levantamento do projeto %s foi agendado para %s.\n"
+                       "Você é o GCI responsável. Acesse o Painel de Implantação para conduzir.\n\n"
+                       "— Painel de Implantação" % (cliente, _data_br(data_lev)))
+        _auto_avancar(pid)   # com a data definida, avança Agendamento → Levantamento
+        return redirect(url_for("projeto_ficha", pid=pid, salvo=1))
+    return render_template("agendar.html", p=proj, pid=pid, gcis=gcis, erro=request.args.get("erro"))
+
+
+@app.route("/projetos/<int:pid>/consultores", methods=["GET", "POST"])
+def projeto_consultores(pid):
+    """Fase Designação (GCI): designa os Consultores da implantação e os avisa por e-mail
+    (não envia se o projeto já estiver Concluído)."""
+    if _perfil() and _perfil() not in ("ADM", "GCI"):
+        abort(403)
+    import re as _re
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        if not p:
+            abort(404)
+        proj = db.to_dict(p)
+    mods = [m.strip() for m in _re.split(r"[,;\n]+", proj.get("modulos", "") or "") if m.strip()]
+    consultores = db.usuarios_por_perfil("Consultor")
+    atuais = {d["modulo"]: d["consultor"] for d in db.designacoes_do_projeto(pid)}
+    if request.method == "POST":
+        por_consultor = {}
+        for i, m in enumerate(mods):
+            cons = (request.form.get("mod_%d" % i) or "").strip()
+            if cons:
+                por_consultor.setdefault(cons, []).append(m)
+        if not por_consultor:
+            return redirect(url_for("projeto_consultores", pid=pid, erro="Designe ao menos um consultor."))
+        with db.Session() as s:
+            s.query(db.Designacao).filter_by(projeto_id=pid).delete()
+            for cons, ms in por_consultor.items():
+                for m in ms:
+                    s.add(db.Designacao(projeto_id=pid, modulo=m, consultor=cons))
+            p = s.get(db.Projeto, pid)
+            p.consultor = ", ".join(sorted(por_consultor.keys()))
+            cliente, concluido = p.cliente, (p.situacao == "Concluído")
+            db.registrar_evento(s, pid, "etapa", "Consultores designados: %s" % (p.consultor or "—"), _autor())
+            s.commit()
+        if not concluido:   # após a conclusão do projeto não é mais necessário enviar e-mail
+            for cons, ms in por_consultor.items():
+                em = db.email_do_usuario(cons)
+                if em:
+                    _notificar(pid, [em], "Implantação designada — %s" % cliente,
+                               "Você foi designado como responsável pela implantação do cliente %s.\n"
+                               "Módulos: %s.\nO projeto já está pronto no Painel de Implantação — acesse para conduzir.\n\n"
+                               "— Painel de Implantação" % (cliente, ", ".join(ms)))
+        _auto_avancar(pid)   # com consultores, avança Designação → Cronograma e Check-list
+        return redirect(url_for("projeto_ficha", pid=pid, salvo=1))
+    return render_template("consultores.html", p=proj, pid=pid, mods=mods,
+                           consultores=consultores, atuais=atuais, erro=request.args.get("erro"))
 
 
 @app.route("/fluxo")

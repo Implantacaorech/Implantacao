@@ -23,13 +23,15 @@ if not getattr(sys, "frozen", False):
         sys.path.insert(0, TOOLS)
 import _common as C   # noqa: E402
 
-ETAPAS = ["Levantamento", "Projeto", "Cronograma e Check-list", "Encerramento"]
+ETAPAS = ["Agendamento", "Levantamento", "Projeto", "Designação",
+          "Cronograma e Check-list", "Encerramento"]
 SITUACOES = ["Em andamento", "Em risco", "Pausado", "Concluído"]
 PERFIS = ["ADM", "Coordenador", "Administrativo", "GCI", "Consultor"]
 
 CAMPOS = ["cliente", "cnpj", "numero_projeto", "ramo", "responsavel", "consultor", "gci",
-          "etapa", "situacao", "data_inicio", "data_uso_oficial", "data_encerramento",
-          "horas_cobradas", "horas_bonificadas", "modulos", "contatos", "observacoes"]
+          "etapa", "situacao", "data_inicio", "data_levantamento", "data_uso_oficial",
+          "data_encerramento", "horas_cobradas", "horas_bonificadas", "modulos",
+          "contatos", "observacoes"]
 
 # --- Gates: documentos obrigatórios por etapa (controle de qualidade) ---
 DOC_LABELS = {
@@ -43,11 +45,31 @@ DOC_LABELS = {
 # Documentos que já devem existir para o projeto estar (corretamente) na etapa.
 # Acumulativo, encadeando a tríade obrigatória: Projeto · Cronograma · Termo.
 GATES = {
+    "Agendamento":             [],
     "Levantamento":            [],
     "Projeto":                 ["levantamento"],
+    "Designação":              ["levantamento", "projeto"],
     "Cronograma e Check-list": ["levantamento", "projeto"],
     "Encerramento":            ["levantamento", "projeto", "cronograma", "checklist"],
 }
+
+# Ações obrigatórias para ENTRAR em cada etapa (além dos documentos):
+#  - Levantamento: a Data do Levantamento (definida pelo Administrativo, fase Agendamento)
+#  - Cronograma e Check-list: os Consultores designados (pelo GCI, fase Designação)
+ACAO_ENTRADA = {
+    "Levantamento": ("data_levantamento", "Definir a Data do Levantamento"),
+    "Cronograma e Check-list": ("consultores", "Designar os Consultores"),
+}
+
+
+def acao_entrada_ok(etapa, proj):
+    """A ação obrigatória para entrar nesta etapa já foi cumprida?"""
+    req = (ACAO_ENTRADA.get(etapa) or (None, None))[0]
+    if req == "data_levantamento":
+        return bool((proj.get("data_levantamento") or "").strip())
+    if req == "consultores":
+        return bool((proj.get("consultor") or "").strip())
+    return True
 
 
 def docs_obrigatorios(etapa):
@@ -107,9 +129,10 @@ class Projeto(Base):
     responsavel = Column(String(160), default="")
     consultor = Column(String(160), default="")
     gci = Column(String(160), default="")
-    etapa = Column(String(40), default="Levantamento")
+    etapa = Column(String(40), default="Agendamento")
     situacao = Column(String(40), default="Em andamento")
     data_inicio = Column(String(20), default="")
+    data_levantamento = Column(String(20), default="")
     data_uso_oficial = Column(String(20), default="")
     data_encerramento = Column(String(20), default="")
     horas_cobradas = Column(String(20), default="")
@@ -203,9 +226,21 @@ def ha_usuarios():
 
 def usuarios_por_perfil(perfil):
     with Session() as s:
-        return [{"id": u.id, "nome": u.nome or u.login, "login": u.login}
+        return [{"id": u.id, "nome": u.nome or u.login, "login": u.login,
+                 "email": (u.email or u.login)}
                 for u in s.query(Usuario).filter(Usuario.perfil == perfil, Usuario.ativo == 1)
                 .order_by(Usuario.nome).all()]
+
+
+def email_do_usuario(nome):
+    """E-mail de um usuário ativo pelo nome (prefere o campo email; cai no login)."""
+    from sqlalchemy import func
+    if not nome:
+        return None
+    with Session() as s:
+        u = s.query(Usuario).filter(func.lower(Usuario.nome) == nome.strip().lower(),
+                                    Usuario.ativo == 1).first()
+        return (u.email or u.login) if u else None
 
 
 def existe_usuario(login=None, email=None):
@@ -658,11 +693,18 @@ def cabecalho(d, docs):
     prox = proxima_etapa(etapa)
     gate_ref = gate_status(prox, docs) if prox else gate_status(etapa, docs)
     itens = gate_ref["itens"]
+    # Próxima ação = documento faltante; se os docs estão ok mas falta a AÇÃO
+    # (data do Levantamento / consultores), a próxima ação passa a ser essa.
+    proxima = next((i for i in itens if not i["ok"]), None)
+    acao_ok = acao_entrada_ok(prox, d) if prox else True
+    if proxima is None and prox and not acao_ok:
+        chave, label = ACAO_ENTRADA[prox]
+        proxima = {"tipo": "acao:" + chave, "label": label, "ok": False}
     return {
         "stepper": stepper, "fase": MACRO_FASES[cur], "etapa": etapa,
         "go_live": d.get("data_uso_oficial") or "", "atraso": atraso,
         "horas_cob": cob, "horas_bon": bon, "horas_total": cob + bon,
         "docs_ok": sum(1 for i in itens if i["ok"]), "docs_total": len(itens),
-        "proxima": next((i for i in itens if not i["ok"]), None),
-        "prox_etapa": prox, "avancar_ok": bool(prox) and gate_ref["ok"],
+        "proxima": proxima,
+        "prox_etapa": prox, "avancar_ok": bool(prox) and gate_ref["ok"] and acao_ok,
     }

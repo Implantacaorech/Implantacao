@@ -146,6 +146,14 @@
     <button class="btn primario" type="button" onclick="aba('t-execucao')">
       <svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> Processar Levantamento
     </button>
+  {% elif cab.proxima.tipo == 'acao:data_levantamento' %}
+    <a class="btn primario" href="{{ url_for('projeto_agendar', pid=p.id) }}">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Agendar Levantamento
+    </a>
+  {% elif cab.proxima.tipo == 'acao:consultores' %}
+    <a class="btn primario" href="{{ url_for('projeto_consultores', pid=p.id) }}">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg> Designar Consultores
+    </a>
   {% endif %}
 </div>
 {% elif cab.prox_etapa %}
