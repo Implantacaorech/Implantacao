@@ -180,6 +180,23 @@ textarea{width:100%;resize:vertical}
 .badge-sit[data-s="Concluído"]{background:var(--ok-bg);color:var(--ok)}
 .linha-proj{cursor:pointer}
 .linha-proj:hover{background:var(--surface-2)}
+/* Kanban por fase (carteira) */
+.vista-toggle{display:inline-flex;gap:0}
+.vista-toggle .btn{margin:0;border-radius:0}
+.vista-toggle .btn:first-child{border-radius:var(--r-sm) 0 0 var(--r-sm)}
+.vista-toggle .btn:last-child{border-radius:0 var(--r-sm) var(--r-sm) 0;border-left:none}
+.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px;align-items:start}
+.kan-col{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-lg);padding:10px}
+.kan-head{display:flex;align-items:center;justify-content:space-between;margin:2px 4px 9px;font-weight:600;color:var(--navy);font-size:.9rem}
+.kan-head .cnt{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:0 8px;font-size:.74rem;color:var(--muted);font-weight:700}
+.kan-card{display:block;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px;margin-bottom:8px;color:var(--ink);box-shadow:var(--sh-1);transition:.14s}
+.kan-card:hover{border-color:var(--accent);box-shadow:var(--sh-2);text-decoration:none;transform:translateY(-1px)}
+.kan-card .cli{font-weight:600;display:flex;justify-content:space-between;gap:6px;align-items:center}
+.kan-card .num{color:var(--muted);font-weight:400;font-size:.8rem}
+.kan-card .meta{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:.78rem;margin-top:7px}
+.kan-vazio{color:var(--faint);font-size:.8rem;text-align:center;padding:8px 0}
+@media (max-width:980px){.kanban{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:560px){.kanban{grid-template-columns:1fr}}
 
 /* Painel Coordenação */
 .kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:14px 0}
