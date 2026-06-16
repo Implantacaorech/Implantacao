@@ -229,6 +229,37 @@ def _notificar(pid, emails, assunto, corpo):
         s.commit()
 
 
+def _emails_coordenacao():
+    em = [u["login"] for u in db.usuarios_por_perfil("ADM") + db.usuarios_por_perfil("Coordenador") if u["login"]]
+    return em or _digest_destinos()
+
+
+_EVT_MSG = {
+    "fechamento":      ("Novo fechamento — %s", "Novo processo de implantação recebido (%s). Designe o GCI do Levantamento."),
+    "levantamento_ok": ("Levantamento concluído — %s", "O Levantamento de %s foi concluído; siga para o Projeto."),
+    "projeto_ok":      ("Projeto gerado — %s", "O Projeto de %s foi gerado. Designe os Consultores da implantação."),
+    "cronograma_ok":   ("Cronograma concluído — %s", "O Cronograma de %s foi concluído."),
+    "checklist_ok":    ("Check-list concluído — %s", "O Check-list de %s foi concluído."),
+    "termo_ok":        ("Termo de Encerramento — %s", "O Termo de Encerramento de %s foi gerado."),
+    "encerrado":       ("Implantação encerrada — %s", "A implantação de %s foi encerrada."),
+}
+_EVT_DOC = {"levantamento": "levantamento_ok", "cronograma": "cronograma_ok",
+            "checklist": "checklist_ok", "termo": "termo_ok"}
+
+
+def _notificar_evento(pid, evento, proj=None):
+    """Dispara a notificação padrão (à Coordenação) de um evento do fluxo."""
+    if not evento or evento not in _EVT_MSG:
+        return
+    if proj is None:
+        with db.Session() as s:
+            p = s.get(db.Projeto, pid)
+            proj = db.to_dict(p) if p else {}
+    cli = proj.get("cliente", "")
+    assunto, corpo = _EVT_MSG[evento]
+    _notificar(pid, _emails_coordenacao(), assunto % cli, (corpo % cli) + "\n\n— Painel de Implantação")
+
+
 @app.route("/")
 def home():
     try:
@@ -535,6 +566,8 @@ def projeto_ficha(pid):
             if p.situacao != sit_old:
                 db.registrar_evento(s, pid, "etapa", "Situação: %s → %s" % (sit_old, p.situacao), _autor())
             s.commit()
+            if p.situacao == "Concluído" and sit_old != "Concluído":
+                _notificar_evento(pid, "encerrado")
             docs = [db.to_dict(x) for x in s.query(db.Documento).filter_by(projeto_id=pid).all()]
             g = db.gate_status(p.etapa, docs)
             if not g["ok"]:
@@ -611,6 +644,7 @@ def projeto_gerar_pendentes(pid):
                                     "Gerou %s (%s)" % (os.path.basename(path), it["tipo"]), _autor())
                 s.commit()
             gerados += 1
+            _notificar_evento(pid, _EVT_DOC.get(it["tipo"]), proj)
     aviso = None if gerados else "Nada a gerar automaticamente (o pendente pode ser o Projeto, que precisa do Mapeamento preenchido)."
     return redirect(url_for("projeto_ficha", pid=pid, salvo=1, aviso=aviso))
 
@@ -635,6 +669,7 @@ def projeto_gerar(pid, tipo):
             db.registrar_evento(s, pid, "documento",
                                 "Gerou %s (%s)" % (os.path.basename(path), tipo), _autor())
             s.commit()
+        _notificar_evento(pid, _EVT_DOC.get(tipo), proj)
     return redirect(url_for("projeto_ficha", pid=pid))
 
 
@@ -663,6 +698,7 @@ def projeto_gerar_projeto(pid):
             db.registrar_evento(s, pid, "documento",
                                 "Gerou %s (projeto, pelo Mapeamento)" % os.path.basename(proj_path), _autor())
             s.commit()
+        _notificar_evento(pid, "projeto_ok")
     return redirect(url_for("projeto_ficha", pid=pid))
 
 
@@ -808,6 +844,7 @@ def fluxo_criar():
             db.registrar_evento(s, pid, "nota", "Técnico(s) da implantação: %s" % tecnicos, _autor())
         s.commit()
         proj = db.to_dict(p)
+    _notificar_evento(pid, "fechamento", proj)
 
     caminhos, nomes = [], []
     for tipo in gerar:
