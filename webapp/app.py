@@ -68,11 +68,11 @@ db.init_db()   # cria o banco do hub (Projetos por Cliente) se não existir
 VERSAO = "1.1 · jun/2026"
 
 # Quem pode GERAR cada documento (por perfil)
-_GERA = {"levantamento": ("ADM", "Coordenador", "GCI"),
-         "projeto": ("ADM", "Coordenador", "GCI"),
-         "checklist": ("ADM", "Coordenador", "Consultor"),
-         "cronograma": ("ADM", "Coordenador", "Consultor"),
-         "termo": ("ADM", "Coordenador", "Consultor")}
+_GERA = {"levantamento": ("ADM", "Coordenador", "Administrativo", "GCI"),
+         "projeto": ("ADM", "Coordenador", "Administrativo", "GCI"),
+         "checklist": ("ADM", "Coordenador", "Administrativo", "Consultor"),
+         "cronograma": ("ADM", "Coordenador", "Administrativo", "Consultor"),
+         "termo": ("ADM", "Coordenador", "Administrativo", "Consultor")}
 
 
 def _perfil():
@@ -94,7 +94,7 @@ def _e_adm():
 
 
 def pode_designar():
-    return (not _perfil()) or _perfil() in ("ADM", "Coordenador")
+    return (not _perfil()) or _perfil() in ("ADM", "Coordenador", "Administrativo")
 
 
 def pode_gerar(tipo):
@@ -105,7 +105,7 @@ def pode_gerar(tipo):
 # Visibilidade por área do menu (e bloqueio no backend)
 #  - gestao  = Coordenação + Atividade  -> ADM, Coordenador, GCI
 #  - sistema = Ferramentas + Usuários + Configurações -> só ADM
-_AREA_PERFIS = {"gestao": ("ADM", "Coordenador", "GCI"), "sistema": ("ADM",)}
+_AREA_PERFIS = {"gestao": ("ADM", "Coordenador", "Administrativo", "GCI"), "sistema": ("ADM",)}
 
 
 def pode_ver(area):
@@ -126,8 +126,8 @@ def _casa(nome, campo):
 
 
 def _so_meus(projetos):
-    """Filtro de visão por perfil: ADM/Coordenador veem tudo; GCI vê onde é o GCI;
-    Consultor vê onde é consultor designado."""
+    """Filtro de visão por perfil: ADM/Coordenador/Administrativo veem tudo; GCI vê
+    onde é o GCI; Consultor vê onde é consultor designado."""
     p = _perfil()
     nome = session.get("perfil_nome") or ""
     if p == "GCI" and nome:

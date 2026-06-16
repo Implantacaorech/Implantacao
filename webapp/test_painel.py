@@ -219,11 +219,12 @@ def test_acesso_por_perfil(client):
     h = client.get("/").get_data(as_text=True)
     assert ">Gestão<" not in h and ">Sistema<" not in h
 
-    _login_como(client, "GCI")                 # Operação + Gestão
-    assert client.get("/coordenacao").status_code == 200
-    assert client.get("/usuarios").status_code == 403
-    h = client.get("/").get_data(as_text=True)
-    assert ">Gestão<" in h and ">Sistema<" not in h
+    for papel in ("GCI", "Administrativo"):     # Operação + Gestão, sem Sistema
+        _login_como(client, papel)
+        assert client.get("/coordenacao").status_code == 200
+        assert client.get("/usuarios").status_code == 403
+        h = client.get("/").get_data(as_text=True)
+        assert ">Gestão<" in h and ">Sistema<" not in h
 
     _login_como(client, "ADM")                 # tudo
     assert client.get("/coordenacao").status_code == 200

@@ -3,7 +3,7 @@
 {% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › Usuários</div>{% endblock %}
 {% block conteudo %}
   <h1>👥 Usuários e perfis</h1>
-  <p class="sub">Cadastre os responsáveis. O perfil define o que cada um vê e pode fazer: <strong>ADM</strong> (tudo) · <strong>Coordenador</strong> (designa, vê tudo) · <strong>GCI</strong> (Levantamento/Projeto dos seus) · <strong>Consultor</strong> (Cronograma/Check-list/Termo dos seus).</p>
+  <p class="sub">Cadastre os responsáveis. A hierarquia define o que cada um vê e pode fazer: <strong>ADM</strong> (tudo, inclusive Sistema) · <strong>Coordenador</strong> / <strong>Administrativo</strong> (designam e veem tudo — Operação + Gestão, sem Sistema) · <strong>GCI</strong> (Levantamento/Projeto dos seus) · <strong>Consultor</strong> (Cronograma/Check-list/Termo dos seus).</p>
   {% if salvo %}<div class="resultado ok" style="padding:8px 14px">✅ Salvo.</div>{% endif %}
 
   <div class="painel">

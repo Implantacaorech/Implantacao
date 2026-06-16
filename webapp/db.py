@@ -25,7 +25,7 @@ import _common as C   # noqa: E402
 
 ETAPAS = ["Levantamento", "Projeto", "Cronograma e Check-list", "Encerramento"]
 SITUACOES = ["Em andamento", "Em risco", "Pausado", "Concluído"]
-PERFIS = ["ADM", "Coordenador", "GCI", "Consultor"]
+PERFIS = ["ADM", "Coordenador", "Administrativo", "GCI", "Consultor"]
 
 CAMPOS = ["cliente", "cnpj", "numero_projeto", "ramo", "responsavel", "consultor", "gci",
           "etapa", "situacao", "data_inicio", "data_uso_oficial", "data_encerramento",
