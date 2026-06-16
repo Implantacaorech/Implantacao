@@ -54,6 +54,19 @@
 - [x] **Notificações:** **digest diário por e-mail** (resumo de alertas) + agendador interno (DIGEST_HORA) + botão manual.
 - [ ] *Parcial/adiado:* consolidação ampla das cores em variáveis CSS (baixo ROI × risco); Alembic completo (substituído pela auto-migração).
 
+## 🏛️ Fluxo governado (proposta de estruturação — jun/2026)
+- [x] **F1 — Perfis + permissões:** login por usuário (senha hash), 4 perfis (ADM/Coordenador/GCI/Consultor), gestão de usuários (`/usuarios`, só ADM), permissões por perfil (UI + backend 403), filtro de visão (GCI/Consultor veem os seus).
+- [x] **F2 — 4 etapas:** Levantamento → Projeto → Cronograma e Check-list → Encerramento (gates encadeados + migração automática das etapas antigas).
+- [x] **F3 — Designação:** Coordenador designa GCI e Consultores **por módulo** (selects de usuários) → notifica os designados + timeline.
+- [x] **F4 — Notificações por evento:** os 10 eventos disparam e-mail à Coordenação (fechamento, conclusões de etapa, documentos gerados, encerramento) — usa o envio configurado (Gmail/SMTP).
+- [ ] *Adiado:* "simular visualmente o documento do Projeto" (WYSIWYG) — complexo; hoje é edição por formulário.
+- [ ] *Adiado:* histórico de modificações linha-a-linha dos documentos.
+
+## ✉️ E-mail / Integração Gmail
+- [x] **Feito:** envio pela **API do Gmail (OAuth/HTTPS)** — contorna o bloqueio de SMTP da rede (porta 443). Config → Gmail API.
+- [x] **Feito:** IMAP do Gmail (entrada) funcionando com senha de app; SMTP da rede bloqueado (usar a API).
+- [ ] *Você:* autorizar a API do Gmail (criar credencial OAuth + Autorizar) para o envio sair de verdade.
+
 ## ⚙️ Dependências / pré-requisitos honestos
 - [ ] Acesso ao SICLA/SIGER (API ou banco) para a integração.
 - [ ] Chave da API da IA + teto de custo definido.
