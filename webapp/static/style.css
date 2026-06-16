@@ -43,6 +43,10 @@ h3{color:var(--navy);font-size:1.02rem;font-weight:600}
 .side-link:hover{background:var(--surface-2);text-decoration:none}
 .side-link.on{background:var(--accent-weak);color:var(--accent-700);font-weight:600}
 .side-link .ic{font-size:1.05rem;width:20px;text-align:center;flex:none}
+.svgi{width:18px;height:18px;flex:none;display:inline-block;vertical-align:-3px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.side-link .svgi{width:19px;height:19px}
+.topbar-busca .svgi{width:16px;height:16px;color:var(--faint)}
+.topbar-ico .svgi{width:20px;height:20px;vertical-align:-4px}
 .side-badge{margin-left:auto;background:var(--err-bg);color:var(--err);border-radius:10px;padding:0 7px;font-size:.72rem;font-weight:700}
 .side-rod{color:var(--faint);font-size:.74rem;padding:10px 10px 4px}
 .side-scrim{display:none}

@@ -8,6 +8,19 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+    <symbol id="ic-dashboard" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="8" rx="1"/><rect x="4" y="16" width="6" height="4" rx="1"/><rect x="14" y="12" width="6" height="8" rx="1"/><rect x="14" y="4" width="6" height="4" rx="1"/></symbol>
+    <symbol id="ic-flow" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0 -2.4 5.7"/><path d="M20 4v7h-7"/></symbol>
+    <symbol id="ic-folder" viewBox="0 0 24 24"><path d="M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2"/></symbol>
+    <symbol id="ic-chart" viewBox="0 0 24 24"><path d="M4 19v-5"/><path d="M10 19v-10"/><path d="M16 19v-7"/><path d="M3 20h18"/></symbol>
+    <symbol id="ic-activity" viewBox="0 0 24 24"><path d="M3 12h4l3 8l4 -16l3 8h4"/></symbol>
+    <symbol id="ic-tools" viewBox="0 0 24 24"><path d="M4 7h8"/><path d="M18 7h2"/><circle cx="15" cy="7" r="2.2"/><path d="M4 17h8"/><path d="M16 17h4"/><circle cx="13" cy="17" r="2.2"/></symbol>
+    <symbol id="ic-users" viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 21v-1a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v1"/><path d="M16 3.5a4 4 0 0 1 0 7"/><path d="M21 21v-1a4 4 0 0 0 -3 -3.85"/></symbol>
+    <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="M21 21l-6 -6"/></symbol>
+    <symbol id="ic-bell" viewBox="0 0 24 24"><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></symbol>
+    <symbol id="ic-logout" viewBox="0 0 24 24"><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/><path d="M9 12h12"/><path d="M18 9l3 3l-3 3"/></symbol>
+  </defs></svg>
+
   <div class="app" id="app">
     <div class="side-scrim" onclick="toggleSide(false)"></div>
     <aside class="side">
@@ -17,15 +30,15 @@
       </a>
       <nav class="side-nav">
         <div class="side-grp">Operação</div>
-        <a class="side-link {{ 'on' if request.endpoint=='home' }}" href="{{ url_for('home') }}"><span class="ic">🏠</span>Visão geral</a>
-        <a class="side-link {{ 'on' if request.endpoint in ('fluxo_inicio','fluxo_criar') }}" href="{{ url_for('fluxo_inicio') }}"><span class="ic">🔄</span>Fluxo</a>
-        <a class="side-link {{ 'on' if request.endpoint in ('projetos','projeto_ficha','projeto_novo','projeto_designar','projeto_cronograma','projeto_checklist') }}" href="{{ url_for('projetos') }}"><span class="ic">📁</span>Projetos</a>
+        <a class="side-link {{ 'on' if request.endpoint=='home' }}" href="{{ url_for('home') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg>Visão geral</a>
+        <a class="side-link {{ 'on' if request.endpoint in ('fluxo_inicio','fluxo_criar') }}" href="{{ url_for('fluxo_inicio') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg>Fluxo</a>
+        <a class="side-link {{ 'on' if request.endpoint in ('projetos','projeto_ficha','projeto_novo','projeto_designar','projeto_cronograma','projeto_checklist') }}" href="{{ url_for('projetos') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-folder"/></svg>Projetos</a>
         <div class="side-grp">Gestão</div>
-        <a class="side-link {{ 'on' if request.endpoint=='coordenacao' }}" href="{{ url_for('coordenacao') }}"><span class="ic">📊</span>Coordenação{% if n_alertas %}<span class="side-badge">{{ n_alertas }}</span>{% endif %}</a>
-        <a class="side-link {{ 'on' if request.endpoint=='atividade' }}" href="{{ url_for('atividade') }}"><span class="ic">📈</span>Atividade</a>
+        <a class="side-link {{ 'on' if request.endpoint=='coordenacao' }}" href="{{ url_for('coordenacao') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-chart"/></svg>Coordenação{% if n_alertas %}<span class="side-badge">{{ n_alertas }}</span>{% endif %}</a>
+        <a class="side-link {{ 'on' if request.endpoint=='atividade' }}" href="{{ url_for('atividade') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-activity"/></svg>Atividade</a>
         <div class="side-grp">Sistema</div>
-        <a class="side-link" href="{{ url_for('home') }}#ferramentas"><span class="ic">🧰</span>Ferramentas</a>
-        {% if e_adm %}<a class="side-link {{ 'on' if request.endpoint=='usuarios' }}" href="{{ url_for('usuarios') }}"><span class="ic">👥</span>Usuários</a>{% endif %}
+        <a class="side-link" href="{{ url_for('home') }}#ferramentas"><svg class="svgi" aria-hidden="true"><use href="#ic-tools"/></svg>Ferramentas</a>
+        {% if e_adm %}<a class="side-link {{ 'on' if request.endpoint=='usuarios' }}" href="{{ url_for('usuarios') }}"><svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg>Usuários</a>{% endif %}
       </nav>
       <div class="side-rod">{% if versao %}v{{ versao }}{% endif %}</div>
     </aside>
@@ -35,15 +48,15 @@
         <button class="side-toggle" type="button" onclick="toggleSide()" aria-label="Abrir menu">☰</button>
         <div class="topbar-title">{{ self.titulo() }}</div>
         <form class="topbar-busca" method="get" action="{{ url_for('projetos') }}" role="search">
-          <span class="ic" aria-hidden="true">🔎</span>
+          <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>
           <input name="q" placeholder="Buscar cliente…" aria-label="Buscar cliente">
         </form>
-        <a class="topbar-ico" href="{{ url_for('coordenacao') }}" title="Alertas" aria-label="Alertas">🔔{% if n_alertas %}<span class="topbar-badge">{{ n_alertas }}</span>{% endif %}</a>
+        <a class="topbar-ico" href="{{ url_for('coordenacao') }}" title="Alertas" aria-label="Alertas"><svg class="svgi" aria-hidden="true"><use href="#ic-bell"/></svg>{% if n_alertas %}<span class="topbar-badge">{{ n_alertas }}</span>{% endif %}</a>
         <a class="topbar-perfil" href="{{ url_for('perfil') }}">
           <span class="avatar">{{ (perfil_nome_atual or perfil_atual or 'P')[:2]|upper }}</span>
           <span class="topbar-perfil-txt">{{ perfil_nome_atual or perfil_atual or 'Perfil' }}{% if perfil_atual %}<small>{{ perfil_atual }}</small>{% endif %}</span>
         </a>
-        {% if login_ativo %}<a class="topbar-ico" href="{{ url_for('logout') }}" title="Sair" aria-label="Sair">🚪</a>{% endif %}
+        {% if login_ativo %}<a class="topbar-ico" href="{{ url_for('logout') }}" title="Sair" aria-label="Sair"><svg class="svgi" aria-hidden="true"><use href="#ic-logout"/></svg></a>{% endif %}
       </header>
       <main class="conteudo">
         {% block migalha %}{% endblock %}
