@@ -47,7 +47,7 @@
     </div>
     {% if foco.cab.proxima %}
     <div class="proxima" style="margin-bottom:0">
-      <span class="ic">⚠️</span>
+      <svg class="svgi" style="width:18px;height:18px;color:var(--warn);flex:none" aria-hidden="true"><use href="#ic-bell"/></svg>
       <div class="txt">
         <div class="titulo">Próxima ação: {{ foco.cab.proxima.label }}</div>
         <p class="dica" style="margin:2px 0 0">Acesse a ficha para executar.</p>
@@ -58,7 +58,7 @@
     </div>
     {% elif foco.cab.prox_etapa %}
     <div class="proxima ok" style="margin-bottom:0">
-      <span class="ic">✅</span>
+      <svg class="svgi" style="width:18px;height:18px;color:var(--ok);flex:none" aria-hidden="true"><use href="#ic-check-circle"/></svg>
       <div class="txt">
         <div class="titulo">Fase liberada — pronto para avançar para {{ foco.cab.prox_etapa }}.</div>
       </div>
@@ -68,9 +68,11 @@
     </div>
     {% else %}
     <div class="proxima ok" style="margin-bottom:0">
-      <span class="ic">🏁</span>
+      <svg class="svgi" style="width:18px;height:18px;color:var(--ok);flex:none" aria-hidden="true"><use href="#ic-check-circle"/></svg>
       <div class="txt"><div class="titulo">Projeto na fase final de encerramento.</div></div>
-      <a class="btn" href="{{ url_for('projeto_ficha', pid=foco.p.id) }}">Abrir ficha →</a>
+      <a class="btn" href="{{ url_for('projeto_ficha', pid=foco.p.id) }}">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Abrir ficha
+      </a>
     </div>
     {% endif %}
   </div>
@@ -95,7 +97,7 @@
         {% endfor %}
       </ul>
       {% else %}
-      <p class="dica">Nenhuma ação pendente. Tudo encaminhado. 👏</p>
+      <p class="dica">Nenhuma ação pendente. Tudo encaminhado.</p>
       {% endif %}
     </div>
     <div class="painel" style="margin:0">
@@ -114,7 +116,7 @@
       </ul>
       <a class="dica" href="{{ url_for('coordenacao') }}" style="display:inline-block;margin-top:8px">Ver tudo no Painel de Coordenação →</a>
       {% else %}
-      <p class="dica">Sem alertas — carteira no prazo. ✅</p>
+      <p class="dica" style="display:flex;align-items:center;gap:6px"><svg class="svgi" style="width:12px;height:12px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg> Sem alertas — carteira no prazo.</p>
       {% endif %}
     </div>
   </div>

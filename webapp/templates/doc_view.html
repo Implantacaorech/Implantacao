@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% block titulo %}Pré-visualização — {{ d.arquivo }}{% endblock %}
-{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('projetos') }}">Projetos</a> › <a href="{{ url_for('projeto_ficha', pid=pid) }}">{{ p.cliente }}</a> › Pré-visualização</div>{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a><svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg><a href="{{ url_for('projetos') }}">Projetos</a><svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg><a href="{{ url_for('projeto_ficha', pid=pid) }}">{{ p.cliente }}</a><svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>Pré-visualização</div>{% endblock %}
 {% block conteudo %}
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-    <h1 style="margin:0">👁 {{ d.arquivo }}</h1>
+    <h1 style="margin:0;display:flex;align-items:center;gap:8px"><svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-search"/></svg> {{ d.arquivo }}</h1>
     <span style="background:#eef2ff;color:#1f4e78;padding:3px 10px;border-radius:999px;font-size:.78rem;font-weight:700">{{ d.tipo }}</span>
     <span style="flex:1"></span>
-    <a class="btn" href="{{ url_for('download', path=d.caminho) }}">⬇️ Baixar</a>
+    <a class="btn" href="{{ url_for('download', path=d.caminho) }}"><svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> Baixar</a>
     <a class="btn" href="{{ url_for('projeto_ficha', pid=pid) }}">← Voltar à ficha</a>
   </div>
   <p class="dica" style="margin-top:0">Pré-visualização do documento na tela (o arquivo oficial é o do botão “Baixar”).</p>

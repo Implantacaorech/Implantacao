@@ -3,7 +3,7 @@
 {% block migalha %}
 <div class="migalha">
   <a href="{{ url_for('home') }}">Início</a>
-  <svg class="svgi" style="width:12px;height:12px;color:var(--faint)" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
   Carteira de Projetos
 </div>
 {% endblock %}
@@ -30,7 +30,7 @@
   {# ===== FILTROS E TOGGLE DE VISTA ===== #}
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center;padding:12px 16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-1)">
     <div style="display:flex;align-items:center;gap:7px;flex:1;min-width:180px;background:var(--surface-2);border:1.5px solid var(--line);border-radius:22px;padding:6px 14px">
-      <svg class="svgi" style="width:15px;height:15px;color:var(--faint)" aria-hidden="true"><use href="#ic-search"/></svg>
+      <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>
       <input id="busca" placeholder="Buscar cliente…" oninput="filtra()" style="border:none;background:none;padding:2px 0;font:inherit;font-size:.9rem;width:100%">
     </div>
     <select id="fstatus" onchange="filtra()" style="padding:8px 12px;border:1.5px solid var(--line-2);border-radius:var(--r-sm);font:inherit;font-size:.88rem;width:auto">
@@ -43,10 +43,10 @@
     </select>
     <div class="vista-toggle">
       <button class="btn" id="bt-kanban" type="button" onclick="setVista('kanban')">
-        <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-layers"/></svg> Kanban
+        <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg> Kanban
       </button>
       <button class="btn" id="bt-tabela" type="button" onclick="setVista('tabela')">
-        <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-table"/></svg> Tabela
+        <svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg> Tabela
       </button>
     </div>
   </div>
@@ -72,7 +72,7 @@
           </div>
           <div class="meta">
             <span>{{ p.consultor or '— sem consultor —' }}</span>
-            <span>{% if p.data_uso_oficial %}🏁 {{ p.data_uso_oficial }}{% endif %}</span>
+            <span>{% if p.data_uso_oficial %}<svg class="svgi" style="width:11px;height:11px;color:var(--muted)" aria-hidden="true"><use href="#ic-clock"/></svg> {{ p.data_uso_oficial }}{% endif %}</span>
           </div>
         </a>
         {% endfor %}
@@ -164,7 +164,7 @@
 
   {% else %}
   <div class="painel" style="text-align:center;padding:40px 24px;margin-top:20px">
-    <div style="font-size:3rem;margin-bottom:12px">📁</div>
+    <div style="margin-bottom:12px"><svg class="svgi" style="width:40px;height:40px;color:var(--faint)" aria-hidden="true"><use href="#ic-layers"/></svg></div>
     <h3 style="color:var(--navy);margin:0 0 8px">Nenhum projeto ainda</h3>
     <p class="dica" style="margin:0 0 20px">Comece criando o primeiro projeto de implantação.</p>
     <a class="btn primario" href="{{ url_for('fluxo_inicio') }}">

@@ -2,9 +2,9 @@
 {% block titulo %}Config — E-mail{% endblock %}
 {% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › Configurar e-mail</div>{% endblock %}
 {% block conteudo %}
-  <h1>✉️ E-mail interno (SMTP)</h1>
+  <h1 style="display:flex;align-items:center;gap:10px"><svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-mail"/></svg> E-mail interno (SMTP)</h1>
   <p class="sub">Conta de envio da Rech. A senha fica salva só nesta máquina (não é versionada).</p>
-  {% if salvo %}<div class="resultado ok" style="padding:10px 16px">✅ Configuração salva.{% if configurado %} Pronto para enviar.{% endif %}</div>{% endif %}
+  {% if salvo %}<div class="resultado ok" style="padding:10px 16px;display:flex;align-items:center;gap:8px"><svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Configuração salva.{% if configurado %} Pronto para enviar.{% endif %}</div>{% endif %}
   <form method="post" class="painel">
     <div class="grade2">
       <label class="campo"><span>Servidor SMTP (host)</span><input name="host" value="{{ cfg.host or '' }}" placeholder="smtp.rech.com.br"></label>
@@ -14,8 +14,16 @@
       <label class="campo"><span>Remetente (From)</span><input name="remetente" value="{{ cfg.remetente or '' }}" placeholder="implantacao@rech.com.br"></label>
       <label class="campo" style="align-self:end"><span><input type="checkbox" name="use_tls" {{ 'checked' if cfg.use_tls }}> Usar TLS (STARTTLS)</span></label>
     </div>
-    <button class="btn primario" type="submit">💾 Salvar</button>
+    <button class="btn primario" type="submit">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvar
+    </button>
   </form>
-  <p class="dica">Status: {{ '🟢 configurado' if configurado else '🔴 incompleto (informe host e remetente)' }}.</p>
+  <p class="dica" style="display:flex;align-items:center;gap:6px">
+    {% if configurado %}
+      <svg class="svgi" style="width:12px;height:12px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg> Configurado
+    {% else %}
+      <svg class="svgi" style="width:12px;height:12px;color:var(--err)" aria-hidden="true"><use href="#ic-bell"/></svg> Incompleto (informe host e remetente)
+    {% endif %}
+  </p>
   <a class="voltar" href="{{ url_for('projetos') }}">← Voltar</a>
 {% endblock %}

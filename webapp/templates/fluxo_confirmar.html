@@ -1,38 +1,106 @@
 {% extends "base.html" %}
 {% block titulo %}Confirmar fluxo{% endblock %}
-{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('fluxo_inicio') }}">Fluxo</a> › Confirmar</div>{% endblock %}
+{% block migalha %}
+<div class="migalha">
+  <a href="{{ url_for('home') }}">Início</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <a href="{{ url_for('fluxo_inicio') }}">Fluxo</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  Confirmar
+</div>
+{% endblock %}
 {% block conteudo %}
-  <h1>✅ Confirmar e criar o fluxo</h1>
-  <p class="sub">Extraído de: <strong>{{ fonte }}</strong>{% if assunto %} — “{{ assunto }}”{% endif %}. Confira os dados, designe os 2 responsáveis e crie.</p>
+  <h1 style="display:flex;align-items:center;gap:10px">
+    <svg class="svgi" style="width:24px;height:24px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+    Confirmar e criar o fluxo
+  </h1>
+  <p class="sub">Extraído de: <strong>{{ fonte }}</strong>{% if assunto %} — "{{ assunto }}"{% endif %}. Confira os dados, designe os responsáveis e crie.</p>
+
   <form method="post" action="{{ url_for('fluxo_criar') }}" class="painel">
-    <div class="grade2">
-      <label class="campo"><span>Cliente (Razão Social) *</span><input name="cliente" value="{{ proj.cliente }}" required></label>
-      <label class="campo"><span>CNPJ</span><input name="cnpj" value="{{ proj.cnpj }}"></label>
-      <label class="campo"><span>Ramo</span><input name="ramo" value="{{ proj.ramo }}"></label>
-      <label class="campo"><span>Nº do projeto</span><input name="numero_projeto" value="{{ proj.numero_projeto }}"></label>
-      <label class="campo"><span>Módulos (siglas)</span><input name="modulos" value="{{ proj.modulos }}"></label>
-      <label class="campo"><span>Horas cobradas</span><input name="horas_cobradas" value="{{ proj.horas_cobradas }}"></label>
-      <label class="campo"><span>Horas bonificadas</span><input name="horas_bonificadas" value="{{ proj.horas_bonificadas }}"></label>
-      <label class="campo"><span>Contatos do cliente</span><input name="contatos" value="{{ proj.contatos }}"></label>
-    </div>
-    <label class="campo"><span>Observações</span><textarea name="observacoes" rows="2">{{ proj.observacoes }}</textarea></label>
 
-    <h3 style="color:var(--navy)">Os 2 pontos manuais</h3>
+    {# ===== SEÇÃO: IDENTIFICAÇÃO ===== #}
+    <h4 style="color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px;font-weight:700">Identificação do cliente</h4>
     <div class="grade2">
-      <label class="campo"><span>👤 GCI do Levantamento</span><input name="consultor" placeholder="nome do GCI"></label>
-      <label class="campo"><span>👷 Técnico(s) da implantação</span><input name="tecnicos" placeholder="nomes, separados por vírgula"></label>
+      <label class="campo campo-obrig"><span>Razão Social</span><input name="cliente" value="{{ proj.cliente }}" required placeholder="Nome completo da empresa"></label>
+      <label class="campo"><span>CNPJ</span><input name="cnpj" value="{{ proj.cnpj }}" placeholder="00.000.000/0001-00"></label>
+      <label class="campo"><span>Ramo de Atividade</span><input name="ramo" value="{{ proj.ramo }}" placeholder="Ex.: Indústria, Comércio…"></label>
+      <label class="campo"><span>Nº do Projeto</span><input name="numero_projeto" value="{{ proj.numero_projeto }}" placeholder="Ex.: 2025-0042"></label>
+      <label class="campo"><span>Nº da Proposta</span><input name="numero_proposta" value="{{ proj.numero_proposta if proj.numero_proposta is defined else '' }}" placeholder="Referência comercial"></label>
     </div>
-    <label class="campo"><span>✉️ E-mails dos responsáveis (recebem o pacote + resumo)</span>
-      <input name="emails_responsaveis" placeholder="gci@rech.com.br, tecnico@rech.com.br"></label>
 
-    <h3 style="color:var(--navy)">Pacote inicial a gerar</h3>
-    <div style="display:flex;gap:18px;flex-wrap:wrap">
-      <label><input type="checkbox" name="gerar" value="levantamento" checked> 📄 Mapeamento</label>
-      <label><input type="checkbox" name="gerar" value="checklist" checked> 📊 Check List</label>
-      <label><input type="checkbox" name="gerar" value="cronograma" checked> 📅 Cronograma</label>
+    {# ===== SEÇÃO: CONTATO PRINCIPAL ===== #}
+    <h4 style="color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 12px;font-weight:700">Contato principal do cliente</h4>
+    <div class="grade2">
+      <label class="campo"><span>Nome do Contato</span><input name="contato_nome" value="{{ proj.contato_nome if proj.contato_nome is defined else '' }}" placeholder="Nome completo"></label>
+      <label class="campo"><span>E-mail do Contato</span><input type="email" name="contato_email" value="{{ proj.contato_email if proj.contato_email is defined else '' }}" placeholder="email@empresa.com.br"></label>
+      <label class="campo"><span>Telefone do Contato</span><input name="contato_tel" value="{{ proj.contato_tel if proj.contato_tel is defined else '' }}" placeholder="(00) 00000-0000"></label>
     </div>
-    <p class="dica">Ao criar: cria a ficha, gera o pacote, registra tudo na timeline e envia o e-mail aos responsáveis com os anexos + resumo do projeto.</p>
-    <button class="btn primario" type="submit" style="margin-top:8px">🚀 Criar fluxo e enviar pacote</button>
-    <a class="btn" href="{{ url_for('fluxo_inicio') }}">Cancelar</a>
+    <label class="campo"><span>Outros Contatos / Stakeholders</span>
+      <input name="contatos" value="{{ proj.contatos }}" placeholder="Demais contatos relevantes do projeto">
+    </label>
+
+    {# ===== SEÇÃO: IMPLANTAÇÃO ===== #}
+    <h4 style="color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 12px;font-weight:700">Dados da implantação</h4>
+    <div class="grade2">
+      <label class="campo campo-obrig"><span>Módulos Contratados (siglas)</span><input name="modulos" value="{{ proj.modulos }}" required placeholder="FAT, CTB, FIN, RH…"></label>
+      <label class="campo campo-obrig"><span>Horas Cobradas</span><input name="horas_cobradas" value="{{ proj.horas_cobradas }}" required placeholder="Ex.: 120"></label>
+      <label class="campo"><span>Horas Bonificadas</span><input name="horas_bonificadas" value="{{ proj.horas_bonificadas }}" placeholder="Ex.: 20"></label>
+      <label class="campo"><span>Data do Levantamento</span><input type="date" name="data_levantamento" value="{{ proj.data_levantamento if proj.data_levantamento is defined else '' }}"></label>
+      <label class="campo"><span>Go-live Previsto</span><input type="date" name="data_uso_oficial" value="{{ proj.data_uso_oficial if proj.data_uso_oficial is defined else '' }}"></label>
+    </div>
+    <label class="campo"><span>Observações</span><textarea name="observacoes" rows="2" placeholder="Informações adicionais, restrições, acordos especiais…">{{ proj.observacoes }}</textarea></label>
+
+    {# ===== SEÇÃO: RESPONSÁVEIS ===== #}
+    <h4 style="color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 12px;font-weight:700">Responsáveis internos</h4>
+    <div class="grade2">
+      <label class="campo campo-obrig">
+        <span>GCI do Levantamento</span>
+        <input name="consultor" placeholder="Nome do GCI responsável" required>
+        <small>Responsável pelo levantamento de processos</small>
+      </label>
+      <label class="campo">
+        <span>Técnico(s) da Implantação</span>
+        <input name="tecnicos" placeholder="Nomes separados por vírgula">
+        <small>Consultores que executarão a implantação</small>
+      </label>
+    </div>
+    <label class="campo">
+      <span>E-mails dos responsáveis</span>
+      <input name="emails_responsaveis" placeholder="gci@rech.com.br, tecnico@rech.com.br">
+      <small>Receberão o pacote de documentos + resumo do projeto por e-mail</small>
+    </label>
+
+    {# ===== SEÇÃO: PACOTE INICIAL ===== #}
+    <h4 style="color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 12px;font-weight:700">Pacote inicial a gerar</h4>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 16px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem">
+        <input type="checkbox" name="gerar" value="levantamento" checked>
+        <svg class="svgi svgi-md" style="color:var(--brand)" aria-hidden="true"><use href="#ic-file"/></svg>
+        Mapeamento de Processos
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem">
+        <input type="checkbox" name="gerar" value="checklist" checked>
+        <svg class="svgi svgi-md" style="color:var(--brand)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+        Check List
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem">
+        <input type="checkbox" name="gerar" value="cronograma" checked>
+        <svg class="svgi svgi-md" style="color:var(--brand)" aria-hidden="true"><use href="#ic-clock"/></svg>
+        Cronograma
+      </label>
+    </div>
+    <p class="dica" style="margin-top:8px">
+      <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-bulb"/></svg>
+      Ao criar: cria a ficha, gera o pacote, registra tudo na timeline e envia o e-mail aos responsáveis com os anexos + resumo do projeto.
+    </p>
+
+    <div style="display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
+      <button class="btn primario" type="submit">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Criar fluxo e enviar pacote
+      </button>
+      <a class="btn" href="{{ url_for('fluxo_inicio') }}">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-x"/></svg> Cancelar
+      </a>
+    </div>
   </form>
 {% endblock %}

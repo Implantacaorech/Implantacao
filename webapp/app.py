@@ -766,7 +766,8 @@ def projeto_ficha(pid):
                            situacoes=db.SITUACOES, salvo=request.args.get("salvo"),
                            erro=request.args.get("erro"), aviso=request.args.get("aviso"),
                            gate=gate, doc_tipos=db.DOC_LABELS, eventos=eventos,
-                           cab=db.cabecalho(d, docs), designacoes=db.designacoes_do_projeto(pid))
+                           cab=db.cabecalho(d, docs), designacoes=db.designacoes_do_projeto(pid),
+                           pode_designar=pode_designar(), pode_gerar=pode_gerar)
 
 
 @app.route("/projetos/<int:pid>/excluir", methods=["POST"])
@@ -792,22 +793,26 @@ def projeto_avancar(pid):
         proj = db.to_dict(p)
         docs = [db.to_dict(x) for x in s.query(db.Documento).filter_by(projeto_id=pid).all()]
         prox = db.proxima_etapa(p.etapa)
-        docs_ok = bool(prox) and db.gate_status(prox, docs)["ok"]
-        acao_ok = (not prox) or db.acao_entrada_ok(prox, proj)
-        if prox and docs_ok and acao_ok:
+        # Usa pode_avancar para validar campos + docs + ações
+        ok, bloqueios = db.pode_avancar(p.etapa, proj, docs)
+        if ok and prox:
             old = p.etapa
             p.etapa = prox
             db.registrar_evento(s, pid, "etapa", "Avançou de fase: %s → %s" % (old, prox), _autor())
             s.commit()
             return redirect(url_for("projeto_ficha", pid=pid, salvo=1))
-        if prox and docs_ok and not acao_ok:   # falta a AÇÃO -> leva à página dela
-            req = (db.ACAO_ENTRADA.get(prox) or (None,))[0]
-            destino = {"data_levantamento": "projeto_agendar",
-                       "consultores": "projeto_consultores"}.get(req)
+        # Redireciona para ação obrigatória se for o único bloqueio
+        if prox:
+            acao_ok = db.acao_entrada_ok(prox, proj)
+            if not acao_ok:
+                req = (db.ACAO_ENTRADA.get(prox) or (None,))[0]
+                destino = {"data_levantamento": "projeto_agendar",
+                           "consultores_designacao": "projeto_designar",
+                           "consultores": "projeto_designar"}.get(req)
     if destino:
         return redirect(url_for(destino, pid=pid))
-    return redirect(url_for("projeto_ficha", pid=pid,
-                            aviso="Não dá para avançar: faltam itens obrigatórios da próxima etapa."))
+    aviso_msg = "Não é possível avançar: " + "; ".join(bloqueios) if bloqueios else "Faltam itens obrigatórios."
+    return redirect(url_for("projeto_ficha", pid=pid, aviso=aviso_msg))
 
 
 @app.route("/projetos/<int:pid>/gerar_pendentes", methods=["POST"])
@@ -1122,8 +1127,11 @@ def fluxo_criar():
     import mailer
     f = request.form
     proj_fields = {k: (f.get(k) or "").strip() for k in
-                   ("cliente", "cnpj", "ramo", "numero_projeto", "modulos",
-                    "horas_cobradas", "horas_bonificadas", "contatos", "observacoes")}
+                   ("cliente", "cnpj", "ramo", "numero_projeto", "numero_proposta",
+                    "modulos", "horas_cobradas", "horas_bonificadas",
+                    "contato_nome", "contato_email", "contato_tel",
+                    "contatos", "observacoes",
+                    "data_levantamento", "data_uso_oficial")}
     gci = (f.get("consultor") or "").strip()
     tecnicos = (f.get("tecnicos") or "").strip()
     gerar = f.getlist("gerar") or ["levantamento", "checklist", "cronograma"]

@@ -28,10 +28,42 @@ ETAPAS = ["Agendamento", "Levantamento", "Projeto", "Designação",
 SITUACOES = ["Em andamento", "Em risco", "Pausado", "Concluído"]
 PERFIS = ["ADM", "Coordenador", "Administrativo", "GCI", "Consultor"]
 
-CAMPOS = ["cliente", "cnpj", "numero_projeto", "ramo", "responsavel", "consultor", "gci",
-          "etapa", "situacao", "data_inicio", "data_levantamento", "data_uso_oficial",
-          "data_encerramento", "horas_cobradas", "horas_bonificadas", "modulos",
+CAMPOS = ["cliente", "cnpj", "numero_projeto", "numero_proposta", "ramo", "responsavel",
+          "consultor", "gci", "etapa", "situacao",
+          "data_inicio", "data_levantamento", "data_uso_oficial", "data_encerramento",
+          "horas_cobradas", "horas_bonificadas", "modulos",
+          "contato_nome", "contato_email", "contato_tel",
           "contatos", "observacoes"]
+
+# Campos obrigatórios por etapa — bloqueiam o avanço se vazios
+CAMPOS_OBRIGATORIOS = {
+    "Agendamento":             ["cliente", "cnpj", "numero_projeto", "modulos",
+                                "horas_cobradas", "data_levantamento", "gci"],
+    "Levantamento":            ["cliente", "cnpj", "numero_projeto", "modulos",
+                                "horas_cobradas", "gci", "data_levantamento"],
+    "Projeto":                 ["cliente", "cnpj", "numero_projeto", "modulos",
+                                "horas_cobradas", "consultor"],
+    "Designação":              ["cliente", "cnpj", "numero_projeto", "modulos",
+                                "horas_cobradas", "consultor", "data_uso_oficial"],
+    "Cronograma e Check-list": ["cliente", "cnpj", "numero_projeto", "modulos",
+                                "horas_cobradas", "consultor", "data_uso_oficial"],
+    "Encerramento":            ["cliente", "cnpj", "numero_projeto", "modulos",
+                                "horas_cobradas", "consultor", "data_uso_oficial"],
+}
+
+# Rótulos amigáveis para campos obrigatórios
+CAMPO_LABELS = {
+    "cliente": "Razão Social", "cnpj": "CNPJ", "numero_projeto": "Nº do Projeto",
+    "numero_proposta": "Nº da Proposta", "ramo": "Ramo de Atividade",
+    "responsavel": "Responsável Administrativo", "consultor": "Consultor(es)",
+    "gci": "GCI (Levantamento)", "modulos": "Módulos Contratados",
+    "horas_cobradas": "Horas Cobradas", "horas_bonificadas": "Horas Bonificadas",
+    "data_inicio": "Data de Início", "data_levantamento": "Data do Levantamento",
+    "data_uso_oficial": "Go-live Previsto", "data_encerramento": "Data de Encerramento",
+    "contato_nome": "Nome do Contato", "contato_email": "E-mail do Contato",
+    "contato_tel": "Telefone do Contato", "contatos": "Contatos / Stakeholders",
+    "observacoes": "Observações",
+}
 
 # --- Gates: documentos obrigatórios por etapa (controle de qualidade) ---
 DOC_LABELS = {
@@ -58,6 +90,7 @@ GATES = {
 #  - Cronograma e Check-list: os Consultores designados (pelo GCI, fase Designação)
 ACAO_ENTRADA = {
     "Levantamento": ("data_levantamento", "Definir a Data do Levantamento"),
+    "Designação": ("consultores_designacao", "Designar GCI e Consultores por Módulo"),
     "Cronograma e Check-list": ("consultores", "Designar os Consultores"),
 }
 
@@ -67,9 +100,44 @@ def acao_entrada_ok(etapa, proj):
     req = (ACAO_ENTRADA.get(etapa) or (None, None))[0]
     if req == "data_levantamento":
         return bool((proj.get("data_levantamento") or "").strip())
+    if req == "consultores_designacao":
+        return bool((proj.get("gci") or "").strip())
     if req == "consultores":
         return bool((proj.get("consultor") or "").strip())
     return True
+
+
+def campos_faltantes(etapa, proj):
+    """Retorna lista de {campo, label} com campos obrigatórios não preenchidos para a etapa."""
+    obrig = CAMPOS_OBRIGATORIOS.get(etapa, [])
+    faltam = []
+    for c in obrig:
+        v = (proj.get(c) or "").strip()
+        if not v:
+            faltam.append({"campo": c, "label": CAMPO_LABELS.get(c, c)})
+    return faltam
+
+
+def pode_avancar(etapa, proj, docs):
+    """Verifica se o projeto pode avançar da etapa atual.
+    Retorna (bool, lista_de_bloqueios)."""
+    bloqueios = []
+    # 1. Campos obrigatórios da etapa atual
+    for f in campos_faltantes(etapa, proj):
+        bloqueios.append("Campo obrigatório: %s" % f["label"])
+    # 2. Gate de documentos da próxima etapa
+    prox = proxima_etapa(etapa)
+    if prox:
+        g = gate_status(prox, docs)
+        for it in g["itens"]:
+            if not it["ok"]:
+                bloqueios.append("Documento pendente: %s" % it["label"])
+        # 3. Ação de entrada da próxima etapa
+        if not acao_entrada_ok(prox, proj):
+            chave, label = ACAO_ENTRADA.get(prox, (None, None))
+            if label:
+                bloqueios.append("Ação obrigatória: %s" % label)
+    return (len(bloqueios) == 0, bloqueios)
 
 
 def docs_obrigatorios(etapa):
@@ -125,6 +193,7 @@ class Projeto(Base):
     cliente = Column(String(200), nullable=False, default="")
     cnpj = Column(String(40), default="")
     numero_projeto = Column(String(40), default="")
+    numero_proposta = Column(String(40), default="")
     ramo = Column(String(160), default="")
     responsavel = Column(String(160), default="")
     consultor = Column(String(160), default="")
@@ -138,6 +207,9 @@ class Projeto(Base):
     horas_cobradas = Column(String(20), default="")
     horas_bonificadas = Column(String(20), default="")
     modulos = Column(Text, default="")
+    contato_nome = Column(String(160), default="")
+    contato_email = Column(String(160), default="")
+    contato_tel = Column(String(60), default="")
     contatos = Column(Text, default="")
     observacoes = Column(Text, default="")
     criado_em = Column(DateTime, default=datetime.now)
@@ -700,11 +772,17 @@ def cabecalho(d, docs):
     if proxima is None and prox and not acao_ok:
         chave, label = ACAO_ENTRADA[prox]
         proxima = {"tipo": "acao:" + chave, "label": label, "ok": False}
+    # Campos obrigatórios faltantes na etapa atual
+    cf = campos_faltantes(etapa, d)
+    ok_avancar, bloqueios = pode_avancar(etapa, d, docs)
     return {
         "stepper": stepper, "fase": MACRO_FASES[cur], "etapa": etapa,
         "go_live": d.get("data_uso_oficial") or "", "atraso": atraso,
         "horas_cob": cob, "horas_bon": bon, "horas_total": cob + bon,
         "docs_ok": sum(1 for i in itens if i["ok"]), "docs_total": len(itens),
         "proxima": proxima,
-        "prox_etapa": prox, "avancar_ok": bool(prox) and gate_ref["ok"] and acao_ok,
+        "prox_etapa": prox, "avancar_ok": ok_avancar,
+        "gate": gate_ref,
+        "campos_faltantes": cf,
+        "bloqueios": bloqueios,
     }

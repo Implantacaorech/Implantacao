@@ -125,11 +125,30 @@ input:not([type=checkbox]):not([type=radio]):not([type=file]):focus,select:focus
 textarea{width:100%;resize:vertical}
 .campo input,.campo select,.campo textarea,.grade2 input,.grade2 select,.grade2 textarea{width:100%}
 
+/* ===== SISTEMA DE ÍCONES PADRONIZADOS ===== */
+/* Tamanho único para todos os contextos — nunca use style inline de tamanho em SVG */
+.svgi{display:inline-block;vertical-align:middle;flex:none;fill:none;stroke:currentColor;
+  stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+/* Escala padrão por contexto */
+.svgi-xs{width:12px;height:12px}   /* migalha, separadores */
+.svgi-sm{width:14px;height:14px}   /* abas, badges, inline */
+.svgi-md{width:16px;height:16px}   /* botões, campos, listas */
+.svgi-lg{width:18px;height:18px}   /* sidebar, cards, títulos */
+.svgi-xl{width:20px;height:20px}   /* topbar, ícones de destaque */
+/* Contextos específicos */
+.side-link .svgi{width:16px;height:16px;color:var(--faint);transition:.14s}
+.side-link.on .svgi{color:var(--brand)}
+.side-link:hover .svgi{color:var(--ink)}
+.topbar-busca .svgi{width:14px;height:14px;color:var(--faint)}
+.topbar-ico .svgi{width:18px;height:18px;vertical-align:-3px}
+.aba .svgi{width:14px;height:14px;flex:none}
+.tool .svgi{width:16px;height:16px;flex:none;color:var(--brand)}
+.migalha .svgi{width:11px;height:11px;color:var(--faint)}
 /* ===== BOTÕES ===== */
 .btn{display:inline-flex;align-items:center;gap:6px;background:var(--surface);color:var(--navy);border:1.5px solid var(--line-2);
   border-radius:var(--r-sm);padding:8px 15px;font:inherit;font-size:.88rem;font-weight:600;cursor:pointer;
   margin:3px 6px 3px 0;transition:.15s;white-space:nowrap}
-.btn .svgi{width:15px;height:15px;flex:none}
+.btn .svgi{width:14px;height:14px;flex:none}
 .btn:hover{background:var(--surface-2);border-color:var(--accent);color:var(--accent-700);text-decoration:none}
 .btn.primario{background:var(--brand);color:#fff;border-color:var(--brand);box-shadow:var(--sh-1)}
 .btn.primario:hover{background:var(--brand-700);border-color:var(--brand-700);color:#fff}
@@ -339,6 +358,90 @@ h2.sec{color:var(--navy);margin:26px 0 6px;font-size:1.1rem;font-weight:700;disp
 .conv-row>span{color:var(--ink);font-size:.92rem}
 .conv-row>input{padding:7px;border:1px solid var(--line-2);border-radius:6px;font:inherit;width:auto}
 .conv-row>em{color:var(--muted);font-style:normal;font-size:.85rem}
+
+/* ===== CAMPO OBRIGATÓRIO — INDICADOR VISUAL ===== */
+.campo-obrig>span::after{content:" *";color:var(--err);font-size:.8rem}
+.campo-obrig input:invalid,.campo-obrig select:invalid{border-color:var(--err-border)}
+.campo-obrig input:valid,.campo-obrig select:valid{border-color:var(--ok-border)}
+
+/* ===== BLOQUEIO DE ETAPA — PAINEL DE PENDÊNCIAS ===== */
+.bloqueio-painel{background:var(--err-bg);border:1.5px solid var(--err-border);border-radius:var(--r-lg);
+  padding:14px 18px;margin-bottom:16px;box-shadow:var(--sh-1)}
+.bloqueio-painel .titulo{font-weight:700;color:var(--err);font-size:.95rem;display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.bloqueio-painel .titulo .svgi{width:16px;height:16px;flex:none}
+.bloqueio-lista{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:4px}
+.bloqueio-lista li{display:flex;align-items:center;gap:8px;font-size:.87rem;color:var(--err);padding:4px 0}
+.bloqueio-lista li .svgi{width:13px;height:13px;flex:none;color:var(--err)}
+
+/* ===== PAINEL DE PENDÊNCIAS (CAMPOS) ===== */
+.pendencias-campos{background:var(--warn-bg);border:1.5px solid var(--warn-border);border-radius:var(--r-md);
+  padding:10px 14px;margin-bottom:12px}
+.pendencias-campos .titulo{font-weight:700;color:var(--warn);font-size:.88rem;display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.pendencias-campos .titulo .svgi{width:14px;height:14px;flex:none}
+.pendencias-campos ul{list-style:none;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:6px}
+.pendencias-campos ul li{background:var(--surface);border:1px solid var(--warn-border);border-radius:var(--r-sm);
+  padding:3px 10px;font-size:.82rem;color:var(--warn);font-weight:600;cursor:pointer;transition:.14s}
+.pendencias-campos ul li:hover{background:var(--warn-bg);text-decoration:underline}
+
+/* ===== INDICADOR DE ETAPA NO STEPPER ===== */
+.stepper-v2{display:flex;gap:0;margin:16px 0 12px;position:relative}
+.stepper-v2::before{content:'';position:absolute;top:14px;left:0;right:0;height:2px;background:var(--line);z-index:0}
+.step-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;z-index:1}
+.step-dot{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);background:var(--surface);
+  display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:var(--faint);transition:.2s}
+.step-dot.done{background:var(--brand);border-color:var(--brand);color:#fff}
+.step-dot.atual{background:var(--surface);border-color:var(--brand);color:var(--brand);box-shadow:0 0 0 3px #E8EEF8}
+.step-dot.bloq{background:var(--surface);border-color:var(--err-border);color:var(--err)}
+.step-lbl{font-size:.68rem;text-align:center;color:var(--muted);line-height:1.2;max-width:80px}
+.step-lbl.atual{color:var(--navy);font-weight:700}
+.step-lbl.done{color:var(--brand)}
+.step-item:not(:last-child)::after{content:'';position:absolute;top:14px;left:calc(50% + 14px);right:calc(-50% + 14px);height:2px;background:var(--line);z-index:-1}
+.step-item.done:not(:last-child)::after{background:var(--brand)}
+
+/* ===== WORKSPACE APRIMORADO ===== */
+.workspace-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 22px;
+  border-bottom:1px solid var(--line);background:var(--surface);font-size:.83rem;color:var(--muted)}
+.workspace-meta .svgi{width:13px;height:13px}
+.workspace-meta strong{color:var(--navy)}
+.workspace-meta .sep{color:var(--line-2)}
+
+/* ===== PASSO NUMERADO ===== */
+.passo-num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+  border-radius:50%;background:var(--brand);color:#fff;font-size:.72rem;font-weight:700;flex:none}
+.passo-num.concluido{background:var(--ok)}
+.passo-num.pendente{background:var(--warn)}
+
+/* ===== DOC-GATE APRIMORADO ===== */
+.gate-lista{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.gate-item{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;
+  font-size:.8rem;font-weight:600;border:1px solid transparent}
+.gate-item.ok{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-border)}
+.gate-item.pendente{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-border)}
+.gate-item .svgi{width:12px;height:12px;flex:none}
+
+/* ===== CAMPO INLINE OBRIGATÓRIO ===== */
+.campo-req{position:relative}
+.campo-req .req-mark{position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  color:var(--err);font-size:.8rem;font-weight:700;pointer-events:none}
+
+/* ===== FICHA — CABEÇALHO APRIMORADO ===== */
+.proj-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:14px;flex-wrap:wrap}
+.proj-header-info{display:flex;flex-direction:column;gap:4px}
+.proj-header-acoes{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+
+/* ===== SETOR BADGE ===== */
+.setor-badge{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:12px;
+  font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.setor-badge.adm{background:#E8EEF8;color:var(--brand)}
+.setor-badge.gci{background:var(--fase-1-bg);color:var(--fase-1)}
+.setor-badge.consultor{background:var(--fase-2-bg);color:var(--fase-2)}
+.setor-badge.coord{background:var(--fase-4-bg);color:var(--fase-4)}
+
+/* ===== ANIMAÇÕES ===== */
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.anim-fade{animation:fadeIn .2s ease}
 
 /* ===== RESPONSIVO ===== */
 @media (max-width:820px){.hero-fluxo{flex-direction:column}.hero-fluxo .seta{display:none}}

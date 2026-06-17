@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block titulo %}Agendar Levantamento — {{ p.cliente }}{% endblock %}
-{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('projetos') }}">Carteira</a> › <a href="{{ url_for('projeto_ficha', pid=pid) }}">{{ p.cliente }}</a> › Agendar Levantamento</div>{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a><svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg><a href="{{ url_for('projetos') }}">Carteira</a><svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg><a href="{{ url_for('projeto_ficha', pid=pid) }}">{{ p.cliente }}</a><svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>Agendar Levantamento</div>{% endblock %}
 {% block conteudo %}
-  <h1>📅 Agendar Levantamento — {{ p.cliente }}</h1>
+  <h1 style="display:flex;align-items:center;gap:10px"><svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-clock"/></svg> Agendar Levantamento — {{ p.cliente }}</h1>
   <p class="sub">Defina o GCI responsável e a <strong>data do Levantamento</strong>. O GCI é avisado por e-mail e o projeto avança para a fase Levantamento.</p>
-  {% if erro %}<div class="resultado erro" style="padding:8px 14px">⚠️ {{ erro }}</div>{% endif %}
+  {% if erro %}<div class="resultado erro" style="padding:8px 14px;display:flex;align-items:center;gap:8px"><svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro }}</div>{% endif %}
   <form method="post" class="painel">
     <div class="grade2">
       <label class="campo"><span>GCI responsável</span>
@@ -17,7 +17,9 @@
       <label class="campo"><span>Data do Levantamento *</span>
         <input type="date" name="data_levantamento" value="{{ p.data_levantamento }}" required></label>
     </div>
-    <button class="btn primario" type="submit" style="margin-top:6px">💾 Salvar e avisar o GCI</button>
+    <button class="btn primario" type="submit" style="margin-top:6px">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvar e avisar o GCI
+    </button>
     <a class="btn" href="{{ url_for('projeto_ficha', pid=pid) }}">Cancelar</a>
   </form>
 {% endblock %}

@@ -2,12 +2,20 @@
 {% block titulo %}Config — Gmail API{% endblock %}
 {% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › Gmail API (envio)</div>{% endblock %}
 {% block conteudo %}
-  <h1>📤 Envio pela API do Gmail (OAuth)</h1>
+  <h1 style="display:flex;align-items:center;gap:10px"><svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-send"/></svg> Envio pela API do Gmail (OAuth)</h1>
   <p class="sub">Envia e-mails por HTTPS (porta 443), contornando o bloqueio de SMTP da rede. Quando autorizado, todo o envio do painel (digest, pacote, encaminhamentos) passa a usar este caminho.</p>
   {% if msg %}<div class="resultado {{ 'ok' if 'sucesso' in msg or 'salva' in msg else 'erro' }}" style="padding:8px 14px">{{ msg }}</div>{% endif %}
 
   <div class="painel">
-    <p><strong>Status:</strong> {{ '🟢 Autorizado — pronto para enviar.' if autorizado else ('🟡 Credencial carregada — falta autorizar.' if tem_client else '🔴 Não configurado.') }}</p>
+    <p style="display:flex;align-items:center;gap:8px"><strong>Status:</strong>
+      {% if autorizado %}
+        <svg class="svgi" style="width:12px;height:12px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg> Autorizado — pronto para enviar.
+      {% elif tem_client %}
+        <svg class="svgi" style="width:12px;height:12px;color:var(--warn)" aria-hidden="true"><use href="#ic-clock"/></svg> Credencial carregada — falta autorizar.
+      {% else %}
+        <svg class="svgi" style="width:12px;height:12px;color:var(--err)" aria-hidden="true"><use href="#ic-bell"/></svg> Não configurado.
+      {% endif %}
+    </p>
   </div>
 
   <div class="painel">
@@ -15,7 +23,9 @@
     <p class="dica" style="margin-top:0">Envie o arquivo <code>client_secret*.json</code> (OAuth Client ID, tipo "App para computador") baixado do Google Cloud Console.</p>
     <form method="post" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <input type="file" name="client" accept=".json" required>
-      <button class="btn" type="submit">📎 Carregar credencial</button>
+      <button class="btn" type="submit">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> Carregar credencial
+      </button>
     </form>
   </div>
 
@@ -24,7 +34,9 @@
     <p class="dica" style="margin-top:0">Abre o navegador para você entrar na conta <strong>implantacao.rechsistemas@gmail.com</strong> e permitir o envio. Faça isto <strong>na máquina onde o painel roda</strong>.</p>
     <form method="post">
       <input type="hidden" name="autorizar" value="1">
-      <button class="btn primario" type="submit" {{ '' if tem_client else 'disabled' }}>🔐 Autorizar acesso ao Gmail</button>
+      <button class="btn primario" type="submit" {{ '' if tem_client else 'disabled' }}>
+        <svg class="svgi" aria-hidden="true"><use href="#ic-lock"/></svg> Autorizar acesso ao Gmail
+      </button>
     </form>
   </div>
 

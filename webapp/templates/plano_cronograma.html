@@ -4,8 +4,16 @@
 {% block conteudo %}
   <h1 style="margin-bottom:2px">Cronograma — {{ p.cliente }}</h1>
   <p class="sub">Edite as agendas durante a implantação. Cada alteração fica registrada no histórico.</p>
-  {% if salvo %}<div class="resultado ok" style="padding:10px 16px">✅ Salvo.</div>{% endif %}
-  {% if aviso %}<div class="resultado erro" style="padding:10px 16px">⚠️ {{ aviso }}</div>{% endif %}
+  {% if salvo %}
+  <div class="resultado ok" style="padding:10px 16px;display:flex;align-items:center;gap:8px">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvo com sucesso.
+  </div>
+  {% endif %}
+  {% if aviso %}
+  <div class="resultado erro" style="padding:10px 16px;display:flex;align-items:center;gap:8px">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ aviso }}
+  </div>
+  {% endif %}
 
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
     <form method="post" action="{{ url_for('projeto_cronograma_seed', pid=pid) }}"
@@ -45,11 +53,11 @@
     </div>
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn" type="button" onclick="addLinha()">
-        <svg style="width:14px;height:14px" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg>
         Adicionar linha
       </button>
       <button class="btn primario" type="submit">
-        <svg style="width:14px;height:14px" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
         Salvar cronograma
       </button>
     </div>
@@ -71,12 +79,12 @@
   {% if hist %}
   <details style="margin-top:18px">
     <summary style="cursor:pointer;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:6px">
-      <svg style="width:14px;height:14px;color:var(--muted)" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <svg class="svgi svgi-md" style="color:var(--muted)" aria-hidden="true"><use href="#ic-activity"/></svg>
       Histórico de modificações ({{ hist|length }})
     </summary>
     <ul class="timeline" style="margin-top:10px">
     {% for h in hist %}
-      <li><span class="tl-ico" style="display:inline-flex;align-items:center"><svg style="width:13px;height:13px;color:var(--muted)" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span><div>
+      <li><span class="tl-ico"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-pencil"/></svg></span><div>
         <div><strong>{{ h.ref }}</strong>: {{ h.de }} → {{ h.para }}</div>
         <small class="dica" style="margin:0">{{ h.criado_em.strftime('%d/%m/%Y %H:%M') if h.criado_em else '' }}{% if h.autor %} · {{ h.autor }}{% endif %}</small>
       </div></li>

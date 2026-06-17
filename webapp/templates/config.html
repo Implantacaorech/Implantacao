@@ -7,16 +7,20 @@
     no <strong>futuro do presente do indicativo</strong> + ortografia), além da correção offline.
     Sem chave, tudo funciona normalmente só com o corretor offline.</p>
 
-  {% if salvo %}<div class="resultado ok"><h3>✅ Configuração salva</h3></div>{% endif %}
+  {% if salvo %}<div class="resultado ok" style="padding:10px 16px;display:flex;align-items:center;gap:8px"><svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Configuração salva</div>{% endif %}
 
-  <div class="resultado {{ 'ok' if ativa else '' }}" style="padding:12px 18px">
-    {% if ativa %}🟢 <strong>IA ativa</strong> — modelo <code>{{ modelo }}</code>.
-       {% if via_env %}(chave via variável de ambiente){% endif %}
-    {% else %}⚪ <strong>IA inativa</strong> — usando apenas o corretor offline.{% endif %}
+  <div class="resultado {{ 'ok' if ativa else '' }}" style="padding:12px 18px;display:flex;align-items:center;gap:8px">
+    {% if ativa %}
+      <svg class="svgi" style="width:14px;height:14px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+      <strong>IA ativa</strong> — modelo <code>{{ modelo }}</code>{% if via_env %} (chave via variável de ambiente){% endif %}
+    {% else %}
+      <svg class="svgi" style="width:14px;height:14px;color:var(--muted)" aria-hidden="true"><use href="#ic-clock"/></svg>
+      <strong>IA inativa</strong> — usando apenas o corretor offline.
+    {% endif %}
   </div>
   <p class="dica">Biblioteca <code>anthropic</code>:
-    {% if sdk_ok %}🟢 instalada (IA pronta para uso com a chave)
-    {% else %}🔴 ausente — rode <code>pip install anthropic</code> (a IA não funcionará sem ela){% endif %}.</p>
+    {% if sdk_ok %}<svg class="svgi" style="width:12px;height:12px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg> instalada (IA pronta para uso com a chave)
+    {% else %}<svg class="svgi" style="width:12px;height:12px;color:var(--err)" aria-hidden="true"><use href="#ic-bell"/></svg> ausente — rode <code>pip install anthropic</code> (a IA não funcionará sem ela){% endif %}.</p>
 
   <form method="post" class="painel">
     <label class="campo">

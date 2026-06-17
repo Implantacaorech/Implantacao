@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block titulo %}Atividade{% endblock %}
-{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › Atividade</div>{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a><svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>Atividade</div>{% endblock %}
 {% block conteudo %}
-  <h1>📈 Atividade da operação</h1>
+  <h1 style="display:flex;align-items:center;gap:10px"><svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-activity"/></svg> Atividade da operação</h1>
   <p class="sub">Tudo o que está acontecendo na implantação — últimos {{ uso.dias }} dias.</p>
 
   <div class="kpis">
@@ -31,7 +31,10 @@
     {% if feed %}
     <ul class="timeline">
     {% for ev in feed %}
-      <li><span class="tl-ico">{{ {'nota':'📝','etapa':'🔀','documento':'📄','email':'✉️','alerta':'⚠️'}.get(ev.tipo,'•') }}</span>
+      <li><span class="tl-ico">
+        {% set _ico = {'nota':'#ic-pencil','etapa':'#ic-arrow-right','documento':'#ic-file','email':'#ic-mail','alerta':'#ic-bell'} %}
+        <svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="{{ _ico.get(ev.tipo,'#ic-pencil') }}"/></svg>
+      </span>
         <div><div><a href="{{ url_for('projeto_ficha', pid=ev.projeto_id) }}"><strong>{{ ev.cliente }}</strong></a> — {{ ev.descricao }}</div>
         <small class="dica" style="margin:0">{{ ev.criado_em.strftime('%d/%m/%Y %H:%M') if ev.criado_em else '' }}{% if ev.autor %} · {{ ev.autor }}{% endif %}</small></div></li>
     {% endfor %}

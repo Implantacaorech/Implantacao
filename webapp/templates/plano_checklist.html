@@ -1,28 +1,52 @@
 {% extends "base.html" %}
 {% block titulo %}Check-list — {{ p.cliente }}{% endblock %}
-{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('projetos') }}">Projetos</a> › <a href="{{ url_for('projeto_ficha', pid=pid) }}">{{ p.cliente }}</a> › Check-list</div>{% endblock %}
+{% block migalha %}
+<div class="migalha">
+  <a href="{{ url_for('home') }}">Início</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <a href="{{ url_for('projetos') }}">Carteira</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <a href="{{ url_for('projeto_ficha', pid=pid) }}">{{ p.cliente }}</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  Check-list
+</div>
+{% endblock %}
 {% block conteudo %}
   <h1 style="margin-bottom:2px;display:flex;align-items:center;gap:8px">
-    <svg style="width:20px;height:20px;color:var(--ok);flex:none" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    <svg class="svgi" style="width:20px;height:20px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
     Check-list — {{ p.cliente }}
   </h1>
   <p class="sub">Acompanhe e atualize os itens da implantação. Cada alteração fica registrada no histórico.</p>
-  {% if salvo %}<div class="resultado ok" style="padding:10px 16px">✅ Salvo.</div>{% endif %}
-  {% if aviso %}<div class="resultado erro" style="padding:10px 16px">⚠️ {{ aviso }}</div>{% endif %}
+
+  {% if salvo %}
+  <div class="resultado ok" style="padding:10px 16px;display:flex;align-items:center;gap:8px">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvo com sucesso.
+  </div>
+  {% endif %}
+  {% if aviso %}
+  <div class="resultado erro" style="padding:10px 16px;display:flex;align-items:center;gap:8px">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ aviso }}
+  </div>
+  {% endif %}
 
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
     <form method="post" action="{{ url_for('projeto_checklist_seed', pid=pid) }}"
           onsubmit="return confirm('Carregar o roteiro dos módulos? Isso substitui as linhas atuais.')">
       <button class="btn" type="submit">
-        <svg style="width:14px;height:14px" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg>
         Carregar roteiro dos módulos
-      </button></form>
+      </button>
+    </form>
     <span style="flex:1"></span>
-    <a class="btn" href="{{ url_for('projeto_ficha', pid=pid) }}">← Voltar à ficha</a>
+    <a class="btn" href="{{ url_for('projeto_ficha', pid=pid) }}">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Voltar à ficha
+    </a>
   </div>
 
   {% set conc = itens|selectattr('status','equalto','Concluído')|list|length %}
-  {% if itens %}<p class="dica" style="margin-top:0">Progresso: <strong>{{ conc }} / {{ itens|length }}</strong> concluídos.</p>{% endif %}
+  {% if itens %}
+  <p class="dica" style="margin-top:0">Progresso: <strong>{{ conc }} / {{ itens|length }}</strong> concluídos.</p>
+  {% endif %}
 
   <form method="post" action="{{ url_for('projeto_checklist', pid=pid) }}">
     <div style="overflow-x:auto">
@@ -49,11 +73,11 @@
     </div>
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn" type="button" onclick="addLinha()">
-        <svg style="width:14px;height:14px" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg>
         Adicionar linha
       </button>
       <button class="btn primario" type="submit">
-        <svg style="width:14px;height:14px" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
         Salvar check-list
       </button>
     </div>
@@ -74,15 +98,20 @@
   {% if hist %}
   <details style="margin-top:18px">
     <summary style="cursor:pointer;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:6px">
-      <svg style="width:14px;height:14px;color:var(--muted)" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <svg class="svgi svgi-md" style="color:var(--muted)" aria-hidden="true"><use href="#ic-activity"/></svg>
       Histórico de modificações ({{ hist|length }})
     </summary>
     <ul class="timeline" style="margin-top:10px">
     {% for h in hist %}
-      <li><span class="tl-ico" style="display:inline-flex;align-items:center"><svg style="width:13px;height:13px;color:var(--muted)" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span><div>
-        <div><strong>{{ h.ref }}</strong>: {{ h.de }} → {{ h.para }}</div>
-        <small class="dica" style="margin:0">{{ h.criado_em.strftime('%d/%m/%Y %H:%M') if h.criado_em else '' }}{% if h.autor %} · {{ h.autor }}{% endif %}</small>
-      </div></li>
+      <li>
+        <span class="tl-ico">
+          <svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-pencil"/></svg>
+        </span>
+        <div>
+          <div><strong>{{ h.ref }}</strong>: {{ h.de }} → {{ h.para }}</div>
+          <small class="dica" style="margin:0">{{ h.criado_em.strftime('%d/%m/%Y %H:%M') if h.criado_em else '' }}{% if h.autor %} · {{ h.autor }}{% endif %}</small>
+        </div>
+      </li>
     {% endfor %}
     </ul>
   </details>

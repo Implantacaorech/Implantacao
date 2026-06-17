@@ -3,77 +3,133 @@
 {% block migalha %}
 <div class="migalha">
   <a href="{{ url_for('home') }}">Início</a>
-  <svg class="svgi" style="width:12px;height:12px;color:var(--faint)" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
   <a href="{{ url_for('projetos') }}">Carteira</a>
-  <svg class="svgi" style="width:12px;height:12px;color:var(--faint)" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
   {{ p.cliente if p else 'Novo' }}
 </div>
 {% endblock %}
 {% block conteudo %}
 
 {# ===== MACRO: campos do formulário de dados ===== #}
-{% macro campos_form(p, etapas, situacoes) %}
-  <div class="grade2">
-    <label class="campo"><span>Cliente (Razão Social) *</span><input name="cliente" value="{{ p.cliente if p else '' }}" required></label>
-    <label class="campo"><span>CNPJ</span><input name="cnpj" value="{{ p.cnpj if p else '' }}"></label>
-    <label class="campo"><span>Nº do projeto</span><input name="numero_projeto" value="{{ p.numero_projeto if p else '' }}"></label>
-    <label class="campo"><span>Ramo de atividade</span><input name="ramo" value="{{ p.ramo if p else '' }}"></label>
-    <label class="campo"><span>Responsável administrativo</span><input name="responsavel" value="{{ p.responsavel if p else '' }}"></label>
-    <label class="campo"><span>GCI (Levantamento)</span><input name="gci" value="{{ p.gci if p else '' }}"></label>
-    <label class="campo"><span>Consultor(es)</span><input name="consultor" value="{{ p.consultor if p else '' }}"></label>
-    <label class="campo"><span>Fase da implantação</span>
-      <select name="etapa">{% for e in etapas %}<option {{ 'selected' if p and p.etapa==e }}>{{ e }}</option>{% endfor %}</select>
-    </label>
-    <label class="campo"><span>Status</span>
-      <select name="situacao">{% for s in situacoes %}<option {{ 'selected' if p and p.situacao==s }}>{{ s }}</option>{% endfor %}</select>
-    </label>
-    <label class="campo"><span>Data de início</span><input type="date" name="data_inicio" value="{{ p.data_inicio if p else '' }}"></label>
-    <label class="campo"><span>Go-live previsto</span><input type="date" name="data_uso_oficial" value="{{ p.data_uso_oficial if p else '' }}"></label>
-    <label class="campo"><span>Data de encerramento</span><input type="date" name="data_encerramento" value="{{ p.data_encerramento if p else '' }}"></label>
-    <label class="campo"><span>Horas cobradas</span><input name="horas_cobradas" value="{{ p.horas_cobradas if p else '' }}"></label>
-    <label class="campo"><span>Horas bonificadas</span><input name="horas_bonificadas" value="{{ p.horas_bonificadas if p else '' }}"></label>
-  </div>
-  <label class="campo"><span>Módulos contratados (siglas)</span><input name="modulos" value="{{ p.modulos if p else '' }}" placeholder="FAT, CTB, FIN…"></label>
-  <label class="campo"><span>Contatos / Stakeholders</span><textarea name="contatos" rows="2">{{ p.contatos if p else '' }}</textarea></label>
-  <label class="campo"><span>Observações</span><textarea name="observacoes" rows="3">{{ p.observacoes if p else '' }}</textarea></label>
+{% macro campos_form(p, etapas, situacoes, campos_falt=[]) %}
+{% set cf_set = campos_falt | map(attribute='campo') | list %}
+<h4 style="color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px;font-weight:700">Identificação</h4>
+<div class="grade2">
+  <label class="campo {{ 'campo-obrig' if 'cliente' in cf_set }}"><span>Razão Social</span><input name="cliente" value="{{ p.cliente if p else '' }}" required placeholder="Nome completo da empresa"></label>
+  <label class="campo {{ 'campo-obrig' if 'cnpj' in cf_set }}"><span>CNPJ</span><input name="cnpj" value="{{ p.cnpj if p else '' }}" placeholder="00.000.000/0001-00"></label>
+  <label class="campo {{ 'campo-obrig' if 'numero_projeto' in cf_set }}"><span>Nº do Projeto</span><input name="numero_projeto" value="{{ p.numero_projeto if p else '' }}" placeholder="Ex.: 2025-0042"></label>
+  <label class="campo"><span>Nº da Proposta</span><input name="numero_proposta" value="{{ p.numero_proposta if p else '' }}" placeholder="Referência comercial"></label>
+  <label class="campo"><span>Ramo de Atividade</span><input name="ramo" value="{{ p.ramo if p else '' }}" placeholder="Ex.: Indústria, Comércio…"></label>
+  <label class="campo"><span>Responsável Administrativo</span><input name="responsavel" value="{{ p.responsavel if p else '' }}" placeholder="Nome do responsável interno"></label>
+</div>
+<h4 style="color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 12px;font-weight:700">Implantação</h4>
+<div class="grade2">
+  <label class="campo {{ 'campo-obrig' if 'gci' in cf_set }}"><span>GCI (Levantamento)</span><input name="gci" value="{{ p.gci if p else '' }}" placeholder="Nome do GCI responsável"></label>
+  <label class="campo {{ 'campo-obrig' if 'consultor' in cf_set }}"><span>Consultor(es)</span><input name="consultor" value="{{ p.consultor if p else '' }}" placeholder="Nomes separados por vírgula"></label>
+  <label class="campo"><span>Fase da Implantação</span>
+    <select name="etapa">{% for e in etapas %}<option {{ 'selected' if p and p.etapa==e }}>{{ e }}</option>{% endfor %}</select>
+  </label>
+  <label class="campo"><span>Status</span>
+    <select name="situacao">{% for s in situacoes %}<option {{ 'selected' if p and p.situacao==s }}>{{ s }}</option>{% endfor %}</select>
+  </label>
+  <label class="campo {{ 'campo-obrig' if 'modulos' in cf_set }}"><span>Módulos Contratados</span><input name="modulos" value="{{ p.modulos if p else '' }}" placeholder="FAT, CTB, FIN, RH…"></label>
+  <label class="campo {{ 'campo-obrig' if 'horas_cobradas' in cf_set }}"><span>Horas Cobradas</span><input name="horas_cobradas" value="{{ p.horas_cobradas if p else '' }}" placeholder="Ex.: 120"></label>
+  <label class="campo"><span>Horas Bonificadas</span><input name="horas_bonificadas" value="{{ p.horas_bonificadas if p else '' }}" placeholder="Ex.: 20"></label>
+</div>
+<h4 style="color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 12px;font-weight:700">Datas</h4>
+<div class="grade2">
+  <label class="campo"><span>Data de Início</span><input type="date" name="data_inicio" value="{{ p.data_inicio if p else '' }}"></label>
+  <label class="campo {{ 'campo-obrig' if 'data_levantamento' in cf_set }}"><span>Data do Levantamento</span><input type="date" name="data_levantamento" value="{{ p.data_levantamento if p else '' }}"></label>
+  <label class="campo {{ 'campo-obrig' if 'data_uso_oficial' in cf_set }}"><span>Go-live Previsto</span><input type="date" name="data_uso_oficial" value="{{ p.data_uso_oficial if p else '' }}"></label>
+  <label class="campo"><span>Data de Encerramento</span><input type="date" name="data_encerramento" value="{{ p.data_encerramento if p else '' }}"></label>
+</div>
+<h4 style="color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 12px;font-weight:700">Contato Principal do Cliente</h4>
+<div class="grade2">
+  <label class="campo"><span>Nome do Contato</span><input name="contato_nome" value="{{ p.contato_nome if p else '' }}" placeholder="Nome completo"></label>
+  <label class="campo"><span>E-mail do Contato</span><input type="email" name="contato_email" value="{{ p.contato_email if p else '' }}" placeholder="email@empresa.com.br"></label>
+  <label class="campo"><span>Telefone do Contato</span><input name="contato_tel" value="{{ p.contato_tel if p else '' }}" placeholder="(00) 00000-0000"></label>
+</div>
+<label class="campo"><span>Outros Contatos / Stakeholders</span><textarea name="contatos" rows="2" placeholder="Demais contatos relevantes do projeto">{{ p.contatos if p else '' }}</textarea></label>
+<label class="campo"><span>Observações</span><textarea name="observacoes" rows="3" placeholder="Informações adicionais, restrições, acordos especiais…">{{ p.observacoes if p else '' }}</textarea></label>
+{% if cf_set %}
+<p style="font-size:.82rem;color:var(--err);margin-top:4px;display:flex;align-items:center;gap:5px">
+  <svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-lock"/></svg>
+  Campos marcados com <strong>*</strong> são obrigatórios para avançar de fase.
+</p>
+{% endif %}
 {% endmacro %}
 
 {# ===== Ícone por tipo de evento ===== #}
-{% set _ico = {'nota':'📝','etapa':'🔀','documento':'📄','email':'✉️','alerta':'⚠️'} %}
+{% set _ico_ev = {'nota':'#ic-pencil','etapa':'#ic-arrow-right','documento':'#ic-file','email':'#ic-mail','alerta':'#ic-bell'} %}
 
 {# ===== Mapeamento de fase para classe CSS ===== #}
-{% set _fase_cls = {'Levantamento':'fase-1','Projeto':'fase-2','Cronograma e Check-list':'fase-3','Encerramento':'fase-4'} %}
-{% set _fase_num = {'Levantamento':'1','Projeto':'2','Cronograma e Check-list':'3','Encerramento':'4'} %}
+{% set _fase_cls = {'Agendamento':'fase-0','Levantamento':'fase-1','Projeto':'fase-2','Designação':'fase-2','Cronograma e Check-list':'fase-3','Encerramento':'fase-4'} %}
+
+{# ===== Setor responsável por etapa ===== #}
+{% set _setor = {
+  'Agendamento': ('adm','Setor Adm'),
+  'Levantamento': ('gci','GCI'),
+  'Projeto': ('gci','GCI / Adm'),
+  'Designação': ('gci','GCI'),
+  'Cronograma e Check-list': ('consultor','Consultores'),
+  'Encerramento': ('consultor','Consultores / Coord')
+} %}
 
 {# ===== CABEÇALHO DO PROJETO ===== #}
 <div class="proj-header">
-  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <h1 style="margin:0">
-      {{ p.cliente if p else 'Novo projeto' }}
+  <div class="proj-header-info">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <h1 style="margin:0">{{ p.cliente if p else 'Novo projeto' }}</h1>
       {% if p and p.numero_projeto %}
-        <span style="font-size:.55em;color:var(--muted);font-weight:400;margin-left:6px">· {{ p.numero_projeto }}</span>
+        <span style="font-size:.6em;color:var(--muted);font-weight:400">Proj. {{ p.numero_projeto }}</span>
       {% endif %}
-    </h1>
+      {% if p and p.numero_proposta %}
+        <span style="font-size:.6em;color:var(--faint);font-weight:400">Prop. {{ p.numero_proposta }}</span>
+      {% endif %}
+    </div>
     {% if p %}
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px">
       <span class="badge-sit" data-s="{{ p.situacao }}">{{ p.situacao }}</span>
       {% if p.etapa %}
-        <span class="workspace-header fase-badge {{ _fase_cls.get(p.etapa,'') }}" style="display:inline-flex">
-          Fase {{ _fase_num.get(p.etapa,'') }} · {{ p.etapa }}
+        <span class="workspace-header fase-badge {{ _fase_cls.get(p.etapa,'') }}" style="display:inline-flex;padding:3px 10px;font-size:.72rem">
+          {{ p.etapa }}
         </span>
       {% endif %}
+      {% if p.etapa and _setor.get(p.etapa) %}
+        {% set sc, sl = _setor[p.etapa] %}
+        <span class="setor-badge {{ sc }}" title="Responsável por esta fase">{{ sl }}</span>
+      {% endif %}
+    </div>
     {% endif %}
   </div>
+  {% if p %}
+  <div class="proj-header-acoes">
+    {% if p.contato_email %}
+    <a class="btn" href="mailto:{{ p.contato_email }}" title="E-mail do contato principal">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-mail"/></svg>
+    </a>
+    {% endif %}
+    <a class="btn" href="{{ url_for('projeto_email', pid=p.id) }}" title="Enviar e-mail ao cliente">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-send"/></svg> E-mail
+    </a>
+  </div>
+  {% endif %}
 </div>
 
 {# ===== FEEDBACK DE AÇÕES ===== #}
-{% if salvo %}<div class="resultado ok" style="padding:10px 16px;margin:10px 0">✅ Dados salvos com sucesso.</div>{% endif %}
-{% if aviso %}<div class="resultado erro" style="padding:10px 16px;margin:10px 0">⚠️ {{ aviso }}</div>{% endif %}
+{% if salvo %}<div class="resultado ok" style="padding:10px 16px;margin:10px 0;display:flex;align-items:center;gap:8px">
+  <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Dados salvos com sucesso.
+</div>{% endif %}
+{% if aviso %}<div class="resultado erro" style="padding:10px 16px;margin:10px 0;display:flex;align-items:center;gap:8px">
+  <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ aviso }}
+</div>{% endif %}
 
 {# ===== MODO: NOVO PROJETO ===== #}
 {% if not p %}
 <div class="painel">
   <h2 style="margin-top:0;color:var(--navy)">Novo projeto de implantação</h2>
-  <p class="dica">Preencha os dados principais. O projeto será criado na fase <strong>Levantamento</strong>.</p>
+  <p class="dica">Preencha os dados principais. O projeto será criado na fase <strong>Agendamento</strong>.</p>
   <form method="post" action="{{ url_for('projeto_novo') }}">
     {{ campos_form(p, etapas, situacoes) }}
     <button class="btn primario" type="submit" style="margin-top:8px">
@@ -85,13 +141,24 @@
 {# ===== MODO: PROJETO EXISTENTE ===== #}
 {% else %}
 
-{# ===== STEPPER DE FASES ===== #}
+{# ===== STEPPER DE FASES (NOVO VISUAL) ===== #}
 {% if p and cab %}
-<div class="stepper" style="grid-template-columns:repeat({{ cab.stepper|length }},1fr)">
+<div class="stepper-v2">
   {% for f in cab.stepper %}
-  <div>
-    <div class="seg {{ f.estado }}"></div>
-    <div class="lbl {{ 'atual' if f.estado=='atual' }}">{{ f.nome }}</div>
+  {% set is_atual = (f.estado == 'atual') %}
+  {% set is_done = (f.estado == 'done') %}
+  {% set is_bloq = (is_atual and cab.campos_faltantes is defined and cab.campos_faltantes|length > 0) %}
+  <div class="step-item {{ f.estado }}">
+    <div class="step-dot {{ 'bloq' if is_bloq else f.estado }}">
+      {% if is_done %}
+        <svg class="svgi" style="width:12px;height:12px;color:#fff" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+      {% elif is_bloq %}
+        <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-lock"/></svg>
+      {% else %}
+        {{ loop.index }}
+      {% endif %}
+    </div>
+    <div class="step-lbl {{ f.estado }}">{{ f.nome }}</div>
   </div>
   {% endfor %}
 </div>
@@ -100,21 +167,21 @@
 <div class="kpis-ficha">
   <div class="kpi-f">
     <div class="l">Fase atual</div>
-    <div class="n" style="font-size:1.05rem">{{ cab.etapa }}</div>
+    <div class="n" style="font-size:1rem">{{ cab.etapa }}</div>
   </div>
   <div class="kpi-f">
     <div class="l">Go-live previsto</div>
-    <div class="n {{ 'alerta' if cab.atraso }}" style="font-size:1rem">
+    <div class="n {{ 'alerta' if cab.atraso }}" style="font-size:.95rem">
       {% set g = cab.go_live %}
       {% if g|length == 10 %}{{ g[8:10] }}/{{ g[5:7] }}/{{ g[0:4] }}{% else %}—{% endif %}
-      {% if cab.atraso %}<br><small style="font-size:.65rem;font-weight:400;color:var(--err)">{{ cab.atraso }}d de atraso</small>{% endif %}
+      {% if cab.atraso %}<br><small style="font-size:.62rem;font-weight:400;color:var(--err)">{{ cab.atraso }}d de atraso</small>{% endif %}
     </div>
   </div>
   <div class="kpi-f">
     <div class="l">Horas contratadas</div>
     <div class="n">{{ cab.horas_total|int }}
       {% if cab.horas_bon %}
-        <small style="font-size:.6rem;color:var(--muted);font-weight:400">({{ cab.horas_cob|int }}+{{ cab.horas_bon|int }})</small>
+        <small style="font-size:.58rem;color:var(--muted);font-weight:400">({{ cab.horas_cob|int }}+{{ cab.horas_bon|int }})</small>
       {% endif %}
     </div>
   </div>
@@ -124,22 +191,52 @@
       {{ cab.docs_ok }} / {{ cab.docs_total }}
     </div>
   </div>
+  {% if p.data_levantamento %}
+  <div class="kpi-f">
+    <div class="l">Data Levantamento</div>
+    <div class="n" style="font-size:.95rem">
+      {% set dl = p.data_levantamento %}
+      {% if dl|length == 10 %}{{ dl[8:10] }}/{{ dl[5:7] }}/{{ dl[0:4] }}{% else %}{{ dl }}{% endif %}
+    </div>
+  </div>
+  {% endif %}
+  {% if p.modulos %}
+  <div class="kpi-f">
+    <div class="l">Módulos</div>
+    <div class="n" style="font-size:.82rem;font-weight:600;color:var(--navy)">{{ p.modulos }}</div>
+  </div>
+  {% endif %}
 </div>
 
-{# ===== BLOCO PRÓXIMA AÇÃO ===== #}
+{# ===== PAINEL DE CAMPOS FALTANTES ===== #}
+{% if cab.campos_faltantes is defined and cab.campos_faltantes %}
+<div class="pendencias-campos">
+  <div class="titulo">
+    <svg class="svgi" aria-hidden="true"><use href="#ic-bell"/></svg>
+    Campos obrigatórios pendentes — clique para preencher:
+  </div>
+  <ul>
+    {% for cf in cab.campos_faltantes %}
+    <li onclick="aba('t-dados')" title="Ir para aba Dados">{{ cf.label }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{# ===== BLOCO PRÓXIMA AÇÃO / BLOQUEIO ===== #}
 {% if cab.proxima %}
 <div class="proxima">
-  <span class="ic">⚠️</span>
+  <svg class="svgi" style="width:18px;height:18px;color:var(--warn);flex:none" aria-hidden="true"><use href="#ic-bell"/></svg>
   <div class="txt">
-    <div class="titulo">Próxima ação: {{ cab.proxima.label }}</div>
+    <div class="titulo">Próxima ação necessária: {{ cab.proxima.label }}</div>
     <p class="dica" style="margin:2px 0 0">
-      {% if cab.prox_etapa %}Necessário para avançar para a fase <strong>{{ cab.prox_etapa }}</strong>.{% else %}Documento obrigatório para concluir a implantação.{% endif %}
+      {% if cab.prox_etapa %}Necessário para avançar para <strong>{{ cab.prox_etapa }}</strong>.{% else %}Documento obrigatório para concluir a implantação.{% endif %}
     </p>
   </div>
   {% if cab.proxima.tipo in ['levantamento','checklist','cronograma','termo'] %}
     <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo=cab.proxima.tipo) }}">
       <button class="btn primario" type="submit">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg> Gerar agora
+        <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Gerar agora
       </button>
     </form>
   {% elif cab.proxima.tipo == 'projeto' %}
@@ -148,32 +245,50 @@
     </button>
   {% elif cab.proxima.tipo == 'acao:data_levantamento' %}
     <a class="btn primario" href="{{ url_for('projeto_agendar', pid=p.id) }}">
-      <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Agendar Levantamento
+      <svg class="svgi" aria-hidden="true"><use href="#ic-clock"/></svg> Agendar Levantamento
     </a>
-  {% elif cab.proxima.tipo == 'acao:consultores' %}
-    <a class="btn primario" href="{{ url_for('projeto_consultores', pid=p.id) }}">
-      <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg> Designar Consultores
+  {% elif cab.proxima.tipo in ['acao:consultores_designacao','acao:consultores'] %}
+    <a class="btn primario" href="{{ url_for('projeto_designar', pid=p.id) }}">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg> Designar Responsáveis
     </a>
   {% endif %}
 </div>
 {% elif cab.prox_etapa %}
-<div class="proxima ok">
-  <span class="ic">✅</span>
-  <div class="txt">
-    <div class="titulo">Fase liberada — todos os documentos obrigatórios estão prontos.</div>
-    <p class="dica" style="margin:2px 0 0">Avance para a próxima fase quando estiver pronto.</p>
+  {% if cab.avancar_ok %}
+  <div class="proxima ok">
+    <svg class="svgi" style="width:18px;height:18px;color:var(--ok);flex:none" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+    <div class="txt">
+      <div class="titulo">Fase liberada — todos os requisitos estão atendidos.</div>
+      <p class="dica" style="margin:2px 0 0">Avance para <strong>{{ cab.prox_etapa }}</strong> quando estiver pronto.</p>
+    </div>
+    <form method="post" action="{{ url_for('projeto_avancar', pid=p.id) }}">
+      <button class="btn primario" type="submit">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Avançar para {{ cab.prox_etapa }}
+      </button>
+    </form>
   </div>
-  <form method="post" action="{{ url_for('projeto_avancar', pid=p.id) }}">
-    <button class="btn primario" type="submit">
-      <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Avançar para {{ cab.prox_etapa }}
-    </button>
-  </form>
-</div>
+  {% else %}
+  <div class="bloqueio-painel">
+    <div class="titulo">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-lock"/></svg>
+      Avanço bloqueado — resolva as pendências abaixo:
+    </div>
+    <ul class="bloqueio-lista">
+      {% for b in cab.bloqueios %}
+      <li>
+        <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+        {{ b }}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
 {% else %}
 <div class="proxima ok">
-  <span class="ic">🏁</span>
+  <svg class="svgi" style="width:18px;height:18px;color:var(--ok);flex:none" aria-hidden="true"><use href="#ic-check-circle"/></svg>
   <div class="txt">
     <div class="titulo">Projeto na fase final de encerramento.</div>
+    <p class="dica" style="margin:2px 0 0">Gere o Termo de Encerramento e finalize com o cliente.</p>
   </div>
 </div>
 {% endif %}
@@ -183,19 +298,21 @@
 {% set ini = 't-execucao' if erro else 't-resumo' %}
 <div class="abas" style="margin-top:4px">
   <button class="aba {{ 'ativa' if ini=='t-resumo' }}" data-t="t-resumo" type="button" onclick="aba('t-resumo')">
-    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-dashboard"/></svg> Resumo
+    <svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg> Resumo
   </button>
   <button class="aba {{ 'ativa' if ini=='t-execucao' }}" data-t="t-execucao" type="button" onclick="aba('t-execucao')">
-    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bolt"/></svg> Execução
+    <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Execução
+    {% if cab is defined and cab and cab.proxima %}<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn);margin-left:2px;vertical-align:middle"></span>{% endif %}
   </button>
   <button class="aba" data-t="t-dados" type="button" onclick="aba('t-dados')">
-    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-pencil"/></svg> Dados
+    <svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Dados
+    {% if cab is defined and cab and cab.campos_faltantes is defined and cab.campos_faltantes %}<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--err);margin-left:2px;vertical-align:middle"></span>{% endif %}
   </button>
   <button class="aba" data-t="t-com" type="button" onclick="aba('t-com')">
-    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-mail"/></svg> Comunicação
+    <svg class="svgi" aria-hidden="true"><use href="#ic-mail"/></svg> Comunicação
   </button>
   <button class="aba" data-t="t-hist" type="button" onclick="aba('t-hist')">
-    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-activity"/></svg> Histórico
+    <svg class="svgi" aria-hidden="true"><use href="#ic-activity"/></svg> Histórico
   </button>
 </div>
 
@@ -204,54 +321,72 @@
   <div class="painel">
     <div class="resumo">
       {% if p.cnpj %}<div class="row"><span class="k">CNPJ</span><span class="v">{{ p.cnpj }}</span></div>{% endif %}
+      {% if p.numero_proposta %}<div class="row"><span class="k">Nº Proposta</span><span class="v">{{ p.numero_proposta }}</span></div>{% endif %}
       {% if p.ramo %}<div class="row"><span class="k">Ramo</span><span class="v">{{ p.ramo }}</span></div>{% endif %}
       <div class="row"><span class="k">GCI (Levantamento)</span><span class="v">{{ p.gci or '—' }}</span></div>
       <div class="row"><span class="k">Consultor(es)</span><span class="v">{{ p.consultor or '—' }}</span></div>
-      {% if p.responsavel %}<div class="row"><span class="k">Resp. administrativo</span><span class="v">{{ p.responsavel }}</span></div>{% endif %}
+      {% if p.responsavel %}<div class="row"><span class="k">Resp. Administrativo</span><span class="v">{{ p.responsavel }}</span></div>{% endif %}
       <div class="row"><span class="k">Módulos</span><span class="v">{{ p.modulos or '—' }}</span></div>
-      <div class="row"><span class="k">Horas contratadas</span><span class="v">{{ cab.horas_total|int }}{% if cab.horas_bon %} ({{ cab.horas_cob|int }}+{{ cab.horas_bon|int }}){% endif %}</span></div>
+      <div class="row"><span class="k">Horas Contratadas</span><span class="v">{{ cab.horas_total|int }}{% if cab.horas_bon %} ({{ cab.horas_cob|int }}+{{ cab.horas_bon|int }}){% endif %}</span></div>
       {% if p.data_inicio %}<div class="row"><span class="k">Início</span><span class="v">{{ p.data_inicio }}</span></div>{% endif %}
-      <div class="row"><span class="k">Go-live previsto</span><span class="v">{{ p.data_uso_oficial or '—' }}</span></div>
-      {% if p.contatos %}<div class="row"><span class="k">Contatos</span><span class="v">{{ p.contatos }}</span></div>{% endif %}
+      {% if p.data_levantamento %}<div class="row"><span class="k">Levantamento</span><span class="v">{{ p.data_levantamento }}</span></div>{% endif %}
+      <div class="row"><span class="k">Go-live Previsto</span><span class="v">{{ p.data_uso_oficial or '—' }}</span></div>
+      {% if p.contato_nome or p.contato_email or p.contato_tel %}
+      <div class="row"><span class="k">Contato Principal</span>
+        <span class="v">
+          {% if p.contato_nome %}{{ p.contato_nome }}{% endif %}
+          {% if p.contato_email %}<br><small>{{ p.contato_email }}</small>{% endif %}
+          {% if p.contato_tel %}<br><small>{{ p.contato_tel }}</small>{% endif %}
+        </span>
+      </div>
+      {% endif %}
+      {% if p.contatos %}<div class="row"><span class="k">Outros Contatos</span><span class="v">{{ p.contatos }}</span></div>{% endif %}
     </div>
     {% if designacoes %}
-    <div class="dica" style="margin-top:10px;padding:8px 12px;background:var(--surface-2);border-radius:var(--r-sm);border:1px solid var(--line)">
-      <strong>Designações por módulo:</strong>
-      {% for d in designacoes %}
-        <span style="margin-right:10px">{{ d.modulo }} <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-arrow-right"/></svg> {{ d.consultor }}</span>
-      {% endfor %}
+    <div style="margin-top:10px;padding:10px 14px;background:var(--surface-2);border-radius:var(--r-sm);border:1px solid var(--line)">
+      <div style="font-size:.8rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Designações por módulo</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        {% for d in designacoes %}
+          <span style="background:#E8EEF8;color:var(--brand);border-radius:6px;padding:2px 8px;font-size:.82rem;font-weight:600">
+            {{ d.modulo }}
+            <svg class="svgi" style="width:10px;height:10px;margin:0 2px" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+            {{ d.consultor }}
+          </span>
+        {% endfor %}
+      </div>
     </div>
     {% endif %}
-    {% if p.observacoes %}<p class="dica" style="margin-top:10px;padding:8px 12px;background:var(--warn-bg);border-radius:var(--r-sm);border-left:3px solid var(--warn)"><strong>Obs.:</strong> {{ p.observacoes }}</p>{% endif %}
+    {% if p.observacoes %}<div style="margin-top:10px;padding:10px 14px;background:var(--warn-bg);border-radius:var(--r-sm);border-left:3px solid var(--warn);font-size:.88rem"><strong>Obs.:</strong> {{ p.observacoes }}</div>{% endif %}
     <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--line)">
       <button class="btn" type="button" onclick="aba('t-dados')">
-        <svg class="svgi" style="width:15px;height:15px" aria-hidden="true"><use href="#ic-pencil"/></svg> Editar dados
+        <svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Editar dados
       </button>
       <button class="btn" type="button" onclick="aba('t-execucao')">
-        <svg class="svgi" style="width:15px;height:15px" aria-hidden="true"><use href="#ic-bolt"/></svg> Área de execução
+        <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Área de execução
       </button>
       <a class="btn" href="{{ url_for('projeto_cronograma', pid=p.id) }}">
-        <svg class="svgi" style="width:15px;height:15px" aria-hidden="true"><use href="#ic-clock"/></svg> Cronograma editável
+        <svg class="svgi" aria-hidden="true"><use href="#ic-clock"/></svg> Cronograma
       </a>
       <a class="btn" href="{{ url_for('projeto_checklist', pid=p.id) }}">
-        <svg class="svgi" style="width:15px;height:15px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Check-list editável
+        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Check-list
       </a>
       {% if pode_designar %}
       <a class="btn" href="{{ url_for('projeto_designar', pid=p.id) }}">
-        <svg class="svgi" style="width:15px;height:15px" aria-hidden="true"><use href="#ic-users"/></svg> Designar responsáveis
+        <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg> Designar
       </a>
       {% endif %}
     </div>
   </div>
-
   <h3 style="color:var(--navy);margin:20px 0 8px;display:flex;align-items:center;gap:7px">
-    <svg class="svgi" aria-hidden="true"><use href="#ic-activity"/></svg> Atividade recente
+    <svg class="svgi svgi-lg" aria-hidden="true"><use href="#ic-activity"/></svg> Atividade recente
   </h3>
   {% if eventos %}
   <ul class="timeline">
     {% for ev in eventos[:5] %}
     <li>
-      <span class="tl-ico">{{ _ico.get(ev.tipo,'•') }}</span>
+      <span class="tl-ico">
+        <svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="{{ _ico_ev.get(ev.tipo,'#ic-pencil') }}"/></svg>
+      </span>
       <div>
         <div style="font-size:.9rem">{{ ev.descricao }}</div>
         <small class="dica" style="margin:0">{{ ev.criado_em.strftime('%d/%m/%Y %H:%M') if ev.criado_em else '' }}{% if ev.autor %} · {{ ev.autor }}{% endif %}</small>
@@ -260,35 +395,98 @@
     {% endfor %}
   </ul>
   {% if eventos|length > 5 %}
-  <button class="btn" type="button" onclick="aba('t-hist')" style="margin-top:6px">Ver histórico completo →</button>
+  <button class="btn" type="button" onclick="aba('t-hist')" style="margin-top:6px">
+    <svg class="svgi" aria-hidden="true"><use href="#ic-activity"/></svg> Ver histórico completo
+  </button>
   {% endif %}
   {% else %}<p class="dica">Sem atividade registrada ainda.</p>{% endif %}
 </section>
 
 {# ===== ABA: EXECUÇÃO (WORKSPACE CENTRAL) ===== #}
 <section id="t-execucao" class="painel-aba {{ 'ativa' if ini=='t-execucao' }}">
-
-  {# Workspace orientado pela etapa atual #}
   {% if p and cab %}
   <div class="workspace">
     <div class="workspace-header">
-      <span class="fase-badge {{ _fase_cls.get(p.etapa,'') }}">
-        Fase {{ _fase_num.get(p.etapa,'') }} — {{ p.etapa }}
-      </span>
+      <span class="fase-badge {{ _fase_cls.get(p.etapa,'') }}">{{ p.etapa }}</span>
       <span class="titulo-fase">Ações desta fase</span>
+      {% if p.etapa and _setor.get(p.etapa) %}
+        {% set sc, sl = _setor[p.etapa] %}
+        <span class="setor-badge {{ sc }}" style="margin-left:4px">{{ sl }}</span>
+      {% endif %}
       <span class="sub-fase">{{ p.situacao }}</span>
+    </div>
+    <div class="workspace-meta">
+      {% if p.gci %}<span><svg class="svgi" aria-hidden="true"><use href="#ic-user"/></svg> GCI: <strong>{{ p.gci }}</strong></span><span class="sep">·</span>{% endif %}
+      {% if p.consultor %}<span><svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg> Consultor: <strong>{{ p.consultor }}</strong></span><span class="sep">·</span>{% endif %}
+      {% if p.modulos %}<span><svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg> Módulos: <strong>{{ p.modulos }}</strong></span>{% endif %}
     </div>
     <div class="workspace-body">
 
+      {# ===== FASE 0: AGENDAMENTO ===== #}
+      {% if p.etapa == 'Agendamento' %}
+      <div class="acao-principal ativa">
+        <div class="titulo">
+          <span class="passo-num {{ 'concluido' if p.data_levantamento and p.gci else 'pendente' }}">1</span>
+          Agendar Levantamento
+          {% if p.data_levantamento and p.gci %}<span style="color:var(--ok);font-size:.8rem;display:flex;align-items:center;gap:4px"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Agendado</span>{% endif %}
+        </div>
+        <p class="descricao">O Setor Adm define o GCI responsável e a data do Levantamento. O GCI é notificado por e-mail automaticamente.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px;margin-top:4px">
+          <div><span style="font-size:.75rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em">GCI Designado</span><br><strong>{{ p.gci or '—' }}</strong></div>
+          <div><span style="font-size:.75rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em">Data do Levantamento</span><br>
+            {% if p.data_levantamento %}<strong>{{ p.data_levantamento[8:10] }}/{{ p.data_levantamento[5:7] }}/{{ p.data_levantamento[0:4] }}</strong>{% else %}<strong style="color:var(--err)">Não definida</strong>{% endif %}
+          </div>
+        </div>
+        <div class="acoes-row">
+          <a class="btn primario" href="{{ url_for('projeto_agendar', pid=p.id) }}">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-clock"/></svg>
+            {{ 'Rever agendamento' if (p.data_levantamento and p.gci) else 'Agendar Levantamento' }}
+          </a>
+        </div>
+      </div>
+      <div class="acao-principal">
+        <div class="titulo">
+          <span class="passo-num">2</span>
+          Verificar informações do projeto
+        </div>
+        <p class="descricao">Certifique-se de que CNPJ, módulos, horas contratadas, go-live previsto e contato principal estão preenchidos antes de avançar.</p>
+        {% if cab.campos_faltantes is defined and cab.campos_faltantes %}
+        <div style="background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:var(--r-sm);padding:8px 12px">
+          <span style="font-size:.82rem;color:var(--warn);font-weight:600">Campos pendentes: </span>
+          <span style="font-size:.82rem;color:var(--warn)">{{ cab.campos_faltantes | map(attribute='label') | join(', ') }}</span>
+        </div>
+        {% endif %}
+        <div class="acoes-row">
+          <button class="btn" type="button" onclick="aba('t-dados')">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Preencher dados
+          </button>
+        </div>
+      </div>
+      {% if cab.prox_etapa %}
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+        <form method="post" action="{{ url_for('projeto_avancar', pid=p.id) }}">
+          <button class="btn primario" type="submit" {{ 'disabled' if not cab.avancar_ok }}>
+            <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Avançar para Levantamento
+          </button>
+        </form>
+        {% if not cab.avancar_ok and cab.bloqueios is defined and cab.bloqueios %}
+        <div style="font-size:.8rem;color:var(--err);margin-top:6px;display:flex;align-items:center;gap:5px">
+          <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-lock"/></svg>
+          {{ cab.bloqueios | join(' · ') }}
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
       {# ===== FASE 1: LEVANTAMENTO ===== #}
-      {% if p.etapa == 'Levantamento' %}
+      {% elif p.etapa == 'Levantamento' %}
       <div class="acao-principal {{ 'ativa' if not designacoes }}">
         <div class="titulo">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg>
-          Passo 1 — Designar responsáveis
-          {% if designacoes %}<span style="color:var(--ok);font-size:.8rem">✅ Concluído</span>{% endif %}
+          <span class="passo-num {{ 'concluido' if designacoes else '' }}">1</span>
+          Designar GCI e Consultores
+          {% if designacoes %}<span style="color:var(--ok);font-size:.8rem;display:flex;align-items:center;gap:4px"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Designado</span>{% endif %}
         </div>
-        <p class="descricao">Defina o GCI e os consultores por módulo. O sistema gera o Levantamento automaticamente ao designar o GCI.</p>
+        <p class="descricao">Defina o GCI do Levantamento e os Consultores por módulo. O sistema gera o Mapeamento automaticamente ao designar o GCI.</p>
         <div class="acoes-row">
           {% if pode_designar %}
           <a class="btn {{ '' if designacoes else 'primario' }}" href="{{ url_for('projeto_designar', pid=p.id) }}">
@@ -298,40 +496,47 @@
           {% endif %}
         </div>
       </div>
-
       <div class="acao-principal">
         <div class="titulo">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>
-          Passo 2 — Levantamento de processos
+          <span class="passo-num">2</span>
+          Levantamento de processos (GCI)
         </div>
-        <p class="descricao">O GCI preenche o documento de Levantamento externamente. Quando concluído, avance para a fase Projeto.</p>
+        <p class="descricao">O GCI preenche o documento de Mapeamento externamente. Quando concluído, avance para a fase Projeto para processar o arquivo.</p>
         <div class="acoes-row">
           {% if pode_gerar('levantamento') %}
           <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='levantamento') }}">
             <button class="btn" type="submit">
-              <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg> Gerar modelo de Levantamento
+              <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg> Gerar modelo de Mapeamento
             </button>
           </form>
           {% endif %}
           {% if cab.prox_etapa %}
           <form method="post" action="{{ url_for('projeto_avancar', pid=p.id) }}">
-            <button class="btn primario" type="submit">
+            <button class="btn primario" type="submit" {{ 'disabled' if not cab.avancar_ok }}>
               <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Levantamento concluído → Avançar para Projeto
             </button>
           </form>
           {% endif %}
         </div>
+        {% if not cab.avancar_ok and cab.bloqueios is defined and cab.bloqueios %}
+        <div style="font-size:.8rem;color:var(--err);margin-top:4px;display:flex;align-items:center;gap:5px">
+          <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-lock"/></svg>
+          {{ cab.bloqueios | join(' · ') }}
+        </div>
+        {% endif %}
       </div>
 
       {# ===== FASE 2: PROJETO ===== #}
       {% elif p.etapa == 'Projeto' %}
       <div class="acao-principal ativa">
         <div class="titulo">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg>
+          <span class="passo-num">1</span>
           Processar Levantamento e gerar Projeto de Implantação
         </div>
         <p class="descricao">Importe o arquivo de Levantamento preenchido (.docx). O sistema converte o tempo verbal, aplica ortografia e gera o Projeto automaticamente.</p>
-        {% if erro %}<div class="resultado erro" style="padding:8px 14px;margin:8px 0">⚠️ {{ erro }}</div>{% endif %}
+        {% if erro %}<div class="resultado erro" style="padding:8px 14px;margin:8px 0;display:flex;align-items:center;gap:8px">
+          <svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro }}
+        </div>{% endif %}
         {% if pode_gerar('projeto') %}
         <form id="gerar-projeto" method="post" action="{{ url_for('projeto_gerar_projeto', pid=p.id) }}" enctype="multipart/form-data">
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
@@ -341,18 +546,81 @@
             </button>
           </div>
         </form>
+        {% else %}
+        <p class="dica">Sem permissão para gerar o Projeto neste perfil.</p>
         {% endif %}
       </div>
+      {% if cab.prox_etapa %}
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+        <form method="post" action="{{ url_for('projeto_avancar', pid=p.id) }}">
+          <button class="btn primario" type="submit" {{ 'disabled' if not cab.avancar_ok }}>
+            <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Avançar para Designação
+          </button>
+        </form>
+        {% if not cab.avancar_ok and cab.bloqueios is defined and cab.bloqueios %}
+        <div style="font-size:.8rem;color:var(--err);margin-top:6px;display:flex;align-items:center;gap:5px">
+          <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-lock"/></svg>
+          {{ cab.bloqueios | join(' · ') }}
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
 
-      {# ===== FASE 3: CRONOGRAMA E CHECK-LIST ===== #}
+      {# ===== FASE 3: DESIGNAÇÃO ===== #}
+      {% elif p.etapa == 'Designação' %}
+      <div class="acao-principal ativa">
+        <div class="titulo">
+          <span class="passo-num {{ 'concluido' if designacoes else '' }}">1</span>
+          Designar Consultores por Módulo
+          {% if designacoes %}<span style="color:var(--ok);font-size:.8rem;display:flex;align-items:center;gap:4px"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Designado</span>{% endif %}
+        </div>
+        <p class="descricao">Atribua um Consultor para cada módulo contratado. Cada consultor receberá notificação por e-mail com os módulos sob sua responsabilidade.</p>
+        {% if designacoes %}
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+          {% for d in designacoes %}
+          <span style="background:#E8EEF8;color:var(--brand);border-radius:6px;padding:3px 10px;font-size:.82rem;font-weight:600">
+            {{ d.modulo }}
+            <svg class="svgi" style="width:10px;height:10px" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+            {{ d.consultor }}
+          </span>
+          {% endfor %}
+        </div>
+        {% endif %}
+        <div class="acoes-row">
+          {% if pode_designar %}
+          <a class="btn {{ '' if designacoes else 'primario' }}" href="{{ url_for('projeto_designar', pid=p.id) }}">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg>
+            {{ 'Rever designações' if designacoes else 'Designar consultores' }}
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% if cab.prox_etapa %}
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+        <form method="post" action="{{ url_for('projeto_avancar', pid=p.id) }}">
+          <button class="btn primario" type="submit" {{ 'disabled' if not cab.avancar_ok }}>
+            <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Avançar para Cronograma e Check-list
+          </button>
+        </form>
+        {% if not cab.avancar_ok and cab.bloqueios is defined and cab.bloqueios %}
+        <div style="font-size:.8rem;color:var(--err);margin-top:6px;display:flex;align-items:center;gap:5px">
+          <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-lock"/></svg>
+          {{ cab.bloqueios | join(' · ') }}
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {# ===== FASE 4: CRONOGRAMA E CHECK-LIST ===== #}
       {% elif p.etapa == 'Cronograma e Check-list' %}
+      {% set tem_cron = docs|selectattr('tipo','equalto','cronograma')|list if docs else [] %}
+      {% set tem_chk  = docs|selectattr('tipo','equalto','checklist')|list if docs else [] %}
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
-        <div class="acao-principal {{ 'ativa' if not docs or not docs|selectattr('tipo','equalto','cronograma')|list }}">
+        <div class="acao-principal {{ 'ativa' if not tem_cron }}">
           <div class="titulo">
-            <svg class="svgi" aria-hidden="true"><use href="#ic-clock"/></svg>
+            <span class="passo-num {{ 'concluido' if tem_cron else '' }}">1</span>
             Cronograma de implantação
-            {% set tem_cron = docs|selectattr('tipo','equalto','cronograma')|list %}
-            {% if tem_cron %}<span style="color:var(--ok);font-size:.8rem">✅ Gerado</span>{% endif %}
+            {% if tem_cron %}<span style="color:var(--ok);font-size:.8rem;display:flex;align-items:center;gap:4px"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Gerado</span>{% endif %}
           </div>
           <p class="descricao">Distribui as horas contratadas em dias úteis por módulo e etapa.</p>
           <div class="acoes-row">
@@ -369,13 +637,11 @@
             </a>
           </div>
         </div>
-
-        <div class="acao-principal {{ 'ativa' if not docs or not docs|selectattr('tipo','equalto','checklist')|list }}">
+        <div class="acao-principal {{ 'ativa' if not tem_chk }}">
           <div class="titulo">
-            <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+            <span class="passo-num {{ 'concluido' if tem_chk else '' }}">2</span>
             Check-list de atividades
-            {% set tem_chk = docs|selectattr('tipo','equalto','checklist')|list %}
-            {% if tem_chk %}<span style="color:var(--ok);font-size:.8rem">✅ Gerado</span>{% endif %}
+            {% if tem_chk %}<span style="color:var(--ok);font-size:.8rem;display:flex;align-items:center;gap:4px"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Gerado</span>{% endif %}
           </div>
           <p class="descricao">Lista de verificação por módulo para acompanhar a execução.</p>
           <div class="acoes-row">
@@ -393,27 +659,32 @@
           </div>
         </div>
       </div>
-
       {% if cab.prox_etapa %}
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
         <form method="post" action="{{ url_for('projeto_avancar', pid=p.id) }}">
-          <button class="btn primario" type="submit">
+          <button class="btn primario" type="submit" {{ 'disabled' if not cab.avancar_ok }}>
             <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Avançar para Encerramento
           </button>
         </form>
+        {% if not cab.avancar_ok and cab.bloqueios is defined and cab.bloqueios %}
+        <div style="font-size:.8rem;color:var(--err);margin-top:6px;display:flex;align-items:center;gap:5px">
+          <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-lock"/></svg>
+          {{ cab.bloqueios | join(' · ') }}
+        </div>
+        {% endif %}
       </div>
       {% endif %}
 
-      {# ===== FASE 4: ENCERRAMENTO ===== #}
+      {# ===== FASE 5: ENCERRAMENTO ===== #}
       {% elif p.etapa == 'Encerramento' %}
+      {% set tem_termo = docs|selectattr('tipo','equalto','termo')|list if docs else [] %}
       <div class="acao-principal ativa">
         <div class="titulo">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>
+          <span class="passo-num {{ 'concluido' if tem_termo else '' }}">1</span>
           Gerar Termo de Encerramento
-          {% set tem_termo = docs|selectattr('tipo','equalto','termo')|list if docs else [] %}
-          {% if tem_termo %}<span style="color:var(--ok);font-size:.8rem">✅ Gerado</span>{% endif %}
+          {% if tem_termo %}<span style="color:var(--ok);font-size:.8rem;display:flex;align-items:center;gap:4px"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Gerado</span>{% endif %}
         </div>
-        <p class="descricao">Documento oficial que formaliza a conclusão da implantação. Após gerado, envie ao cliente para assinatura.</p>
+        <p class="descricao">Documento oficial que formaliza a conclusão da implantação. Após gerado, envie ao cliente para assinatura e registre o encerramento.</p>
         <div class="acoes-row">
           {% if pode_gerar('termo') %}
           <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='termo') }}">
@@ -428,19 +699,32 @@
           </a>
         </div>
       </div>
+      <div class="acao-principal">
+        <div class="titulo">
+          <span class="passo-num {{ 'concluido' if p.data_encerramento else '' }}">2</span>
+          Registrar data de encerramento
+          {% if p.data_encerramento %}<span style="color:var(--ok);font-size:.8rem;display:flex;align-items:center;gap:4px"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Registrado</span>{% endif %}
+        </div>
+        <p class="descricao">Informe a data oficial de encerramento e marque o projeto como Concluído para fechar o ciclo.</p>
+        <div class="acoes-row">
+          <button class="btn primario" type="button" onclick="aba('t-dados')">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Preencher data de encerramento
+          </button>
+        </div>
+      </div>
       {% endif %}
 
     </div>{# fim workspace-body #}
   </div>{# fim workspace #}
   {% endif %}
 
-  {# ===== DOCUMENTOS GERADOS (LISTA COMPACTA) ===== #}
+  {# ===== DOCUMENTOS GERADOS ===== #}
   <div class="painel" style="margin-top:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
       <h3 style="margin:0;color:var(--navy);display:flex;align-items:center;gap:7px">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg> Documentos do projeto
+        <svg class="svgi svgi-lg" aria-hidden="true"><use href="#ic-file"/></svg> Documentos do projeto
       </h3>
-      {% if cab and cab.docs_ok < cab.docs_total %}
+      {% if cab is defined and cab and cab.docs_ok < cab.docs_total %}
       <form method="post" action="{{ url_for('projeto_gerar_pendentes', pid=p.id) }}" style="margin:0">
         <button class="btn primario" type="submit" style="margin:0">
           <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Preparar {{ cab.docs_total - cab.docs_ok }} doc(s) pendente(s)
@@ -448,24 +732,23 @@
       </form>
       {% endif %}
     </div>
-
-    {# Status dos gates #}
-    {% if cab and cab.gate %}
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+    {# Gate de documentos #}
+    {% if cab is defined and cab and cab.gate is defined and cab.gate %}
+    <div class="gate-lista">
       {% for item in cab.gate.itens %}
-      <div class="doc-gate {{ 'ok' if item.ok else 'pendente' }}">
-        {% if item.ok %}✅{% else %}⬜{% endif %} {{ item.label }}
-      </div>
+      <span class="gate-item {{ 'ok' if item.ok else 'pendente' }}">
+        <svg class="svgi" aria-hidden="true"><use href="{{ '#ic-check-circle' if item.ok else '#ic-clock' }}"/></svg>
+        {{ item.label }}
+      </span>
       {% endfor %}
     </div>
     {% endif %}
-
     {# Lista de documentos gerados #}
     {% if docs %}
     <div class="docs-lista">
       {% for d in docs %}
       <div class="doc-item">
-        <span class="doc-ico">📄</span>
+        <svg class="svgi svgi-lg" style="color:var(--brand);flex:none" aria-hidden="true"><use href="#ic-file"/></svg>
         <div class="doc-info">
           <div class="doc-nome">{{ d.arquivo }}</div>
           <div class="doc-meta">{{ d.tipo }} · {{ d.criado_em.strftime('%d/%m/%Y %H:%M') if d.criado_em else '' }}</div>
@@ -486,7 +769,6 @@
     {% else %}
     <p class="dica">Nenhum documento gerado ainda. Use a área de execução acima.</p>
     {% endif %}
-
     {# Anexo manual #}
     <div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)">
       <p class="dica" style="margin:0 0 8px">Anexar documento manualmente:</p>
@@ -508,9 +790,24 @@
 {# ===== ABA: DADOS ===== #}
 <section id="t-dados" class="painel-aba">
   <div class="painel">
-    <h3 style="margin-top:0;color:var(--navy)">Dados do projeto</h3>
+    <h3 style="margin-top:0;color:var(--navy);display:flex;align-items:center;gap:7px">
+      <svg class="svgi svgi-lg" aria-hidden="true"><use href="#ic-pencil"/></svg> Dados do projeto
+    </h3>
+    {% if cab is defined and cab and cab.campos_faltantes is defined and cab.campos_faltantes %}
+    <div class="pendencias-campos" style="margin-bottom:16px">
+      <div class="titulo">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-bell"/></svg>
+        Preencha os campos obrigatórios para liberar o avanço de fase:
+      </div>
+      <ul>
+        {% for cf in cab.campos_faltantes %}
+        <li>{{ cf.label }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
     <form method="post" action="{{ url_for('projeto_ficha', pid=p.id) }}">
-      {{ campos_form(p, etapas, situacoes) }}
+      {{ campos_form(p, etapas, situacoes, cab.campos_faltantes if cab is defined and cab else []) }}
       <button class="btn primario" type="submit" style="margin-top:8px">
         <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvar dados
       </button>
@@ -531,18 +828,34 @@
 <section id="t-com" class="painel-aba">
   <div class="painel">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-      <h3 style="margin:0;color:var(--navy)">Comunicação com o cliente</h3>
+      <h3 style="margin:0;color:var(--navy);display:flex;align-items:center;gap:7px">
+        <svg class="svgi svgi-lg" aria-hidden="true"><use href="#ic-mail"/></svg> Comunicação com o cliente
+      </h3>
       <a class="btn primario" href="{{ url_for('projeto_email', pid=p.id) }}">
         <svg class="svgi" aria-hidden="true"><use href="#ic-send"/></svg> Novo e-mail
       </a>
     </div>
+    {% if p.contato_email %}
+    <div style="background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
+      <svg class="svgi svgi-lg" style="color:var(--brand)" aria-hidden="true"><use href="#ic-user"/></svg>
+      <div>
+        <div style="font-weight:600;font-size:.9rem">{{ p.contato_nome or 'Contato' }}</div>
+        <div style="font-size:.82rem;color:var(--muted)">{{ p.contato_email }}{% if p.contato_tel %} · {{ p.contato_tel }}{% endif %}</div>
+      </div>
+      <a class="btn" href="mailto:{{ p.contato_email }}" style="margin-left:auto">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-mail"/></svg> Enviar e-mail
+      </a>
+    </div>
+    {% endif %}
     <p class="dica" style="margin:0 0 12px">E-mails enviados pelo painel ficam registrados aqui e no histórico do projeto.</p>
-    {% set emails = eventos|selectattr('tipo','equalto','email')|list %}
+    {% set emails = eventos|selectattr('tipo','equalto','email')|list if eventos else [] %}
     {% if emails %}
     <ul class="timeline">
       {% for ev in emails %}
       <li>
-        <span class="tl-ico">✉️</span>
+        <span class="tl-ico">
+          <svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-mail"/></svg>
+        </span>
         <div>
           <div style="font-size:.9rem">{{ ev.descricao }}</div>
           <small class="dica" style="margin:0">{{ ev.criado_em.strftime('%d/%m/%Y %H:%M') if ev.criado_em else '' }}{% if ev.autor %} · {{ ev.autor }}{% endif %}</small>
@@ -560,7 +873,9 @@
 <section id="t-hist" class="painel-aba">
   <div class="painel">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-      <h3 style="margin:0;color:var(--navy)">Histórico completo</h3>
+      <h3 style="margin:0;color:var(--navy);display:flex;align-items:center;gap:7px">
+        <svg class="svgi svgi-lg" aria-hidden="true"><use href="#ic-activity"/></svg> Histórico completo
+      </h3>
       <form method="post" action="{{ url_for('projeto_nota', pid=p.id) }}" style="display:flex;gap:8px;align-items:center;flex:1;max-width:500px;margin:0">
         <input name="nota" placeholder="Adicionar anotação…" style="flex:1;padding:8px 12px;border:1.5px solid var(--line-2);border-radius:var(--r-sm);font:inherit;font-size:.88rem">
         <button class="btn" type="submit">
@@ -572,7 +887,9 @@
     <ul class="timeline">
       {% for ev in eventos %}
       <li>
-        <span class="tl-ico">{{ _ico.get(ev.tipo,'•') }}</span>
+        <span class="tl-ico">
+          <svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="{{ _ico_ev.get(ev.tipo,'#ic-pencil') }}"/></svg>
+        </span>
         <div>
           <div style="font-size:.9rem">{{ ev.descricao }}</div>
           <small class="dica" style="margin:0">{{ ev.criado_em.strftime('%d/%m/%Y %H:%M') if ev.criado_em else '' }}{% if ev.autor %} · {{ ev.autor }}{% endif %}</small>
@@ -585,6 +902,5 @@
     {% endif %}
   </div>
 </section>
-
 {% endif %}{# fim if not p #}
 {% endblock %}
