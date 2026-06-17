@@ -243,9 +243,13 @@
     <button class="btn primario" type="button" onclick="aba('t-execucao')">
       <svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> Processar Levantamento
     </button>
+  {% elif cab.proxima.tipo == 'acao:definir_gci' %}
+    <a class="btn primario" href="{{ url_for('projeto_definir_gci', pid=p.id) }}">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-user"/></svg> Definir GCI Responsável
+    </a>
   {% elif cab.proxima.tipo == 'acao:data_levantamento' %}
     <a class="btn primario" href="{{ url_for('projeto_agendar', pid=p.id) }}">
-      <svg class="svgi" aria-hidden="true"><use href="#ic-clock"/></svg> Agendar Levantamento
+      <svg class="svgi" aria-hidden="true"><use href="#ic-clock"/></svg> Definir Data do Levantamento
     </a>
   {% elif cab.proxima.tipo in ['acao:consultores_designacao','acao:consultores'] %}
     <a class="btn primario" href="{{ url_for('projeto_designar', pid=p.id) }}">
@@ -424,29 +428,59 @@
 
       {# ===== FASE 0: AGENDAMENTO ===== #}
       {% if p.etapa == 'Agendamento' %}
-      <div class="acao-principal ativa">
+
+      {# --- Passo 1: Definir GCI --- #}
+      <div class="acao-principal {{ 'ativa' if not p.gci else '' }}">
         <div class="titulo">
-          <span class="passo-num {{ 'concluido' if p.data_levantamento and p.gci else 'pendente' }}">1</span>
-          Agendar Levantamento
-          {% if p.data_levantamento and p.gci %}<span style="color:var(--ok);font-size:.8rem;display:flex;align-items:center;gap:4px"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Agendado</span>{% endif %}
+          <span class="passo-num {{ 'concluido' if p.gci else 'pendente' }}">1</span>
+          Definir GCI Responsável
+          {% if p.gci %}<span style="color:var(--ok);font-size:.8rem;display:flex;align-items:center;gap:4px"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Definido</span>{% endif %}
         </div>
-        <p class="descricao">O Setor Adm define o GCI responsável e a data do Levantamento. O GCI é notificado por e-mail automaticamente.</p>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px;margin-top:4px">
-          <div><span style="font-size:.75rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em">GCI Designado</span><br><strong>{{ p.gci or '—' }}</strong></div>
-          <div><span style="font-size:.75rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em">Data do Levantamento</span><br>
-            {% if p.data_levantamento %}<strong>{{ p.data_levantamento[8:10] }}/{{ p.data_levantamento[5:7] }}/{{ p.data_levantamento[0:4] }}</strong>{% else %}<strong style="color:var(--err)">Não definida</strong>{% endif %}
-          </div>
+        <p class="descricao">Selecione o GCI que conduzirá o Levantamento de Processos. O GCI será notificado por e-mail após a data ser confirmada.</p>
+        <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px;margin-top:4px">
+          <span style="font-size:.75rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em">GCI Designado</span><br>
+          <strong>{{ p.gci or '—' }}</strong>
         </div>
         <div class="acoes-row">
-          <a class="btn primario" href="{{ url_for('projeto_agendar', pid=p.id) }}">
-            <svg class="svgi" aria-hidden="true"><use href="#ic-clock"/></svg>
-            {{ 'Rever agendamento' if (p.data_levantamento and p.gci) else 'Agendar Levantamento' }}
+          <a class="btn {{ 'primario' if not p.gci else '' }}" href="{{ url_for('projeto_definir_gci', pid=p.id) }}">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-user"/></svg>
+            {{ 'Alterar GCI' if p.gci else 'Definir GCI' }}
           </a>
+        </div>
+      </div>
+
+      {# --- Passo 2: Definir Data do Levantamento --- #}
+      <div class="acao-principal {{ 'ativa' if p.gci and not p.data_levantamento else '' }}">
+        <div class="titulo">
+          <span class="passo-num {{ 'concluido' if p.data_levantamento else ('pendente' if p.gci else '') }}">2</span>
+          Definir Data do Levantamento
+          {% if p.data_levantamento %}<span style="color:var(--ok);font-size:.8rem;display:flex;align-items:center;gap:4px"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Agendado</span>{% endif %}
+        </div>
+        <p class="descricao">
+          {% if not p.gci %}<span style="color:var(--muted)">Disponível após definir o GCI.</span>
+          {% else %}Defina a data do Levantamento. Ao confirmar, o GCI <strong>{{ p.gci }}</strong> será notificado por e-mail.{% endif %}
+        </p>
+        <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px;margin-top:4px">
+          <span style="font-size:.75rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em">Data do Levantamento</span><br>
+          {% if p.data_levantamento %}<strong>{{ p.data_levantamento[8:10] }}/{{ p.data_levantamento[5:7] }}/{{ p.data_levantamento[0:4] }}</strong>
+          {% else %}<strong style="color:var(--err)">Não definida</strong>{% endif %}
+        </div>
+        <div class="acoes-row">
+          {% if p.gci %}
+          <a class="btn {{ 'primario' if not p.data_levantamento else '' }}" href="{{ url_for('projeto_agendar', pid=p.id) }}">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-clock"/></svg>
+            {{ 'Rever data' if p.data_levantamento else 'Definir Data' }}
+          </a>
+          {% else %}
+          <button class="btn" disabled title="Defina o GCI primeiro">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-clock"/></svg> Definir Data
+          </button>
+          {% endif %}
         </div>
       </div>
       <div class="acao-principal">
         <div class="titulo">
-          <span class="passo-num">2</span>
+          <span class="passo-num">3</span>
           Verificar informações do projeto
         </div>
         <p class="descricao">Certifique-se de que CNPJ, módulos, horas contratadas, go-live previsto e contato principal estão preenchidos antes de avançar.</p>

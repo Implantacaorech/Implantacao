@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block titulo %}Definir GCI — {{ p.cliente }}{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a><svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg><a href="{{ url_for('projetos') }}">Carteira</a><svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg><a href="{{ url_for('projeto_ficha', pid=pid) }}">{{ p.cliente }}</a><svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>Definir GCI</div>{% endblock %}
+{% block conteudo %}
+  <h1 style="display:flex;align-items:center;gap:10px">
+    <svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-user"/></svg>
+    Definir GCI — {{ p.cliente }}
+  </h1>
+  <p class="sub">
+    <strong>Etapa 1 de 2 — Agendamento.</strong>
+    Selecione o GCI responsável pelo Levantamento. O GCI será notificado por e-mail somente após a data do Levantamento ser confirmada.
+  </p>
+
+  {# Indicador de progresso das sub-etapas #}
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px;font-size:.82rem">
+    <span style="background:var(--brand);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none">1</span>
+    <span style="font-weight:600;color:var(--brand)">Definir GCI</span>
+    <svg class="svgi svgi-xs" style="color:var(--muted)" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+    <span style="background:var(--surface);border:1px solid var(--line);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none;color:var(--muted)">2</span>
+    <span style="color:var(--muted)">Definir Data do Levantamento</span>
+  </div>
+
+  {% if erro %}<div class="resultado erro" style="padding:8px 14px;display:flex;align-items:center;gap:8px"><svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro }}</div>{% endif %}
+
+  {% if p.gci %}
+  <div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px;margin-bottom:12px">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+    GCI atual: <strong>{{ p.gci }}</strong>. Você pode alterar ou confirmar abaixo.
+  </div>
+  {% endif %}
+
+  <form method="post" class="painel">
+    <label class="campo">
+      <span>GCI responsável *</span>
+      <select name="gci" required>
+        <option value="">— Selecione o GCI —</option>
+        {% for u in gcis %}<option value="{{ u.nome }}" {{ 'selected' if p.gci == u.nome }}>{{ u.nome }}</option>{% endfor %}
+      </select>
+      {% if not gcis %}<small>Nenhum usuário com perfil GCI cadastrado. <a href="{{ url_for('usuarios') }}">Cadastrar</a>.</small>{% endif %}
+    </label>
+    <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+      <button class="btn primario" type="submit">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvar GCI e continuar
+      </button>
+      <a class="btn" href="{{ url_for('projeto_ficha', pid=pid) }}">Cancelar</a>
+    </div>
+    <p style="font-size:.78rem;color:var(--muted);margin-top:8px">
+      <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-info"/></svg>
+      Após salvar, você será direcionado para definir a data do Levantamento.
+    </p>
+  </form>
+{% endblock %}

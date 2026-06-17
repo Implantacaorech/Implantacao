@@ -805,9 +805,15 @@ def projeto_avancar(pid):
             acao_ok = db.acao_entrada_ok(prox, proj)
             if not acao_ok:
                 req = (db.ACAO_ENTRADA.get(prox) or (None,))[0]
-                destino = {"data_levantamento": "projeto_agendar",
-                           "consultores_designacao": "projeto_designar",
-                           "consultores": "projeto_designar"}.get(req)
+                # Para gci_e_data_levantamento, redireciona conforme o sub-estado
+                if req == "gci_e_data_levantamento":
+                    if not db.gci_definido(proj):
+                        destino = "projeto_definir_gci"
+                    else:
+                        destino = "projeto_agendar"
+                else:
+                    destino = {"consultores_designacao": "projeto_designar",
+                               "consultores": "projeto_designar"}.get(req)
     if destino:
         return redirect(url_for(destino, pid=pid))
     aviso_msg = "Não é possível avançar: " + "; ".join(bloqueios) if bloqueios else "Faltam itens obrigatórios."
@@ -1006,9 +1012,10 @@ def projeto_designar(pid):
                            consultores=consultores, atuais=atuais, gci_atual=proj.get("gci", ""))
 
 
-@app.route("/projetos/<int:pid>/agendar", methods=["GET", "POST"])
-def projeto_agendar(pid):
-    """Fase Agendamento (Administrativo): define o GCI e a Data do Levantamento; avisa o GCI."""
+@app.route("/projetos/<int:pid>/definir_gci", methods=["GET", "POST"])
+def projeto_definir_gci(pid):
+    """Fase Agendamento — Etapa 1: define o GCI responsável pelo Levantamento.
+    Salva imediatamente sem notificar; a notificação só ocorre após a data ser confirmada."""
     if _perfil() and _perfil() not in ("ADM", "Administrativo"):
         abort(403)
     with db.Session() as s:
@@ -1019,27 +1026,62 @@ def projeto_agendar(pid):
     gcis = db.usuarios_por_perfil("GCI")
     if request.method == "POST":
         gci = (request.form.get("gci") or "").strip()
+        if not gci:
+            return redirect(url_for("projeto_definir_gci", pid=pid, erro="Selecione um GCI responsável."))
+        with db.Session() as s:
+            p = s.get(db.Projeto, pid)
+            p.gci = gci
+            db.registrar_evento(s, pid, "etapa",
+                "GCI definido: %s" % gci, _autor())
+            s.commit()
+        # Redireciona para a etapa 2 (definir data) após salvar o GCI
+        return redirect(url_for("projeto_agendar", pid=pid, salvo=1))
+    return render_template("definir_gci.html", p=proj, pid=pid, gcis=gcis,
+                           erro=request.args.get("erro"))
+
+
+@app.route("/projetos/<int:pid>/agendar", methods=["GET", "POST"])
+def projeto_agendar(pid):
+    """Fase Agendamento — Etapa 2: define a Data do Levantamento (apenas após GCI definido).
+    Ao salvar, notifica o GCI por e-mail e avança o projeto para Levantamento."""
+    if _perfil() and _perfil() not in ("ADM", "Administrativo"):
+        abort(403)
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        if not p:
+            abort(404)
+        proj = db.to_dict(p)
+    # Etapa 2 só pode ser acessada após o GCI estar definido
+    if not db.gci_definido(proj):
+        return redirect(url_for("projeto_definir_gci", pid=pid,
+                                erro="Defina o GCI responsável antes de agendar a data."))
+    import datetime as _dt
+    hoje_iso = _dt.date.today().isoformat()
+    if request.method == "POST":
         data_lev = (request.form.get("data_levantamento") or "").strip()
         if not data_lev:
             return redirect(url_for("projeto_agendar", pid=pid, erro="Informe a data do Levantamento."))
+        if data_lev < hoje_iso:
+            return redirect(url_for("projeto_agendar", pid=pid,
+                                    erro="A data do Levantamento não pode ser anterior a hoje."))
         with db.Session() as s:
             p = s.get(db.Projeto, pid)
-            if gci:
-                p.gci = gci
             p.data_levantamento = data_lev
             cliente, gci_nome = p.cliente, p.gci
             db.registrar_evento(s, pid, "etapa",
                 "Data do Levantamento definida: %s (GCI: %s)" % (_data_br(data_lev), gci_nome or "—"), _autor())
             s.commit()
+        # Notifica o GCI apenas após ambos (GCI + data) estarem confirmados
         em = db.email_do_usuario(gci_nome)
         if em:
             _notificar(pid, [em], "Levantamento agendado — %s" % cliente,
                        "O Levantamento do projeto %s foi agendado para %s.\n"
                        "Você é o GCI responsável. Acesse o Painel de Implantação para conduzir.\n\n"
                        "— Painel de Implantação" % (cliente, _data_br(data_lev)))
-        _auto_avancar(pid)   # com a data definida, avança Agendamento → Levantamento
+        _auto_avancar(pid)   # com GCI + data definidos, avança Agendamento → Levantamento
         return redirect(url_for("projeto_ficha", pid=pid, salvo=1))
-    return render_template("agendar.html", p=proj, pid=pid, gcis=gcis, erro=request.args.get("erro"))
+    return render_template("agendar.html", p=proj, pid=pid, hoje=hoje_iso,
+                           salvo=request.args.get("salvo"), erro=request.args.get("erro"))
 
 
 @app.route("/projetos/<int:pid>/consultores", methods=["GET", "POST"])

@@ -38,7 +38,7 @@ CAMPOS = ["cliente", "cnpj", "numero_projeto", "numero_proposta", "ramo", "respo
 # Campos obrigatórios por etapa — bloqueiam o avanço se vazios
 CAMPOS_OBRIGATORIOS = {
     "Agendamento":             ["cliente", "cnpj", "numero_projeto", "modulos",
-                                "horas_cobradas", "data_levantamento", "gci"],
+                                "horas_cobradas", "gci", "data_levantamento"],
     "Levantamento":            ["cliente", "cnpj", "numero_projeto", "modulos",
                                 "horas_cobradas", "gci", "data_levantamento"],
     "Projeto":                 ["cliente", "cnpj", "numero_projeto", "modulos",
@@ -86,10 +86,13 @@ GATES = {
 }
 
 # Ações obrigatórias para ENTRAR em cada etapa (além dos documentos):
-#  - Levantamento: a Data do Levantamento (definida pelo Administrativo, fase Agendamento)
+#  - Levantamento: GCI definido (etapa 1) e Data do Levantamento (etapa 2), sequenciais.
+#    O GCI deve ser definido primeiro; a data só pode ser informada após o GCI estar salvo.
 #  - Cronograma e Check-list: os Consultores designados (pelo GCI, fase Designação)
 ACAO_ENTRADA = {
-    "Levantamento": ("data_levantamento", "Definir a Data do Levantamento"),
+    # Para avançar para Levantamento, ambos GCI e data_levantamento são obrigatórios.
+    # A sequência é validada na UI: o botão de data só aparece após GCI salvo.
+    "Levantamento": ("gci_e_data_levantamento", "Definir GCI e Data do Levantamento"),
     "Designação": ("consultores_designacao", "Designar GCI e Consultores por Módulo"),
     "Cronograma e Check-list": ("consultores", "Designar os Consultores"),
 }
@@ -98,13 +101,25 @@ ACAO_ENTRADA = {
 def acao_entrada_ok(etapa, proj):
     """A ação obrigatória para entrar nesta etapa já foi cumprida?"""
     req = (ACAO_ENTRADA.get(etapa) or (None, None))[0]
-    if req == "data_levantamento":
-        return bool((proj.get("data_levantamento") or "").strip())
+    if req == "gci_e_data_levantamento":
+        # Ambos GCI e data_levantamento devem estar preenchidos para avançar
+        return (bool((proj.get("gci") or "").strip()) and
+                bool((proj.get("data_levantamento") or "").strip()))
     if req == "consultores_designacao":
         return bool((proj.get("gci") or "").strip())
     if req == "consultores":
         return bool((proj.get("consultor") or "").strip())
     return True
+
+
+def gci_definido(proj):
+    """Verifica se o GCI já foi definido (etapa 1 do agendamento)."""
+    return bool((proj.get("gci") or "").strip())
+
+
+def data_levantamento_definida(proj):
+    """Verifica se a data do levantamento já foi definida (etapa 2 do agendamento)."""
+    return bool((proj.get("data_levantamento") or "").strip())
 
 
 def campos_faltantes(etapa, proj):
@@ -766,12 +781,19 @@ def cabecalho(d, docs):
     gate_ref = gate_status(prox, docs) if prox else gate_status(etapa, docs)
     itens = gate_ref["itens"]
     # Próxima ação = documento faltante; se os docs estão ok mas falta a AÇÃO
-    # (data do Levantamento / consultores), a próxima ação passa a ser essa.
+    # (GCI / data do Levantamento / consultores), a próxima ação passa a ser essa.
     proxima = next((i for i in itens if not i["ok"]), None)
     acao_ok = acao_entrada_ok(prox, d) if prox else True
     if proxima is None and prox and not acao_ok:
         chave, label = ACAO_ENTRADA[prox]
-        proxima = {"tipo": "acao:" + chave, "label": label, "ok": False}
+        # Para o agendamento, distingue entre etapa 1 (GCI) e etapa 2 (data)
+        if chave == "gci_e_data_levantamento":
+            if not gci_definido(d):
+                proxima = {"tipo": "acao:definir_gci", "label": "Definir GCI Responsável", "ok": False}
+            else:
+                proxima = {"tipo": "acao:data_levantamento", "label": "Definir Data do Levantamento", "ok": False}
+        else:
+            proxima = {"tipo": "acao:" + chave, "label": label, "ok": False}
     # Campos obrigatórios faltantes na etapa atual
     cf = campos_faltantes(etapa, d)
     ok_avancar, bloqueios = pode_avancar(etapa, d, docs)

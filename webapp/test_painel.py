@@ -127,22 +127,53 @@ def test_etapas_seis_e_gates_acao():
     assert db.ETAPAS[0] == "Agendamento" and "Designação" in db.ETAPAS
     assert db.proxima_etapa("Agendamento") == "Levantamento"
     assert db.proxima_etapa("Projeto") == "Designação"
-    assert not db.acao_entrada_ok("Levantamento", {"data_levantamento": ""})
-    assert db.acao_entrada_ok("Levantamento", {"data_levantamento": "2026-07-01"})
+    # Sem GCI e sem data: não pode avançar
+    assert not db.acao_entrada_ok("Levantamento", {"gci": "", "data_levantamento": ""})
+    # Só com GCI (sem data): não pode avançar
+    assert not db.acao_entrada_ok("Levantamento", {"gci": "João", "data_levantamento": ""})
+    # Só com data (sem GCI): não pode avançar
+    assert not db.acao_entrada_ok("Levantamento", {"gci": "", "data_levantamento": "2026-07-01"})
+    # Com ambos (GCI + data): pode avançar
+    assert db.acao_entrada_ok("Levantamento", {"gci": "João", "data_levantamento": "2026-07-01"})
     assert not db.acao_entrada_ok("Cronograma e Check-list", {"consultor": ""})
     assert db.acao_entrada_ok("Cronograma e Check-list", {"consultor": "Ana"})
-    cab = db.cabecalho({"etapa": "Agendamento", "data_levantamento": "", "situacao": "Em andamento"}, [])
-    assert cab["proxima"] and cab["proxima"]["tipo"] == "acao:data_levantamento"
+    # Sem GCI: próxima ação deve ser definir_gci
+    cab = db.cabecalho({"etapa": "Agendamento", "gci": "", "data_levantamento": "", "situacao": "Em andamento"}, [])
+    assert cab["proxima"] and cab["proxima"]["tipo"] == "acao:definir_gci"
+    # Com GCI mas sem data: próxima ação deve ser data_levantamento
+    cab2 = db.cabecalho({"etapa": "Agendamento", "gci": "João", "data_levantamento": "", "situacao": "Em andamento"}, [])
+    assert cab2["proxima"] and cab2["proxima"]["tipo"] == "acao:data_levantamento"
 
 
-def test_agendamento_define_data_e_avanca(client):
+def test_agendamento_define_gci_e_data_e_avanca(client):
+    """Testa o fluxo de duas etapas: (1) definir GCI, (2) definir data, depois avança."""
     _login_como(client, "Administrativo")
     pid = int(_novo(client, cliente="Agendar Co", modulos="FAT"))   # inicia em Agendamento
-    r = client.post("/projetos/%s/agendar" % pid, data={"gci": "", "data_levantamento": "2026-07-15"})
-    assert r.status_code == 302
+    # Etapa 1: definir GCI
+    r1 = client.post("/projetos/%s/definir_gci" % pid, data={"gci": "GCI Teste"})
+    assert r1.status_code == 302
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        assert p.gci == "GCI Teste" and p.etapa == "Agendamento"  # ainda em Agendamento
+    # Etapa 2: definir data (com GCI já definido)
+    r2 = client.post("/projetos/%s/agendar" % pid, data={"data_levantamento": "2026-07-15"})
+    assert r2.status_code == 302
     with db.Session() as s:
         p = s.get(db.Projeto, pid)
         assert p.data_levantamento == "2026-07-15" and p.etapa == "Levantamento"
+    client.post("/projetos/%s/excluir" % pid)
+    with client.session_transaction() as sess:
+        sess.clear()
+
+
+def test_agendamento_sem_gci_nao_acessa_data(client):
+    """Testa que a rota de data redireciona para definir_gci se GCI não estiver definido."""
+    _login_como(client, "Administrativo")
+    pid = int(_novo(client, cliente="Sem GCI Co", modulos="FAT"))
+    # Tenta acessar diretamente a rota de data sem GCI definido
+    r = client.get("/projetos/%s/agendar" % pid)
+    assert r.status_code == 302
+    assert b"definir_gci" in r.data or "/definir_gci" in r.headers.get("Location", "")
     client.post("/projetos/%s/excluir" % pid)
     with client.session_transaction() as sess:
         sess.clear()
