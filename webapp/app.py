@@ -642,6 +642,91 @@ def config_email():
                            configurado=mailer.configurado())
 
 
+# ===== CRUD de Modelos de E-mail (apenas ADM) =====
+
+@app.route("/config/modelos-email")
+def config_modelos_email():
+    if not _e_adm():
+        abort(403)
+    modelos = db.listar_modelos_email(apenas_ativos=False)
+    return render_template("config_modelos_email.html",
+                           modelos=modelos, etapas=db.ETAPAS)
+
+
+@app.route("/config/modelos-email/novo", methods=["GET", "POST"])
+def config_modelo_email_novo():
+    if not _e_adm():
+        abort(403)
+    erro = None
+    if request.method == "POST":
+        nome = (request.form.get("nome") or "").strip()
+        if not nome:
+            erro = "O nome do modelo é obrigatório."
+        else:
+            try:
+                mid = db.salvar_modelo_email(request.form)
+                return redirect(url_for("config_modelos_email"))
+            except Exception as e:
+                erro = str(e)
+    return render_template("config_modelo_email_form.html",
+                           modelo=None, etapas=db.ETAPAS,
+                           variaveis=db.VARIAVEIS_EMAIL, erro=erro)
+
+
+@app.route("/config/modelos-email/<int:mid>/editar", methods=["GET", "POST"])
+def config_modelo_email_editar(mid):
+    if not _e_adm():
+        abort(403)
+    modelo = db.obter_modelo_email(mid)
+    if not modelo:
+        abort(404)
+    erro = None
+    if request.method == "POST":
+        nome = (request.form.get("nome") or "").strip()
+        if not nome:
+            erro = "O nome do modelo é obrigatório."
+        else:
+            try:
+                db.salvar_modelo_email(request.form, mid=mid)
+                return redirect(url_for("config_modelos_email"))
+            except Exception as e:
+                erro = str(e)
+        modelo = dict(modelo)
+        modelo.update({k: request.form.get(k, modelo.get(k, "")) for k in ("nome", "assunto", "corpo", "etapa")})
+    return render_template("config_modelo_email_form.html",
+                           modelo=modelo, etapas=db.ETAPAS,
+                           variaveis=db.VARIAVEIS_EMAIL, erro=erro)
+
+
+@app.route("/config/modelos-email/<int:mid>/excluir", methods=["POST"])
+def config_modelo_email_excluir(mid):
+    if not _e_adm():
+        abort(403)
+    ok, err = db.excluir_modelo_email(mid)
+    if not ok:
+        modelos = db.listar_modelos_email(apenas_ativos=False)
+        return render_template("config_modelos_email.html",
+                               modelos=modelos, etapas=db.ETAPAS, erro=err)
+    return redirect(url_for("config_modelos_email"))
+
+
+@app.route("/config/modelos-email/<int:mid>/toggle", methods=["POST"])
+def config_modelo_email_toggle(mid):
+    """Ativa/desativa um modelo sem excluí-lo."""
+    if not _e_adm():
+        abort(403)
+    modelo = db.obter_modelo_email(mid)
+    if modelo:
+        with db.Session() as s:
+            m = s.get(db.ModeloEmail, mid)
+            if m:
+                m.ativo = 0 if m.ativo else 1
+                s.commit()
+    return redirect(url_for("config_modelos_email"))
+
+
+# ===== Envio de e-mail por projeto (usa modelos do banco) =====
+
 @app.route("/projetos/<int:pid>/email", methods=["GET", "POST"])
 def projeto_email(pid):
     import mailer
@@ -650,7 +735,15 @@ def projeto_email(pid):
         if not p:
             abort(404)
         proj = db.to_dict(p)
-    tpls = mailer.templates(proj)
+    # Carrega modelos do banco (ativos), renderizando as variáveis com os dados do projeto
+    modelos_banco = db.listar_modelos_email(apenas_ativos=True)
+    tpls = {}
+    for m in modelos_banco:
+        tpls[str(m["id"])] = {
+            "nome": m["nome"],
+            "assunto": db.renderizar_modelo(m["assunto"], proj),
+            "corpo": db.renderizar_modelo(m["corpo"], proj),
+        }
     if request.method == "POST":
         destino = (request.form.get("destino") or "").strip()
         assunto = (request.form.get("assunto") or "").strip()
@@ -672,8 +765,10 @@ def projeto_email(pid):
         return render_template("projeto_email.html", p=proj, tpls=tpls,
                                configurado=mailer.configurado(), erro=erro,
                                destino=destino, assunto=assunto, corpo=corpo)
+    destino_padrao = proj.get("contato_email") or ""
     return render_template("projeto_email.html", p=proj, tpls=tpls,
-                           configurado=mailer.configurado())
+                           configurado=mailer.configurado(),
+                           destino=destino_padrao)
 
 
 @app.route("/projetos")

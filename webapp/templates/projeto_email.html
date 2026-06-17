@@ -1,27 +1,90 @@
 {% extends "base.html" %}
 {% block titulo %}E-mail — {{ p.cliente }}{% endblock %}
-{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('projetos') }}">Projetos</a> › <a href="{{ url_for('projeto_ficha', pid=p.id) }}">{{ p.cliente }}</a> › E-mail</div>{% endblock %}
+{% block migalha %}
+<div class="migalha">
+  <a href="{{ url_for('home') }}">Início</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <a href="{{ url_for('projetos') }}">Carteira</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <a href="{{ url_for('projeto_ficha', pid=p.id) }}">{{ p.cliente }}</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  Enviar E-mail
+</div>
+{% endblock %}
 {% block conteudo %}
-  <h1>✉️ Enviar e-mail — {{ p.cliente }}</h1>
-  {% if not configurado %}<div class="resultado erro" style="padding:10px 16px">SMTP não configurado. <a href="{{ url_for('config_email') }}">Configurar agora</a>.</div>{% endif %}
-  {% if erro %}<div class="resultado erro" style="padding:10px 16px">⚠️ {{ erro }}</div>{% endif %}
+  <h1 style="display:flex;align-items:center;gap:10px">
+    <svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-mail"/></svg>
+    Enviar E-mail — {{ p.cliente }}
+  </h1>
+
+  {% if not configurado %}
+  <div class="resultado erro" style="padding:10px 16px;display:flex;align-items:center;gap:8px;margin-bottom:12px">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg>
+    SMTP não configurado. <a href="{{ url_for('config_email') }}" style="margin-left:4px">Configurar agora</a>.
+  </div>
+  {% endif %}
+
+  {% if erro %}
+  <div class="resultado erro" style="padding:10px 16px;display:flex;align-items:center;gap:8px;margin-bottom:12px">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg>
+    {{ erro }}
+  </div>
+  {% endif %}
+
   <form method="post" class="painel">
-    <label class="campo"><span>Destinatário</span><input name="destino" value="{{ destino or '' }}" placeholder="email@cliente.com.br" required></label>
-    <label class="campo"><span>Modelo</span>
-      <select id="tpl" onchange="fill()" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px">
-        <option value="">— escolher um modelo —</option>
-        {% for k, t in tpls.items() %}<option value="{{ k }}">{{ t.nome }}</option>{% endfor %}
-      </select>
+    <label class="campo">
+      <span>Destinatário *</span>
+      <input name="destino" value="{{ destino or '' }}"
+             placeholder="email@cliente.com.br" required>
+      <small>Separe múltiplos endereços por vírgula.</small>
     </label>
-    <label class="campo"><span>Assunto</span><input id="assunto" name="assunto" value="{{ assunto or '' }}"></label>
-    <label class="campo"><span>Mensagem</span><textarea id="corpo" name="corpo" rows="12">{{ corpo or '' }}</textarea></label>
-    <button class="btn primario" type="submit">✉️ Enviar</button>
-    <a class="btn" href="{{ url_for('projeto_ficha', pid=p.id) }}">Cancelar</a>
+
+    {% if tpls %}
+    <label class="campo">
+      <span>Modelo de e-mail</span>
+      <select id="tpl" onchange="preencherModelo()">
+        <option value="">— escolher um modelo —</option>
+        {% for k, t in tpls.items() %}
+        <option value="{{ k }}">{{ t.nome }}</option>
+        {% endfor %}
+      </select>
+      <small>
+        As variáveis (ex.: <code>{{CLIENTE}}</code>) já foram substituídas pelos dados do projeto.
+        {% if pode_ver('sistema') %}<a href="{{ url_for('config_modelos_email') }}" style="font-size:.78rem">Gerenciar modelos</a>{% endif %}
+      </small>
+    </label>
+    {% else %}
+    <div class="resultado" style="padding:8px 14px;font-size:.85rem;color:var(--muted)">
+      Nenhum modelo ativo cadastrado.
+      {% if pode_ver('sistema') %}<a href="{{ url_for('config_modelos_email') }}">Cadastrar modelos</a>{% endif %}
+    </div>
+    {% endif %}
+
+    <label class="campo">
+      <span>Assunto *</span>
+      <input id="assunto" name="assunto" value="{{ assunto or '' }}" required>
+    </label>
+
+    <label class="campo">
+      <span>Mensagem *</span>
+      <textarea id="corpo" name="corpo" rows="14" required>{{ corpo or '' }}</textarea>
+    </label>
+
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn primario" type="submit" {{ 'disabled' if not configurado }}>
+        <svg class="svgi" aria-hidden="true"><use href="#ic-send"/></svg> Enviar e-mail
+      </button>
+      <a class="btn" href="{{ url_for('projeto_ficha', pid=p.id) }}">Cancelar</a>
+    </div>
   </form>
+
   <script>
-    var T = {{ tpls|tojson }};
-    function fill(){ var k = document.getElementById('tpl').value; if(!k) return;
-      document.getElementById('assunto').value = T[k].assunto;
-      document.getElementById('corpo').value = T[k].corpo; }
+  var T = {{ tpls | tojson }};
+  function preencherModelo() {
+    var k = document.getElementById('tpl').value;
+    if (!k || !T[k]) return;
+    document.getElementById('assunto').value = T[k].assunto;
+    document.getElementById('corpo').value = T[k].corpo;
+  }
   </script>
 {% endblock %}

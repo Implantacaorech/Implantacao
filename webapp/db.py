@@ -411,6 +411,283 @@ def confirmar_pendente(email, codigo):
         return {"id": u.id, "login": u.login, "nome": u.nome or u.login, "perfil": u.perfil}, None
 
 
+class ModeloEmail(Base):
+    """Modelo de e-mail editável pelo ADM. Suporta variáveis {{NOME}} substituídas no envio."""
+    __tablename__ = "modelos_email"
+    id = Column(Integer, primary_key=True)
+    slug = Column(String(80), default="", unique=True)   # identificador único, ex: encaminhamento
+    nome = Column(String(200), default="")               # rótulo exibido no seletor
+    assunto = Column(String(300), default="")
+    corpo = Column(Text, default="")
+    etapa = Column(String(80), default="")               # etapa sugerida (opcional, para filtro)
+    ativo = Column(Integer, default=1)
+    padrao = Column(Integer, default=0)                  # 1 = modelo padrão (não pode ser excluído)
+    criado_em = Column(DateTime, default=datetime.now)
+    atualizado_em = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+# Variáveis dinâmicas disponíveis para uso nos modelos de e-mail
+VARIAVEIS_EMAIL = {
+    "{{CLIENTE}}": "Razão Social do cliente",
+    "{{CNPJ}}": "CNPJ do cliente",
+    "{{NUMERO_PROJETO}}": "Número do projeto",
+    "{{NUMERO_PROPOSTA}}": "Número da proposta",
+    "{{GCI}}": "GCI responsável pelo levantamento",
+    "{{CONSULTOR}}": "Consultor(es) designado(s)",
+    "{{CONSULTOR_A}}": "Primeiro consultor designado",
+    "{{CONSULTOR_B}}": "Segundo consultor designado",
+    "{{CONSULTOR_X}}": "Primeiro consultor (implantação)",
+    "{{CONSULTOR_Y}}": "Segundo consultor (implantação)",
+    "{{CONSULTOR_RESPONSAVEL}}": "Consultor responsável principal",
+    "{{DATA_LEVANTAMENTO}}": "Data do levantamento agendado",
+    "{{DATA_INICIO}}": "Data de início do projeto",
+    "{{DATA_USO_OFICIAL}}": "Data de go-live (uso oficial)",
+    "{{DATA_ENCERRAMENTO}}": "Data de encerramento",
+    "{{MODULOS}}": "Módulos contratados",
+    "{{HORAS_COBRADAS}}": "Horas cobradas",
+    "{{HORAS_BONIFICADAS}}": "Horas bonificadas",
+    "{{CONTATO_NOME}}": "Nome do contato no cliente",
+    "{{CONTATO_EMAIL}}": "E-mail do contato no cliente",
+    "{{CONTATO_TEL}}": "Telefone do contato no cliente",
+    "{{RESPONSAVEL}}": "Responsável administrativo",
+    "{{RAMO}}": "Ramo de atividade",
+    "{{NOME_CONTATO}}": "Nome do contato (alias de {{CONTATO_NOME}})",
+    "{{FONE_CONTATO}}": "Telefone do contato (alias de {{CONTATO_TEL}})",
+}
+
+# Mapeamento variável -> campo do projeto
+_VAR_CAMPO = {
+    "{{CLIENTE}}": "cliente",
+    "{{CNPJ}}": "cnpj",
+    "{{NUMERO_PROJETO}}": "numero_projeto",
+    "{{NUMERO_PROPOSTA}}": "numero_proposta",
+    "{{GCI}}": "gci",
+    "{{CONSULTOR}}": "consultor",
+    "{{CONSULTOR_A}}": "_consultor_a",
+    "{{CONSULTOR_B}}": "_consultor_b",
+    "{{CONSULTOR_X}}": "_consultor_a",
+    "{{CONSULTOR_Y}}": "_consultor_b",
+    "{{CONSULTOR_RESPONSAVEL}}": "consultor",
+    "{{DATA_LEVANTAMENTO}}": "data_levantamento",
+    "{{DATA_INICIO}}": "data_inicio",
+    "{{DATA_USO_OFICIAL}}": "data_uso_oficial",
+    "{{DATA_ENCERRAMENTO}}": "data_encerramento",
+    "{{MODULOS}}": "modulos",
+    "{{HORAS_COBRADAS}}": "horas_cobradas",
+    "{{HORAS_BONIFICADAS}}": "horas_bonificadas",
+    "{{CONTATO_NOME}}": "contato_nome",
+    "{{CONTATO_EMAIL}}": "contato_email",
+    "{{CONTATO_TEL}}": "contato_tel",
+    "{{RESPONSAVEL}}": "responsavel",
+    "{{RAMO}}": "ramo",
+    "{{NOME_CONTATO}}": "contato_nome",
+    "{{FONE_CONTATO}}": "contato_tel",
+}
+
+
+def renderizar_modelo(texto, proj):
+    """Substitui variáveis {{VAR}} pelo valor correspondente do projeto.
+    `proj` pode ser dict ou objeto Projeto."""
+    if not texto:
+        return texto
+    # Normaliza para dict
+    if not isinstance(proj, dict):
+        proj = to_dict(proj)
+    # Deriva consultores A/B a partir da string de consultores (separados por vírgula)
+    consultores = [c.strip() for c in (proj.get("consultor") or "").split(",") if c.strip()]
+    proj["_consultor_a"] = consultores[0] if len(consultores) > 0 else ""
+    proj["_consultor_b"] = consultores[1] if len(consultores) > 1 else ""
+    resultado = texto
+    for var, campo in _VAR_CAMPO.items():
+        valor = str(proj.get(campo) or "").strip()
+        resultado = resultado.replace(var, valor)
+    return resultado
+
+
+def listar_modelos_email(apenas_ativos=True):
+    """Retorna lista de dicts dos modelos de e-mail."""
+    with Session() as s:
+        q = s.query(ModeloEmail)
+        if apenas_ativos:
+            q = q.filter(ModeloEmail.ativo == 1)
+        return [to_dict(m) for m in q.order_by(ModeloEmail.nome).all()]
+
+
+def obter_modelo_email(mid):
+    """Retorna dict do modelo pelo id, ou None."""
+    with Session() as s:
+        m = s.get(ModeloEmail, int(mid))
+        return to_dict(m) if m else None
+
+
+def salvar_modelo_email(dados, mid=None):
+    """Cria ou atualiza um modelo. Retorna o id salvo."""
+    with Session() as s:
+        if mid:
+            m = s.get(ModeloEmail, int(mid))
+            if not m:
+                raise ValueError("Modelo não encontrado.")
+        else:
+            m = ModeloEmail()
+            s.add(m)
+        m.nome = (dados.get("nome") or "").strip()
+        m.assunto = (dados.get("assunto") or "").strip()
+        m.corpo = (dados.get("corpo") or "").strip()
+        m.etapa = (dados.get("etapa") or "").strip()
+        m.ativo = 1 if dados.get("ativo", True) else 0
+        # Gera slug único se novo
+        if not mid:
+            base = re.sub(r"[^a-z0-9]+", "-", m.nome.lower()).strip("-") or "modelo"
+            slug = base
+            n = 1
+            while s.query(ModeloEmail).filter(ModeloEmail.slug == slug).count() > 0:
+                slug = "%s-%d" % (base, n); n += 1
+            m.slug = slug
+        m.atualizado_em = datetime.now()
+        s.commit()
+        return m.id
+
+
+def excluir_modelo_email(mid):
+    """Exclui modelo pelo id. Modelos padrão (padrao=1) não podem ser excluídos.
+    Retorna (ok, erro)."""
+    with Session() as s:
+        m = s.get(ModeloEmail, int(mid))
+        if not m:
+            return False, "Modelo não encontrado."
+        if m.padrao:
+            return False, "Modelos padrão não podem ser excluídos (apenas editados)."
+        s.delete(m)
+        s.commit()
+        return True, None
+
+
+# Modelos padrão para seed inicial (migrados dos hardcoded + templates .md)
+_MODELOS_PADRAO = [
+    {
+        "slug": "encaminhamento",
+        "nome": "Encaminhamento / Abertura da implantação",
+        "assunto": "Implantação do SIGER® — {{CLIENTE}}",
+        "corpo": ("Olá,\n\nDamos início à implantação do ERP SIGER® na {{CLIENTE}} "
+                  "(projeto nº {{NUMERO_PROJETO}}). O consultor responsável será "
+                  "{{CONSULTOR}}, que entrará em contato para alinhar o cronograma e "
+                  "os próximos passos.\n\nFicamos à disposição.\n\n"
+                  "Atenciosamente,\nEquipe de Implantação — Rech Sistemas de Gestão"),
+        "etapa": "Agendamento",
+        "padrao": 1,
+    },
+    {
+        "slug": "cronograma",
+        "nome": "Compartilhamento do cronograma",
+        "assunto": "Cronograma de Implantação — {{CLIENTE}}",
+        "corpo": ("Olá,\n\nSegue o cronograma de implantação do SIGER® para a {{CLIENTE}} "
+                  "(projeto nº {{NUMERO_PROJETO}}), com as agendas e os macro tópicos de "
+                  "cada visita/treinamento. Por favor, confirme as datas ou retorne com "
+                  "ajustes.\n\nAtenciosamente,\nEquipe de Implantação — Rech Sistemas de Gestão"),
+        "etapa": "Cronograma e Check-list",
+        "padrao": 1,
+    },
+    {
+        "slug": "encerramento",
+        "nome": "Encerramento da implantação (ao cliente)",
+        "assunto": "Encerramento da implantação do SIGER® — {{CLIENTE}}",
+        "corpo": ("Prezado(a) {{CONTATO_NOME}},\n\n"
+                  "Comunicamos o encerramento da implantação do ERP SIGER® junto à {{CLIENTE}}, "
+                  "conforme o projeto nº {{NUMERO_PROJETO}}.\n\n"
+                  "A partir de agora, o canal principal de atendimento passa a ser o Suporte da Rech:\n"
+                  "- Telefone (51) 3582.4001 (prioritário)\n"
+                  "- E-mail suporte@rech.com.br\n"
+                  "- Manual do sistema: tecla F1 em qualquer módulo.\n\n"
+                  "Encaminhamos em anexo o Termo de Encerramento para formalização. "
+                  "Agradecemos a parceria durante o projeto.\n\n"
+                  "Atenciosamente,\n{{CONSULTOR_RESPONSAVEL}} — Implantação Rech"),
+        "etapa": "Encerramento",
+        "padrao": 1,
+    },
+    {
+        "slug": "encerramento-coordenacao",
+        "nome": "Encerramento da implantação (à Coordenação)",
+        "assunto": "Encerramento de Implantação — {{CLIENTE}} — RNS(I) {{NUMERO_PROJETO}}",
+        "corpo": ("Olá,\n\nInformo o encerramento da implantação do cliente {{CLIENTE}} "
+                  "(projeto nº {{NUMERO_PROJETO}}).\n\n"
+                  "Segue o checklist formalizado:\n"
+                  "a. Módulos não implantados: \n"
+                  "b. RNS em aberto: \n"
+                  "c. RNS não entregue: \n"
+                  "d. Pendências não encaminhadas: \n"
+                  "e. Saldo de horas: \n"
+                  "f. Responsável pela atualização: \n"
+                  "g. Ajuste de deslocamento: \n"
+                  "h. Negociações em aberto: \n"
+                  "i. Ressalvas para ações de publicidade: \n\n"
+                  "Atenciosamente,\n{{CONSULTOR_RESPONSAVEL}}"),
+        "etapa": "Encerramento",
+        "padrao": 1,
+    },
+    {
+        "slug": "encaminhamento-levantamento",
+        "nome": "Encaminhamento — Levantamento / Demonstração",
+        "assunto": "Encaminhamento — Levantamento / Demonstração — {{CLIENTE}}",
+        "corpo": ("Bom dia!\n\nConsultor(es) {{CONSULTOR_A}} e {{CONSULTOR_B}}\n\n"
+                  "Esse processo será(ão) executado(s) por você(s):\n"
+                  "- [ ] Levantamento\n"
+                  "- [ ] Demonstração\n\n"
+                  "Elaborado o escopo dos documentos solicitados, segue abaixo o link de acesso.\n\n"
+                  "- Levantamento de processos: (inserir link)\n"
+                  "- Planilha de horas: (inserir link)\n\n"
+                  "Atenciosamente,\nAdm"),
+        "etapa": "Levantamento",
+        "padrao": 1,
+    },
+    {
+        "slug": "encaminhamento-implantacao",
+        "nome": "Encaminhamento de Implantação (ao consultor)",
+        "assunto": "Encaminhamento de Implantação — {{CLIENTE}}",
+        "corpo": ("Bom dia!\n\nConsultor(es) {{CONSULTOR_X}} e {{CONSULTOR_Y}}!\n\n"
+                  "Essa implantação ficará com você.\n\n"
+                  "Por gentileza, proceder com nossa documentação padrão e aguardar a instalação "
+                  "para marcar a visita inicial com o cliente.\n\n"
+                  "Lembramos que o prazo para elaboração do Projeto, Cronograma e comunicação ao ADM "
+                  "é de no máximo 5 dias úteis após o envio deste e-mail.\n\n"
+                  "Contato no cliente: {{CONTATO_NOME}} — Fone: {{CONTATO_TEL}}\n\n"
+                  "Atenciosamente,\nAdm"),
+        "etapa": "Designação",
+        "padrao": 1,
+    },
+    {
+        "slug": "boas-vindas",
+        "nome": "Boas-vindas ao cliente",
+        "assunto": "Bem-vindo(a) à implantação do SIGER® — {{CLIENTE}}",
+        "corpo": ("Olá, {{CONTATO_NOME}}!\n\n"
+                  "Seja muito bem-vindo(a) ao processo de implantação do SIGER®. "
+                  "A partir de agora seremos seu time de implantação na Rech.\n\n"
+                  "Seus consultores: {{CONSULTOR_X}} e {{CONSULTOR_Y}}\n\n"
+                  "Próximos passos:\n"
+                  "1. Conclusão da instalação do SIGER® no seu ambiente.\n"
+                  "2. Visita/reunião inicial de alinhamento (agendaremos em seguida).\n"
+                  "3. Compartilharemos o cronograma com as datas e temas de cada etapa.\n\n"
+                  "Qualquer dúvida nesta fase, fale diretamente com seus consultores.\n\n"
+                  "Atenciosamente,\n{{CONSULTOR_RESPONSAVEL}} — Implantação Rech"),
+        "etapa": "Designação",
+        "padrao": 1,
+    },
+]
+
+
+def _seed_modelos_email():
+    """Insere modelos padrão se ainda não existirem (idempotente por slug)."""
+    with Session() as s:
+        for m in _MODELOS_PADRAO:
+            existe = s.query(ModeloEmail).filter(ModeloEmail.slug == m["slug"]).count()
+            if not existe:
+                s.add(ModeloEmail(
+                    slug=m["slug"], nome=m["nome"], assunto=m["assunto"],
+                    corpo=m["corpo"], etapa=m.get("etapa", ""),
+                    ativo=1, padrao=m.get("padrao", 0)
+                ))
+        s.commit()
+
+
 class Designacao(Base):
     """Consultor responsável por um módulo de um projeto."""
     __tablename__ = "designacoes"
@@ -613,6 +890,7 @@ def init_db():
     try:
         _auto_migrar()
         _migrar_etapas()
+        _seed_modelos_email()
     except Exception:
         pass
 

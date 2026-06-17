@@ -188,8 +188,12 @@
     <svg class="svgi hi" aria-hidden="true"><use href="#ic-settings"/></svg> Configurações e saúde
   </h2>
   <div class="tools">
-    <a class="tool" href="{{ url_for('config_email') }}">
+    <a class="tool" href="{{ url_for('config_modelos_email') }}">
       <svg class="svgi" aria-hidden="true"><use href="#ic-mail"/></svg>
+      <div><strong>Modelos de E-mail</strong><small>Cadastrar e editar modelos</small></div>
+    </a>
+    <a class="tool" href="{{ url_for('config_email') }}">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-send"/></svg>
       <div><strong>E-mail (SMTP)</strong><small>Conta de envio</small></div>
     </a>
     <a class="tool" href="{{ url_for('config_imap') }}">

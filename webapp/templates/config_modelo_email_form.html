@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block titulo %}{{ 'Editar' if modelo else 'Novo' }} Modelo de E-mail{% endblock %}
+{% block migalha %}
+<div class="migalha">
+  <a href="{{ url_for('home') }}">Início</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <a href="{{ url_for('config_modelos_email') }}">Modelos de E-mail</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  {{ 'Editar: ' + modelo.nome if modelo else 'Novo Modelo' }}
+</div>
+{% endblock %}
+{% block conteudo %}
+  <h1 style="display:flex;align-items:center;gap:10px">
+    <svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-mail"/></svg>
+    {{ 'Editar Modelo' if modelo else 'Novo Modelo de E-mail' }}
+  </h1>
+  <p class="sub">
+    Use variáveis <code>{{NOME_DA_VARIAVEL}}</code> no assunto e no corpo — elas serão substituídas automaticamente pelos dados do projeto ao enviar.
+    {% if modelo and modelo.padrao %}<strong style="color:var(--warn)">Modelo padrão: pode ser editado, mas não excluído.</strong>{% endif %}
+  </p>
+
+  {% if erro %}<div class="resultado erro" style="padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:8px"><svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro }}</div>{% endif %}
+
+  <div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start">
+
+    {# Formulário principal #}
+    <form method="post" class="painel" id="form-modelo">
+      <label class="campo">
+        <span>Nome do modelo *</span>
+        <input name="nome" value="{{ modelo.nome if modelo else '' }}" placeholder="Ex.: Encaminhamento de Levantamento" required>
+      </label>
+      <label class="campo">
+        <span>Etapa sugerida <small style="color:var(--muted)">(opcional — para filtro)</small></span>
+        <select name="etapa">
+          <option value="">— qualquer etapa —</option>
+          {% for e in etapas %}<option value="{{ e }}" {{ 'selected' if modelo and modelo.etapa == e }}>{{ e }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="campo">
+        <span>Assunto *</span>
+        <input name="assunto" id="campo-assunto" value="{{ modelo.assunto if modelo else '' }}"
+               placeholder="Ex.: Encaminhamento — Levantamento — {{CLIENTE}}" required>
+      </label>
+      <label class="campo">
+        <span>Corpo do e-mail *</span>
+        <textarea name="corpo" id="campo-corpo" rows="16"
+                  placeholder="Escreva o corpo do e-mail. Use {{CLIENTE}}, {{CONSULTOR}}, etc."
+                  required>{{ modelo.corpo if modelo else '' }}</textarea>
+      </label>
+
+      {# Preview em tempo real #}
+      <div style="border:1px solid var(--line);border-radius:var(--r-sm);padding:12px;background:var(--surface)">
+        <div style="font-size:.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
+          <svg class="svgi" style="width:11px;height:11px" aria-hidden="true"><use href="#ic-bulb"/></svg>
+          Preview (variáveis marcadas)
+        </div>
+        <div id="preview-assunto" style="font-size:.85rem;font-weight:600;color:var(--text);margin-bottom:6px;word-break:break-word"></div>
+        <hr style="border:none;border-top:1px solid var(--line);margin:6px 0">
+        <pre id="preview-corpo" style="font-size:.82rem;color:var(--text);white-space:pre-wrap;word-break:break-word;margin:0;font-family:inherit"></pre>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn primario" type="submit">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+          {{ 'Salvar alterações' if modelo else 'Criar modelo' }}
+        </button>
+        <a class="btn" href="{{ url_for('config_modelos_email') }}">Cancelar</a>
+      </div>
+    </form>
+
+    {# Painel de referência de variáveis #}
+    <aside>
+      <div class="painel" style="padding:14px">
+        <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px">
+          <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-bulb"/></svg>
+          Variáveis disponíveis
+        </div>
+        <p style="font-size:.78rem;color:var(--muted);margin:0 0 10px">Clique em uma variável para inserir no cursor do campo ativo (Assunto ou Corpo).</p>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          {% for var, desc in variaveis.items() %}
+          <button type="button"
+                  onclick="inserirVariavel('{{ var }}')"
+                  title="{{ desc }}"
+                  style="text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 8px;cursor:pointer;font-size:.78rem;font-family:monospace;color:var(--brand);transition:background .15s"
+                  onmouseover="this.style.background='var(--brand-light,#e8f0fe)'"
+                  onmouseout="this.style.background='var(--surface)'">
+            {{ var }}
+            <span style="font-family:sans-serif;font-size:.72rem;color:var(--muted);display:block;margin-top:1px">{{ desc }}</span>
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+  // Rastreia o último campo de texto focado (assunto ou corpo)
+  var campoAtivo = document.getElementById('campo-corpo');
+  ['campo-assunto', 'campo-corpo'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('focus', function() { campoAtivo = el; });
+  });
+
+  function inserirVariavel(v) {
+    if (!campoAtivo) return;
+    var start = campoAtivo.selectionStart, end = campoAtivo.selectionEnd;
+    var val = campoAtivo.value;
+    campoAtivo.value = val.substring(0, start) + v + val.substring(end);
+    campoAtivo.selectionStart = campoAtivo.selectionEnd = start + v.length;
+    campoAtivo.focus();
+    atualizarPreview();
+  }
+
+  function destacarVariaveis(texto) {
+    return texto.replace(/\{\{[A-Z_]+\}\}/g, function(m) {
+      return '<mark style="background:#fff3cd;border-radius:3px;padding:0 2px;font-weight:600">' + m + '</mark>';
+    });
+  }
+
+  function atualizarPreview() {
+    var assunto = document.getElementById('campo-assunto').value;
+    var corpo = document.getElementById('campo-corpo').value;
+    document.getElementById('preview-assunto').innerHTML = destacarVariaveis(assunto) || '<span style="color:var(--muted);font-style:italic">Assunto vazio</span>';
+    document.getElementById('preview-corpo').innerHTML = destacarVariaveis(corpo) || '<span style="color:var(--muted);font-style:italic">Corpo vazio</span>';
+  }
+
+  document.getElementById('campo-assunto').addEventListener('input', atualizarPreview);
+  document.getElementById('campo-corpo').addEventListener('input', atualizarPreview);
+  atualizarPreview(); // Inicializa com o conteúdo atual
+  </script>
+{% endblock %}
