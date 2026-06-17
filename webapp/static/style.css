@@ -127,7 +127,7 @@ textarea{width:100%;resize:vertical}
 
 /* ===== SISTEMA DE ÍCONES PADRONIZADOS ===== */
 /* Tamanho único para todos os contextos — nunca use style inline de tamanho em SVG */
-.svgi{display:inline-block;vertical-align:middle;flex:none;fill:none;stroke:currentColor;
+.svgi{display:inline-block;width:18px;height:18px;vertical-align:middle;flex:none;fill:none;stroke:currentColor;
   stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
 /* Escala padrão por contexto */
 .svgi-xs{width:12px;height:12px}   /* migalha, separadores */
@@ -144,8 +144,8 @@ textarea{width:100%;resize:vertical}
 .aba .svgi{width:14px;height:14px;flex:none}
 .tool .svgi{width:16px;height:16px;flex:none;color:var(--brand)}
 .migalha .svgi{width:11px;height:11px;color:var(--faint)}
-/* Ícones de título (H1) reduzidos para tamanho pequeno (sobrepõe estilos inline) */
-h1 .svgi{width:16px!important;height:16px!important}
+/* Ícones de título (H1) e decorativos reduzidos para tamanho pequeno (sobrepõe inline) */
+h1 .svgi,h2 .svgi,h3 .svgi{width:18px!important;height:18px!important}
 /* ===== BOTÕES ===== */
 .btn{display:inline-flex;align-items:center;gap:6px;background:var(--surface);color:var(--navy);border:1.5px solid var(--line-2);
   border-radius:var(--r-sm);padding:8px 15px;font:inherit;font-size:.88rem;font-weight:600;cursor:pointer;
@@ -220,7 +220,8 @@ h1 .svgi{width:16px!important;height:16px!important}
 .vista-toggle{display:inline-flex;gap:0;border:1.5px solid var(--line-2);border-radius:var(--r-sm);overflow:hidden}
 .vista-toggle .btn{margin:0;border:none;border-radius:0;padding:7px 14px}
 .vista-toggle .btn.primario{background:var(--navy);color:#fff}
-.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px;align-items:start}
+.kanban{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(165px,1fr);gap:12px;margin-top:14px;
+  align-items:start;overflow-x:auto;padding-bottom:6px}
 .kan-col{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-lg);padding:10px}
 .kan-head{display:flex;align-items:center;justify-content:space-between;margin:2px 4px 10px;font-weight:700;color:var(--navy);font-size:.85rem}
 .kan-head .cnt{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:1px 9px;font-size:.72rem;color:var(--muted);font-weight:700}
@@ -230,8 +231,7 @@ h1 .svgi{width:16px!important;height:16px!important}
 .kan-card .num{color:var(--muted);font-weight:400;font-size:.78rem}
 .kan-card .meta{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:.76rem;margin-top:8px}
 .kan-vazio{color:var(--faint);font-size:.8rem;text-align:center;padding:10px 0}
-@media (max-width:980px){.kanban{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:560px){.kanban{grid-template-columns:1fr}}
+@media (max-width:560px){.kanban{grid-auto-columns:minmax(150px,1fr)}}
 
 /* ===== PAINEL COORDENAÇÃO ===== */
 .kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px;margin:14px 0}
