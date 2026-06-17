@@ -90,8 +90,9 @@ def test_d_etapa_bloqueia_geracao():
 
 
 def test_c_auto_avanca_com_gate(client):
-    # com docs + consultor designado, avança Projeto → Designação → Cronograma e Check-list
-    pid = int(_novo(client, cliente="Auto Avanca", etapa="Projeto", modulos="FAT", consultor="Ana"))
+    # com docs + GCI + consultor, avança Projeto → Designação → Cronograma e Check-list
+    pid = int(_novo(client, cliente="Auto Avanca", etapa="Projeto", modulos="FAT",
+                    gci="Beto", consultor="Ana"))
     with db.Session() as s:
         for t in ("levantamento", "projeto"):
             s.add(db.Documento(projeto_id=pid, tipo=t, arquivo=t + ".docx", caminho=t + ".docx"))
