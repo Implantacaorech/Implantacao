@@ -144,6 +144,8 @@ textarea{width:100%;resize:vertical}
 .aba .svgi{width:14px;height:14px;flex:none}
 .tool .svgi{width:16px;height:16px;flex:none;color:var(--brand)}
 .migalha .svgi{width:11px;height:11px;color:var(--faint)}
+/* Ícones de título (H1) reduzidos para tamanho pequeno (sobrepõe estilos inline) */
+h1 .svgi{width:16px!important;height:16px!important}
 /* ===== BOTÕES ===== */
 .btn{display:inline-flex;align-items:center;gap:6px;background:var(--surface);color:var(--navy);border:1.5px solid var(--line-2);
   border-radius:var(--r-sm);padding:8px 15px;font:inherit;font-size:.88rem;font-weight:600;cursor:pointer;
