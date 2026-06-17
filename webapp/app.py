@@ -354,7 +354,6 @@ def _criar_projeto_de_fechamento(corpo, assunto=""):
     import datetime
     import fluxo as F
     pf = F.para_projeto(F.parse_fechamento(corpo))
-    pf.pop("contato_email", None)
     ja = db.projeto_existe(pf.get("cliente"), pf.get("cnpj"))
     if ja:
         logging.info("Fechamento ignorado (já cadastrado, id=%s): %s | CNPJ %s",

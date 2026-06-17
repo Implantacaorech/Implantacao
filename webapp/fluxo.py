@@ -78,30 +78,36 @@ def parse_fechamento(texto):
 
 
 def para_projeto(d):
-    """Converte os campos extraídos no dict de campos do Projeto (hub)."""
-    contatos = " · ".join(x for x in (d.get("contato_nome"), d.get("contato_email"),
-                                      d.get("contato_tel")) if x)
+    """Converte os campos extraídos no dict de campos do Projeto (hub).
+    Mapeia o contato para os campos SEPARADOS (nome/e-mail/telefone) usados na ficha."""
     obs = " · ".join(x for x in (d.get("cidade"), d.get("observacoes")) if x)
     return {
         "cliente": d.get("cliente", ""), "cnpj": d.get("cnpj", ""),
-        "ramo": d.get("ramo", ""), "numero_projeto": d.get("numero_projeto", ""),
+        "ramo": d.get("ramo", ""),
+        "numero_projeto": d.get("numero_projeto", ""),
+        "numero_proposta": d.get("numero_proposta", ""),
         "modulos": d.get("modulos", ""),
         "horas_cobradas": d.get("horas_cobradas", ""),
         "horas_bonificadas": d.get("horas_bonificadas", ""),
-        "contatos": contatos, "observacoes": obs,
+        "contato_nome": d.get("contato_nome", ""),
         "contato_email": d.get("contato_email", ""),
+        "contato_tel": d.get("contato_tel", ""),
+        "contatos": "",          # "Outros contatos" — não vêm do e-mail de fechamento
+        "observacoes": obs,
     }
 
 
 def resumo_projeto(proj, docs=None, gci="", tecnicos=""):
     """Texto-resumo do projeto para o e-mail final aos responsáveis."""
+    contato = " · ".join(x for x in (proj.get("contato_nome"), proj.get("contato_email"),
+                                     proj.get("contato_tel")) if x) or proj.get("contatos")
     linhas = ["Resumo do projeto de implantação", "=" * 34, ""]
     campos = [("Cliente", proj.get("cliente")), ("CNPJ", proj.get("cnpj")),
               ("Ramo", proj.get("ramo")), ("Nº do projeto", proj.get("numero_projeto")),
               ("Módulos", proj.get("modulos")),
               ("Horas", "%s cobradas + %s bonificadas" % (proj.get("horas_cobradas") or "0",
                                                           proj.get("horas_bonificadas") or "0")),
-              ("Contatos", proj.get("contatos")),
+              ("Contato", contato),
               ("GCI (Levantamento)", gci), ("Técnico(s)", tecnicos)]
     for rot, val in campos:
         if val:

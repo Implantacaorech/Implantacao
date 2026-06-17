@@ -73,6 +73,26 @@ def test_fluxo_parser():
     assert d["cliente"] == "ACME" and d["modulos"] == "FAT, CTB" and d["horas_cobradas"] == "40"
 
 
+def test_fluxo_para_projeto_contato_separado():
+    txt = ("Cliente (Razão Social): ACME\nCNPJ: 1\nContato (nome): Maria\n"
+           "E-mail do contato: maria@acme.com\nTelefone: (51) 99999-0000\n"
+           "Módulos contratados (siglas): FAT\n")
+    p = fluxo.para_projeto(fluxo.parse_fechamento(txt))
+    assert p["contato_nome"] == "Maria"
+    assert p["contato_email"] == "maria@acme.com"
+    assert p["contato_tel"] == "(51) 99999-0000"
+
+
+def test_fluxo_parse_preenche_contato_na_tela(client):
+    txt = ("Cliente (Razão Social): ACME\nContato (nome): Maria\n"
+           "E-mail do contato: maria@acme.com\nTelefone: 51999000\n"
+           "Módulos contratados (siglas): FAT\nHoras cobradas: 40\n")
+    body = client.post("/fluxo/parse", data={"texto": txt}).get_data(as_text=True)
+    assert 'value="Maria"' in body
+    assert 'value="maria@acme.com"' in body
+    assert 'value="51999000"' in body
+
+
 def test_metricas_alertas():
     proj = [{"id": 1, "etapa": "Projeto", "situacao": "Em risco", "horas_cobradas": "10"}]
     assert db.metricas(proj, {})["n_risco"] == 1
