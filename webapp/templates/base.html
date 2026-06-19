@@ -96,6 +96,15 @@
         <a class="side-link {{ 'on' if request.endpoint=='usuarios' }}" href="{{ url_for('usuarios') }}">
           <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg>Usuários
         </a>
+        <a class="side-link {{ 'on' if request.endpoint=='cad_checklist' }}" href="{{ url_for('cad_checklist') }}">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>Cad. Checklist
+        </a>
+        <a class="side-link {{ 'on' if request.endpoint=='cad_indice' }}" href="{{ url_for('cad_indice') }}">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg>Índice de Tópicos
+        </a>
+        <a class="side-link {{ 'on' if request.endpoint in ('cad_modelos','cad_modelo') }}" href="{{ url_for('cad_modelos') }}">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>Modelos de Docs
+        </a>
         {% endif %}
       </nav>
       <div class="side-rod">{% if versao %}v{{ versao }}{% endif %}</div>

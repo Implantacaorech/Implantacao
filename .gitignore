@@ -55,6 +55,11 @@ tools/data/digest_para.txt
 # Templates .docx reais da Rech (letterhead/logo) — manter local, não publicar
 tools/templates/*.docx
 
+# Layouts fiéis dos modelos de documentos (base do Cadastro de Modelos) — manter local
+tools/templates/layouts/
+# Store gravável das versões enviadas dos modelos de documentos
+tools/data/modelos_documento/
+
 # Check List detalhado por módulo (roteiro interno) — manter local; o catálogo
 # (catalogo_modulos.yaml) é versionado, o checklist detalhado não.
 tools/data/checklist_modulos.yaml

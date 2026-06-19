@@ -348,3 +348,155 @@ def test_usuarios_grava_email_e_perfil(client):
     assert u and u.login == "coord@x.com" and u.perfil == "Coordenador"
     with db.Session() as s:
         s.delete(s.get(db.Usuario, u.id)); s.commit()
+
+
+# ---- Cadastros de referência: Checklist e Índice de Tópicos ----
+
+def test_cadastros_seed_e_paginas(client):
+    db.init_db()  # idempotente: garante o seed dos catálogos
+    _, ck = db.checklist_modelo_listar()
+    _, idx = db.indice_listar()
+    assert ck > 100                       # checklist do modelo entregue
+    assert idx >= 351                     # índice da planilha (351 tópicos)
+    assert len(db.indice_modulos()) >= 23
+    assert client.get("/cadastros/checklist").status_code == 200
+    assert client.get("/cadastros/indice").status_code == 200
+
+
+def test_cadastro_indice_crud(client):
+    _, antes = db.indice_listar()
+    r = client.post("/cadastros/indice/salvar", data={
+        "modulo_num": "99", "modulo_sigla": "TST", "modulo": "Módulo Teste",
+        "adicional": "", "topico": "Tópico PYTEST único"})
+    assert r.status_code == 302
+    achados, _ = db.indice_listar(q="Tópico PYTEST único")
+    assert len(achados) == 1
+    tid = achados[0]["id"]
+    client.post("/cadastros/indice/salvar", data={"id": tid, "modulo_sigla": "TST",
+        "modulo": "Módulo Teste", "topico": "Tópico PYTEST editado"})
+    assert db.indice_listar(q="editado")[1] >= 1
+    client.post("/cadastros/indice/%s/excluir" % tid)
+    _, depois = db.indice_listar()
+    assert depois == antes
+
+
+def test_cadastro_checklist_crud(client):
+    r = client.post("/cadastros/checklist/salvar", data={
+        "modulo": "ZZZ", "adicional": "ZZZ", "tipo": "Teste",
+        "item": "Item PYTEST", "menu": "9.9", "golive": "Sim", "seq": "1"})
+    assert r.status_code == 302
+    add, _ = db.checklist_modelo_listar(q="Item PYTEST")
+    assert len(add) == 1
+    client.post("/cadastros/checklist/%s/excluir" % add[0]["id"])
+    assert db.checklist_modelo_listar(q="Item PYTEST")[1] == 0
+
+
+def test_cadastros_bloqueio_por_perfil(client):
+    _login_como(client, "Consultor")
+    assert client.get("/cadastros/checklist").status_code == 403
+    assert client.get("/cadastros/indice").status_code == 403
+    with client.session_transaction() as sess:
+        sess.clear()
+
+
+# ---- Cadastro de Modelos de Documentos (layouts fiéis das fases) ----
+
+def test_modelos_documento_seed(client):
+    db.init_db()
+    mods = db.modelos_documento_listar()
+    assert {m["slug"] for m in mods} == {"levantamento", "projeto", "cronograma", "termo"}
+    for m in mods:
+        assert m["n_versoes"] >= 1 and m["n_campos"] > 0
+        p = db.modelo_documento_arquivo_path(m["id"])
+        assert p and os.path.exists(p)        # layout fiel copiado como v1
+    assert client.get("/cadastros/modelos").status_code == 200
+
+
+def test_modelo_detalhe_e_download(client):
+    mid = db.modelos_documento_listar()[0]["id"]
+    assert client.get("/cadastros/modelos/%s" % mid).status_code == 200
+    r = client.get("/cadastros/modelos/%s/baixar" % mid)
+    assert r.status_code == 200 and len(r.data) > 1000
+
+
+def test_modelo_campo_crud(client):
+    mid = db.modelos_documento_listar()[0]["id"]
+    n0 = len(db.modelo_documento_campos(mid))
+    client.post("/cadastros/modelos/%s/campo/salvar" % mid, data={
+        "secao": "X", "rotulo": "Campo PYTEST", "placeholder": "<P>",
+        "origem": "manual", "obrigatorio": "on"})
+    novos = [c for c in db.modelo_documento_campos(mid) if c["rotulo"] == "Campo PYTEST"]
+    assert len(novos) == 1 and novos[0]["obrigatorio"] == 1
+    client.post("/cadastros/modelos/%s/campo/%s/excluir" % (mid, novos[0]["id"]))
+    assert len(db.modelo_documento_campos(mid)) == n0
+
+
+def test_modelos_bloqueio_por_perfil(client):
+    _login_como(client, "Consultor")
+    assert client.get("/cadastros/modelos").status_code == 403
+    with client.session_transaction() as sess:
+        sess.clear()
+
+
+def test_gerar_layout_fiel(client):
+    pid = _novo(client, cliente="Cliente Layout LTDA", cnpj="11.222.333/0001-44",
+                numero_projeto="PRJ-99", horas_cobradas="80", horas_bonificadas="10")
+    r = client.post("/projetos/%s/gerar-layout/termo" % pid)
+    assert r.status_code == 302
+    with db.Session() as s:
+        docs = s.query(db.Documento).filter_by(projeto_id=int(pid), tipo="termo").all()
+        assert len(docs) == 1
+        path = docs[0].caminho
+    assert path and os.path.exists(path)
+    from docx import Document
+    txt = "\n".join(x.text for x in Document(path).paragraphs)
+    assert "Cliente Layout LTDA" in txt          # cliente preenchido
+    assert "<Razão Social Longa>" not in txt      # placeholder trocado
+    assert "PRJ-99" in txt                         # número do projeto
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_gerar_layout_slug_invalido(client):
+    pid = _novo(client, cliente="X LTDA")
+    assert client.post("/projetos/%s/gerar-layout/inexistente" % pid).status_code == 404
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_projeto_gerar_usa_layout_fiel(client):
+    """A rota de geração da fase (projeto_gerar) agora produz o layout FIEL preenchido."""
+    pid = _novo(client, cliente="Faithful Proj LTDA", cnpj="22.333.444/0001-55",
+                horas_cobradas="50", etapa="Projeto")
+    r = client.post("/projetos/%s/gerar/projeto" % pid)
+    assert r.status_code == 302
+    with db.Session() as s:
+        docs = s.query(db.Documento).filter_by(projeto_id=int(pid), tipo="projeto").all()
+        assert len(docs) == 1
+        path = docs[0].caminho
+    from docx import Document
+    txt = "\n".join(x.text for x in Document(path).paragraphs)
+    assert "Faithful Proj LTDA" in txt and "22.333.444/0001-55" in txt
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_rota_antiga_gerar_projeto_delega(client):
+    """A rota antiga /gerar_projeto (upload do Mapeamento) foi aposentada e delega ao layout fiel."""
+    pid = _novo(client, cliente="Delega LTDA", etapa="Projeto")
+    r = client.post("/projetos/%s/gerar_projeto" % pid)   # sem upload
+    assert r.status_code == 302
+    with db.Session() as s:
+        docs = s.query(db.Documento).filter_by(projeto_id=int(pid), tipo="projeto").all()
+        assert len(docs) == 1
+        path = docs[0].caminho
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    client.post("/projetos/%s/excluir" % pid)

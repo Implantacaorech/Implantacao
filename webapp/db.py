@@ -850,6 +850,458 @@ def salvar_linhas(pid, entidade, novas, autor=""):
         return mud
 
 
+# ===================================================================
+#  Cadastros de referência (master data) — tabelas independentes:
+#    - ChecklistModelo : roteiro/check-list por módulo (planilha "Roteiro e Check List")
+#    - IndiceTopico    : Índice de Tópicos para Mapeamento de Processos
+#  Seed inicial a partir dos YAMLs em tools/data (idempotente: só se a tabela
+#  estiver vazia). Editáveis pelo painel (Sistema → Cadastros).
+# ===================================================================
+class ChecklistModelo(Base):
+    """Linha do roteiro/check-list por módulo (catálogo de referência, editável)."""
+    __tablename__ = "checklist_modelo"
+    id = Column(Integer, primary_key=True)
+    ordem = Column(Integer, default=0, index=True)
+    modulo = Column(String(40), default="")
+    adicional = Column(String(40), default="")
+    tipo = Column(String(60), default="")
+    integracoes = Column(Text, default="")
+    golive = Column(String(20), default="")
+    menu = Column(String(60), default="")
+    item = Column(Text, default="")
+    acao = Column(Text, default="")
+    seq = Column(String(20), default="")
+
+
+class IndiceTopico(Base):
+    """Tópico do 'Índice de Tópicos para Mapeamento de Processos' (catálogo, editável).
+    Cada registro é um Tópico, carregando todo o contexto (Módulo e Adicional)."""
+    __tablename__ = "indice_topicos"
+    id = Column(Integer, primary_key=True)
+    ordem = Column(Integer, default=0, index=True)
+    modulo_num = Column(String(10), default="")
+    modulo_sigla = Column(String(10), default="")
+    modulo = Column(String(120), default="")
+    adicional_num = Column(String(10), default="")
+    adicional_sigla = Column(String(10), default="")
+    adicional = Column(String(120), default="")
+    topico = Column(Text, default="")
+
+
+CHECKMOD_CAMPOS = ["modulo", "adicional", "tipo", "integracoes", "golive",
+                   "menu", "item", "acao", "seq"]
+CHECKMOD_LABELS = {"modulo": "Módulo", "adicional": "Adicional", "tipo": "Tipo",
+                   "integracoes": "Integrações", "golive": "Go-Live", "menu": "Menu",
+                   "item": "Item", "acao": "Ação / Observação", "seq": "Seq."}
+INDICE_CAMPOS = ["modulo_num", "modulo_sigla", "modulo",
+                 "adicional_num", "adicional_sigla", "adicional", "topico"]
+INDICE_LABELS = {"modulo_num": "Nº Mód.", "modulo_sigla": "Sigla Mód.", "modulo": "Módulo",
+                 "adicional_num": "Nº Adic.", "adicional_sigla": "Sigla Adic.",
+                 "adicional": "Adicional", "topico": "Tópico"}
+
+
+def _seed_checklist_modelo():
+    """Popula checklist_modelo a partir de tools/data/checklist_modulos.yaml (1ª vez)."""
+    with Session() as s:
+        if s.query(ChecklistModelo).count():
+            return
+        try:
+            linhas = C.load_yaml("checklist_modulos.yaml").get("linhas", []) or []
+        except Exception:
+            linhas = []
+        for i, l in enumerate(linhas):
+            s.add(ChecklistModelo(ordem=i, **{c: str(l.get(c, "") or "") for c in CHECKMOD_CAMPOS}))
+        s.commit()
+
+
+def _seed_indice_topicos():
+    """Popula indice_topicos a partir de tools/data/indice_topicos.yaml (1ª vez)."""
+    with Session() as s:
+        if s.query(IndiceTopico).count():
+            return
+        try:
+            linhas = C.load_yaml("indice_topicos.yaml").get("linhas", []) or []
+        except Exception:
+            linhas = []
+        for i, l in enumerate(linhas):
+            s.add(IndiceTopico(ordem=int(l.get("ordem", i) or i),
+                               **{c: str(l.get(c, "") or "") for c in INDICE_CAMPOS}))
+        s.commit()
+
+
+def _reseed_checklist_modelo():
+    """Reimporta o checklist do YAML, substituindo TODO o catálogo. Retorna o nº de linhas."""
+    with Session() as s:
+        s.query(ChecklistModelo).delete()
+        s.commit()
+    _seed_checklist_modelo()
+    with Session() as s:
+        return s.query(ChecklistModelo).count()
+
+
+def _reseed_indice_topicos():
+    """Reimporta o índice do YAML, substituindo TODO o catálogo. Retorna o nº de linhas."""
+    with Session() as s:
+        s.query(IndiceTopico).delete()
+        s.commit()
+    _seed_indice_topicos()
+    with Session() as s:
+        return s.query(IndiceTopico).count()
+
+
+def _proxima_ordem(Model):
+    with Session() as s:
+        m = s.query(Model).order_by(Model.ordem.desc()).first()
+        return (m.ordem + 1) if m else 0
+
+
+def checklist_modelo_listar(modulo="", q="", offset=0, limite=None):
+    """Lista o catálogo de checklist com filtro por módulo/adicional e busca textual."""
+    with Session() as s:
+        query = s.query(ChecklistModelo)
+        if modulo:
+            query = query.filter((ChecklistModelo.modulo == modulo) |
+                                 (ChecklistModelo.adicional == modulo))
+        if q:
+            like = "%%%s%%" % q
+            query = query.filter(ChecklistModelo.item.ilike(like) |
+                                 ChecklistModelo.acao.ilike(like) |
+                                 ChecklistModelo.menu.ilike(like))
+        total = query.count()
+        query = query.order_by(ChecklistModelo.ordem, ChecklistModelo.id)
+        if offset:
+            query = query.offset(offset)
+        if limite:
+            query = query.limit(limite)
+        return [to_dict(x) for x in query.all()], total
+
+
+def checklist_modelo_modulos():
+    """Códigos distintos (modulo/adicional) para o filtro do cadastro."""
+    with Session() as s:
+        a = {r[0] for r in s.query(ChecklistModelo.modulo).distinct() if r[0]}
+        a |= {r[0] for r in s.query(ChecklistModelo.adicional).distinct() if r[0]}
+    return sorted(a)
+
+
+def checklist_modelo_salvar(form):
+    """Cria/atualiza uma linha do catálogo de checklist a partir de um form dict."""
+    with Session() as s:
+        cid = form.get("id")
+        obj = s.get(ChecklistModelo, int(cid)) if cid else ChecklistModelo(ordem=_proxima_ordem(ChecklistModelo))
+        for c in CHECKMOD_CAMPOS:
+            setattr(obj, c, (form.get(c) or "").strip())
+        if not cid:
+            s.add(obj)
+        s.commit()
+        return obj.id
+
+
+def checklist_modelo_excluir(cid):
+    with Session() as s:
+        obj = s.get(ChecklistModelo, int(cid))
+        if obj:
+            s.delete(obj); s.commit()
+
+
+def indice_listar(modulo="", q="", offset=0, limite=None):
+    """Lista o Índice de Tópicos com filtro por sigla do módulo e busca textual."""
+    with Session() as s:
+        query = s.query(IndiceTopico)
+        if modulo:
+            query = query.filter(IndiceTopico.modulo_sigla == modulo)
+        if q:
+            like = "%%%s%%" % q
+            query = query.filter(IndiceTopico.topico.ilike(like) |
+                                 IndiceTopico.adicional.ilike(like) |
+                                 IndiceTopico.modulo.ilike(like))
+        total = query.count()
+        query = query.order_by(IndiceTopico.ordem, IndiceTopico.id)
+        if offset:
+            query = query.offset(offset)
+        if limite:
+            query = query.limit(limite)
+        return [to_dict(x) for x in query.all()], total
+
+
+def indice_modulos():
+    """Lista (sigla, nome) distintos dos módulos principais, na ordem da planilha."""
+    with Session() as s:
+        vistos, out = set(), []
+        for r in s.query(IndiceTopico).order_by(IndiceTopico.ordem, IndiceTopico.id).all():
+            chave = (r.modulo_sigla, r.modulo)
+            if r.modulo_sigla and chave not in vistos:
+                vistos.add(chave); out.append({"sigla": r.modulo_sigla, "nome": r.modulo})
+        return out
+
+
+def indice_salvar(form):
+    """Cria/atualiza um tópico do índice a partir de um form dict."""
+    with Session() as s:
+        cid = form.get("id")
+        obj = s.get(IndiceTopico, int(cid)) if cid else IndiceTopico(ordem=_proxima_ordem(IndiceTopico))
+        for c in INDICE_CAMPOS:
+            setattr(obj, c, (form.get(c) or "").strip())
+        if not cid:
+            s.add(obj)
+        s.commit()
+        return obj.id
+
+
+def indice_excluir(cid):
+    with Session() as s:
+        obj = s.get(IndiceTopico, int(cid))
+        if obj:
+            s.delete(obj); s.commit()
+
+
+# ===================================================================
+#  Modelos de Documentos (layouts FIÉIS das fases) — registro + versões + campos
+#    - ModeloDocumento        : 1 por fase (Levantamento, Projeto, Cronograma, Termo)
+#    - ModeloDocumentoVersao  : histórico de arquivos (.docx/.xlsx) — o vigente é o último
+#    - ModeloDocumentoCampo   : mapa de preenchimento (placeholder -> de onde vem no projeto)
+#  Arquivos-base fiéis ficam em tools/templates/layouts (empacotados); as versões
+#  enviadas ficam no store gravável <DATA_WRITE>/modelos_documento.
+# ===================================================================
+class ModeloDocumento(Base):
+    __tablename__ = "modelos_documento"
+    id = Column(Integer, primary_key=True)
+    slug = Column(String(40), default="", index=True)
+    nome = Column(String(160), default="")
+    fase = Column(String(40), default="")
+    tipo = Column(String(10), default="docx")     # docx | xlsx
+    arquivo = Column(String(200), default="")      # nome do arquivo VIGENTE no store
+    descricao = Column(Text, default="")
+    ordem = Column(Integer, default=0)
+    atualizado_em = Column(DateTime, default=datetime.now)
+
+
+class ModeloDocumentoVersao(Base):
+    __tablename__ = "modelos_documento_versoes"
+    id = Column(Integer, primary_key=True)
+    modelo_id = Column(Integer, index=True)
+    versao = Column(Integer, default=1)
+    arquivo = Column(String(200), default="")
+    autor = Column(String(120), default="")
+    motivo = Column(Text, default="")
+    vigente = Column(Integer, default=0)
+    criado_em = Column(DateTime, default=datetime.now)
+
+
+class ModeloDocumentoCampo(Base):
+    __tablename__ = "modelos_documento_campos"
+    id = Column(Integer, primary_key=True)
+    modelo_id = Column(Integer, index=True)
+    ordem = Column(Integer, default=0)
+    secao = Column(String(120), default="")        # seção do documento
+    placeholder = Column(String(200), default="")  # marcador no layout (ex.: <Razão Social>)
+    rotulo = Column(String(160), default="")        # nome amigável do campo
+    origem = Column(String(160), default="")        # de onde vem no projeto
+    obrigatorio = Column(Integer, default=0)
+    observacao = Column(Text, default="")
+
+
+MODELODOC_CAMPO_CAMPOS = ["secao", "placeholder", "rotulo", "origem", "obrigatorio", "observacao"]
+MODELODOC_CAMPO_LABELS = {"secao": "Seção", "placeholder": "Placeholder no layout",
+                          "rotulo": "Campo", "origem": "Origem no projeto",
+                          "obrigatorio": "Obrigatório", "observacao": "Observação"}
+
+_MODELOS_DOC_DEFAULTS = [
+    {"slug": "levantamento", "nome": "Mapeamento / Levantamento de Processos",
+     "fase": "Levantamento", "tipo": "docx", "base": "levantamento.docx",
+     "descricao": "Layout do mapeamento de processos preenchido na fase de Levantamento."},
+    {"slug": "projeto", "nome": "Projeto de Implantação",
+     "fase": "Projeto", "tipo": "docx", "base": "projeto.docx",
+     "descricao": "Layout do Projeto de Implantação gerado na fase de Projeto."},
+    {"slug": "cronograma", "nome": "Cronograma",
+     "fase": "Cronograma e Check-list", "tipo": "xlsx", "base": "cronograma.xlsx",
+     "descricao": "Planilha de cronograma de visitas, tarefas e pendências."},
+    {"slug": "termo", "nome": "Termo de Encerramento",
+     "fase": "Encerramento", "tipo": "docx", "base": "termo.docx",
+     "descricao": "Layout do Termo de Encerramento gerado no fim da implantação."},
+]
+
+# Mapa de preenchimento por modelo: (seção, placeholder, rótulo, origem, obrigatório, obs)
+_MODELOS_DOC_CAMPOS = {
+    "levantamento": [
+        ("Identificação", "<Nome Cliente>", "Razão Social", "projeto.cliente", 1, ""),
+        ("Identificação", "Data: <xx/xx/xxxx>", "Data do Levantamento", "projeto.data_levantamento", 0, ""),
+        ("Identificação", "Responsáveis: <...>", "Responsáveis (GCI/Consultor)", "projeto.gci + designações", 0, ""),
+        ("Identificação da Empresa", "Ramo Atividade:", "Ramo de Atividade", "projeto.ramo", 0, ""),
+        ("Identificação da Empresa", "Produto:", "Produto", "manual", 0, "Produto principal do cliente"),
+        ("Identificação da Empresa", "Fornecedor Atual Software:", "Software atual", "manual", 0, ""),
+        ("Identificação da Empresa", "<Localização / Filiais:>", "Localização / Filiais", "manual", 0, ""),
+        ("Identificação da Empresa", "Observações / Objetivos:", "Objetivos", "projeto.observacoes", 0, ""),
+        ("Identificação da Empresa", "<Quantidade usuários e identificação:>", "Qtd. de usuários", "manual", 0, ""),
+        ("Usuários (tabela)", "Nome / E-mail / Atribuições", "Usuários-chave", "designações / usuarios", 0, ""),
+        ("Módulos e Adicionais (A)", "Previstos antes do Levantamento", "Módulos contratados", "projeto.modulos", 1, ""),
+        ("Módulos e Adicionais (B)", "Identificados no Levantamento", "Módulos adicionais", "manual", 0, ""),
+        ("Implantação/Treinamento", "Quantidade de horas Cobradas", "Horas cobradas", "projeto.horas_cobradas", 0, ""),
+        ("Implantação/Treinamento", "Quantidade de horas Bonificadas", "Horas bonificadas", "projeto.horas_bonificadas", 0, ""),
+        ("Conversões", "CONVERSÕES <(xxxx horas)>", "Conversões", "manual", 0, ""),
+        ("Mapeamento por área", "<Colar aqui o quadro com as perguntas>", "Tópicos por módulo", "Cadastro: Índice de Tópicos", 0, "Usar o cadastro Índice de Tópicos por módulo"),
+    ],
+    "projeto": [
+        ("Cabeçalho", "Nome do Cliente: <RAZÃO SOCIAL>", "Razão Social", "projeto.cliente", 1, ""),
+        ("Escopo", "CNPJ: <(preencher)>", "CNPJ", "projeto.cnpj", 1, ""),
+        ("Objetivos", "<(preencher)>", "Objetivos", "projeto.observacoes", 0, ""),
+        ("Conversões (tabela)", "Conversão (Sim/Não) / Dados / Obs", "Conversões por módulo", "manual", 0, ""),
+        ("Detalhamento das Rotinas", "- Módulos Previstos <XX>", "Módulos previstos por área", "projeto.modulos", 1, ""),
+        ("Detalhamento das Rotinas", "Detalhamento das rotinas <XX>", "Rotinas atendidas", "Cadastro: Índice de Tópicos / manual", 0, ""),
+        ("Equipes (Rech)", "Gerente de Contas do Projeto", "GCI", "projeto.gci", 0, ""),
+        ("Equipes (Rech)", "Redator do Projeto", "Redator", "manual", 0, ""),
+        ("Equipes (Rech)", "Consultor/Implantador", "Consultor", "projeto.consultor / designações", 0, ""),
+        ("Equipes (Cliente)", "Encarregado pelo Projeto", "Encarregado (cliente)", "projeto.contato_nome", 0, ""),
+        ("Tabela de Usuários", "Nome / E-mail / Área / Assina Protocolo", "Usuários do cliente", "designações / usuarios", 0, ""),
+        ("Cronograma Macro (tabela)", "Período previsto <XX>", "Datas das etapas", "cronograma_itens / datas", 0, ""),
+        ("Tempo Estimado", "<XX horas bonificadas>", "Horas bonificadas", "projeto.horas_bonificadas", 0, ""),
+        ("Tempo Estimado", "<XX horas cobradas>", "Horas cobradas", "projeto.horas_cobradas", 0, ""),
+        ("Rodapé", "Novo Hamburgo, <_> de <_> de 202<X>", "Data de emissão", "data atual", 0, ""),
+    ],
+    "cronograma": [
+        ("Cabeçalho", "Consultor:", "Consultor", "projeto.consultor / designações", 0, ""),
+        ("Cabeçalho", "Cliente: XXXX - RAZÃO SOCIAL", "Razão Social", "projeto.cliente", 1, ""),
+        ("Cabeçalho", "Usuário chave:", "Usuário chave", "designações", 0, ""),
+        ("Cabeçalho", "Horas do Planejamento", "Horas planejamento", "projeto.horas_cobradas", 0, ""),
+        ("Cabeçalho", "Hrs previstas bonificadas", "Horas bonificadas", "projeto.horas_bonificadas", 0, ""),
+        ("Aba: Cronograma de visitas", "Data / Local / Turno / Horário / Técnico / Módulo(s) / O que será abordado / Ações", "Linhas de visita", "cronograma_itens", 0, ""),
+        ("Aba: Tarefas_usuários", "Tipo / Tarefa / Status / Responsável / Datas", "Tarefas do usuário", "checklist_itens / manual", 0, ""),
+        ("Aba: Pendências_Consultores", "Tipo / Tarefa / Prazo / Status / Dias de atraso", "Pendências", "manual", 0, ""),
+    ],
+    "termo": [
+        ("Cabeçalho", "Cliente: <Razão Social Longa>", "Razão Social", "projeto.cliente", 1, ""),
+        ("Resumo Geral (tabela)", "Módulo / Adicional / Processo / Status de Uso / Obs.", "Módulos e status de uso", "projeto.modulos / designações", 0, ""),
+        ("Alterações fora do escopo", "<Detalhamento das alterações>", "Alterações / incrementos", "manual", 0, ""),
+        ("Pendências", "<Pendência 01> / <Técnico responsável> / <Detalhamento>", "Pendências sequenciadas", "manual", 0, ""),
+        ("Rodapé", "Novo Hamburgo, _ de _ de 202X", "Data de encerramento", "projeto.data_encerramento", 0, ""),
+    ],
+}
+
+
+def _modelos_doc_store():
+    d = os.path.join(C.DATA_WRITE, "modelos_documento")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def _layouts_base_dir():
+    return os.path.join(os.path.dirname(C.DATA), "templates", "layouts")
+
+
+def _seed_modelos_documento():
+    """Cria os 4 modelos (1ª vez), copiando o layout fiel como versão 1 e semeando os campos."""
+    import shutil
+    base, store = _layouts_base_dir(), _modelos_doc_store()
+    with Session() as s:
+        if s.query(ModeloDocumento).count():
+            return
+        for i, m in enumerate(_MODELOS_DOC_DEFAULTS):
+            stored = "%s_v1.%s" % (m["slug"], m["tipo"])
+            try:
+                origem = os.path.join(base, m["base"])
+                if os.path.exists(origem):
+                    shutil.copy2(origem, os.path.join(store, stored))
+            except Exception:
+                pass
+            mod = ModeloDocumento(slug=m["slug"], nome=m["nome"], fase=m["fase"], tipo=m["tipo"],
+                                  arquivo=stored, descricao=m["descricao"], ordem=i)
+            s.add(mod); s.flush()
+            s.add(ModeloDocumentoVersao(modelo_id=mod.id, versao=1, arquivo=stored,
+                                        autor="sistema", motivo="Layout inicial (anexo).", vigente=1))
+            for j, c in enumerate(_MODELOS_DOC_CAMPOS.get(m["slug"], [])):
+                s.add(ModeloDocumentoCampo(modelo_id=mod.id, ordem=j, secao=c[0], placeholder=c[1],
+                                           rotulo=c[2], origem=c[3], obrigatorio=c[4], observacao=c[5]))
+        s.commit()
+
+
+def modelos_documento_listar():
+    with Session() as s:
+        out = []
+        for m in s.query(ModeloDocumento).order_by(ModeloDocumento.ordem, ModeloDocumento.id).all():
+            d = to_dict(m)
+            d["n_versoes"] = s.query(ModeloDocumentoVersao).filter_by(modelo_id=m.id).count()
+            d["n_campos"] = s.query(ModeloDocumentoCampo).filter_by(modelo_id=m.id).count()
+            out.append(d)
+        return out
+
+
+def modelo_documento_get(mid):
+    with Session() as s:
+        m = s.get(ModeloDocumento, int(mid))
+        return to_dict(m) if m else None
+
+
+def modelo_documento_versoes(mid):
+    with Session() as s:
+        return [to_dict(x) for x in s.query(ModeloDocumentoVersao)
+                .filter_by(modelo_id=int(mid)).order_by(ModeloDocumentoVersao.versao.desc()).all()]
+
+
+def modelo_documento_campos(mid):
+    with Session() as s:
+        return [to_dict(x) for x in s.query(ModeloDocumentoCampo)
+                .filter_by(modelo_id=int(mid)).order_by(ModeloDocumentoCampo.ordem, ModeloDocumentoCampo.id).all()]
+
+
+def modelo_documento_proxima_versao(mid):
+    with Session() as s:
+        v = s.query(ModeloDocumentoVersao).filter_by(modelo_id=int(mid)).order_by(
+            ModeloDocumentoVersao.versao.desc()).first()
+        return (v.versao + 1) if v else 1
+
+
+def registrar_versao_documento(mid, stored_name, autor="", motivo=""):
+    """Registra uma nova versão (já salva no store) e a torna a vigente."""
+    with Session() as s:
+        mod = s.get(ModeloDocumento, int(mid))
+        if not mod:
+            return None
+        n = modelo_documento_proxima_versao(mid)
+        s.query(ModeloDocumentoVersao).filter_by(modelo_id=mod.id).update({"vigente": 0})
+        s.add(ModeloDocumentoVersao(modelo_id=mod.id, versao=n, arquivo=stored_name,
+                                    autor=autor or "", motivo=motivo or "", vigente=1))
+        mod.arquivo = stored_name
+        mod.atualizado_em = datetime.now()
+        s.commit()
+        return n
+
+
+def modelo_documento_arquivo_path(mid, versao_id=None):
+    """Caminho absoluto do arquivo vigente (ou de uma versão específica) no store."""
+    with Session() as s:
+        if versao_id:
+            v = s.get(ModeloDocumentoVersao, int(versao_id))
+            arq = v.arquivo if v and v.modelo_id == int(mid) else None
+        else:
+            m = s.get(ModeloDocumento, int(mid))
+            arq = m.arquivo if m else None
+    if not arq:
+        return None
+    return os.path.join(_modelos_doc_store(), arq)
+
+
+def modelo_documento_campo_salvar(mid, form):
+    with Session() as s:
+        cid = form.get("id")
+        obj = s.get(ModeloDocumentoCampo, int(cid)) if cid else ModeloDocumentoCampo(
+            modelo_id=int(mid), ordem=_proxima_ordem(ModeloDocumentoCampo))
+        obj.modelo_id = int(mid)
+        for c in ("secao", "placeholder", "rotulo", "origem", "observacao"):
+            setattr(obj, c, (form.get(c) or "").strip())
+        obj.obrigatorio = 1 if form.get("obrigatorio") else 0
+        if not cid:
+            s.add(obj)
+        s.commit()
+        return obj.id
+
+
+def modelo_documento_campo_excluir(cid):
+    with Session() as s:
+        obj = s.get(ModeloDocumentoCampo, int(cid))
+        if obj:
+            s.delete(obj); s.commit()
+
+
 def _auto_migrar():
     """Migração leve aditiva: cria colunas novas que faltarem (SQLite e Postgres).
     Cobre a evolução de schema entre versões; só adiciona, nunca remove dados."""
@@ -891,6 +1343,9 @@ def init_db():
         _auto_migrar()
         _migrar_etapas()
         _seed_modelos_email()
+        _seed_checklist_modelo()
+        _seed_indice_topicos()
+        _seed_modelos_documento()
     except Exception:
         pass
 

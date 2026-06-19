@@ -332,8 +332,8 @@ _EVT_MSG = {
     "termo_ok":        ("Termo de Encerramento — %s", "O Termo de Encerramento de %s foi gerado."),
     "encerrado":       ("Implantação encerrada — %s", "A implantação de %s foi encerrada."),
 }
-_EVT_DOC = {"levantamento": "levantamento_ok", "cronograma": "cronograma_ok",
-            "checklist": "checklist_ok", "termo": "termo_ok"}
+_EVT_DOC = {"levantamento": "levantamento_ok", "projeto": "projeto_ok",
+            "cronograma": "cronograma_ok", "checklist": "checklist_ok", "termo": "termo_ok"}
 
 
 def _notificar_evento(pid, evento, proj=None):
@@ -595,6 +595,196 @@ def usuarios():
         lista = [db.to_dict(x) for x in s.query(db.Usuario).order_by(db.Usuario.nome).all()]
     return render_template("usuarios.html", usuarios=lista, perfis=db.PERFIS,
                            salvo=request.args.get("salvo"))
+
+
+# ----------------------------------------------------------------------------
+#  Cadastros de referência (Sistema): Checklist por módulo e Índice de Tópicos.
+#  Tabelas independentes, com todas as colunas da planilha de origem.
+# ----------------------------------------------------------------------------
+_PAG_CHECK = 50
+
+
+def _arg_int(nome, default=1):
+    try:
+        return max(1, int(request.args.get(nome, default)))
+    except (TypeError, ValueError):
+        return default
+
+
+@app.route("/cadastros/checklist")
+def cad_checklist():
+    if not pode_ver("sistema"):
+        abort(403)
+    mod = (request.args.get("mod") or "").strip()
+    q = (request.args.get("q") or "").strip()
+    pg = _arg_int("pg", 1)
+    linhas, total = db.checklist_modelo_listar(mod, q, offset=(pg - 1) * _PAG_CHECK, limite=_PAG_CHECK)
+    paginas = max(1, (total + _PAG_CHECK - 1) // _PAG_CHECK)
+    edit = None
+    if request.args.get("edit"):
+        with db.Session() as s:
+            o = s.get(db.ChecklistModelo, int(request.args["edit"]))
+            edit = db.to_dict(o) if o else None
+    return render_template("cad_checklist.html", linhas=linhas, total=total, pg=pg,
+                           paginas=paginas, mod=mod, q=q, modulos=db.checklist_modelo_modulos(),
+                           campos=db.CHECKMOD_CAMPOS, labels=db.CHECKMOD_LABELS,
+                           edit=edit, novo=bool(request.args.get("novo")),
+                           salvo=request.args.get("salvo"), aviso=request.args.get("aviso"))
+
+
+@app.route("/cadastros/checklist/salvar", methods=["POST"])
+def cad_checklist_salvar():
+    if not pode_ver("sistema"):
+        abort(403)
+    db.checklist_modelo_salvar(request.form)
+    return redirect(url_for("cad_checklist", mod=request.form.get("f_mod", ""),
+                            q=request.form.get("f_q", ""), pg=request.form.get("f_pg", 1), salvo=1))
+
+
+@app.route("/cadastros/checklist/<int:cid>/excluir", methods=["POST"])
+def cad_checklist_excluir(cid):
+    if not pode_ver("sistema"):
+        abort(403)
+    db.checklist_modelo_excluir(cid)
+    return redirect(url_for("cad_checklist", mod=request.form.get("f_mod", ""),
+                            q=request.form.get("f_q", ""), pg=request.form.get("f_pg", 1),
+                            aviso="Linha removida."))
+
+
+@app.route("/cadastros/checklist/reimportar", methods=["POST"])
+def cad_checklist_reimportar():
+    if not pode_ver("sistema"):
+        abort(403)
+    n = db._reseed_checklist_modelo()
+    return redirect(url_for("cad_checklist", aviso="Catálogo reimportado do modelo (%d linhas)." % n))
+
+
+@app.route("/cadastros/indice")
+def cad_indice():
+    if not pode_ver("sistema"):
+        abort(403)
+    mod = (request.args.get("mod") or "").strip()
+    q = (request.args.get("q") or "").strip()
+    linhas, total = db.indice_listar(mod, q)
+    edit = None
+    if request.args.get("edit"):
+        with db.Session() as s:
+            o = s.get(db.IndiceTopico, int(request.args["edit"]))
+            edit = db.to_dict(o) if o else None
+    return render_template("cad_indice.html", linhas=linhas, total=total, mod=mod, q=q,
+                           modulos=db.indice_modulos(), campos=db.INDICE_CAMPOS,
+                           labels=db.INDICE_LABELS, edit=edit,
+                           novo=bool(request.args.get("novo")),
+                           salvo=request.args.get("salvo"), aviso=request.args.get("aviso"))
+
+
+@app.route("/cadastros/indice/salvar", methods=["POST"])
+def cad_indice_salvar():
+    if not pode_ver("sistema"):
+        abort(403)
+    db.indice_salvar(request.form)
+    return redirect(url_for("cad_indice", mod=request.form.get("f_mod", ""),
+                            q=request.form.get("f_q", ""), salvo=1))
+
+
+@app.route("/cadastros/indice/<int:cid>/excluir", methods=["POST"])
+def cad_indice_excluir(cid):
+    if not pode_ver("sistema"):
+        abort(403)
+    db.indice_excluir(cid)
+    return redirect(url_for("cad_indice", mod=request.form.get("f_mod", ""),
+                            q=request.form.get("f_q", ""), aviso="Tópico removido."))
+
+
+@app.route("/cadastros/indice/reimportar", methods=["POST"])
+def cad_indice_reimportar():
+    if not pode_ver("sistema"):
+        abort(403)
+    n = db._reseed_indice_topicos()
+    return redirect(url_for("cad_indice", aviso="Índice reimportado da planilha (%d tópicos)." % n))
+
+
+# ----------------------------------------------------------------------------
+#  Cadastro de Modelos de Documentos (layouts fiéis das fases) + versões + campos.
+# ----------------------------------------------------------------------------
+@app.route("/cadastros/modelos")
+def cad_modelos():
+    if not pode_ver("sistema"):
+        abort(403)
+    return render_template("cad_modelos.html", modelos=db.modelos_documento_listar(),
+                           salvo=request.args.get("salvo"), aviso=request.args.get("aviso"))
+
+
+@app.route("/cadastros/modelos/<int:mid>")
+def cad_modelo(mid):
+    if not pode_ver("sistema"):
+        abort(403)
+    modelo = db.modelo_documento_get(mid)
+    if not modelo:
+        abort(404)
+    edit = None
+    if request.args.get("edit"):
+        edit = next((c for c in db.modelo_documento_campos(mid)
+                     if str(c["id"]) == request.args["edit"]), None)
+    return render_template("cad_modelo.html", modelo=modelo,
+                           versoes=db.modelo_documento_versoes(mid),
+                           campos=db.modelo_documento_campos(mid),
+                           campo_labels=db.MODELODOC_CAMPO_LABELS,
+                           edit=edit, novo=bool(request.args.get("novo")),
+                           salvo=request.args.get("salvo"), aviso=request.args.get("aviso"))
+
+
+@app.route("/cadastros/modelos/<int:mid>/versao", methods=["POST"])
+def cad_modelo_versao(mid):
+    if not pode_ver("sistema"):
+        abort(403)
+    modelo = db.modelo_documento_get(mid)
+    if not modelo:
+        abort(404)
+    f = request.files.get("arquivo")
+    if not f or not f.filename:
+        return redirect(url_for("cad_modelo", mid=mid, aviso="Selecione um arquivo para enviar."))
+    ext = f.filename.rsplit(".", 1)[-1].lower() if "." in f.filename else ""
+    if ext != modelo["tipo"]:
+        return redirect(url_for("cad_modelo", mid=mid,
+                                aviso="O arquivo deve ser .%s (igual ao modelo)." % modelo["tipo"]))
+    n = db.modelo_documento_proxima_versao(mid)
+    stored = "%s_v%d.%s" % (modelo["slug"], n, ext)
+    f.save(os.path.join(db._modelos_doc_store(), stored))
+    db.registrar_versao_documento(mid, stored, _autor(), request.form.get("motivo", ""))
+    return redirect(url_for("cad_modelo", mid=mid, salvo=1))
+
+
+@app.route("/cadastros/modelos/<int:mid>/baixar")
+@app.route("/cadastros/modelos/<int:mid>/versao/<int:vid>/baixar")
+def cad_modelo_baixar(mid, vid=None):
+    if not pode_ver("sistema"):
+        abort(403)
+    modelo = db.modelo_documento_get(mid)
+    path = db.modelo_documento_arquivo_path(mid, vid)
+    if not modelo or not path or not os.path.exists(path):
+        abort(404)
+    store = os.path.abspath(db._modelos_doc_store())
+    if not os.path.abspath(path).startswith(store):
+        abort(403)
+    nome = "%s_%s.%s" % (modelo["slug"], (("v%d" % vid) if vid else "vigente"), modelo["tipo"])
+    return send_file(path, as_attachment=True, download_name=nome)
+
+
+@app.route("/cadastros/modelos/<int:mid>/campo/salvar", methods=["POST"])
+def cad_modelo_campo_salvar(mid):
+    if not pode_ver("sistema"):
+        abort(403)
+    db.modelo_documento_campo_salvar(mid, request.form)
+    return redirect(url_for("cad_modelo", mid=mid, salvo=1))
+
+
+@app.route("/cadastros/modelos/<int:mid>/campo/<int:cid>/excluir", methods=["POST"])
+def cad_modelo_campo_excluir(mid, cid):
+    if not pode_ver("sistema"):
+        abort(403)
+    db.modelo_documento_campo_excluir(cid)
+    return redirect(url_for("cad_modelo", mid=mid, aviso="Campo removido."))
 
 
 @app.route("/cliente", methods=["GET", "POST"])
@@ -949,6 +1139,24 @@ def projeto_gerar_pendentes(pid):
     return redirect(url_for("projeto_ficha", pid=pid, salvo=1, aviso=aviso))
 
 
+# Documentos de fase gerados FIELMENTE pelos layouts cadastrados (troca só placeholders).
+_LAYOUT_SLUGS = ("levantamento", "projeto", "cronograma", "termo")
+
+
+def _gerar_e_anexar_fiel(pid, slug, proj):
+    """Gera o documento da fase pelo layout fiel vigente (Cadastro de Modelos) e anexa
+    como Documento. Devolve o caminho do arquivo gerado."""
+    import gerar_layout
+    path = gerar_layout.gerar(slug, proj)
+    with db.Session() as s:
+        s.add(db.Documento(projeto_id=pid, tipo=slug,
+                           arquivo=os.path.basename(path), caminho=path))
+        db.registrar_evento(s, pid, "documento",
+                            "Gerou %s pelo layout oficial (%s)" % (os.path.basename(path), slug), _autor())
+        s.commit()
+    return path
+
+
 @app.route("/projetos/<int:pid>/gerar/<tipo>", methods=["POST"])
 def projeto_gerar(pid, tipo):
     if not pode_gerar(tipo):
@@ -961,53 +1169,58 @@ def projeto_gerar(pid, tipo):
     if not _etapa_permite_gerar(tipo, proj.get("etapa")):
         return redirect(url_for("projeto_ficha", pid=pid,
             aviso="'%s' só pode ser gerado na etapa '%s' ou depois." % (db.DOC_LABELS.get(tipo, tipo), _ETAPA_DOC.get(tipo, "?"))))
+    path = None
     try:
-        path, _log = runner.gerar_do_projeto(proj, tipo)
+        if tipo in _LAYOUT_SLUGS:           # gera pelo LAYOUT FIEL (substitui os geradores antigos)
+            path = _gerar_e_anexar_fiel(pid, tipo, proj)
+        else:                               # demais tipos (ex.: checklist): gerador programático
+            path, _log = runner.gerar_do_projeto(proj, tipo)
+            if path:
+                with db.Session() as s:
+                    s.add(db.Documento(projeto_id=pid, tipo=tipo,
+                                       arquivo=os.path.basename(path), caminho=path))
+                    db.registrar_evento(s, pid, "documento",
+                                        "Gerou %s (%s)" % (os.path.basename(path), tipo), _autor())
+                    s.commit()
     except Exception:
-        path = None
+        logging.exception("Falha ao gerar documento (%s)", tipo)
+        return redirect(url_for("projeto_ficha", pid=pid,
+                                aviso="Falha ao gerar '%s'." % db.DOC_LABELS.get(tipo, tipo)))
     if path:
-        with db.Session() as s:
-            s.add(db.Documento(projeto_id=pid, tipo=tipo,
-                               arquivo=os.path.basename(path), caminho=path))
-            db.registrar_evento(s, pid, "documento",
-                                "Gerou %s (%s)" % (os.path.basename(path), tipo), _autor())
-            s.commit()
         _notificar_evento(pid, _EVT_DOC.get(tipo), proj)
         _auto_avancar(pid)
-    return redirect(url_for("projeto_ficha", pid=pid))
+    return redirect(url_for("projeto_ficha", pid=pid, salvo=1))
 
 
-@app.route("/projetos/<int:pid>/gerar_projeto", methods=["POST"])
-def projeto_gerar_projeto(pid):
-    if not pode_gerar("projeto"):
+@app.route("/projetos/<int:pid>/gerar-layout/<slug>", methods=["POST"])
+def projeto_gerar_layout(pid, slug):
+    """Atalho do painel 'Documentos oficiais': gera o documento pelo layout fiel
+    independentemente da fase atual (sem o gate de etapa)."""
+    if slug not in _LAYOUT_SLUGS:
+        abort(404)
+    if not pode_gerar(slug):
         abort(403)
     with db.Session() as s:
         p = s.get(db.Projeto, pid)
         if not p:
             abort(404)
-        cliente = p.cliente
-        etapa = p.etapa
-    if not _etapa_permite_gerar("projeto", etapa):
-        return redirect(url_for("projeto_ficha", pid=pid, erro="O Projeto só pode ser gerado na etapa 'Projeto' ou depois."))
-    f = request.files.get("arquivo")
-    if not (f and f.filename and f.filename.lower().endswith(".docx")):
-        return redirect(url_for("projeto_ficha", pid=pid, erro="Envie o Mapeamento (.docx) preenchido."))
-    path = os.path.join(UPLOADS, "map_" + C.slug(f.filename) + ".docx")
-    f.save(path)
+        proj = db.to_dict(p)
     try:
-        proj_path, _yaml = runner.gerar_projeto_de_docx(path, cliente=cliente)
-    except Exception as e:
-        return redirect(url_for("projeto_ficha", pid=pid, erro="Falha ao gerar o Projeto: %s" % type(e).__name__))
-    if proj_path:
-        with db.Session() as s:
-            s.add(db.Documento(projeto_id=pid, tipo="projeto",
-                               arquivo=os.path.basename(proj_path), caminho=proj_path))
-            db.registrar_evento(s, pid, "documento",
-                                "Gerou %s (projeto, pelo Mapeamento)" % os.path.basename(proj_path), _autor())
-            s.commit()
-        _notificar_evento(pid, "projeto_ok")
-        _auto_avancar(pid)
-    return redirect(url_for("projeto_ficha", pid=pid))
+        _gerar_e_anexar_fiel(pid, slug, proj)
+    except Exception:
+        logging.exception("Falha ao gerar pelo layout (%s)", slug)
+        return redirect(url_for("projeto_ficha", pid=pid,
+                                aviso="Falha ao gerar pelo layout oficial."))
+    _notificar_evento(pid, _EVT_DOC.get(slug), proj)
+    _auto_avancar(pid)
+    return redirect(url_for("projeto_ficha", pid=pid, salvo=1))
+
+
+@app.route("/projetos/<int:pid>/gerar_projeto", methods=["POST"])
+def projeto_gerar_projeto(pid):
+    """Aposentado: o Projeto agora é gerado FIELMENTE pelo layout oficial, com os
+    dados do projeto (sem upload do Mapeamento). Mantido por compatibilidade."""
+    return projeto_gerar(pid, "projeto")
 
 
 @app.route("/projetos/<int:pid>/anexar", methods=["POST"])

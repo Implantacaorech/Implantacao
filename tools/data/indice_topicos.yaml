@@ -1,0 +1,2811 @@
+# Índice de Tópicos para Mapeamento de Processos (extraído da planilha).
+# Reexecute extrair_indice_topicos.py se a planilha mudar.
+linhas:
+- modulo_num: '1'
+  modulo_sigla: CTB
+  modulo: Contabilidade Geral
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Regime de Tributação CSLL/IRPJ
+  ordem: 1
+- modulo_num: '1'
+  modulo_sigla: CTB
+  modulo: Contabilidade Geral
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Estrutura do Plano de Contas
+  ordem: 2
+- modulo_num: '1'
+  modulo_sigla: CTB
+  modulo: Contabilidade Geral
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Demonstrações Contábeis Utilizadas
+  ordem: 3
+- modulo_num: '1'
+  modulo_sigla: CTB
+  modulo: Contabilidade Geral
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Análise de Indicadores Economico-Financeiros
+  ordem: 4
+- modulo_num: '1'
+  modulo_sigla: CTB
+  modulo: Contabilidade Geral
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Relatórios Específicos
+  ordem: 5
+- modulo_num: '1'
+  modulo_sigla: CTB
+  modulo: Contabilidade Geral
+  adicional_num: '28'
+  adicional_sigla: CCC
+  adicional: Contabilidade por Centros de Custo
+  topico: Formato de Uso
+  ordem: 6
+- modulo_num: '1'
+  modulo_sigla: CTB
+  modulo: Contabilidade Geral
+  adicional_num: '28'
+  adicional_sigla: CCC
+  adicional: Contabilidade por Centros de Custo
+  topico: Existência de hirerarquia
+  ordem: 7
+- modulo_num: '1'
+  modulo_sigla: CTB
+  modulo: Contabilidade Geral
+  adicional_num: '28'
+  adicional_sigla: CCC
+  adicional: Contabilidade por Centros de Custo
+  topico: Relatórios Especificos
+  ordem: 8
+- modulo_num: '1'
+  modulo_sigla: CTB
+  modulo: Contabilidade Geral
+  adicional_num: '30'
+  adicional_sigla: LAL
+  adicional: Lalur
+  topico: Tipos de Incentivos Fiscais
+  ordem: 9
+- modulo_num: '1'
+  modulo_sigla: CTB
+  modulo: Contabilidade Geral
+  adicional_num: '30'
+  adicional_sigla: LAL
+  adicional: Lalur
+  topico: Tipos de Deduções
+  ordem: 10
+- modulo_num: '1'
+  modulo_sigla: CTB
+  modulo: Contabilidade Geral
+  adicional_num: '30'
+  adicional_sigla: LAL
+  adicional: Lalur
+  topico: Existência de Lucro da Exploração
+  ordem: 11
+- modulo_num: '1'
+  modulo_sigla: CTB
+  modulo: Contabilidade Geral
+  adicional_num: '30'
+  adicional_sigla: LAL
+  adicional: Lalur
+  topico: Existência de Atividade Hibrida ( Geral /Rural)
+  ordem: 12
+- modulo_num: '1'
+  modulo_sigla: CTB
+  modulo: Contabilidade Geral
+  adicional_num: '53'
+  adicional_sigla: CSI
+  adicional: Contabilidade Somente Integração
+  topico: Sitema de Terceiro para a Integração
+  ordem: 13
+- modulo_num: '1'
+  modulo_sigla: CTB
+  modulo: Contabilidade Geral
+  adicional_num: '53'
+  adicional_sigla: CSI
+  adicional: Contabilidade Somente Integração
+  topico: Particularidades relativo a dados que serão exportados
+  ordem: 14
+- modulo_num: '2'
+  modulo_sigla: GPA
+  modulo: Gestão Patrimonial
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Estrutura de Classificação dos Bens (Tabelas usadas)
+  ordem: 15
+- modulo_num: '2'
+  modulo_sigla: GPA
+  modulo: Gestão Patrimonial
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Tipo de Cálculo ( Mensal- Pro-rata)
+  ordem: 16
+- modulo_num: '2'
+  modulo_sigla: GPA
+  modulo: Gestão Patrimonial
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Uso da Depreciação ( Societária, Fiscal, outros)
+  ordem: 17
+- modulo_num: '2'
+  modulo_sigla: GPA
+  modulo: Gestão Patrimonial
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Forma de Contabilização (Conta Patrimonial, Cta + Local)
+  ordem: 18
+- modulo_num: '2'
+  modulo_sigla: GPA
+  modulo: Gestão Patrimonial
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Controle de Créditos Sobre Imobilizado ( PIS/COFINS e CIAP)
+  ordem: 19
+- modulo_num: '2'
+  modulo_sigla: GPA
+  modulo: Gestão Patrimonial
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Relatórios Especifico
+  ordem: 20
+- modulo_num: '4'
+  modulo_sigla: LFI
+  modulo: Livros Fiscais
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Regime de Tributação (Simples, Presumido , Real Trimestral/Anual). Apuração por Caixa ou Compentência
+  ordem: 21
+- modulo_num: '4'
+  modulo_sigla: LFI
+  modulo: Livros Fiscais
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Aspectos relevantes para CSLL e IRPJ
+  ordem: 22
+- modulo_num: '4'
+  modulo_sigla: LFI
+  modulo: Livros Fiscais
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Aspectos relevantes para PIS e COFINS (REGIME, ALIQUOTAS DIFERENCIADAS, SUSPENSÕES , ETC..)
+  ordem: 23
+- modulo_num: '4'
+  modulo_sigla: LFI
+  modulo: Livros Fiscais
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Aspectos relevantes para IPI (SUSPENSÕES , ETC.))
+  ordem: 24
+- modulo_num: '4'
+  modulo_sigla: LFI
+  modulo: Livros Fiscais
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Aspectos relevantes para ICMS (ST, DIFAL, REDUÇÕES DE BASE, ETC..)
+  ordem: 25
+- modulo_num: '4'
+  modulo_sigla: LFI
+  modulo: Livros Fiscais
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Aspectos Relevantes para ISS
+  ordem: 26
+- modulo_num: '4'
+  modulo_sigla: LFI
+  modulo: Livros Fiscais
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Aspectos Relevantes para Retenções ( CSLL, IRPJ, CSRF4,65%, IRRF, IRPJ, ISSQN , INSS)
+  ordem: 27
+- modulo_num: '4'
+  modulo_sigla: LFI
+  modulo: Livros Fiscais
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Obrigações acessórias entregues ( EFD Fiscal, EFD Contribuiçoe, ECF, Reinf, Dimob, Gia, Outros).
+  ordem: 28
+- modulo_num: '4'
+  modulo_sigla: LFI
+  modulo: Livros Fiscais
+  adicional_num: '24'
+  adicional_sigla: ERR
+  adicional: Controle de Empréstimos, Remessas e Retornos
+  topico: Tipos de Operações para Remessa e Retorno
+  ordem: 29
+- modulo_num: '4'
+  modulo_sigla: LFI
+  modulo: Livros Fiscais
+  adicional_num: '24'
+  adicional_sigla: ERR
+  adicional: Controle de Empréstimos, Remessas e Retornos
+  topico: Tipo de Controle e Movimentação de Estoque (quando aplícável)
+  ordem: 30
+- modulo_num: '4'
+  modulo_sigla: LFI
+  modulo: Livros Fiscais
+  adicional_num: '24'
+  adicional_sigla: ERR
+  adicional: Controle de Empréstimos, Remessas e Retornos
+  topico: Tipo de Contabilização (quando aplicável)
+  ordem: 31
+- modulo_num: '4'
+  modulo_sigla: LFI
+  modulo: Livros Fiscais
+  adicional_num: '65'
+  adicional_sigla: ISP
+  adicional: Importação SPED
+  topico: Particularidades de uso da importação via SPED
+  ordem: 32
+- modulo_num: '4'
+  modulo_sigla: LFI
+  modulo: Livros Fiscais
+  adicional_num: '37'
+  adicional_sigla: LSI
+  adicional: Livros Fiscais Somente para Integração
+  topico: Particularidade de uso para geranção e exportação dos arquivos SPEDs
+  ordem: 33
+- modulo_num: '4'
+  modulo_sigla: LFI
+  modulo: Livros Fiscais
+  adicional_num: '136'
+  adicional_sigla: PGK
+  adicional: Geração SPED Fiscal Bloco K - somente registros K200 e K280
+  topico: Particularidade de uso para geranção e exportação dos arquivos SPEDs - Registros específicos K200 e K 280
+  ordem: 34
+- modulo_num: '4'
+  modulo_sigla: LFI
+  modulo: Livros Fiscais
+  adicional_num: '215'
+  adicional_sigla: DFR
+  adicional: Repositório de DF-e Rech
+  topico: Particularidade de uso do recurso de respositório de Notas Eletrônicas ( Download apenas de notas de entrada)
+  ordem: 35
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Fluxo dos pedidos (como origina a demanda, como recebe os pedidos)
+  ordem: 36
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Comunicação entre os setores para informar posição do pedido (etapas, destacadores)
+  ordem: 37
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Fluxo dos orçamentos
+  ordem: 38
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Bloqueios e críticas necessários na manutenção do pedido
+  ordem: 39
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Formas de recebimento dos valores (dinheiro, PIX, cartão, boleto)
+  ordem: 40
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Comissão (informa representante, vendedor)
+  ordem: 41
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Tem percentual de comissão fixo ou varia pelo cliente/ produto
+  ordem: 42
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Paga a comissão na liquidação ou faturamento
+  ordem: 43
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Tem emissão de nota PR
+  ordem: 44
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Política de preços (listas de preço)
+  ordem: 45
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Possui diferente locais de entrega
+  ordem: 46
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Formulário de pedido e/ou orçamento
+  ordem: 47
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Relatórios específicos da área
+  ordem: 48
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Utiliza controle de calculo  volumes, pesos e cubagem nos pedidos
+  ordem: 49
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Regras de descontos
+  ordem: 50
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Utiliza Metas de vendas
+  ordem: 51
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '48'
+  adicional_sigla: NFE
+  adicional: Geração/Autenticação de NF-e – Nota Fiscal Eletrônica
+  topico: Tipos de notas fiscais que emite (venda, triangular, remessa, devolução)
+  ordem: 52
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '48'
+  adicional_sigla: NFE
+  adicional: Geração/Autenticação de NF-e – Nota Fiscal Eletrônica
+  topico: Envia e-mail da nota e boleto (Contatos diferentes). Outros formulários
+  ordem: 53
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '58'
+  adicional_sigla: NSE
+  adicional: Geração/Autenticação de NFS-e – Nota Fiscal Serviços Eletrônica
+  topico: Municipios que emite nota
+  ordem: 54
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '66'
+  adicional_sigla: CRF
+  adicional: Controle de Reservas de Fat/Vendas
+  topico: Gerencia as reservas do pedidos
+  ordem: 55
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '66'
+  adicional_sigla: CRF
+  adicional: Controle de Reservas de Fat/Vendas
+  topico: Pode alterar as reservas
+  ordem: 56
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '44'
+  adicional_sigla: AOC
+  adicional: Controle Acerto Ordens de Carga
+  topico: Entender como monta a ordem de carga
+  ordem: 57
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '24'
+  adicional_sigla: ERR
+  adicional: Controle de Empréstimos, Remessas e Retornos
+  topico: Qual tipo de produto que controla
+  ordem: 58
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '21'
+  adicional_sigla: BEI
+  adicional: Beneficiamento Interno
+  topico: Tem um local de estoque para cada terceiro
+  ordem: 59
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '32'
+  adicional_sigla: BTE
+  adicional: Beneficiamento em Terceiros
+  topico: Tem um local de estoque para cada terceiro
+  ordem: 60
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '32'
+  adicional_sigla: BTE
+  adicional: Beneficiamento em Terceiros
+  topico: Faz reenvio de material
+  ordem: 61
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '32'
+  adicional_sigla: BTE
+  adicional: Beneficiamento em Terceiros
+  topico: O terceiro agrega insumos próprios
+  ordem: 62
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '32'
+  adicional_sigla: BTE
+  adicional: Beneficiamento em Terceiros
+  topico: Quem adquire o insumo
+  ordem: 63
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '108'
+  adicional_sigla: UFX
+  adicional: Frente de Caixa
+  topico: Quais os tipos de liquidação que possui
+  ordem: 64
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '108'
+  adicional_sigla: UFX
+  adicional: Frente de Caixa
+  topico: Tem mais de um caixa/ operador
+  ordem: 65
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '108'
+  adicional_sigla: UFX
+  adicional: Frente de Caixa
+  topico: Controla sangria, ressuprimeito e fechamento de caixa
+  ordem: 66
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '132'
+  adicional_sigla: VEB
+  adicional: Venda Balcão
+  topico: Rotina venda balcão. Fluxo de venda
+  ordem: 67
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '132'
+  adicional_sigla: VEB
+  adicional: Venda Balcão
+  topico: Importação de orçamentos e pedidos
+  ordem: 68
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '103'
+  adicional_sigla: PMO
+  adicional: Pedidos Mobile Web Offline
+  topico: Aceitação das informações no pedido MOBILE
+  ordem: 69
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '103'
+  adicional_sigla: PMO
+  adicional: Pedidos Mobile Web Offline
+  topico: Bloqueios aplicáveis
+  ordem: 70
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '212'
+  adicional_sigla: MNE
+  adicional: APP SIGER Mobile NF-e
+  topico: Rotina de uso
+  ordem: 71
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '213'
+  adicional_sigla: MTE
+  adicional: APP Telemarketing - Mobile
+  topico: Fluxo do processo. Agendas e contatos
+  ordem: 72
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '47'
+  adicional_sigla: FLX
+  adicional: Controle Flexível de Descontos e Acréscimos
+  topico: Fluxo de utilização
+  ordem: 73
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '47'
+  adicional_sigla: FLX
+  adicional: Controle Flexível de Descontos e Acréscimos
+  topico: Controle de flex gerencial
+  ordem: 74
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '47'
+  adicional_sigla: FLX
+  adicional: Controle Flexível de Descontos e Acréscimos
+  topico: Como lança as informações de flex ao vendedor
+  ordem: 75
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '34'
+  adicional_sigla: FPV
+  adicional: Formação de Preço de Venda
+  topico: Mapear como é aplicado o conceito na empresa
+  ordem: 76
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '68'
+  adicional_sigla: CME
+  adicional: Controle de Metas de Entrega (Cotas de Venda)
+  topico: Entender o cenário do cliente
+  ordem: 77
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '210'
+  adicional_sigla: RMP
+  adicional: Rech Marketplace/Integração E-commerce
+  topico: Qual a plataforma que integra
+  ordem: 78
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '210'
+  adicional_sigla: RMP
+  adicional: Rech Marketplace/Integração E-commerce
+  topico: Quais os marketplaces utilizados
+  ordem: 79
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '210'
+  adicional_sigla: RMP
+  adicional: Rech Marketplace/Integração E-commerce
+  topico: Montagem dos dados do produto
+  ordem: 80
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '29'
+  adicional_sigla: EDI
+  adicional: EDI (Intercâmbio Eletrônico de Dados)
+  topico: Quais as empresas que tem a integração via EDI.
+  ordem: 81
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '29'
+  adicional_sigla: EDI
+  adicional: EDI (Intercâmbio Eletrônico de Dados)
+  topico: Qual a VAN (fornecedora do EDI)
+  ordem: 82
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '20'
+  adicional_sigla: FTR
+  adicional: Controles Específicos / Faturas
+  topico: Quais os controles necessários. Módulo específico para alguns clientes
+  ordem: 83
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '126'
+  adicional_sigla: INC
+  adicional: Integração com Correios
+  topico: Possui cadastro nos correios
+  ordem: 84
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '126'
+  adicional_sigla: INC
+  adicional: Integração com Correios
+  topico: Modelo da etiqueta gerada
+  ordem: 85
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '51'
+  adicional_sigla: BRO
+  adicional: Integração Balança Rodoviária
+  topico: Modelo de balança (Marca e fornecedor) e formato de integração (Arquivo, API)
+  ordem: 86
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '51'
+  adicional_sigla: BRO
+  adicional: Integração Balança Rodoviária
+  topico: Carga ou descarga
+  ordem: 87
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '51'
+  adicional_sigla: BRO
+  adicional: Integração Balança Rodoviária
+  topico: Imprime ticket
+  ordem: 88
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '51'
+  adicional_sigla: BRO
+  adicional: Integração Balança Rodoviária
+  topico: Gera MDF-e na sequencia da nota
+  ordem: 89
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '51'
+  adicional_sigla: BRO
+  adicional: Integração Balança Rodoviária
+  topico: Precisa listar alguma informação do veículo na nota
+  ordem: 90
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '51'
+  adicional_sigla: BRO
+  adicional: Integração Balança Rodoviária
+  topico: Informações necessárias para entrada ou saída do veículo
+  ordem: 91
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '197'
+  adicional_sigla: CVU
+  adicional: Cálculo de Valor Unitário com/sem Impostos (Preço NET)
+  topico: Entender o cenário do cliente
+  ordem: 92
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '197'
+  adicional_sigla: CVU
+  adicional: Cálculo de Valor Unitário com/sem Impostos (Preço NET)
+  topico: Quais os tributos ou valores que influenciam no preço
+  ordem: 93
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '161'
+  adicional_sigla: MVA
+  adicional: Metas de Venda Avançado
+  topico: Entendimento do processo
+  ordem: 94
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '161'
+  adicional_sigla: MVA
+  adicional: Metas de Venda Avançado
+  topico: Controla meta de produto, cliente, vendedor. Meta por quantidade ou valor.
+  ordem: 95
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '59'
+  adicional_sigla: CPR
+  adicional: Configurador de Produtos
+  topico: Identificar particularidades no cadastro do produto (adicional em desuso)
+  ordem: 96
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '25'
+  adicional_sigla: SEP
+  adicional: Separação de pedidos
+  topico: Fluxo do processo (separação ou conferência)
+  ordem: 97
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '25'
+  adicional_sigla: SEP
+  adicional: Separação de pedidos
+  topico: Tem lote na separação
+  ordem: 98
+- modulo_num: '5'
+  modulo_sigla: FAT
+  modulo: Vendas e Faturamento
+  adicional_num: '25'
+  adicional_sigla: SEP
+  adicional: Separação de pedidos
+  topico: Tipos de aceitação dos dados
+  ordem: 99
+- modulo_num: '121'
+  modulo_sigla: TLO
+  modulo: Transporte / Logística
+  adicional_num: '125'
+  adicional_sigla: GMD
+  adicional: Geração do XML do Manifesto Eletrônico de Documentos Fiscais (MDF-e)
+  topico: Emissão a partir da nota ou da ordem de carga
+  ordem: 100
+- modulo_num: '121'
+  modulo_sigla: TLO
+  modulo: Transporte / Logística
+  adicional_num: '125'
+  adicional_sigla: GMD
+  adicional: Geração do XML do Manifesto Eletrônico de Documentos Fiscais (MDF-e)
+  topico: Dados dos documentos
+  ordem: 101
+- modulo_num: '121'
+  modulo_sigla: TLO
+  modulo: Transporte / Logística
+  adicional_num: '119'
+  adicional_sigla: GCT
+  adicional: Geração do XML do Conhecimento de Transporte Eletrônico (CT-e)
+  topico: Dados dos documentos
+  ordem: 102
+- modulo_num: '121'
+  modulo_sigla: TLO
+  modulo: Transporte / Logística
+  adicional_num: '119'
+  adicional_sigla: GCT
+  adicional: Geração do XML do Conhecimento de Transporte Eletrônico (CT-e)
+  topico: Integração com outros módulos (FIN)
+  ordem: 103
+- modulo_num: '121'
+  modulo_sigla: TLO
+  modulo: Transporte / Logística
+  adicional_num: '196'
+  adicional_sigla: CTA
+  adicional: Emissão Aut. do Conh. de Transp. Elet. (CT-e) e do Manif. Elet. de Doc. (MDF-e)
+  topico: Emissão a partir da nota ou da ordem de carga
+  ordem: 104
+- modulo_num: '121'
+  modulo_sigla: TLO
+  modulo: Transporte / Logística
+  adicional_num: '196'
+  adicional_sigla: CTA
+  adicional: Emissão Aut. do Conh. de Transp. Elet. (CT-e) e do Manif. Elet. de Doc. (MDF-e)
+  topico: Dados dos documentos
+  ordem: 105
+- modulo_num: '121'
+  modulo_sigla: TLO
+  modulo: Transporte / Logística
+  adicional_num: '131'
+  adicional_sigla: VCF
+  adicional: Cotação de Fretes
+  topico: Integração com sistema de terceiros
+  ordem: 106
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Operações com Caixa Conta Corrente - Bancos Homologados para o Projeto
+  ordem: 107
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Operações com Caixa Conta Corrente -Operações de Descontos ( antecipações)
+  ordem: 108
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Operações com Caixa Conta Corrente -Operações com Viagens
+  ordem: 109
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Operações com Caixa Conta Corrente -Conciliação Bancária com Arquivos OFX
+  ordem: 110
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Operações com Caixa Conta Corrente -Relatórios de Caixa
+  ordem: 111
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Receber- Tipos de Contas a Receber (origem dos documentos , Notas, Recibos , Previsões)
+  ordem: 112
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Receber-Uso de remessa e Retorno Bancário por arquivos Cnabs (Bancos com boleto QR Code Pix e/ou Remessa On-line)
+  ordem: 113
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Receber-Locais de Cobrança(Portadores - Quais serão criados e homologados para cobrança)
+  ordem: 114
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Receber-Necesidade de controle de natureza da cobrança
+  ordem: 115
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Receber-Operações de recebimento via  Cartão de Crédito/Débito
+  ordem: 116
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Receber-Operações de recebimento via  Cheque
+  ordem: 117
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Receber-Tratamento de Adiantamento de Clientes
+  ordem: 118
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Receber-Tratamento de Devoluções de Clientes
+  ordem: 119
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Receber-Necessidade de refaturamento de titulos ( modificações dos dados da fatura)
+  ordem: 120
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Receber-Relatórios Específicos
+  ordem: 121
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Pagar -  Tipos de Contas a Pagar (origem dos documentos , Notas, Recibos , Previsões)
+  ordem: 122
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Pagar - Uso de remessa e Retorno Bancários por arquivos Cnabs (Boleto, Convênio, PIX - Contemplados e Não Contamplados no SIGER®)
+  ordem: 123
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Pagar - Locais de Cobrança(Portadores - Quais serão criados e homologados controle de pagamentos e/ou remessas)
+  ordem: 124
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Pagar - Necesidade de controle de natureza da cobrança
+  ordem: 125
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Pagar - Operações de Pagamentos via  Cartão de Crédito/Débito
+  ordem: 126
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Pagar - Operações de Pagamentos via  Cheque
+  ordem: 127
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Pagar - Tratamento de Adiantamento de Fornecedores
+  ordem: 128
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Pagar - Tratamento de Devoluções de Fornecedores
+  ordem: 129
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Pagar - Necessidade de refaturamento de titulos ( modificações dos dados da fatura)
+  ordem: 130
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Pagar - Relatórios Específicos
+  ordem: 131
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Fluxo de Caixa - Modelagem a ser atendida
+  ordem: 132
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: '23'
+  adicional_sigla: PFI
+  adicional: Planejamento Financeiro
+  topico: Estrutra do Plano ( Na ausência , sugestão de modelo padrão).
+  ordem: 133
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: '23'
+  adicional_sigla: PFI
+  adicional: Planejamento Financeiro
+  topico: Controle de contas de Receita e/ou Despesas
+  ordem: 134
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: '23'
+  adicional_sigla: PFI
+  adicional: Planejamento Financeiro
+  topico: Utilização de Centro de Custo ( forma de uso )
+  ordem: 135
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: '56'
+  adicional_sigla: PFP
+  adicional: Planejamento Financeiro por Produto
+  topico: Particularidades do Planejamentos financeiro por Produtos
+  ordem: 136
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: '64'
+  adicional_sigla: PFO
+  adicional: Monitoramento On-line no Planejamento Financeiro
+  topico: Controle por Regime de Caixa ou Competência
+  ordem: 137
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: '64'
+  adicional_sigla: PFO
+  adicional: Monitoramento On-line no Planejamento Financeiro
+  topico: Particularidades do Planejamentos financeiro on line ( Por regime de compentência ou Caixa)
+  ordem: 138
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: '36'
+  adicional_sigla: MOE
+  adicional: Variação Cambial para Financeiro/Compras (Outras Moedas)
+  topico: Regime de controle ( Compentência ou Caixa)
+  ordem: 139
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: '36'
+  adicional_sigla: MOE
+  adicional: Variação Cambial para Financeiro/Compras (Outras Moedas)
+  topico: Moedas prevista para uso no projeto
+  ordem: 140
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: '44'
+  adicional_sigla: AOC
+  adicional: Acertos de Ordens de Cargas
+  topico: Particularidades para uso de Ordens de Cargas
+  ordem: 141
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: '63'
+  adicional_sigla: CCH
+  adicional: Controle Cheques de Terceiros
+  topico: Particularidades para uso de Controle de Cheques
+  ordem: 142
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: '101'
+  adicional_sigla: RDV
+  adicional: Renegociação de Dívidas
+  topico: Particularidades para uso de dívidas
+  ordem: 143
+- modulo_num: '6'
+  modulo_sigla: FIN
+  modulo: Controle Financeiro
+  adicional_num: '101'
+  adicional_sigla: RDV
+  adicional: Renegociação de Dívidas
+  topico: Aspectos de integração contábil ( quando aplícável)
+  ordem: 144
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Critério para determinação de controle de estoque vs produtos
+  ordem: 145
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Critério para unidade de controle de estoque  ( apenas uma unidade , controle em 2ª unidade)
+  ordem: 146
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Critérios para uso de Locais de Estoque
+  ordem: 147
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Fluxo de entrada de estoque (notas, movimentação interna, etc…)
+  ordem: 148
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Fluxo de baixa do estoque (notas, movimentação interna, etc…)
+  ordem: 149
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Aspectos ligados a consolidação da informação entre empresas (Siglas - Quando aplicável)
+  ordem: 150
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Tipos de movimentações manuais de estoque
+  ordem: 151
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Quantidade de locais de estoque
+  ordem: 152
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Tipos de Etiquetas para controle de Estoque
+  ordem: 153
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Particularidades ligadas ao Inventário e seus ajustes ciclicos
+  ordem: 154
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Critérios para uso de Requisições de Estoque
+  ordem: 155
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Estoque mínimo
+  ordem: 156
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: '33'
+  adicional_sigla: CLT
+  adicional: Rastreabilidade / Controle de Lotes de Estoques
+  topico: Necessidade de Lote ou Série ?
+  ordem: 157
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: '33'
+  adicional_sigla: CLT
+  adicional: Rastreabilidade / Controle de Lotes de Estoques
+  topico: Critérios de uso de Lotes para Insumos
+  ordem: 158
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: '33'
+  adicional_sigla: CLT
+  adicional: Rastreabilidade / Controle de Lotes de Estoques
+  topico: Critérios de uso de Lote/Série  notas de entrada ( quando aplicável)
+  ordem: 159
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: '33'
+  adicional_sigla: CLT
+  adicional: Rastreabilidade / Controle de Lotes de Estoques
+  topico: Critérios de uso de lotes/Série  para produtos prontos
+  ordem: 160
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: '33'
+  adicional_sigla: CLT
+  adicional: Rastreabilidade / Controle de Lotes de Estoques
+  topico: Lotes/Série  versus vinculo com notas de saidas ( quando aplicável)
+  ordem: 161
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: '33'
+  adicional_sigla: CLT
+  adicional: Rastreabilidade / Controle de Lotes de Estoques
+  topico: Outros pontos relevantes para uso de lotes/Série
+  ordem: 162
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: '33'
+  adicional_sigla: CLT
+  adicional: Rastreabilidade / Controle de Lotes de Estoques
+  topico: Formato do número do lote/ série
+  ordem: 163
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: '45'
+  adicional_sigla: ARE
+  adicional: Controle Alçada para Requisições de Estoques
+  topico: Critérios para aplicação de alçadas para requisição de estoque
+  ordem: 164
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: '118'
+  adicional_sigla: EFE
+  adicional: Integração de Movimentos via Formulação/Estrutura
+  topico: Particularidades de uso para uso do estoque com movimentos com base em ficha técnica (Fomulação/Engenharia)
+  ordem: 165
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: '49'
+  adicional_sigla: ECB
+  adicional: Controle Estoque por Combinação/Configuração
+  topico: Critério de uso de estoque por Combinação
+  ordem: 166
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: '38'
+  adicional_sigla: CFE
+  adicional: Controle Custo Integrado de Estoque
+  topico: Critério de Rateio ( Quantidade, Horas Previstas , Horas Efetivas
+  ordem: 167
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: '38'
+  adicional_sigla: CFE
+  adicional: Controle Custo Integrado de Estoque
+  topico: Particularidade ligadas ao cálculo e relatórios
+  ordem: 168
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: '218'
+  adicional_sigla: PIE
+  adicional: Planejamento de Inventário de Estoques
+  topico: Particularidade relacionadas ao planejamento de inventário
+  ordem: 169
+- modulo_num: '7'
+  modulo_sigla: EST
+  modulo: Controle de Estoques
+  adicional_num: '127'
+  adicional_sigla: PEP
+  adicional: Controle de Estoque pelo método PEPS
+  topico: Particularidade de uso para rotinas relacionadas a método PEPS de controle de estoque (relatórios)
+  ordem: 170
+- modulo_num: '8'
+  modulo_sigla: COM
+  modulo: Controle de Compras - Geral/Básico
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Origem da Demanda de Compras
+  ordem: 171
+- modulo_num: '8'
+  modulo_sigla: COM
+  modulo: Controle de Compras - Geral/Básico
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Critérios de Uso de Requisições de Compras
+  ordem: 172
+- modulo_num: '8'
+  modulo_sigla: COM
+  modulo: Controle de Compras - Geral/Básico
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Uso de Formulários para Requisição de Compras (Particularidades0
+  ordem: 173
+- modulo_num: '8'
+  modulo_sigla: COM
+  modulo: Controle de Compras - Geral/Básico
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Critérios de Uso para Cotações
+  ordem: 174
+- modulo_num: '8'
+  modulo_sigla: COM
+  modulo: Controle de Compras - Geral/Básico
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Critérios de Uso para Ordens de Compras (Cases aplicáveis. Uso para serviço , et,)
+  ordem: 175
+- modulo_num: '8'
+  modulo_sigla: COM
+  modulo: Controle de Compras - Geral/Básico
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Uso de Formulários para Ordens de Compras (Particularidades)
+  ordem: 176
+- modulo_num: '8'
+  modulo_sigla: COM
+  modulo: Controle de Compras - Geral/Básico
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Outros Bloqueios ou limitadores aplicáveis a compras (entradas sem validações com ordem de compra
+  ordem: 177
+- modulo_num: '8'
+  modulo_sigla: COM
+  modulo: Controle de Compras - Geral/Básico
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Homologação de Fornecedores (controle de qualidades)
+  ordem: 178
+- modulo_num: '8'
+  modulo_sigla: COM
+  modulo: Controle de Compras - Geral/Básico
+  adicional_num: '31'
+  adicional_sigla: CAC
+  adicional: Controles Avançados
+  topico: Aprovações de Requisições de Compras
+  ordem: 179
+- modulo_num: '8'
+  modulo_sigla: COM
+  modulo: Controle de Compras - Geral/Básico
+  adicional_num: '31'
+  adicional_sigla: CAC
+  adicional: Controles Avançados
+  topico: Avaliar os critério de valores para aprovação. SIGER® é por item, cotação e requisição. Não tem alçada por OC.
+  ordem: 180
+- modulo_num: '8'
+  modulo_sigla: COM
+  modulo: Controle de Compras - Geral/Básico
+  adicional_num: '31'
+  adicional_sigla: CAC
+  adicional: Controles Avançados
+  topico: Aprovações de Cotações
+  ordem: 181
+- modulo_num: '8'
+  modulo_sigla: COM
+  modulo: Controle de Compras - Geral/Básico
+  adicional_num: '39'
+  adicional_sigla: CSE
+  adicional: Controle de Serviços Externos
+  topico: Particularidades de uso para controle de serviços externos (Relacional com  Gestão Industrial)
+  ordem: 182
+- modulo_num: '8'
+  modulo_sigla: COM
+  modulo: Controle de Compras - Geral/Básico
+  adicional_num: '46'
+  adicional_sigla: ARC
+  adicional: Controle Alçadas para Requisição de Compras
+  topico: Critério de uso para alçadas (níveis, limites, grupos atribuíveis)
+  ordem: 183
+- modulo_num: '10'
+  modulo_sigla: AUE
+  modulo: Automação de Escritórios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Fluxo de controle de valores fixos ( mensalidades)
+  ordem: 184
+- modulo_num: '10'
+  modulo_sigla: AUE
+  modulo: Automação de Escritórios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Fluxo de controle e uso de valores variáveis
+  ordem: 185
+- modulo_num: '10'
+  modulo_sigla: AUE
+  modulo: Automação de Escritórios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Multiplas cobranças para o mesmo cliente (dentro da mesma competência)
+  ordem: 186
+- modulo_num: '10'
+  modulo_sigla: AUE
+  modulo: Automação de Escritórios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Forma de atualização dos valores fixos recorrentes
+  ordem: 187
+- modulo_num: '10'
+  modulo_sigla: AUE
+  modulo: Automação de Escritórios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Politica de descontos aplicáveis (programáveis)
+  ordem: 188
+- modulo_num: '10'
+  modulo_sigla: AUE
+  modulo: Automação de Escritórios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Uso e controle de Protocolos ligado documentos de clientes (Escritórios)
+  ordem: 189
+- modulo_num: '10'
+  modulo_sigla: AUE
+  modulo: Automação de Escritórios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Emissão de documentos ( Notas de Serviço, Recibos, Demonstrativos)
+  ordem: 190
+- modulo_num: '10'
+  modulo_sigla: AUE
+  modulo: Automação de Escritórios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Formulários com modelo especificos
+  ordem: 191
+- modulo_num: '10'
+  modulo_sigla: AUE
+  modulo: Automação de Escritórios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Rotinase Caixa e Banco - Bancos Homologados para o projeto
+  ordem: 192
+- modulo_num: '10'
+  modulo_sigla: AUE
+  modulo: Automação de Escritórios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Receber - Critério de cobrança junto a Clientes
+  ordem: 193
+- modulo_num: '10'
+  modulo_sigla: AUE
+  modulo: Automação de Escritórios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Receber - Uso de remessa e retorno bancário ( Bancos homologados para o projeto - Boletos que terão QR Code PIX e/ou Remessa On line)
+  ordem: 194
+- modulo_num: '10'
+  modulo_sigla: AUE
+  modulo: Automação de Escritórios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contas a Pagar - Fluxo e origem dos documentos para controle do contas a pagar
+  ordem: 195
+- modulo_num: '10'
+  modulo_sigla: AUE
+  modulo: Automação de Escritórios
+  adicional_num: '61'
+  adicional_sigla: NSA
+  adicional: Geração/Autenticação de NFS-e – Automação Escritórios
+  topico: Municipio para emissão da NFS-e
+  ordem: 196
+- modulo_num: '10'
+  modulo_sigla: AUE
+  modulo: Automação de Escritórios
+  adicional_num: '61'
+  adicional_sigla: NSA
+  adicional: Geração/Autenticação de NFS-e – Automação Escritórios
+  topico: Critério de envio de notas para clientes
+  ordem: 197
+- modulo_num: '10'
+  modulo_sigla: AUE
+  modulo: Automação de Escritórios
+  adicional_num: '61'
+  adicional_sigla: NSA
+  adicional: Geração/Autenticação de NFS-e – Automação Escritórios
+  topico: Particularidades na emissão da NF-e
+  ordem: 198
+- modulo_num: '122'
+  modulo_sigla: GCO
+  modulo: Gestão de Contratos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Fluxo da rotina de contratos (finalidade, prazo, uso de minutas, orçamentos)
+  ordem: 199
+- modulo_num: '122'
+  modulo_sigla: GCO
+  modulo: Gestão de Contratos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Classificações dos contratos (acumuladores para filtro e para padrões)
+  ordem: 200
+- modulo_num: '122'
+  modulo_sigla: GCO
+  modulo: Gestão de Contratos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Uso de Aditivo de contrato
+  ordem: 201
+- modulo_num: '122'
+  modulo_sigla: GCO
+  modulo: Gestão de Contratos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Forma de atualização do contrato (indices, manual)
+  ordem: 202
+- modulo_num: '122'
+  modulo_sigla: GCO
+  modulo: Gestão de Contratos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Modelos de Contratos
+  ordem: 203
+- modulo_num: '122'
+  modulo_sigla: GCO
+  modulo: Gestão de Contratos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Comissões aplicáveis a contratos
+  ordem: 204
+- modulo_num: '122'
+  modulo_sigla: GCO
+  modulo: Gestão de Contratos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Valores variáveis aplicáveis em contratos
+  ordem: 205
+- modulo_num: '122'
+  modulo_sigla: GCO
+  modulo: Gestão de Contratos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Forma de faturamento ( Nota do Automaçõa , Nota do Faturamento , Apenas Recibo)
+  ordem: 206
+- modulo_num: '122'
+  modulo_sigla: GCO
+  modulo: Gestão de Contratos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Existência de locação e emissõa de nota de remessa de produtos/equipamentos (delhamento da operação)
+  ordem: 207
+- modulo_num: '122'
+  modulo_sigla: GCO
+  modulo: Gestão de Contratos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Reflexos de integração com Financeiro ( e outros módulos quando aplicável)
+  ordem: 208
+- modulo_num: '11'
+  modulo_sigla: GCA
+  modulo: Gestão de Cardápios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Conceito de cadastro de gramagens e variações (por Centro de Custo)
+  ordem: 209
+- modulo_num: '11'
+  modulo_sigla: GCA
+  modulo: Gestão de Cardápios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Conceito de cadastro de pratos (genérico)
+  ordem: 210
+- modulo_num: '11'
+  modulo_sigla: GCA
+  modulo: Gestão de Cardápios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Método de controle dos pedidos do cardápio
+  ordem: 211
+- modulo_num: '11'
+  modulo_sigla: GCA
+  modulo: Gestão de Cardápios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Integração dos pedidos do cardápio com o estoque (requisição de estoque)
+  ordem: 212
+- modulo_num: '11'
+  modulo_sigla: GCA
+  modulo: Gestão de Cardápios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Controle de ajuste de quantidade nas requisições de estoque (com justificativa)
+  ordem: 213
+- modulo_num: '11'
+  modulo_sigla: GCA
+  modulo: Gestão de Cardápios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Método de faturamento das notas de faturamento e remessa das mercadorias
+  ordem: 214
+- modulo_num: '11'
+  modulo_sigla: GCA
+  modulo: Gestão de Cardápios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Planejamento de Cardápios
+  topico: Padrões de cadastro na filial (centro de custo) - quantidade de refeições padrões por público alvo
+  ordem: 215
+- modulo_num: '11'
+  modulo_sigla: GCA
+  modulo: Gestão de Cardápios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Planejamento de Cardápios
+  topico: Uso de restrições de produtos por Centro de Custo
+  ordem: 216
+- modulo_num: '11'
+  modulo_sigla: GCA
+  modulo: Gestão de Cardápios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Planejamento de Cardápios
+  topico: Uso de restrições de pratos por Centro de Custo
+  ordem: 217
+- modulo_num: '11'
+  modulo_sigla: GCA
+  modulo: Gestão de Cardápios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Planejamento de Cardápios
+  topico: Uso de observações de restrições por Centro de Custo
+  ordem: 218
+- modulo_num: '11'
+  modulo_sigla: GCA
+  modulo: Gestão de Cardápios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Planejamento de Cardápios
+  topico: Conceito de cadastro dos serviços contratados pelo cliente - tipos de cardápio e tipos de prato
+  ordem: 219
+- modulo_num: '11'
+  modulo_sigla: GCA
+  modulo: Gestão de Cardápios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Planejamento de Cardápios
+  topico: Uso de cadastro de produtos avulsos no Centro de Custo
+  ordem: 220
+- modulo_num: '11'
+  modulo_sigla: GCA
+  modulo: Gestão de Cardápios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Planejamento de Cardápios
+  topico: Uso de planejamento padrão e replicação para planejamentos por Centros de Custo
+  ordem: 221
+- modulo_num: '11'
+  modulo_sigla: GCA
+  modulo: Gestão de Cardápios
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Planejamento de Cardápios
+  topico: Modelo de relatório do cardápio mensal
+  ordem: 222
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Fluxo do processo de engenharia de produto (detalhamento dos centros de custo e operações, utilização de tempos de processos)
+  ordem: 223
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Verificação se a estrutura tem sub estrutura
+  ordem: 224
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Identificação de geração de subprodutos, refugos e resíduos
+  ordem: 225
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Identificação sobre tipo de estrutura de produto, se há cenários de forma de acondicionamento
+  ordem: 226
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Identificar necessidade de uso de combinação para produtos/formulações de produtos
+  ordem: 227
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Produtos controlados por grade ou equivalência numérica (como calçados x salto)
+  ordem: 228
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Entender processo de demanda dos produtos para entrada na produção (se produção é puxada ou empurrada)
+  ordem: 229
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Catalogar modelo de ordem de produção a ser utilizado como base para desenvolvimento do modelo em RFP do SIGER®
+  ordem: 230
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Identificação sobre quebra de talões
+  ordem: 231
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Identificação do tipo de registro de produção (se manual, por código de barras, se  há alguma interdependência entre os apontamentos (aponta anterior é início do próximo))
+  ordem: 232
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Processo de registro e fim de produção ou apontamento único (sem início)
+  ordem: 233
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Identificar se há necessidade de relatórios auxiliares de apoio ao setor produtivo
+  ordem: 234
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Identificação de relatórios gerenciais para utilização pelos responsáveis pelo PPCP
+  ordem: 235
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '117'
+  adicional_sigla: PMP
+  adicional: Plano Mestre de Produção
+  topico: Existe necessidade de algum agrupamento de ordens de produção, como é este agrupamento, se é um relatório listando várias ordens de produção
+  ordem: 236
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '117'
+  adicional_sigla: PMP
+  adicional: Plano Mestre de Produção
+  topico: Origem do plano, se existe alguma acumulação com origem em pedidos
+  ordem: 237
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '117'
+  adicional_sigla: PMP
+  adicional: Plano Mestre de Produção
+  topico: Notar a necessidade de registros por agrupamento (se há a necessidade de uso o uso de lotes de produção)
+  ordem: 238
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '67'
+  adicional_sigla: CRG
+  adicional: Controle de Reservas para Ordens de Produção (GIN/OSE)
+  topico: Identificar se há necessidade de "guardar"/reservar itens consumidos da ordem de produção, criando um vínculo com a referida OP
+  ordem: 239
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '76'
+  adicional_sigla: IMT
+  adicional: Sistema de Coleta/Coletor Web (GIN)
+  topico: Necessidade de uso de aplicativo para registro de produção (para apontamento via nuvem) ou se o apontamento será apenas no ERP, neste caso não aplicando uso
+  ordem: 240
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '77'
+  adicional_sigla: ICD
+  adicional: Integração com Sistemas de Coleta de Dados
+  topico: Há integração com MESS ou similares
+  ordem: 241
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '39'
+  adicional_sigla: CSE
+  adicional: Controle de Serviços Externos
+  topico: Identificação da necessidade de envio de remessa para produção externa dentro do contexto da produção
+  ordem: 242
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '39'
+  adicional_sigla: CSE
+  adicional: Controle de Serviços Externos
+  topico: Identificação do tipo de remessa a ser efetuada, se com nota ou se por romaneio, neste caso emitindo as notas como simples remessa
+  ordem: 243
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '35'
+  adicional_sigla: PCA
+  adicional: Programação de Fábrica
+  topico: Captar junto ao cliente a necessidade de montagem de fila por fábrica, neste caso, identificar se os centro de custo (setores) tem interdependência
+  ordem: 244
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '73'
+  adicional_sigla: PMQ
+  adicional: Programação por Máquinas
+  topico: Captar junto ao cliente a necessidade de montagem de fila por máquina/linha de produção
+  ordem: 245
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '73'
+  adicional_sigla: PMQ
+  adicional: Programação por Máquinas
+  topico: A partir disso captar junto ao cliente se este tem tempos previstos para cada máquina/linha por produto
+  ordem: 246
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '195'
+  adicional_sigla: MRP
+  adicional: Planejamento de Materiais - MRP
+  topico: Identificar se há necessidade de compras ou produção acumuladas com origem em demandas específicas
+  ordem: 247
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '195'
+  adicional_sigla: MRP
+  adicional: Planejamento de Materiais - MRP
+  topico: Que demandas seriam essas? Pedidos, metas de produção ou vendas ou histórico de vendas
+  ordem: 248
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '71'
+  adicional_sigla: CPA
+  adicional: Controle de Paradas
+  topico: Necessidade de controle de apontamento e registro de intervalos em turnos de produção para apontamento das horas efetivas em produção
+  ordem: 249
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '78'
+  adicional_sigla: COR
+  adicional: Controle de Refugos
+  topico: Identificação da geração de produtos refugados no processo
+  ordem: 250
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '78'
+  adicional_sigla: COR
+  adicional: Controle de Refugos
+  topico: Identificação se este refugo gera estoque
+  ordem: 251
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '78'
+  adicional_sigla: COR
+  adicional: Controle de Refugos
+  topico: Identificação quanto a valorização do produto refugado
+  ordem: 252
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '78'
+  adicional_sigla: COR
+  adicional: Controle de Refugos
+  topico: Identificação da necessidade de geração de ordem de produção de retrabalho do refugo ou ordem de quebra de produção
+  ordem: 253
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '55'
+  adicional_sigla: CAP
+  adicional: Controle de Aparas
+  topico: Identificação de sobras (aparas ou resíduos de produção)
+  ordem: 254
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '50'
+  adicional_sigla: ROM
+  adicional: Romaneio de Embarque (GIN)
+  topico: Empresa produtos produtos onde há a necessidade de emitir remessa parciais do produto produzido ao seu cliente
+  ordem: 255
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '62'
+  adicional_sigla: DPR
+  adicional: Controle Desenvolvimento de Produto (GIN)
+  topico: Identificar a necessidade de controle (follow up) de processos de desenvolvimento de amostras
+  ordem: 256
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '70'
+  adicional_sigla: OAC
+  adicional: Emissão de Ordens de Acondicionamento
+  topico: Abordar se existem mais de uma forma de envase para um mesmo produto em unidade métrica (Kg, L, etc.)
+  ordem: 257
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '70'
+  adicional_sigla: OAC
+  adicional: Emissão de Ordens de Acondicionamento
+  topico: Identificar o formato de controle da unidade do produto acondicionado (se métrica ou unitária)
+  ordem: 258
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '74'
+  adicional_sigla: CSC
+  adicional: Controle de Saldos por Centro de Custo
+  topico: Necessidade de controle dos saldos as ordens de produção vinculadas aos pedidos
+  ordem: 259
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '57'
+  adicional_sigla: PPG
+  adicional: Controle de Planilha Projetos (GIN)
+  topico: Verificar se existem produtos produzidos onde há a necessidade de acumulação dos custos destes produtos em um centralizador (projeto)
+  ordem: 260
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '75'
+  adicional_sigla: ODC
+  adicional: Controle de Ordem de Corte (GIN)
+  topico: Necessidade de ter um único cadastro de produto onde possam se referenciar medidas distintas
+  ordem: 261
+- modulo_num: '12'
+  modulo_sigla: GIN
+  modulo: Gestão Industrial Básico (GIN)
+  adicional_num: '92'
+  adicional_sigla: VPG
+  adicional: Controle Automático de Vinculação de Pedidos (GIN)
+  topico: Vinculação automatizada das encomendas de produção com os pedidos de venda
+  ordem: 262
+- modulo_num: '13'
+  modulo_sigla: PDV
+  modulo: Ponto de Venda (PDV/ECF/PAF)
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Fluxo de Venda via PDV ( uso de pedido, venda direta no caixa, etc..)
+  ordem: 263
+- modulo_num: '13'
+  modulo_sigla: PDV
+  modulo: Ponto de Venda (PDV/ECF/PAF)
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Sistemática de Vale Presente (quando aplicável)
+  ordem: 264
+- modulo_num: '13'
+  modulo_sigla: PDV
+  modulo: Ponto de Venda (PDV/ECF/PAF)
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Outros Documentos Gerados no PDV
+  ordem: 265
+- modulo_num: '13'
+  modulo_sigla: PDV
+  modulo: Ponto de Venda (PDV/ECF/PAF)
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Formas de Pagamento
+  ordem: 266
+- modulo_num: '13'
+  modulo_sigla: PDV
+  modulo: Ponto de Venda (PDV/ECF/PAF)
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Operadoras de Cartão que serão utilizadas
+  ordem: 267
+- modulo_num: '13'
+  modulo_sigla: PDV
+  modulo: Ponto de Venda (PDV/ECF/PAF)
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Devoluções via PDV
+  ordem: 268
+- modulo_num: '13'
+  modulo_sigla: PDV
+  modulo: Ponto de Venda (PDV/ECF/PAF)
+  adicional_num: '93'
+  adicional_sigla: BAN
+  adicional: Integracao TEF
+  topico: Tipos de Integração (POS/TEF)
+  ordem: 269
+- modulo_num: '13'
+  modulo_sigla: PDV
+  modulo: Ponto de Venda (PDV/ECF/PAF)
+  adicional_num: '100'
+  adicional_sigla: NFC
+  adicional: Emissão de NFC-e - Nota Fiscal de Consumidor Eletrônica
+  topico: Particularidades para emissõa de Nota de Consumidor
+  ordem: 270
+- modulo_num: '15'
+  modulo_sigla: OSE
+  modulo: Gestão de Serviços
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Veículo
+  topico: Cadastro da placa
+  ordem: 271
+- modulo_num: '15'
+  modulo_sigla: OSE
+  modulo: Gestão de Serviços
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Veículo
+  topico: Campos preenchidos no veículo
+  ordem: 272
+- modulo_num: '15'
+  modulo_sigla: OSE
+  modulo: Gestão de Serviços
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Veículo
+  topico: Controle de manutenções preventivas
+  ordem: 273
+- modulo_num: '15'
+  modulo_sigla: OSE
+  modulo: Gestão de Serviços
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Veículo
+  topico: Campos preenchidos na ordem de serviço (tipo de OS, padrões de preenchimento, problema, diagnóstico)
+  ordem: 274
+- modulo_num: '15'
+  modulo_sigla: OSE
+  modulo: Gestão de Serviços
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Veículo
+  topico: Materiais e Serviços
+  ordem: 275
+- modulo_num: '15'
+  modulo_sigla: OSE
+  modulo: Gestão de Serviços
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Veículo
+  topico: Tipo de integração com o estoque (retirada de materiais, fechamento, requisição)
+  ordem: 276
+- modulo_num: '15'
+  modulo_sigla: OSE
+  modulo: Gestão de Serviços
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Veículo
+  topico: Modelos de formulários
+  ordem: 277
+- modulo_num: '15'
+  modulo_sigla: OSE
+  modulo: Gestão de Serviços
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Veículo
+  topico: Relatórios
+  ordem: 278
+- modulo_num: '15'
+  modulo_sigla: OSE
+  modulo: Gestão de Serviços
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Outros
+  topico: Controle de manutenções preventivas
+  ordem: 279
+- modulo_num: '15'
+  modulo_sigla: OSE
+  modulo: Gestão de Serviços
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Outros
+  topico: Campos preenchidos na ordem de serviço (tipo de OS, padrões de preenchimento, problema, diagnóstico)
+  ordem: 280
+- modulo_num: '15'
+  modulo_sigla: OSE
+  modulo: Gestão de Serviços
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Outros
+  topico: Materiais e Serviços
+  ordem: 281
+- modulo_num: '15'
+  modulo_sigla: OSE
+  modulo: Gestão de Serviços
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Outros
+  topico: Tipo de integração com o estoque (retirada de materiais, fechamento, requisição)
+  ordem: 282
+- modulo_num: '15'
+  modulo_sigla: OSE
+  modulo: Gestão de Serviços
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Outros
+  topico: Modelos de formulários
+  ordem: 283
+- modulo_num: '15'
+  modulo_sigla: OSE
+  modulo: Gestão de Serviços
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: Outros
+  topico: Relatórios
+  ordem: 284
+- modulo_num: '15'
+  modulo_sigla: OSE
+  modulo: Gestão de Serviços
+  adicional_num: '67'
+  adicional_sigla: CRG
+  adicional: Controle de Reservas para Ordem de Serviço
+  topico: Reserva materiais na OS
+  ordem: 285
+- modulo_num: '135'
+  modulo_sigla: SAC
+  modulo: SAC/Controle de Protocolos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Manutenção de contatos
+  ordem: 286
+- modulo_num: '135'
+  modulo_sigla: SAC
+  modulo: SAC/Controle de Protocolos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Manutenção de agendas
+  ordem: 287
+- modulo_num: '135'
+  modulo_sigla: SAC
+  modulo: SAC/Controle de Protocolos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Campanhas de TEL
+  ordem: 288
+- modulo_num: '135'
+  modulo_sigla: SAC
+  modulo: SAC/Controle de Protocolos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Relatórios
+  ordem: 289
+- modulo_num: '135'
+  modulo_sigla: SAC
+  modulo: SAC/Controle de Protocolos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Processo do SAC
+  ordem: 290
+- modulo_num: '135'
+  modulo_sigla: SAC
+  modulo: SAC/Controle de Protocolos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Abertura e Protocolo
+  ordem: 291
+- modulo_num: '135'
+  modulo_sigla: SAC
+  modulo: SAC/Controle de Protocolos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Tipos de Contatos
+  ordem: 292
+- modulo_num: '135'
+  modulo_sigla: SAC
+  modulo: SAC/Controle de Protocolos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Fluxo de Atendimento
+  ordem: 293
+- modulo_num: '135'
+  modulo_sigla: SAC
+  modulo: SAC/Controle de Protocolos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Tratamento
+  ordem: 294
+- modulo_num: '135'
+  modulo_sigla: SAC
+  modulo: SAC/Controle de Protocolos
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Outras particularidades relativo ao SAC
+  ordem: 295
+- modulo_num: '18'
+  modulo_sigla: CEE
+  modulo: Comércio Exterior – Exportação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Incoterms utilizados
+  ordem: 296
+- modulo_num: '18'
+  modulo_sigla: CEE
+  modulo: Comércio Exterior – Exportação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Moedas e taxas de câmbio
+  ordem: 297
+- modulo_num: '18'
+  modulo_sigla: CEE
+  modulo: Comércio Exterior – Exportação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Condições de pagamento internacional
+  ordem: 298
+- modulo_num: '18'
+  modulo_sigla: CEE
+  modulo: Comércio Exterior – Exportação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Conferência documental
+  ordem: 299
+- modulo_num: '18'
+  modulo_sigla: CEE
+  modulo: Comércio Exterior – Exportação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Proforma Invoice
+  ordem: 300
+- modulo_num: '18'
+  modulo_sigla: CEE
+  modulo: Comércio Exterior – Exportação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Commercial Invoice
+  ordem: 301
+- modulo_num: '18'
+  modulo_sigla: CEE
+  modulo: Comércio Exterior – Exportação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Packing List
+  ordem: 302
+- modulo_num: '18'
+  modulo_sigla: CEE
+  modulo: Comércio Exterior – Exportação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Certificados (origem, sanitário, outros)
+  ordem: 303
+- modulo_num: '18'
+  modulo_sigla: CEE
+  modulo: Comércio Exterior – Exportação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Conhecimento de embarque (BL, AWB)
+  ordem: 304
+- modulo_num: '18'
+  modulo_sigla: CEE
+  modulo: Comércio Exterior – Exportação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Controle de embarque
+  ordem: 305
+- modulo_num: '18'
+  modulo_sigla: CEE
+  modulo: Comércio Exterior – Exportação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Acompanhamento de status
+  ordem: 306
+- modulo_num: '18'
+  modulo_sigla: CEE
+  modulo: Comércio Exterior – Exportação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Custos logísticos
+  ordem: 307
+- modulo_num: '18'
+  modulo_sigla: CEE
+  modulo: Comércio Exterior – Exportação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Seguro internacional
+  ordem: 308
+- modulo_num: '18'
+  modulo_sigla: CEE
+  modulo: Comércio Exterior – Exportação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Fechamento de câmbio - Existência de ACC e ACE (Controles)
+  ordem: 309
+- modulo_num: '18'
+  modulo_sigla: CEE
+  modulo: Comércio Exterior – Exportação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Controle de recebimentos
+  ordem: 310
+- modulo_num: '18'
+  modulo_sigla: CEE
+  modulo: Comércio Exterior – Exportação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Reconciliação cambial
+  ordem: 311
+- modulo_num: '18'
+  modulo_sigla: CEE
+  modulo: Comércio Exterior – Exportação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contabilização da exportação
+  ordem: 312
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Pedido de compra internacional
+  ordem: 313
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Análise de viabilidade
+  ordem: 314
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Licenças de importação (LI)
+  ordem: 315
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Cálculo de custos estimados
+  ordem: 316
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Embarque internacional
+  ordem: 317
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Controle de documentos
+  ordem: 318
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Acompanhamento de desembaraço
+  ordem: 319
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Recebimento físico da mercadoria
+  ordem: 320
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Proforma Invoice
+  ordem: 321
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Commercial Invoice
+  ordem: 322
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Packing List
+  ordem: 323
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Conhecimento de embarque
+  ordem: 324
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: DI/DUIMP (conforme legislação vigente)
+  ordem: 325
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: II, IPI, PIS, COFINS, ICMS
+  ordem: 326
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: AFRMM
+  ordem: 327
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Despesas portuárias e aduaneiras
+  ordem: 328
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Rateio de custos no estoque
+  ordem: 329
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Entrada de estoque com custo real
+  ordem: 330
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Contabilização da importação
+  ordem: 331
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Controle de pagamentos internacionais
+  ordem: 332
+- modulo_num: '42'
+  modulo_sigla: CEI
+  modulo: Comércio Exterior – Importação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Variação cambial
+  ordem: 333
+- modulo_num: '3'
+  modulo_sigla: FPA
+  modulo: Folha de Pagamento
+  adicional_num: '27'
+  adicional_sigla: CMO
+  adicional: Folha de Pagamento por Centros de Custo e Tipos de Mão de Obra
+  topico: xxxxxxxxxxx
+  ordem: 334
+- modulo_num: '3'
+  modulo_sigla: FPA
+  modulo: Folha de Pagamento
+  adicional_num: '27'
+  adicional_sigla: CMO
+  adicional: Folha de Pagamento por Centros de Custo e Tipos de Mão de Obra
+  topico: xxxxxxxxxxx
+  ordem: 335
+- modulo_num: '3'
+  modulo_sigla: FPA
+  modulo: Folha de Pagamento
+  adicional_num: '219'
+  adicional_sigla: CEF
+  adicional: Controle de Estoques de EPI (Integração Folha-Estoque)
+  topico: xxxxxxxxxxx
+  ordem: 336
+- modulo_num: '14'
+  modulo_sigla: RHU
+  modulo: Recursos Humanos
+  adicional_num: '109'
+  adicional_sigla: SER
+  adicional: Recrutamento e Seleção
+  topico: xxxxxxxxxxx
+  ordem: 337
+- modulo_num: '14'
+  modulo_sigla: RHU
+  modulo: Recursos Humanos
+  adicional_num: '110'
+  adicional_sigla: TRN
+  adicional: Treinamento
+  topico: xxxxxxxxxxx
+  ordem: 338
+- modulo_num: '14'
+  modulo_sigla: RHU
+  modulo: Recursos Humanos
+  adicional_num: '115'
+  adicional_sigla: STR
+  adicional: Segurança do Trabalho
+  topico: xxxxxxxxxxx
+  ordem: 339
+- modulo_num: '14'
+  modulo_sigla: RHU
+  modulo: Recursos Humanos
+  adicional_num: '116'
+  adicional_sigla: CSA
+  adicional: Cargos e Salários
+  topico: xxxxxxxxxxx
+  ordem: 340
+- modulo_num: '14'
+  modulo_sigla: RHU
+  modulo: Recursos Humanos
+  adicional_num: '137'
+  adicional_sigla: AVF
+  adicional: Avaliação e Feedback
+  topico: xxxxxxxxxxx
+  ordem: 341
+- modulo_num: '14'
+  modulo_sigla: RHU
+  modulo: Recursos Humanos
+  adicional_num: '177'
+  adicional_sigla: STT
+  adicional: SST eSocial Simplificado
+  topico: xxxxxxxxxxx
+  ordem: 342
+- modulo_num: '129'
+  modulo_sigla: PWC
+  modulo: Portal Web de Comunicação
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: xxxxxxxxxxx
+  ordem: 343
+- modulo_num: '168'
+  modulo_sigla: PGP
+  modulo: Portal Web de Gestão de Pessoas
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: xxxxxxxxxxx
+  ordem: 344
+- modulo_num: '165'
+  modulo_sigla: AWR
+  modulo: API Webservice Rech
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: Finalidade do EDI
+  ordem: 345
+- modulo_num: '165'
+  modulo_sigla: AWR
+  modulo: API Webservice Rech
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: EDI que serão usados e versão.
+  ordem: 346
+- modulo_num: '165'
+  modulo_sigla: AWR
+  modulo: API Webservice Rech
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: xxxxxxxxxxx
+  ordem: 347
+- modulo_num: '221'
+  modulo_sigla: RME
+  modulo: Rech Messenger – Integração com WhatsApp
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: xxxxxxxxxxx
+  ordem: 348
+- modulo_num: '221'
+  modulo_sigla: RME
+  modulo: Rech Messenger – Integração com WhatsApp
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: xxxxxxxxxxx
+  ordem: 349
+- modulo_num: '221'
+  modulo_sigla: RME
+  modulo: Rech Messenger – Integração com WhatsApp
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: xxxxxxxxxxx
+  ordem: 350
+- modulo_num: '221'
+  modulo_sigla: RME
+  modulo: Rech Messenger – Integração com WhatsApp
+  adicional_num: ''
+  adicional_sigla: ''
+  adicional: ''
+  topico: xxxxxxxxxxx
+  ordem: 351

@@ -39,10 +39,10 @@ NAME = "PainelImplantacao"
 HIDDEN = [
     # --- webapp: módulos de negócio ---
     "roles", "runner", "forms", "db", "mailer", "fluxo",
-    "imap_intake", "docview", "gmail_api",
+    "imap_intake", "docview", "gmail_api", "gerar_layout",
 
     # --- tools: geradores e helpers ---
-    "_common",
+    "_common", "preencher_layout",
     "schema_projeto", "conversor_verbal",
     "importar_mapeamento", "verificar", "catalogo", "checklist",
     "ortografia", "ia",
