@@ -1,0 +1,74 @@
+# .cloudignore — evita que a IA carregue arquivos inúteis, pesados ou gerados.
+# Objetivo: reduzir consumo de contexto/tokens sem perder o que é útil.
+# (Não substitui o .gitignore; é específico para o que a IA processa.)
+
+# --- Controle de versão / caches / build ---
+.git/
+.github/
+.pytest_cache/
+__pycache__/
+*.pyc
+*.pyo
+dist/
+build/
+*.spec
+
+# --- Logs e bancos ---
+*.log
+*.db
+*.sqlite
+*.sqlite3
+dados/
+
+# --- Artefatos gerados e uploads (reproduzíveis / locais) ---
+exemplos/
+webapp/_uploads/
+
+# --- Executáveis e pacotes ---
+*.exe
+*.zip
+*.7z
+*.rar
+
+# --- Binários Office / PDFs / imagens (nunca ler inteiros) ---
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.svg
+*.docx
+*.xlsx
+*.xlsm
+*.pptx
+tools/templates/**/*.docx
+tools/templates/**/*.xlsx
+tools/data/modelos_documento/**/*.docx
+tools/data/modelos_documento/**/*.xlsx
+
+# --- JS minificado / vendor (não é contexto útil) ---
+webapp/static/chart.umd.min.js
+
+# ============================================================
+# Pasta de ENTRADA da IA: ignore tudo, exceto textos leves.
+# (coloque PDFs/DOCX/XLSX aqui; converta o trecho útil para .txt/.md)
+# ============================================================
+entrada_ia/**
+!entrada_ia/
+!entrada_ia/README.md
+!entrada_ia/**/*.txt
+!entrada_ia/**/*.md
+!entrada_ia/**/*.csv
+!entrada_ia/**/*.json
+!entrada_ia/**/*.yaml
+!entrada_ia/**/*.yml
+
+# ============================================================
+# PRESERVAR como contexto útil (texto leve) — não são ignorados:
+#   webapp/**/*.py · webapp/templates/**/*.html · webapp/static/style.css
+#   tools/**/*.py · tools/data/*.yaml · docs/**/*.md · templates/**/*.md
+#   memoria_ia/** · ia_admin/*.md · ia_admin/*.yaml
+#   README.md · CLAUDE.md · AGENTS.md · build_painel_exe.py
+#   docker-compose.yml · *.bat
+# ============================================================

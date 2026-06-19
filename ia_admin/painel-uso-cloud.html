@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel de Uso da IA / Cloud — Implantação Rech</title>
+<style>
+  :root{ --bg:#f5f7fb; --card:#fff; --line:#e3e8f0; --navy:#1f2d50; --brand:#2f5bd0;
+         --muted:#6b7385; --ok:#1f9d57; --warn:#c47d12; --err:#c0392b; }
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 system-ui,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:#1d2433}
+  header{background:var(--navy);color:#fff;padding:16px 22px}
+  header h1{margin:0;font-size:1.15rem}
+  header p{margin:4px 0 0;color:#c8d2ea;font-size:.85rem}
+  main{max-width:1100px;margin:0 auto;padding:20px}
+  .nota{background:#fff7e6;border:1px solid #f0d999;border-radius:8px;padding:8px 12px;font-size:.82rem;color:#7a5a12;margin-bottom:16px}
+  .cards{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;flex:1;min-width:150px}
+  .card .n{font-size:1.6rem;font-weight:700;color:var(--brand)}
+  .card .l{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:.86rem}
+  th{background:#eef2fb;color:var(--navy);text-align:left;padding:8px 10px;font-size:.74rem;letter-spacing:.02em;text-transform:uppercase}
+  td{border-top:1px solid var(--line);padding:8px 10px;vertical-align:top}
+  .pill{display:inline-block;border-radius:10px;padding:1px 8px;font-size:.72rem;font-weight:600}
+  .r-baixo{background:#e6f6ec;color:var(--ok)} .r-medio{background:#fdf0db;color:var(--warn)} .r-alto{background:#fbe6e3;color:var(--err)}
+  .muted{color:var(--muted)} footer{max-width:1100px;margin:0 auto;padding:0 20px 28px;color:var(--muted);font-size:.78rem}
+  code{background:#eef2fb;border-radius:4px;padding:1px 5px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Painel de Uso da IA / Cloud — Implantação Rech</h1>
+  <p>Acompanhamento estático de sessões da IA · separado do painel operacional</p>
+</header>
+<main>
+  <div class="nota">
+    Página <b>estática e offline</b>. Os dados abaixo <b>espelham</b> <code>ia_admin/uso-cloud.yaml</code>
+    (fonte de verdade). Sem API de tokens/custos, os valores de consumo são <b>manuais/estimados</b>.
+    Ao registrar novas sessões, atualize o YAML e o bloco <code>DADOS</code> desta página.
+  </div>
+  <div class="cards" id="cards"></div>
+  <table>
+    <thead><tr>
+      <th>Data</th><th>Objetivo</th><th>Modelo</th><th>Ferramentas</th>
+      <th>Alterados</th><th>Risco</th><th>Handoff</th><th>Resp.</th>
+    </tr></thead>
+    <tbody id="linhas"></tbody>
+  </table>
+</main>
+<footer>Fonte: <code>uso-cloud.yaml</code> · <code>sessoes.md</code>. Não depende de internet.</footer>
+
+<script>
+// DADOS — espelho de ia_admin/uso-cloud.yaml (atualizar junto)
+const DADOS = [
+  { data:"2026-06-19", objetivo:"Governança de contexto/IA", modelo:"Claude Opus 4.8",
+    ferramentas:["filesystem","git"], alterados:["CLAUDE.md",".cloudignore","docs/*","memoria_ia/","ia_admin/"],
+    risco:"medio", handoff:false, responsavel:"Everton" },
+  { data:"2026-06-19", objetivo:"Cadastros + geração fiel + troca dos botões", modelo:"Claude Opus 4.8",
+    ferramentas:["filesystem","git","python"], alterados:["webapp/app.py","db.py","gerar_layout.py","templates"],
+    risco:"alto", handoff:false, responsavel:"Everton" }
+];
+
+const cards = [
+  { l:"Sessões", n: DADOS.length },
+  { l:"Risco alto", n: DADOS.filter(d=>d.risco==="alto").length },
+  { l:"Com handoff", n: DADOS.filter(d=>d.handoff).length },
+  { l:"Modelos distintos", n: new Set(DADOS.map(d=>d.modelo)).size }
+];
+document.getElementById("cards").innerHTML = cards.map(c=>
+  `<div class="card"><div class="n">${c.n}</div><div class="l">${c.l}</div></div>`).join("");
+
+document.getElementById("linhas").innerHTML = DADOS.map(d=>`
+  <tr>
+    <td>${d.data}</td>
+    <td>${d.objetivo}</td>
+    <td>${d.modelo}</td>
+    <td class="muted">${d.ferramentas.join(", ")}</td>
+    <td class="muted">${d.alterados.join(", ")}</td>
+    <td><span class="pill r-${d.risco}">${d.risco}</span></td>
+    <td>${d.handoff ? "sim" : "—"}</td>
+    <td>${d.responsavel||""}</td>
+  </tr>`).join("");
+</script>
+</body>
+</html>

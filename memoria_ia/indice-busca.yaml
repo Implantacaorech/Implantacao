@@ -1,0 +1,45 @@
+# Índice machine-readable: palavra-chave -> arquivos + resumo curto.
+# Use para localizar onde mexer sem varrer o projeto. Atualize ao criar áreas novas.
+versao: 1
+atualizado_em: 2026-06-19
+
+topicos:
+  - chave: painel-flask
+    palavras: [painel, flask, webapp, rotas, app, fluxo, etapas]
+    arquivos: [webapp/app.py, webapp/db.py, webapp/templates/]
+    resumo: App principal — rotas, fluxo de 6 etapas, perfis, cadastros.
+
+  - chave: banco-dados
+    palavras: [banco, postgres, sqlalchemy, modelos, seed, migracao]
+    arquivos: [webapp/db.py, dados/painel.db, docker-compose.yml]
+    resumo: Camada de dados; Postgres em produção (PAINEL_DB_URL), SQLite local em dados/.
+
+  - chave: geracao-fiel
+    palavras: [layout, placeholder, fiel, documento, docx, xlsx, fase]
+    arquivos: [webapp/gerar_layout.py, tools/preencher_layout.py]
+    resumo: Gera documentos das fases trocando só os placeholders dos layouts oficiais.
+
+  - chave: cadastros-referencia
+    palavras: [checklist, indice, topicos, modelos, cadastro]
+    arquivos: [webapp/db.py, webapp/templates/cad_checklist.html, webapp/templates/cad_indice.html, webapp/templates/cad_modelos.html, tools/data/indice_topicos.yaml]
+    resumo: Checklist, Índice de Tópicos e Modelos de Documentos (área Sistema/ADM).
+
+  - chave: geradores-office
+    palavras: [gerar, office, excel, word, yaml, exemplos]
+    arquivos: [tools/, tools/data/, tools/verificar.py]
+    resumo: tools/gerar_*.py produzem .xlsx/.docx a partir de YAML; saída em exemplos/.
+
+  - chave: processo-implantacao
+    palavras: [processo, sicla, rns, etapa, papel, skill, agente]
+    arquivos: [docs/processo-implantacao.md, docs/papeis-responsabilidades.md, .claude/agents/, .claude/skills/, CLAUDE.md, docs/guia-operacional-ia.md]
+    resumo: Fonte de verdade do processo, papéis e skills.
+
+  - chave: governanca-ia
+    palavras: [contexto, tokens, ignore, memoria, handoff, entrada, uso, custo]
+    arquivos: [.cloudignore, docs/uso-eficiente-ia.md, docs/template-handoff-sessao.md, memoria_ia/, entrada_ia/, ia_admin/]
+    resumo: Camada de redução de contexto e governança de uso da IA.
+
+  - chave: sincronizacao-github
+    palavras: [git, github, push, pull, deploy, sync]
+    arquivos: [.gitignore, README.md]
+    resumo: Conta Implantacaorech; "subir total sempre" ao fim da tarefa; sem .exe.
