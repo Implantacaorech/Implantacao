@@ -13,7 +13,9 @@
   header h1{margin:0;font-size:1.15rem}
   header p{margin:4px 0 0;color:#c8d2ea;font-size:.85rem}
   main{max-width:1100px;margin:0 auto;padding:20px}
-  .nota{background:#fff7e6;border:1px solid #f0d999;border-radius:8px;padding:8px 12px;font-size:.82rem;color:#7a5a12;margin-bottom:16px}
+  .status{font-size:.82rem;margin-bottom:14px;padding:8px 12px;border-radius:8px;border:1px solid var(--line)}
+  .status.ok{background:#e9f6ef;border-color:#bfe4cd;color:#176c3e}
+  .status.warn{background:#fff7e6;border-color:#f0d999;color:#7a5a12}
   .cards{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;flex:1;min-width:150px}
   .card .n{font-size:1.6rem;font-weight:700;color:var(--brand)}
@@ -33,11 +35,7 @@
   <p>Acompanhamento estático de sessões da IA · separado do painel operacional</p>
 </header>
 <main>
-  <div class="nota">
-    Página <b>estática e offline</b>. Os dados abaixo <b>espelham</b> <code>ia_admin/uso-cloud.yaml</code>
-    (fonte de verdade). Sem API de tokens/custos, os valores de consumo são <b>manuais/estimados</b>.
-    Ao registrar novas sessões, atualize o YAML e o bloco <code>DADOS</code> desta página.
-  </div>
+  <div class="status" id="status"></div>
   <div class="cards" id="cards"></div>
   <table>
     <thead><tr>
@@ -47,38 +45,54 @@
     <tbody id="linhas"></tbody>
   </table>
 </main>
-<footer>Fonte: <code>uso-cloud.yaml</code> · <code>sessoes.md</code>. Não depende de internet.</footer>
+<footer>Fonte de verdade: <code>uso-cloud.yaml</code> → gere <code>dados.js</code> com
+  <code>python ia_admin/gerar_painel.py</code>. Não depende de internet.</footer>
 
+<!-- dados.js é GERADO a partir de uso-cloud.yaml (window.IA_DADOS). -->
+<script src="dados.js"></script>
 <script>
-// DADOS — espelho de ia_admin/uso-cloud.yaml (atualizar junto)
-const DADOS = [
-  { data:"2026-06-19", objetivo:"Governança de contexto/IA", modelo:"Claude Opus 4.8",
-    ferramentas:["filesystem","git"], alterados:["CLAUDE.md",".cloudignore","docs/*","memoria_ia/","ia_admin/"],
-    risco:"medio", handoff:false, responsavel:"Everton" },
-  { data:"2026-06-19", objetivo:"Cadastros + geração fiel + troca dos botões", modelo:"Claude Opus 4.8",
-    ferramentas:["filesystem","git","python"], alterados:["webapp/app.py","db.py","gerar_layout.py","templates"],
-    risco:"alto", handoff:false, responsavel:"Everton" }
-];
+// Fallback embutido: usado só se dados.js não existir (nunca deixa a tela em branco).
+const FALLBACK = { atualizado_em: "(fallback — rode gerar_painel.py)", sessoes: [
+  { data:"2026-06-19", objetivo:"(dados de exemplo — gere dados.js a partir do YAML)",
+    modelo:"Claude Opus 4.8", ferramentas:["—"], arquivos_alterados:["—"],
+    risco_contexto:"medio", handoff:false, responsavel:"—" } ] };
 
+const D = (window.IA_DADOS && Array.isArray(window.IA_DADOS.sessoes)) ? window.IA_DADOS : FALLBACK;
+const S = D.sessoes || [];
+const viaYaml = !!(window.IA_DADOS && Array.isArray(window.IA_DADOS.sessoes));
+
+const st = document.getElementById("status");
+if (viaYaml) {
+  st.className = "status ok";
+  st.innerHTML = "Dados carregados de <code>uso-cloud.yaml</code> · atualizado em <b>" +
+    (D.atualizado_em || "?") + "</b> · " + S.length + " sessão(ões).";
+} else {
+  st.className = "status warn";
+  st.innerHTML = "Não encontrei <code>dados.js</code> (exibindo exemplo). Edite <code>uso-cloud.yaml</code> e rode " +
+    "<code>python ia_admin/gerar_painel.py</code> para atualizar a tela.";
+}
+
+const arr = v => Array.isArray(v) ? v : (v == null ? [] : [v]);
 const cards = [
-  { l:"Sessões", n: DADOS.length },
-  { l:"Risco alto", n: DADOS.filter(d=>d.risco==="alto").length },
-  { l:"Com handoff", n: DADOS.filter(d=>d.handoff).length },
-  { l:"Modelos distintos", n: new Set(DADOS.map(d=>d.modelo)).size }
+  { l:"Sessões", n: S.length },
+  { l:"Risco alto", n: S.filter(d=>d.risco_contexto==="alto").length },
+  { l:"Com handoff", n: S.filter(d=>d.handoff).length },
+  { l:"Modelos distintos", n: new Set(S.map(d=>d.modelo)).size }
 ];
 document.getElementById("cards").innerHTML = cards.map(c=>
   `<div class="card"><div class="n">${c.n}</div><div class="l">${c.l}</div></div>`).join("");
 
-document.getElementById("linhas").innerHTML = DADOS.map(d=>`
+const esc = s => String(s==null?"":s).replace(/[&<>]/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;" }[m]));
+document.getElementById("linhas").innerHTML = S.map(d=>`
   <tr>
-    <td>${d.data}</td>
-    <td>${d.objetivo}</td>
-    <td>${d.modelo}</td>
-    <td class="muted">${d.ferramentas.join(", ")}</td>
-    <td class="muted">${d.alterados.join(", ")}</td>
-    <td><span class="pill r-${d.risco}">${d.risco}</span></td>
+    <td>${esc(d.data)}</td>
+    <td>${esc(d.objetivo)}</td>
+    <td>${esc(d.modelo)}</td>
+    <td class="muted">${arr(d.ferramentas).map(esc).join(", ")}</td>
+    <td class="muted">${arr(d.arquivos_alterados).map(esc).join(", ")}</td>
+    <td><span class="pill r-${esc(d.risco_contexto)||'medio'}">${esc(d.risco_contexto)||"—"}</span></td>
     <td>${d.handoff ? "sim" : "—"}</td>
-    <td>${d.responsavel||""}</td>
+    <td>${esc(d.responsavel)}</td>
   </tr>`).join("");
 </script>
 </body>

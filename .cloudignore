@@ -47,8 +47,9 @@ tools/templates/**/*.xlsx
 tools/data/modelos_documento/**/*.docx
 tools/data/modelos_documento/**/*.xlsx
 
-# --- JS minificado / vendor (não é contexto útil) ---
+# --- JS minificado / vendor / gerado (não é contexto útil) ---
 webapp/static/chart.umd.min.js
+ia_admin/dados.js
 
 # ============================================================
 # Pasta de ENTRADA da IA: ignore tudo, exceto textos leves.
