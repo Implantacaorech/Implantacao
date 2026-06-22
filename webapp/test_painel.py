@@ -506,6 +506,48 @@ def test_levantamento_bloqueio_perfil(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_termo_grade_com_modulos(client):
+    """O Termo gerado preenche a grade Resumo Geral com os módulos contratados."""
+    import gerar_layout
+    pid = _novo(client, cliente="Termo Grade LTDA", numero_projeto="T-1", modulos="FAT, EST")
+    with db.Session() as s:
+        proj = db.to_dict(s.get(db.Projeto, int(pid)))
+    path = gerar_layout.gerar("termo", proj)
+    from docx import Document
+    celulas = [c.text.strip() for row in Document(path).tables[0].rows for c in row.cells]
+    assert "FAT" in celulas and "EST" in celulas and "Implantado" in celulas
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_cronograma_xlsx_cabecalho_e_linhas(client):
+    """O Cronograma .xlsx preenche cabeçalho (consultor/horas) e linhas de visita."""
+    import gerar_layout
+    import openpyxl
+    pid = _novo(client, cliente="Crono LTDA", numero_projeto="C-1", modulos="FAT",
+                consultor="Ana", horas_cobradas="40", horas_bonificadas="8")
+    db.salvar_linhas(int(pid), "cronograma", [
+        {"etapa": "Treinamento Vendas", "topicos": "Pedidos", "horas": "4",
+         "data": "01/08/2026", "modalidade": "Presencial", "status": "Previsto"}], "tester")
+    with db.Session() as s:
+        proj = db.to_dict(s.get(db.Projeto, int(pid)))
+    path = gerar_layout.gerar("cronograma", proj)
+    wb = openpyxl.load_workbook(path)
+    blob = " | ".join(str(c.value) for ws in wb.worksheets for row in ws.iter_rows()
+                      for c in row if c.value is not None)
+    assert "Ana" in blob                     # consultor no cabeçalho/técnico
+    assert "Crono LTDA" in blob              # cliente
+    assert "Treinamento Vendas" in blob      # linha de visita (O que será abordado)
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_projeto_puxa_respostas_do_levantamento(client):
     """O Projeto gerado consome as respostas do Levantamento (liga as fases)."""
     import gerar_layout

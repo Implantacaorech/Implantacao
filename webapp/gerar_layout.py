@@ -178,6 +178,76 @@ def _anexar_respostas_projeto(doc, projeto_id):
     return total
 
 
+def _norm(s):
+    """Normaliza rótulo: colapsa espaços, tira pontuação final e baixa caixa."""
+    return " ".join(str(s or "").split()).strip().rstrip(":. ").lower()
+
+
+def _preencher_cronograma_xlsx(wb, projeto):
+    """Preenche o cabeçalho (Consultor/Horas) por rótulo e as linhas de visita a partir
+    do cronograma do projeto, sem tocar nas colunas com fórmula (Total/Horário)."""
+    ws = wb["Cronograma de visitas"] if "Cronograma de visitas" in wb.sheetnames else wb.worksheets[0]
+    alvos = {
+        "consultor": (projeto.get("consultor") or "").strip(),
+        "horas do planejamento": str(projeto.get("horas_cobradas") or "").strip(),
+        "hrs previstas bonificadas": str(projeto.get("horas_bonificadas") or "").strip(),
+    }
+    for row in ws.iter_rows(min_row=1, max_row=8):       # cabeçalho: valor à direita do rótulo
+        for c in row:
+            if isinstance(c.value, str):
+                v = alvos.get(_norm(c.value))
+                if v:
+                    ws.cell(row=c.row, column=c.column + 1, value=v)
+    itens = db.cronograma_do_projeto(projeto.get("id")) if projeto.get("id") else []
+    if not itens:
+        return 0
+    hdr, cols = None, {}
+    for row in ws.iter_rows(min_row=1, max_row=15):       # acha a linha de cabeçalho da tabela
+        vals = {_norm(c.value): c.column for c in row if isinstance(c.value, str)}
+        if "data" in vals and "o que será abordado" in vals:
+            hdr, cols = row[0].row, vals
+            break
+    if not hdr:
+        return 0
+    cons = (projeto.get("consultor") or "").strip()
+    for i, it in enumerate(itens):
+        r = hdr + 1 + i
+
+        def setc(label, val):
+            col = cols.get(label)
+            if col and val:
+                ws.cell(row=r, column=col, value=val)
+
+        abordado = (it.get("etapa") or "").strip()
+        if it.get("topicos"):
+            abordado = (abordado + " — " + it["topicos"]).strip(" —")
+        setc("data", it.get("data", ""))
+        setc("local", it.get("modalidade", ""))
+        setc("técnico", cons)
+        setc("o que será abordado", abordado)
+    return len(itens)
+
+
+def _preencher_termo_grade(doc, modulos_str):
+    """Preenche a grade 'Resumo Geral' do Termo (Módulo/Adicional/Processo/Status) a
+    partir dos módulos contratados. Usa as linhas existentes e cria novas se faltar."""
+    import re as _re
+    sigs = [m.strip() for m in _re.split(r"[,;\n]+", modulos_str or "") if m.strip()]
+    if not sigs or not doc.tables:
+        return 0
+    t = doc.tables[0]          # Resumo Geral: Módulo | Adicional | Processo | Status de Uso | Obs.
+    if len(t.columns) < 4:
+        return 0
+    base = t.rows[1:]          # exclui o cabeçalho
+    for i, sig in enumerate(sigs):
+        row = base[i] if i < len(base) else t.add_row()
+        cells = row.cells
+        cells[0].text = sig
+        cells[2].text = "Implantado"
+        cells[3].text = "Sim"
+    return len(sigs)
+
+
 def _saida(slug, cliente, ext):
     nome = "%s_%s.%s" % (slug, C.slug(cliente or "cliente"), ext)
     os.makedirs(C.OUT, exist_ok=True)
@@ -201,6 +271,8 @@ def gerar(slug, projeto):
             _anexar_topicos_levantamento(doc, projeto.get("modulos", ""))
         elif slug == "projeto":      # puxa as respostas do Levantamento (liga as fases)
             _anexar_respostas_projeto(doc, projeto.get("id"))
+        elif slug == "termo":        # preenche a grade Resumo Geral com os módulos contratados
+            _preencher_termo_grade(doc, projeto.get("modulos", ""))
         doc.save(destino)
     else:  # xlsx (cronograma)
         repl = []
@@ -208,5 +280,6 @@ def gerar(slug, projeto):
         if cli:
             repl.append(("XXXX - RAZÃO SOCIAL LONGA", cli))
         wb = PL.preencher_xlsx(base, repl)
+        _preencher_cronograma_xlsx(wb, projeto)   # cabeçalho (consultor/horas) + linhas de visita
         wb.save(destino)
     return destino
