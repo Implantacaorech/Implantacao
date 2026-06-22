@@ -466,6 +466,71 @@ def test_gerar_layout_slug_invalido(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_fluxo_e2e_continuidade(client):
+    """Robô de fluxo ponta-a-ponta: percorre as 6 fases validando gates e avanços
+    (Agendamento → Levantamento → Projeto → Designação → Cronograma/Check-list → Encerramento)."""
+    import datetime
+    futuro = (datetime.date.today() + datetime.timedelta(days=7)).isoformat()
+    pid = _novo(client, cliente="E2E Fluxo LTDA", cnpj="00.000.000/0001-00",
+                numero_projeto="E2E-1", modulos="FAT, EST", horas_cobradas="40",
+                data_uso_oficial=futuro)
+
+    def etapa():
+        with db.Session() as s:
+            return s.get(db.Projeto, int(pid)).etapa
+
+    def n_doc(tipo):
+        with db.Session() as s:
+            return s.query(db.Documento).filter_by(projeto_id=int(pid), tipo=tipo).count()
+
+    assert etapa() == "Agendamento"
+    # Agendamento: GCI (sub-etapa 1) + Data (sub-etapa 2) -> auto-avança p/ Levantamento
+    client.post("/projetos/%s/definir_gci" % pid, data={"gci": "Beto"})
+    assert etapa() == "Agendamento"
+    client.post("/projetos/%s/agendar" % pid, data={"data_levantamento": futuro})
+    assert etapa() == "Levantamento"
+
+    # Levantamento: gera Mapeamento (fiel) e confirma avanço manual (do GCI)
+    client.post("/projetos/%s/gerar/levantamento" % pid)
+    assert n_doc("levantamento") == 1
+    client.post("/projetos/%s/avancar" % pid)
+    assert etapa() == "Projeto"
+
+    # Projeto: gera Projeto (fiel) -> auto-avança p/ Designação (para por falta de consultor)
+    client.post("/projetos/%s/gerar/projeto" % pid)
+    assert n_doc("projeto") == 1
+    assert etapa() == "Designação"
+
+    # Designação: designa consultores por módulo -> avança p/ Cronograma e Check-list
+    client.post("/projetos/%s/designar" % pid, data={"gci": "Beto", "mod_0": "Ana", "mod_1": "Ana"})
+    client.post("/projetos/%s/avancar" % pid)
+    assert etapa() == "Cronograma e Check-list"
+
+    # Cronograma e Check-list: gera Cronograma (fiel) + anexa Check List -> avança p/ Encerramento
+    client.post("/projetos/%s/gerar/cronograma" % pid)
+    assert n_doc("cronograma") == 1
+    with db.Session() as s:   # não há gerador fiel de checklist; anexa p/ satisfazer o gate
+        s.add(db.Documento(projeto_id=int(pid), tipo="checklist", arquivo="cl.xlsx", caminho="cl.xlsx"))
+        s.commit()
+    client.post("/projetos/%s/avancar" % pid)
+    assert etapa() == "Encerramento"
+
+    # Encerramento: gera Termo
+    client.post("/projetos/%s/gerar/termo" % pid)
+    assert n_doc("termo") == 1
+
+    # limpeza (remove arquivos gerados + projeto)
+    with db.Session() as s:
+        caminhos = [d.caminho for d in s.query(db.Documento).filter_by(projeto_id=int(pid)).all()]
+    for cp in caminhos:
+        try:
+            if cp and os.path.exists(cp):
+                os.remove(cp)
+        except OSError:
+            pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_projeto_gerar_usa_layout_fiel(client):
     """A rota de geração da fase (projeto_gerar) agora produz o layout FIEL preenchido."""
     pid = _novo(client, cliente="Faithful Proj LTDA", cnpj="22.333.444/0001-55",
