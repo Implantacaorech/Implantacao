@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block titulo %}Levantamento — {{ p.cliente }}{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <a href="{{ url_for('projetos') }}">Carteira</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <a href="{{ url_for('projeto_ficha', pid=pid) }}">{{ p.cliente }}</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Levantamento</div>{% endblock %}
+{% block conteudo %}
+  <h1 style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+    <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-compass"/></svg>
+    Levantamento — {{ p.cliente }}
+  </h1>
+  <p class="sub">Responda as perguntas do <strong>Índice de Tópicos</strong> dos módulos contratados.
+    Estas respostas alimentam a geração do <strong>Projeto de Implantação</strong>.</p>
+
+  {% if salvo %}<div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Respostas salvas.</div>{% endif %}
+
+  {% if not respostas %}
+  <div class="resultado erro" style="padding:10px 16px;display:flex;align-items:center;gap:8px">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg>
+    Nenhuma pergunta — confira os <strong>Módulos Contratados</strong> na ficha (devem ser siglas do Índice de Tópicos, ex.: FAT, EST).
+  </div>
+  {% else %}
+
+  {# progresso #}
+  <div style="display:flex;align-items:center;gap:10px;margin:10px 0 16px">
+    <div style="flex:1;max-width:340px;height:10px;background:var(--line);border-radius:6px;overflow:hidden">
+      <div style="height:100%;width:{{ ((resp/total*100)|round) if total else 0 }}%;background:var(--ok)"></div>
+    </div>
+    <span class="dica" style="margin:0"><strong>{{ resp }}</strong> / {{ total }} respondidas</span>
+  </div>
+
+  <form method="post">
+    {% set ns = namespace(mod=None, adic=None) %}
+    {% for r in respostas %}
+      {% if r.modulo_sigla != ns.mod %}
+        {% set ns.mod = r.modulo_sigla %}
+        {% set ns.adic = None %}
+        <h2 style="color:var(--navy);margin:18px 0 4px;display:flex;align-items:center;gap:8px;font-size:1.05rem">
+          <svg class="svgi svgi-md" style="color:var(--brand)" aria-hidden="true"><use href="#ic-layers"/></svg>
+          {{ r.modulo_sigla }} — {{ r.modulo }}
+        </h2>
+      {% endif %}
+      {% if r.adicional and r.adicional != ns.adic %}
+        {% set ns.adic = r.adicional %}
+        <div class="dica" style="font-weight:700;color:var(--muted);margin:10px 0 2px">{{ r.adicional }}</div>
+      {% endif %}
+      <label class="campo" style="margin-bottom:8px">
+        <span>{{ r.topico }}</span>
+        <textarea name="resposta_{{ r.id }}" rows="2" placeholder="Resposta / observações…">{{ r.resposta }}</textarea>
+      </label>
+    {% endfor %}
+
+    <div style="position:sticky;bottom:0;background:var(--surface,#fff);padding:10px 0;border-top:1px solid var(--line);display:flex;gap:8px;margin-top:10px">
+      <button class="btn primario" type="submit">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvar respostas
+      </button>
+      <a class="btn" href="{{ url_for('projeto_ficha', pid=pid) }}">Voltar à ficha</a>
+    </div>
+  </form>
+  {% endif %}
+{% endblock %}

@@ -479,6 +479,33 @@ def test_home_fila_proximas_acoes(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_levantamento_respostas_no_painel(client):
+    """As perguntas do Índice viram campos respondíveis (seed) e as respostas persistem."""
+    sig = db.indice_modulos()[0]["sigla"]
+    _linhas, total_idx = db.indice_listar(modulo=sig)
+    pid = _novo(client, cliente="Resp LTDA", modulos=sig)
+    r = client.get("/projetos/%s/levantamento" % pid)
+    assert r.status_code == 200
+    rs = db.levantamento_respostas(pid)
+    assert len(rs) == total_idx              # uma pergunta por tópico do módulo contratado
+    rid = rs[0]["id"]
+    client.post("/projetos/%s/levantamento" % pid, data={"resposta_%d" % rid: "Resposta teste X"})
+    achou = [x for x in db.levantamento_respostas(pid) if x["id"] == rid][0]
+    assert achou["resposta"] == "Resposta teste X"
+    resp, total = db.levantamento_resumo(pid)
+    assert resp == 1 and total == total_idx
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_levantamento_bloqueio_perfil(client):
+    pid = _novo(client, cliente="Bloq LTDA", modulos="FAT")
+    _login_como(client, "Consultor")
+    assert client.get("/projetos/%s/levantamento" % pid).status_code == 403
+    with client.session_transaction() as sess:
+        sess.clear()
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_levantamento_inclui_topicos_do_indice(client):
     """O Levantamento gerado injeta as perguntas/tópicos do Índice por módulo contratado."""
     import gerar_layout

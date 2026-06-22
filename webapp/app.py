@@ -1238,6 +1238,31 @@ def projeto_gerar_projeto(pid):
     return projeto_gerar(pid, "projeto")
 
 
+@app.route("/projetos/<int:pid>/levantamento", methods=["GET", "POST"])
+def projeto_levantamento(pid):
+    """Responder o Levantamento no painel: as perguntas do Índice de Tópicos dos
+    módulos contratados viram campos. Estas respostas alimentam o Projeto."""
+    if _perfil() and _perfil() not in ("ADM", "Coordenador", "Administrativo", "GCI"):
+        abort(403)
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        if not p:
+            abort(404)
+        proj = db.to_dict(p)
+    db.levantamento_seed(pid, proj.get("modulos", ""))   # idempotente
+    if request.method == "POST":
+        n = db.levantamento_salvar(pid, request.form)
+        with db.Session() as s:
+            db.registrar_evento(s, pid, "nota",
+                                "Levantamento respondido (%d itens preenchidos)." % n, _autor())
+            s.commit()
+        return redirect(url_for("projeto_levantamento", pid=pid, salvo=1))
+    resp, total = db.levantamento_resumo(pid)
+    return render_template("levantamento.html", p=proj, pid=pid,
+                           respostas=db.levantamento_respostas(pid), resp=resp, total=total,
+                           salvo=request.args.get("salvo"))
+
+
 @app.route("/projetos/<int:pid>/anexar", methods=["POST"])
 def projeto_anexar(pid):
     """Anexa um documento manualmente ao projeto (ex.: Cronograma) para satisfazer o gate."""

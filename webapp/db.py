@@ -1302,6 +1302,80 @@ def modelo_documento_campo_excluir(cid):
             s.delete(obj); s.commit()
 
 
+# ===================================================================
+#  Respostas do Levantamento (por projeto) — as perguntas do Índice de Tópicos
+#  dos módulos contratados viram campos respondíveis no painel. Estas respostas
+#  alimentam a geração/criação do Projeto (liga Levantamento → Projeto).
+# ===================================================================
+class LevantamentoResposta(Base):
+    __tablename__ = "levantamento_respostas"
+    id = Column(Integer, primary_key=True)
+    projeto_id = Column(Integer, index=True)
+    ordem = Column(Integer, default=0)
+    modulo_sigla = Column(String(10), default="")
+    modulo = Column(String(120), default="")
+    adicional = Column(String(120), default="")
+    topico = Column(Text, default="")
+    resposta = Column(Text, default="")
+
+
+def levantamento_seed(projeto_id, modulos_str):
+    """Semeia (1ª vez) as linhas de resposta a partir do Índice de Tópicos dos módulos
+    contratados. Idempotente: não recria nem apaga respostas já digitadas. Devolve o total."""
+    import re as _re
+    with Session() as s:
+        ja = s.query(LevantamentoResposta).filter_by(projeto_id=projeto_id).count()
+    if ja:
+        return ja
+    sigs = [m.strip().upper() for m in _re.split(r"[,;\n]+", modulos_str or "") if m.strip()]
+    nomes = {m["sigla"].upper(): m["nome"] for m in indice_modulos()}
+    linhas, vistos = [], set()
+    for sig in sigs:
+        if sig in vistos:
+            continue
+        vistos.add(sig)
+        tops, _ = indice_listar(modulo=sig)
+        for l in tops:
+            linhas.append((sig, nomes.get(sig, l.get("modulo", "")),
+                           l.get("adicional", ""), l.get("topico", "")))
+    with Session() as s:
+        for i, (sig, nome, adic, top) in enumerate(linhas):
+            s.add(LevantamentoResposta(projeto_id=projeto_id, ordem=i, modulo_sigla=sig,
+                                       modulo=nome, adicional=adic, topico=top))
+        s.commit()
+    return len(linhas)
+
+
+def levantamento_respostas(projeto_id):
+    with Session() as s:
+        return [to_dict(x) for x in s.query(LevantamentoResposta)
+                .filter_by(projeto_id=projeto_id)
+                .order_by(LevantamentoResposta.ordem, LevantamentoResposta.id).all()]
+
+
+def levantamento_salvar(projeto_id, form):
+    """Salva as respostas (campos `resposta_<id>`). Devolve o nº de respostas preenchidas."""
+    with Session() as s:
+        rs = s.query(LevantamentoResposta).filter_by(projeto_id=projeto_id).all()
+        n = 0
+        for r in rs:
+            v = (form.get("resposta_%d" % r.id) or "").strip()
+            r.resposta = v
+            if v:
+                n += 1
+        s.commit()
+        return n
+
+
+def levantamento_resumo(projeto_id):
+    """(respondidas, total) das perguntas do Levantamento do projeto."""
+    with Session() as s:
+        rs = s.query(LevantamentoResposta).filter_by(projeto_id=projeto_id).all()
+    total = len(rs)
+    resp = sum(1 for r in rs if (r.resposta or "").strip())
+    return resp, total
+
+
 def _auto_migrar():
     """Migração leve aditiva: cria colunas novas que faltarem (SQLite e Postgres).
     Cobre a evolução de schema entre versões; só adiciona, nunca remove dados."""

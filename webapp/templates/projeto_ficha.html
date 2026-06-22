@@ -559,8 +559,11 @@
           <span class="passo-num">2</span>
           Levantamento de processos (GCI)
         </div>
-        <p class="descricao">O GCI preenche o documento de Mapeamento externamente. Quando concluído, avance para a fase Projeto para processar o arquivo.</p>
+        <p class="descricao">Responda as perguntas do Índice de Tópicos por módulo contratado direto no painel — essas respostas alimentam o Projeto. Você também pode gerar o modelo de Mapeamento (.docx).</p>
         <div class="acoes-row">
+          <a class="btn primario" href="{{ url_for('projeto_levantamento', pid=p.id) }}">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-compass"/></svg> Responder levantamento
+          </a>
           {% if pode_gerar('levantamento') %}
           <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='levantamento') }}">
             <button class="btn" type="submit">
