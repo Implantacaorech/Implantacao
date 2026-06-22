@@ -93,6 +93,54 @@ def _repl_levantamento(p):
 _GERADORES_DOCX = {"termo": _repl_termo, "projeto": _repl_projeto, "levantamento": _repl_levantamento}
 
 
+def _topicos_por_modulo(modulos_str):
+    """Para cada módulo contratado (sigla em projeto.modulos), busca os tópicos do
+    cadastro Índice de Tópicos. Devolve [{sigla, nome, topicos:[linhas]}] na ordem informada."""
+    import re as _re
+    sigs = [m.strip().upper() for m in _re.split(r"[,;\n]+", modulos_str or "") if m.strip()]
+    nomes = {m["sigla"].upper(): m["nome"] for m in db.indice_modulos()}
+    out, vistos = [], set()
+    for sig in sigs:
+        if sig in vistos:
+            continue
+        vistos.add(sig)
+        linhas, _ = db.indice_listar(modulo=sig)
+        if linhas:
+            out.append({"sigla": sig, "nome": nomes.get(sig, ""), "topicos": linhas})
+    return out
+
+
+def _anexar_topicos_levantamento(doc, modulos_str):
+    """Acrescenta ao Levantamento, por módulo contratado, as perguntas/tópicos do Índice
+    de Tópicos a serem respondidas. Não depende de estilos do template (robusto)."""
+    grupos = _topicos_por_modulo(modulos_str)
+    if not grupos:
+        return 0
+
+    def linha(txt="", bold=False):
+        p = doc.add_paragraph()
+        if txt:
+            p.add_run(txt).bold = bold
+        return p
+
+    linha()
+    linha("Tópicos a levantar por módulo contratado", bold=True)
+    linha("Itens do Índice de Tópicos a responder no Levantamento, por módulo contratado.")
+    total = 0
+    for g in grupos:
+        linha()
+        linha("%s — %s" % (g["sigla"], g["nome"] or ""), bold=True)
+        atual = None
+        for l in g["topicos"]:
+            adic = (l.get("adicional") or "").strip()
+            if adic and adic != atual:
+                linha(adic, bold=True)
+                atual = adic
+            doc.add_paragraph("•  " + (l.get("topico") or "").strip())
+            total += 1
+    return total
+
+
 def _saida(slug, cliente, ext):
     nome = "%s_%s.%s" % (slug, C.slug(cliente or "cliente"), ext)
     os.makedirs(C.OUT, exist_ok=True)
@@ -112,6 +160,8 @@ def gerar(slug, projeto):
     if modelo["tipo"] == "docx":
         repl, paras = _GERADORES_DOCX.get(slug, lambda p: ([], []))(projeto)
         doc = PL.preencher_docx(base, repl, paras)
+        if slug == "levantamento":   # injeta as perguntas do Índice de Tópicos por módulo contratado
+            _anexar_topicos_levantamento(doc, projeto.get("modulos", ""))
         doc.save(destino)
     else:  # xlsx (cronograma)
         repl = []

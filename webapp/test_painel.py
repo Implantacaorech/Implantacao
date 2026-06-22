@@ -466,6 +466,31 @@ def test_gerar_layout_slug_invalido(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_levantamento_inclui_topicos_do_indice(client):
+    """O Levantamento gerado injeta as perguntas/tópicos do Índice por módulo contratado."""
+    import gerar_layout
+    mods = db.indice_modulos()
+    assert mods, "Índice de Tópicos deve estar seedado"
+    sig = mods[0]["sigla"]
+    linhas, _ = db.indice_listar(modulo=sig)
+    assert linhas
+    topico = linhas[0]["topico"]
+    pid = _novo(client, cliente="Topicos LTDA", modulos=sig, gci="Beto")
+    with db.Session() as s:
+        proj = db.to_dict(s.get(db.Projeto, int(pid)))
+    path = gerar_layout.gerar("levantamento", proj)
+    from docx import Document
+    txt = "\n".join(p.text for p in Document(path).paragraphs)
+    assert "Tópicos a levantar por módulo contratado" in txt
+    assert sig in txt
+    assert topico[:30] in txt          # a pergunta do Índice aparece no documento
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_fluxo_e2e_continuidade(client):
     """Robô de fluxo ponta-a-ponta: percorre as 6 fases validando gates e avanços
     (Agendamento → Levantamento → Projeto → Designação → Cronograma/Check-list → Encerramento)."""
