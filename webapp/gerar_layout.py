@@ -141,6 +141,43 @@ def _anexar_topicos_levantamento(doc, modulos_str):
     return total
 
 
+def _anexar_respostas_projeto(doc, projeto_id):
+    """Acrescenta ao Projeto o detalhamento do Levantamento (tópicos JÁ respondidos no
+    painel), por módulo contratado — liga as respostas do Levantamento ao Projeto."""
+    if not projeto_id:
+        return 0
+    rs = [r for r in db.levantamento_respostas(projeto_id) if (r.get("resposta") or "").strip()]
+    if not rs:
+        return 0
+
+    def linha(txt="", bold=False):
+        p = doc.add_paragraph()
+        if txt:
+            p.add_run(txt).bold = bold
+        return p
+
+    linha()
+    linha("Detalhamento do Levantamento por módulo", bold=True)
+    linha("Rotinas e particularidades identificadas no Levantamento (respostas registradas no painel).")
+    mod_atual = adic_atual = None
+    total = 0
+    for r in rs:
+        sig = r.get("modulo_sigla", "")
+        if sig != mod_atual:
+            mod_atual, adic_atual = sig, None
+            linha()
+            linha("%s — %s" % (sig, r.get("modulo", "") or ""), bold=True)
+        adic = (r.get("adicional") or "").strip()
+        if adic and adic != adic_atual:
+            adic_atual = adic
+            linha(adic, bold=True)
+        p = doc.add_paragraph()
+        p.add_run(((r.get("topico") or "").strip() + ": ")).bold = True
+        p.add_run((r.get("resposta") or "").strip())
+        total += 1
+    return total
+
+
 def _saida(slug, cliente, ext):
     nome = "%s_%s.%s" % (slug, C.slug(cliente or "cliente"), ext)
     os.makedirs(C.OUT, exist_ok=True)
@@ -162,6 +199,8 @@ def gerar(slug, projeto):
         doc = PL.preencher_docx(base, repl, paras)
         if slug == "levantamento":   # injeta as perguntas do Índice de Tópicos por módulo contratado
             _anexar_topicos_levantamento(doc, projeto.get("modulos", ""))
+        elif slug == "projeto":      # puxa as respostas do Levantamento (liga as fases)
+            _anexar_respostas_projeto(doc, projeto.get("id"))
         doc.save(destino)
     else:  # xlsx (cronograma)
         repl = []

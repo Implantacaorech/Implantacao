@@ -506,6 +506,32 @@ def test_levantamento_bloqueio_perfil(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_projeto_puxa_respostas_do_levantamento(client):
+    """O Projeto gerado consome as respostas do Levantamento (liga as fases)."""
+    import gerar_layout
+    sig = db.indice_modulos()[0]["sigla"]
+    pid = _novo(client, cliente="Liga LTDA", cnpj="00.000.000/0001-00", numero_projeto="L-1",
+                modulos=sig, horas_cobradas="10")
+    db.levantamento_seed(int(pid), sig)
+    rs = db.levantamento_respostas(int(pid))
+    rid, topico = rs[0]["id"], rs[0]["topico"]
+    client.post("/projetos/%s/levantamento" % pid,
+                data={"resposta_%d" % rid: "RESPOSTA QUE LIGA AO PROJETO"})
+    with db.Session() as s:
+        proj = db.to_dict(s.get(db.Projeto, int(pid)))
+    path = gerar_layout.gerar("projeto", proj)
+    from docx import Document
+    txt = "\n".join(p.text for p in Document(path).paragraphs)
+    assert "Detalhamento do Levantamento por módulo" in txt
+    assert "RESPOSTA QUE LIGA AO PROJETO" in txt        # a resposta aparece no Projeto
+    assert topico[:25] in txt
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_levantamento_inclui_topicos_do_indice(client):
     """O Levantamento gerado injeta as perguntas/tópicos do Índice por módulo contratado."""
     import gerar_layout
