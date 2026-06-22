@@ -389,7 +389,9 @@ def _data_br(s):
 
 def _auto_avancar(pid):
     """Avança a etapa automaticamente enquanto o gate da próxima (documentos + ação)
-    estiver satisfeito."""
+    estiver satisfeito. PERMISSIVO de propósito quanto aos campos obrigatórios — eles
+    são cobrados no avanço MANUAL e sinalizados na ficha; bloqueá-los aqui travaria o
+    fluxo (ex.: Agendamento sem nº do projeto/horas ainda preenchidos)."""
     with db.Session() as s:
         p = s.get(db.Projeto, pid)
         if not p or p.etapa == "Levantamento":

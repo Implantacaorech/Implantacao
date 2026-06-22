@@ -599,6 +599,21 @@ def test_levantamento_inclui_topicos_do_indice(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_projeto_avanca_sem_consultor(client):
+    """Fim do deadlock: sair do Projeto não exige mais 'consultor' (definido na Designação)."""
+    pid = _novo(client, cliente="SemConsultor LTDA", numero_projeto="S-1", modulos="FAT",
+                cnpj="00.000.000/0001-00", horas_cobradas="10", gci="Beto")
+    with db.Session() as s:
+        p = s.get(db.Projeto, int(pid)); p.etapa = "Projeto"; s.commit()
+        s.add(db.Documento(projeto_id=int(pid), tipo="levantamento", arquivo="l", caminho="l"))
+        s.add(db.Documento(projeto_id=int(pid), tipo="projeto", arquivo="p", caminho="p"))
+        s.commit()
+    client.post("/projetos/%s/avancar" % pid)
+    with db.Session() as s:
+        assert s.get(db.Projeto, int(pid)).etapa == "Designação"
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_fluxo_e2e_continuidade(client):
     """Robô de fluxo ponta-a-ponta: percorre as 6 fases validando gates e avanços
     (Agendamento → Levantamento → Projeto → Designação → Cronograma/Check-list → Encerramento)."""

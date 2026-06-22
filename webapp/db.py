@@ -42,7 +42,7 @@ CAMPOS_OBRIGATORIOS = {
     "Levantamento":            ["cliente", "cnpj", "numero_projeto", "modulos",
                                 "horas_cobradas", "gci", "data_levantamento"],
     "Projeto":                 ["cliente", "cnpj", "numero_projeto", "modulos",
-                                "horas_cobradas", "consultor"],
+                                "horas_cobradas"],   # consultor é definido na Designação
     "Designação":              ["cliente", "cnpj", "numero_projeto", "modulos",
                                 "horas_cobradas", "consultor", "data_uso_oficial"],
     "Cronograma e Check-list": ["cliente", "cnpj", "numero_projeto", "modulos",
