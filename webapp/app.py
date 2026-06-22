@@ -426,12 +426,27 @@ def home():
         ativos = [p for p in meus if p.get("situacao") != "Concluído"]
         for p in ativos:
             cab = db.cabecalho(p, docs_map.get(p["id"], []))
-            if cab.get("proxima"):
-                pendencias.append({"id": p["id"], "cliente": p["cliente"],
-                                   "acao": "Gerar " + cab["proxima"]["label"]})
+            item = {"id": p["id"], "cliente": p["cliente"], "fase": cab.get("fase"),
+                    "atraso": cab.get("atraso")}
+            px = cab.get("proxima")
+            if px:
+                tipo = px.get("tipo", "")
+                item["acao"] = px["label"]
+                if tipo == "acao:definir_gci":
+                    item.update(url=url_for("projeto_definir_gci", pid=p["id"]), cta="Definir GCI")
+                elif tipo == "acao:data_levantamento":
+                    item.update(url=url_for("projeto_agendar", pid=p["id"]), cta="Definir data")
+                elif tipo in ("acao:consultores_designacao", "acao:consultores"):
+                    item.update(url=url_for("projeto_designar", pid=p["id"]), cta="Designar")
+                else:                                   # documento da fase a gerar
+                    item.update(url=url_for("projeto_ficha", pid=p["id"]), cta="Gerar")
+                pendencias.append(item)
             elif cab.get("prox_etapa") and cab.get("avancar_ok"):
-                pendencias.append({"id": p["id"], "cliente": p["cliente"],
-                                   "acao": "Avançar para " + cab["prox_etapa"]})
+                item.update(acao="Avançar para " + cab["prox_etapa"],
+                            url=url_for("projeto_ficha", pid=p["id"]), cta="Avançar")
+                pendencias.append(item)
+        # urgência: atrasados primeiro (maior atraso no topo)
+        pendencias.sort(key=lambda x: (x.get("atraso") is None, -(x.get("atraso") or 0)))
         ativos_ord = sorted(ativos, key=lambda p: (p.get("atualizado_em") is not None,
                                                    p.get("atualizado_em")), reverse=True)
         if ativos_ord:
@@ -440,7 +455,7 @@ def home():
     except Exception:
         pass
     return render_template("home.html", roles=roles.ROLES, dados=dados,
-                           alertas=alertas[:6], pendencias=pendencias[:6], foco=foco)
+                           alertas=alertas[:6], pendencias=pendencias[:8], foco=foco)
 
 
 @app.route("/papel/<rid>")

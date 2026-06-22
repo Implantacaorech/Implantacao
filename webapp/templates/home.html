@@ -82,22 +82,26 @@
   <div class="vg-cols">
     <div class="painel" style="margin:0">
       <h3 style="margin-top:0;display:flex;align-items:center;gap:7px">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Próximas ações
+        <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Minhas próximas ações
       </h3>
       {% if pendencias %}
       <ul class="lista-acoes">
         {% for it in pendencias %}
         <li>
-          <a href="{{ url_for('projeto_ficha', pid=it.id) }}">
-            <span class="ac-cli">{{ it.cliente }}</span>
-            <span class="ac-do">{{ it.acao }}</span>
-            <svg class="svgi ac-go" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+          <a href="{{ it.url }}" title="{{ it.acao }}">
+            <span class="ac-cli">{{ it.cliente }}{% if it.atraso %}
+              <span style="color:var(--err);font-size:.7rem;font-weight:700;white-space:nowrap">• {{ it.atraso }}d atraso</span>{% endif %}</span>
+            <span class="ac-do"><span class="dica" style="margin:0">{{ it.fase }}</span> · {{ it.acao }}</span>
+            <span class="ac-go" style="display:inline-flex;align-items:center;gap:4px;font-weight:700;color:var(--brand);white-space:nowrap">
+              {{ it.cta }} <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+            </span>
           </a>
         </li>
         {% endfor %}
       </ul>
+      <a class="dica" href="{{ url_for('projetos') }}" style="display:inline-block;margin-top:8px">Ver carteira completa →</a>
       {% else %}
-      <p class="dica">Nenhuma ação pendente. Tudo encaminhado.</p>
+      <p class="dica" style="display:flex;align-items:center;gap:6px"><svg class="svgi" style="width:12px;height:12px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg> Nenhuma ação pendente. Tudo encaminhado.</p>
       {% endif %}
     </div>
     <div class="painel" style="margin:0">

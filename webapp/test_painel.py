@@ -466,6 +466,19 @@ def test_gerar_layout_slug_invalido(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_home_fila_proximas_acoes(client):
+    """A Home lista 'Minhas próximas ações' com link direto para a ação certa."""
+    import datetime
+    passado = (datetime.date.today() - datetime.timedelta(days=5)).isoformat()
+    pid = _novo(client, cliente="Fila LTDA ZZZ", numero_projeto="F-1", modulos="FAT",
+                cnpj="00.000.000/0001-00", horas_cobradas="10", data_uso_oficial=passado)
+    h = client.get("/").get_data(as_text=True)
+    assert "Fila LTDA ZZZ" in h                          # projeto aparece na fila
+    assert ("/projetos/%s/definir_gci" % pid) in h        # botão leva direto à ação (Definir GCI)
+    assert "Minhas próximas ações" in h
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_levantamento_inclui_topicos_do_indice(client):
     """O Levantamento gerado injeta as perguntas/tópicos do Índice por módulo contratado."""
     import gerar_layout
