@@ -612,9 +612,38 @@ def test_levantamento_inclui_topicos_do_indice(client):
     path = gerar_layout.gerar("levantamento", proj)
     from docx import Document
     txt = "\n".join(p.text for p in Document(path).paragraphs)
-    assert "Tópicos a levantar por módulo contratado" in txt
-    assert sig in txt
-    assert topico[:30] in txt          # a pergunta do Índice aparece no documento
+    assert sig in txt                  # módulo aparece (Módulos Previstos / seção)
+    assert topico[:30] in txt          # a pergunta do Índice foi injetada no documento
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_levantamento_so_blocos_contratados(client):
+    """O Levantamento mantém só os blocos dos módulos contratados e injeta as respostas."""
+    import gerar_layout
+    pid = _novo(client, cliente="Blocos LTDA", numero_projeto="B-1", modulos="FAT")
+    db.levantamento_seed(int(pid), "FAT")
+    rs = db.levantamento_respostas(int(pid))
+    client.post("/projetos/%s/levantamento" % pid, data={"resposta_%d" % rs[0]["id"]: "RESP BLOCO"})
+    with db.Session() as s:
+        proj = db.to_dict(s.get(db.Projeto, int(pid)))
+    import re as _re
+    path = gerar_layout.gerar("levantamento", proj)
+    from docx import Document
+    d = Document(path)
+    heads = [p.text.strip().upper() for p in d.paragraphs
+             if p.text.strip().lower().startswith("mapeamento de processo")
+             and _re.search(r"[-–—]", p.text)]
+    # só sobram os blocos contratados (FAT) + fundacionais (CLIENTE/FORNECEDOR, PRODUTO)
+    assert len(heads) == 3
+    junto = " | ".join(heads)
+    assert "VENDAS E FATURAMENTO" in junto and "CLIENTE" in junto and "PRODUTO" in junto
+    assert "FOLHA" not in junto                  # bloco da folha removido
+    txt = "\n".join(p.text for p in d.paragraphs)
+    assert "RESP BLOCO" in txt                   # resposta injetada no bloco
     try:
         os.remove(path)
     except OSError:

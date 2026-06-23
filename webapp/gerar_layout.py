@@ -248,6 +248,122 @@ def _preencher_termo_grade(doc, modulos_str):
     return len(sigs)
 
 
+# Mapa sigla -> palavras-chave dos blocos do Levantamento que ela mantém (AJUSTÁVEL).
+_SIGLA_BLOCOS = {
+    "FAT": ["vendas e faturamento"], "PDV": ["vendas e faturamento"],
+    "OSE": ["vendas e faturamento"], "SAC": ["vendas e faturamento"],
+    "GIN": ["produção"], "GCA": ["produção"],
+    "EST": ["compras/estoque"], "COM": ["compras/estoque"], "TLO": ["compras/estoque"],
+    "FIN": ["gestão financeira"], "GCO": ["gestão financeira"],
+    "CTB": ["gestão fiscal"], "LFI": ["gestão fiscal"], "GPA": ["gestão fiscal"], "AUE": ["gestão fiscal"],
+    "FPA": ["folha de pagamento"],
+    "PWC": ["portal de funcion", "portal de vagas"], "PGP": ["portal de funcion", "portal de vagas"],
+    "RHU": ["recrutamento", "treinamen", "saúde ocupacional", "segurança do trabalho",
+            "avaliação", "cargos e sal"],
+}
+_BLOCOS_FIXOS = ["cliente/fornecedor", "produto"]   # blocos fundacionais, sempre mantidos
+
+
+def _inserir_textos_depois(anchor_p, textos):
+    """Insere parágrafos de texto simples logo após `anchor_p` (preservando ordem)."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    el = anchor_p._p
+    for txt in textos:
+        p = OxmlElement("w:p")
+        r = OxmlElement("w:r")
+        t = OxmlElement("w:t")
+        t.set(qn("xml:space"), "preserve")
+        t.text = txt
+        r.append(t)
+        p.append(r)
+        el.addnext(p)
+        el = p
+
+
+def _montar_blocos_levantamento(doc, projeto):
+    """Mantém apenas os blocos 'Mapeamento de processo – ÁREA' dos módulos contratados
+    (remove os demais) e injeta as perguntas/respostas em cada bloco mantido. Módulos
+    contratados sem bloco próprio são acrescentados ao final. Devolve (mantidos, removidos)."""
+    import re as _re
+    sigs = [m.strip().upper() for m in _re.split(r"[,;\n]+", projeto.get("modulos", "") or "") if m.strip()]
+    nomes = {m["sigla"].upper(): m["nome"] for m in db.indice_modulos()}
+    por_sigla = {}
+    for r in (db.levantamento_respostas(projeto.get("id")) if projeto.get("id") else []):
+        por_sigla.setdefault((r.get("modulo_sigla") or "").upper(), []).append(r)
+
+    def itens_da_sigla(sig):
+        its = por_sigla.get(sig)
+        if its:
+            return its
+        tops, _ = db.indice_listar(modulo=sig)   # sem respostas semeadas: usa o Índice
+        return tops
+
+    # 1) varre os blocos (heading "Mapeamento de processo – X")
+    blocos, atual = [], None
+    for p in doc.paragraphs:
+        t = p.text.strip()
+        if _norm(t).startswith("mapeamento de processo") and ("-" in t or "–" in t):
+            area = _norm(_re.split(r"[-–]", t, 1)[1])
+            atual = {"area": area, "ps": [p], "colar": None, "modval": None, "viu_mod": False}
+            blocos.append(atual)
+        elif atual is not None:
+            atual["ps"].append(p)
+            tl = _norm(t)
+            if "colar aqui" in tl and atual["colar"] is None:
+                atual["colar"] = p
+            if tl.startswith("módulos previsto") or tl.startswith("modulos previsto"):
+                atual["viu_mod"] = True
+            elif atual["viu_mod"] and atual["modval"] is None and t.startswith("<") and t.endswith(">"):
+                atual["modval"] = p   # o "<xxxxx>" logo após "Módulos Previstos:"
+
+    # 2) decide manter/remover e injeta perguntas
+    remover, injetadas, removidos = [], set(), 0
+    for b in blocos:
+        area = b["area"]
+        fixo = any(k in area for k in _BLOCOS_FIXOS)
+        siglas_bloco = [s for s in sigs if any(k in area for k in _SIGLA_BLOCOS.get(s, []))]
+        if not fixo and not siglas_bloco:
+            remover.extend(b["ps"])               # bloco não contratado -> remover
+            removidos += 1
+            continue
+        if siglas_bloco:
+            if b["modval"] is not None:           # "<xxxxx>" -> sigla(s) do bloco
+                rot = ", ".join(("%s — %s" % (s, nomes[s])) if nomes.get(s) else s for s in siglas_bloco)
+                PL._aplica_no_paragrafo(b["modval"], rot)
+            if b["colar"] is not None:            # injeta perguntas (com respostas) no bloco
+                textos = []
+                for s in siglas_bloco:
+                    for it in itens_da_sigla(s):
+                        top = (it.get("topico") or "").strip()
+                        resp = (it.get("resposta") or "").strip()
+                        textos.append("•  " + top + (": " + resp if resp else ""))
+                        injetadas.add(s)
+                _inserir_textos_depois(b["colar"], textos)
+
+    # 3) remove os parágrafos dos blocos não contratados
+    for p in remover:
+        el = p._p
+        if el.getparent() is not None:
+            el.getparent().remove(el)
+
+    # 4) módulos contratados sem bloco próprio -> acrescenta ao final
+    sobrando = [s for s in sigs if s not in injetadas]
+    if sobrando:
+        def linha(txt="", bold=False):
+            par = doc.add_paragraph()
+            if txt:
+                par.add_run(txt).bold = bold
+        linha(); linha("Outros módulos contratados", bold=True)
+        for s in sobrando:
+            linha(); linha("%s — %s" % (s, nomes.get(s, "")), bold=True)
+            for it in itens_da_sigla(s):
+                top = (it.get("topico") or "").strip()
+                resp = (it.get("resposta") or "").strip()
+                doc.add_paragraph("•  " + top + (": " + resp if resp else ""))
+    return (len(blocos) - removidos), removidos
+
+
 def _preencher_levantamento_tabelas(doc, projeto):
     """Preenche no Levantamento a tabela 'Módulos/Adicionais (A)' (módulos contratados)
     e a tabela de horas (Cobradas / Bonificadas / Total) com os dados do fechamento."""
@@ -299,8 +415,8 @@ def gerar(slug, projeto):
     if modelo["tipo"] == "docx":
         repl, paras = _GERADORES_DOCX.get(slug, lambda p: ([], []))(projeto)
         doc = PL.preencher_docx(base, repl, paras)
-        if slug == "levantamento":   # perguntas do Índice por módulo + tabelas (módulos/horas)
-            _anexar_topicos_levantamento(doc, projeto.get("modulos", ""))
+        if slug == "levantamento":   # mantém só os blocos contratados + injeta perguntas + tabelas
+            _montar_blocos_levantamento(doc, projeto)
             _preencher_levantamento_tabelas(doc, projeto)
         elif slug == "projeto":      # puxa as respostas do Levantamento (liga as fases)
             _anexar_respostas_projeto(doc, projeto.get("id"))

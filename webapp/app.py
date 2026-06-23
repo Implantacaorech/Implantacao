@@ -1076,8 +1076,8 @@ def projeto_excluir(pid):
     with db.Session() as s:
         p = s.get(db.Projeto, pid)
         if p:
-            for M in (db.Documento, db.Evento, db.Designacao,
-                      db.CronogramaItem, db.ChecklistItem, db.Modificacao):
+            for M in (db.Documento, db.Evento, db.Designacao, db.CronogramaItem,
+                      db.ChecklistItem, db.Modificacao, db.LevantamentoResposta):
                 s.query(M).filter_by(projeto_id=pid).delete()
             s.delete(p)
             s.commit()
