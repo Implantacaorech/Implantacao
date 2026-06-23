@@ -506,6 +506,29 @@ def test_levantamento_bloqueio_perfil(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_levantamento_tabelas_e_sem_marcadores(client):
+    """Levantamento: tabelas de módulos e horas preenchidas e SEM marcadores <...>."""
+    import gerar_layout
+    import re as _re
+    pid = _novo(client, cliente="Marc LTDA", numero_projeto="M-1", modulos="FAT",
+                horas_cobradas="120", horas_bonificadas="20")
+    with db.Session() as s:
+        proj = db.to_dict(s.get(db.Projeto, int(pid)))
+    path = gerar_layout.gerar("levantamento", proj)
+    from docx import Document
+    d = Document(path)
+    txt = "\n".join(p.text for p in d.paragraphs)
+    blob = " | ".join(c.text for t in d.tables for row in t.rows for c in row.cells)
+    assert "120" in blob and "140" in blob       # horas: cobradas + total (120+20)
+    assert "FAT" in blob                          # tabela 'Módulos/Adicionais (A)'
+    assert not _re.search(r"<[^>]*>", txt + blob)  # nenhum marcador <...> restante
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_termo_grade_com_modulos(client):
     """O Termo gerado preenche a grade Resumo Geral com os módulos contratados."""
     import gerar_layout

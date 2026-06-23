@@ -17,7 +17,7 @@
   {% if salvo %}<div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
     <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Respostas salvas.</div>{% endif %}
 
-  {% if not respostas %}
+  {% if not grupos %}
   <div class="resultado erro" style="padding:10px 16px;display:flex;align-items:center;gap:8px">
     <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg>
     Nenhuma pergunta — confira os <strong>Módulos Contratados</strong> na ficha (devem ser siglas do Índice de Tópicos, ex.: FAT, EST).
@@ -33,27 +33,30 @@
   </div>
 
   <form method="post">
-    {% set ns = namespace(mod=None, adic=None) %}
-    {% for r in respostas %}
-      {% if r.modulo_sigla != ns.mod %}
-        {% set ns.mod = r.modulo_sigla %}
-        {% set ns.adic = None %}
-        <h2 style="color:var(--navy);margin:18px 0 4px;display:flex;align-items:center;gap:8px;font-size:1.05rem">
-          <svg class="svgi svgi-md" style="color:var(--brand)" aria-hidden="true"><use href="#ic-layers"/></svg>
-          {{ r.modulo_sigla }} — {{ r.modulo }}
-        </h2>
-      {% endif %}
-      {% if r.adicional and r.adicional != ns.adic %}
-        {% set ns.adic = r.adicional %}
-        <div class="dica" style="font-weight:700;color:var(--muted);margin:10px 0 2px">{{ r.adicional }}</div>
-      {% endif %}
-      <label class="campo" style="margin-bottom:8px">
-        <span>{{ r.topico }}</span>
-        <textarea name="resposta_{{ r.id }}" rows="2" placeholder="Resposta / observações…">{{ r.resposta }}</textarea>
-      </label>
+    {% for g in grupos %}
+    <details class="lev-mod">
+      <summary>
+        <svg class="svgi svgi-md" style="color:var(--brand)" aria-hidden="true"><use href="#ic-layers"/></svg>
+        <span class="lev-mod-nome">{{ g.sigla }} — {{ g.nome }}</span>
+        <span class="lev-mod-cont {{ 'ok' if g.resp == g.itens|length and g.itens }}">{{ g.resp }}/{{ g.itens|length }}</span>
+      </summary>
+      <div class="lev-body">
+        {% set ns = namespace(adic=None) %}
+        {% for r in g.itens %}
+          {% if r.adicional and r.adicional != ns.adic %}
+            {% set ns.adic = r.adicional %}
+            <div class="dica" style="font-weight:700;color:var(--muted);margin:10px 0 2px">{{ r.adicional }}</div>
+          {% endif %}
+          <label class="campo" style="margin-bottom:8px">
+            <span>{{ r.topico }}</span>
+            <textarea name="resposta_{{ r.id }}" rows="2" placeholder="Resposta / observações…">{{ r.resposta }}</textarea>
+          </label>
+        {% endfor %}
+      </div>
+    </details>
     {% endfor %}
 
-    <div style="position:sticky;bottom:0;background:var(--surface,#fff);padding:10px 0;border-top:1px solid var(--line);display:flex;gap:8px;margin-top:10px">
+    <div style="position:sticky;bottom:0;background:#fff;padding:10px 0;border-top:1px solid var(--line);display:flex;gap:8px;margin-top:10px;z-index:2">
       <button class="btn primario" type="submit">
         <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvar respostas
       </button>
@@ -61,4 +64,18 @@
     </div>
   </form>
   {% endif %}
+
+  <style>
+    details.lev-mod{border:1px solid var(--line);border-radius:8px;margin-bottom:8px;background:#fff;overflow:hidden}
+    details.lev-mod>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;
+      padding:10px 14px;font-weight:700;color:var(--navy);background:var(--surface-2,#f3f6fb)}
+    details.lev-mod>summary::-webkit-details-marker{display:none}
+    details.lev-mod>summary::before{content:"▸";color:var(--brand);font-size:.9rem;transition:transform .15s}
+    details.lev-mod[open]>summary::before{transform:rotate(90deg)}
+    .lev-mod-nome{flex:1}
+    .lev-mod-cont{font-size:.78rem;font-weight:700;color:var(--muted);background:#fff;border:1px solid var(--line);
+      border-radius:10px;padding:1px 9px}
+    .lev-mod-cont.ok{color:var(--ok);border-color:var(--ok)}
+    .lev-body{padding:8px 14px 12px}
+  </style>
 {% endblock %}

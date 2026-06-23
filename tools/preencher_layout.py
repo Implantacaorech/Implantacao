@@ -67,6 +67,24 @@ def set_paragrafo_por_prefixo(doc, prefixo, texto):
     return False
 
 
+_MARCADOR = re.compile(r"<[^<>]{0,300}>")
+
+
+def remover_marcadores_docx(doc):
+    """Remove TODOS os marcadores <...> restantes (não preenchidos) do documento —
+    corpo, tabelas e cabeçalhos/rodapés. Aplicar por último, após os preenchimentos."""
+    n = 0
+    for p in _iter_paragraphs(doc):
+        full = "".join(r.text for r in p.runs)
+        if "<" in full and ">" in full:
+            novo = _MARCADOR.sub("", full)
+            novo = re.sub(r"[ \t]{2,}", " ", novo).rstrip()
+            if novo != full:
+                _aplica_no_paragrafo(p, novo)
+                n += 1
+    return n
+
+
 def preencher_docx(src_path, repl=None, paragrafos=None):
     """Abre o layout, aplica substituições e devolve o Document (não salva)."""
     from docx import Document

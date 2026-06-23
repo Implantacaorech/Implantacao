@@ -248,6 +248,38 @@ def _preencher_termo_grade(doc, modulos_str):
     return len(sigs)
 
 
+def _preencher_levantamento_tabelas(doc, projeto):
+    """Preenche no Levantamento a tabela 'Módulos/Adicionais (A)' (módulos contratados)
+    e a tabela de horas (Cobradas / Bonificadas / Total) com os dados do fechamento."""
+    import re as _re
+    sigs = [m.strip() for m in _re.split(r"[,;\n]+", projeto.get("modulos", "") or "") if m.strip()]
+    nomes = {m["sigla"].upper(): m["nome"] for m in db.indice_modulos()}
+    cob = (projeto.get("horas_cobradas") or "").strip()
+    bon = (projeto.get("horas_bonificadas") or "").strip()
+    for t in doc.tables:
+        h0 = (t.rows[0].cells[0].text or "").strip().lower() if t.rows else ""
+        # Tabela de horas: Cobradas | Bonificadas | Total
+        if "horas cobradas" in h0 and len(t.rows) >= 2 and len(t.columns) >= 3:
+            t.rows[1].cells[0].text = cob
+            t.rows[1].cells[1].text = bon
+            def _n(v):
+                m = _re.search(r"\d+(?:[.,]\d+)?", v or "")
+                return float(m.group(0).replace(",", ".")) if m else 0.0
+            tot = _n(cob) + _n(bon)
+            if tot:
+                t.rows[1].cells[2].text = ("%g" % tot)
+        # Tabela 'Módulos/Adicionais (A)': uma linha por módulo contratado
+        if "módulos/adicionais (a)" in h0 and sigs:
+            base = t.rows[2:] if len(t.rows) > 2 else []
+            for i, sig in enumerate(sigs):
+                row = base[i] if i < len(base) else t.add_row()
+                nome = nomes.get(sig.upper(), "")
+                row.cells[0].text = ("%s — %s" % (sig, nome)) if nome else sig
+                if len(row.cells) > 1:
+                    row.cells[1].text = "X"   # Necessidade: Sim
+    return True
+
+
 def _saida(slug, cliente, ext):
     nome = "%s_%s.%s" % (slug, C.slug(cliente or "cliente"), ext)
     os.makedirs(C.OUT, exist_ok=True)
@@ -267,12 +299,14 @@ def gerar(slug, projeto):
     if modelo["tipo"] == "docx":
         repl, paras = _GERADORES_DOCX.get(slug, lambda p: ([], []))(projeto)
         doc = PL.preencher_docx(base, repl, paras)
-        if slug == "levantamento":   # injeta as perguntas do Índice de Tópicos por módulo contratado
+        if slug == "levantamento":   # perguntas do Índice por módulo + tabelas (módulos/horas)
             _anexar_topicos_levantamento(doc, projeto.get("modulos", ""))
+            _preencher_levantamento_tabelas(doc, projeto)
         elif slug == "projeto":      # puxa as respostas do Levantamento (liga as fases)
             _anexar_respostas_projeto(doc, projeto.get("id"))
         elif slug == "termo":        # preenche a grade Resumo Geral com os módulos contratados
             _preencher_termo_grade(doc, projeto.get("modulos", ""))
+        PL.remover_marcadores_docx(doc)   # remove todos os marcadores <...> restantes
         doc.save(destino)
     else:  # xlsx (cronograma)
         repl = []

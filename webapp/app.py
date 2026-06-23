@@ -1260,9 +1260,15 @@ def projeto_levantamento(pid):
             s.commit()
         return redirect(url_for("projeto_levantamento", pid=pid, salvo=1))
     resp, total = db.levantamento_resumo(pid)
-    return render_template("levantamento.html", p=proj, pid=pid,
-                           respostas=db.levantamento_respostas(pid), resp=resp, total=total,
-                           salvo=request.args.get("salvo"))
+    grupos = []   # agrupa por módulo p/ a tela em abre/fecha (accordion)
+    for r in db.levantamento_respostas(pid):
+        if not grupos or grupos[-1]["sigla"] != r["modulo_sigla"]:
+            grupos.append({"sigla": r["modulo_sigla"], "nome": r["modulo"], "itens": [], "resp": 0})
+        grupos[-1]["itens"].append(r)
+        if (r["resposta"] or "").strip():
+            grupos[-1]["resp"] += 1
+    return render_template("levantamento.html", p=proj, pid=pid, grupos=grupos,
+                           resp=resp, total=total, salvo=request.args.get("salvo"))
 
 
 @app.route("/projetos/<int:pid>/anexar", methods=["POST"])
