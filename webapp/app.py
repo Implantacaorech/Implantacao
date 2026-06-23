@@ -1186,6 +1186,12 @@ def projeto_gerar(pid, tipo):
     if not _etapa_permite_gerar(tipo, proj.get("etapa")):
         return redirect(url_for("projeto_ficha", pid=pid,
             aviso="'%s' só pode ser gerado na etapa '%s' ou depois." % (db.DOC_LABELS.get(tipo, tipo), _ETAPA_DOC.get(tipo, "?"))))
+    if tipo == "projeto":                       # o Projeto é gerado A PARTIR do Levantamento realizado
+        db.levantamento_seed(pid, proj.get("modulos", ""))
+        resp, total = db.levantamento_resumo(pid)
+        if total > 0 and resp == 0:
+            return redirect(url_for("projeto_levantamento", pid=pid,
+                erro="O Projeto é gerado a partir do Levantamento — responda o Levantamento antes de gerar o Projeto."))
     path = None
     try:
         if tipo in _LAYOUT_SLUGS:           # gera pelo LAYOUT FIEL (substitui os geradores antigos)

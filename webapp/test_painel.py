@@ -594,6 +594,28 @@ def test_cronograma_xlsx_cabecalho_e_linhas(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_projeto_exige_levantamento_realizado(client):
+    """O Projeto só é gerado a partir de um Levantamento realizado (respostas preenchidas)."""
+    pid = _novo(client, cliente="Gate Lev LTDA", numero_projeto="G-1", cnpj="00.000.000/0001-00",
+                horas_cobradas="10", modulos="FAT", etapa="Projeto")
+    db.levantamento_seed(int(pid), "FAT")
+    client.post("/projetos/%s/gerar/projeto" % pid)          # sem responder -> bloqueia
+    with db.Session() as s:
+        assert s.query(db.Documento).filter_by(projeto_id=int(pid), tipo="projeto").count() == 0
+    rs = db.levantamento_respostas(int(pid))
+    client.post("/projetos/%s/levantamento" % pid, data={"resposta_%d" % rs[0]["id"]: "ok"})
+    client.post("/projetos/%s/gerar/projeto" % pid)          # com resposta -> gera
+    with db.Session() as s:
+        docs = s.query(db.Documento).filter_by(projeto_id=int(pid), tipo="projeto").all()
+        assert len(docs) == 1
+        path = docs[0].caminho
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_projeto_puxa_respostas_do_levantamento(client):
     """O Projeto gerado consome as respostas do Levantamento (liga as fases)."""
     import gerar_layout
@@ -713,13 +735,16 @@ def test_fluxo_e2e_continuidade(client):
     client.post("/projetos/%s/agendar" % pid, data={"data_levantamento": futuro})
     assert etapa() == "Levantamento"
 
-    # Levantamento: gera Mapeamento (fiel) e confirma avanço manual (do GCI)
+    # Levantamento: responde (base do Projeto), gera Mapeamento e confirma avanço
+    db.levantamento_seed(int(pid), "FAT, EST")
+    _rs = db.levantamento_respostas(int(pid))
+    client.post("/projetos/%s/levantamento" % pid, data={"resposta_%d" % _rs[0]["id"]: "ok"})
     client.post("/projetos/%s/gerar/levantamento" % pid)
     assert n_doc("levantamento") == 1
     client.post("/projetos/%s/avancar" % pid)
     assert etapa() == "Projeto"
 
-    # Projeto: gera Projeto (fiel) -> auto-avança p/ Designação (para por falta de consultor)
+    # Projeto: gerado A PARTIR do Levantamento realizado -> auto-avança p/ Designação
     client.post("/projetos/%s/gerar/projeto" % pid)
     assert n_doc("projeto") == 1
     assert etapa() == "Designação"
