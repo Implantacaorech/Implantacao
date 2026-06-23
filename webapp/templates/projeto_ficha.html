@@ -254,8 +254,8 @@
       <svg class="svgi" aria-hidden="true"><use href="#ic-clock"/></svg> Definir Data do Levantamento
     </a>
   {% elif cab.proxima.tipo in ['acao:consultores_designacao','acao:consultores'] %}
-    <a class="btn primario" href="{{ url_for('projeto_designar', pid=p.id) }}">
-      <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg> Designar Responsáveis
+    <a class="btn primario" href="{{ url_for('projeto_consultores', pid=p.id) }}">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg> Designar Consultores
     </a>
   {% endif %}
 </div>
@@ -506,28 +506,12 @@
 
       {# ===== FASE 1: LEVANTAMENTO ===== #}
       {% elif p.etapa == 'Levantamento' %}
-      <div class="acao-principal {{ 'ativa' if not designacoes }}">
+      <div class="acao-principal ativa">
         <div class="titulo">
-          <span class="passo-num {{ 'concluido' if designacoes else '' }}">1</span>
-          Designar GCI e Consultores
-          {% if designacoes %}<span style="color:var(--ok);font-size:.8rem;display:flex;align-items:center;gap:4px"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Designado</span>{% endif %}
-        </div>
-        <p class="descricao">Defina o GCI do Levantamento e os Consultores por módulo. O sistema gera o Mapeamento automaticamente ao designar o GCI.</p>
-        <div class="acoes-row">
-          {% if pode_designar %}
-          <a class="btn {{ '' if designacoes else 'primario' }}" href="{{ url_for('projeto_designar', pid=p.id) }}">
-            <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg>
-            {{ 'Rever designações' if designacoes else 'Designar agora' }}
-          </a>
-          {% endif %}
-        </div>
-      </div>
-      <div class="acao-principal">
-        <div class="titulo">
-          <span class="passo-num">2</span>
+          <span class="passo-num">1</span>
           Levantamento de processos (GCI)
         </div>
-        <p class="descricao">Responda as perguntas do Índice de Tópicos por módulo contratado direto no painel — essas respostas alimentam o Projeto. Você também pode gerar o modelo de Mapeamento (.docx).</p>
+        <p class="descricao">Responda as perguntas do Índice de Tópicos por módulo contratado direto no painel — essas respostas alimentam o Projeto. Você também pode gerar o modelo de Mapeamento (.docx). <em>O GCI e a data foram definidos no Agendamento; os Consultores serão designados na fase Designação.</em></p>
         <div class="acoes-row">
           <a class="btn primario" href="{{ url_for('projeto_levantamento', pid=p.id) }}">
             <svg class="svgi" aria-hidden="true"><use href="#ic-compass"/></svg> Responder levantamento
@@ -614,7 +598,7 @@
         {% endif %}
         <div class="acoes-row">
           {% if pode_designar %}
-          <a class="btn {{ '' if designacoes else 'primario' }}" href="{{ url_for('projeto_designar', pid=p.id) }}">
+          <a class="btn {{ '' if designacoes else 'primario' }}" href="{{ url_for('projeto_consultores', pid=p.id) }}">
             <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg>
             {{ 'Rever designações' if designacoes else 'Designar consultores' }}
           </a>

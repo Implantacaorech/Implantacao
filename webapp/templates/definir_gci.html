@@ -8,7 +8,7 @@
   </h1>
   <p class="sub">
     <strong>Etapa 1 de 2 — Agendamento.</strong>
-    Selecione o GCI responsável pelo Levantamento. O GCI será notificado por e-mail somente após a data do Levantamento ser confirmada.
+    Selecione um ou mais GCIs responsáveis pelo Levantamento. Os GCIs serão notificados por e-mail somente após a data do Levantamento ser confirmada.
   </p>
 
   {# Indicador de progresso das sub-etapas #}
@@ -29,15 +29,20 @@
   </div>
   {% endif %}
 
+  {% set gci_atual = (p.gci or '').split(',') | map('trim') | list %}
   <form method="post" class="painel">
-    <label class="campo">
-      <span>GCI responsável *</span>
-      <select name="gci" required>
-        <option value="">— Selecione o GCI —</option>
-        {% for u in gcis %}<option value="{{ u.nome }}" {{ 'selected' if p.gci == u.nome }}>{{ u.nome }}</option>{% endfor %}
-      </select>
+    <div class="campo">
+      <span>GCI(s) responsável(eis) * <small style="color:var(--muted);font-weight:400">— pode marcar mais de um</small></span>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+        {% for u in gcis %}
+        <label style="display:flex;align-items:center;gap:8px;font-weight:500;cursor:pointer;padding:4px 0">
+          <input type="checkbox" name="gci" value="{{ u.nome }}" {{ 'checked' if u.nome in gci_atual }}>
+          {{ u.nome }}
+        </label>
+        {% endfor %}
+      </div>
       {% if not gcis %}<small>Nenhum usuário com perfil GCI cadastrado. <a href="{{ url_for('usuarios') }}">Cadastrar</a>.</small>{% endif %}
-    </label>
+    </div>
     <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
       <button class="btn primario" type="submit">
         <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvar GCI e continuar

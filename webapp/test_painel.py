@@ -179,6 +179,19 @@ def test_agendamento_sem_gci_nao_acessa_data(client):
         sess.clear()
 
 
+def test_definir_multiplos_gci(client):
+    """O GCI pode ter mais de um responsável no levantamento (checkboxes)."""
+    _login_como(client, "Administrativo")
+    pid = int(_novo(client, cliente="Multi GCI Co", modulos="FAT"))
+    r = client.post("/projetos/%s/definir_gci" % pid, data={"gci": ["GCI Um", "GCI Dois"]})
+    assert r.status_code == 302
+    with db.Session() as s:
+        assert s.get(db.Projeto, pid).gci == "GCI Um, GCI Dois"
+    client.post("/projetos/%s/excluir" % pid)
+    with client.session_transaction() as sess:
+        sess.clear()
+
+
 def test_designacao_consultores_avanca(client):
     _login_como(client, "GCI")
     pid = int(_novo(client, cliente="Consult Co", etapa="Designação", modulos="FAT, CTB"))
@@ -711,8 +724,8 @@ def test_fluxo_e2e_continuidade(client):
     assert n_doc("projeto") == 1
     assert etapa() == "Designação"
 
-    # Designação: designa consultores por módulo -> avança p/ Cronograma e Check-list
-    client.post("/projetos/%s/designar" % pid, data={"gci": "Beto", "mod_0": "Ana", "mod_1": "Ana"})
+    # Designação: designa SÓ consultores por módulo (GCI já foi no Agendamento)
+    client.post("/projetos/%s/consultores" % pid, data={"mod_0": "Ana", "mod_1": "Ana"})
     client.post("/projetos/%s/avancar" % pid)
     assert etapa() == "Cronograma e Check-list"
 

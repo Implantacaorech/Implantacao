@@ -1381,14 +1381,15 @@ def projeto_definir_gci(pid):
         proj = db.to_dict(p)
     gcis = db.usuarios_por_perfil("GCI")
     if request.method == "POST":
-        gci = (request.form.get("gci") or "").strip()
-        if not gci:
-            return redirect(url_for("projeto_definir_gci", pid=pid, erro="Selecione um GCI responsável."))
+        # Pode haver mais de um GCI no levantamento de um cliente
+        gci_sel = [g.strip() for g in request.form.getlist("gci") if g.strip()]
+        if not gci_sel:
+            return redirect(url_for("projeto_definir_gci", pid=pid, erro="Selecione ao menos um GCI responsável."))
+        gci = ", ".join(dict.fromkeys(gci_sel))   # remove duplicados, preserva ordem
         with db.Session() as s:
             p = s.get(db.Projeto, pid)
             p.gci = gci
-            db.registrar_evento(s, pid, "etapa",
-                "GCI definido: %s" % gci, _autor())
+            db.registrar_evento(s, pid, "etapa", "GCI(s) definido(s): %s" % gci, _autor())
             s.commit()
         # Redireciona para a etapa 2 (definir data) após salvar o GCI
         return redirect(url_for("projeto_agendar", pid=pid, salvo=1))
@@ -1427,12 +1428,13 @@ def projeto_agendar(pid):
             db.registrar_evento(s, pid, "etapa",
                 "Data do Levantamento definida: %s (GCI: %s)" % (_data_br(data_lev), gci_nome or "—"), _autor())
             s.commit()
-        # Notifica o GCI apenas após ambos (GCI + data) estarem confirmados
-        em = db.email_do_usuario(gci_nome)
-        if em:
-            _notificar(pid, [em], "Levantamento agendado — %s" % cliente,
+        # Notifica TODOS os GCIs (pode haver mais de um) após GCI + data confirmados
+        gci_nomes = [g.strip() for g in (gci_nome or "").split(",") if g.strip()]
+        ems = [e for e in (db.email_do_usuario(g) for g in gci_nomes) if e]
+        if ems:
+            _notificar(pid, ems, "Levantamento agendado — %s" % cliente,
                        "O Levantamento do projeto %s foi agendado para %s.\n"
-                       "Você é o GCI responsável. Acesse o Painel de Implantação para conduzir.\n\n"
+                       "Você é GCI responsável. Acesse o Painel de Implantação para conduzir.\n\n"
                        "— Painel de Implantação" % (cliente, _data_br(data_lev)))
         _auto_avancar(pid)   # com GCI + data definidos, avança Agendamento → Levantamento
         return redirect(url_for("projeto_ficha", pid=pid, salvo=1))

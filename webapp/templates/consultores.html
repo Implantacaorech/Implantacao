@@ -1,27 +1,70 @@
 {% extends "base.html" %}
 {% block titulo %}Designar Consultores — {{ p.cliente }}{% endblock %}
-{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('projetos') }}">Carteira</a> › <a href="{{ url_for('projeto_ficha', pid=pid) }}">{{ p.cliente }}</a> › Designar Consultores</div>{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <a href="{{ url_for('projetos') }}">Carteira</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <a href="{{ url_for('projeto_ficha', pid=pid) }}">{{ p.cliente }}</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Designar Consultores</div>{% endblock %}
 {% block conteudo %}
-  <h1>👥 Designar Consultores — {{ p.cliente }}</h1>
-  <p class="sub">Defina os consultores por módulo. Cada um recebe um e-mail avisando que é responsável pela implantação e que o projeto já está pronto no Painel.</p>
-  {% if erro %}<div class="resultado erro" style="padding:8px 14px">⚠️ {{ erro }}</div>{% endif %}
-  <form method="post" class="painel">
+  <h1 style="display:flex;align-items:center;gap:8px">
+    <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-users"/></svg>
+    Designar Consultores — {{ p.cliente }}
+  </h1>
+  <p class="sub">Atribua os Consultores aos módulos. Para <strong>um único técnico em tudo</strong>, use o atalho abaixo;
+    para <strong>dividir</strong>, ajuste módulo a módulo. Cada consultor recebe e-mail com os módulos sob sua responsabilidade.</p>
+  {% if erro %}<div class="resultado erro" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro }}</div>{% endif %}
+  {% if not consultores %}<p class="dica">Nenhum usuário com perfil Consultor cadastrado. <a href="{{ url_for('usuarios') }}">Cadastrar</a>.</p>{% endif %}
+
+  <form method="post" id="form-consult">
     {% if mods %}
+    {# Atalho rápido: um técnico para todos os módulos #}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;padding:10px 12px;background:var(--surface-2,#f3f6fb);border:1px solid var(--line);border-radius:8px;margin-bottom:12px">
+      <label class="campo" style="min-width:230px;margin:0">
+        <span>Atribuir todos os módulos a</span>
+        <select id="todos-sel">
+          <option value="">— escolher técnico —</option>
+          {% for u in consultores %}<option>{{ u.nome }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="btn primario" type="button" onclick="aplicarTodos()">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Aplicar a todos
+      </button>
+      <button class="btn" type="button" onclick="limparTodos()">Limpar</button>
+    </div>
+
+    <div style="overflow-x:auto">
     <table class="form-tab">
       <thead><tr><th>Módulo</th><th>Consultor responsável</th></tr></thead>
       <tbody>
       {% for m in mods %}
-        <tr><td>{{ m }}</td>
-          <td><select name="mod_{{ loop.index0 }}">
+        <tr><td><strong>{{ m }}</strong></td>
+          <td><select name="mod_{{ loop.index0 }}" class="sel-mod">
             <option value="">— não designado —</option>
             {% for u in consultores %}<option {{ 'selected' if atuais.get(m)==u.nome }}>{{ u.nome }}</option>{% endfor %}
           </select></td></tr>
       {% endfor %}
       </tbody>
     </table>
+    </div>
     {% else %}<p class="dica">O projeto não tem módulos definidos — preencha o campo "Módulos" na ficha.</p>{% endif %}
-    {% if not consultores %}<p class="dica">Nenhum usuário com perfil Consultor cadastrado. <a href="{{ url_for('usuarios') }}">Cadastrar</a>.</p>{% endif %}
-    <button class="btn primario" type="submit" style="margin-top:10px">💾 Designar e avisar os consultores</button>
-    <a class="btn" href="{{ url_for('projeto_ficha', pid=pid) }}">Cancelar</a>
+
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn primario" type="submit">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Designar e avisar os consultores
+      </button>
+      <a class="btn" href="{{ url_for('projeto_ficha', pid=pid) }}">Cancelar</a>
+    </div>
   </form>
+
+  <script>
+    function aplicarTodos(){
+      var v = document.getElementById('todos-sel').value;
+      document.querySelectorAll('#form-consult .sel-mod').forEach(function(s){ s.value = v; });
+    }
+    function limparTodos(){
+      document.querySelectorAll('#form-consult .sel-mod').forEach(function(s){ s.value = ''; });
+    }
+  </script>
 {% endblock %}

@@ -93,7 +93,7 @@ ACAO_ENTRADA = {
     # Para avançar para Levantamento, ambos GCI e data_levantamento são obrigatórios.
     # A sequência é validada na UI: o botão de data só aparece após GCI salvo.
     "Levantamento": ("gci_e_data_levantamento", "Definir GCI e Data do Levantamento"),
-    "Designação": ("consultores_designacao", "Designar GCI e Consultores por Módulo"),
+    "Designação": ("consultores_designacao", "Designar Consultores por Módulo"),
     "Cronograma e Check-list": ("consultores", "Designar os Consultores"),
 }
 
