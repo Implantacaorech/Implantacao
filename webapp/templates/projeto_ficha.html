@@ -300,15 +300,15 @@
 {% endif %}
 {% endif %}{# fim if cab #}
 
-{# ===== ABAS DE NAVEGAÇÃO ===== #}
-{% set ini = 't-execucao' if erro else 't-resumo' %}
+{# ===== ABAS DE NAVEGAÇÃO — o "Andamento" é o caminho único e padrão ===== #}
+{% set ini = 't-execucao' %}
 <div class="abas" style="margin-top:4px">
+  <button class="aba {{ 'ativa' if ini=='t-execucao' }}" data-t="t-execucao" type="button" onclick="aba('t-execucao')">
+    <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Andamento
+    {% if cab is defined and cab and cab.proxima %}<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn);margin-left:2px;vertical-align:middle"></span>{% endif %}
+  </button>
   <button class="aba {{ 'ativa' if ini=='t-resumo' }}" data-t="t-resumo" type="button" onclick="aba('t-resumo')">
     <svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg> Resumo
-  </button>
-  <button class="aba {{ 'ativa' if ini=='t-execucao' }}" data-t="t-execucao" type="button" onclick="aba('t-execucao')">
-    <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Execução
-    {% if cab is defined and cab and cab.proxima %}<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn);margin-left:2px;vertical-align:middle"></span>{% endif %}
   </button>
   <button class="aba" data-t="t-dados" type="button" onclick="aba('t-dados')">
     <svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Dados
@@ -364,44 +364,12 @@
     {% endif %}
     {% if p.observacoes %}<div style="margin-top:10px;padding:10px 14px;background:var(--warn-bg);border-radius:var(--r-sm);border-left:3px solid var(--warn);font-size:.88rem"><strong>Obs.:</strong> {{ p.observacoes }}</div>{% endif %}
     <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--line)">
+      <button class="btn primario" type="button" onclick="aba('t-execucao')">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Ir para o Andamento
+      </button>
       <button class="btn" type="button" onclick="aba('t-dados')">
         <svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Editar dados
       </button>
-      <button class="btn" type="button" onclick="aba('t-execucao')">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Área de execução
-      </button>
-      <a class="btn" href="{{ url_for('projeto_cronograma', pid=p.id) }}">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-clock"/></svg> Cronograma
-      </a>
-      <a class="btn" href="{{ url_for('projeto_checklist', pid=p.id) }}">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Check-list
-      </a>
-      {% if pode_designar %}
-      <a class="btn" href="{{ url_for('projeto_designar', pid=p.id) }}">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg> Designar
-      </a>
-      {% endif %}
-    </div>
-  </div>
-
-  {# ---- Geração pelos layouts FIÉIS cadastrados (Modelos de Documentos) ---- #}
-  <div class="painel" style="margin-top:16px">
-    <h3 style="color:var(--navy);margin-top:0;display:flex;align-items:center;gap:7px">
-      <svg class="svgi svgi-lg" aria-hidden="true"><use href="#ic-file"/></svg> Documentos oficiais (layout fiel)
-    </h3>
-    <p class="dica" style="margin-top:0">Gera o documento da fase a partir do <strong>layout vigente</strong> do
-      cadastro de modelos, preenchendo automaticamente os campos do projeto e mantendo a estrutura original.</p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      {% set _docs_layout = [('levantamento','Mapeamento','#ic-compass'),('projeto','Projeto de Implantação','#ic-file'),('cronograma','Cronograma','#ic-clock'),('termo','Termo de Encerramento','#ic-check-circle')] %}
-      {% for slug, rotulo, ico in _docs_layout %}
-        {% if pode_gerar(slug) %}
-        <form method="post" action="{{ url_for('projeto_gerar_layout', pid=p.id, slug=slug) }}">
-          <button class="btn" type="submit">
-            <svg class="svgi" aria-hidden="true"><use href="{{ ico }}"/></svg> {{ rotulo }}
-          </button>
-        </form>
-        {% endif %}
-      {% endfor %}
     </div>
   </div>
 

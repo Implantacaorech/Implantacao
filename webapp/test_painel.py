@@ -466,6 +466,16 @@ def test_gerar_layout_slug_invalido(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_ficha_caminho_unico_andamento(client):
+    """A ficha abre no 'Andamento' (caminho único) e não tem mais o painel paralelo de docs."""
+    pid = _novo(client, cliente="Caminho LTDA", modulos="FAT")
+    h = client.get("/projetos/%s" % pid).get_data(as_text=True)
+    assert "Andamento" in h                                 # aba do fluxo
+    assert "Documentos oficiais (layout fiel)" not in h      # painel paralelo removido
+    assert 'id="t-execucao" class="painel-aba ativa' in h    # Andamento é a aba ativa por padrão
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_home_fila_proximas_acoes(client):
     """A Home lista 'Minhas próximas ações' com link direto para a ação certa."""
     import datetime
