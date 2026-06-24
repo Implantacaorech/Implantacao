@@ -1077,7 +1077,7 @@ def projeto_excluir(pid):
         p = s.get(db.Projeto, pid)
         if p:
             for M in (db.Documento, db.Evento, db.Designacao, db.CronogramaItem,
-                      db.ChecklistItem, db.Modificacao, db.LevantamentoResposta):
+                      db.ChecklistItem, db.Modificacao, db.LevantamentoResposta, db.DocConteudo):
                 s.query(M).filter_by(projeto_id=pid).delete()
             s.delete(p)
             s.commit()
@@ -1493,6 +1493,33 @@ def projeto_consultores(pid):
         return redirect(url_for("projeto_ficha", pid=pid, salvo=1))
     return render_template("consultores.html", p=proj, pid=pid, mods=mods,
                            consultores=consultores, atuais=atuais, erro=request.args.get("erro"))
+
+
+@app.route("/projetos/<int:pid>/editar/<doc>", methods=["GET", "POST"])
+def projeto_doc_editar(pid, doc):
+    """Tela de edição ESTRUTURADA (espelha as seções do layout do documento). Grava em
+    DocConteudo; a geração fiel lê esses valores para preencher o .docx."""
+    import doc_edit
+    if doc not in doc_edit.SPEC:
+        abort(404)
+    if _perfil() and _perfil() not in ("ADM", "Coordenador", "Administrativo", "GCI"):
+        abort(403)
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        if not p:
+            abort(404)
+        proj = db.to_dict(p)
+    if request.method == "POST":
+        db.doc_conteudo_salvar(pid, doc, doc_edit.campos_editaveis(doc), request.form)
+        with db.Session() as s:
+            db.registrar_evento(s, pid, "nota",
+                                "Editou os dados estruturados (%s)." % doc, _autor())
+            s.commit()
+        return redirect(url_for("projeto_doc_editar", pid=pid, doc=doc, salvo=1))
+    return render_template("doc_editar.html", p=proj, pid=pid, doc=doc,
+                           spec=doc_edit.SPEC[doc],
+                           vals=doc_edit.valores(doc, proj, db.doc_conteudo(pid, doc)),
+                           salvo=request.args.get("salvo"))
 
 
 @app.route("/fluxo")

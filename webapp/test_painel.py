@@ -552,6 +552,61 @@ def test_levantamento_tabelas_e_sem_marcadores(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_doc_editar_levantamento_alimenta(client):
+    """A tela de edição estruturada do Levantamento persiste e a geração consome."""
+    import gerar_layout
+    pid = _novo(client, cliente="Editar LTDA", numero_projeto="ED-1", cnpj="00.000.000/0001-00",
+                modulos="FAT", horas_cobradas="10")
+    r = client.get("/projetos/%s/editar/levantamento" % pid)
+    assert r.status_code == 200 and "Identificação da empresa" in r.get_data(as_text=True)
+    client.post("/projetos/%s/editar/levantamento" % pid,
+                data={"ramo": "Metalurgia", "produto": "Software ERP",
+                      "software_atual": "Sistema X", "filiais": "Matriz + 2 filiais",
+                      "objetivos": "Modernizar", "qtd_usuarios": "30 usuários"})
+    assert db.doc_conteudo(int(pid), "levantamento").get("produto") == "Software ERP"
+    with db.Session() as s:
+        proj = db.to_dict(s.get(db.Projeto, int(pid)))
+    path = gerar_layout.gerar("levantamento", proj)
+    from docx import Document
+    txt = "\n".join(p.text for p in Document(path).paragraphs)
+    assert "Software ERP" in txt and "Matriz + 2 filiais" in txt   # consumido no .docx
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_doc_editar_projeto_alimenta(client):
+    """A tela de edição estruturada do Projeto persiste e a geração consome."""
+    import gerar_layout
+    pid = _novo(client, cliente="Edit Proj LTDA", numero_projeto="EP-1",
+                cnpj="11.111.111/0001-11", modulos="FAT", horas_cobradas="10")
+    client.post("/projetos/%s/editar/projeto" % pid,
+                data={"cnpj": "11.111.111/0001-11", "objetivos": "OBJETIVO EDITADO XYZ",
+                      "redator": "Maria Redatora", "gerente_contas": "Beto GCI"})
+    with db.Session() as s:
+        proj = db.to_dict(s.get(db.Projeto, int(pid)))
+    path = gerar_layout.gerar("projeto", proj)
+    from docx import Document
+    txt = "\n".join(p.text for p in Document(path).paragraphs)
+    assert "OBJETIVO EDITADO XYZ" in txt and "Maria Redatora" in txt
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_doc_editar_bloqueio_perfil(client):
+    pid = _novo(client, cliente="Bloq Edit LTDA", modulos="FAT")
+    _login_como(client, "Consultor")
+    assert client.get("/projetos/%s/editar/levantamento" % pid).status_code == 403
+    with client.session_transaction() as sess:
+        sess.clear()
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_termo_grade_com_modulos(client):
     """O Termo gerado preenche a grade Resumo Geral com os módulos contratados."""
     import gerar_layout

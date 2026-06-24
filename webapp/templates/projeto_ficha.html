@@ -516,6 +516,9 @@
           <a class="btn primario" href="{{ url_for('projeto_levantamento', pid=p.id) }}">
             <svg class="svgi" aria-hidden="true"><use href="#ic-compass"/></svg> Responder levantamento
           </a>
+          <a class="btn" href="{{ url_for('projeto_doc_editar', pid=p.id, doc='levantamento') }}">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Editar dados do Levantamento
+          </a>
           {% if pode_gerar('levantamento') %}
           <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='levantamento') }}">
             <button class="btn" type="submit">
@@ -550,6 +553,11 @@
         {% if erro %}<div class="resultado erro" style="padding:8px 14px;margin:8px 0;display:flex;align-items:center;gap:8px">
           <svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro }}
         </div>{% endif %}
+        <div class="acoes-row" style="margin-top:8px">
+          <a class="btn" href="{{ url_for('projeto_doc_editar', pid=p.id, doc='projeto') }}">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Editar dados do Projeto
+          </a>
+        </div>
         {% if pode_gerar('projeto') %}
         <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='projeto') }}">
           <button class="btn primario" type="submit" style="margin-top:8px">

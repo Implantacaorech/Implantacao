@@ -54,16 +54,24 @@ def _repl_termo(p):
 
 
 def _repl_projeto(p):
+    val = _conteudo(p, "projeto")
     cli = (p.get("cliente") or "").strip()
     repl, paras = [], []
     if cli:
         # ocorrências no corpo (literais ASCII) + linha-cabeçalho via prefixo
         repl += [("<Nome do Cliente >", cli), ("<Nome do Cliente>", cli)]
         paras.append(("Nome do Cliente:", "Nome do Cliente: %s" % cli))
-    if (p.get("cnpj") or "").strip():
-        paras.append(("CNPJ", "CNPJ: %s" % p["cnpj"].strip()))
-    if (p.get("observacoes") or "").strip():
-        repl.append(("<(preencher)>", p["observacoes"].strip()))
+    if val("cnpj", "cnpj"):
+        paras.append(("CNPJ", "CNPJ: %s" % val("cnpj", "cnpj")))
+    if val("objetivos", "observacoes"):
+        repl.append(("<(preencher)>", val("objetivos", "observacoes")))
+    # Equipes (telas de edição estruturada)
+    if val("gerente_contas", "gci"):
+        paras.append(("Gerente de Contas do Projeto", "Gerente de Contas do Projeto: %s" % val("gerente_contas", "gci")))
+    if val("redator"):
+        paras.append(("Redator do Projeto", "Redator do Projeto: %s" % val("redator")))
+    if val("consultor", "consultor"):
+        paras.append(("Consultor/Implantador", "Consultor/Implantador: %s" % val("consultor", "consultor")))
     hb, hc = _num(p.get("horas_bonificadas")), _num(p.get("horas_cobradas"))
     if hb:
         repl.append(("<XX horas bonificadas>", "%s horas bonificadas" % hb))
@@ -73,7 +81,17 @@ def _repl_projeto(p):
     return repl, paras
 
 
+def _conteudo(p, doc):
+    """Valores estruturados (DocConteudo) do documento; val(campo, origem_projeto)."""
+    cont = db.doc_conteudo(p.get("id"), doc) if p.get("id") else {}
+
+    def val(campo, orig=None):
+        return (cont.get(campo) or (p.get(orig) if orig else "") or "").strip()
+    return val
+
+
 def _repl_levantamento(p):
+    val = _conteudo(p, "levantamento")
     cli = (p.get("cliente") or "").strip()
     repl, paras = [], []
     if cli:
@@ -85,8 +103,19 @@ def _repl_levantamento(p):
     resp = " / ".join(x for x in (p.get("gci"), p.get("consultor")) if x)
     if resp:
         repl.append(("<xxxxxxxxxxxxx>", resp))
-    if (p.get("ramo") or "").strip():
-        paras.append(("Ramo Atividade", "Ramo Atividade: %s" % p["ramo"].strip()))
+    # Identificação da empresa (telas de edição estruturada)
+    if val("ramo", "ramo"):
+        paras.append(("Ramo Atividade", "Ramo Atividade: %s" % val("ramo", "ramo")))
+    if val("produto"):
+        paras.append(("Produto:", "Produto: %s" % val("produto")))
+    if val("software_atual"):
+        paras.append(("Fornecedor Atual Software", "Fornecedor Atual Software: %s" % val("software_atual")))
+    if val("filiais"):
+        repl.append(("<Localização / Filiais:>", "Localização / Filiais: %s" % val("filiais")))
+    if val("objetivos", "observacoes"):
+        paras.append(("Observações / Objetivos", "Observações / Objetivos: %s" % val("objetivos", "observacoes")))
+    if val("qtd_usuarios"):
+        repl.append(("<Quantidade usuários e identificação: >", "Quantidade usuários e identificação: %s" % val("qtd_usuarios")))
     return repl, paras
 
 

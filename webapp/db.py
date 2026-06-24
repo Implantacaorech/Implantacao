@@ -1376,6 +1376,39 @@ def levantamento_resumo(projeto_id):
     return resp, total
 
 
+# --- Conteúdo estruturado dos documentos (telas de edição que espelham os layouts) ---
+class DocConteudo(Base):
+    """Campo estruturado de um documento (levantamento/projeto) por projeto. As telas de
+    edição (espelho do layout) gravam aqui; a geração lê para preencher o .docx."""
+    __tablename__ = "doc_conteudo"
+    id = Column(Integer, primary_key=True)
+    projeto_id = Column(Integer, index=True)
+    doc = Column(String(30), default="")     # levantamento | projeto
+    campo = Column(String(60), default="")
+    valor = Column(Text, default="")
+
+
+def doc_conteudo(projeto_id, doc):
+    """Devolve {campo: valor} do documento `doc` para o projeto."""
+    with Session() as s:
+        return {r.campo: (r.valor or "") for r in s.query(DocConteudo)
+                .filter_by(projeto_id=projeto_id, doc=doc).all()}
+
+
+def doc_conteudo_salvar(projeto_id, doc, campos, form):
+    """Salva os campos (lista de chaves) do documento a partir de um form dict."""
+    atual = doc_conteudo(projeto_id, doc)
+    with Session() as s:
+        for c in campos:
+            v = (form.get(c) or "").strip()
+            if c in atual:
+                obj = s.query(DocConteudo).filter_by(projeto_id=projeto_id, doc=doc, campo=c).first()
+                obj.valor = v
+            else:
+                s.add(DocConteudo(projeto_id=projeto_id, doc=doc, campo=c, valor=v))
+        s.commit()
+
+
 def _auto_migrar():
     """Migração leve aditiva: cria colunas novas que faltarem (SQLite e Postgres).
     Cobre a evolução de schema entre versões; só adiciona, nunca remove dados."""
