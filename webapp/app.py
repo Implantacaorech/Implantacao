@@ -1266,13 +1266,18 @@ def projeto_levantamento(pid):
             s.commit()
         return redirect(url_for("projeto_levantamento", pid=pid, salvo=1))
     resp, total = db.levantamento_resumo(pid)
-    grupos = []   # agrupa por módulo p/ a tela em abre/fecha (accordion)
+    import gerar_layout
+    grupos, por_area = [], {}   # agrupa por BLOCO DE ÁREA (como no documento), em abre/fecha
     for r in db.levantamento_respostas(pid):
-        if not grupos or grupos[-1]["sigla"] != r["modulo_sigla"]:
-            grupos.append({"sigla": r["modulo_sigla"], "nome": r["modulo"], "itens": [], "resp": 0})
-        grupos[-1]["itens"].append(r)
+        area = gerar_layout.area_do_modulo(r["modulo_sigla"]) or (r["modulo"] or r["modulo_sigla"] or "Outros")
+        g = por_area.get(area)
+        if g is None:
+            g = {"area": area, "itens": [], "resp": 0}
+            por_area[area] = g
+            grupos.append(g)
+        g["itens"].append(r)
         if (r["resposta"] or "").strip():
-            grupos[-1]["resp"] += 1
+            g["resp"] += 1
     return render_template("levantamento.html", p=proj, pid=pid, grupos=grupos,
                            resp=resp, total=total, salvo=request.args.get("salvo"))
 

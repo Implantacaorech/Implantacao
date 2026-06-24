@@ -22,6 +22,8 @@ SPEC = {
                 ("objetivos", "Observações / Objetivos", "textarea", "observacoes"),
                 ("qtd_usuarios", "Quantidade de usuários e identificação", "textarea", ""),
             ]},
+            {"titulo": "Usuários-chave", "tipo": "tabela", "prefixo": "usu", "linhas": 5,
+             "colunas": [("nome", "Nome"), ("email", "E-mail"), ("atrib", "Atribuições")]},
             {"titulo": "Módulos e horas (do fechamento)", "campos": [
                 ("modulos", "Módulos contratados", "ro", "modulos"),
                 ("horas_cobradas", "Horas cobradas", "ro", "horas_cobradas"),

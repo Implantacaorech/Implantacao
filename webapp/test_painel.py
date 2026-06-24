@@ -643,6 +643,33 @@ def test_doc_editar_projeto_tabelas(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_doc_editar_levantamento_usuarios(client):
+    """A tabela de Usuários-chave (edição) aparece no Levantamento gerado."""
+    import gerar_layout
+    pid = _novo(client, cliente="LevUsu LTDA", numero_projeto="LU-1", modulos="FAT")
+    client.post("/projetos/%s/editar/levantamento" % pid, data={
+        "usu_0_nome": "Ana Chave", "usu_0_email": "ana@x.com", "usu_0_atrib": "Vendas"})
+    with db.Session() as s:
+        proj = db.to_dict(s.get(db.Projeto, int(pid)))
+    path = gerar_layout.gerar("levantamento", proj)
+    from docx import Document
+    blob = " | ".join(c.text for t in Document(path).tables for row in t.rows for c in row.cells)
+    assert "Ana Chave" in blob and "ana@x.com" in blob
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_levantamento_tela_por_area(client):
+    """A tela de perguntas do Levantamento agrupa por bloco de ÁREA (como no documento)."""
+    pid = _novo(client, cliente="Area LTDA", modulos="FAT")
+    h = client.get("/projetos/%s/levantamento" % pid).get_data(as_text=True)
+    assert "Vendas e Faturamento" in h        # FAT -> área Vendas e Faturamento
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_doc_editar_bloqueio_perfil(client):
     pid = _novo(client, cliente="Bloq Edit LTDA", modulos="FAT")
     _login_como(client, "Consultor")

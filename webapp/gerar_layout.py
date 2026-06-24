@@ -292,6 +292,24 @@ _SIGLA_BLOCOS = {
 }
 _BLOCOS_FIXOS = ["cliente/fornecedor", "produto"]   # blocos fundacionais, sempre mantidos
 
+# Nome de exibição da área (bloco) p/ agrupar a tela do Levantamento.
+_BLOCO_DISPLAY = {
+    "vendas e faturamento": "Vendas e Faturamento", "produção": "Produção",
+    "compras/estoque": "Compras / Estoque", "gestão financeira": "Gestão Financeira",
+    "gestão fiscal": "Gestão Fiscal, Contábil e Patrimonial", "folha de pagamento": "Folha de Pagamento",
+    "portal de funcion": "Portais", "portal de vagas": "Portais",
+    "recrutamento": "RHU", "treinamen": "RHU", "saúde ocupacional": "RHU",
+    "segurança do trabalho": "RHU", "avaliação": "RHU", "cargos e sal": "RHU",
+}
+
+
+def area_do_modulo(sigla):
+    """Nome de exibição da área (bloco) de um módulo (ou '' se não tiver bloco próprio)."""
+    for kw in _SIGLA_BLOCOS.get((sigla or "").upper(), []):
+        if kw in _BLOCO_DISPLAY:
+            return _BLOCO_DISPLAY[kw]
+    return ""
+
 
 def _inserir_textos_depois(anchor_p, textos):
     """Insere parágrafos de texto simples logo após `anchor_p` (preservando ordem)."""
@@ -496,6 +514,28 @@ def _preencher_projeto_tabelas(doc, projeto):
                         row.cells[j].text = v
 
 
+def _preencher_levantamento_usuarios(doc, projeto):
+    """Preenche a tabela de Usuários-chave (Nome | E-mail | Atribuições) do Levantamento."""
+    cont = db.doc_conteudo(projeto.get("id"), "levantamento") if projeto.get("id") else {}
+    if not cont:
+        return
+    for t in doc.tables:
+        hdr = [(c.text or "").strip().lower() for c in t.rows[0].cells] if t.rows else []
+        if hdr and hdr[0] == "nome" and any(("atribuiç" in h or "atribuic" in h) for h in hdr):
+            base = t.rows[1:]
+            usuarios = []
+            for i in range(5):
+                nome = (cont.get("usu_%d_nome" % i) or "").strip()
+                if nome:
+                    usuarios.append([nome, cont.get("usu_%d_email" % i, ""), cont.get("usu_%d_atrib" % i, "")])
+            for idx, u in enumerate(usuarios):
+                row = base[idx] if idx < len(base) else t.add_row()
+                for j, v in enumerate(u):
+                    if j < len(row.cells):
+                        row.cells[j].text = v
+            break
+
+
 def _saida(slug, cliente, ext):
     nome = "%s_%s.%s" % (slug, C.slug(cliente or "cliente"), ext)
     os.makedirs(C.OUT, exist_ok=True)
@@ -515,9 +555,10 @@ def gerar(slug, projeto):
     if modelo["tipo"] == "docx":
         repl, paras = _GERADORES_DOCX.get(slug, lambda p: ([], []))(projeto)
         doc = PL.preencher_docx(base, repl, paras)
-        if slug == "levantamento":   # mantém só os blocos contratados + injeta perguntas + tabelas
+        if slug == "levantamento":   # blocos contratados + perguntas + tabelas (módulos/horas/usuários)
             _montar_blocos_levantamento(doc, projeto)
             _preencher_levantamento_tabelas(doc, projeto)
+            _preencher_levantamento_usuarios(doc, projeto)
         elif slug == "projeto":      # detalhamento por área + tabelas (usuários/cronograma) + respostas
             _preencher_detalhamento_projeto(doc, projeto)
             _preencher_projeto_tabelas(doc, projeto)

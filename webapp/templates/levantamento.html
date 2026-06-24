@@ -37,15 +37,19 @@
     <details class="lev-mod">
       <summary>
         <svg class="svgi svgi-md" style="color:var(--brand)" aria-hidden="true"><use href="#ic-layers"/></svg>
-        <span class="lev-mod-nome">{{ g.sigla }} — {{ g.nome }}</span>
+        <span class="lev-mod-nome">{{ g.area }}</span>
         <span class="lev-mod-cont {{ 'ok' if g.resp == g.itens|length and g.itens }}">{{ g.resp }}/{{ g.itens|length }}</span>
       </summary>
       <div class="lev-body">
-        {% set ns = namespace(adic=None) %}
+        {% set ns = namespace(adic=None, mod=None) %}
         {% for r in g.itens %}
+          {% if r.modulo_sigla != ns.mod %}
+            {% set ns.mod = r.modulo_sigla %}{% set ns.adic = None %}
+            <div style="font-weight:700;color:var(--brand);margin:10px 0 2px">{{ r.modulo_sigla }} — {{ r.modulo }}</div>
+          {% endif %}
           {% if r.adicional and r.adicional != ns.adic %}
             {% set ns.adic = r.adicional %}
-            <div class="dica" style="font-weight:700;color:var(--muted);margin:10px 0 2px">{{ r.adicional }}</div>
+            <div class="dica" style="font-weight:700;color:var(--muted);margin:8px 0 2px">{{ r.adicional }}</div>
           {% endif %}
           <label class="campo" style="margin-bottom:8px">
             <span>{{ r.topico }}</span>
