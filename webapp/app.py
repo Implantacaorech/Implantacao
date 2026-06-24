@@ -1510,14 +1510,14 @@ def projeto_doc_editar(pid, doc):
             abort(404)
         proj = db.to_dict(p)
     if request.method == "POST":
-        db.doc_conteudo_salvar(pid, doc, doc_edit.campos_editaveis(doc), request.form)
+        db.doc_conteudo_salvar(pid, doc, doc_edit.campos_editaveis(doc, proj), request.form)
         with db.Session() as s:
             db.registrar_evento(s, pid, "nota",
                                 "Editou os dados estruturados (%s)." % doc, _autor())
             s.commit()
         return redirect(url_for("projeto_doc_editar", pid=pid, doc=doc, salvo=1))
-    return render_template("doc_editar.html", p=proj, pid=pid, doc=doc,
-                           spec=doc_edit.SPEC[doc],
+    spec = {"titulo": doc_edit.SPEC[doc]["titulo"], "secoes": doc_edit.secoes(doc, proj)}
+    return render_template("doc_editar.html", p=proj, pid=pid, doc=doc, spec=spec,
                            vals=doc_edit.valores(doc, proj, db.doc_conteudo(pid, doc)),
                            salvo=request.args.get("salvo"))
 

@@ -425,6 +425,38 @@ def _preencher_levantamento_tabelas(doc, projeto):
     return True
 
 
+def _preencher_detalhamento_projeto(doc, projeto):
+    """Preenche o 'Detalhamento das Rotinas' por área contratada (Projeto) a partir do
+    DocConteudo — localiza cada <XX> após o seu rótulo dentro do bloco da área."""
+    import doc_edit
+    cont = db.doc_conteudo(projeto.get("id"), "projeto") if projeto.get("id") else {}
+    if not cont:
+        return 0
+    area_by_nome = {nome.lower(): k for (k, nome, _ss) in doc_edit._PROJ_AREAS}
+    rotulos = [("módulos previstos", "modulos"), ("modulos previstos", "modulos"),
+               ("detalhamento das rotinas", "detalhamento"),
+               ("particularidade", "particularidade"),
+               ("não está previsto", "naoprevisto"), ("nao esta previsto", "naoprevisto")]
+    area_k, campo, n = None, None, 0
+    for p in doc.paragraphs:
+        t = p.text.strip()
+        tl = t.lower()
+        if tl in area_by_nome:
+            area_k, campo = area_by_nome[tl], None
+            continue
+        lab = next((c for (kw, c) in rotulos if kw in tl), None) if tl else None
+        if lab:
+            campo = lab
+            continue
+        if area_k and campo and t.startswith("<") and t.endswith(">"):
+            val = (cont.get("det_%s_%s" % (area_k, campo)) or "").strip()
+            if val:
+                PL._aplica_no_paragrafo(p, val)
+                n += 1
+            campo = None
+    return n
+
+
 def _saida(slug, cliente, ext):
     nome = "%s_%s.%s" % (slug, C.slug(cliente or "cliente"), ext)
     os.makedirs(C.OUT, exist_ok=True)
@@ -447,7 +479,8 @@ def gerar(slug, projeto):
         if slug == "levantamento":   # mantém só os blocos contratados + injeta perguntas + tabelas
             _montar_blocos_levantamento(doc, projeto)
             _preencher_levantamento_tabelas(doc, projeto)
-        elif slug == "projeto":      # puxa as respostas do Levantamento (liga as fases)
+        elif slug == "projeto":      # detalhamento por área (edição) + respostas do Levantamento
+            _preencher_detalhamento_projeto(doc, projeto)
             _anexar_respostas_projeto(doc, projeto.get("id"))
         elif slug == "termo":        # preenche a grade Resumo Geral com os módulos contratados
             _preencher_termo_grade(doc, projeto.get("modulos", ""))

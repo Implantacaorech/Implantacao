@@ -598,6 +598,28 @@ def test_doc_editar_projeto_alimenta(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_doc_editar_projeto_detalhamento_area(client):
+    """O Detalhamento de Rotinas por área (edição) aparece no Projeto gerado."""
+    import gerar_layout
+    pid = _novo(client, cliente="Det LTDA", numero_projeto="DT-1", cnpj="00.000.000/0001-00",
+                modulos="FAT", horas_cobradas="10")
+    h = client.get("/projetos/%s/editar/projeto" % pid).get_data(as_text=True)
+    assert "Detalhamento de Rotinas — Vendas e Faturamento" in h   # seção dinâmica (FAT->Vendas)
+    client.post("/projetos/%s/editar/projeto" % pid,
+                data={"det_vendas_modulos": "FAT", "det_vendas_detalhamento": "DETALHE VENDAS XYZ"})
+    with db.Session() as s:
+        proj = db.to_dict(s.get(db.Projeto, int(pid)))
+    path = gerar_layout.gerar("projeto", proj)
+    from docx import Document
+    txt = "\n".join(p.text for p in Document(path).paragraphs)
+    assert "DETALHE VENDAS XYZ" in txt               # consumido no bloco da área no .docx
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_doc_editar_bloqueio_perfil(client):
     pid = _novo(client, cliente="Bloq Edit LTDA", modulos="FAT")
     _login_como(client, "Consultor")

@@ -59,10 +59,49 @@ SPEC = {
 }
 
 
-def campos_editaveis(doc):
-    """Chaves dos campos editáveis (não-ro) de um doc."""
+# Áreas do "Detalhamento das Rotinas" do layout do Projeto (chave, nome no doc, siglas).
+# AJUSTÁVEL — o layout do Projeto tem só estas 6 áreas.
+_PROJ_AREAS = [
+    ("vendas",     "Vendas e Faturamento", ["FAT", "PDV", "OSE", "SAC"]),
+    ("estoque",    "Controle de Estoque",  ["EST"]),
+    ("compras",    "Controle de Compras",  ["COM", "TLO"]),
+    ("industrial", "Gestão Industrial",    ["GIN", "GCA"]),
+    ("financeiro", "Controle Financeiro",  ["FIN", "GCO"]),
+    ("fiscal",     "Livros Fiscais",       ["LFI", "CTB", "GPA", "AUE"]),
+]
+
+
+def _areas_contratadas(projeto):
+    import re as _re
+    sigs = {m.strip().upper() for m in _re.split(r"[,;\n]+", projeto.get("modulos", "") or "") if m.strip()}
+    return [(k, nome) for (k, nome, ss) in _PROJ_AREAS if sigs & set(ss)]
+
+
+def _detalhamento_secoes(projeto):
+    """Seções dinâmicas: 'Detalhamento de Rotinas' por área contratada (Projeto)."""
     out = []
-    for sec in SPEC.get(doc, {}).get("secoes", []):
+    for k, nome in _areas_contratadas(projeto):
+        out.append({"titulo": "Detalhamento de Rotinas — %s" % nome, "campos": [
+            ("det_%s_modulos" % k, "Módulos previstos", "textarea", ""),
+            ("det_%s_detalhamento" % k, "Detalhamento das rotinas atendidas", "textarea", ""),
+            ("det_%s_particularidade" % k, "Particularidade específica da área", "textarea", ""),
+            ("det_%s_naoprevisto" % k, "Não está previsto neste projeto", "textarea", ""),
+        ]})
+    return out
+
+
+def secoes(doc, projeto):
+    """Seções do documento: estáticas (SPEC) + dinâmicas por área (Projeto)."""
+    base = [s for s in SPEC.get(doc, {}).get("secoes", [])]
+    if doc == "projeto":
+        base = base + _detalhamento_secoes(projeto or {})
+    return base
+
+
+def campos_editaveis(doc, projeto=None):
+    """Chaves dos campos editáveis (não-ro) de um doc (inclui as seções dinâmicas)."""
+    out = []
+    for sec in secoes(doc, projeto or {}):
         out += [c[0] for c in sec["campos"] if c[2] != "ro"]
     return out
 
@@ -70,7 +109,7 @@ def campos_editaveis(doc):
 def valores(doc, projeto, conteudo):
     """Valor efetivo de cada campo: conteúdo salvo; senão o do projeto (origem)."""
     v = {}
-    for sec in SPEC.get(doc, {}).get("secoes", []):
+    for sec in secoes(doc, projeto):
         for chave, _label, _tipo, orig in sec["campos"]:
             val = conteudo.get(chave)
             if not val and orig:
