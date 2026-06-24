@@ -457,6 +457,45 @@ def _preencher_detalhamento_projeto(doc, projeto):
     return n
 
 
+def _preencher_projeto_tabelas(doc, projeto):
+    """Preenche no Projeto a Tabela de Usuários e o Cronograma Macro a partir do DocConteudo."""
+    cont = db.doc_conteudo(projeto.get("id"), "projeto") if projeto.get("id") else {}
+    if not cont:
+        return
+    crono = [("levantamento de requisitos", "crono_levantamento"),
+             ("elaboração do cronograma", "crono_cronograma"), ("elaboracao do cronograma", "crono_cronograma"),
+             ("parametriz", "crono_parametrizacao"), ("treinamento", "crono_treinamento"),
+             ("simula", "crono_simulacao"), ("início do uso", "crono_inicio"), ("inicio do uso", "crono_inicio"),
+             ("finaliza", "crono_finalizacao")]
+    for t in doc.tables:
+        hdr = [(c.text or "").strip().lower() for c in t.rows[0].cells] if t.rows else []
+        if not hdr:
+            continue
+        # Cronograma Macro: Fase | Etapa | Período previsto
+        if hdr[0] == "fase" and any("previsto" in h for h in hdr):
+            col_per = next((j for j, h in enumerate(hdr) if "previsto" in h), len(hdr) - 1)
+            col_et = next((j for j, h in enumerate(hdr) if h == "etapa"), 1)
+            for row in t.rows[1:]:
+                et = (row.cells[col_et].text or "").strip().lower()
+                key = next((k for (kw, k) in crono if kw in et), None)
+                if key and cont.get(key):
+                    row.cells[col_per].text = cont[key]
+        # Tabela de Usuários: Nome | E-mail | Área | Assina
+        if hdr[0] == "nome" and any("assina" in h for h in hdr):
+            base = t.rows[1:]
+            usuarios = []
+            for i in range(4):
+                nome = (cont.get("usu_%d_nome" % i) or "").strip()
+                if nome:
+                    usuarios.append([nome, cont.get("usu_%d_email" % i, ""),
+                                     cont.get("usu_%d_area" % i, ""), cont.get("usu_%d_assina" % i, "")])
+            for idx, u in enumerate(usuarios):
+                row = base[idx] if idx < len(base) else t.add_row()
+                for j, v in enumerate(u):
+                    if j < len(row.cells):
+                        row.cells[j].text = v
+
+
 def _saida(slug, cliente, ext):
     nome = "%s_%s.%s" % (slug, C.slug(cliente or "cliente"), ext)
     os.makedirs(C.OUT, exist_ok=True)
@@ -479,8 +518,9 @@ def gerar(slug, projeto):
         if slug == "levantamento":   # mantém só os blocos contratados + injeta perguntas + tabelas
             _montar_blocos_levantamento(doc, projeto)
             _preencher_levantamento_tabelas(doc, projeto)
-        elif slug == "projeto":      # detalhamento por área (edição) + respostas do Levantamento
+        elif slug == "projeto":      # detalhamento por área + tabelas (usuários/cronograma) + respostas
             _preencher_detalhamento_projeto(doc, projeto)
+            _preencher_projeto_tabelas(doc, projeto)
             _anexar_respostas_projeto(doc, projeto.get("id"))
         elif slug == "termo":        # preenche a grade Resumo Geral com os módulos contratados
             _preencher_termo_grade(doc, projeto.get("modulos", ""))

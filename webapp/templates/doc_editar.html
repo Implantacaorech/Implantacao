@@ -23,6 +23,20 @@
     {% for sec in spec.secoes %}
     <div class="painel">
       <h3 style="color:var(--navy);margin-top:0">{{ sec.titulo }}</h3>
+      {% if sec.tipo == 'tabela' %}
+      <div style="overflow-x:auto">
+      <table class="form-tab">
+        <thead><tr>{% for ck, cl in sec.colunas %}<th>{{ cl }}</th>{% endfor %}</tr></thead>
+        <tbody>
+        {% for i in range(sec.linhas) %}
+        <tr>{% for ck, cl in sec.colunas %}
+          <td><input name="{{ sec.prefixo }}_{{ i }}_{{ ck }}" value="{{ vals[sec.prefixo ~ '_' ~ i ~ '_' ~ ck] }}"></td>
+        {% endfor %}</tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% else %}
       <div class="grade2">
         {% for chave, label, tipo, orig in sec.campos %}
         <label class="campo {{ 'campo-larga' if tipo == 'textarea' }}">
@@ -37,6 +51,7 @@
         </label>
         {% endfor %}
       </div>
+      {% endif %}
     </div>
     {% endfor %}
 

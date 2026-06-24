@@ -620,6 +620,29 @@ def test_doc_editar_projeto_detalhamento_area(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_doc_editar_projeto_tabelas(client):
+    """Tabela de Usuários e Cronograma Macro (edição) aparecem no Projeto gerado."""
+    import gerar_layout
+    pid = _novo(client, cliente="Tab LTDA", numero_projeto="TB-1", cnpj="00.000.000/0001-00",
+                modulos="FAT", horas_cobradas="10")
+    client.post("/projetos/%s/editar/projeto" % pid, data={
+        "usu_0_nome": "Joao Usuario", "usu_0_email": "joao@x.com",
+        "usu_0_area": "Vendas", "usu_0_assina": "Sim",
+        "crono_treinamento": "PERIODO TREINO 99"})
+    with db.Session() as s:
+        proj = db.to_dict(s.get(db.Projeto, int(pid)))
+    path = gerar_layout.gerar("projeto", proj)
+    from docx import Document
+    blob = " | ".join(c.text for t in Document(path).tables for row in t.rows for c in row.cells)
+    assert "Joao Usuario" in blob and "joao@x.com" in blob   # tabela de usuários
+    assert "PERIODO TREINO 99" in blob                        # cronograma macro
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_doc_editar_bloqueio_perfil(client):
     pid = _novo(client, cliente="Bloq Edit LTDA", modulos="FAT")
     _login_como(client, "Consultor")

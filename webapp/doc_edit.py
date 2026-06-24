@@ -50,6 +50,18 @@ SPEC = {
                 ("consultor", "Consultor / Implantador", "texto", "consultor"),
                 ("encarregado", "Encarregado pelo Projeto (cliente)", "texto", "contato_nome"),
             ]},
+            {"titulo": "Tabela de Usuários", "tipo": "tabela", "prefixo": "usu", "linhas": 4,
+             "colunas": [("nome", "Nome"), ("email", "E-mail"),
+                         ("area", "Área de Atuação no SIGER"), ("assina", "Assina Protocolo")]},
+            {"titulo": "Cronograma Macro", "campos": [
+                ("crono_levantamento", "Levantamento de requisitos — período", "texto", ""),
+                ("crono_cronograma", "Elaboração do Cronograma — período", "texto", ""),
+                ("crono_parametrizacao", "Parametrização — período", "texto", ""),
+                ("crono_treinamento", "Treinamento — período", "texto", ""),
+                ("crono_simulacao", "Simulação — período", "texto", ""),
+                ("crono_inicio", "Início do Uso oficial — período", "texto", ""),
+                ("crono_finalizacao", "Data estimada para Finalização — período", "texto", ""),
+            ]},
             {"titulo": "Tempo estimado", "campos": [
                 ("horas_cobradas", "Horas cobradas", "ro", "horas_cobradas"),
                 ("horas_bonificadas", "Horas bonificadas", "ro", "horas_bonificadas"),
@@ -90,19 +102,34 @@ def _detalhamento_secoes(projeto):
     return out
 
 
+def _tabela_chaves(sec):
+    """Chaves dos campos de uma seção do tipo 'tabela' (prefixo_linha_coluna)."""
+    return ["%s_%d_%s" % (sec["prefixo"], i, ck)
+            for i in range(sec["linhas"]) for ck, _cl in sec["colunas"]]
+
+
 def secoes(doc, projeto):
-    """Seções do documento: estáticas (SPEC) + dinâmicas por área (Projeto)."""
+    """Seções do documento na ORDEM do layout: estáticas (SPEC) + dinâmicas por área
+    (Projeto, inseridas logo após o Escopo)."""
     base = [s for s in SPEC.get(doc, {}).get("secoes", [])]
-    if doc == "projeto":
-        base = base + _detalhamento_secoes(projeto or {})
-    return base
+    if doc != "projeto":
+        return base
+    out = []
+    for sec in base:
+        out.append(sec)
+        if sec.get("titulo") == "Escopo":
+            out += _detalhamento_secoes(projeto or {})
+    return out
 
 
 def campos_editaveis(doc, projeto=None):
-    """Chaves dos campos editáveis (não-ro) de um doc (inclui as seções dinâmicas)."""
+    """Chaves dos campos editáveis (não-ro) de um doc (inclui dinâmicas e tabelas)."""
     out = []
     for sec in secoes(doc, projeto or {}):
-        out += [c[0] for c in sec["campos"] if c[2] != "ro"]
+        if sec.get("tipo") == "tabela":
+            out += _tabela_chaves(sec)
+        else:
+            out += [c[0] for c in sec["campos"] if c[2] != "ro"]
     return out
 
 
@@ -110,9 +137,13 @@ def valores(doc, projeto, conteudo):
     """Valor efetivo de cada campo: conteúdo salvo; senão o do projeto (origem)."""
     v = {}
     for sec in secoes(doc, projeto):
-        for chave, _label, _tipo, orig in sec["campos"]:
-            val = conteudo.get(chave)
-            if not val and orig:
-                val = projeto.get(orig, "")
-            v[chave] = val or ""
+        if sec.get("tipo") == "tabela":
+            for k in _tabela_chaves(sec):
+                v[k] = conteudo.get(k, "") or ""
+        else:
+            for chave, _label, _tipo, orig in sec["campos"]:
+                val = conteudo.get(chave)
+                if not val and orig:
+                    val = projeto.get(orig, "")
+                v[chave] = val or ""
     return v
