@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block titulo %}Centro de Monitoramento{% endblock %}
+{% block migalha %}
+<div class="migalha">
+  <a href="{{ url_for('home') }}">Início</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  Centro de Monitoramento
+</div>
+{% endblock %}
+{% block conteudo %}
+  <div class="ops-head">
+    <div>
+      <h1>Centro de Monitoramento Operacional</h1>
+      <p class="sub">Visão executiva da implantação, com setores, gargalos, entregas e carga da equipe.</p>
+    </div>
+    <div class="ops-live">
+      <span class="dot-live"></span>
+      Atualizado {{ atualizado_em }}
+    </div>
+  </div>
+
+  <div class="ops-kpis">
+    <div class="kpi {{ 'bom' if saude >= 80 else 'alerta' if saude < 60 }}">
+      <div class="n">{{ saude }}%</div>
+      <div class="l">Saúde geral</div>
+    </div>
+    <div class="kpi"><div class="n">{{ m.ativos }}</div><div class="l">Projetos ativos</div></div>
+    <div class="kpi {{ 'alerta' if m.n_atrasados }}"><div class="n">{{ m.n_atrasados }}</div><div class="l">Projetos atrasados</div></div>
+    <div class="kpi {{ 'alerta' if m.n_risco }}"><div class="n">{{ m.n_risco }}</div><div class="l">Projetos em risco</div></div>
+    <div class="kpi {{ 'alerta' if m.gate_pendente }}"><div class="n">{{ m.gate_pendente }}</div><div class="l">Gates pendentes</div></div>
+    <div class="kpi"><div class="n">{{ m.horas_total|int }}</div><div class="l">Horas na carteira</div></div>
+  </div>
+
+  <section class="ops-grid">
+    <div class="painel ops-card ops-health">
+      <div class="ops-card-title">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-heart-pulse"/></svg>
+        Visão geral da empresa
+      </div>
+      <div class="health-ring" style="--p:{{ saude }}">
+        <strong>{{ saude }}%</strong>
+        <span>operação</span>
+      </div>
+      <div class="ops-health-copy">
+        <strong>{{ m.no_prazo }}</strong> projetos no prazo ·
+        <strong>{{ m.concluidos }}</strong> concluídos ·
+        <strong>{{ alertas|length }}</strong> alertas ativos
+      </div>
+    </div>
+
+    <div class="painel ops-card">
+      <div class="ops-card-title">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg>
+        Fluxo completo da implantação
+      </div>
+      <div class="ops-flow">
+        {% for f in fluxo %}
+        <div class="ops-flow-step">
+          <div class="ops-flow-bar"><span style="width:{{ f.pct }}%"></span></div>
+          <div class="ops-flow-label"><strong>{{ f.n }}</strong><span>{{ f.nome }}</span></div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="painel ops-card ops-alerts">
+      <div class="ops-card-title">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-bell"/></svg>
+        Bloqueios e riscos
+      </div>
+      {% if alertas %}
+      <ul class="alertas">
+        {% for a in alertas[:6] %}
+        <li class="al-{{ a.nivel }}">
+          <a href="{{ url_for('projeto_ficha', pid=a.projeto_id) }}" style="color:inherit;display:block">
+            <strong>{{ a.cliente }}</strong> — {{ a.msg }}
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="dica">Sem bloqueios críticos no momento.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <h2 class="sec"><svg class="svgi hi" aria-hidden="true"><use href="#ic-users"/></svg> Setores em operação</h2>
+  <div class="ops-setores">
+    {% for s in setores %}
+    <article class="ops-sector st-{{ s.estado }}">
+      <div class="ops-sector-head">
+        <div class="pixel-worker" aria-hidden="true">
+          <span class="px-shadow"></span><span class="px-head"></span><span class="px-face"></span>
+          <span class="px-body"></span><span class="px-arm a1"></span><span class="px-arm a2"></span>
+          <span class="px-leg l1"></span><span class="px-leg l2"></span><span class="px-signal"></span>
+        </div>
+        <div>
+          <h3>{{ s.nome }}</h3>
+          <span class="ops-state">{{ s.estado_label }}</span>
+        </div>
+      </div>
+      <div class="ops-sector-metrics">
+        <span><strong>{{ s.andamento }}</strong> andamento</span>
+        <span><strong>{{ s.concluidas }}</strong> concluídas</span>
+        <span><strong>{{ s.pendentes }}</strong> pendentes</span>
+        <span><strong>{{ s.atrasadas }}</strong> atrasadas</span>
+      </div>
+      <div class="ops-sector-meta">
+        <span>Tempo médio: <strong>{{ s.tempo_medio if s.tempo_medio is not none else '—' }}{% if s.tempo_medio is not none %}d{% endif %}</strong></span>
+        {% if s.aprovacao %}<span class="ops-warn">{{ s.aprovacao }} aprovação</span>{% endif %}
+      </div>
+      {% if s.responsaveis %}
+      <div class="ops-people">
+        {% for r in s.responsaveis[:5] %}<span>{{ r }}</span>{% endfor %}
+      </div>
+      {% endif %}
+      {% if s.alertas %}
+      <ul class="ops-mini-alerts">
+        {% for a in s.alertas %}<li>{{ a }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+
+  <section class="ops-grid ops-grid-2">
+    <div class="painel ops-card">
+      <div class="ops-card-title">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg>
+        Mapa de progresso dos projetos
+      </div>
+      {% if mapa %}
+      <div class="ops-project-list">
+        {% for p in mapa %}
+        <a class="ops-project {{ 'late' if p.atrasado else 'risk' if p.risco }}" href="{{ url_for('projeto_ficha', pid=p.id) }}">
+          <div class="ops-project-main">
+            <strong>{{ p.cliente }}</strong>
+            <span>{{ p.etapa }} · {{ p.consultor }}</span>
+          </div>
+          <div class="ops-progress"><span style="width:{{ p.progresso }}%"></span></div>
+          <em>{{ p.progresso }}%{% if p.alertas %} · {{ p.alertas }} alerta(s){% endif %}</em>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="dica">Nenhum projeto ativo na carteira.</p>
+      {% endif %}
+    </div>
+
+    <div class="painel ops-card">
+      <div class="ops-card-title">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-calendar"/></svg>
+        Próximas entregas
+      </div>
+      {% if entregas %}
+      <table class="form-tab ops-table">
+        <thead><tr><th>Entrega</th><th>Cliente</th><th>Setor</th><th>Prazo</th></tr></thead>
+        <tbody>
+        {% for e in entregas %}
+        <tr class="linha-proj" onclick="location.href='{{ url_for('projeto_ficha', pid=e.projeto_id) }}'">
+          <td>{{ e.tipo }}</td>
+          <td><strong>{{ e.cliente }}</strong></td>
+          <td>{{ e.setor }}</td>
+          <td><strong class="{{ 'ops-danger' if e.dias < 0 else 'ops-warn' if e.dias <= 3 else '' }}">
+            {{ e.data.strftime('%d/%m/%Y') }}{% if e.dias < 0 %} · {{ -e.dias }}d atraso{% elif e.dias == 0 %} · hoje{% else %} · {{ e.dias }}d{% endif %}
+          </strong></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="dica">Sem entregas datadas nos projetos ativos.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="ops-grid ops-grid-2">
+    <div class="painel ops-card">
+      <div class="ops-card-title">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-chart"/></svg>
+        Distribuição das responsabilidades
+      </div>
+      <canvas id="gSetores" height="220"></canvas>
+    </div>
+
+    <div class="painel ops-card">
+      <div class="ops-card-title">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg>
+        Carga por colaborador
+      </div>
+      {% if carga %}
+      <table class="form-tab ops-table">
+        <thead><tr><th>Colaborador</th><th>Projetos</th><th>Horas</th><th>Alertas</th></tr></thead>
+        <tbody>
+        {% for c in carga %}
+        <tr>
+          <td><strong>{{ c.nome }}</strong></td>
+          <td>{{ c.projetos }}</td>
+          <td>{{ c.horas }} h</td>
+          <td>{{ c.alertas }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="dica">Sem colaboradores vinculados a projetos ativos.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <script src="{{ url_for('static', filename='chart.umd.min.js') }}"></script>
+  <script>
+  (function(){
+    setTimeout(function(){ window.location.reload(); }, 60000);
+    if(typeof Chart==='undefined') return;
+    Chart.defaults.font.family = 'Inter,"Segoe UI",system-ui,sans-serif';
+    var dados={{ chart_setores|tojson }};
+    var ctx=document.getElementById('gSetores');
+    if(ctx) new Chart(ctx,{type:'bar',data:{labels:dados.labels,datasets:[
+      {label:'Andamento',data:dados.andamento,backgroundColor:'#2563EB',borderRadius:6,borderSkipped:false},
+      {label:'Pendentes',data:dados.pendentes,backgroundColor:'#F59E0B',borderRadius:6,borderSkipped:false},
+      {label:'Atrasadas',data:dados.atrasadas,backgroundColor:'#B42318',borderRadius:6,borderSkipped:false}
+    ]},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,beginAtZero:true,ticks:{precision:0},grid:{color:'#E2E8F0'}}}}});
+  })();
+  </script>
+{% endblock %}

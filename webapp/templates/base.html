@@ -84,6 +84,9 @@
           <svg class="svgi" aria-hidden="true"><use href="#ic-chart"/></svg>Coordenação
           {% if n_alertas %}<span class="side-badge">{{ n_alertas }}</span>{% endif %}
         </a>
+        <a class="side-link {{ 'on' if request.endpoint=='monitoramento' }}" href="{{ url_for('monitoramento') }}">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-activity"/></svg>Centro Operacional
+        </a>
         <a class="side-link {{ 'on' if request.endpoint=='atividade' }}" href="{{ url_for('atividade') }}">
           <svg class="svgi" aria-hidden="true"><use href="#ic-activity"/></svg>Atividade
         </a>
