@@ -6,6 +6,53 @@
 
 ---
 
+## 2026-06-24 22:38 — Agendador de Visitas + gate de origem do Projeto (commit f093eda)
+
+### Objetivo atual
+Entregue o **Agendador de Visitas** (calendário por dia+turno) que **substitui** o cronograma
+linear, e o **gate de origem do Projeto**. Tudo commitado/pushado em `f093eda`
+(`a1795d2..f093eda main -> main`); suíte **66 passed**.
+
+### Decisões já tomadas (desta etapa)
+- **Visitas vêm do Check-list** (`checklist_modelo`): a coluna **`seq` = nº da Visita (V{seq})**,
+  agrupando por `(modulo, seq)`; atividade = `Menu - Item` (+ `tipo`). `modulo` já usa as siglas
+  contratadas (FAT, EST...). Decisão do usuário: "A V1 significa a coluna Sequencia do Check List".
+- **Agendador substitui** o cronograma linear na fase "Cronograma e Check-list" (botão primário
+  "Agenda de Visitas" na ficha; "Plano (lista)" antigo mantido por ora).
+- **Técnico = consultor designado** do módulo (fase Designação) como padrão; editável por cartão.
+- **Saída**: gera `.xlsx` das alocações e anexa como Documento `cronograma` (satisfaz o gate).
+- **Gate de origem do Projeto** (#1/#2 da etapa anterior consolidados): ao "Gerar Projeto", escolher
+  **dados da tela** / **importar .docx do Levantamento** (parser casa tópicos) / **modelo manual**
+  (preenchido pelos cadastros/Índice). **Detalhamento das Rotinas** só com áreas/módulos contratados.
+
+### Arquivos / tabelas (commit f093eda — 12 arquivos)
+- **db.py**: `class AtividadeCronograma` (cronograma_atividades) + `cronograma_atividades_seed`,
+  `cronograma_atividades`, `cronograma_visitas`, `cronograma_alocar` (semântica **None=não mexe / ""=desaloca**);
+  coluna `Documento.origem` ("gerado"/"importado"); `levantamento_importado`, `levantamento_importar_respostas`.
+- **app.py**: rotas `projeto_agenda` (GET, fds/técnicos), `agenda/alocar`, `agenda/status`,
+  `agenda/acompanhamento`, `agenda/gerar`, `agenda/postergar`; `projeto_origem` (gate); cascade de exclusão inclui `AtividadeCronograma`.
+- **gerar_layout.py**: `gerar_agenda_xlsx`; `_preencher_detalhamento_projeto` (só contratadas, `_PROJ_GRUPOS`), `modo='modelo'`.
+- **doc_edit.py / db.py**: telas estruturadas (DocConteudo). **Templates**: `agenda.html`,
+  `agenda_acompanhamento.html`, `projeto_origem.html` (novos); `definir_gci.html`, `projeto_ficha.html` (ajustes).
+
+### Regras de negócio (não esquecer)
+- Projeto nasce do Levantamento; Detalhamento só de módulos contratados.
+- Visita = `seq` do Check-list; atividade = Menu-Item; turnos Manhã/Tarde; técnico = consultor designado.
+- Postergar pula fim de semana (próximo dia útil).
+
+### Pendências / próximos passos
+- **Validar a agenda no painel** (Check-list → Visitas → calendário → acompanhamento → .xlsx).
+- Futuro (não feito): motor de **sugestão automática de datas** (era stub no protótipo); mapear o
+  `.xlsx` para o layout oficial do cronograma; integração **SICLA/SGCIA** (precisa de spec).
+- **Fora do commit f093eda** (working tree): `webapp/static/style.css` e `templates/base.html`
+  (mudanças do MANUS), `templates/monitoramento_operacional.html` (novo, não meu), pasta `Cronograma_1/` (protótipo).
+
+### Restrições/preferências (inalteradas)
+Ver bloco anterior. Conta GitHub **Implantacaorech**; "subir total sempre"; roda da fonte (sem .exe);
+commits sem aspas duplas no corpo + `Co-Authored-By: Claude Opus 4.8`.
+
+---
+
 ## 2026-06-24 13:02 — #1 (Projeto exige Levantamento) e #2 (telas espelho) concluídos
 
 ### Objetivo atual
