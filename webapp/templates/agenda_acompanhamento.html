@@ -54,28 +54,34 @@
     .ac-chip.ac-cancelada{border-color:var(--err,#d33)}
     .ac-chip.ac-realizada{border-color:var(--ok,#2e7d32)}
     .ac-chip.ac-naorealizada{border-color:#e8830c}
+    .ac-tab{width:100%;border-collapse:collapse;font-size:.9rem}
+    .ac-tab th{text-align:left;background:var(--brand);color:#fff;font-size:.8rem;font-weight:600;padding:8px 10px;white-space:nowrap}
+    .ac-tab td{padding:6px 10px;white-space:nowrap;border-bottom:1px solid var(--line);vertical-align:top}
+    .ac-tab .ac-ativ{white-space:normal;width:100%}        /* Atividade ocupa a folga */
+    .ac-tab tr:hover td{background:var(--surface-2)}
+    .ac-tab select{width:100%}
   </style>
 
   {% if atividades %}
   <div class="table-responsive">
-    <table class="tabela" style="width:100%;border-collapse:collapse">
+    <table class="ac-tab">
       <thead>
         <tr>
-          <th style="text-align:left">Data</th><th style="text-align:left">Horário</th><th style="text-align:left">Turno</th>
-          <th style="text-align:left">Módulo</th><th style="text-align:left">Visita</th>
-          <th style="text-align:left">Atividade</th><th style="text-align:left">Técnico</th>
-          <th style="text-align:left">Status</th>
+          <th>Data</th><th>Horário</th><th>Turno</th>
+          <th>Módulo</th><th>Visita</th>
+          <th class="ac-ativ">Atividade</th><th>Técnico</th>
+          <th>Status</th>
         </tr>
       </thead>
       <tbody>
         {% for a in atividades %}
-        <tr style="border-top:1px solid var(--line)">
+        <tr>
           <td>{{ a.data[8:10] }}/{{ a.data[5:7] }}/{{ a.data[0:4] }}</td>
           <td>{% if a.hora_inicio or a.hora_fim %}{{ a.hora_inicio }}–{{ a.hora_fim }}{% endif %}</td>
           <td>{{ 'Manhã' if a.turno == 'manha' else ('Tarde' if a.turno == 'tarde' else a.turno) }}</td>
           <td><strong>{{ a.modulo }}</strong></td>
           <td>V{{ a.seq }}</td>
-          <td>{{ a.descricao }}</td>
+          <td class="ac-ativ">{{ a.descricao }}</td>
           <td>{{ a.tecnico }}</td>
           <td>
             <select class="ac-status" data-id="{{ a.id }}" data-prev="{{ a.status }}"
