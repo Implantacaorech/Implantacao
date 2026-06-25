@@ -88,15 +88,28 @@
         <svg class="svgi svgi-md" style="color:var(--brand)" aria-hidden="true"><use href="#ic-layers"/></svg>
         Visitas a alocar <span class="ag-badge" id="ag-pend-badge">{{ n_pend }}</span>
       </div>
-      <p class="dica" style="margin:4px 0 8px">Para desalocar, arraste o cartão de volta para esta lista.</p>
+      <div class="ag-side-tools">
+        <button type="button" class="ag-mini" onclick="agExpand(true)">Expandir tudo</button>
+        <button type="button" class="ag-mini" onclick="agExpand(false)">Recolher tudo</button>
+      </div>
+      <p class="dica" style="margin:4px 0 8px">Arraste o <b>⠿</b> da visita para alocar o <b>bloco inteiro</b>; ou um cartão para um único assunto. Para desalocar, arraste de volta.</p>
       <div id="ag-pend" class="ag-drop ag-pendzone" data-iso="" data-turno="">
-        {% for g in visitas %}
-        <div class="ag-visita" data-group="{{ g.modulo }}-{{ g.seq }}">
-          <div class="ag-visita-h">{{ g.titulo }}{% if tech[g.modulo] %} · <span class="ag-tec-nome">{{ tech[g.modulo] }}</span>{% endif %}</div>
-          <div class="ag-visita-cards">
-            {% for a in g.atividades if not (a.data and a.turno) %}{{ card(a, tecnicos) }}{% endfor %}
-          </div>
-        </div>
+        {% for m in modulos_visitas %}
+        <details class="ag-mod" {% if m.pend %}open{% endif %}>
+          <summary class="ag-mod-sum">{{ m.modulo }} <span class="ag-count">{{ m.pend }}/{{ m.n }}</span></summary>
+          {% for g in m.visitas %}
+          <details class="ag-visita ag-visita-d" data-group="{{ g.modulo }}-{{ g.seq }}" data-modulo="{{ g.modulo }}" data-seq="{{ g.seq }}">
+            <summary class="ag-visita-sum">
+              <span class="ag-grip" draggable="true" onclick="event.preventDefault();event.stopPropagation()" title="Arraste a visita inteira para um dia/turno">⠿</span>
+              <span class="ag-visita-t">V{{ g.seq }}{% if tech[g.modulo] %} · <span class="ag-tec-nome">{{ tech[g.modulo] }}</span>{% endif %}</span>
+              <span class="ag-count">{{ g.pend }}</span>
+            </summary>
+            <div class="ag-visita-cards">
+              {% for a in g.atividades if not (a.data and a.turno) %}{{ card(a, tecnicos) }}{% endfor %}
+            </div>
+          </details>
+          {% endfor %}
+        </details>
         {% endfor %}
       </div>
     </aside>
@@ -170,9 +183,22 @@
     .ag-side-h{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--navy)}
     .ag-badge{margin-left:auto;background:var(--brand);color:#fff;border-radius:10px;padding:0 8px;font-size:.78rem;font-weight:700}
     .ag-pendzone{min-height:60px;border-radius:8px}
-    .ag-visita{margin-bottom:10px}
-    .ag-visita-h{font-weight:700;color:var(--brand);font-size:.82rem;margin:6px 0 4px}
-    .ag-visita-cards{min-height:6px}
+    .ag-side-tools{display:flex;gap:6px;margin:6px 0}
+    .ag-mini{background:#fff;border:1px solid var(--line);border-radius:6px;font-size:.72rem;padding:2px 8px;color:var(--navy);cursor:pointer}
+    .ag-mod{border:1px solid var(--line);border-radius:8px;margin-bottom:8px;background:var(--surface-2,#f3f6fb);overflow:hidden}
+    .ag-mod>summary{cursor:pointer;list-style:none;font-weight:800;color:var(--navy);padding:6px 10px;display:flex;align-items:center;gap:6px}
+    .ag-mod>summary::-webkit-details-marker{display:none}
+    .ag-mod>summary::before{content:"▸";color:var(--brand);font-size:.8rem;transition:transform .15s}
+    .ag-mod[open]>summary::before{transform:rotate(90deg)}
+    .ag-mod>summary .ag-count{margin-left:auto}
+    .ag-visita-d{border:1px solid var(--line);border-radius:7px;margin:6px;background:#fff}
+    .ag-visita-sum{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;padding:5px 8px;font-weight:700;color:var(--brand);font-size:.8rem}
+    .ag-visita-sum::-webkit-details-marker{display:none}
+    .ag-visita-t{flex:1;min-width:0}
+    .ag-grip{cursor:grab;color:var(--muted);font-size:.95rem;line-height:1;user-select:none;flex:none}
+    .ag-grip:active{cursor:grabbing}
+    .ag-count{font-size:.7rem;font-weight:700;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:9px;padding:0 7px;flex:none}
+    .ag-visita-cards{min-height:6px;padding:0 6px 6px}
     .ag-tec-nome{color:var(--muted);font-weight:600}
     .ag-card{display:flex;flex-direction:column;gap:3px;background:#fff;border:1px solid var(--line);border-left:3px solid var(--brand);
       border-radius:7px;padding:6px 8px;margin-bottom:6px;cursor:grab;box-shadow:var(--sh-1,0 1px 2px rgba(0,0,0,.05))}
@@ -204,10 +230,12 @@
   </style>
   <script>
   (function(){
-    var dragId=null;
+    var dragId=null, groupDrag=null;
     var url='{{ url_for("projeto_agenda_alocar", pid=pid) }}';
+    var visitaUrl='{{ url_for("projeto_agenda_alocar_visita", pid=pid) }}';
     var horarioUrl='{{ url_for("projeto_agenda_horario", pid=pid) }}';
     var modal=document.getElementById('postModal');
+    window.agExpand=function(open){ document.querySelectorAll('#ag-pend details').forEach(function(d){ d.open=open; }); };
     function post(params, cb){
       fetch(url, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
             body:new URLSearchParams(params)})
@@ -217,11 +245,18 @@
       var n=document.querySelectorAll('#ag-pend .ag-card').length;
       var b=document.getElementById('ag-pend-badge'); if(b) b.textContent=n;
     }
-    // arrastar (ignora se começar pelo select do técnico ou por um botão)
+    // arrastar: alça da visita = bloco inteiro; cartão = um assunto
     document.addEventListener('dragstart', function(e){
+      var grip=e.target.closest&&e.target.closest('.ag-grip');
+      if(grip){
+        var det=grip.closest('.ag-visita-d');
+        groupDrag={modulo:det.dataset.modulo, seq:det.dataset.seq}; dragId=null;
+        try{ e.dataTransfer.setData('text/plain','grupo'); }catch(_){}
+        return;
+      }
       var c=e.target.closest&&e.target.closest('.ag-card'); if(!c) return;
       if(e.target.closest('.ag-tec')||e.target.closest('button')){ e.preventDefault(); return; }
-      dragId=c.dataset.id; try{ e.dataTransfer.setData('text/plain', dragId); }catch(_){}
+      groupDrag=null; dragId=c.dataset.id; try{ e.dataTransfer.setData('text/plain', dragId); }catch(_){}
       c.classList.add('dragging');
     });
     document.addEventListener('dragend', function(e){
@@ -257,14 +292,24 @@
       zone.addEventListener('dragleave', function(){ zone.classList.remove('over'); });
       zone.addEventListener('drop', function(e){
         e.preventDefault(); zone.classList.remove('over');
-        var id=(e.dataTransfer&&e.dataTransfer.getData('text/plain'))||dragId; if(!id) return;
-        var cardEl=document.querySelector('.ag-card[data-id="'+id+'"]'); if(!cardEl) return;
         var iso=zone.dataset.iso||'', turno=zone.dataset.turno||'';
+        if(groupDrag){                       // arrastou a VISITA inteira -> aloca o bloco
+          var gd=groupDrag; groupDrag=null;
+          if(!turno) return;                 // bloco só vai para um dia/turno do calendário
+          fetch(visitaUrl, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                body:new URLSearchParams({modulo:gd.modulo, seq:gd.seq, data:iso, turno:turno})})
+            .then(function(r){ return r.json(); })
+            .then(function(j){ if(j&&j.ok){ location.reload(); } else { alert('Não foi possível alocar a visita.'); } })
+            .catch(function(){ alert('Erro de rede ao alocar a visita.'); });
+          return;
+        }
+        var id=(e.dataTransfer&&e.dataTransfer.getData('text/plain'))||dragId; if(!id||id==='grupo') return;
+        var cardEl=document.querySelector('.ag-card[data-id="'+id+'"]'); if(!cardEl) return;
         post({atividade_id:id, data:iso, turno:turno}, function(ok){
           if(!ok){ alert('Não foi possível mover a atividade.'); return; }
           if(turno){ zone.appendChild(cardEl); }
           else {
-            var grp=document.querySelector('#ag-pend .ag-visita[data-group="'+cardEl.dataset.group+'"] .ag-visita-cards');
+            var grp=document.querySelector('#ag-pend [data-group="'+cardEl.dataset.group+'"] .ag-visita-cards');
             (grp||document.getElementById('ag-pend')).appendChild(cardEl);
           }
           updateBadge();

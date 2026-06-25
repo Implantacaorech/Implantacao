@@ -2216,6 +2216,12 @@ def projeto_agenda(pid):
                 fora += 1
     visitas = db.cronograma_visitas(pid)                      # todos os grupos (containers persistem)
     n_pend = sum(1 for a in ats if not (a["data"] and a["turno"]))
+    mods = {}                                                 # visitas agrupadas por MÓDULO (acordeão)
+    for g in visitas:
+        g["pend"] = sum(1 for a in g["atividades"] if not (a["data"] and a["turno"]))
+        mods.setdefault(g["modulo"], []).append(g)
+    modulos_visitas = [{"modulo": m, "visitas": vs, "n": len(vs),
+                        "pend": sum(x["pend"] for x in vs)} for m, vs in sorted(mods.items())]
 
     h = db.cronograma_horarios(pid)                           # horário GLOBAL por turno (um só)
     hor = {"manha": {"ini": h["manha"][0], "fim": h["manha"][1]},
@@ -2225,8 +2231,8 @@ def projeto_agenda(pid):
 
     qs = "&fds=1" if fds else ""
     return render_template("agenda.html", p=proj, pid=pid, semana=semana, aloc=aloc,
-                           visitas=visitas, tech=tech, tecnicos=tecnicos, fora=fora, fds=fds,
-                           hor=hor, modulos_tec=modulos_tec,
+                           modulos_visitas=modulos_visitas, tech=tech, tecnicos=tecnicos,
+                           fora=fora, fds=fds, hor=hor, modulos_tec=modulos_tec,
                            ref_cur=seg.isoformat(),
                            ref_prev=(seg - timedelta(days=7)).isoformat() + qs,
                            ref_next=(seg + timedelta(days=7)).isoformat() + qs,
@@ -2258,6 +2264,30 @@ def projeto_agenda_alocar(pid):
     if not upd:
         return jsonify(ok=False, erro="atividade não encontrada"), 404
     return jsonify(ok=True, atividade=upd)
+
+
+@app.route("/projetos/<int:pid>/agenda/alocar_visita", methods=["POST"])
+def projeto_agenda_alocar_visita(pid):
+    """Aloca a VISITA inteira (todas as atividades pendentes de modulo+seq) num dia/turno."""
+    if not pode_gerar("cronograma"):
+        abort(403)
+    modulo = (request.form.get("modulo") or "").strip()
+    data = (request.form.get("data") or "").strip()
+    turno = (request.form.get("turno") or "").strip()
+    try:
+        seq = int(request.form.get("seq") or "")
+    except ValueError:
+        seq = None
+    if not (modulo and seq and data and turno in ("manha", "tarde")):
+        return jsonify(ok=False, erro="parâmetros inválidos"), 400
+    tech = {d["modulo"]: d["consultor"] for d in db.designacoes_do_projeto(pid)}
+    n = 0
+    for a in db.cronograma_atividades(pid):
+        if a["modulo"] == modulo and a["seq"] == seq and not (a["data"] and a["turno"]):
+            t = (a["tecnico"] or "").strip() or (tech.get(modulo) or "")
+            db.cronograma_alocar(a["id"], projeto_id=pid, data=data, turno=turno, tecnico=(t or None))
+            n += 1
+    return jsonify(ok=True, n=n)
 
 
 @app.route("/projetos/<int:pid>/agenda/horario", methods=["POST"])

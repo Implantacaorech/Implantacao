@@ -1148,3 +1148,22 @@ def test_agenda_horario_global_status_e_tecnico_modulo(client):
     assert all(a["tecnico"] == "Chico" for a in db.cronograma_atividades(int(pid)) if a["modulo"] == "FAT")
     assert {d["modulo"]: d["consultor"] for d in db.designacoes_do_projeto(int(pid))}.get("FAT") == "Chico"
     client.post("/projetos/%s/excluir" % pid)
+
+
+def test_agenda_alocar_visita_inteira(client):
+    """Alocar a visita inteira: todas as atividades pendentes de (modulo, seq) vão ao slot;
+    a sidebar renderiza o acordeão (recolher por módulo/visita)."""
+    pid = _novo(client, cliente="Bloco LTDA", cnpj="00.000.000/0001-00", numero_projeto="BL-1",
+                modulos="FAT", horas_cobradas="10", etapa="Cronograma e Check-list")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    g = db.cronograma_visitas(int(pid))[0]
+    seq, nat = g["seq"], len(g["atividades"])
+    r = client.post("/projetos/%s/agenda/alocar_visita" % pid,
+                    data={"modulo": "FAT", "seq": seq, "data": "2026-07-06", "turno": "manha"})
+    assert r.status_code == 200 and r.get_json()["ok"] is True and r.get_json()["n"] == nat
+    alocadas = [a for a in db.cronograma_atividades(int(pid)) if a["modulo"] == "FAT" and a["seq"] == seq]
+    assert alocadas and all(a["data"] == "2026-07-06" and a["turno"] == "manha"
+                            and a["status"] == "Agendada" for a in alocadas)
+    html = client.get("/projetos/%s/agenda" % pid).get_data(as_text=True)
+    assert "Recolher tudo" in html and "ag-visita-d" in html      # acordeão na sidebar
+    client.post("/projetos/%s/excluir" % pid)
