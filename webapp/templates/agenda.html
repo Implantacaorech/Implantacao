@@ -8,11 +8,22 @@
   <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Agenda de Visitas</div>{% endblock %}
 
 {% macro card(a, tecnicos) %}
-<div class="ag-card" draggable="true" data-id="{{ a.id }}" data-modulo="{{ a.modulo }}"
-     data-group="{{ a.modulo }}-{{ a.seq }}" title="{{ a.descricao }}">
-  <span class="ag-card-top"><span class="ag-card-mod">{{ a.modulo }} · V{{ a.seq }}</span></span>
+{% set scls = {'Postergada':'ag-st-post','Cancelada':'ag-st-canc','Realizada':'ag-st-real','Não Realizada':'ag-st-nrea'}.get(a.status,'') %}
+<div class="ag-card {{ scls }}" draggable="true" data-id="{{ a.id }}" data-modulo="{{ a.modulo }}"
+     data-group="{{ a.modulo }}-{{ a.seq }}" title="{{ a.descricao }} — {{ a.status }}">
+  <span class="ag-card-top">
+    <span class="ag-card-mod">{{ a.modulo }} · V{{ a.seq }}</span>
+    {% if a.data and a.status != 'Postergada' %}
+    <button type="button" class="ag-post ag-card-post" data-id="{{ a.id }}"
+            title="Postergar este assunto">⤵</button>
+    {% endif %}
+  </span>
   <span class="ag-card-desc">{{ a.descricao }}</span>
-  {% if a.tipo %}<span class="ag-card-tipo">{{ a.tipo }}</span>{% endif %}
+  {% if a.status == 'Postergada' and a.nova_data %}
+  <span class="ag-card-dest">Postergada → {{ a.nova_data[8:10] }}/{{ a.nova_data[5:7] }} {{ 'Manhã' if a.novo_turno=='manha' else 'Tarde' }}</span>
+  {% elif a.status not in ('Agendada','Solicitada','') %}
+  <span class="ag-card-dest">{{ a.status }}</span>
+  {% endif %}
   <select class="ag-tec" data-id="{{ a.id }}" draggable="false" onmousedown="event.stopPropagation()" title="Técnico">
     <option value="">— técnico —</option>
     {% for t in tecnicos %}<option value="{{ t }}" {{ 'selected' if a.tecnico == t }}>{{ t }}</option>{% endfor %}
@@ -26,20 +37,50 @@
     <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-calendar"/></svg>
     Agenda de Visitas — {{ p.cliente }}
   </h1>
-  <p class="sub">Arraste cada atividade da <strong>Visita</strong> para um <strong>dia e turno</strong>. As visitas vêm do Check-list
-    dos módulos contratados; o técnico padrão é o consultor designado, e pode ser ajustado por cartão.</p>
+  <p class="sub">Arraste cada atividade da <strong>Visita</strong> para um <strong>dia e turno</strong>. Os horários valem
+    para todas as visitas; o técnico pode ser definido por módulo (abaixo) ou por cartão.</p>
 
   {% if aviso %}<div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px;margin-bottom:10px">
     <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso }}</div>{% endif %}
   {% if erro %}<div class="resultado erro" style="padding:8px 14px;display:flex;align-items:center;gap:8px;margin-bottom:10px">
     <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro }}</div>{% endif %}
 
-  <div class="acoes-row" style="margin-bottom:12px">
-    <form method="post" action="{{ url_for('projeto_agenda_gerar', pid=pid) }}" style="display:inline">
-      <button class="btn primario" type="submit"><svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> Gerar cronograma (.xlsx)</button>
-    </form>
-    <a class="btn" href="{{ url_for('projeto_agenda_acompanhamento', pid=pid) }}"><svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Acompanhamento</a>
+  {# Configuração: horários globais + ações #}
+  <div class="ag-cfg">
+    <span class="ag-cfg-l">Horários</span>
+    <span class="ag-hgrp" data-turno="manha">Manhã
+      <input type="time" class="ag-h-ini" value="{{ hor.manha.ini }}"> – <input type="time" class="ag-h-fim" value="{{ hor.manha.fim }}">
+    </span>
+    <span class="ag-hgrp" data-turno="tarde">Tarde
+      <input type="time" class="ag-h-ini" value="{{ hor.tarde.ini }}"> – <input type="time" class="ag-h-fim" value="{{ hor.tarde.fim }}">
+    </span>
+    <span style="margin-left:auto;display:flex;gap:8px">
+      <form method="post" action="{{ url_for('projeto_agenda_gerar', pid=pid) }}" style="display:inline">
+        <button class="btn primario" type="submit"><svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> Gerar (.xlsx)</button>
+      </form>
+      <a class="btn" href="{{ url_for('projeto_agenda_acompanhamento', pid=pid) }}"><svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Acompanhamento</a>
+    </span>
   </div>
+
+  {# Técnico por módulo (central) #}
+  {% if modulos_tec %}
+  <details class="ag-modtec-box">
+    <summary>Técnico por módulo <small class="dica" style="margin:0">— aplica aos cartões e à Designação</small></summary>
+    <div class="ag-modtec-grid">
+      {% for m in modulos_tec %}
+      <form method="post" action="{{ url_for('projeto_agenda_tecnico_modulo', pid=pid) }}" class="ag-modtec">
+        <input type="hidden" name="modulo" value="{{ m.sigla }}"><input type="hidden" name="ref" value="{{ ref_cur }}">{% if fds %}<input type="hidden" name="fds" value="1">{% endif %}
+        <span class="ag-modtec-sig">{{ m.sigla }}</span>
+        <select name="tecnico" onchange="this.form.submit()">
+          <option value="">—</option>
+          {% for t in tecnicos %}<option value="{{ t }}" {{ 'selected' if t == m.tecnico }}>{{ t }}</option>{% endfor %}
+          {% if m.tecnico and m.tecnico not in tecnicos %}<option value="{{ m.tecnico }}" selected>{{ m.tecnico }}</option>{% endif %}
+        </select>
+      </form>
+      {% endfor %}
+    </div>
+  </details>
+  {% endif %}
 
   <div class="ag-wrap">
     <aside class="ag-side">
@@ -75,20 +116,11 @@
           <div class="ag-day-h">{{ d.label }}</div>
           {% for turno, rotulo in [('manha','Manhã'),('tarde','Tarde')] %}
           <div class="ag-slot ag-drop" data-iso="{{ d.iso }}" data-turno="{{ turno }}">
-            {% set st = slot_times[d.iso ~ '|' ~ turno] %}
             <div class="ag-slot-h">
-              <span class="ag-turno">{{ rotulo }}</span>
-              <span class="ag-horas" data-iso="{{ d.iso }}" data-turno="{{ turno }}">
-                <input type="time" class="ag-h-ini" value="{{ st.ini }}" title="Início do turno">
-                <span class="ag-hsep">–</span>
-                <input type="time" class="ag-h-fim" value="{{ st.fim }}" title="Fim do turno">
-              </span>
+              <span class="ag-turno">{{ rotulo }} <small>{{ hor[turno].ini }}–{{ hor[turno].fim }}</small></span>
               {% if aloc[d.iso][turno] %}
-              <form method="post" action="{{ url_for('projeto_agenda_postergar', pid=pid) }}" style="margin:0">
-                <input type="hidden" name="data" value="{{ d.iso }}"><input type="hidden" name="turno" value="{{ turno }}">
-                <input type="hidden" name="ref" value="{{ ref_cur }}">{% if fds %}<input type="hidden" name="fds" value="1">{% endif %}
-                <button class="ag-post" type="submit" title="Postergar tudo deste turno para o próximo dia útil">⤵</button>
-              </form>
+              <button type="button" class="ag-post ag-slot-post" data-iso="{{ d.iso }}" data-turno="{{ turno }}"
+                      title="Postergar todo o turno">⤵</button>
               {% endif %}
             </div>
             {% for a in aloc[d.iso][turno] %}{{ card(a, tecnicos) }}{% endfor %}
@@ -102,7 +134,36 @@
 
   <div style="margin-top:14px"><a class="btn" href="{{ url_for('projeto_ficha', pid=pid) }}">Voltar à ficha</a></div>
 
+  {# Modal de postergação (pergunta data/turno destino) #}
+  <dialog id="postModal" class="ag-modal">
+    <form method="post" action="{{ url_for('projeto_agenda_postergar', pid=pid) }}">
+      <h3 style="margin:0 0 8px">Postergar para…</h3>
+      <input type="hidden" name="atividade_id" id="pm-aid">
+      <input type="hidden" name="data" id="pm-data">
+      <input type="hidden" name="turno" id="pm-turno">
+      <input type="hidden" name="ref" value="{{ ref_cur }}">{% if fds %}<input type="hidden" name="fds" value="1">{% endif %}
+      <label class="campo"><span>Nova data</span>
+        <input type="date" name="nova_data" id="pm-nova-data" required></label>
+      <label class="campo"><span>Novo turno</span>
+        <select name="novo_turno" id="pm-novo-turno"><option value="manha">Manhã</option><option value="tarde">Tarde</option></select></label>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+        <button type="button" class="btn" onclick="document.getElementById('postModal').close()">Cancelar</button>
+        <button type="submit" class="btn primario">Postergar</button>
+      </div>
+    </form>
+  </dialog>
+
   <style>
+    .ag-cfg{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface,#fff);border:1px solid var(--line);border-radius:9px;padding:8px 12px;margin-bottom:10px}
+    .ag-cfg-l{font-weight:700;color:var(--navy)}
+    .ag-hgrp{display:inline-flex;align-items:center;gap:4px;font-size:.8rem;color:var(--muted)}
+    .ag-hgrp input[type=time]{width:64px;font-size:.72rem;padding:1px 2px;border:1px solid var(--line);border-radius:4px}
+    .ag-modtec-box{background:var(--surface,#fff);border:1px solid var(--line);border-radius:9px;padding:8px 12px;margin-bottom:12px}
+    .ag-modtec-box>summary{cursor:pointer;font-weight:700;color:var(--navy)}
+    .ag-modtec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:10px}
+    .ag-modtec{display:flex;align-items:center;gap:6px;margin:0}
+    .ag-modtec-sig{font-weight:700;color:var(--navy);width:42px;flex:none}
+    .ag-modtec select{flex:1;min-width:0;font-size:.78rem;padding:2px 4px;border:1px solid var(--line);border-radius:5px}
     .ag-wrap{display:grid;grid-template-columns:300px 1fr;gap:14px;align-items:start}
     @media (max-width:900px){.ag-wrap{grid-template-columns:1fr}}
     .ag-side{background:var(--surface,#fff);border:1px solid var(--line);border-radius:10px;padding:12px;position:sticky;top:8px;max-height:calc(100vh - 40px);overflow:auto}
@@ -117,10 +178,14 @@
       border-radius:7px;padding:6px 8px;margin-bottom:6px;cursor:grab;box-shadow:var(--sh-1,0 1px 2px rgba(0,0,0,.05))}
     .ag-card:active{cursor:grabbing}
     .ag-card.dragging{opacity:.45}
+    .ag-card.ag-st-post{background:#fff8e1;border-left-color:#f5a623}
+    .ag-card.ag-st-canc{background:#fdecec;border-left-color:var(--err,#d33);text-decoration:line-through;opacity:.8}
+    .ag-card.ag-st-real{border-left-color:var(--ok,#2e7d32)}
+    .ag-card.ag-st-nrea{background:#fff3e0;border-left-color:#e8830c}
     .ag-card-top{display:flex;justify-content:space-between;gap:6px;align-items:center}
     .ag-card-mod{font-size:.72rem;font-weight:700;color:var(--navy)}
     .ag-card-desc{font-size:.8rem;line-height:1.2}
-    .ag-card-tipo{font-size:.68rem;color:var(--muted);font-style:italic}
+    .ag-card-dest{font-size:.68rem;font-weight:700;color:#a6730a}
     .ag-tec{font-size:.72rem;padding:2px 4px;border:1px solid var(--line);border-radius:5px;background:#fff;cursor:pointer}
     .ag-cal{min-width:0}
     .ag-cal-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
@@ -130,18 +195,19 @@
     .ag-day-h{font-weight:700;color:var(--navy);text-align:center;padding:6px;background:#fff;border-bottom:1px solid var(--line);font-size:.82rem}
     .ag-slot{min-height:82px;padding:6px;border-bottom:1px dashed var(--line)}
     .ag-slot:last-child{border-bottom:none}
-    .ag-slot-h{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px}
-    .ag-turno{flex:none}
-    .ag-horas{display:inline-flex;align-items:center;gap:2px;margin-left:auto}
-    .ag-h-ini,.ag-h-fim{width:64px;font-size:.66rem;padding:1px 2px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--ink)}
-    .ag-hsep{color:var(--muted)}
+    .ag-slot-h{display:flex;align-items:center;justify-content:space-between;font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px}
+    .ag-turno small{font-weight:600;text-transform:none;letter-spacing:0;color:var(--muted)}
     .ag-post{background:none;border:none;color:var(--brand);cursor:pointer;font-size:.95rem;line-height:1;padding:0 2px;flex:none}
     .ag-drop.over{outline:2px dashed var(--brand);outline-offset:-3px;background:rgba(37,99,235,.06)}
+    .ag-modal{border:1px solid var(--line);border-radius:10px;padding:18px;min-width:260px;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+    .ag-modal::backdrop{background:rgba(0,0,0,.35)}
   </style>
   <script>
   (function(){
     var dragId=null;
     var url='{{ url_for("projeto_agenda_alocar", pid=pid) }}';
+    var horarioUrl='{{ url_for("projeto_agenda_horario", pid=pid) }}';
+    var modal=document.getElementById('postModal');
     function post(params, cb){
       fetch(url, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
             body:new URLSearchParams(params)})
@@ -151,10 +217,10 @@
       var n=document.querySelectorAll('#ag-pend .ag-card').length;
       var b=document.getElementById('ag-pend-badge'); if(b) b.textContent=n;
     }
-    // arrastar (ignora se começar pelo <select> do técnico)
+    // arrastar (ignora se começar pelo select do técnico ou por um botão)
     document.addEventListener('dragstart', function(e){
       var c=e.target.closest&&e.target.closest('.ag-card'); if(!c) return;
-      if(e.target.closest('.ag-tec')){ e.preventDefault(); return; }
+      if(e.target.closest('.ag-tec')||e.target.closest('button')){ e.preventDefault(); return; }
       dragId=c.dataset.id; try{ e.dataTransfer.setData('text/plain', dragId); }catch(_){}
       c.classList.add('dragging');
     });
@@ -162,21 +228,28 @@
       var c=e.target.closest&&e.target.closest('.ag-card'); if(c) c.classList.remove('dragging');
       document.querySelectorAll('.ag-drop.over').forEach(function(z){ z.classList.remove('over'); });
     });
-    // mudar técnico do cartão ou horário do turno
-    var slotUrl='{{ url_for("projeto_agenda_slot", pid=pid) }}';
+    // técnico do cartão ou horário global do turno
     document.addEventListener('change', function(e){
-      var h=e.target.closest&&e.target.closest('.ag-horas');
-      if(h){
-        var ini=h.querySelector('.ag-h-ini').value, fim=h.querySelector('.ag-h-fim').value;
-        fetch(slotUrl, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
-              body:new URLSearchParams({data:h.dataset.iso, turno:h.dataset.turno, hora_inicio:ini, hora_fim:fim})})
-          .then(function(r){ return r.json(); })
-          .then(function(j){ if(!j||!j.ok) alert('Não foi possível salvar o horário.'); })
+      var hg=e.target.closest&&e.target.closest('.ag-hgrp');
+      if(hg){
+        fetch(horarioUrl, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+              body:new URLSearchParams({turno:hg.dataset.turno, hora_inicio:hg.querySelector('.ag-h-ini').value, hora_fim:hg.querySelector('.ag-h-fim').value})})
+          .then(function(r){ return r.json(); }).then(function(j){ if(!j||!j.ok) alert('Não foi possível salvar o horário.'); })
           .catch(function(){ alert('Erro de rede ao salvar o horário.'); });
         return;
       }
       var sel=e.target.closest&&e.target.closest('.ag-tec'); if(!sel) return;
       post({atividade_id: sel.dataset.id, tecnico: sel.value}, function(ok){ if(!ok) alert('Não foi possível salvar o técnico.'); });
+    });
+    // abrir modal de postergação (por assunto ou por turno)
+    document.addEventListener('click', function(e){
+      var cb=e.target.closest&&e.target.closest('.ag-card-post');
+      var sb=e.target.closest&&e.target.closest('.ag-slot-post');
+      if(!cb && !sb) return;
+      document.getElementById('pm-aid').value = cb ? cb.dataset.id : '';
+      document.getElementById('pm-data').value = sb ? sb.dataset.iso : '';
+      document.getElementById('pm-turno').value = sb ? sb.dataset.turno : '';
+      if(modal && modal.showModal) modal.showModal(); else modal.setAttribute('open','');
     });
     // soltar (move o cartão no DOM, sem recarregar)
     document.querySelectorAll('.ag-drop').forEach(function(zone){

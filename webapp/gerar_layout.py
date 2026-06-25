@@ -629,13 +629,13 @@ def _saida(slug, cliente, ext):
     return os.path.join(C.OUT, nome)
 
 
-def gerar_agenda_xlsx(projeto, atividades, slots=None):
+def gerar_agenda_xlsx(projeto, atividades, horarios=None):
     """Gera o cronograma de visitas (.xlsx) a partir das atividades ALOCADAS (data+turno)
-    do agendador. `slots` = horários por turno (db.cronograma_slots). Devolve o caminho."""
+    do agendador. `horarios` = horário global por turno (db.cronograma_horarios). Caminho."""
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     import datetime as _dt
-    slots = slots or {}
+    horarios = horarios or {}
     DIAS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
     TURNOS = {"manha": "Manhã", "tarde": "Tarde"}
     aloc = [a for a in atividades if (a.get("data") and a.get("turno"))]
@@ -661,7 +661,7 @@ def gerar_agenda_xlsx(projeto, atividades, slots=None):
             data_lbl, dia_lbl = d.strftime("%d/%m/%Y"), DIAS[d.weekday()]
         except ValueError:
             data_lbl, dia_lbl = a["data"], ""
-        ini, fim = db.cronograma_slot_horas(slots, a["data"], a["turno"])
+        ini, fim = db.cronograma_horas(horarios, a["turno"])
         hora_lbl = ("%s–%s" % (ini, fim)) if (ini or fim) else ""
         ws.append([data_lbl, dia_lbl, TURNOS.get(a["turno"], a["turno"]), hora_lbl, a["modulo"],
                    "V%s" % a["seq"], a.get("descricao", ""), a.get("tipo", ""),

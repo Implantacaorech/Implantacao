@@ -1441,8 +1441,15 @@ class AtividadeCronograma(Base):
     data = Column(String(10), default="")       # "AAAA-MM-DD" ("" = não alocada)
     turno = Column(String(10), default="")      # "manha" | "tarde" | ""
     tecnico = Column(String(120), default="")   # consultor designado
-    status = Column(String(20), default="Previsto")
+    status = Column(String(20), default="Solicitada")  # ver CRONO_STATUS_AGENDA
+    nova_data = Column(String(10), default="")  # destino da postergação (no card Postergada)
+    novo_turno = Column(String(10), default="")
+    origem_id = Column(Integer, default=0)      # id da atividade que originou (clone de postergação)
     is_copia = Column(Boolean, default=False)
+
+
+# Estados de uma agenda/atividade (para ver e contar no Acompanhamento).
+CRONO_STATUS_AGENDA = ["Solicitada", "Agendada", "Realizada", "Não Realizada", "Postergada", "Cancelada"]
 
 
 def _seq_int(v):
@@ -1478,7 +1485,7 @@ def cronograma_atividades_seed(projeto_id, modulos_str):
             contador[chave] = contador.get(chave, 0) + 1
             novas.append(AtividadeCronograma(
                 projeto_id=projeto_id, modulo=r.modulo, seq=seq, ordem=contador[chave],
-                descricao=desc, tipo=(r.tipo or "").strip(), status="Previsto"))
+                descricao=desc, tipo=(r.tipo or "").strip(), status="Solicitada"))
         for a in novas:
             s.add(a)
         s.commit()
@@ -1521,10 +1528,14 @@ def cronograma_alocar(atividade_id, projeto_id=None, data=None, turno=None, tecn
             a.data = data.strip()
         if turno is not None:
             a.turno = turno.strip()
+        # transição automática de status só em estados de agendamento
+        if (data is not None or turno is not None) and status is None:
+            if (a.status or "") in ("", "Solicitada", "Agendada"):
+                a.status = "Agendada" if (a.data and a.turno) else "Solicitada"
         if tecnico is not None:
             a.tecnico = (tecnico or "").strip()
         if status is not None:
-            a.status = (status or "").strip() or "Previsto"
+            a.status = (status or "").strip() or "Solicitada"
         s.commit()
         return to_dict(a)
 
@@ -1534,47 +1545,103 @@ TURNO_PADRAO = {"manha": ("08:00", "12:00"), "tarde": ("13:00", "17:00")}
 
 
 class SlotCronograma(Base):
-    """Horário de início/fim de um turno (data+turno) do agendador, por projeto."""
+    """Horário GLOBAL de início/fim por turno do agendador (uma linha por turno, data="")."""
     __tablename__ = "cronograma_slots"
     id = Column(Integer, primary_key=True)
     projeto_id = Column(Integer, index=True)
-    data = Column(String(10), default="")       # "AAAA-MM-DD"
+    data = Column(String(10), default="")       # "" = global (um horário p/ todas as visitas)
     turno = Column(String(10), default="")      # "manha" | "tarde"
     hora_inicio = Column(String(5), default="")  # "HH:MM"
     hora_fim = Column(String(5), default="")
 
 
-def cronograma_slots(projeto_id):
-    """{(data, turno): {'hora_inicio','hora_fim'}} dos slots com horário definido."""
+def cronograma_horarios(projeto_id):
+    """{'manha': (ini, fim), 'tarde': (ini, fim)} — horário GLOBAL por turno do projeto
+    (definido, senão o padrão). Um único local de definição atende todas as visitas."""
     with Session() as s:
-        return {(r.data, r.turno): {"hora_inicio": r.hora_inicio, "hora_fim": r.hora_fim}
-                for r in s.query(SlotCronograma).filter_by(projeto_id=projeto_id).all()}
+        rows = {r.turno: (r.hora_inicio, r.hora_fim)
+                for r in s.query(SlotCronograma).filter_by(projeto_id=projeto_id, data="").all()}
+    out = {}
+    for t in ("manha", "tarde"):
+        ini, fim = rows.get(t, ("", ""))
+        di, df = TURNO_PADRAO[t]
+        out[t] = (ini or di, fim or df)
+    return out
 
 
-def cronograma_slot_horas(slots, data, turno):
-    """Horário (inicio, fim) de um slot: o definido, senão o padrão do turno."""
-    st = slots.get((data, turno))
-    if st and (st.get("hora_inicio") or st.get("hora_fim")):
-        ini, fim = TURNO_PADRAO.get(turno, ("", ""))
-        return (st.get("hora_inicio") or ini, st.get("hora_fim") or fim)
-    return TURNO_PADRAO.get(turno, ("", ""))
+def cronograma_horas(horarios, turno):
+    """Horário (inicio, fim) de um turno a partir do dict de cronograma_horarios."""
+    return horarios.get(turno, TURNO_PADRAO.get(turno, ("", "")))
 
 
-def cronograma_slot_salvar(projeto_id, data, turno, hora_inicio, hora_fim):
-    """Cria/atualiza o horário de um slot (data+turno). Devolve o dict atualizado."""
-    data, turno = (data or "").strip(), (turno or "").strip()
-    if not data or turno not in ("manha", "tarde"):
+def cronograma_horario_salvar(projeto_id, turno, hora_inicio, hora_fim):
+    """Define o horário GLOBAL de um turno (manha|tarde). Devolve o dict atualizado."""
+    turno = (turno or "").strip()
+    if turno not in ("manha", "tarde"):
         return None
     with Session() as s:
-        r = (s.query(SlotCronograma)
-             .filter_by(projeto_id=projeto_id, data=data, turno=turno).first())
+        r = s.query(SlotCronograma).filter_by(projeto_id=projeto_id, data="", turno=turno).first()
         if not r:
-            r = SlotCronograma(projeto_id=projeto_id, data=data, turno=turno)
+            r = SlotCronograma(projeto_id=projeto_id, data="", turno=turno)
             s.add(r)
         r.hora_inicio = (hora_inicio or "").strip()
         r.hora_fim = (hora_fim or "").strip()
         s.commit()
-        return {"data": data, "turno": turno, "hora_inicio": r.hora_inicio, "hora_fim": r.hora_fim}
+        return {"turno": turno, "hora_inicio": r.hora_inicio, "hora_fim": r.hora_fim}
+
+
+def cronograma_status(atividade_id, projeto_id, status):
+    """Define o status de uma atividade (CRONO_STATUS_AGENDA). Devolve o dict ou None."""
+    status = (status or "").strip()
+    if status not in CRONO_STATUS_AGENDA:
+        return None
+    with Session() as s:
+        a = s.get(AtividadeCronograma, int(atividade_id))
+        if not a or a.projeto_id != projeto_id:
+            return None
+        a.status = status
+        s.commit()
+        return to_dict(a)
+
+
+def cronograma_postergar(atividade_id, projeto_id, nova_data, novo_turno):
+    """Posterga um assunto: a atividade original vira histórico 'Postergada' (no mesmo lugar,
+    anotando o destino) e é criada uma NOVA ocorrência 'Agendada' na data/turno destino."""
+    nd, nt = (nova_data or "").strip(), (novo_turno or "").strip()
+    if not nd or nt not in ("manha", "tarde"):
+        return None
+    with Session() as s:
+        a = s.get(AtividadeCronograma, int(atividade_id))
+        if not a or a.projeto_id != projeto_id or not (a.data and a.turno):
+            return None
+        a.status, a.nova_data, a.novo_turno = "Postergada", nd, nt
+        clone = AtividadeCronograma(
+            projeto_id=a.projeto_id, modulo=a.modulo, seq=a.seq, ordem=a.ordem,
+            descricao=a.descricao, tipo=a.tipo, tecnico=a.tecnico,
+            data=nd, turno=nt, status="Agendada", is_copia=True, origem_id=a.id)
+        s.add(clone)
+        s.commit()
+        return {"original": to_dict(a), "novo": to_dict(clone)}
+
+
+def cronograma_tecnico_modulo(projeto_id, modulo, tecnico):
+    """Define o técnico de um MÓDULO: aplica a todos os cartões do módulo e sincroniza a
+    Designação do projeto (fonte única módulo→consultor). Devolve o nº de cartões afetados."""
+    modulo, tecnico = (modulo or "").strip().upper(), (tecnico or "").strip()
+    if not modulo:
+        return 0
+    with Session() as s:
+        n = 0
+        for a in s.query(AtividadeCronograma).filter_by(projeto_id=projeto_id, modulo=modulo).all():
+            a.tecnico = tecnico
+            n += 1
+        d = s.query(Designacao).filter_by(projeto_id=projeto_id, modulo=modulo).first()
+        if not d:
+            d = Designacao(projeto_id=projeto_id, modulo=modulo)
+            s.add(d)
+        d.consultor = tecnico
+        s.commit()
+        return n
 
 
 # --- Conteúdo estruturado dos documentos (telas de edição que espelham os layouts) ---

@@ -13,9 +13,20 @@
     <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
     Acompanhamento das Visitas — {{ p.cliente }}
   </h1>
-  <p class="sub">Atividades alocadas no calendário. Marque <strong>Realizada</strong> conforme a execução.</p>
+  <p class="sub">Acompanhe e atualize o <strong>status</strong> de cada visita. Clique num cartão de status para filtrar.</p>
 
-  <form method="get" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:8px 0 12px">
+  {# Contagem por status (clicável = filtra) #}
+  {% set total_all = contagem.values()|sum %}
+  <div class="ac-chips">
+    <a class="ac-chip {{ 'on' if not f_status }}" href="{{ url_for('projeto_agenda_acompanhamento', pid=pid, data=f_data or None, tecnico=f_tec or None) }}">Todas <b>{{ total_all }}</b></a>
+    {% for st in status_opcoes %}
+    <a class="ac-chip ac-{{ st|replace(' ','')|replace('ã','a')|replace('ç','c')|lower }} {{ 'on' if f_status == st }}"
+       href="{{ url_for('projeto_agenda_acompanhamento', pid=pid, status=st, data=f_data or None, tecnico=f_tec or None) }}">{{ st }} <b>{{ contagem[st] }}</b></a>
+    {% endfor %}
+  </div>
+
+  <form method="get" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:10px 0 12px">
+    <input type="hidden" name="status" value="{{ f_status }}">
     <label class="campo" style="margin:0;width:170px">
       <span>Data</span>
       <select name="data">
@@ -31,15 +42,19 @@
       </select>
     </label>
     <button class="btn primario" type="submit"><svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg> Filtrar</button>
-    {% if f_data or f_tec %}<a class="btn" href="{{ url_for('projeto_agenda_acompanhamento', pid=pid) }}">Limpar</a>{% endif %}
+    {% if f_data or f_tec or f_status %}<a class="btn" href="{{ url_for('projeto_agenda_acompanhamento', pid=pid) }}">Limpar</a>{% endif %}
   </form>
 
-  <div style="display:flex;align-items:center;gap:10px;margin:8px 0 14px">
-    <div style="flex:1;max-width:340px;height:10px;background:var(--line);border-radius:6px;overflow:hidden">
-      <div style="height:100%;width:{{ ((feito/total*100)|round) if total else 0 }}%;background:var(--ok)"></div>
-    </div>
-    <span class="dica" style="margin:0"><strong>{{ feito }}</strong> / {{ total }} realizadas</span>
-  </div>
+  <style>
+    .ac-chips{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+    .ac-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--line);border-radius:14px;font-size:.8rem;color:var(--navy);background:#fff;text-decoration:none}
+    .ac-chip b{font-weight:800}
+    .ac-chip.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+    .ac-chip.ac-postergada{border-color:#f5a623}
+    .ac-chip.ac-cancelada{border-color:var(--err,#d33)}
+    .ac-chip.ac-realizada{border-color:var(--ok,#2e7d32)}
+    .ac-chip.ac-naorealizada{border-color:#e8830c}
+  </style>
 
   {% if atividades %}
   <div class="table-responsive">
@@ -49,12 +64,11 @@
           <th style="text-align:left">Data</th><th style="text-align:left">Horário</th><th style="text-align:left">Turno</th>
           <th style="text-align:left">Módulo</th><th style="text-align:left">Visita</th>
           <th style="text-align:left">Atividade</th><th style="text-align:left">Técnico</th>
-          <th style="text-align:center">Realizada?</th>
+          <th style="text-align:left">Status</th>
         </tr>
       </thead>
       <tbody>
         {% for a in atividades %}
-        {% set feita = (a.status or '').lower().startswith('conclu') or (a.status or '').lower().startswith('realiz') %}
         <tr style="border-top:1px solid var(--line)">
           <td>{{ a.data[8:10] }}/{{ a.data[5:7] }}/{{ a.data[0:4] }}</td>
           <td>{% if a.hora_inicio or a.hora_fim %}{{ a.hora_inicio }}–{{ a.hora_fim }}{% endif %}</td>
@@ -63,9 +77,11 @@
           <td>V{{ a.seq }}</td>
           <td>{{ a.descricao }}</td>
           <td>{{ a.tecnico }}</td>
-          <td style="text-align:center">
-            <input type="checkbox" class="ac-chk" data-id="{{ a.id }}" {{ 'checked' if feita }}
-                   style="width:18px;height:18px;cursor:pointer">
+          <td>
+            <select class="ac-status" data-id="{{ a.id }}" data-prev="{{ a.status }}"
+                    style="font-size:.78rem;padding:2px 4px;border:1px solid var(--line);border-radius:5px">
+              {% for st in status_opcoes %}<option value="{{ st }}" {{ 'selected' if a.status == st }}>{{ st }}</option>{% endfor %}
+            </select>
           </td>
         </tr>
         {% endfor %}
@@ -84,14 +100,14 @@
 
   <script>
   (function(){
-    document.querySelectorAll('.ac-chk').forEach(function(chk){
-      chk.addEventListener('change', function(){
-        var body=new URLSearchParams({atividade_id:chk.dataset.id, status: chk.checked ? 'Concluído' : 'Previsto'});
+    document.querySelectorAll('.ac-status').forEach(function(sel){
+      sel.addEventListener('change', function(){
+        var body=new URLSearchParams({atividade_id:sel.dataset.id, status: sel.value});
         fetch('{{ url_for("projeto_agenda_status", pid=pid) }}', {method:'POST',
               headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: body})
           .then(function(r){ return r.json(); })
-          .then(function(j){ if(!j||!j.ok){ chk.checked=!chk.checked; alert('Não foi possível atualizar.'); } })
-          .catch(function(){ chk.checked=!chk.checked; alert('Erro de rede.'); });
+          .then(function(j){ if(j&&j.ok){ sel.dataset.prev=sel.value; } else { sel.value=sel.dataset.prev; alert('Não foi possível atualizar o status.'); } })
+          .catch(function(){ sel.value=sel.dataset.prev; alert('Erro de rede.'); });
       });
     });
   })();

@@ -1070,11 +1070,13 @@ def test_agenda_polimentos(client):
     assert r.status_code == 200 and r.get_json()["ok"] is True
     a = next(x for x in db.cronograma_atividades(int(pid)) if x["id"] == aid)
     assert a["data"] == "2026-07-03" and a["turno"] == "manha" and a["tecnico"] == "Fulano"
-    r = client.post("/projetos/%s/agenda/postergar" % pid,     # posterga: sexta -> segunda
-                    data={"data": "2026-07-03", "turno": "manha"})
+    r = client.post("/projetos/%s/agenda/postergar" % pid,     # posterga este assunto p/ segunda tarde
+                    data={"atividade_id": aid, "nova_data": "2026-07-06", "novo_turno": "tarde"})
     assert r.status_code == 302
     a = next(x for x in db.cronograma_atividades(int(pid)) if x["id"] == aid)
-    assert a["data"] == "2026-07-06" and a["turno"] == "manha"  # pulou o fim de semana
+    assert a["status"] == "Postergada" and a["data"] == "2026-07-03"   # original fica no lugar (histórico)
+    novos = [x for x in db.cronograma_atividades(int(pid)) if x["data"] == "2026-07-06" and x["turno"] == "tarde"]
+    assert novos and novos[0]["status"] == "Agendada"                  # nova ocorrência criada no destino
     r = client.get("/projetos/%s/agenda?fds=1&ref=2026-07-06" % pid)
     assert r.status_code == 200 and "Sáb" in r.get_data(as_text=True)
     client.post("/projetos/%s/excluir" % pid)
@@ -1093,9 +1095,9 @@ def test_agenda_status_acompanhamento_e_xlsx(client):
     # aloca uma atividade e marca como realizada
     aid = db.cronograma_atividades(int(pid))[0]["id"]
     db.cronograma_alocar(aid, projeto_id=int(pid), data="2026-07-06", turno="manha")
-    r = client.post("/projetos/%s/agenda/status" % pid, data={"atividade_id": aid, "status": "Concluído"})
+    r = client.post("/projetos/%s/agenda/status" % pid, data={"atividade_id": aid, "status": "Realizada"})
     assert r.status_code == 200 and r.get_json()["ok"] is True
-    assert next(a for a in db.cronograma_atividades(int(pid)) if a["id"] == aid)["status"] == "Concluído"
+    assert next(a for a in db.cronograma_atividades(int(pid)) if a["id"] == aid)["status"] == "Realizada"
     r = client.get("/projetos/%s/agenda/acompanhamento" % pid)
     assert r.status_code == 200 and "Acompanhamento" in r.get_data(as_text=True)
     # gera o .xlsx e anexa como Documento de cronograma
@@ -1117,22 +1119,32 @@ def test_agenda_status_acompanhamento_e_xlsx(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
-def test_agenda_horarios_e_filtros(client):
-    """Horário por turno (slot) reflete no acompanhamento; filtros por data/técnico."""
+def test_agenda_horario_global_status_e_tecnico_modulo(client):
+    """Horário GLOBAL por turno; contagem/filtro por status; técnico por módulo sincroniza Designação."""
     pid = _novo(client, cliente="Horario LTDA", cnpj="00.000.000/0001-00", numero_projeto="HR-1",
                 modulos="FAT", horas_cobradas="10", etapa="Cronograma e Check-list")
     db.cronograma_atividades_seed(int(pid), "FAT")
     ats = db.cronograma_atividades(int(pid))
-    db.cronograma_alocar(ats[0]["id"], projeto_id=int(pid), data="2026-07-06", turno="manha", tecnico="Ana")
-    db.cronograma_alocar(ats[1]["id"], projeto_id=int(pid), data="2026-07-07", turno="tarde", tecnico="Beto")
-    r = client.post("/projetos/%s/agenda/slot" % pid,         # horário do turno manhã de 06/07
-                    data={"data": "2026-07-06", "turno": "manha", "hora_inicio": "09:00", "hora_fim": "11:30"})
+    db.cronograma_alocar(ats[0]["id"], projeto_id=int(pid), data="2026-07-06", turno="manha")
+    db.cronograma_alocar(ats[1]["id"], projeto_id=int(pid), data="2026-07-07", turno="tarde")
+    # horário GLOBAL do turno manhã (um só para todas as visitas)
+    r = client.post("/projetos/%s/agenda/horario" % pid,
+                    data={"turno": "manha", "hora_inicio": "09:00", "hora_fim": "11:30"})
     assert r.status_code == 200 and r.get_json()["ok"] is True
-    assert db.cronograma_slots(int(pid))[("2026-07-06", "manha")]["hora_inicio"] == "09:00"
+    assert db.cronograma_horarios(int(pid))["manha"] == ("09:00", "11:30")
     html = client.get("/projetos/%s/agenda/acompanhamento" % pid).get_data(as_text=True)
-    assert "09:00" in html and "11:30" in html and "/ 2 realizadas" in html
-    html = client.get("/projetos/%s/agenda/acompanhamento?tecnico=Ana" % pid).get_data(as_text=True)
-    assert "/ 1 realizadas" in html                            # filtra por técnico
-    html = client.get("/projetos/%s/agenda/acompanhamento?data=2026-07-07" % pid).get_data(as_text=True)
-    assert "/ 1 realizadas" in html                            # filtra por data
+    assert "09:00" in html and "11:30" in html and html.count('class="ac-status"') == 2
+    # status: marca uma Realizada e filtra
+    r = client.post("/projetos/%s/agenda/status" % pid, data={"atividade_id": ats[0]["id"], "status": "Realizada"})
+    assert r.status_code == 200 and r.get_json()["ok"] is True
+    html = client.get("/projetos/%s/agenda/acompanhamento?status=Realizada" % pid).get_data(as_text=True)
+    assert html.count('class="ac-status"') == 1                # só a Realizada
+    # status inválido é rejeitado
+    assert client.post("/projetos/%s/agenda/status" % pid,
+                       data={"atividade_id": ats[0]["id"], "status": "Inexistente"}).status_code == 400
+    # técnico por módulo: aplica aos cartões e sincroniza a Designação
+    r = client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "FAT", "tecnico": "Chico"})
+    assert r.status_code == 302
+    assert all(a["tecnico"] == "Chico" for a in db.cronograma_atividades(int(pid)) if a["modulo"] == "FAT")
+    assert {d["modulo"]: d["consultor"] for d in db.designacoes_do_projeto(int(pid))}.get("FAT") == "Chico"
     client.post("/projetos/%s/excluir" % pid)

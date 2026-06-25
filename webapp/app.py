@@ -2217,17 +2217,16 @@ def projeto_agenda(pid):
     visitas = db.cronograma_visitas(pid)                      # todos os grupos (containers persistem)
     n_pend = sum(1 for a in ats if not (a["data"] and a["turno"]))
 
-    slots = db.cronograma_slots(pid)                          # horário início/fim por turno
-    slot_times = {}
-    for d in dias:
-        for t in ("manha", "tarde"):
-            ini, fim = db.cronograma_slot_horas(slots, d.isoformat(), t)
-            slot_times["%s|%s" % (d.isoformat(), t)] = {"ini": ini, "fim": fim}
+    h = db.cronograma_horarios(pid)                           # horário GLOBAL por turno (um só)
+    hor = {"manha": {"ini": h["manha"][0], "fim": h["manha"][1]},
+           "tarde": {"ini": h["tarde"][0], "fim": h["tarde"][1]}}
+    modulos_tec = [{"sigla": m, "tecnico": tech.get(m, "")}    # técnico por módulo (painel central)
+                   for m in sorted({a["modulo"] for a in ats})]
 
     qs = "&fds=1" if fds else ""
     return render_template("agenda.html", p=proj, pid=pid, semana=semana, aloc=aloc,
                            visitas=visitas, tech=tech, tecnicos=tecnicos, fora=fora, fds=fds,
-                           slot_times=slot_times,
+                           hor=hor, modulos_tec=modulos_tec,
                            ref_cur=seg.isoformat(),
                            ref_prev=(seg - timedelta(days=7)).isoformat() + qs,
                            ref_next=(seg + timedelta(days=7)).isoformat() + qs,
@@ -2261,30 +2260,41 @@ def projeto_agenda_alocar(pid):
     return jsonify(ok=True, atividade=upd)
 
 
-@app.route("/projetos/<int:pid>/agenda/slot", methods=["POST"])
-def projeto_agenda_slot(pid):
-    """Define o horário de início/fim de um turno (data+turno) do agendador (JSON)."""
+@app.route("/projetos/<int:pid>/agenda/horario", methods=["POST"])
+def projeto_agenda_horario(pid):
+    """Define o horário GLOBAL de início/fim de um turno (manha|tarde) — um só p/ todas as visitas."""
     if not pode_gerar("cronograma"):
         abort(403)
-    upd = db.cronograma_slot_salvar(pid, request.form.get("data"), request.form.get("turno"),
-                                    request.form.get("hora_inicio"), request.form.get("hora_fim"))
+    upd = db.cronograma_horario_salvar(pid, request.form.get("turno"),
+                                       request.form.get("hora_inicio"), request.form.get("hora_fim"))
     if not upd:
-        return jsonify(ok=False, erro="slot inválido"), 400
-    return jsonify(ok=True, slot=upd)
+        return jsonify(ok=False, erro="turno inválido"), 400
+    return jsonify(ok=True, horario=upd)
+
+
+@app.route("/projetos/<int:pid>/agenda/tecnico_modulo", methods=["POST"])
+def projeto_agenda_tecnico_modulo(pid):
+    """Define o técnico de um MÓDULO (aplica aos cartões e sincroniza a Designação)."""
+    if not pode_gerar("cronograma"):
+        abort(403)
+    n = db.cronograma_tecnico_modulo(pid, request.form.get("modulo"), request.form.get("tecnico"))
+    ref = (request.form.get("ref") or "").strip()
+    return redirect(url_for("projeto_agenda", pid=pid, ref=ref or None,
+                            fds=(1 if request.form.get("fds") else None),
+                            aviso="Técnico do módulo aplicado a %d cartão(ões)." % n))
 
 
 @app.route("/projetos/<int:pid>/agenda/status", methods=["POST"])
 def projeto_agenda_status(pid):
-    """Marca o status (Previsto/Concluído) de uma atividade alocada (JSON)."""
+    """Define o status de uma atividade (CRONO_STATUS_AGENDA) — JSON."""
     if not pode_gerar("cronograma"):
         abort(403)
     aid = request.form.get("atividade_id")
-    status = (request.form.get("status") or "").strip() or "Previsto"
     if not aid:
         return jsonify(ok=False, erro="atividade_id ausente"), 400
-    upd = db.cronograma_alocar(aid, projeto_id=pid, status=status)
+    upd = db.cronograma_status(aid, pid, request.form.get("status"))
     if not upd:
-        return jsonify(ok=False, erro="atividade não encontrada"), 404
+        return jsonify(ok=False, erro="status inválido ou atividade não encontrada"), 400
     return jsonify(ok=True, atividade=upd)
 
 
@@ -2299,20 +2309,26 @@ def projeto_agenda_acompanhamento(pid):
             abort(404)
         proj = db.to_dict(p)
     todas = [a for a in db.cronograma_atividades(pid) if a["data"] and a["turno"]]
-    slots = db.cronograma_slots(pid)
-    for a in todas:                                   # horário do turno em cada atividade
-        a["hora_inicio"], a["hora_fim"] = db.cronograma_slot_horas(slots, a["data"], a["turno"])
+    h = db.cronograma_horarios(pid)
+    for a in todas:                                   # horário (global) do turno em cada atividade
+        a["hora_inicio"], a["hora_fim"] = db.cronograma_horas(h, a["turno"])
     datas = sorted({a["data"] for a in todas})        # opções de filtro
     tecs = sorted({(a["tecnico"] or "").strip() for a in todas if (a["tecnico"] or "").strip()})
     f_data = (request.args.get("data") or "").strip()
     f_tec = (request.args.get("tecnico") or "").strip()
+    f_status = (request.args.get("status") or "").strip()
     ats = [a for a in todas
-           if (not f_data or a["data"] == f_data) and (not f_tec or (a["tecnico"] or "").strip() == f_tec)]
+           if (not f_data or a["data"] == f_data)
+           and (not f_tec or (a["tecnico"] or "").strip() == f_tec)
+           and (not f_status or (a["status"] or "") == f_status)]
     ats.sort(key=lambda a: (a["data"], 0 if a["turno"] == "manha" else 1, a["modulo"], a["seq"]))
-    feito = sum(1 for a in ats if (a["status"] or "").lower().startswith(("conclu", "realiz")))
+    contagem = {st: 0 for st in db.CRONO_STATUS_AGENDA}   # contagem por status (todas as alocadas)
+    for a in todas:
+        contagem[a["status"]] = contagem.get(a["status"], 0) + 1
     return render_template("agenda_acompanhamento.html", p=proj, pid=pid,
-                           atividades=ats, total=len(ats), feito=feito,
-                           datas=datas, tecnicos=tecs, f_data=f_data, f_tec=f_tec)
+                           atividades=ats, total=len(ats), contagem=contagem,
+                           status_opcoes=db.CRONO_STATUS_AGENDA,
+                           datas=datas, tecnicos=tecs, f_data=f_data, f_tec=f_tec, f_status=f_status)
 
 
 @app.route("/projetos/<int:pid>/agenda/gerar", methods=["POST"])
@@ -2331,7 +2347,7 @@ def projeto_agenda_gerar(pid):
                                 erro="Aloque ao menos uma atividade no calendário antes de gerar o cronograma."))
     import gerar_layout
     try:
-        path = gerar_layout.gerar_agenda_xlsx(proj, ats, db.cronograma_slots(pid))
+        path = gerar_layout.gerar_agenda_xlsx(proj, ats, db.cronograma_horarios(pid))
     except Exception:
         logging.exception("Falha ao gerar cronograma de visitas (.xlsx)")
         return redirect(url_for("projeto_agenda", pid=pid, erro="Falha ao gerar o cronograma."))
@@ -2349,28 +2365,32 @@ def projeto_agenda_gerar(pid):
 
 @app.route("/projetos/<int:pid>/agenda/postergar", methods=["POST"])
 def projeto_agenda_postergar(pid):
-    """Posterga TODAS as atividades de um turno (data+turno) para o próximo dia útil."""
+    """Posterga assunto(s) para uma data/turno destino. Por ASSUNTO (atividade_id) ou por
+    TURNO inteiro (data+turno). Cada original vira 'Postergada' (histórico) e nasce uma nova
+    ocorrência 'Agendada' no destino."""
     if not pode_gerar("cronograma"):
         abort(403)
-    from datetime import date, timedelta
-    iso = (request.form.get("data") or "").strip()
-    turno = (request.form.get("turno") or "").strip()
+    nova_data = (request.form.get("nova_data") or "").strip()
+    novo_turno = (request.form.get("novo_turno") or "").strip()
+    aid = request.form.get("atividade_id")
+    src_data = (request.form.get("data") or "").strip()
+    src_turno = (request.form.get("turno") or "").strip()
     ref = (request.form.get("ref") or "").strip()
     fds = request.form.get("fds")
-    try:
-        d = date.fromisoformat(iso)
-    except ValueError:
-        return redirect(url_for("projeto_agenda", pid=pid))
-    nd = d + timedelta(days=1)
-    while nd.weekday() >= 5:                    # pula fim de semana
-        nd += timedelta(days=1)
-    movidas = 0
-    for a in db.cronograma_atividades(pid):
-        if a["data"] == iso and a["turno"] == turno:
-            db.cronograma_alocar(a["id"], projeto_id=pid, data=nd.isoformat())
-            movidas += 1
-    return redirect(url_for("projeto_agenda", pid=pid, ref=(ref or iso), fds=(1 if fds else None),
-                            aviso=("%d atividade(s) postergada(s) para %s." % (movidas, nd.strftime("%d/%m"))) if movidas else None))
+    if aid:
+        alvos = [int(aid)]
+    elif src_data and src_turno:
+        alvos = [a["id"] for a in db.cronograma_atividades(pid)
+                 if a["data"] == src_data and a["turno"] == src_turno and a["status"] != "Postergada"]
+    else:
+        alvos = []
+    n = sum(1 for tid in alvos if db.cronograma_postergar(tid, pid, nova_data, novo_turno))
+    if n:
+        aviso = "%d assunto(s) postergado(s) para %s." % (n, nova_data)
+    else:
+        aviso = "Informe a data e o turno destino para postergar."
+    return redirect(url_for("projeto_agenda", pid=pid, ref=(ref or src_data or nova_data) or None,
+                            fds=(1 if fds else None), aviso=aviso))
 
 
 @app.route("/projetos/<int:pid>/checklist", methods=["GET", "POST"])
