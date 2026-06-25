@@ -559,11 +559,9 @@
           </a>
         </div>
         {% if pode_gerar('projeto') %}
-        <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='projeto') }}">
-          <button class="btn primario" type="submit" style="margin-top:8px">
-            <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg> Gerar Projeto
-          </button>
-        </form>
+        <a class="btn primario" href="{{ url_for('projeto_origem', pid=p.id) }}" style="margin-top:8px">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg> Gerar Projeto
+        </a>
         {% else %}
         <p class="dica">Sem permissão para gerar o Projeto neste perfil.</p>
         {% endif %}
@@ -640,18 +638,23 @@
             Cronograma de implantação
             {% if tem_cron %}<span style="color:var(--ok);font-size:.8rem;display:flex;align-items:center;gap:4px"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Gerado</span>{% endif %}
           </div>
-          <p class="descricao">Distribui as horas contratadas em dias úteis por módulo e etapa.</p>
+          <p class="descricao">Agende as <strong>visitas</strong> (do Check-list) no calendário por dia e turno, por consultor designado.</p>
           <div class="acoes-row">
             {% if pode_gerar('cronograma') %}
+            <a class="btn primario" href="{{ url_for('projeto_agenda', pid=p.id) }}">
+              <svg class="svgi" aria-hidden="true"><use href="#ic-calendar"/></svg> Agenda de Visitas
+            </a>
+            {% endif %}
+            {% if pode_gerar('cronograma') %}
             <form method="post" action="{{ url_for('projeto_gerar', pid=p.id, tipo='cronograma') }}">
-              <button class="btn {{ '' if tem_cron else 'primario' }}" type="submit">
+              <button class="btn" type="submit">
                 <svg class="svgi" aria-hidden="true"><use href="#ic-clock"/></svg>
                 {{ 'Regenerar' if tem_cron else 'Gerar Cronograma' }}
               </button>
             </form>
             {% endif %}
             <a class="btn" href="{{ url_for('projeto_cronograma', pid=p.id) }}">
-              <svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg> Editar no painel
+              <svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg> Plano (lista)
             </a>
           </div>
         </div>

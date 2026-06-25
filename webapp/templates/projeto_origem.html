@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block titulo %}Gerar Projeto — {{ p.cliente }}{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <a href="{{ url_for('projetos') }}">Carteira</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <a href="{{ url_for('projeto_ficha', pid=pid) }}">{{ p.cliente }}</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Gerar Projeto</div>{% endblock %}
+{% block conteudo %}
+  <h1 style="display:flex;align-items:center;gap:10px">
+    <svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-file"/></svg>
+    Gerar Projeto — {{ p.cliente }}
+  </h1>
+  <p class="sub">O Projeto nasce do <strong>Levantamento</strong>. Escolha a origem dos dados para a geração.
+    Só entram no Detalhamento das Rotinas os <strong>módulos contratados</strong>.</p>
+
+  {% if erro %}<div class="resultado erro" style="padding:8px 14px;display:flex;align-items:center;gap:8px;margin-bottom:12px">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro }}</div>{% endif %}
+
+  {# Estado atual #}
+  <div class="painel" style="display:flex;gap:22px;flex-wrap:wrap;align-items:center">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg class="svgi svgi-md" style="color:{{ 'var(--ok)' if tela_resp else 'var(--muted)' }}" aria-hidden="true"><use href="#ic-compass"/></svg>
+      <span>Levantamento em tela: <strong>{{ tela_resp }}</strong> / {{ total }} respondidas</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg class="svgi svgi-md" style="color:{{ 'var(--ok)' if importado else 'var(--muted)' }}" aria-hidden="true"><use href="#ic-file"/></svg>
+      <span>Levantamento importado: <strong>{{ 'Sim' if importado else 'Não' }}</strong>{% if importado %} ({{ importado.arquivo }}){% endif %}</span>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px">
+
+    {# Opção 1: dados preenchidos em tela #}
+    {% if tela_resp %}
+    <form method="post" class="painel" style="margin:0;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+      <div>
+        <div style="font-weight:700;color:var(--navy)">Usar os dados preenchidos em tela</div>
+        <div class="dica" style="margin:2px 0 0">Gera o Projeto fiel com as {{ tela_resp }} respostas já digitadas no painel. <strong>Recomendado.</strong></div>
+      </div>
+      <input type="hidden" name="fonte" value="tela">
+      <button class="btn primario" type="submit"><svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Usar dados da tela</button>
+    </form>
+    {% endif %}
+
+    {# Opção 2: usar o levantamento importado (se existir) #}
+    {% if importado %}
+    <form method="post" class="painel" style="margin:0;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+      <div>
+        <div style="font-weight:700;color:var(--navy)">Usar o Levantamento importado</div>
+        <div class="dica" style="margin:2px 0 0">Lê o arquivo <em>{{ importado.arquivo }}</em>, importa as respostas e gera o Projeto fiel.</div>
+      </div>
+      <input type="hidden" name="fonte" value="importado">
+      <button class="btn {{ 'primario' if not tela_resp else '' }}" type="submit"><svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> Usar importado</button>
+    </form>
+    {% endif %}
+
+    {# Opção 3: importar um levantamento .docx #}
+    <form method="post" enctype="multipart/form-data" class="painel" style="margin:0">
+      <div style="font-weight:700;color:var(--navy)">Importar um Levantamento (.docx)</div>
+      <div class="dica" style="margin:2px 0 8px">Envie o Mapeamento preenchido — as respostas são importadas para o painel e o Projeto é gerado fiel.</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="file" name="arquivo" accept=".docx" style="flex:1;min-width:220px">
+        <input type="hidden" name="fonte" value="importar">
+        <button class="btn {{ 'primario' if (not tela_resp and not importado) else '' }}" type="submit"><svg class="svgi" aria-hidden="true"><use href="#ic-upload"/></svg> Importar e gerar</button>
+      </div>
+    </form>
+
+    {# Opção 4: modelo para preenchimento manual #}
+    <form method="post" class="painel" style="margin:0;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+      <div>
+        <div style="font-weight:700;color:var(--navy)">Gerar modelo do Projeto para preenchimento manual</div>
+        <div class="dica" style="margin:2px 0 0">Sem respostas no painel: gera o Projeto preenchido com tudo que dá pelos <strong>cadastros</strong> e <strong>Índice de Tópicos</strong> (módulos por área + perguntas como guia) para preencher à mão.</div>
+      </div>
+      <input type="hidden" name="fonte" value="modelo">
+      <button class="btn" type="submit"><svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Gerar modelo manual</button>
+    </form>
+
+  </div>
+
+  <div style="margin-top:14px">
+    <a class="btn" href="{{ url_for('projeto_ficha', pid=pid) }}">Cancelar</a>
+  </div>
+{% endblock %}

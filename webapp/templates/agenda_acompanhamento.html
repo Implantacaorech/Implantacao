@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block titulo %}Acompanhamento — {{ p.cliente }}{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <a href="{{ url_for('projetos') }}">Carteira</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <a href="{{ url_for('projeto_ficha', pid=pid) }}">{{ p.cliente }}</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <a href="{{ url_for('projeto_agenda', pid=pid) }}">Agenda</a>
+  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Acompanhamento</div>{% endblock %}
+{% block conteudo %}
+  <h1 style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+    <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+    Acompanhamento das Visitas — {{ p.cliente }}
+  </h1>
+  <p class="sub">Atividades alocadas no calendário. Marque <strong>Realizada</strong> conforme a execução.</p>
+
+  <div style="display:flex;align-items:center;gap:10px;margin:8px 0 14px">
+    <div style="flex:1;max-width:340px;height:10px;background:var(--line);border-radius:6px;overflow:hidden">
+      <div style="height:100%;width:{{ ((feito/total*100)|round) if total else 0 }}%;background:var(--ok)"></div>
+    </div>
+    <span class="dica" style="margin:0"><strong>{{ feito }}</strong> / {{ total }} realizadas</span>
+  </div>
+
+  {% if atividades %}
+  <div class="table-responsive">
+    <table class="tabela" style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr>
+          <th style="text-align:left">Data</th><th style="text-align:left">Turno</th>
+          <th style="text-align:left">Módulo</th><th style="text-align:left">Visita</th>
+          <th style="text-align:left">Atividade</th><th style="text-align:left">Técnico</th>
+          <th style="text-align:center">Realizada?</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in atividades %}
+        {% set feita = (a.status or '').lower().startswith('conclu') or (a.status or '').lower().startswith('realiz') %}
+        <tr style="border-top:1px solid var(--line)">
+          <td>{{ a.data }}</td>
+          <td>{{ 'Manhã' if a.turno == 'manha' else ('Tarde' if a.turno == 'tarde' else a.turno) }}</td>
+          <td><strong>{{ a.modulo }}</strong></td>
+          <td>V{{ a.seq }}</td>
+          <td>{{ a.descricao }}</td>
+          <td>{{ a.tecnico }}</td>
+          <td style="text-align:center">
+            <input type="checkbox" class="ac-chk" data-id="{{ a.id }}" {{ 'checked' if feita }}
+                   style="width:18px;height:18px;cursor:pointer">
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="resultado" style="padding:10px 16px">Nenhuma atividade alocada ainda. Use a
+    <a href="{{ url_for('projeto_agenda', pid=pid) }}">Agenda de Visitas</a> para alocar.</div>
+  {% endif %}
+
+  <div style="margin-top:14px;display:flex;gap:8px">
+    <a class="btn" href="{{ url_for('projeto_agenda', pid=pid) }}">Voltar à agenda</a>
+    <a class="btn" href="{{ url_for('projeto_ficha', pid=pid) }}">Ficha do projeto</a>
+  </div>
+
+  <script>
+  (function(){
+    document.querySelectorAll('.ac-chk').forEach(function(chk){
+      chk.addEventListener('change', function(){
+        var body=new URLSearchParams({atividade_id:chk.dataset.id, status: chk.checked ? 'Concluído' : 'Previsto'});
+        fetch('{{ url_for("projeto_agenda_status", pid=pid) }}', {method:'POST',
+              headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: body})
+          .then(function(r){ return r.json(); })
+          .then(function(j){ if(!j||!j.ok){ chk.checked=!chk.checked; alert('Não foi possível atualizar.'); } })
+          .catch(function(){ chk.checked=!chk.checked; alert('Erro de rede.'); });
+      });
+    });
+  })();
+  </script>
+{% endblock %}

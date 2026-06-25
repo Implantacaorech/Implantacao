@@ -11,7 +11,7 @@ import os
 import sys
 
 from flask import (Flask, render_template, request, send_file, abort,
-                   session, redirect, url_for)
+                   session, redirect, url_for, jsonify)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, "frozen", False)
@@ -1023,6 +1023,263 @@ def atividade():
                            uso=db.metricas_uso(eventos, meus), funil=db.funil_macro(meus))
 
 
+def _split_nomes(valor):
+    import re as _re
+    out = []
+    for parte in _re.split(r"[,;/\n]|\s+e\s+", valor or ""):
+        nome = parte.strip()
+        if nome and nome not in out:
+            out.append(nome)
+    return out
+
+
+def _parse_data(valor):
+    from datetime import datetime
+    valor = str(valor or "").strip()
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(valor, fmt).date()
+        except ValueError:
+            pass
+    return None
+
+
+def _idade_media(projetos):
+    from datetime import datetime
+    hoje = datetime.now()
+    idades = [(hoje - p["criado_em"]).days for p in projetos
+              if p.get("criado_em") and not p.get("situacao") == "Concluído"]
+    return round(sum(idades) / len(idades)) if idades else None
+
+
+def _estado_setor(andamento, pendentes, atrasadas, aprovacao, concluidas):
+    if andamento == 0 and pendentes == 0 and atrasadas == 0 and concluidas > 0:
+        return "concluido", "Processo concluído"
+    if aprovacao:
+        return "aprovacao", "Aguardando aprovação"
+    if atrasadas >= 2 or pendentes >= 6 or andamento >= 8:
+        return "sobrecarregado", "Sobrecarregado"
+    if atrasadas or pendentes:
+        return "pendencias", "Com pendências"
+    if andamento == 0:
+        return "espera", "Em espera"
+    return "normal", "Trabalhando normalmente"
+
+
+def _monitoramento_operacional(projetos, docs_map, eventos, cronos, checks, designacoes):
+    """Consolida a operação em visão executiva, sem criar tarefas paralelas.
+    Os setores são inferidos a partir das etapas, gates, cronograma, checklist e alertas."""
+    from datetime import datetime
+    hoje = datetime.now().date()
+    ativos = [p for p in projetos if p.get("situacao") != "Concluído"]
+    concluidos = [p for p in projetos if p.get("situacao") == "Concluído"]
+    por_id = {p["id"]: p for p in projetos}
+    m = db.metricas(projetos, docs_map)
+    alertas = db.alertas(projetos, docs_map)
+    alertas_por_pid = {}
+    for a in alertas:
+        alertas_por_pid.setdefault(a["projeto_id"], []).append(a)
+
+    faltas_por_pid = {}
+    for p in ativos:
+        gate = db.gate_status(p.get("etapa"), docs_map.get(p["id"], []))
+        faltas_por_pid[p["id"]] = gate["faltam"]
+
+    crono_pend = [c for c in cronos if c.get("status") not in ("Concluído", "Cancelado")]
+    crono_ok = [c for c in cronos if c.get("status") == "Concluído"]
+    crono_atrasado = [c for c in crono_pend
+                      if _parse_data(c.get("data")) and _parse_data(c.get("data")) < hoje]
+    check_pend = [c for c in checks if c.get("status") not in ("Concluído", "N/A")]
+    check_ok = [c for c in checks if c.get("status") == "Concluído"]
+    dev_kw = ("desenv", "custom", "integra", "rns", "orc", "cob", "api")
+    dev_checks = [c for c in checks if any(k in ("%s %s" % (c.get("item"), c.get("obs"))).lower()
+                                           for k in dev_kw)]
+    dev_pend = [c for c in dev_checks if c.get("status") not in ("Concluído", "N/A")]
+    dev_ids = {c.get("projeto_id") for c in dev_checks}
+    for p in projetos:
+        texto = " ".join(str(p.get(k) or "") for k in ("modulos", "observacoes"))
+        if any(k in texto.lower() for k in dev_kw):
+            dev_ids.add(p["id"])
+
+    def pessoas(*campos):
+        nomes = []
+        for c in campos:
+            if isinstance(c, (list, tuple, set)):
+                vals = c
+            else:
+                vals = _split_nomes(c)
+            for n in vals:
+                if n and n not in nomes:
+                    nomes.append(n)
+        return nomes[:8]
+
+    def setor(nome, ids, andamento, concluidas_setor, pendentes, atrasadas, aprovacao=0,
+              responsaveis=None, alertas_txt=None):
+        rel = [por_id[i] for i in ids if i in por_id]
+        estado, label = _estado_setor(andamento, pendentes, atrasadas, aprovacao, concluidas_setor)
+        return {
+            "nome": nome, "estado": estado, "estado_label": label,
+            "andamento": andamento, "concluidas": concluidas_setor,
+            "pendentes": pendentes, "atrasadas": atrasadas, "aprovacao": aprovacao,
+            "responsaveis": responsaveis or [], "tempo_medio": _idade_media(rel),
+            "alertas": (alertas_txt or [])[:3],
+        }
+
+    agendamento = [p for p in ativos if p.get("etapa") == "Agendamento"]
+    comercial_pend = sum(len(db.campos_faltantes("Agendamento", p)) for p in agendamento)
+    comercial_atraso = [p for p in agendamento if p.get("criado_em") and (datetime.now() - p["criado_em"]).days >= 2]
+
+    admin_ids = {p["id"] for p in ativos if faltas_por_pid.get(p["id"]) or not p.get("responsavel")}
+    admin_faltas = sum(len(v) for v in faltas_por_pid.values())
+    admin_sla = [a for a in alertas if a["tipo"] == "sla"]
+
+    coord_pend = [p for p in ativos if not p.get("gci") or
+                  (p.get("etapa") in ("Designação", "Cronograma e Check-list", "Encerramento")
+                   and not p.get("consultor"))]
+    coord_aprov = [p for p in ativos if p.get("situacao") == "Em risco"]
+
+    gci_ids = {p["id"] for p in ativos if p.get("gci") or p.get("etapa") in ("Levantamento", "Designação")}
+    gci_pend = [p for p in ativos if p.get("etapa") == "Levantamento" and "Mapeamento (Levantamento)" in faltas_por_pid.get(p["id"], [])]
+    gci_atraso = [p for p in ativos if p.get("etapa") in ("Agendamento", "Levantamento")
+                  and _parse_data(p.get("data_levantamento")) and _parse_data(p.get("data_levantamento")) < hoje]
+
+    consultoria_ids = {p["id"] for p in ativos if p.get("consultor") or
+                       p.get("etapa") in ("Cronograma e Check-list", "Encerramento")}
+    consultoria_ids.update(c.get("projeto_id") for c in crono_pend + check_pend)
+    implantacao_ids = {p["id"] for p in ativos if p.get("etapa") != "Agendamento"}
+    suporte_ids = {p["id"] for p in projetos if p.get("etapa") == "Encerramento" or p.get("situacao") == "Concluído"}
+    suporte_pend = [p for p in ativos if p.get("etapa") == "Encerramento"]
+    suporte_atraso = [a for a in alertas if a["tipo"] == "encerramento"]
+
+    usuarios_adm = [u["nome"] for u in db.usuarios_por_perfil("Administrativo")]
+    usuarios_coord = [u["nome"] for u in db.usuarios_por_perfil("Coordenador") + db.usuarios_por_perfil("ADM")]
+    usuarios_gci = [u["nome"] for u in db.usuarios_por_perfil("GCI")]
+    usuarios_cons = [u["nome"] for u in db.usuarios_por_perfil("Consultor")]
+    designados = [d.get("consultor") for d in designacoes if d.get("consultor")]
+
+    setores = [
+        setor("Comercial", {p["id"] for p in agendamento}, len(agendamento),
+              len([p for p in projetos if p.get("etapa") != "Agendamento"]), comercial_pend,
+              len(comercial_atraso), responsaveis=pessoas([p.get("responsavel") for p in agendamento]),
+              alertas_txt=["Fechamentos aguardando dados ou encaminhamento"] if comercial_pend else []),
+        setor("Administrativo", admin_ids, len(admin_ids), len(docs_map), admin_faltas,
+              len(admin_sla), responsaveis=pessoas(usuarios_adm, [p.get("responsavel") for p in ativos]),
+              alertas_txt=[a["msg"] for a in admin_sla]),
+        setor("Coordenação", {p["id"] for p in ativos}, len(ativos), len(concluidos),
+              len(coord_pend), len([a for a in alertas if a["nivel"] == "alto"]),
+              len(coord_aprov), responsaveis=pessoas(usuarios_coord),
+              alertas_txt=[a["msg"] for a in alertas if a["nivel"] == "alto"]),
+        setor("GCI", gci_ids, len(gci_ids), len([p for p in projetos if p.get("etapa") not in ("Agendamento", "Levantamento")]),
+              len(gci_pend), len(gci_atraso), responsaveis=pessoas(usuarios_gci, [p.get("gci") for p in ativos]),
+              alertas_txt=["Levantamento vencido ou mapeamento pendente"] if gci_atraso or gci_pend else []),
+        setor("Consultoria", consultoria_ids, len(consultoria_ids), len(crono_ok) + len(check_ok),
+              len(crono_pend) + len(check_pend), len(crono_atrasado),
+              responsaveis=pessoas(usuarios_cons, [p.get("consultor") for p in ativos], designados),
+              alertas_txt=["Cronograma/check-list com linhas pendentes"] if crono_pend or check_pend else []),
+        setor("Implantação", implantacao_ids, len(implantacao_ids), len(concluidos),
+              m["gate_pendente"], m["n_atrasados"], len(m["em_risco"]),
+              responsaveis=pessoas([p.get("gci") for p in ativos], [p.get("consultor") for p in ativos]),
+              alertas_txt=[a["msg"] for a in alertas[:3]]),
+        setor("Suporte", suporte_ids, len(suporte_pend), len(concluidos), len(suporte_pend),
+              len(suporte_atraso), responsaveis=pessoas([p.get("consultor") for p in suporte_pend], ["Suporte"]),
+              alertas_txt=[a["msg"] for a in suporte_atraso]),
+        setor("Desenvolvimento", dev_ids, len([i for i in dev_ids if i in {p["id"] for p in ativos}]),
+              len([c for c in dev_checks if c.get("status") == "Concluído"]), len(dev_pend), 0,
+              responsaveis=pessoas([c.get("responsavel") for c in dev_checks], ["Desenvolvimento"]),
+              alertas_txt=["Itens técnicos/customizações pendentes"] if dev_pend else []),
+    ]
+
+    carga = {}
+    for p in ativos:
+        horas = db._pnum(p.get("horas_cobradas")) + db._pnum(p.get("horas_bonificadas"))
+        for nome in pessoas(p.get("gci"), p.get("consultor")):
+            c = carga.setdefault(nome, {"nome": nome, "projetos": set(), "horas": 0.0, "atrasos": 0})
+            c["projetos"].add(p["id"]); c["horas"] += horas
+            if alertas_por_pid.get(p["id"]):
+                c["atrasos"] += 1
+    for d in designacoes:
+        nome = d.get("consultor")
+        if nome:
+            c = carga.setdefault(nome, {"nome": nome, "projetos": set(), "horas": 0.0, "atrasos": 0})
+            c["projetos"].add(d.get("projeto_id"))
+    carga_colab = []
+    for c in carga.values():
+        carga_colab.append({"nome": c["nome"], "projetos": len(c["projetos"]),
+                            "horas": round(c["horas"]), "alertas": c["atrasos"]})
+    carga_colab.sort(key=lambda x: (-x["projetos"], -x["horas"], x["nome"]))
+
+    entregas = []
+    for p in ativos:
+        for campo, label in (("data_levantamento", "Levantamento"), ("data_uso_oficial", "Go-live")):
+            data = _parse_data(p.get(campo))
+            if data:
+                entregas.append({"cliente": p.get("cliente"), "projeto_id": p["id"],
+                                 "tipo": label, "data": data, "dias": (data - hoje).days,
+                                 "setor": "GCI" if campo == "data_levantamento" else "Implantação"})
+    for c in crono_pend:
+        data = _parse_data(c.get("data"))
+        if data and c.get("projeto_id") in por_id:
+            entregas.append({"cliente": por_id[c["projeto_id"]].get("cliente"),
+                             "projeto_id": c["projeto_id"], "tipo": c.get("etapa") or "Cronograma",
+                             "data": data, "dias": (data - hoje).days, "setor": "Consultoria"})
+    entregas.sort(key=lambda x: x["data"])
+
+    mapa = []
+    total_etapas = max(1, len(db.ETAPAS) - 1)
+    for p in ativos:
+        idx = db.macro_idx(p.get("etapa"))
+        progresso = 100 if p.get("situacao") == "Concluído" else round((idx / total_etapas) * 100)
+        al = alertas_por_pid.get(p["id"], [])
+        mapa.append({"id": p["id"], "cliente": p.get("cliente"), "etapa": p.get("etapa"),
+                     "situacao": p.get("situacao"), "progresso": progresso,
+                     "consultor": p.get("consultor") or p.get("gci") or "—",
+                     "alertas": len(al), "risco": p.get("situacao") == "Em risco",
+                     "atrasado": any(a["tipo"] == "atraso" for a in al)})
+    mapa.sort(key=lambda x: (0 if x["atrasado"] else 1, 0 if x["risco"] else 1, -x["alertas"], x["cliente"] or ""))
+
+    saude = 100
+    saude -= min(35, m["n_atrasados"] * 10)
+    saude -= min(25, m["n_risco"] * 8)
+    saude -= min(20, m["gate_pendente"] * 3)
+    saude -= min(20, len([s for s in setores if s["estado"] == "sobrecarregado"]) * 8)
+    saude = max(0, saude)
+
+    fluxo = [{"nome": e, "n": m["por_etapa"].get(e, 0),
+              "pct": round((m["por_etapa"].get(e, 0) / max(1, m["total"])) * 100)}
+             for e in db.ETAPAS]
+
+    return {
+        "m": m, "alertas": alertas, "setores": setores, "saude": saude, "fluxo": fluxo,
+        "mapa": mapa[:14], "entregas": entregas[:10], "carga": carga_colab[:10],
+        "atualizado_em": datetime.now().strftime("%d/%m/%Y %H:%M"),
+        "chart_setores": {"labels": [s["nome"] for s in setores],
+                          "pendentes": [s["pendentes"] for s in setores],
+                          "atrasadas": [s["atrasadas"] for s in setores],
+                          "andamento": [s["andamento"] for s in setores]},
+    }
+
+
+@app.route("/monitoramento")
+def monitoramento():
+    if not pode_ver("gestao"):
+        abort(403)
+    with db.Session() as s:
+        projetos = [db.to_dict(x) for x in s.query(db.Projeto).all()]
+        meus = _so_meus(projetos)
+        ids = {p["id"] for p in meus}
+        docs_map = {}
+        for dcto in s.query(db.Documento).all():
+            if dcto.projeto_id in ids:
+                docs_map.setdefault(dcto.projeto_id, []).append({"tipo": dcto.tipo})
+        eventos = [db.to_dict(x) for x in s.query(db.Evento).order_by(db.Evento.criado_em.desc()).limit(300).all()
+                   if x.projeto_id in ids]
+        cronos = [db.to_dict(x) for x in s.query(db.CronogramaItem).all() if x.projeto_id in ids]
+        checks = [db.to_dict(x) for x in s.query(db.ChecklistItem).all() if x.projeto_id in ids]
+        designacoes = [db.to_dict(x) for x in s.query(db.Designacao).all() if x.projeto_id in ids]
+    dados = _monitoramento_operacional(meus, docs_map, eventos, cronos, checks, designacoes)
+    return render_template("monitoramento_operacional.html", **dados)
+
+
 @app.route("/projetos/novo", methods=["GET", "POST"])
 def projeto_novo():
     if request.method == "POST":
@@ -1077,7 +1334,8 @@ def projeto_excluir(pid):
         p = s.get(db.Projeto, pid)
         if p:
             for M in (db.Documento, db.Evento, db.Designacao, db.CronogramaItem,
-                      db.ChecklistItem, db.Modificacao, db.LevantamentoResposta, db.DocConteudo):
+                      db.ChecklistItem, db.Modificacao, db.LevantamentoResposta, db.DocConteudo,
+                      db.AtividadeCronograma):
                 s.query(M).filter_by(projeto_id=pid).delete()
             s.delete(p)
             s.commit()
@@ -1160,16 +1418,18 @@ def projeto_gerar_pendentes(pid):
 _LAYOUT_SLUGS = ("levantamento", "projeto", "cronograma", "termo")
 
 
-def _gerar_e_anexar_fiel(pid, slug, proj):
+def _gerar_e_anexar_fiel(pid, slug, proj, modo="auto"):
     """Gera o documento da fase pelo layout fiel vigente (Cadastro de Modelos) e anexa
     como Documento. Devolve o caminho do arquivo gerado."""
     import gerar_layout
-    path = gerar_layout.gerar(slug, proj)
+    path = gerar_layout.gerar(slug, proj, modo=modo)
+    rotulo = "Gerou %s pelo layout oficial (%s)" % (os.path.basename(path), slug)
+    if modo == "modelo":
+        rotulo += " — modelo p/ preenchimento manual"
     with db.Session() as s:
         s.add(db.Documento(projeto_id=pid, tipo=slug,
                            arquivo=os.path.basename(path), caminho=path))
-        db.registrar_evento(s, pid, "documento",
-                            "Gerou %s pelo layout oficial (%s)" % (os.path.basename(path), slug), _autor())
+        db.registrar_evento(s, pid, "documento", rotulo, _autor())
         s.commit()
     return path
 
@@ -1186,12 +1446,8 @@ def projeto_gerar(pid, tipo):
     if not _etapa_permite_gerar(tipo, proj.get("etapa")):
         return redirect(url_for("projeto_ficha", pid=pid,
             aviso="'%s' só pode ser gerado na etapa '%s' ou depois." % (db.DOC_LABELS.get(tipo, tipo), _ETAPA_DOC.get(tipo, "?"))))
-    if tipo == "projeto":                       # o Projeto é gerado A PARTIR do Levantamento realizado
-        db.levantamento_seed(pid, proj.get("modulos", ""))
-        resp, total = db.levantamento_resumo(pid)
-        if total > 0 and resp == 0:
-            return redirect(url_for("projeto_levantamento", pid=pid,
-                erro="O Projeto é gerado a partir do Levantamento — responda o Levantamento antes de gerar o Projeto."))
+    if tipo == "projeto":                       # o Projeto passa pelo GATE de origem (tela/importado/modelo)
+        return redirect(url_for("projeto_origem", pid=pid))
     path = None
     try:
         if tipo in _LAYOUT_SLUGS:           # gera pelo LAYOUT FIEL (substitui os geradores antigos)
@@ -1244,6 +1500,77 @@ def projeto_gerar_projeto(pid):
     """Aposentado: o Projeto agora é gerado FIELMENTE pelo layout oficial, com os
     dados do projeto (sem upload do Mapeamento). Mantido por compatibilidade."""
     return projeto_gerar(pid, "projeto")
+
+
+def _gerar_projeto_fiel(pid, proj, modo="auto", aviso=None):
+    """Gera o Projeto pelo layout fiel (modo 'auto' usa respostas; 'modelo' usa as
+    perguntas do Índice como guia), anexa, notifica e tenta avançar."""
+    try:
+        _gerar_e_anexar_fiel(pid, "projeto", proj, modo=modo)
+    except Exception:
+        logging.exception("Falha ao gerar Projeto (modo=%s)", modo)
+        return redirect(url_for("projeto_ficha", pid=pid, aviso="Falha ao gerar o Projeto."))
+    _notificar_evento(pid, _EVT_DOC.get("projeto"), proj)
+    _auto_avancar(pid)
+    return redirect(url_for("projeto_ficha", pid=pid, salvo=1, aviso=aviso))
+
+
+@app.route("/projetos/<int:pid>/projeto/origem", methods=["GET", "POST"])
+def projeto_origem(pid):
+    """GATE de origem do Projeto: o Projeto nasce do Levantamento. Conforme o estado,
+    oferece usar os dados preenchidos EM TELA, um Levantamento IMPORTADO (.docx), ou
+    gerar um MODELO preenchido pelos cadastros/Índice para preenchimento manual."""
+    if not pode_gerar("projeto"):
+        abort(403)
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        if not p:
+            abort(404)
+        proj = db.to_dict(p)
+    if not _etapa_permite_gerar("projeto", proj.get("etapa")):
+        return redirect(url_for("projeto_ficha", pid=pid,
+            aviso="O Projeto só pode ser gerado na etapa '%s' ou depois." % _ETAPA_DOC.get("projeto", "?")))
+    db.levantamento_seed(pid, proj.get("modulos", ""))   # idempotente
+
+    if request.method == "POST":
+        fonte = (request.form.get("fonte") or "tela").strip()
+        if fonte == "modelo":
+            return _gerar_projeto_fiel(pid, proj, "modelo",
+                aviso="Modelo do Projeto gerado (preenchido pelos cadastros/Índice) para preenchimento manual.")
+        if fonte == "importar":
+            f = request.files.get("arquivo")
+            if not (f and f.filename):
+                return redirect(url_for("projeto_origem", pid=pid, erro="Selecione o arquivo .docx do Levantamento."))
+            base, ext = os.path.splitext(f.filename)
+            if ext.lower() != ".docx":
+                return redirect(url_for("projeto_origem", pid=pid, erro="O Levantamento importado deve ser um arquivo .docx."))
+            nome = "levant_import_%d_%s%s" % (pid, C.slug(base), ext.lower())
+            path = os.path.join(UPLOADS, nome)
+            f.save(path)
+            with db.Session() as s:
+                s.add(db.Documento(projeto_id=pid, tipo="levantamento", origem="importado",
+                                   arquivo=os.path.basename(path), caminho=path))
+                db.registrar_evento(s, pid, "documento",
+                                    "Importou Levantamento %s" % os.path.basename(path), _autor())
+                s.commit()
+            n = db.levantamento_importar_respostas(pid, path)
+            return _gerar_projeto_fiel(pid, proj, "auto",
+                aviso="Importadas %d respostas do Levantamento; Projeto gerado." % n)
+        if fonte == "importado":
+            imp = db.levantamento_importado(pid)
+            if not imp:
+                return redirect(url_for("projeto_origem", pid=pid, erro="Não há Levantamento importado neste projeto."))
+            n = db.levantamento_importar_respostas(pid, imp.get("caminho"))
+            return _gerar_projeto_fiel(pid, proj, "auto",
+                aviso="Importadas %d respostas do Levantamento importado; Projeto gerado." % n)
+        # fonte == "tela" (padrão): usa as respostas preenchidas no painel
+        return _gerar_projeto_fiel(pid, proj, "auto")
+
+    resp, total = db.levantamento_resumo(pid)
+    importado = db.levantamento_importado(pid)
+    return render_template("projeto_origem.html", p=proj, pid=pid,
+                           tela_resp=resp, total=total, importado=importado,
+                           erro=request.args.get("erro"))
 
 
 @app.route("/projetos/<int:pid>/levantamento", methods=["GET", "POST"])
@@ -1842,6 +2169,178 @@ def projeto_cronograma_gerar(pid):
         _notificar_evento(pid, _EVT_DOC.get("cronograma"), proj)
         _auto_avancar(pid)
     return redirect(url_for("projeto_cronograma", pid=pid, aviso="Documento do Cronograma gerado e anexado à ficha."))
+
+
+# ---------- Agendador de Visitas (calendário por dia + turno) ----------
+@app.route("/projetos/<int:pid>/agenda", methods=["GET"])
+def projeto_agenda(pid):
+    """Agendador de visitas: lateral com as Visitas (do Check List) e calendário
+    semanal (dia × turno Manhã/Tarde). As atividades são alocadas por arrastar e soltar."""
+    if not pode_gerar("cronograma"):
+        abort(403)
+    from datetime import date, datetime as _dt, timedelta
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        if not p:
+            abort(404)
+        proj = db.to_dict(p)
+    db.cronograma_atividades_seed(pid, proj.get("modulos", ""))
+    ats = db.cronograma_atividades(pid)
+    tech = {d["modulo"]: d["consultor"] for d in db.designacoes_do_projeto(pid)}
+    tecnicos = []                                             # técnicos atribuíveis por cartão
+    for nome in list(tech.values()) + [c.strip() for c in (proj.get("consultor") or "").split(",")]:
+        nome = (nome or "").strip()
+        if nome and nome not in tecnicos:
+            tecnicos.append(nome)
+    tecnicos.sort()
+
+    fds = bool(request.args.get("fds"))
+    try:
+        ref = _dt.strptime(request.args.get("ref", ""), "%Y-%m-%d").date()
+    except ValueError:
+        ref = date.today()
+    seg = ref - timedelta(days=ref.weekday())                 # segunda-feira
+    dias = [seg + timedelta(days=i) for i in range(7 if fds else 5)]
+    nomes = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
+    semana = [{"iso": d.isoformat(), "label": "%s %02d/%02d" % (nomes[i], d.day, d.month)}
+              for i, d in enumerate(dias)]
+    iso_set = {d.isoformat() for d in dias}
+
+    aloc = {d.isoformat(): {"manha": [], "tarde": []} for d in dias}
+    fora = 0
+    for a in ats:
+        if a["data"] and a["turno"]:
+            if a["data"] in iso_set and a["turno"] in ("manha", "tarde"):
+                aloc[a["data"]][a["turno"]].append(a)
+            else:
+                fora += 1
+    visitas = db.cronograma_visitas(pid)                      # todos os grupos (containers persistem)
+    n_pend = sum(1 for a in ats if not (a["data"] and a["turno"]))
+
+    qs = "&fds=1" if fds else ""
+    return render_template("agenda.html", p=proj, pid=pid, semana=semana, aloc=aloc,
+                           visitas=visitas, tech=tech, tecnicos=tecnicos, fora=fora, fds=fds,
+                           ref_cur=seg.isoformat(),
+                           ref_prev=(seg - timedelta(days=7)).isoformat() + qs,
+                           ref_next=(seg + timedelta(days=7)).isoformat() + qs,
+                           ref_hoje=date.today().isoformat() + qs,
+                           fds_toggle="ref=%s%s" % (seg.isoformat(), "" if fds else "&fds=1"),
+                           titulo_sem="%02d/%02d a %02d/%02d" % (dias[0].day, dias[0].month, dias[-1].day, dias[-1].month),
+                           n_pend=n_pend, total=len(ats),
+                           aviso=request.args.get("aviso"), erro=request.args.get("erro"))
+
+
+@app.route("/projetos/<int:pid>/agenda/alocar", methods=["POST"])
+def projeto_agenda_alocar(pid):
+    """Aloca/desaloca uma atividade (JSON). Técnico padrão = consultor designado do módulo."""
+    if not pode_gerar("cronograma"):
+        abort(403)
+    aid = request.form.get("atividade_id")
+    data = request.form.get("data")        # ausente = None (não mexe); "" = desaloca
+    turno = request.form.get("turno")
+    tecnico = request.form.get("tecnico")  # ausente = None (não mexe)
+    if not aid:
+        return jsonify(ok=False, erro="atividade_id ausente"), 400
+    if data and tecnico is None:           # ao alocar, herda o consultor designado do módulo
+        with db.Session() as s:
+            a = s.get(db.AtividadeCronograma, int(aid))
+            if a and a.projeto_id == pid and not (a.tecnico or "").strip():
+                tech = {d["modulo"]: d["consultor"] for d in db.designacoes_do_projeto(pid)}
+                tecnico = tech.get(a.modulo)
+    upd = db.cronograma_alocar(aid, projeto_id=pid, data=data, turno=turno, tecnico=tecnico)
+    if not upd:
+        return jsonify(ok=False, erro="atividade não encontrada"), 404
+    return jsonify(ok=True, atividade=upd)
+
+
+@app.route("/projetos/<int:pid>/agenda/status", methods=["POST"])
+def projeto_agenda_status(pid):
+    """Marca o status (Previsto/Concluído) de uma atividade alocada (JSON)."""
+    if not pode_gerar("cronograma"):
+        abort(403)
+    aid = request.form.get("atividade_id")
+    status = (request.form.get("status") or "").strip() or "Previsto"
+    if not aid:
+        return jsonify(ok=False, erro="atividade_id ausente"), 400
+    upd = db.cronograma_alocar(aid, projeto_id=pid, status=status)
+    if not upd:
+        return jsonify(ok=False, erro="atividade não encontrada"), 404
+    return jsonify(ok=True, atividade=upd)
+
+
+@app.route("/projetos/<int:pid>/agenda/acompanhamento", methods=["GET"])
+def projeto_agenda_acompanhamento(pid):
+    """Acompanhamento: lista (read-only) as atividades alocadas com status 'Realizada?'."""
+    if not pode_gerar("cronograma"):
+        abort(403)
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        if not p:
+            abort(404)
+        proj = db.to_dict(p)
+    ats = [a for a in db.cronograma_atividades(pid) if a["data"] and a["turno"]]
+    ats.sort(key=lambda a: (a["data"], 0 if a["turno"] == "manha" else 1, a["modulo"], a["seq"]))
+    feito = sum(1 for a in ats if (a["status"] or "").lower().startswith(("conclu", "realiz")))
+    return render_template("agenda_acompanhamento.html", p=proj, pid=pid,
+                           atividades=ats, total=len(ats), feito=feito)
+
+
+@app.route("/projetos/<int:pid>/agenda/gerar", methods=["POST"])
+def projeto_agenda_gerar(pid):
+    """Gera o cronograma de visitas (.xlsx) a partir das alocações e anexa como Documento."""
+    if not pode_gerar("cronograma"):
+        abort(403)
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        if not p:
+            abort(404)
+        proj = db.to_dict(p)
+    ats = db.cronograma_atividades(pid)
+    if not any(a["data"] and a["turno"] for a in ats):
+        return redirect(url_for("projeto_agenda", pid=pid,
+                                erro="Aloque ao menos uma atividade no calendário antes de gerar o cronograma."))
+    import gerar_layout
+    try:
+        path = gerar_layout.gerar_agenda_xlsx(proj, ats)
+    except Exception:
+        logging.exception("Falha ao gerar cronograma de visitas (.xlsx)")
+        return redirect(url_for("projeto_agenda", pid=pid, erro="Falha ao gerar o cronograma."))
+    with db.Session() as s:
+        s.add(db.Documento(projeto_id=pid, tipo="cronograma",
+                           arquivo=os.path.basename(path), caminho=path))
+        db.registrar_evento(s, pid, "documento",
+                            "Gerou cronograma de visitas %s" % os.path.basename(path), _autor())
+        s.commit()
+    _notificar_evento(pid, _EVT_DOC.get("cronograma"), proj)
+    _auto_avancar(pid)
+    return redirect(url_for("projeto_ficha", pid=pid, salvo=1,
+                            aviso="Cronograma de visitas (.xlsx) gerado e anexado à ficha."))
+
+
+@app.route("/projetos/<int:pid>/agenda/postergar", methods=["POST"])
+def projeto_agenda_postergar(pid):
+    """Posterga TODAS as atividades de um turno (data+turno) para o próximo dia útil."""
+    if not pode_gerar("cronograma"):
+        abort(403)
+    from datetime import date, timedelta
+    iso = (request.form.get("data") or "").strip()
+    turno = (request.form.get("turno") or "").strip()
+    ref = (request.form.get("ref") or "").strip()
+    fds = request.form.get("fds")
+    try:
+        d = date.fromisoformat(iso)
+    except ValueError:
+        return redirect(url_for("projeto_agenda", pid=pid))
+    nd = d + timedelta(days=1)
+    while nd.weekday() >= 5:                    # pula fim de semana
+        nd += timedelta(days=1)
+    movidas = 0
+    for a in db.cronograma_atividades(pid):
+        if a["data"] == iso and a["turno"] == turno:
+            db.cronograma_alocar(a["id"], projeto_id=pid, data=nd.isoformat())
+            movidas += 1
+    return redirect(url_for("projeto_agenda", pid=pid, ref=(ref or iso), fds=(1 if fds else None),
+                            aviso=("%d atividade(s) postergada(s) para %s." % (movidas, nd.strftime("%d/%m"))) if movidas else None))
 
 
 @app.route("/projetos/<int:pid>/checklist", methods=["GET", "POST"])

@@ -13,7 +13,7 @@ import os
 import re
 import sys
 from datetime import datetime, timedelta
-from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -239,6 +239,7 @@ class Documento(Base):
     tipo = Column(String(40), default="")
     arquivo = Column(String(255), default="")
     caminho = Column(Text, default="")
+    origem = Column(String(20), default="gerado")   # "gerado" | "importado"
     criado_em = Column(DateTime, default=datetime.now)
 
 
@@ -1374,6 +1375,158 @@ def levantamento_resumo(projeto_id):
     total = len(rs)
     resp = sum(1 for r in rs if (r.resposta or "").strip())
     return resp, total
+
+
+def levantamento_importado(projeto_id):
+    """Documento de Levantamento IMPORTADO (.docx enviado), se houver. Devolve dict ou None."""
+    with Session() as s:
+        d = (s.query(Documento)
+             .filter_by(projeto_id=projeto_id, tipo="levantamento", origem="importado")
+             .order_by(Documento.id.desc()).first())
+        return to_dict(d) if d else None
+
+
+def levantamento_importar_respostas(projeto_id, docx_path):
+    """Lê um Mapeamento (.docx) e preenche as respostas semeadas casando cada tópico
+    com a frase do documento (texto após o tópico). Não apaga respostas existentes.
+    Devolve o nº de respostas preenchidas a partir do arquivo."""
+    from docx import Document as _Docx
+    doc = _Docx(docx_path)
+    linhas = [(p.text or "") for p in doc.paragraphs if (p.text or "").strip()]
+
+    def _depois(raw, top):
+        rl, tl = raw.lower(), top.lower().strip()
+        i = rl.find(tl)
+        if i < 0 or not tl:
+            return ""
+        resto = raw[i + len(tl):].lstrip(" \t:;-–—•·").strip()
+        # ignora placeholders do modelo em branco (ex.: "<xxxx>")
+        if not resto or (resto.startswith("<") and resto.endswith(">")):
+            return ""
+        return resto
+
+    with Session() as s:
+        rs = s.query(LevantamentoResposta).filter_by(projeto_id=projeto_id).all()
+        n = 0
+        for r in rs:
+            top = (r.topico or "").strip()
+            if not top:
+                continue
+            ans = ""
+            for raw in linhas:
+                ans = _depois(raw, top)
+                if ans:
+                    break
+            if ans:
+                r.resposta = ans
+                n += 1
+        s.commit()
+        return n
+
+
+# --- Agendador de Visitas (cronograma por calendário) ----------------------------
+# Substitui o cronograma linear: as VISITAS (V{seq}) vêm do Check List (checklist_modelo)
+# por módulo contratado, agrupadas por (modulo, seq). Cada atividade é um "card" alocável
+# no calendário (data + turno + técnico).
+class AtividadeCronograma(Base):
+    """Atividade alocável do agendador de visitas (deriva do Check List)."""
+    __tablename__ = "cronograma_atividades"
+    id = Column(Integer, primary_key=True)
+    projeto_id = Column(Integer, index=True)
+    modulo = Column(String(40), default="")
+    seq = Column(Integer, default=0)            # nº da Visita (V{seq})
+    ordem = Column(Integer, default=0)          # ordem da atividade dentro da visita
+    descricao = Column(Text, default="")        # "Menu - Item"
+    tipo = Column(String(60), default="")       # Tipo de Atividade (do Check List)
+    data = Column(String(10), default="")       # "AAAA-MM-DD" ("" = não alocada)
+    turno = Column(String(10), default="")      # "manha" | "tarde" | ""
+    tecnico = Column(String(120), default="")   # consultor designado
+    status = Column(String(20), default="Previsto")
+    is_copia = Column(Boolean, default=False)
+
+
+def _seq_int(v):
+    try:
+        return int(str(v).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def cronograma_atividades_seed(projeto_id, modulos_str):
+    """Semeia (1ª vez) as atividades do agendador a partir do Check List dos módulos
+    contratados, agrupadas por módulo + seq (Visita). Idempotente. Devolve o total."""
+    import re as _re
+    with Session() as s:
+        ja = s.query(AtividadeCronograma).filter_by(projeto_id=projeto_id).count()
+    if ja:
+        return ja
+    sigs = [m.strip().upper() for m in _re.split(r"[,;\n]+", modulos_str or "") if m.strip()]
+    if not sigs:
+        return 0
+    novas, contador = [], {}
+    with Session() as s:
+        rows = (s.query(ChecklistModelo)
+                .filter(ChecklistModelo.modulo.in_(sigs))
+                .order_by(ChecklistModelo.modulo, ChecklistModelo.ordem, ChecklistModelo.id).all())
+        for r in rows:
+            seq = _seq_int(r.seq)
+            if not seq or seq <= 0:
+                continue
+            menu, item = (r.menu or "").strip(), (r.item or "").strip()
+            desc = (menu + " - " + item).strip(" -") if (menu or item) else (r.acao or "").strip()
+            chave = (r.modulo, seq)
+            contador[chave] = contador.get(chave, 0) + 1
+            novas.append(AtividadeCronograma(
+                projeto_id=projeto_id, modulo=r.modulo, seq=seq, ordem=contador[chave],
+                descricao=desc, tipo=(r.tipo or "").strip(), status="Previsto"))
+        for a in novas:
+            s.add(a)
+        s.commit()
+    return len(novas)
+
+
+def cronograma_atividades(projeto_id):
+    """Lista as atividades do agendador (ordenadas por módulo, visita e ordem)."""
+    with Session() as s:
+        return [to_dict(x) for x in s.query(AtividadeCronograma)
+                .filter_by(projeto_id=projeto_id)
+                .order_by(AtividadeCronograma.modulo, AtividadeCronograma.seq,
+                          AtividadeCronograma.ordem, AtividadeCronograma.id).all()]
+
+
+def cronograma_visitas(projeto_id):
+    """Agrupa as atividades em Visitas (módulo+seq) para o painel lateral do agendador."""
+    grupos = {}
+    for a in cronograma_atividades(projeto_id):
+        chave = (a["modulo"], a["seq"])
+        g = grupos.get(chave)
+        if g is None:
+            g = {"modulo": a["modulo"], "seq": a["seq"],
+                 "titulo": "Visita V%s (%s)" % (a["seq"], a["modulo"]),
+                 "atividades": []}
+            grupos[chave] = g
+        g["atividades"].append(a)
+    return sorted(grupos.values(), key=lambda g: (g["modulo"], g["seq"]))
+
+
+def cronograma_alocar(atividade_id, projeto_id=None, data=None, turno=None, tecnico=None, status=None):
+    """Atualiza uma atividade do agendador. Cada campo é opcional: None = não mexe;
+    para data/turno, "" desaloca (volta à lista de visitas). `projeto_id` (quando passado)
+    garante que a atividade pertence ao projeto. Devolve o dict atualizado ou None."""
+    with Session() as s:
+        a = s.get(AtividadeCronograma, int(atividade_id))
+        if not a or (projeto_id is not None and a.projeto_id != projeto_id):
+            return None
+        if data is not None:
+            a.data = data.strip()
+        if turno is not None:
+            a.turno = turno.strip()
+        if tecnico is not None:
+            a.tecnico = (tecnico or "").strip()
+        if status is not None:
+            a.status = (status or "").strip() or "Previsto"
+        s.commit()
+        return to_dict(a)
 
 
 # --- Conteúdo estruturado dos documentos (telas de edição que espelham os layouts) ---

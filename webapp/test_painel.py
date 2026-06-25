@@ -39,7 +39,7 @@ def test_health(client):
 
 
 def test_paginas_principais(client):
-    for url in ("/", "/projetos", "/coordenacao", "/atividade", "/fluxo"):
+    for url in ("/", "/projetos", "/coordenacao", "/monitoramento", "/atividade", "/fluxo"):
         assert client.get(url).status_code == 200
 
 
@@ -97,6 +97,13 @@ def test_metricas_alertas():
     proj = [{"id": 1, "etapa": "Projeto", "situacao": "Em risco", "horas_cobradas": "10"}]
     assert db.metricas(proj, {})["n_risco"] == 1
     assert any(a["tipo"] == "risco" for a in db.alertas(proj, {}))
+
+
+def test_monitoramento_renderiza_paineis_setoriais(client):
+    body = client.get("/monitoramento").get_data(as_text=True)
+    assert "Centro de Monitoramento Operacional" in body
+    assert "Comercial" in body and "Desenvolvimento" in body
+    assert "pixel-worker" in body
 
 
 def test_d_etapa_bloqueia_geracao():
@@ -322,6 +329,7 @@ def _login_como(client, perfil):
 def test_acesso_por_perfil(client):
     _login_como(client, "Consultor")          # só Operação
     assert client.get("/coordenacao").status_code == 403
+    assert client.get("/monitoramento").status_code == 403
     assert client.get("/atividade").status_code == 403
     assert client.get("/usuarios").status_code == 403
     h = client.get("/").get_data(as_text=True)
@@ -330,12 +338,14 @@ def test_acesso_por_perfil(client):
     for papel in ("GCI", "Administrativo"):     # Operação + Gestão, sem Sistema
         _login_como(client, papel)
         assert client.get("/coordenacao").status_code == 200
+        assert client.get("/monitoramento").status_code == 200
         assert client.get("/usuarios").status_code == 403
         h = client.get("/").get_data(as_text=True)
         assert ">Gestão<" in h and ">Sistema<" not in h
 
     _login_como(client, "ADM")                 # tudo
     assert client.get("/coordenacao").status_code == 200
+    assert client.get("/monitoramento").status_code == 200
     assert client.get("/usuarios").status_code == 200
     assert ">Sistema<" in client.get("/").get_data(as_text=True)
     with client.session_transaction() as sess:
@@ -726,12 +736,13 @@ def test_projeto_exige_levantamento_realizado(client):
     pid = _novo(client, cliente="Gate Lev LTDA", numero_projeto="G-1", cnpj="00.000.000/0001-00",
                 horas_cobradas="10", modulos="FAT", etapa="Projeto")
     db.levantamento_seed(int(pid), "FAT")
-    client.post("/projetos/%s/gerar/projeto" % pid)          # sem responder -> bloqueia
+    r = client.post("/projetos/%s/gerar/projeto" % pid)      # sem responder -> vai ao GATE de origem
+    assert r.status_code == 302 and "/projeto/origem" in r.headers["Location"]
     with db.Session() as s:
         assert s.query(db.Documento).filter_by(projeto_id=int(pid), tipo="projeto").count() == 0
     rs = db.levantamento_respostas(int(pid))
     client.post("/projetos/%s/levantamento" % pid, data={"resposta_%d" % rs[0]["id"]: "ok"})
-    client.post("/projetos/%s/gerar/projeto" % pid)          # com resposta -> gera
+    client.post("/projetos/%s/projeto/origem" % pid, data={"fonte": "tela"})   # usa dados da tela -> gera
     with db.Session() as s:
         docs = s.query(db.Documento).filter_by(projeto_id=int(pid), tipo="projeto").all()
         assert len(docs) == 1
@@ -871,8 +882,8 @@ def test_fluxo_e2e_continuidade(client):
     client.post("/projetos/%s/avancar" % pid)
     assert etapa() == "Projeto"
 
-    # Projeto: gerado A PARTIR do Levantamento realizado -> auto-avança p/ Designação
-    client.post("/projetos/%s/gerar/projeto" % pid)
+    # Projeto: gerado A PARTIR do Levantamento realizado (via gate, dados da tela) -> auto-avança
+    client.post("/projetos/%s/projeto/origem" % pid, data={"fonte": "tela"})
     assert n_doc("projeto") == 1
     assert etapa() == "Designação"
 
@@ -910,7 +921,7 @@ def test_projeto_gerar_usa_layout_fiel(client):
     """A rota de geração da fase (projeto_gerar) agora produz o layout FIEL preenchido."""
     pid = _novo(client, cliente="Faithful Proj LTDA", cnpj="22.333.444/0001-55",
                 horas_cobradas="50", etapa="Projeto")
-    r = client.post("/projetos/%s/gerar/projeto" % pid)
+    r = client.post("/projetos/%s/projeto/origem" % pid, data={"fonte": "tela"})
     assert r.status_code == 302
     with db.Session() as s:
         docs = s.query(db.Documento).filter_by(projeto_id=int(pid), tipo="projeto").all()
@@ -927,14 +938,178 @@ def test_projeto_gerar_usa_layout_fiel(client):
 
 
 def test_rota_antiga_gerar_projeto_delega(client):
-    """A rota antiga /gerar_projeto (upload do Mapeamento) foi aposentada e delega ao layout fiel."""
+    """A rota antiga /gerar_projeto foi aposentada e delega ao GATE de origem do Projeto."""
     pid = _novo(client, cliente="Delega LTDA", etapa="Projeto")
-    r = client.post("/projetos/%s/gerar_projeto" % pid)   # sem upload
-    assert r.status_code == 302
+    r = client.post("/projetos/%s/gerar_projeto" % pid)   # delega ao gate
+    assert r.status_code == 302 and "/projeto/origem" in r.headers["Location"]
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_projeto_origem_gate_modelo_e_importacao(client):
+    """Gate de origem: GET mostra opções; 'modelo' gera p/ preenchimento manual;
+    importar um .docx popula respostas e gera o Projeto fiel."""
+    pid = _novo(client, cliente="Gate Origem LTDA", cnpj="00.000.000/0001-00",
+                numero_projeto="GO-1", horas_cobradas="10", modulos="FAT", etapa="Projeto")
+    db.levantamento_seed(int(pid), "FAT")
+    # GET mostra a tela do gate
+    r = client.get("/projetos/%s/projeto/origem" % pid)
+    assert r.status_code == 200 and "Gerar Projeto" in r.get_data(as_text=True)
+    # 'modelo' (preenchimento manual) gera mesmo sem respostas
+    client.post("/projetos/%s/projeto/origem" % pid, data={"fonte": "modelo"})
     with db.Session() as s:
         docs = s.query(db.Documento).filter_by(projeto_id=int(pid), tipo="projeto").all()
         assert len(docs) == 1
+        for d in docs:
+            try:
+                os.remove(d.caminho)
+            except OSError:
+                pass
+    # Importar um Levantamento .docx -> popula respostas e gera
+    rs = db.levantamento_respostas(int(pid))
+    topico = rs[0]["topico"]
+    import io
+    from docx import Document as _Docx
+    doc = _Docx()
+    doc.add_paragraph("•  %s: RESPOSTA IMPORTADA" % topico)
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    r = client.post("/projetos/%s/projeto/origem" % pid,
+                    data={"fonte": "importar", "arquivo": (buf, "mapa.docx")},
+                    content_type="multipart/form-data")
+    assert r.status_code == 302
+    assert any((x["resposta"] or "").strip() == "RESPOSTA IMPORTADA"
+               for x in db.levantamento_respostas(int(pid)))
+    assert db.levantamento_importado(int(pid)) is not None
+    with db.Session() as s:
+        for d in s.query(db.Documento).filter_by(projeto_id=int(pid)).all():
+            try:
+                if d.caminho and os.path.exists(d.caminho):
+                    os.remove(d.caminho)
+            except OSError:
+                pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_detalhamento_so_areas_contratadas(client):
+    """No Projeto, o Detalhamento das Rotinas mantém SÓ as áreas dos módulos contratados."""
+    import gerar_layout
+    pid = _novo(client, cliente="Areas LTDA", cnpj="00.000.000/0001-00", numero_projeto="A-1",
+                modulos="FAT", horas_cobradas="10")
+    db.levantamento_seed(int(pid), "FAT")
+    with db.Session() as s:
+        proj = db.to_dict(s.get(db.Projeto, int(pid)))
+    path = gerar_layout.gerar("projeto", proj)
+    from docx import Document
+    txt = "\n".join(p.text for p in Document(path).paragraphs)
+    assert "Vendas e Faturamento" in txt        # área contratada (FAT) permanece
+    assert "Livros Fiscais" not in txt           # área não contratada foi removida
+    assert "Controle de Estoque" not in txt      # idem
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_cronograma_atividades_seed_do_checklist(client):
+    """Agendador de visitas: deriva as Visitas (módulo+seq) do Check List dos módulos
+    contratados, agrupa por visita e permite alocar/desalocar uma atividade."""
+    pid = _novo(client, cliente="Agenda LTDA", cnpj="00.000.000/0001-00", numero_projeto="AG-1",
+                modulos="FAT", horas_cobradas="10")
+    n = db.cronograma_atividades_seed(int(pid), "FAT")
+    assert n > 0
+    assert db.cronograma_atividades_seed(int(pid), "FAT") == n      # idempotente
+    ats = db.cronograma_atividades(int(pid))
+    assert ats and all(a["modulo"] == "FAT" and a["seq"] >= 1 for a in ats)
+    visitas = db.cronograma_visitas(int(pid))
+    assert visitas and visitas[0]["titulo"].startswith("Visita V")
+    assert all(v["atividades"] for v in visitas)                    # toda visita tem atividade
+    aid = ats[0]["id"]
+    upd = db.cronograma_alocar(aid, data="2026-07-01", turno="manha", tecnico="Ana")
+    assert upd["data"] == "2026-07-01" and upd["turno"] == "manha" and upd["tecnico"] == "Ana"
+    db.cronograma_alocar(aid, data="", turno="")                    # desaloca
+    assert next(a for a in db.cronograma_atividades(int(pid)) if a["id"] == aid)["data"] == ""
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_agenda_visitas_render_e_aloca(client):
+    """Agenda de Visitas: a tela renderiza e o endpoint aloca uma atividade num slot;
+    outro projeto não consegue mover a atividade (guarda de propriedade)."""
+    pid = _novo(client, cliente="Visita Cal LTDA", cnpj="00.000.000/0001-00", numero_projeto="VC-1",
+                modulos="FAT", horas_cobradas="10", etapa="Cronograma e Check-list")
+    r = client.get("/projetos/%s/agenda" % pid)
+    assert r.status_code == 200 and "Agenda de Visitas" in r.get_data(as_text=True)
+    ats = db.cronograma_atividades(int(pid))
+    assert ats
+    aid = ats[0]["id"]
+    r = client.post("/projetos/%s/agenda/alocar" % pid,
+                    data={"atividade_id": aid, "data": "2026-07-06", "turno": "manha"})
+    assert r.status_code == 200 and r.get_json()["ok"] is True
+    upd = next(a for a in db.cronograma_atividades(int(pid)) if a["id"] == aid)
+    assert upd["data"] == "2026-07-06" and upd["turno"] == "manha"
+    pid2 = _novo(client, cliente="Outro Proj LTDA", modulos="FAT", etapa="Cronograma e Check-list")
+    r = client.post("/projetos/%s/agenda/alocar" % pid2,
+                    data={"atividade_id": aid, "data": "2026-07-07", "turno": "tarde"})
+    assert r.status_code == 404                                       # não pertence ao projeto 2
+    client.post("/projetos/%s/excluir" % pid)
+    client.post("/projetos/%s/excluir" % pid2)
+
+
+def test_agenda_polimentos(client):
+    """Polimentos: atualizar só o técnico preserva a alocação; postergar pula o fim de
+    semana; o filtro de fim de semana mostra Sáb/Dom."""
+    pid = _novo(client, cliente="Polish LTDA", cnpj="00.000.000/0001-00", numero_projeto="PO-1",
+                modulos="FAT", horas_cobradas="10", etapa="Cronograma e Check-list")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    aid = db.cronograma_atividades(int(pid))[0]["id"]
+    client.post("/projetos/%s/agenda/alocar" % pid,            # sexta-feira de manhã
+                data={"atividade_id": aid, "data": "2026-07-03", "turno": "manha"})
+    r = client.post("/projetos/%s/agenda/alocar" % pid,        # só técnico (sem data/turno)
+                    data={"atividade_id": aid, "tecnico": "Fulano"})
+    assert r.status_code == 200 and r.get_json()["ok"] is True
+    a = next(x for x in db.cronograma_atividades(int(pid)) if x["id"] == aid)
+    assert a["data"] == "2026-07-03" and a["turno"] == "manha" and a["tecnico"] == "Fulano"
+    r = client.post("/projetos/%s/agenda/postergar" % pid,     # posterga: sexta -> segunda
+                    data={"data": "2026-07-03", "turno": "manha"})
+    assert r.status_code == 302
+    a = next(x for x in db.cronograma_atividades(int(pid)) if x["id"] == aid)
+    assert a["data"] == "2026-07-06" and a["turno"] == "manha"  # pulou o fim de semana
+    r = client.get("/projetos/%s/agenda?fds=1&ref=2026-07-06" % pid)
+    assert r.status_code == 200 and "Sáb" in r.get_data(as_text=True)
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_agenda_status_acompanhamento_e_xlsx(client):
+    """Fase 3/4: marcar 'Realizada', ver acompanhamento e gerar o cronograma .xlsx das alocações."""
+    pid = _novo(client, cliente="Visita XLS LTDA", cnpj="00.000.000/0001-00", numero_projeto="VX-1",
+                modulos="FAT", horas_cobradas="10", etapa="Cronograma e Check-list")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    # sem alocação -> gerar é bloqueado (redireciona à agenda, sem documento)
+    r = client.post("/projetos/%s/agenda/gerar" % pid)
+    assert r.status_code == 302 and "/agenda" in r.headers["Location"]
+    with db.Session() as s:
+        assert s.query(db.Documento).filter_by(projeto_id=int(pid), tipo="cronograma").count() == 0
+    # aloca uma atividade e marca como realizada
+    aid = db.cronograma_atividades(int(pid))[0]["id"]
+    db.cronograma_alocar(aid, projeto_id=int(pid), data="2026-07-06", turno="manha")
+    r = client.post("/projetos/%s/agenda/status" % pid, data={"atividade_id": aid, "status": "Concluído"})
+    assert r.status_code == 200 and r.get_json()["ok"] is True
+    assert next(a for a in db.cronograma_atividades(int(pid)) if a["id"] == aid)["status"] == "Concluído"
+    r = client.get("/projetos/%s/agenda/acompanhamento" % pid)
+    assert r.status_code == 200 and "Acompanhamento" in r.get_data(as_text=True)
+    # gera o .xlsx e anexa como Documento de cronograma
+    r = client.post("/projetos/%s/agenda/gerar" % pid)
+    assert r.status_code == 302
+    with db.Session() as s:
+        docs = s.query(db.Documento).filter_by(projeto_id=int(pid), tipo="cronograma").all()
+        assert len(docs) == 1
         path = docs[0].caminho
+    assert path.endswith(".xlsx") and os.path.exists(path)
+    from openpyxl import load_workbook
+    blob = "\n".join(str(c.value) for row in load_workbook(path).active.iter_rows()
+                     for c in row if c.value)
+    assert "FAT" in blob and "06/07/2026" in blob
     try:
         os.remove(path)
     except OSError:

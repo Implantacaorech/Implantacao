@@ -33,11 +33,13 @@
   <form method="post" class="painel">
     <div class="campo">
       <span>GCI(s) responsável(eis) * <small style="color:var(--muted);font-weight:400">— pode marcar mais de um</small></span>
-      <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
         {% for u in gcis %}
-        <label style="display:flex;align-items:center;gap:8px;font-weight:500;cursor:pointer;padding:4px 0">
-          <input type="checkbox" name="gci" value="{{ u.nome }}" {{ 'checked' if u.nome in gci_atual }}>
-          {{ u.nome }}
+        <label style="display:flex;align-items:center;gap:10px;font-weight:500;cursor:pointer;
+                      padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fff">
+          <input type="checkbox" name="gci" value="{{ u.nome }}" {{ 'checked' if u.nome in gci_atual }}
+                 style="flex:none;margin:0;width:16px;height:16px">
+          <span>{{ u.nome }}</span>
         </label>
         {% endfor %}
       </div>

@@ -443,35 +443,122 @@ def _preencher_levantamento_tabelas(doc, projeto):
     return True
 
 
-def _preencher_detalhamento_projeto(doc, projeto):
-    """Preenche o 'Detalhamento das Rotinas' por área contratada (Projeto) a partir do
-    DocConteudo — localiza cada <XX> após o seu rótulo dentro do bloco da área."""
-    import doc_edit
-    cont = db.doc_conteudo(projeto.get("id"), "projeto") if projeto.get("id") else {}
-    if not cont:
+# Grupos do 'Detalhamento das Rotinas' do layout do Projeto -> áreas que contêm (AJUSTÁVEL).
+# Um grupo é removido quando NENHUMA das suas áreas foi contratada.
+_PROJ_GRUPOS = {
+    "gestão comercial": {"vendas e faturamento"},
+    "gestão de materiais": {"controle de estoque", "controle de compras"},
+    "gestão da produção": {"gestão industrial"},
+    "gestão financeira": {"controle financeiro"},
+    "gestão de controladoria": {"livros fiscais"},
+}
+
+
+def _eh_marcador(t):
+    """True se o parágrafo é um placeholder a substituir: '<...>' ou um 'XX' solto."""
+    s = (t or "").strip()
+    return (s.startswith("<") and s.endswith(">")) or s.upper() == "XX"
+
+
+def _preencher_detalhamento_projeto(doc, projeto, guia=False):
+    """No 'Detalhamento das Rotinas' do Projeto: mantém SÓ as áreas dos módulos
+    contratados (remove as demais e os grupos que ficarem vazios) e preenche cada
+    bloco com os dados do Levantamento — 'Módulos Previstos' = módulos contratados
+    da área; 'Detalhamento' = respostas do Levantamento da área. A tela do Projeto
+    (DocConteudo det_<area>_*) sobrepõe quando preenchida. Com `guia=True` (modelo
+    para preenchimento manual), sem respostas usa as PERGUNTAS do Índice como guia."""
+    import doc_edit, re as _re
+    pid = projeto.get("id")
+    sigs = {m.strip().upper() for m in _re.split(r"[,;\n]+", projeto.get("modulos", "") or "") if m.strip()}
+    nomes = {m["sigla"].upper(): m["nome"] for m in db.indice_modulos()}
+    cont = db.doc_conteudo(pid, "projeto") if pid else {}
+
+    # área (nome normalizado) -> (k, siglas contratadas) e sigla -> área k
+    area_info, sigla_area, inter_by_k = {}, {}, {}
+    for (k, nome, ss) in doc_edit._PROJ_AREAS:
+        inter = [s for s in ss if s in sigs]
+        area_info[_norm(nome)] = (k, inter)
+        inter_by_k[k] = inter
+        for s in ss:
+            sigla_area[s] = k
+    contratadas = {a for a, (k, inter) in area_info.items() if inter}
+
+    # respostas do Levantamento por área (k) — alimentam o 'Detalhamento'
+    resp_por_k = {}
+    for r in (db.levantamento_respostas(pid) if pid else []):
+        k = sigla_area.get((r.get("modulo_sigla") or "").upper())
+        resp = (r.get("resposta") or "").strip()
+        if k and resp:
+            resp_por_k.setdefault(k, []).append("%s: %s" % ((r.get("topico") or "").strip(), resp))
+
+    def _valor(k, campo):
+        v = (cont.get("det_%s_%s" % (k, campo)) or "").strip()
+        if v:
+            return v
+        if campo == "modulos":
+            return ", ".join(("%s — %s" % (s, nomes[s])) if nomes.get(s) else s for s in inter_by_k.get(k, []))
+        if campo == "detalhamento":
+            base = resp_por_k.get(k)
+            if base:
+                return "  ·  ".join(base)
+            if guia:                       # modelo manual: usa as perguntas do Índice como guia
+                qs = []
+                for sig in inter_by_k.get(k, []):
+                    tops, _ = db.indice_listar(modulo=sig)
+                    qs += [(t.get("topico") or "").strip() for t in tops if (t.get("topico") or "").strip()]
+                return "  ·  ".join(qs)
+        return ""
+
+    rotulos = [("módulos previsto", "modulos"), ("detalhamento das rotinas", "detalhamento"),
+               ("particularidade", "particularidade"), ("não está previsto", "naoprevisto")]
+
+    paras = doc.paragraphs
+    ini = next((i for i, p in enumerate(paras) if _norm(p.text) == "detalhamento das rotinas"), None)
+    if ini is None:
         return 0
-    area_by_nome = {nome.lower(): k for (k, nome, _ss) in doc_edit._PROJ_AREAS}
-    rotulos = [("módulos previstos", "modulos"), ("modulos previstos", "modulos"),
-               ("detalhamento das rotinas", "detalhamento"),
-               ("particularidade", "particularidade"),
-               ("não está previsto", "naoprevisto"), ("nao esta previsto", "naoprevisto")]
-    area_k, campo, n = None, None, 0
-    for p in doc.paragraphs:
-        t = p.text.strip()
-        tl = t.lower()
-        if tl in area_by_nome:
-            area_k, campo = area_by_nome[tl], None
+    fim = next((i for i in range(ini + 1, len(paras)) if _norm(paras[i].text).startswith("responsabilidades")), len(paras))
+
+    # segmenta o trecho em grupos e áreas (com seus parágrafos de conteúdo)
+    segs, cur = [], None
+    for i in range(ini + 1, fim):
+        p = paras[i]
+        tl = _norm(p.text)
+        if tl in _PROJ_GRUPOS:
+            cur = {"kind": "group", "name": tl, "head": p}
+            segs.append(cur)
+        elif tl in area_info:
+            cur = {"kind": "area", "name": tl, "head": p, "paras": []}
+            segs.append(cur)
+        elif cur and cur["kind"] == "area":
+            cur["paras"].append(p)
+
+    remover, n = [], 0
+    for seg in segs:
+        if seg["kind"] == "group":
+            if not (_PROJ_GRUPOS[seg["name"]] & contratadas):
+                remover.append(seg["head"])
             continue
-        lab = next((c for (kw, c) in rotulos if kw in tl), None) if tl else None
-        if lab:
-            campo = lab
+        if seg["name"] not in contratadas:          # área não contratada -> remove o bloco inteiro
+            remover.append(seg["head"])
+            remover.extend(seg["paras"])
             continue
-        if area_k and campo and t.startswith("<") and t.endswith(">"):
-            val = (cont.get("det_%s_%s" % (area_k, campo)) or "").strip()
-            if val:
-                PL._aplica_no_paragrafo(p, val)
-                n += 1
-            campo = None
+        k, campo = area_info[seg["name"]][0], None    # área contratada -> preenche os <XX>
+        for p in seg["paras"]:
+            tl = _norm(p.text)
+            lab = next((c for (kw, c) in rotulos if kw in tl), None) if tl else None
+            if lab:
+                campo = lab
+            elif campo and _eh_marcador(p.text):
+                val = _valor(k, campo)
+                if val:
+                    PL._aplica_no_paragrafo(p, val)
+                    n += 1
+                campo = None
+
+    for p in remover:
+        el = p._p
+        if el.getparent() is not None:
+            el.getparent().remove(el)
     return n
 
 
@@ -542,8 +629,59 @@ def _saida(slug, cliente, ext):
     return os.path.join(C.OUT, nome)
 
 
-def gerar(slug, projeto):
-    """Gera o documento fiel da fase `slug` para o `projeto` (dict). Devolve o caminho."""
+def gerar_agenda_xlsx(projeto, atividades):
+    """Gera o cronograma de visitas (.xlsx) a partir das atividades ALOCADAS (data+turno)
+    do agendador. Devolve o caminho do arquivo. Substitui o cronograma linear pela agenda."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    import datetime as _dt
+    DIAS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
+    TURNOS = {"manha": "Manhã", "tarde": "Tarde"}
+    aloc = [a for a in atividades if (a.get("data") and a.get("turno"))]
+    aloc.sort(key=lambda a: (a["data"], 0 if a["turno"] == "manha" else 1, a["modulo"], a["seq"]))
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Cronograma de Visitas"
+    ws.append(["Cronograma de Visitas — %s" % (projeto.get("cliente") or "")])
+    ws.append([])
+    cab = ["Data", "Dia", "Turno", "Módulo", "Visita", "Atividade", "Tipo", "Técnico", "Status"]
+    ws.append(cab)
+    azul = PatternFill("solid", fgColor="1F4E79")
+    borda = Border(*(Side(style="thin", color="D0D7E2"),) * 4)
+    hdr_row = ws.max_row
+    for c in ws[hdr_row]:
+        c.font = Font(bold=True, color="FFFFFF")
+        c.fill = azul
+        c.alignment = Alignment(horizontal="center")
+    for a in aloc:
+        try:
+            d = _dt.date.fromisoformat(a["data"])
+            data_lbl, dia_lbl = d.strftime("%d/%m/%Y"), DIAS[d.weekday()]
+        except ValueError:
+            data_lbl, dia_lbl = a["data"], ""
+        ws.append([data_lbl, dia_lbl, TURNOS.get(a["turno"], a["turno"]), a["modulo"],
+                   "V%s" % a["seq"], a.get("descricao", ""), a.get("tipo", ""),
+                   a.get("tecnico", ""), a.get("status", "")])
+    for row in ws.iter_rows(min_row=hdr_row + 1, max_row=ws.max_row):
+        for c in row:
+            c.border = borda
+            c.alignment = Alignment(vertical="top", wrap_text=True)
+    larg = [12, 6, 9, 9, 8, 52, 16, 20, 12]
+    for i, w in enumerate(larg):
+        ws.column_dimensions[chr(ord("A") + i)].width = w
+    ws.freeze_panes = "A%d" % (hdr_row + 1)
+
+    os.makedirs(C.OUT, exist_ok=True)
+    dest = os.path.join(C.OUT, "cronograma_visitas_%s.xlsx" % C.slug(projeto.get("cliente") or "cliente"))
+    wb.save(dest)
+    return dest
+
+
+def gerar(slug, projeto, modo="auto"):
+    """Gera o documento fiel da fase `slug` para o `projeto` (dict). Devolve o caminho.
+    `modo='modelo'` (só Projeto) preenche o Detalhamento pelas perguntas do Índice
+    quando não há respostas, para preenchimento manual."""
     modelo = next((m for m in db.modelos_documento_listar() if m["slug"] == slug), None)
     if not modelo:
         raise ValueError("Modelo '%s' não cadastrado." % slug)
@@ -560,7 +698,7 @@ def gerar(slug, projeto):
             _preencher_levantamento_tabelas(doc, projeto)
             _preencher_levantamento_usuarios(doc, projeto)
         elif slug == "projeto":      # detalhamento por área + tabelas (usuários/cronograma) + respostas
-            _preencher_detalhamento_projeto(doc, projeto)
+            _preencher_detalhamento_projeto(doc, projeto, guia=(modo == "modelo"))
             _preencher_projeto_tabelas(doc, projeto)
             _anexar_respostas_projeto(doc, projeto.get("id"))
         elif slug == "termo":        # preenche a grade Resumo Geral com os módulos contratados
