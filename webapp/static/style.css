@@ -87,7 +87,7 @@ h3{color:var(--navy);font-size:1.02rem;font-weight:600}
   border:1.5px solid var(--brand-700)}
 .topbar-perfil-txt{line-height:1.05;font-size:.84rem;font-weight:600;color:var(--ink)}
 .topbar-perfil-txt small{display:block;font-weight:400;color:var(--muted);font-size:.68rem}
-.conteudo{flex:1;max-width:1120px;width:100%;margin:24px auto;padding:0 28px}
+.conteudo{flex:1;max-width:none;width:100%;margin:24px 0;padding:0 32px}
 .sub{color:var(--muted);margin-top:0;margin-bottom:20px;font-size:.95rem}
 .migalha{color:var(--faint);font-size:.85rem;margin-bottom:10px;display:flex;align-items:center;gap:6px}
 .migalha a{color:var(--muted)}
