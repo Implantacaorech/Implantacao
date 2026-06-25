@@ -629,12 +629,13 @@ def _saida(slug, cliente, ext):
     return os.path.join(C.OUT, nome)
 
 
-def gerar_agenda_xlsx(projeto, atividades):
+def gerar_agenda_xlsx(projeto, atividades, slots=None):
     """Gera o cronograma de visitas (.xlsx) a partir das atividades ALOCADAS (data+turno)
-    do agendador. Devolve o caminho do arquivo. Substitui o cronograma linear pela agenda."""
+    do agendador. `slots` = horários por turno (db.cronograma_slots). Devolve o caminho."""
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     import datetime as _dt
+    slots = slots or {}
     DIAS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
     TURNOS = {"manha": "Manhã", "tarde": "Tarde"}
     aloc = [a for a in atividades if (a.get("data") and a.get("turno"))]
@@ -645,7 +646,7 @@ def gerar_agenda_xlsx(projeto, atividades):
     ws.title = "Cronograma de Visitas"
     ws.append(["Cronograma de Visitas — %s" % (projeto.get("cliente") or "")])
     ws.append([])
-    cab = ["Data", "Dia", "Turno", "Módulo", "Visita", "Atividade", "Tipo", "Técnico", "Status"]
+    cab = ["Data", "Dia", "Turno", "Horário", "Módulo", "Visita", "Atividade", "Tipo", "Técnico", "Status"]
     ws.append(cab)
     azul = PatternFill("solid", fgColor="1F4E79")
     borda = Border(*(Side(style="thin", color="D0D7E2"),) * 4)
@@ -660,14 +661,16 @@ def gerar_agenda_xlsx(projeto, atividades):
             data_lbl, dia_lbl = d.strftime("%d/%m/%Y"), DIAS[d.weekday()]
         except ValueError:
             data_lbl, dia_lbl = a["data"], ""
-        ws.append([data_lbl, dia_lbl, TURNOS.get(a["turno"], a["turno"]), a["modulo"],
+        ini, fim = db.cronograma_slot_horas(slots, a["data"], a["turno"])
+        hora_lbl = ("%s–%s" % (ini, fim)) if (ini or fim) else ""
+        ws.append([data_lbl, dia_lbl, TURNOS.get(a["turno"], a["turno"]), hora_lbl, a["modulo"],
                    "V%s" % a["seq"], a.get("descricao", ""), a.get("tipo", ""),
                    a.get("tecnico", ""), a.get("status", "")])
     for row in ws.iter_rows(min_row=hdr_row + 1, max_row=ws.max_row):
         for c in row:
             c.border = borda
             c.alignment = Alignment(vertical="top", wrap_text=True)
-    larg = [12, 6, 9, 9, 8, 52, 16, 20, 12]
+    larg = [12, 6, 9, 12, 9, 8, 52, 16, 20, 12]
     for i, w in enumerate(larg):
         ws.column_dimensions[chr(ord("A") + i)].width = w
     ws.freeze_panes = "A%d" % (hdr_row + 1)

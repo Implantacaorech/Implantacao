@@ -1335,7 +1335,7 @@ def projeto_excluir(pid):
         if p:
             for M in (db.Documento, db.Evento, db.Designacao, db.CronogramaItem,
                       db.ChecklistItem, db.Modificacao, db.LevantamentoResposta, db.DocConteudo,
-                      db.AtividadeCronograma):
+                      db.AtividadeCronograma, db.SlotCronograma):
                 s.query(M).filter_by(projeto_id=pid).delete()
             s.delete(p)
             s.commit()
@@ -2217,9 +2217,17 @@ def projeto_agenda(pid):
     visitas = db.cronograma_visitas(pid)                      # todos os grupos (containers persistem)
     n_pend = sum(1 for a in ats if not (a["data"] and a["turno"]))
 
+    slots = db.cronograma_slots(pid)                          # horário início/fim por turno
+    slot_times = {}
+    for d in dias:
+        for t in ("manha", "tarde"):
+            ini, fim = db.cronograma_slot_horas(slots, d.isoformat(), t)
+            slot_times["%s|%s" % (d.isoformat(), t)] = {"ini": ini, "fim": fim}
+
     qs = "&fds=1" if fds else ""
     return render_template("agenda.html", p=proj, pid=pid, semana=semana, aloc=aloc,
                            visitas=visitas, tech=tech, tecnicos=tecnicos, fora=fora, fds=fds,
+                           slot_times=slot_times,
                            ref_cur=seg.isoformat(),
                            ref_prev=(seg - timedelta(days=7)).isoformat() + qs,
                            ref_next=(seg + timedelta(days=7)).isoformat() + qs,
@@ -2253,6 +2261,18 @@ def projeto_agenda_alocar(pid):
     return jsonify(ok=True, atividade=upd)
 
 
+@app.route("/projetos/<int:pid>/agenda/slot", methods=["POST"])
+def projeto_agenda_slot(pid):
+    """Define o horário de início/fim de um turno (data+turno) do agendador (JSON)."""
+    if not pode_gerar("cronograma"):
+        abort(403)
+    upd = db.cronograma_slot_salvar(pid, request.form.get("data"), request.form.get("turno"),
+                                    request.form.get("hora_inicio"), request.form.get("hora_fim"))
+    if not upd:
+        return jsonify(ok=False, erro="slot inválido"), 400
+    return jsonify(ok=True, slot=upd)
+
+
 @app.route("/projetos/<int:pid>/agenda/status", methods=["POST"])
 def projeto_agenda_status(pid):
     """Marca o status (Previsto/Concluído) de uma atividade alocada (JSON)."""
@@ -2278,11 +2298,21 @@ def projeto_agenda_acompanhamento(pid):
         if not p:
             abort(404)
         proj = db.to_dict(p)
-    ats = [a for a in db.cronograma_atividades(pid) if a["data"] and a["turno"]]
+    todas = [a for a in db.cronograma_atividades(pid) if a["data"] and a["turno"]]
+    slots = db.cronograma_slots(pid)
+    for a in todas:                                   # horário do turno em cada atividade
+        a["hora_inicio"], a["hora_fim"] = db.cronograma_slot_horas(slots, a["data"], a["turno"])
+    datas = sorted({a["data"] for a in todas})        # opções de filtro
+    tecs = sorted({(a["tecnico"] or "").strip() for a in todas if (a["tecnico"] or "").strip()})
+    f_data = (request.args.get("data") or "").strip()
+    f_tec = (request.args.get("tecnico") or "").strip()
+    ats = [a for a in todas
+           if (not f_data or a["data"] == f_data) and (not f_tec or (a["tecnico"] or "").strip() == f_tec)]
     ats.sort(key=lambda a: (a["data"], 0 if a["turno"] == "manha" else 1, a["modulo"], a["seq"]))
     feito = sum(1 for a in ats if (a["status"] or "").lower().startswith(("conclu", "realiz")))
     return render_template("agenda_acompanhamento.html", p=proj, pid=pid,
-                           atividades=ats, total=len(ats), feito=feito)
+                           atividades=ats, total=len(ats), feito=feito,
+                           datas=datas, tecnicos=tecs, f_data=f_data, f_tec=f_tec)
 
 
 @app.route("/projetos/<int:pid>/agenda/gerar", methods=["POST"])
@@ -2301,7 +2331,7 @@ def projeto_agenda_gerar(pid):
                                 erro="Aloque ao menos uma atividade no calendário antes de gerar o cronograma."))
     import gerar_layout
     try:
-        path = gerar_layout.gerar_agenda_xlsx(proj, ats)
+        path = gerar_layout.gerar_agenda_xlsx(proj, ats, db.cronograma_slots(pid))
     except Exception:
         logging.exception("Falha ao gerar cronograma de visitas (.xlsx)")
         return redirect(url_for("projeto_agenda", pid=pid, erro="Falha ao gerar o cronograma."))

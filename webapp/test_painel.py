@@ -1115,3 +1115,24 @@ def test_agenda_status_acompanhamento_e_xlsx(client):
     except OSError:
         pass
     client.post("/projetos/%s/excluir" % pid)
+
+
+def test_agenda_horarios_e_filtros(client):
+    """Horário por turno (slot) reflete no acompanhamento; filtros por data/técnico."""
+    pid = _novo(client, cliente="Horario LTDA", cnpj="00.000.000/0001-00", numero_projeto="HR-1",
+                modulos="FAT", horas_cobradas="10", etapa="Cronograma e Check-list")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    ats = db.cronograma_atividades(int(pid))
+    db.cronograma_alocar(ats[0]["id"], projeto_id=int(pid), data="2026-07-06", turno="manha", tecnico="Ana")
+    db.cronograma_alocar(ats[1]["id"], projeto_id=int(pid), data="2026-07-07", turno="tarde", tecnico="Beto")
+    r = client.post("/projetos/%s/agenda/slot" % pid,         # horário do turno manhã de 06/07
+                    data={"data": "2026-07-06", "turno": "manha", "hora_inicio": "09:00", "hora_fim": "11:30"})
+    assert r.status_code == 200 and r.get_json()["ok"] is True
+    assert db.cronograma_slots(int(pid))[("2026-07-06", "manha")]["hora_inicio"] == "09:00"
+    html = client.get("/projetos/%s/agenda/acompanhamento" % pid).get_data(as_text=True)
+    assert "09:00" in html and "11:30" in html and "/ 2 realizadas" in html
+    html = client.get("/projetos/%s/agenda/acompanhamento?tecnico=Ana" % pid).get_data(as_text=True)
+    assert "/ 1 realizadas" in html                            # filtra por técnico
+    html = client.get("/projetos/%s/agenda/acompanhamento?data=2026-07-07" % pid).get_data(as_text=True)
+    assert "/ 1 realizadas" in html                            # filtra por data
+    client.post("/projetos/%s/excluir" % pid)

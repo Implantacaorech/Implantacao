@@ -1529,6 +1529,54 @@ def cronograma_alocar(atividade_id, projeto_id=None, data=None, turno=None, tecn
         return to_dict(a)
 
 
+# Horário padrão por turno (HH:MM) — usado quando o slot não tem horário definido.
+TURNO_PADRAO = {"manha": ("08:00", "12:00"), "tarde": ("13:00", "17:00")}
+
+
+class SlotCronograma(Base):
+    """Horário de início/fim de um turno (data+turno) do agendador, por projeto."""
+    __tablename__ = "cronograma_slots"
+    id = Column(Integer, primary_key=True)
+    projeto_id = Column(Integer, index=True)
+    data = Column(String(10), default="")       # "AAAA-MM-DD"
+    turno = Column(String(10), default="")      # "manha" | "tarde"
+    hora_inicio = Column(String(5), default="")  # "HH:MM"
+    hora_fim = Column(String(5), default="")
+
+
+def cronograma_slots(projeto_id):
+    """{(data, turno): {'hora_inicio','hora_fim'}} dos slots com horário definido."""
+    with Session() as s:
+        return {(r.data, r.turno): {"hora_inicio": r.hora_inicio, "hora_fim": r.hora_fim}
+                for r in s.query(SlotCronograma).filter_by(projeto_id=projeto_id).all()}
+
+
+def cronograma_slot_horas(slots, data, turno):
+    """Horário (inicio, fim) de um slot: o definido, senão o padrão do turno."""
+    st = slots.get((data, turno))
+    if st and (st.get("hora_inicio") or st.get("hora_fim")):
+        ini, fim = TURNO_PADRAO.get(turno, ("", ""))
+        return (st.get("hora_inicio") or ini, st.get("hora_fim") or fim)
+    return TURNO_PADRAO.get(turno, ("", ""))
+
+
+def cronograma_slot_salvar(projeto_id, data, turno, hora_inicio, hora_fim):
+    """Cria/atualiza o horário de um slot (data+turno). Devolve o dict atualizado."""
+    data, turno = (data or "").strip(), (turno or "").strip()
+    if not data or turno not in ("manha", "tarde"):
+        return None
+    with Session() as s:
+        r = (s.query(SlotCronograma)
+             .filter_by(projeto_id=projeto_id, data=data, turno=turno).first())
+        if not r:
+            r = SlotCronograma(projeto_id=projeto_id, data=data, turno=turno)
+            s.add(r)
+        r.hora_inicio = (hora_inicio or "").strip()
+        r.hora_fim = (hora_fim or "").strip()
+        s.commit()
+        return {"data": data, "turno": turno, "hora_inicio": r.hora_inicio, "hora_fim": r.hora_fim}
+
+
 # --- Conteúdo estruturado dos documentos (telas de edição que espelham os layouts) ---
 class DocConteudo(Base):
     """Campo estruturado de um documento (levantamento/projeto) por projeto. As telas de
