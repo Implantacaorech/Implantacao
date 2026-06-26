@@ -1,11 +1,16 @@
 # Mapa de código — navegação rápida (economia de contexto)
 
 > Para a IA achar a função/rota certa **sem ler os arquivos grandes inteiros**
-> (`app.py` ~2.600 linhas, `db.py` ~1.900). Linhas são aproximadas (mudam com o tempo) —
+> (`db.py` ~1.900 linhas). Linhas são aproximadas (mudam com o tempo) —
 > use como ponto de partida e confirme com Grep do nome. Atualizado: 2026-06-26.
 >
 > Geração fiel (`gerar_layout`) já foi **modularizada**: ver `gl_comum.py`, `gl_levantamento.py`,
 > `gl_projeto.py`, `gl_termo.py`, `gl_xlsx.py` (cada um < 300 linhas).
+>
+> `app.py` foi **dividido** (2593 → ~880 linhas): as rotas vivem em 8 módulos `routes_*.py`,
+> cada um com `register(app, **deps)` + `add_url_rule` (endpoints e `url_for` inalterados).
+> O `app.py` mantém só o núcleo (criação do app, login/before_request, perfis/permissões,
+> notificações, robôs) e registra os módulos perto do fim, antes de `if __name__ == "__main__"`.
 
 ## webapp/db.py — por domínio
 
@@ -37,21 +42,28 @@
 
 **Métricas/alertas**: `metricas` (1744) · `alertas` (1812) · `metricas_uso` (1847) · `funil_macro` (1860) · `_pnum` (1739) · `_pdate` (1729)
 
-## webapp/app.py — rotas por grupo (linha aprox.)
+## webapp/app.py — núcleo (linha aprox.) + registro dos módulos
 
-- **Auth/cadastro**: `/login` (162) · `/logout` (179) · `/cadastro` (199) · `/cadastro/confirmar` (230)
-- **Home/painéis**: `/` home (412) · `/coordenacao` (1012) · `/atividade` (1028) · `/monitoramento` (1284) · `/mapa` (2016) · `/perfil` (583)
+Permanece no `app.py` (núcleo, não foi movido):
+- **Auth/cadastro**: `/login` (162) · `/logout` (179) · `/cadastro` (199) · `/cadastro/confirmar` (230) · `before_request` `_exige_login`
 - **Papéis/skills**: `/papel/<rid>` (463) · `/acao/<rid>/<aid>` (471)
-- **Usuários**: `/usuarios` (589)
-- **Cadastros**: `/cadastros/checklist*` (631-672) · `/cadastros/indice*` (679-717) · `/cadastros/modelos*` (727-800)
-- **Config**: `/config` IA (820) · `/config/email` (839) · `/config/disponibilidade` (852) · `/config/modelos-email*` (876-943) · `/config/imap` (1985) · `/config/gmail` (1998)
-- **Carteira/ficha**: `/projetos` (1003) · `/projetos/novo` (1305) · `/projetos/<pid>` ficha (1317) · `/excluir` (1353) · `/avancar` (1367)
-- **Geração de docs**: `/gerar/<tipo>` (1459) · `/gerar-layout/<slug>` (1496) · `/projeto/origem` gate (1540) · `/gerar_pendentes` (1405)
-- **Levantamento/Projeto/edição**: `/levantamento` (1598) · `/editar/<doc>` (1852) · `/anexar` (1634) · `/nota` (1657)
-- **Agendamento/Designação**: `/definir_gci` (1731) · `/agendar` (1760) · `/designar` (1669) · `/consultores` (1805)
-- **Cronograma/Checklist (plano)**: `/cronograma*` (2130-2167)
-- **Agendador de visitas**: `/agenda` (2197) · `/agenda/alocar` (2297) · `/agenda/alocar_visita` (2320) · `/agenda/horario` (2344) · `/agenda/tecnico_modulo` (2356) · `/agenda/status` (2368) · `/agenda/acompanhamento` (2382) · `/agenda/gerar` · `/agenda/postergar` (após 2382)
-- **E-mail/fluxo**: `/projetos/<pid>/email` (959) · `/fluxo*` (1879-1909) · `/digest/enviar` (299)
+- **Perfil/usuários/cliente**: `/perfil` (583) · `/usuarios` (589) · `/cliente` (634)
+- **Carteira/ficha**: `/projetos` lista (655) · `/projetos/novo` · `/projetos/<pid>` ficha · `/excluir` · `/avancar` · `/anexar` · `/nota`
+- **Digest/download/health**: `/digest/enviar` (299) · `/download` · `/health`
+- **Context processors**: `inject_cliente` · `inject_alertas`
+- **Robôs**: `_agendador_digest` · `_agendador_caixa` · `_criar_projeto_de_fechamento` (usado pelo robô)
+- **Registro dos módulos**: bloco `import routes_* / routes_*.register(app, ...)` perto do fim (antes de `if __name__`).
 
-## Helpers-chave do app.py (perfis/permissões/notificação)
-`_perfil` · `_e_adm` · `pode_ver(area)` (111) · `pode_gerar(tipo)` (100) · `pode_designar` (96) · `_auto_avancar` · `_notificar_evento` · `_gerar_e_anexar_fiel` · `_gerar_projeto_fiel` — buscar por nome (Grep) quando precisar.
+## webapp/routes_*.py — rotas por módulo (Grep pelo nome; cada arquivo é pequeno)
+
+- **routes_agenda.py** — Agendador de Visitas: `/agenda` · `/agenda/alocar` · `/agenda/alocar_visita` · `/agenda/horario` · `/agenda/tecnico_modulo` · `/agenda/status` · `/agenda/acompanhamento` · `/agenda/gerar` · `/agenda/postergar`
+- **routes_config.py** — `/config` (IA) · `/config/email` · `/config/disponibilidade` · `/config/modelos-email*` · `/config/imap` · `/config/gmail`
+- **routes_cadastros.py** — `/cadastros/checklist*` · `/cadastros/indice*` · `/cadastros/modelos*`
+- **routes_cronograma.py** — planos editáveis: `/cronograma` (+`/seed`,`/gerar`) · `/checklist` (+`/seed`); helpers `_linhas_do_form`/`_seed_cronograma`/`_seed_checklist`/`_gerar_cronograma_de_itens`
+- **routes_geracao.py** — `/gerar/<tipo>` · `/gerar-layout/<slug>` · `/gerar_projeto` · `/gerar_pendentes` · `/projeto/origem` (gate) · `/levantamento` · `/editar/<doc>`; helpers `_gerar_e_anexar_fiel`/`_gerar_projeto_fiel`; const `_LAYOUT_SLUGS`
+- **routes_designacao.py** — `/designar` · `/definir_gci` · `/agendar` · `/consultores`
+- **routes_fluxo.py** — `/fluxo*` (`/parse`,`/inbox`,`/criar`) · `/projetos/<pid>/email` · `/mapa` · `/projetos/<pid>/doc/<id>/ver`; helper `_fluxo_confirmar`
+- **routes_painel.py** — telas executivas: `/` (home) · `/coordenacao` · `/atividade` · `/monitoramento`; helpers `_split_nomes`/`_parse_data`/`_idade_media`/`_estado_setor`/`_monitoramento_operacional`
+
+## Helpers-chave do app.py (perfis/permissões/notificação) — injetados nos módulos
+`_perfil` · `_e_adm` · `pode_ver(area)` (111) · `pode_gerar(tipo)` (100) · `pode_designar` (96) · `_so_meus` · `_autor` · `_etapa_permite_gerar` · `_auto_avancar` · `_notificar` · `_notificar_evento` · `_data_br` · dicts `_EVT_DOC`/`_ETAPA_DOC` · const `UPLOADS`/`ALLOWED_DIRS` — passados via `register(app, **deps)`. Buscar por nome (Grep) quando precisar.
