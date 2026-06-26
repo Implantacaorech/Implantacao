@@ -2251,32 +2251,44 @@ def projeto_agenda(pid):
     modulos_tec = [{"sigla": m, "tecnico": tech.get(m, "")}    # técnico por módulo (painel central)
                    for m in sorted({a["modulo"] for a in ats})]
 
-    # Disponibilidade: bloqueia o slot quando ALGUM técnico envolvido tem compromisso.
-    bloqueados, disp_aviso = {}, None
+    # Disponibilidade: análise CONJUNTA (todos os envolvidos) ou INDIVIDUAL (1 técnico).
+    from urllib.parse import quote as _quote
+    envolvidos = sorted({(t or "").strip() for t in tech.values() if (t or "").strip()})
+    modo = "individual" if request.args.get("modo") == "individual" else "conjunta"
+    tec_sel = (request.args.get("tec") or "").strip()
+    if modo == "individual":
+        if tec_sel not in envolvidos:
+            tec_sel = envolvidos[0] if envolvidos else ""
+        alvos = [tec_sel] if tec_sel else []
+    else:
+        tec_sel, alvos = "", envolvidos
+    bloqueados, disp_aviso, disp_ativa = {}, None, False
     try:
         import disponibilidade as D
-        envolvidos = sorted({(t or "").strip() for t in tech.values() if (t or "").strip()})
-        if D.configurado() and envolvidos:
+        if D.configurado() and alvos:
+            disp_ativa = True
             ocup = D.ocupacao_por_slot(dias[0].isoformat(), dias[-1].isoformat())
             for d in dias:
                 for t in ("manha", "tarde"):
-                    ocs = [e for e in envolvidos if ocup.get((e.lower(), d.isoformat(), t))]
+                    ocs = [e for e in alvos if ocup.get((e.lower(), d.isoformat(), t))]
                     if ocs:
                         bloqueados["%s|%s" % (d.isoformat(), t)] = ", ".join(ocs)
     except Exception:
         logging.exception("Falha ao consultar disponibilidade")
         disp_aviso = "Disponibilidade indisponível no momento — calendário liberado."
 
-    qs = "&fds=1" if fds else ""
+    extra = ("&modo=individual" + (("&tec=" + _quote(tec_sel)) if tec_sel else "")) if modo == "individual" else ""
+    qs = ("&fds=1" if fds else "") + extra
     return render_template("agenda.html", p=proj, pid=pid, semana=semana, aloc=aloc,
                            modulos_visitas=modulos_visitas, tech=tech, tecnicos=tecnicos,
                            fora=fora, fds=fds, hor=hor, modulos_tec=modulos_tec,
-                           bloqueados=bloqueados, disp_aviso=disp_aviso,
+                           bloqueados=bloqueados, disp_aviso=disp_aviso, disp_ativa=disp_ativa,
+                           modo=modo, tec_sel=tec_sel, envolvidos=envolvidos,
                            ref_cur=seg.isoformat(),
                            ref_prev=(seg - timedelta(days=7)).isoformat() + qs,
                            ref_next=(seg + timedelta(days=7)).isoformat() + qs,
                            ref_hoje=date.today().isoformat() + qs,
-                           fds_toggle="ref=%s%s" % (seg.isoformat(), "" if fds else "&fds=1"),
+                           fds_toggle="ref=%s%s" % (seg.isoformat(), ("" if fds else "&fds=1") + extra),
                            titulo_sem="%02d/%02d a %02d/%02d" % (dias[0].day, dias[0].month, dias[-1].day, dias[-1].month),
                            n_pend=n_pend, total=len(ats),
                            aviso=request.args.get("aviso"), erro=request.args.get("erro"))

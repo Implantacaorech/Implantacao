@@ -125,6 +125,22 @@
         <a class="btn" href="?{{ fds_toggle }}">{{ 'Ocultar fim de semana' if fds else 'Incluir fim de semana' }}</a>
         {% if fora %}<span class="dica" style="margin:0 0 0 auto">{{ fora }} atividade(s) em outra semana</span>{% endif %}
       </div>
+      {% if envolvidos %}
+      <form method="get" class="ag-modo">
+        <input type="hidden" name="ref" value="{{ ref_cur }}">{% if fds %}<input type="hidden" name="fds" value="1">{% endif %}
+        <span class="dica" style="margin:0">Análise de disponibilidade:</span>
+        <select name="modo" onchange="this.form.submit()">
+          <option value="conjunta" {{ 'selected' if modo == 'conjunta' }}>Conjunta (todos os técnicos)</option>
+          <option value="individual" {{ 'selected' if modo == 'individual' }}>Individual (por técnico)</option>
+        </select>
+        {% if modo == 'individual' %}
+        <select name="tec" onchange="this.form.submit()">
+          {% for t in envolvidos %}<option value="{{ t }}" {{ 'selected' if t == tec_sel }}>{{ t }}</option>{% endfor %}
+        </select>
+        {% endif %}
+        {% if not disp_ativa %}<span class="dica" style="margin:0;color:var(--muted)">— sem fonte de disponibilidade configurada</span>{% endif %}
+      </form>
+      {% endif %}
       <div class="ag-grid" style="grid-template-columns:repeat({{ semana|length }},minmax(0,1fr))">
         {% for d in semana %}
         <div class="ag-day">
@@ -231,6 +247,8 @@
     .ag-drop.over{outline:2px dashed var(--brand);outline-offset:-3px;background:rgba(37,99,235,.06)}
     .ag-slot.ag-bloq{background:repeating-linear-gradient(45deg,#fff,#fff 7px,#fdecec 7px,#fdecec 14px)}
     .ag-bloq-l{font-size:.66rem;font-weight:700;color:var(--err,#d33);margin-bottom:4px;line-height:1.1}
+    .ag-modo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+    .ag-modo select{font-size:.8rem;padding:3px 6px;border:1px solid var(--line);border-radius:5px;background:#fff}
     .ag-modal{border:1px solid var(--line);border-radius:10px;padding:18px;min-width:260px;box-shadow:0 10px 40px rgba(0,0,0,.25)}
     .ag-modal::backdrop{background:rgba(0,0,0,.35)}
   </style>

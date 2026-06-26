@@ -1181,19 +1181,22 @@ def test_config_disponibilidade(client):
     assert client.get("/config/disponibilidade").status_code == 200
 
 
-def test_agenda_disponibilidade_bloqueia_slot(client, monkeypatch):
-    """Com disponibilidade ativa, o slot fica bloqueado quando um técnico envolvido tem
-    compromisso (o calendário marca e o drop é recusado)."""
+def test_agenda_disponibilidade_modos(client, monkeypatch):
+    """Disponibilidade: análise CONJUNTA bloqueia se qualquer envolvido está ocupado;
+    INDIVIDUAL bloqueia só conforme o técnico escolhido."""
     import disponibilidade as D
     import datetime as _dt
     pid = _novo(client, cliente="Disp LTDA", cnpj="00.000.000/0001-00", numero_projeto="DP-1",
-                modulos="FAT", horas_cobradas="10", etapa="Cronograma e Check-list")
-    db.cronograma_atividades_seed(int(pid), "FAT")
+                modulos="FAT, EST", horas_cobradas="10", etapa="Cronograma e Check-list")
+    db.cronograma_atividades_seed(int(pid), "FAT, EST")
     client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "FAT", "tecnico": "Ana"})
+    client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "EST", "tecnico": "Beto"})
     hoje = _dt.date.today()
     seg = (hoje - _dt.timedelta(days=hoje.weekday())).isoformat()      # 2ª da semana
     monkeypatch.setattr(D, "configurado", lambda: True)
     monkeypatch.setattr(D, "ocupacao_por_slot", lambda di, df: {("ana", seg, "manha"): True})
-    html = client.get("/projetos/%s/agenda?ref=%s" % (pid, seg)).get_data(as_text=True)
-    assert "ag-bloq" in html and "Ocupado: Ana" in html
+    base = "/projetos/%s/agenda?ref=%s" % (pid, seg)
+    assert "Ocupado: Ana" in client.get(base).get_data(as_text=True)                       # conjunta
+    assert "Ocupado:" not in client.get(base + "&modo=individual&tec=Beto").get_data(as_text=True)   # Beto livre
+    assert "Ocupado: Ana" in client.get(base + "&modo=individual&tec=Ana").get_data(as_text=True)    # Ana ocupada
     client.post("/projetos/%s/excluir" % pid)
