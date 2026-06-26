@@ -2,12 +2,15 @@
 
 Mapa para ir direto ao ponto, sem varrer o projeto. **Aponta** para arquivos; não os copia.
 
+> **Para achar função/rota sem ler `app.py`/`db.py` inteiros:** use `mapa-codigo.md`
+> (índice nome→linha por domínio). Economia de contexto de risco zero.
+
 ## Painel Flask (`webapp/`)
 | Arquivo | Quando ler |
 |--------|-----------|
 | `webapp/app.py` | Rotas, fluxo, cadastros, geração; ponto central do painel (grande — leia trechos) |
 | `webapp/db.py` | Modelos SQLAlchemy, seeds, migração aditiva, helpers de dados |
-| `webapp/gerar_layout.py` | Geração fiel: mapa placeholder→dado por fase |
+| `webapp/gerar_layout.py` | Geração fiel: **fachada** (`gerar`, `gerar_agenda_xlsx`, `area_do_modulo`). Lógica em `gl_comum/gl_levantamento/gl_projeto/gl_termo/gl_xlsx` |
 | `webapp/fluxo.py` | Parse do e-mail de fechamento e montagem de projeto |
 | `webapp/templates/*.html` | Telas (Jinja). `projeto_ficha.html` = ficha; `cad_*.html` = cadastros |
 | `webapp/static/style.css` | Estilos (carregar só se for mexer em UI) |
