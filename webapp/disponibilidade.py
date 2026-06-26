@@ -52,9 +52,10 @@ def load_cfg():
 def salvar_cfg(form):
     """Salva a config a partir do form. A senha não é apagada se vier em branco."""
     cfg = load_cfg()
-    for k in ("tipo", "host", "porta", "banco", "usuario", "url", "select"):
+    for k in ("tipo", "host", "porta", "banco", "usuario", "url", "select", "oracle_lib_dir"):
         cfg[k] = (form.get(k) or "").strip()
     cfg["ativo"] = bool(form.get("ativo"))
+    cfg["oracle_thick"] = bool(form.get("oracle_thick"))   # Oracle Instant Client
     senha = (form.get("senha") or "").strip()
     if senha:
         cfg["senha"] = senha
@@ -87,11 +88,31 @@ def configurado():
     return bool(cfg.get("ativo") and (cfg.get("select") or "").strip() and _build_url(cfg))
 
 
+_thick_init = False
+
+
+def _maybe_thick(url, cfg):
+    """Habilita o modo thick do oracledb (Oracle Instant Client) quando pedido — necessário
+    para senhas com verificador antigo (DPY-3015). Roda uma vez por processo."""
+    global _thick_init
+    if _thick_init or not url.startswith("oracle") or not cfg.get("oracle_thick"):
+        return
+    import oracledb
+    lib = (cfg.get("oracle_lib_dir") or "").strip() or None
+    try:
+        oracledb.init_oracle_client(lib_dir=lib)
+    except Exception as e:
+        if "already been initialized" not in str(e).lower():
+            raise
+    _thick_init = True
+
+
 def _engine(cfg):
     from sqlalchemy import create_engine
     url = _build_url(cfg)
     if not url:
         raise ValueError("Conexão não configurada (informe os campos ou a URL).")
+    _maybe_thick(url, cfg)
     return create_engine(url, pool_pre_ping=True)
 
 
@@ -128,7 +149,12 @@ def testar(cfg=None):
         return False, ("Driver do banco não instalado no servidor. Instale com: pip install %s "
                        "(e reinicie o servidor)." % pkg), []
     except Exception as e:
-        return False, "%s: %s" % (type(e).__name__, str(e)[:300]), []
+        msg = str(e)
+        if "DPY-3015" in msg:
+            return False, ("Senha Oracle com verificador antigo (não aceito no modo thin). "
+                           "Marque 'Modo thick (Oracle Instant Client)' e informe a pasta do client, "
+                           "OU peça ao DBA para redefinir a senha do usuário com verificador 11g/12c."), []
+        return False, "%s: %s" % (type(e).__name__, msg[:300]), []
 
 
 def ocupacao_por_slot(data_ini, data_fim, cfg=None):

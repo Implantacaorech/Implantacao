@@ -43,6 +43,15 @@
     <label class="campo"><span>URL SQLAlchemy (opcional — substitui os campos acima)</span>
       <input name="url" value="{{ cfg.url or '' }}" placeholder="ex.: mssql+pyodbc://user:senha@host:1433/banco?driver=ODBC+Driver+17+for+SQL+Server"></label>
 
+    <div class="grade2">
+      <label class="campo" style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" name="oracle_thick" value="1" style="width:auto" {{ 'checked' if cfg.oracle_thick }}>
+        <span style="margin:0">Oracle — modo <strong>thick</strong> (Instant Client): use para senha com verificador antigo (DPY-3015)</span>
+      </label>
+      <label class="campo"><span>Pasta do Oracle Instant Client (opcional, se não estiver no PATH)</span>
+        <input name="oracle_lib_dir" value="{{ cfg.oracle_lib_dir or '' }}" placeholder="ex.: C:\oracle\instantclient_21"></label>
+    </div>
+
     <h3 style="color:var(--navy);margin:14px 0 6px">Consulta (SELECT)</h3>
     <p class="dica" style="margin:0 0 6px">Parâmetros disponíveis: <code>:data_ini</code> e <code>:data_fim</code>.
       Use <code>AS</code> para devolver as colunas <code>tecnico</code>, <code>data</code> e (opcional) <code>turno</code>
