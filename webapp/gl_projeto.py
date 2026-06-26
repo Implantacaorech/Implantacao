@@ -1,0 +1,211 @@
+# -*- coding: utf-8 -*-
+"""Geração fiel — parte do PROJETO de Implantação (detalhamento + tabelas + respostas)."""
+import db
+import preencher_layout as PL
+from gl_comum import (_conteudo, _num, _por_extenso, _hoje, _norm, _eh_marcador, _PROJ_GRUPOS)
+
+
+def _repl_projeto(p):
+    val = _conteudo(p, "projeto")
+    cli = (p.get("cliente") or "").strip()
+    repl, paras = [], []
+    if cli:
+        # ocorrências no corpo (literais ASCII) + linha-cabeçalho via prefixo
+        repl += [("<Nome do Cliente >", cli), ("<Nome do Cliente>", cli)]
+        paras.append(("Nome do Cliente:", "Nome do Cliente: %s" % cli))
+    if val("cnpj", "cnpj"):
+        paras.append(("CNPJ", "CNPJ: %s" % val("cnpj", "cnpj")))
+    if val("objetivos", "observacoes"):
+        repl.append(("<(preencher)>", val("objetivos", "observacoes")))
+    # Equipes (telas de edição estruturada)
+    if val("gerente_contas", "gci"):
+        paras.append(("Gerente de Contas do Projeto", "Gerente de Contas do Projeto: %s" % val("gerente_contas", "gci")))
+    if val("redator"):
+        paras.append(("Redator do Projeto", "Redator do Projeto: %s" % val("redator")))
+    if val("consultor", "consultor"):
+        paras.append(("Consultor/Implantador", "Consultor/Implantador: %s" % val("consultor", "consultor")))
+    hb, hc = _num(p.get("horas_bonificadas")), _num(p.get("horas_cobradas"))
+    if hb:
+        repl.append(("<XX horas bonificadas>", "%s horas bonificadas" % hb))
+    if hc:
+        repl.append(("<XX horas cobradas>", "%s horas cobradas" % hc))
+    paras.append(("Novo Hamburgo", "Novo Hamburgo, %s." % _por_extenso(_hoje())))
+    return repl, paras
+
+
+def _anexar_respostas_projeto(doc, projeto_id):
+    """Acrescenta ao Projeto o detalhamento do Levantamento (tópicos JÁ respondidos no
+    painel), por módulo contratado — liga as respostas do Levantamento ao Projeto."""
+    if not projeto_id:
+        return 0
+    rs = [r for r in db.levantamento_respostas(projeto_id) if (r.get("resposta") or "").strip()]
+    if not rs:
+        return 0
+
+    def linha(txt="", bold=False):
+        p = doc.add_paragraph()
+        if txt:
+            p.add_run(txt).bold = bold
+        return p
+
+    linha()
+    linha("Detalhamento do Levantamento por módulo", bold=True)
+    linha("Rotinas e particularidades identificadas no Levantamento (respostas registradas no painel).")
+    mod_atual = adic_atual = None
+    total = 0
+    for r in rs:
+        sig = r.get("modulo_sigla", "")
+        if sig != mod_atual:
+            mod_atual, adic_atual = sig, None
+            linha()
+            linha("%s — %s" % (sig, r.get("modulo", "") or ""), bold=True)
+        adic = (r.get("adicional") or "").strip()
+        if adic and adic != adic_atual:
+            adic_atual = adic
+            linha(adic, bold=True)
+        p = doc.add_paragraph()
+        p.add_run(((r.get("topico") or "").strip() + ": ")).bold = True
+        p.add_run((r.get("resposta") or "").strip())
+        total += 1
+    return total
+
+
+def _preencher_detalhamento_projeto(doc, projeto, guia=False):
+    """No 'Detalhamento das Rotinas' do Projeto: mantém SÓ as áreas dos módulos
+    contratados (remove as demais e os grupos que ficarem vazios) e preenche cada
+    bloco com os dados do Levantamento — 'Módulos Previstos' = módulos contratados
+    da área; 'Detalhamento' = respostas do Levantamento da área. A tela do Projeto
+    (DocConteudo det_<area>_*) sobrepõe quando preenchida. Com `guia=True` (modelo
+    para preenchimento manual), sem respostas usa as PERGUNTAS do Índice como guia."""
+    import doc_edit, re as _re
+    pid = projeto.get("id")
+    sigs = {m.strip().upper() for m in _re.split(r"[,;\n]+", projeto.get("modulos", "") or "") if m.strip()}
+    nomes = {m["sigla"].upper(): m["nome"] for m in db.indice_modulos()}
+    cont = db.doc_conteudo(pid, "projeto") if pid else {}
+
+    # área (nome normalizado) -> (k, siglas contratadas) e sigla -> área k
+    area_info, sigla_area, inter_by_k = {}, {}, {}
+    for (k, nome, ss) in doc_edit._PROJ_AREAS:
+        inter = [s for s in ss if s in sigs]
+        area_info[_norm(nome)] = (k, inter)
+        inter_by_k[k] = inter
+        for s in ss:
+            sigla_area[s] = k
+    contratadas = {a for a, (k, inter) in area_info.items() if inter}
+
+    # respostas do Levantamento por área (k) — alimentam o 'Detalhamento'
+    resp_por_k = {}
+    for r in (db.levantamento_respostas(pid) if pid else []):
+        k = sigla_area.get((r.get("modulo_sigla") or "").upper())
+        resp = (r.get("resposta") or "").strip()
+        if k and resp:
+            resp_por_k.setdefault(k, []).append("%s: %s" % ((r.get("topico") or "").strip(), resp))
+
+    def _valor(k, campo):
+        v = (cont.get("det_%s_%s" % (k, campo)) or "").strip()
+        if v:
+            return v
+        if campo == "modulos":
+            return ", ".join(("%s — %s" % (s, nomes[s])) if nomes.get(s) else s for s in inter_by_k.get(k, []))
+        if campo == "detalhamento":
+            base = resp_por_k.get(k)
+            if base:
+                return "  ·  ".join(base)
+            if guia:                       # modelo manual: usa as perguntas do Índice como guia
+                qs = []
+                for sig in inter_by_k.get(k, []):
+                    tops, _ = db.indice_listar(modulo=sig)
+                    qs += [(t.get("topico") or "").strip() for t in tops if (t.get("topico") or "").strip()]
+                return "  ·  ".join(qs)
+        return ""
+
+    rotulos = [("módulos previsto", "modulos"), ("detalhamento das rotinas", "detalhamento"),
+               ("particularidade", "particularidade"), ("não está previsto", "naoprevisto")]
+
+    paras = doc.paragraphs
+    ini = next((i for i, p in enumerate(paras) if _norm(p.text) == "detalhamento das rotinas"), None)
+    if ini is None:
+        return 0
+    fim = next((i for i in range(ini + 1, len(paras)) if _norm(paras[i].text).startswith("responsabilidades")), len(paras))
+
+    # segmenta o trecho em grupos e áreas (com seus parágrafos de conteúdo)
+    segs, cur = [], None
+    for i in range(ini + 1, fim):
+        p = paras[i]
+        tl = _norm(p.text)
+        if tl in _PROJ_GRUPOS:
+            cur = {"kind": "group", "name": tl, "head": p}
+            segs.append(cur)
+        elif tl in area_info:
+            cur = {"kind": "area", "name": tl, "head": p, "paras": []}
+            segs.append(cur)
+        elif cur and cur["kind"] == "area":
+            cur["paras"].append(p)
+
+    remover, n = [], 0
+    for seg in segs:
+        if seg["kind"] == "group":
+            if not (_PROJ_GRUPOS[seg["name"]] & contratadas):
+                remover.append(seg["head"])
+            continue
+        if seg["name"] not in contratadas:          # área não contratada -> remove o bloco inteiro
+            remover.append(seg["head"])
+            remover.extend(seg["paras"])
+            continue
+        k, campo = area_info[seg["name"]][0], None    # área contratada -> preenche os <XX>
+        for p in seg["paras"]:
+            tl = _norm(p.text)
+            lab = next((c for (kw, c) in rotulos if kw in tl), None) if tl else None
+            if lab:
+                campo = lab
+            elif campo and _eh_marcador(p.text):
+                val = _valor(k, campo)
+                if val:
+                    PL._aplica_no_paragrafo(p, val)
+                    n += 1
+                campo = None
+
+    for p in remover:
+        el = p._p
+        if el.getparent() is not None:
+            el.getparent().remove(el)
+    return n
+
+
+def _preencher_projeto_tabelas(doc, projeto):
+    """Preenche no Projeto a Tabela de Usuários e o Cronograma Macro a partir do DocConteudo."""
+    cont = db.doc_conteudo(projeto.get("id"), "projeto") if projeto.get("id") else {}
+    if not cont:
+        return
+    crono = [("levantamento de requisitos", "crono_levantamento"),
+             ("elaboração do cronograma", "crono_cronograma"), ("elaboracao do cronograma", "crono_cronograma"),
+             ("parametriz", "crono_parametrizacao"), ("treinamento", "crono_treinamento"),
+             ("simula", "crono_simulacao"), ("início do uso", "crono_inicio"), ("inicio do uso", "crono_inicio"),
+             ("finaliza", "crono_finalizacao")]
+    for t in doc.tables:
+        hdr = [(c.text or "").strip().lower() for c in t.rows[0].cells] if t.rows else []
+        if not hdr:
+            continue
+        # Cronograma Macro: Fase | Etapa | Período previsto
+        if hdr[0] == "fase" and any("previsto" in h for h in hdr):
+            col_per = next((j for j, h in enumerate(hdr) if "previsto" in h), len(hdr) - 1)
+            col_et = next((j for j, h in enumerate(hdr) if h == "etapa"), 1)
+            for row in t.rows[1:]:
+                et = (row.cells[col_et].text or "").strip().lower()
+                key = next((k for (kw, k) in crono if kw in et), None)
+                if key and cont.get(key):
+                    row.cells[col_per].text = cont[key]
+        # Tabela de Usuários: Nome | E-mail | Área | Assina
+        if hdr[0] == "nome" and any("assina" in h for h in hdr):
+            base = t.rows[1:]
+            usuarios = []
+            for i in range(4):
+                nome = (cont.get("usu_%d_nome" % i) or "").strip()
+                if nome:
+                    usuarios.append([nome, cont.get("usu_%d_email" % i, ""),
+                                     cont.get("usu_%d_area" % i, ""), cont.get("usu_%d_assina" % i, "")])
+            for idx, u in enumerate(usuarios):
+                row = base[idx] if idx < len(base) else t.add_row()
+                for j, v in enumerate(u):
+                    if j < len(row.cells):
+                        row.cells[j].text = v
