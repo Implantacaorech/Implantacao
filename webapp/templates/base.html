@@ -108,6 +108,9 @@
         <a class="side-link {{ 'on' if request.endpoint in ('cad_modelos','cad_modelo') }}" href="{{ url_for('cad_modelos') }}">
           <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>Modelos de Docs
         </a>
+        <a class="side-link {{ 'on' if request.endpoint=='config_disponibilidade' }}" href="{{ url_for('config_disponibilidade') }}">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-calendar"/></svg>Disponibilidade
+        </a>
         {% endif %}
       </nav>
       <div class="side-rod">{% if versao %}v{{ versao }}{% endif %}</div>

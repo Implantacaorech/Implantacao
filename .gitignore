@@ -44,6 +44,7 @@ tools/data/anthropic_key.txt
 tools/data/smtp.json
 tools/data/imap.json
 tools/data/gmail_client.json
+tools/data/disponibilidade.json
 tools/data/gmail_token.json
 tools/data/secret.key
 tools/data/acesso.txt

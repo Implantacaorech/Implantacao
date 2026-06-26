@@ -1167,3 +1167,15 @@ def test_agenda_alocar_visita_inteira(client):
     html = client.get("/projetos/%s/agenda" % pid).get_data(as_text=True)
     assert "Recolher tudo" in html and "ag-visita-d" in html      # acordeão na sidebar
     client.post("/projetos/%s/excluir" % pid)
+
+
+def test_config_disponibilidade(client):
+    """Tela de Disponibilidade (ADM): monta a URL pelos campos, prioriza URL completa,
+    e a página abre."""
+    import disponibilidade as D
+    url = D._build_url({"tipo": "postgresql", "host": "h", "porta": "5432",
+                        "banco": "b", "usuario": "u", "senha": "p@ss"})
+    assert url.startswith("postgresql+psycopg2://u:") and "@h:5432/b" in url
+    assert D._build_url({"url": "sqlite:///x.db", "tipo": "postgresql"}) == "sqlite:///x.db"
+    assert D.configurado() in (True, False)
+    assert client.get("/config/disponibilidade").status_code == 200

@@ -849,6 +849,28 @@ def config_email():
                            configurado=mailer.configurado())
 
 
+@app.route("/config/disponibilidade", methods=["GET", "POST"])
+def config_disponibilidade():
+    """ADM: conexão (campos/URL) + SELECT do banco interno de disponibilidade dos
+    consultores. Usado pelo agendador para liberar só dias/turnos livres."""
+    if not pode_ver("sistema"):
+        abort(403)
+    import disponibilidade as D
+    salvo, teste = False, None
+    if request.method == "POST":
+        D.salvar_cfg(request.form)
+        salvo = True
+        if request.form.get("acao") == "testar":
+            ok, msg, amostra = D.testar()
+            teste = {"ok": ok, "msg": msg, "amostra": amostra}
+    cfg = D.load_cfg()
+    cfg_view = dict(cfg)
+    cfg_view.pop("senha", None)                  # nunca devolve a senha ao template
+    return render_template("config_disponibilidade.html", cfg=cfg_view, salvo=salvo,
+                           teste=teste, configurado=D.configurado(),
+                           tem_senha=bool(cfg.get("senha")), dialetos=sorted(D.DIALETOS))
+
+
 # ===== CRUD de Modelos de E-mail (apenas ADM) =====
 
 @app.route("/config/modelos-email")
