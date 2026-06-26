@@ -154,6 +154,17 @@ def testar(cfg=None):
             return False, ("Senha Oracle com verificador antigo (não aceito no modo thin). "
                            "Marque 'Modo thick (Oracle Instant Client)' e informe a pasta do client, "
                            "OU peça ao DBA para redefinir a senha do usuário com verificador 11g/12c."), []
+        if "DPI-1047" in msg or "126" in msg:
+            lib = (cfg.get("oracle_lib_dir") or "").strip()
+            extra = ""
+            if lib and not os.path.isdir(lib):
+                extra = " A pasta informada não existe: %s." % lib
+            elif lib and not os.path.exists(os.path.join(lib, "oci.dll")):
+                extra = " A pasta existe mas NÃO contém oci.dll: %s." % lib
+            return False, ("Não consegui carregar o Oracle Instant Client (modo thick). Verifique: "
+                           "(1) instale o Microsoft Visual C++ Redistributable x64 (causa nº 1 do erro 126); "
+                           "(2) o Instant Client deve ser 64-bit; "
+                           "(3) a pasta deve conter o oci.dll. Depois reinicie o servidor." + extra), []
         return False, "%s: %s" % (type(e).__name__, msg[:300]), []
 
 
