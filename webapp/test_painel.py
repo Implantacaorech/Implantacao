@@ -1179,3 +1179,21 @@ def test_config_disponibilidade(client):
     assert D._build_url({"url": "sqlite:///x.db", "tipo": "postgresql"}) == "sqlite:///x.db"
     assert D.configurado() in (True, False)
     assert client.get("/config/disponibilidade").status_code == 200
+
+
+def test_agenda_disponibilidade_bloqueia_slot(client, monkeypatch):
+    """Com disponibilidade ativa, o slot fica bloqueado quando um técnico envolvido tem
+    compromisso (o calendário marca e o drop é recusado)."""
+    import disponibilidade as D
+    import datetime as _dt
+    pid = _novo(client, cliente="Disp LTDA", cnpj="00.000.000/0001-00", numero_projeto="DP-1",
+                modulos="FAT", horas_cobradas="10", etapa="Cronograma e Check-list")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "FAT", "tecnico": "Ana"})
+    hoje = _dt.date.today()
+    seg = (hoje - _dt.timedelta(days=hoje.weekday())).isoformat()      # 2ª da semana
+    monkeypatch.setattr(D, "configurado", lambda: True)
+    monkeypatch.setattr(D, "ocupacao_por_slot", lambda di, df: {("ana", seg, "manha"): True})
+    html = client.get("/projetos/%s/agenda?ref=%s" % (pid, seg)).get_data(as_text=True)
+    assert "ag-bloq" in html and "Ocupado: Ana" in html
+    client.post("/projetos/%s/excluir" % pid)

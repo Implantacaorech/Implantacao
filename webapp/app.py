@@ -2251,10 +2251,27 @@ def projeto_agenda(pid):
     modulos_tec = [{"sigla": m, "tecnico": tech.get(m, "")}    # técnico por módulo (painel central)
                    for m in sorted({a["modulo"] for a in ats})]
 
+    # Disponibilidade: bloqueia o slot quando ALGUM técnico envolvido tem compromisso.
+    bloqueados, disp_aviso = {}, None
+    try:
+        import disponibilidade as D
+        envolvidos = sorted({(t or "").strip() for t in tech.values() if (t or "").strip()})
+        if D.configurado() and envolvidos:
+            ocup = D.ocupacao_por_slot(dias[0].isoformat(), dias[-1].isoformat())
+            for d in dias:
+                for t in ("manha", "tarde"):
+                    ocs = [e for e in envolvidos if ocup.get((e.lower(), d.isoformat(), t))]
+                    if ocs:
+                        bloqueados["%s|%s" % (d.isoformat(), t)] = ", ".join(ocs)
+    except Exception:
+        logging.exception("Falha ao consultar disponibilidade")
+        disp_aviso = "Disponibilidade indisponível no momento — calendário liberado."
+
     qs = "&fds=1" if fds else ""
     return render_template("agenda.html", p=proj, pid=pid, semana=semana, aloc=aloc,
                            modulos_visitas=modulos_visitas, tech=tech, tecnicos=tecnicos,
                            fora=fora, fds=fds, hor=hor, modulos_tec=modulos_tec,
+                           bloqueados=bloqueados, disp_aviso=disp_aviso,
                            ref_cur=seg.isoformat(),
                            ref_prev=(seg - timedelta(days=7)).isoformat() + qs,
                            ref_next=(seg + timedelta(days=7)).isoformat() + qs,
