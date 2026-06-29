@@ -1,0 +1,74 @@
+# Parecer para RNS — Painel de Implantação (SIGER®)
+
+> **Documento vivo.** Texto pronto para colar no campo de parecer de uma RNS.
+> Mantido acumulativo: a cada nova função/assunto entregue, esta lista é atualizada.
+> Registre a mudança no rodapé (**Atualizações**).
+>
+> Última atualização: **2026-06-29**.
+
+---
+
+## Parecer (texto para colar)
+
+O Painel de Implantação é uma aplicação web interna que centraliza, controla e automatiza o processo de implantação do SIGER®. Cada cliente é tratado como um **projeto** que percorre seis etapas (Agendamento, Levantamento, Projeto, Designação, Cronograma e Check-list, Encerramento), com portões de qualidade (gates) que impedem o avanço sem os documentos e ações obrigatórias. A ferramenta encontra-se **em produção na rede interna**, com banco de dados PostgreSQL, backup diário automatizado e suíte de testes automatizados. Funções entregues:
+
+**1. Gestão da carteira e da ficha do cliente**
+- Carteira única de projetos com status por etapa, situação, atrasos e busca/filtro.
+- Ficha por cliente com dados cadastrais, fase atual, documentos anexados e linha do tempo (histórico) de todos os eventos (mudanças de etapa, documentos, e-mails e notas).
+
+**2. Fluxo guiado e controle de qualidade**
+- Sequência de etapas com gates de documentos e ações obrigatórias por fase.
+- Avanço automático de etapa quando os requisitos são cumpridos; bloqueio com aviso quando falta item obrigatório.
+- Alertas proativos (uso oficial vencido, prazo do cronograma estourado, projeto parado, em risco).
+
+**3. Levantamento e geração de documentos**
+- Levantamento respondido em tela (perguntas dos módulos contratados), que alimenta o Projeto sem redigitação.
+- Geração fiel, no padrão oficial Rech, dos documentos: Mapeamento/Levantamento, Projeto de Implantação, Cronograma, Check List e Termo de Encerramento.
+- Gate de origem do Projeto (dados de tela, levantamento importado ou modelo para preenchimento manual).
+- Pré-visualização dos documentos na tela e edição estruturada de campos.
+
+**4. Cronograma e Check-list editáveis**
+- Planos em tabela editável, com carga automática inicial (seed), histórico de modificações e geração da planilha (.xlsx).
+
+**5. Agendamento e Designação**
+- Definição do GCI e da data do Levantamento; designação de consultores por módulo, com notificação automática por e-mail.
+
+**6. Agendador de visitas**
+- Calendário por dia e turno com arrastar-e-soltar; técnico por módulo; horário por turno; status de cada visita (Solicitada, Agendada, Realizada, Não Realizada, Postergada, Cancelada); postergação com histórico; geração da agenda em planilha e visão de acompanhamento.
+
+**7. Disponibilidade dos consultores**
+- Cruzamento da agenda com a ocupação real dos técnicos (consulta a base externa configurável), bloqueando conflitos, com análise conjunta e individual.
+
+**8. Comunicação e automação por e-mail**
+- Envio de e-mail por projeto com modelos parametrizáveis; notificações automáticas a cada evento do fluxo; resumo diário (digest) por e-mail.
+- Abertura automática de projeto a partir do e-mail de fechamento do Comercial (manual ou via robô de caixa de entrada), já gerando o pacote inicial.
+
+**9. Gestão e indicadores**
+- Painel de Coordenação (indicadores e alertas), Atividade (feed e métricas de uso) e Monitoramento operacional por setor (saúde, carga por colaborador e próximas entregas).
+
+**10. Cadastros e configurações**
+- Cadastros de referência (Check-list, Índice de Tópicos, Modelos de Documentos com versões).
+- Configurações de envio/recebimento (SMTP, IMAP, Gmail), de IA, de disponibilidade e de modelos de e-mail.
+
+**11. Segurança e acesso**
+- Login por usuário com 5 perfis (ADM, Coordenador, Administrativo, GCI, Consultor) e permissões aplicadas também no backend; autocadastro com validação por e-mail; senha mestra de contingência; download de arquivos restrito a diretórios autorizados; filtro de visão por perfil.
+
+**12. Arquitetura**
+- Banco de dados agnóstico (SQLite ou PostgreSQL) com migração automática de schema; servidor de produção (waitress) na rede interna; cobertura por testes automatizados.
+
+**Parecer:** o sistema já entrega, de ponta a ponta, o controle e a padronização do processo de implantação, com automações que reduzem retrabalho e aumentam a rastreabilidade. Evoluções previstas (dependentes de liberação de acesso ao SICLA/SIGER e de chave de IA): integração com SICLA/RNS, pipeline de conversão e gate de virada, disparadores de encerramento e copiloto de IA ao consultor.
+
+---
+
+## Versão curta (1 parágrafo, para campo enxuto)
+
+O Painel de Implantação centraliza e automatiza a implantação do SIGER® por cliente: carteira e ficha única com histórico, fluxo de 6 etapas com gates e avanço automático, Levantamento em tela e geração fiel dos documentos oficiais (Levantamento, Projeto, Cronograma, Check List e Termo), Cronograma/Check-list editáveis, agendador de visitas com disponibilidade real dos consultores, designação por módulo, notificações e abertura automática por e-mail, e painéis de coordenação e monitoramento. Em produção na rede interna, com PostgreSQL, backup diário e testes automatizados.
+
+---
+
+## Atualizações
+
+> Ao acrescentar um assunto/função novo ao parecer, registre aqui (data + o que entrou).
+
+- **2026-06-29** — Versão inicial consolidada a partir da documentação do sistema
+  ([painel-sistema.md](painel-sistema.md)). Cobre as 12 áreas de função atuais.
