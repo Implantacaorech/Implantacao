@@ -68,6 +68,7 @@ Saída em `exemplos/`. Detalhes em [tools/README.md](tools/README.md).
 
 ## Documentação
 
+- [**Painel de Implantação — apresentação ao usuário-chave**](docs/apresentacao-usuario-chave.md) (visão de negócio, para apresentar ao time)
 - [**Painel de Implantação — documentação do sistema**](docs/painel-sistema.md) (a aplicação web e todos os recursos)
 - [Processo completo](docs/processo-implantacao.md)
 - [Glossário](docs/glossario.md)
