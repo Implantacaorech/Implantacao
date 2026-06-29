@@ -72,6 +72,7 @@ Saída em `exemplos/`. Detalhes em [tools/README.md](tools/README.md).
 - [**Painel de Implantação — documentação do sistema**](docs/painel-sistema.md) (a aplicação web e todos os recursos)
 - [Parecer para RNS (documento vivo)](docs/parecer-rns.md) (texto pronto p/ colar no parecer de uma RNS)
 - [Agentes de software (.claude/agents)](docs/agentes-software.md) (estrutura de agentes p/ manter e evoluir o Painel)
+- [Runbooks de operação](docs/runbooks-operacao.md) (e-mail/IMAP/Gmail, Oracle, Postgres/backup, robôs)
 - [Processo completo](docs/processo-implantacao.md)
 - [Glossário](docs/glossario.md)
 - [Papéis e responsabilidades](docs/papeis-responsabilidades.md)

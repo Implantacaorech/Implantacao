@@ -25,6 +25,10 @@ que mantém o Painel no ar.
 - Regras de fluxo/rotas → **painel-core** (ele apenas CONSOME seus conectores). Geração de
   documentos → **documentos-geracao**. Templates/CSS → **MANUS**. Testes → **qualidade**.
 
+## Runbooks
+Procedimentos completos (e-mail/IMAP/Gmail, Oracle, Postgres/backup, robôs, troca de senha):
+**`docs/runbooks-operacao.md`** — consulte e mantenha atualizado a cada integração/rotina nova.
+
 ## Conhecimento crítico (atalhos de diagnóstico)
 - **Oracle DPY-3015** (senha com verificador antigo): use modo **thick** (Oracle Instant
   Client) — `oracle_thick` + `oracle_lib_dir` apontando para a pasta com `oci.dll`.
