@@ -15,8 +15,9 @@ a barreira contra regressões — sobretudo as causadas por sobrescritas do **MA
 ## O que você faz
 1. **Suíte:** `cd webapp && PYTHONUTF8=1 python -m pytest test_painel.py -q` (≈4 min, 73 testes).
    Para feedback rápido, rode um subconjunto com `-k` antes da suíte completa.
-2. **Regressão de rotas:** verifique `import app` ok + endpoints registrados + `url_for`
-   inalterado (especialmente após mexer nos `routes_*.py` ou após um pull do MANUS).
+2. **Regressão de rotas (smoke, segundos):** `python webapp/verificar_app.py` — confirma que o
+   app importa, que os 8 módulos de rota continuam registrados e que `url_for` resolve.
+   Rode-o **sempre** após mexer nos `routes_*.py` ou após um pull do MANUS, antes da suíte.
 3. **Revisão de diff:** correção, simplificação, reuso e segurança óbvia. Achados priorizados
    (alto/médio/baixo). Não reescreva — aponte e devolva a quem implementou.
 4. **Testes novos:** ao surgir uma regra nova, escreva o teste correspondente.

@@ -38,7 +38,7 @@ Você é o **Painel-Core** — o engenheiro de backend e guardião das regras de
 ## Como agir
 - `git pull --ff-only` antes de mexer (o usuário edita por fora e dá push).
 - Implemente a menor mudança coerente; siga o estilo do código vizinho.
-- Verifique: `import app` ok + endpoints registrados + `url_for` (rode um check rápido).
+- Verifique com o smoke: `python webapp/verificar_app.py` (segundos — import + endpoints + `url_for`).
 - **Sempre** acione o agente **qualidade** ao terminar (suíte + revisão) antes do push.
 - Commit: corpo sem aspas duplas; termine com `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
 

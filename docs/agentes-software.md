@@ -38,7 +38,10 @@
 4. **Implementação:** o agente dono do território (painel-core / documentos-geracao / integracoes-operacao). Frontend = **MANUS**.
 5. **Revisão + testes:** **qualidade** (obrigatório antes de todo push).
 6. **Documentação:** passo final de quem implementou, ou **documentacao-contexto**.
-7. **Pós-push do MANUS:** **qualidade** roda suíte + checa endpoints; **painel-core** reaplica invariantes se algo foi sobrescrito.
+7. **Pós-push do MANUS:** **qualidade** roda o smoke `python webapp/verificar_app.py` (segundos) + a suíte; **painel-core** reaplica invariantes se algo foi sobrescrito.
+
+> **Smoke check:** `python webapp/verificar_app.py` confirma em segundos que o app importa e que
+> os 8 módulos de rota continuam registrados (`url_for` ok). Roda também como passo da CI, antes do pytest.
 
 ## Ordem de implantação
 

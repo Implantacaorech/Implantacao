@@ -44,3 +44,20 @@ Tudo em **português do Brasil (pt-BR)**, em qualquer arquivo novo.
 Roda da **fonte** via `Iniciar_Servidor.bat` em `http://127.0.0.1:5000` (Postgres via `PAINEL_DB_URL`).
 **Não** reconstruir o `.exe` (legado) salvo pedido explícito. Entrega = código no GitHub (commit + push).
 Geradores Office e runtime detalhados em [docs/guia-operacional-ia.md](docs/guia-operacional-ia.md) e [tools/README.md](tools/README.md).
+
+## Painel Flask — agentes de software e fronteiras
+Para manter/evoluir o `webapp/`, use os **agentes de software** em `.claude/agents/` (distintos
+dos agentes de NEGÓCIO acima): **painel-core** (backend/rotas/`db.py`/regras) · **qualidade**
+(pytest + revisão + endpoints) · **documentos-geracao** (`gl_*`/modelos) · **integracoes-operacao**
+(e-mail/Oracle/infra) · **documentacao-contexto** · **seguranca-permissoes**. Mapa e ordem de
+implantação: [docs/agentes-software.md](docs/agentes-software.md).
+
+**Regra de ouro — fronteira por módulo (não sobrepor):**
+`app.py`/`routes_*`/`db.py` → painel-core · `gerar_layout`/`gl_*`/`tools/gerar_*`/modelos →
+documentos-geracao · `mailer`/`imap_intake`/`gmail_api`/`disponibilidade`/infra →
+integracoes-operacao · `docs/`+`memoria_ia/` → documentacao-contexto.
+**`templates/` + CSS são do MANUS IA — nenhum agente de software escreve lá.**
+
+**Antes de todo push** (e após cada pull que traga mudança do MANUS): rode o smoke
+`python webapp/verificar_app.py` (segundos) e a suíte `pytest webapp/test_painel.py -q` (≈4 min).
+Rotas vivem nos `routes_*` com `register(app, **deps)` — nunca `from app import …` num módulo de rota.

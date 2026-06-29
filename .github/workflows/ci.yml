@@ -17,6 +17,8 @@ jobs:
         run: pip install -r tools/requirements.txt pytest
       - name: Checagem de sintaxe
         run: python -m compileall -q webapp tools
+      - name: Smoke do app (rotas registradas)
+        run: python webapp/verificar_app.py
       - name: Testes do painel (pytest)
         run: pytest webapp/test_painel.py -q
       - name: Smoke dos geradores (best-effort; templates são locais)
