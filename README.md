@@ -71,6 +71,7 @@ Saída em `exemplos/`. Detalhes em [tools/README.md](tools/README.md).
 - [**Painel de Implantação — apresentação ao usuário-chave**](docs/apresentacao-usuario-chave.md) (visão de negócio, para apresentar ao time) · [slides .pptx](docs/Painel_Implantacao_Apresentacao.pptx)
 - [**Painel de Implantação — documentação do sistema**](docs/painel-sistema.md) (a aplicação web e todos os recursos)
 - [Parecer para RNS (documento vivo)](docs/parecer-rns.md) (texto pronto p/ colar no parecer de uma RNS)
+- [Agentes de software (.claude/agents)](docs/agentes-software.md) (estrutura de agentes p/ manter e evoluir o Painel)
 - [Processo completo](docs/processo-implantacao.md)
 - [Glossário](docs/glossario.md)
 - [Papéis e responsabilidades](docs/papeis-responsabilidades.md)
