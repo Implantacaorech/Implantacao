@@ -11,7 +11,7 @@ Config fica em DATA_WRITE/disponibilidade.json (gitignored, fora do versionament
 Contrato do SELECT (o ADM escreve livremente):
   - parâmetros disponíveis: :data_ini e :data_fim (intervalo, 'AAAA-MM-DD');
   - colunas esperadas no resultado (use AS para renomear):
-      tecnico  -> identificador do técnico (nome/código/e-mail que casa com o consultor do painel)
+      tecnico  -> CÓDIGO do técnico no SICLA — casa com o "Código SICLA" do cadastro de usuário
       data     -> data do compromisso ('AAAA-MM-DD' ou DATE)
       turno    -> opcional: 'manha' | 'tarde' (se ausente/vazio, considera o DIA inteiro ocupado)
   - cada linha representa um compromisso (ocupação) do técnico.

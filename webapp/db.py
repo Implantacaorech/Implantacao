@@ -268,6 +268,7 @@ class Usuario(Base):
     email = Column(String(160), default="")
     senha_hash = Column(Text, default="")
     perfil = Column(String(20), default="Consultor")
+    codigo_sicla = Column(String(40), default="")   # código do técnico no SICLA (elo com a agenda)
     ativo = Column(Integer, default=1)
     criado_em = Column(DateTime, default=datetime.now)
 
@@ -280,6 +281,7 @@ class CadastroPendente(Base):
     login = Column(String(120), default="")
     email = Column(String(160), default="")
     senha_hash = Column(Text, default="")
+    codigo_sicla = Column(String(40), default="")
     codigo = Column(String(12), default="")
     tentativas = Column(Integer, default=0)
     criado_em = Column(DateTime, default=datetime.now)
@@ -331,6 +333,29 @@ def email_do_usuario(nome):
         return (u.email or u.login) if u else None
 
 
+def codigo_sicla_do_usuario(nome):
+    """Código SICLA de um usuário ativo pelo nome — elo com a agenda de disponibilidade."""
+    from sqlalchemy import func
+    if not nome:
+        return ""
+    with Session() as s:
+        u = s.query(Usuario).filter(func.lower(Usuario.nome) == nome.strip().lower(),
+                                    Usuario.ativo == 1).first()
+        return (u.codigo_sicla or "").strip() if u else ""
+
+
+def codigos_sicla_por_nome(nomes=None):
+    """{nome_lower: codigo_sicla} dos usuários ativos (restringe a 'nomes' se informado)."""
+    alvo = {(n or "").strip().lower() for n in (nomes or []) if (n or "").strip()}
+    out = {}
+    with Session() as s:
+        for u in s.query(Usuario).filter(Usuario.ativo == 1).all():
+            nl = (u.nome or "").strip().lower()
+            if nl and (not alvo or nl in alvo):
+                out[nl] = (u.codigo_sicla or "").strip()
+    return out
+
+
 def existe_usuario(login=None, email=None):
     """True se já houver usuário (ativo ou não) com este login OU e-mail."""
     from sqlalchemy import or_, func
@@ -353,14 +378,15 @@ def limpar_pendentes(minutos=30):
         s.commit()
 
 
-def salvar_pendente(nome, login, email, senha, codigo):
+def salvar_pendente(nome, login, email, senha, codigo, codigo_sicla=""):
     """Cria/substitui o cadastro pendente do e-mail (senha já guardada como hash)."""
     from sqlalchemy import func
     from werkzeug.security import generate_password_hash
     with Session() as s:
         s.query(CadastroPendente).filter(func.lower(CadastroPendente.email) == email.lower()).delete()
         s.add(CadastroPendente(nome=nome, login=login, email=email,
-                               senha_hash=generate_password_hash(senha or ""), codigo=codigo))
+                               senha_hash=generate_password_hash(senha or ""), codigo=codigo,
+                               codigo_sicla=(codigo_sicla or "").strip()))
         s.commit()
 
 
@@ -405,7 +431,8 @@ def confirmar_pendente(email, codigo):
             s.commit()
             return None, "Código incorreto. Confira o e-mail e tente de novo."
         u = Usuario(nome=p.nome, login=p.login or p.email, email=p.email,
-                    senha_hash=p.senha_hash, perfil="Consultor", ativo=1)
+                    senha_hash=p.senha_hash, perfil="Consultor", ativo=1,
+                    codigo_sicla=(p.codigo_sicla or ""))
         s.add(u)
         s.delete(p)
         s.commit()

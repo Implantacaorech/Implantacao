@@ -4,7 +4,7 @@
 > Mantido acumulativo: a cada nova função/assunto entregue, esta lista é atualizada.
 > Registre a mudança no rodapé (**Atualizações**).
 >
-> Última atualização: **2026-06-29**.
+> Última atualização: **2026-06-29** (vínculo usuário↔SICLA na agenda).
 
 ---
 
@@ -35,9 +35,11 @@ O Painel de Implantação é uma aplicação web interna que centraliza, control
 
 **6. Agendador de visitas**
 - Calendário por dia e turno com arrastar-e-soltar; técnico por módulo; horário por turno; status de cada visita (Solicitada, Agendada, Realizada, Não Realizada, Postergada, Cancelada); postergação com histórico; geração da agenda em planilha e visão de acompanhamento.
+- Bloqueio de agendamento em datas passadas (só hoje em diante) e em dias/turnos sem disponibilidade do técnico.
 
 **7. Disponibilidade dos consultores**
 - Cruzamento da agenda com a ocupação real dos técnicos (consulta a base externa configurável), bloqueando conflitos, com análise conjunta e individual.
+- O vínculo técnico↔agenda é feito pelo **Código SICLA** do cadastro de usuário, casado com a coluna `tecnico` do SELECT; a montagem do cronograma só permite alocar em dias/turnos livres e a partir da data atual.
 
 **8. Comunicação e automação por e-mail**
 - Envio de e-mail por projeto com modelos parametrizáveis; notificações automáticas a cada evento do fluxo; resumo diário (digest) por e-mail.
@@ -52,6 +54,7 @@ O Painel de Implantação é uma aplicação web interna que centraliza, control
 
 **11. Segurança e acesso**
 - Login por usuário com 5 perfis (ADM, Coordenador, Administrativo, GCI, Consultor) e permissões aplicadas também no backend; autocadastro com validação por e-mail; senha mestra de contingência; download de arquivos restrito a diretórios autorizados; filtro de visão por perfil.
+- **Código SICLA obrigatório** no cadastro de usuário (todos os perfis) — elo do usuário com a sua agenda no SICLA.
 
 **12. Arquitetura**
 - Banco de dados agnóstico (SQLite ou PostgreSQL) com migração automática de schema; servidor de produção (waitress) na rede interna; cobertura por testes automatizados.
@@ -72,3 +75,6 @@ O Painel de Implantação centraliza e automatiza a implantação do SIGER® por
 
 - **2026-06-29** — Versão inicial consolidada a partir da documentação do sistema
   ([painel-sistema.md](painel-sistema.md)). Cobre as 12 áreas de função atuais.
+- **2026-06-29** — Vínculo usuário↔SICLA: Código SICLA obrigatório no cadastro (todos os
+  perfis), casado com a coluna `tecnico` do SELECT de disponibilidade; bloqueio de
+  alocação em datas passadas e em slots ocupados na montagem do cronograma (itens 6, 7 e 11).

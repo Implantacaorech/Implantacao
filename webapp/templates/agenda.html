@@ -147,7 +147,8 @@
           <div class="ag-day-h">{{ d.label }}</div>
           {% for turno, rotulo in [('manha','Manhã'),('tarde','Tarde')] %}
           {% set bloq = bloqueados.get(d.iso ~ '|' ~ turno) %}
-          <div class="ag-slot ag-drop {{ 'ag-bloq' if bloq }}" data-iso="{{ d.iso }}" data-turno="{{ turno }}" {% if bloq %}data-bloq="1"{% endif %}>
+          {% set passado = d.iso < hoje_iso %}
+          <div class="ag-slot ag-drop {{ 'ag-bloq' if bloq }}{{ ' ag-passado' if passado }}" data-iso="{{ d.iso }}" data-turno="{{ turno }}" {% if bloq %}data-bloq="1"{% endif %}{% if passado %} data-passado="1"{% endif %}>
             <div class="ag-slot-h">
               <span class="ag-turno">{{ rotulo }} <small>{{ hor[turno].ini }}–{{ hor[turno].fim }}</small></span>
               {% if aloc[d.iso][turno] %}
@@ -156,6 +157,7 @@
               {% endif %}
             </div>
             {% if bloq %}<div class="ag-bloq-l" title="Sem disponibilidade: {{ bloq }}">🔒 Ocupado: {{ bloq }}</div>{% endif %}
+            {% if passado %}<div class="ag-bloq-l" title="Data já passada — não recebe agendamentos">🚫 Data passada</div>{% endif %}
             {% for a in aloc[d.iso][turno] %}{{ card(a, tecnicos) }}{% endfor %}
           </div>
           {% endfor %}
@@ -245,6 +247,8 @@
     .ag-turno small{font-weight:600;text-transform:none;letter-spacing:0;color:var(--muted)}
     .ag-post{background:none;border:none;color:var(--brand);cursor:pointer;font-size:.95rem;line-height:1;padding:0 2px;flex:none}
     .ag-drop.over{outline:2px dashed var(--brand);outline-offset:-3px;background:rgba(37,99,235,.06)}
+    .ag-passado{background:repeating-linear-gradient(45deg,#f4f5f7,#f4f5f7 7px,#eceef1 7px,#eceef1 14px);opacity:.7}
+    .ag-passado .ag-bloq-l{color:#8a94a3}
     .ag-slot.ag-bloq{background:repeating-linear-gradient(45deg,#fff,#fff 7px,#fdecec 7px,#fdecec 14px)}
     .ag-bloq-l{font-size:.66rem;font-weight:700;color:var(--err,#d33);margin-bottom:4px;line-height:1.1}
     .ag-modo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px}
@@ -263,7 +267,7 @@
     function post(params, cb){
       fetch(url, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
             body:new URLSearchParams(params)})
-        .then(function(r){ return r.json(); }).then(function(j){ cb(j&&j.ok); }).catch(function(){ cb(false); });
+        .then(function(r){ return r.json(); }).then(function(j){ cb(j&&j.ok, j&&j.erro); }).catch(function(){ cb(false); });
     }
     function updateBadge(){
       var n=document.querySelectorAll('#ag-pend .ag-card').length;
@@ -298,7 +302,7 @@
         return;
       }
       var sel=e.target.closest&&e.target.closest('.ag-tec'); if(!sel) return;
-      post({atividade_id: sel.dataset.id, tecnico: sel.value}, function(ok){ if(!ok) alert('Não foi possível salvar o técnico.'); });
+      post({atividade_id: sel.dataset.id, tecnico: sel.value}, function(ok, erro){ if(!ok) alert(erro || 'Não foi possível salvar o técnico.'); });
     });
     // abrir modal de postergação (por assunto ou por turno)
     document.addEventListener('click', function(e){
@@ -317,6 +321,10 @@
       zone.addEventListener('drop', function(e){
         e.preventDefault(); zone.classList.remove('over');
         var iso=zone.dataset.iso||'', turno=zone.dataset.turno||'';
+        if(turno && zone.dataset.passado){   // data já passada
+          alert('Não é possível agendar em data passada — escolha hoje ou uma data futura.');
+          groupDrag=null; return;
+        }
         if(turno && zone.dataset.bloq){      // slot sem disponibilidade
           alert('Turno indisponível: técnico(s) envolvido(s) com compromisso nesse dia/turno.');
           groupDrag=null; return;
@@ -327,14 +335,14 @@
           fetch(visitaUrl, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
                 body:new URLSearchParams({modulo:gd.modulo, seq:gd.seq, data:iso, turno:turno})})
             .then(function(r){ return r.json(); })
-            .then(function(j){ if(j&&j.ok){ location.reload(); } else { alert('Não foi possível alocar a visita.'); } })
+            .then(function(j){ if(j&&j.ok){ location.reload(); } else { alert((j&&j.erro) || 'Não foi possível alocar a visita.'); } })
             .catch(function(){ alert('Erro de rede ao alocar a visita.'); });
           return;
         }
         var id=(e.dataTransfer&&e.dataTransfer.getData('text/plain'))||dragId; if(!id||id==='grupo') return;
         var cardEl=document.querySelector('.ag-card[data-id="'+id+'"]'); if(!cardEl) return;
-        post({atividade_id:id, data:iso, turno:turno}, function(ok){
-          if(!ok){ alert('Não foi possível mover a atividade.'); return; }
+        post({atividade_id:id, data:iso, turno:turno}, function(ok, erro){
+          if(!ok){ alert(erro || 'Não foi possível mover a atividade.'); return; }
           if(turno){ zone.appendChild(cardEl); }
           else {
             var grp=document.querySelector('#ag-pend [data-group="'+cardEl.dataset.group+'"] .ag-visita-cards');

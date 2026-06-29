@@ -307,14 +307,15 @@ def test_cadastro_fluxo_completo(client, monkeypatch):
     import mailer
     monkeypatch.setattr(mailer, "configurado", lambda: True)
     monkeypatch.setattr(mailer, "enviar", lambda dest, asn, corpo: (True, None))
-    r = client.post("/cadastro", data={"nome": "Beltrano", "email": "beltrano@x.com", "senha": "segredo1"})
+    r = client.post("/cadastro", data={"nome": "Beltrano", "email": "beltrano@x.com",
+                                       "senha": "segredo1", "codigo_sicla": "B99"})
     assert r.status_code == 302 and "confirmar" in r.headers["Location"]
     p = db.pendente_por_email("beltrano@x.com")
     assert p and p["codigo"]
     r2 = client.post("/cadastro/confirmar", data={"codigo": p["codigo"]})
     assert r2.status_code == 302
     u = _achar_usuario("beltrano@x.com")
-    assert u and u.perfil == "Consultor"
+    assert u and u.perfil == "Consultor" and u.codigo_sicla == "B99"
     with db.Session() as s:
         s.delete(s.get(db.Usuario, u.id)); s.commit()
 
@@ -366,11 +367,19 @@ def test_dedup_fechamento():
 
 
 def test_usuarios_grava_email_e_perfil(client):
-    client.post("/usuarios", data={"nome": "Coord", "email": "coord@x.com", "perfil": "Coordenador", "ativo": "on"})
+    client.post("/usuarios", data={"nome": "Coord", "email": "coord@x.com", "perfil": "Coordenador",
+                                   "codigo_sicla": "C77", "ativo": "on"})
     u = _achar_usuario("coord@x.com")
-    assert u and u.login == "coord@x.com" and u.perfil == "Coordenador"
+    assert u and u.login == "coord@x.com" and u.perfil == "Coordenador" and u.codigo_sicla == "C77"
     with db.Session() as s:
         s.delete(s.get(db.Usuario, u.id)); s.commit()
+
+
+def test_usuarios_exige_codigo_sicla(client):
+    """Código SICLA é obrigatório — sem ele, o usuário não é gravado."""
+    r = client.post("/usuarios", data={"nome": "SemCod", "email": "semcod@x.com", "perfil": "Consultor", "ativo": "on"})
+    assert r.status_code == 200 and "obrigat" in r.get_data(as_text=True).lower()
+    assert _achar_usuario("semcod@x.com") is None
 
 
 # ---- Cadastros de referência: Checklist e Índice de Tópicos ----
@@ -1038,19 +1047,22 @@ def test_agenda_visitas_render_e_aloca(client):
     outro projeto não consegue mover a atividade (guarda de propriedade)."""
     pid = _novo(client, cliente="Visita Cal LTDA", cnpj="00.000.000/0001-00", numero_projeto="VC-1",
                 modulos="FAT", horas_cobradas="10", etapa="Cronograma e Check-list")
+    import datetime
+    d1 = (datetime.date.today() + datetime.timedelta(days=7)).isoformat()
+    d2 = (datetime.date.today() + datetime.timedelta(days=8)).isoformat()
     r = client.get("/projetos/%s/agenda" % pid)
     assert r.status_code == 200 and "Agenda de Visitas" in r.get_data(as_text=True)
     ats = db.cronograma_atividades(int(pid))
     assert ats
     aid = ats[0]["id"]
     r = client.post("/projetos/%s/agenda/alocar" % pid,
-                    data={"atividade_id": aid, "data": "2026-07-06", "turno": "manha"})
+                    data={"atividade_id": aid, "data": d1, "turno": "manha"})
     assert r.status_code == 200 and r.get_json()["ok"] is True
     upd = next(a for a in db.cronograma_atividades(int(pid)) if a["id"] == aid)
-    assert upd["data"] == "2026-07-06" and upd["turno"] == "manha"
+    assert upd["data"] == d1 and upd["turno"] == "manha"
     pid2 = _novo(client, cliente="Outro Proj LTDA", modulos="FAT", etapa="Cronograma e Check-list")
     r = client.post("/projetos/%s/agenda/alocar" % pid2,
-                    data={"atividade_id": aid, "data": "2026-07-07", "turno": "tarde"})
+                    data={"atividade_id": aid, "data": d2, "turno": "tarde"})
     assert r.status_code == 404                                       # não pertence ao projeto 2
     client.post("/projetos/%s/excluir" % pid)
     client.post("/projetos/%s/excluir" % pid2)
@@ -1061,24 +1073,80 @@ def test_agenda_polimentos(client):
     semana; o filtro de fim de semana mostra Sáb/Dom."""
     pid = _novo(client, cliente="Polish LTDA", cnpj="00.000.000/0001-00", numero_projeto="PO-1",
                 modulos="FAT", horas_cobradas="10", etapa="Cronograma e Check-list")
+    import datetime
+    pol_d = (datetime.date.today() + datetime.timedelta(days=7)).isoformat()
+    post_d = (datetime.date.today() + datetime.timedelta(days=14)).isoformat()
     db.cronograma_atividades_seed(int(pid), "FAT")
     aid = db.cronograma_atividades(int(pid))[0]["id"]
-    client.post("/projetos/%s/agenda/alocar" % pid,            # sexta-feira de manhã
-                data={"atividade_id": aid, "data": "2026-07-03", "turno": "manha"})
+    client.post("/projetos/%s/agenda/alocar" % pid,            # dia útil futuro, de manhã
+                data={"atividade_id": aid, "data": pol_d, "turno": "manha"})
     r = client.post("/projetos/%s/agenda/alocar" % pid,        # só técnico (sem data/turno)
                     data={"atividade_id": aid, "tecnico": "Fulano"})
     assert r.status_code == 200 and r.get_json()["ok"] is True
     a = next(x for x in db.cronograma_atividades(int(pid)) if x["id"] == aid)
-    assert a["data"] == "2026-07-03" and a["turno"] == "manha" and a["tecnico"] == "Fulano"
-    r = client.post("/projetos/%s/agenda/postergar" % pid,     # posterga este assunto p/ segunda tarde
-                    data={"atividade_id": aid, "nova_data": "2026-07-06", "novo_turno": "tarde"})
+    assert a["data"] == pol_d and a["turno"] == "manha" and a["tecnico"] == "Fulano"
+    r = client.post("/projetos/%s/agenda/postergar" % pid,     # posterga este assunto p/ data futura
+                    data={"atividade_id": aid, "nova_data": post_d, "novo_turno": "tarde"})
     assert r.status_code == 302
     a = next(x for x in db.cronograma_atividades(int(pid)) if x["id"] == aid)
-    assert a["status"] == "Postergada" and a["data"] == "2026-07-03"   # original fica no lugar (histórico)
-    novos = [x for x in db.cronograma_atividades(int(pid)) if x["data"] == "2026-07-06" and x["turno"] == "tarde"]
+    assert a["status"] == "Postergada" and a["data"] == pol_d   # original fica no lugar (histórico)
+    novos = [x for x in db.cronograma_atividades(int(pid)) if x["data"] == post_d and x["turno"] == "tarde"]
     assert novos and novos[0]["status"] == "Agendada"                  # nova ocorrência criada no destino
-    r = client.get("/projetos/%s/agenda?fds=1&ref=2026-07-06" % pid)
+    r = client.get("/projetos/%s/agenda?fds=1&ref=%s" % (pid, post_d))
     assert r.status_code == 200 and "Sáb" in r.get_data(as_text=True)
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_agenda_bloqueia_data_passada(client):
+    """Montagem do cronograma: não permite alocar assunto em data já passada."""
+    import datetime
+    pid = _novo(client, cliente="Passado LTDA", cnpj="00.000.000/0001-00", numero_projeto="PA-1",
+                modulos="FAT", horas_cobradas="10", etapa="Cronograma e Check-list")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    aid = db.cronograma_atividades(int(pid))[0]["id"]
+    ontem = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    r = client.post("/projetos/%s/agenda/alocar" % pid,
+                    data={"atividade_id": aid, "data": ontem, "turno": "manha"})
+    assert r.status_code == 409 and r.get_json()["ok"] is False
+    assert "passada" in (r.get_json().get("erro") or "").lower()
+    a = next(x for x in db.cronograma_atividades(int(pid)) if x["id"] == aid)
+    assert a["data"] == ""                      # permaneceu não alocada
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_agenda_bloqueia_por_ocupacao_sicla(client, monkeypatch):
+    """Casa o Código SICLA do consultor (cadastro) com a coluna 'tecnico' do SELECT e
+    bloqueia o slot ocupado; um turno livre é liberado."""
+    import datetime
+    import disponibilidade as D
+    # projeto + designação + seed enquanto o login está inativo (ainda sem usuários)
+    pid = _novo(client, cliente="Ocup LTDA", cnpj="00.000.000/0001-00", numero_projeto="OC-1",
+                modulos="FAT", horas_cobradas="10", etapa="Cronograma e Check-list")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    aid = db.cronograma_atividades(int(pid))[0]["id"]
+    with db.Session() as s:
+        s.add(db.Designacao(projeto_id=int(pid), modulo="FAT", consultor="Tecnico Ze"))
+        s.add(db.Usuario(nome="Tecnico Ze", login="ze@x.com", email="ze@x.com",
+                         perfil="Consultor", codigo_sicla="Z9", ativo=1))
+        s.commit()
+    # com usuário no banco o login fica ativo -> autentica o client como ADM
+    with client.session_transaction() as sess:
+        sess["auth"] = True; sess["perfil"] = "ADM"; sess["perfil_nome"] = "ADM"
+    dia = (datetime.date.today() + datetime.timedelta(days=3)).isoformat()
+    monkeypatch.setattr(D, "configurado", lambda: True)
+    monkeypatch.setattr(D, "ocupacao_por_slot", lambda i, f, cfg=None: {("z9", dia, "manha"): True})
+    r = client.post("/projetos/%s/agenda/alocar" % pid,
+                    data={"atividade_id": aid, "data": dia, "turno": "manha"})
+    assert r.status_code == 409 and "ocupado" in (r.get_json().get("erro") or "").lower()
+    r2 = client.post("/projetos/%s/agenda/alocar" % pid,        # mesmo dia, turno livre
+                     data={"atividade_id": aid, "data": dia, "turno": "tarde"})
+    assert r2.status_code == 200 and r2.get_json()["ok"] is True
+    # cleanup: remove o usuário (restaura login inativo) e o projeto
+    with db.Session() as s:
+        u = s.query(db.Usuario).filter(db.Usuario.email == "ze@x.com").first()
+        if u:
+            s.delete(u)
+        s.commit()
     client.post("/projetos/%s/excluir" % pid)
 
 
@@ -1191,12 +1259,27 @@ def test_agenda_disponibilidade_modos(client, monkeypatch):
     db.cronograma_atividades_seed(int(pid), "FAT, EST")
     client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "FAT", "tecnico": "Ana"})
     client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "EST", "tecnico": "Beto"})
+    # vínculo por Código SICLA: Ana e Beto precisam de cadastro com código (casa com o SELECT)
+    with db.Session() as s:
+        s.add(db.Usuario(nome="Ana", login="ana@x.com", email="ana@x.com",
+                         perfil="Consultor", codigo_sicla="AN1", ativo=1))
+        s.add(db.Usuario(nome="Beto", login="beto@x.com", email="beto@x.com",
+                         perfil="Consultor", codigo_sicla="BT1", ativo=1))
+        s.commit()
+    with client.session_transaction() as sess:        # com usuários, o login fica ativo
+        sess["auth"] = True; sess["perfil"] = "ADM"; sess["perfil_nome"] = "ADM"
     hoje = _dt.date.today()
     seg = (hoje - _dt.timedelta(days=hoje.weekday())).isoformat()      # 2ª da semana
     monkeypatch.setattr(D, "configurado", lambda: True)
-    monkeypatch.setattr(D, "ocupacao_por_slot", lambda di, df: {("ana", seg, "manha"): True})
+    monkeypatch.setattr(D, "ocupacao_por_slot", lambda di, df: {("an1", seg, "manha"): True})  # casa por código
     base = "/projetos/%s/agenda?ref=%s" % (pid, seg)
     assert "Ocupado: Ana" in client.get(base).get_data(as_text=True)                       # conjunta
     assert "Ocupado:" not in client.get(base + "&modo=individual&tec=Beto").get_data(as_text=True)   # Beto livre
     assert "Ocupado: Ana" in client.get(base + "&modo=individual&tec=Ana").get_data(as_text=True)    # Ana ocupada
+    with db.Session() as s:
+        for em in ("ana@x.com", "beto@x.com"):
+            u = s.query(db.Usuario).filter(db.Usuario.email == em).first()
+            if u:
+                s.delete(u)
+        s.commit()
     client.post("/projetos/%s/excluir" % pid)

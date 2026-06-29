@@ -18,6 +18,7 @@
       {% if erro %}<div class="resultado erro" style="padding:8px 14px">⚠️ {{ erro }}</div>{% endif %}
       <label class="campo"><span>Nome completo</span><input name="nome" required autofocus></label>
       <label class="campo"><span>E-mail</span><input type="email" name="email" required></label>
+      <label class="campo"><span>Código SICLA</span><input name="codigo_sicla" required placeholder="seu código de técnico no SICLA"></label>
       <label class="campo"><span>Senha (mín. 6 caracteres)</span><input type="password" name="senha" required minlength="6"></label>
       <button class="btn primario" type="submit" style="width:100%">Receber código →</button>
     </form>

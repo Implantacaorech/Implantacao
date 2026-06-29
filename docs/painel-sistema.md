@@ -203,6 +203,11 @@ Cruza o calendário com a **ocupação real** dos técnicos, lida de uma **base 
 envolvidos estão ocupados, com dois modos: **análise conjunta** (todos livres) e
 **análise individual** (por técnico).
 
+O vínculo entre o consultor do painel e a sua agenda é feito pelo **Código SICLA** do
+cadastro de usuário: a coluna `tecnico` do SELECT deve trazer esse código. Na **montagem do
+cronograma**, a alocação de uma visita só é aceita em **dias/turnos livres** e **de hoje em
+diante** — datas passadas e slots ocupados são recusados (no calendário e no servidor).
+
 ### 5.10 Agendamento e Designação
 - **Definir GCI** (`/projetos/<id>/definir_gci`) — etapa 1 do Agendamento; aceita mais de um GCI.
 - **Agendar** (`/projetos/<id>/agendar`) — etapa 2; define a **data do Levantamento**, notifica
@@ -246,6 +251,8 @@ Atalhos por papel (Coordenação, Setor Adm, Consultor) para ferramentas de apoi
 ### 5.17 Autocadastro e usuários
 - **Autocadastro** (`/cadastro`) com **validação por código enviado por e-mail**.
 - **Usuários** (`/usuarios`, só ADM) — gestão de perfis, e-mail e hierarquia.
+- **Código SICLA** obrigatório no cadastro (autocadastro e `/usuarios`, todos os perfis) — é o
+  elo do usuário com a sua agenda no SICLA, usado pela Disponibilidade (5.9).
 - **Perfil** (`/perfil`) do usuário logado.
 
 ---

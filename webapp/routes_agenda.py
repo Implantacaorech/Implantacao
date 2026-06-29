@@ -16,6 +16,29 @@ pode_gerar = _autor = _notificar_evento = _auto_avancar = None
 _EVT_DOC = {}
 
 
+def _slot_indisponivel(data, turno, tecnico_nome):
+    """Motivo (str) que impede alocar neste dia/turno, ou None se liberado.
+    Bloqueia (1) datas passadas — sempre; (2) técnico ocupado no SICLA — quando a
+    disponibilidade está configurada e o usuário tem Código SICLA."""
+    from datetime import date
+    data = (data or "").strip()
+    if not data:
+        return None
+    if data < date.today().isoformat():
+        return "Não é possível agendar em data passada — escolha hoje ou uma data futura."
+    if turno not in ("manha", "tarde"):
+        return None
+    try:
+        import disponibilidade as D
+        if D.configurado() and (tecnico_nome or "").strip():
+            cod = (db.codigo_sicla_do_usuario(tecnico_nome) or "").strip().lower()
+            if cod and D.ocupacao_por_slot(data, data).get((cod, data, turno)):
+                return "%s está ocupado nesse dia/turno (agenda do SICLA)." % tecnico_nome
+    except Exception:
+        logging.exception("Falha ao checar disponibilidade na alocação")
+    return None
+
+
 def projeto_agenda(pid):
     """Agendador de visitas: lateral com as Visitas (do Check List) e calendário
     semanal (dia × turno Manhã/Tarde). As atividades são alocadas por arrastar e soltar."""
@@ -84,6 +107,8 @@ def projeto_agenda(pid):
     else:
         tec_sel, alvos = "", envolvidos
     bloqueados, disp_aviso, disp_ativa = {}, None, False
+    cods = db.codigos_sicla_por_nome(alvos)          # nome_lower -> código SICLA (elo com a agenda)
+    sem_codigo = sorted(e for e in alvos if not cods.get(e.lower()))
     try:
         import disponibilidade as D
         if D.configurado() and alvos:
@@ -91,9 +116,13 @@ def projeto_agenda(pid):
             ocup = D.ocupacao_por_slot(dias[0].isoformat(), dias[-1].isoformat())
             for d in dias:
                 for t in ("manha", "tarde"):
-                    ocs = [e for e in alvos if ocup.get((e.lower(), d.isoformat(), t))]
+                    ocs = [e for e in alvos
+                           if cods.get(e.lower()) and ocup.get((cods[e.lower()].lower(), d.isoformat(), t))]
                     if ocs:
                         bloqueados["%s|%s" % (d.isoformat(), t)] = ", ".join(ocs)
+            if sem_codigo:
+                disp_aviso = ("Sem Código SICLA no cadastro de: %s — a disponibilidade desse(s) "
+                              "não é verificada." % ", ".join(sem_codigo))
     except Exception:
         logging.exception("Falha ao consultar disponibilidade")
         disp_aviso = "Disponibilidade indisponível no momento — calendário liberado."
@@ -105,6 +134,7 @@ def projeto_agenda(pid):
                            fora=fora, fds=fds, hor=hor, modulos_tec=modulos_tec,
                            bloqueados=bloqueados, disp_aviso=disp_aviso, disp_ativa=disp_ativa,
                            modo=modo, tec_sel=tec_sel, envolvidos=envolvidos,
+                           hoje_iso=date.today().isoformat(),
                            ref_cur=seg.isoformat(),
                            ref_prev=(seg - timedelta(days=7)).isoformat() + qs,
                            ref_next=(seg + timedelta(days=7)).isoformat() + qs,
@@ -125,12 +155,21 @@ def projeto_agenda_alocar(pid):
     tecnico = request.form.get("tecnico")  # ausente = None (não mexe)
     if not aid:
         return jsonify(ok=False, erro="atividade_id ausente"), 400
-    if data and tecnico is None:           # ao alocar, herda o consultor designado do módulo
-        with db.Session() as s:
-            a = s.get(db.AtividadeCronograma, int(aid))
-            if a and a.projeto_id == pid and not (a.tecnico or "").strip():
-                tech = {d["modulo"]: d["consultor"] for d in db.designacoes_do_projeto(pid)}
-                tecnico = tech.get(a.modulo)
+    if data:                               # alocando (data não-vazia): resolve o técnico efetivo
+        eff_tec = (tecnico or "").strip()
+        if not eff_tec:
+            with db.Session() as s:
+                a = s.get(db.AtividadeCronograma, int(aid))
+                if a and a.projeto_id == pid:
+                    eff_tec = (a.tecnico or "").strip()
+                    if not eff_tec:        # herda o consultor designado do módulo
+                        tech = {d["modulo"]: d["consultor"] for d in db.designacoes_do_projeto(pid)}
+                        eff_tec = (tech.get(a.modulo) or "").strip()
+                        if tecnico is None:
+                            tecnico = eff_tec or None
+        motivo = _slot_indisponivel(data, turno, eff_tec)
+        if motivo:
+            return jsonify(ok=False, erro=motivo), 409
     upd = db.cronograma_alocar(aid, projeto_id=pid, data=data, turno=turno, tecnico=tecnico)
     if not upd:
         return jsonify(ok=False, erro="atividade não encontrada"), 404
@@ -151,6 +190,9 @@ def projeto_agenda_alocar_visita(pid):
     if not (modulo and seq and data and turno in ("manha", "tarde")):
         return jsonify(ok=False, erro="parâmetros inválidos"), 400
     tech = {d["modulo"]: d["consultor"] for d in db.designacoes_do_projeto(pid)}
+    motivo = _slot_indisponivel(data, turno, (tech.get(modulo) or ""))
+    if motivo:
+        return jsonify(ok=False, erro=motivo), 409
     n = 0
     for a in db.cronograma_atividades(pid):
         if a["modulo"] == modulo and a["seq"] == seq and not (a["data"] and a["turno"]):

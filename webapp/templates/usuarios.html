@@ -5,6 +5,7 @@
   <h1>👥 Usuários e perfis</h1>
   <p class="sub">Cadastre os responsáveis. A hierarquia define o que cada um vê e pode fazer: <strong>ADM</strong> (tudo, inclusive Sistema) · <strong>Coordenador</strong> / <strong>Administrativo</strong> (designam e veem tudo — Operação + Gestão, sem Sistema) · <strong>GCI</strong> (Levantamento/Projeto dos seus) · <strong>Consultor</strong> (Cronograma/Check-list/Termo dos seus).</p>
   {% if salvo %}<div class="resultado ok" style="padding:8px 14px">✅ Salvo.</div>{% endif %}
+  {% if erro %}<div class="resultado" style="padding:8px 14px;background:#fdecea;color:#a3261b;border:1px solid #f3c6c0">⚠️ {{ erro }}</div>{% endif %}
 
   <div class="painel">
     <h3 style="color:var(--navy);margin-top:0">Novo / editar usuário</h3>
@@ -14,6 +15,7 @@
         <label class="campo"><span>Nome</span><input name="nome" id="u_nome"></label>
         <label class="campo"><span>E-mail</span><input type="email" name="email" id="u_email" required></label>
         <label class="campo"><span>Login</span><input name="login" id="u_login" placeholder="(em branco usa o e-mail)"></label>
+        <label class="campo"><span>Código SICLA *</span><input name="codigo_sicla" id="u_sicla" required placeholder="código do técnico no SICLA"></label>
         <label class="campo"><span>Hierarquia (perfil)</span><select name="perfil" id="u_perfil">{% for p in perfis %}<option>{{ p }}</option>{% endfor %}</select></label>
         <label class="campo"><span>Senha</span><input type="password" name="senha" id="u_senha" placeholder="(em branco mantém a atual)"></label>
         <label class="campo" style="align-self:center"><span><input type="checkbox" name="ativo" id="u_ativo" checked> Ativo</span></label>
@@ -25,10 +27,10 @@
 
   {% if usuarios %}
   <table class="form-tab">
-    <thead><tr><th>Nome</th><th>E-mail</th><th>Login</th><th>Hierarquia</th><th>Ativo</th><th></th></tr></thead>
+    <thead><tr><th>Nome</th><th>E-mail</th><th>Login</th><th>Cód. SICLA</th><th>Hierarquia</th><th>Ativo</th><th></th></tr></thead>
     <tbody>
     {% for u in usuarios %}
-      <tr><td>{{ u.nome }}</td><td>{{ u.email }}</td><td>{{ u.login }}</td><td>{{ u.perfil }}</td><td>{{ '🟢' if u.ativo else '⚪' }}</td>
+      <tr><td>{{ u.nome }}</td><td>{{ u.email }}</td><td>{{ u.login }}</td><td>{{ u.codigo_sicla }}</td><td>{{ u.perfil }}</td><td>{{ '🟢' if u.ativo else '⚪' }}</td>
         <td><button class="btn" type="button" onclick='edita({{ u|tojson }})'>✏️ Editar</button></td></tr>
     {% endfor %}
     </tbody>
@@ -39,12 +41,13 @@
   function edita(u){
     document.getElementById('u_id').value=u.id; document.getElementById('u_nome').value=u.nome||'';
     document.getElementById('u_email').value=u.email||''; document.getElementById('u_login').value=u.login||'';
+    document.getElementById('u_sicla').value=u.codigo_sicla||'';
     document.getElementById('u_perfil').value=u.perfil||'Consultor';
     document.getElementById('u_senha').value=''; document.getElementById('u_ativo').checked=!!u.ativo;
     window.scrollTo(0,0);
   }
   function limpa(){ document.getElementById('u_id').value='';
-    ['u_nome','u_email','u_login','u_senha'].forEach(function(i){document.getElementById(i).value='';});
+    ['u_nome','u_email','u_login','u_sicla','u_senha'].forEach(function(i){document.getElementById(i).value='';});
     document.getElementById('u_perfil').selectedIndex=0; document.getElementById('u_ativo').checked=true; }
   </script>
 {% endblock %}

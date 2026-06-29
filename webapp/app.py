@@ -206,8 +206,9 @@ def cadastro():
         nome = (request.form.get("nome") or "").strip()
         email = (request.form.get("email") or "").strip().lower()
         senha = request.form.get("senha") or ""
-        if not nome or not email or not senha:
-            erro = "Preencha nome, e-mail e senha."
+        codigo_sicla = (request.form.get("codigo_sicla") or "").strip()
+        if not nome or not email or not senha or not codigo_sicla:
+            erro = "Preencha nome, e-mail, senha e Código SICLA."
         elif not _re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
             erro = "Informe um e-mail válido."
         elif len(senha) < 6:
@@ -218,7 +219,7 @@ def cadastro():
             erro = "O envio de e-mail ainda não está configurado — avise o Administrador (Config → Gmail API)."
         else:
             codigo = _codigo_validacao()
-            db.salvar_pendente(nome, email, email, senha, codigo)
+            db.salvar_pendente(nome, email, email, senha, codigo, codigo_sicla)
             ok, err = _enviar_codigo(nome, email, codigo)
             if ok:
                 session["cad_email"] = email
@@ -543,6 +544,12 @@ def usuarios():
     if not pode_ver("sistema"):
         abort(403)
     if request.method == "POST":
+        codigo_sicla = (request.form.get("codigo_sicla") or "").strip()
+        if not codigo_sicla:                       # obrigatório para todos os perfis (elo com a agenda)
+            with db.Session() as s:
+                lista = [db.to_dict(x) for x in s.query(db.Usuario).order_by(db.Usuario.nome).all()]
+            return render_template("usuarios.html", usuarios=lista, perfis=db.PERFIS,
+                                   erro="Informe o Código SICLA do usuário — é obrigatório.")
         with db.Session() as s:
             uid = request.form.get("id")
             u = s.get(db.Usuario, int(uid)) if uid else db.Usuario()
@@ -550,6 +557,7 @@ def usuarios():
             u.nome = (request.form.get("nome") or "").strip()
             u.email = (request.form.get("email") or "").strip()
             u.perfil = request.form.get("perfil") or "Consultor"
+            u.codigo_sicla = codigo_sicla
             u.ativo = 1 if request.form.get("ativo") else 0
             if not u.login:
                 u.login = u.email
