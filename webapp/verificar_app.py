@@ -32,6 +32,7 @@ CRITICOS = [
     ("projeto_agenda", {"pid": 1}),                 # routes_agenda
     ("projeto_agenda_alocar", {"pid": 1}),          # routes_agenda
     ("config", {}),                                 # routes_config
+    ("config_modelo_email_editar", {"mid": 1}),     # routes_config (rota parametrizada)
     ("cad_checklist", {}),                          # routes_cadastros
     ("projeto_cronograma", {"pid": 1}),             # routes_cronograma
     ("projeto_checklist", {"pid": 1}),              # routes_cronograma
@@ -60,19 +61,26 @@ def main():
         print("FALHOU: endpoints ausentes (registro de rotas quebrado?): %s" % ", ".join(faltando))
         return 1
 
-    erros = []
+    erros, malformadas = [], []
     with A.app.test_request_context():
         from flask import url_for
         for ep, kw in CRITICOS:
             try:
-                url_for(ep, **kw)
+                u = url_for(ep, **kw)
             except Exception as e:
                 erros.append("%s (%s)" % (ep, type(e).__name__))
+                continue
+            if not u.startswith("/") or "\\" in u:     # regra malformada (ex.: barra invertida)
+                malformadas.append("%s -> %s" % (ep, u))
     if erros:
         print("FALHOU: url_for nao resolveu: %s" % ", ".join(erros))
         return 1
+    if malformadas:
+        print("FALHOU: rota malformada (nao comeca com '/' ou tem barra invertida): %s"
+              % ", ".join(malformadas))
+        return 1
 
-    print("OK: app importou; %d endpoints criticos registrados e url_for resolvendo." % len(CRITICOS))
+    print("OK: app importou; %d endpoints criticos registrados, url_for resolvendo e URLs bem formadas." % len(CRITICOS))
     return 0
 
 
