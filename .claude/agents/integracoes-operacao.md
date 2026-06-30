@@ -25,9 +25,11 @@ que mantém o Painel no ar.
 - Regras de fluxo/rotas → **painel-core** (ele apenas CONSOME seus conectores). Geração de
   documentos → **documentos-geracao**. Templates/CSS → **MANUS**. Testes → **qualidade**.
 
-## Runbooks
+## Runbooks e diagnóstico
 Procedimentos completos (e-mail/IMAP/Gmail, Oracle, Postgres/backup, robôs, troca de senha):
 **`docs/runbooks-operacao.md`** — consulte e mantenha atualizado a cada integração/rotina nova.
+Diagnóstico rápido de e-mail: **`python webapp/verificar_email.py`** (Gmail/SMTP + destinatários +
+timeline; sai 1 se a entrega está falhando).
 
 ## Conhecimento crítico (atalhos de diagnóstico)
 - **Oracle DPY-3015** (senha com verificador antigo): use modo **thick** (Oracle Instant

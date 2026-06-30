@@ -23,6 +23,9 @@
 ## 1. Diagnóstico rápido
 - **App no ar?** `GET /health` deve responder `{"status":"ok"}` (200). `degraded`/503 = banco inacessível.
 - **Rotas/registro ok?** `python webapp/verificar_app.py` (segundos).
+- **E-mail saindo?** `python webapp/verificar_email.py` — checa Gmail/SMTP, destinatários e as
+  últimas notificações na timeline (sai **1** se nenhum caminho está configurado ou se a última
+  notificação ficou "pendente"/falhou).
 - **Logs:** o app loga em arquivo (modo servidor). Backup do Postgres loga em `C:\PainelBackups\backup.log`.
 - **Configurado?** cada conector tem `configurado()`: e-mail/IMAP/Gmail/disponibilidade só atuam quando verdadeiro.
 
