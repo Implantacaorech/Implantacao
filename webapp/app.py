@@ -303,20 +303,39 @@ def digest_enviar():
     return redirect(url_for("coordenacao", digest=("ok" if ok else (err or "erro"))))
 
 
-def _notificar(pid, emails, assunto, corpo):
-    """Notifica por e-mail (se configurado) e registra na timeline. Reutilizado no fluxo."""
+def _notificar_sync(pid, emails, assunto, corpo, autor):
+    """Faz o envio (pode ser lento — ex.: SMTP com timeout) e registra na timeline.
+    Roda em segundo plano; nunca propaga exceção."""
     import mailer
+    ok, err = (False, "e-mail não configurado")
+    try:
+        if mailer.configurado():
+            ok, err = mailer.enviar(emails, assunto, corpo)
+    except Exception as e:                      # nunca deixa o envio derrubar nada
+        ok, err = False, "%s: %s" % (type(e).__name__, e)
+    try:
+        with db.Session() as s:
+            db.registrar_evento(s, pid, "email",
+                ("Notificou %s — %s" % (", ".join(emails), assunto)) if ok
+                else ("Notificação pendente (%s): %s" % (assunto, err or "?")), autor)
+            s.commit()
+    except Exception:
+        logging.exception("Falha ao registrar evento de e-mail (pid=%s)", pid)
+
+
+def _notificar(pid, emails, assunto, corpo):
+    """Notifica por e-mail e registra na timeline SEM bloquear a requisição: o envio roda
+    numa thread daemon (um SMTP bloqueado não atrasa mais a etapa). Em testes roda inline."""
     emails = [e for e in emails if e]
     if not emails:
         return
-    ok, err = (False, "e-mail não configurado")
-    if mailer.configurado():
-        ok, err = mailer.enviar(emails, assunto, corpo)
-    with db.Session() as s:
-        db.registrar_evento(s, pid, "email",
-            ("Notificou %s — %s" % (", ".join(emails), assunto)) if ok
-            else ("Notificação pendente (%s): %s" % (assunto, err or "?")), _autor())
-        s.commit()
+    autor = _autor()                            # captura o autor ainda no contexto da requisição
+    if app.testing:
+        _notificar_sync(pid, emails, assunto, corpo, autor)
+        return
+    import threading
+    threading.Thread(target=_notificar_sync, args=(pid, emails, assunto, corpo, autor),
+                     daemon=True, name="notificar").start()
 
 
 def _emails_coordenacao():

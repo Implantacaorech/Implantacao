@@ -28,10 +28,17 @@
 
 ## 2. E-mail SMTP não envia
 **Sintoma:** envio pela ficha falha; eventos de e-mail viram "Notificação pendente".
+- **"Notificação pendente (…): TimeoutError: timed out"** na timeline = a **rede bloqueia a
+  porta SMTP** de saída (465/587). É a causa nº 1 → configure a **Gmail API** (seção 3, porta 443).
+- **"gaierror" / host não encontrado** = host SMTP errado em Config → E-mail.
+- **"Falha de autenticação"** = Gmail/Outlook exigem **senha de app** (não a senha normal).
 1. Config em **Config → E-mail** (`smtp.json`) ou env `SMTP_*` (host, porta, usuário, senha, from).
 2. Teste o envio por uma ficha (`/projetos/<id>/email`).
-3. **Rede corporativa costuma bloquear SMTP** (portas 465/587). Se for o caso → use a **Gmail API** (seção 3), que sai pela 443.
-4. Toda tentativa (sucesso/falha) fica registrada na timeline do projeto.
+3. Toda tentativa (sucesso/falha) fica registrada na timeline do projeto.
+
+> **As notificações por evento são assíncronas:** o envio roda em segundo plano (thread), então
+> um SMTP lento/bloqueado **não atrasa mais** a etapa (gerar documento, designar, etc.). A entrega
+> em si só ocorre quando o e-mail estiver realmente configurado (Gmail API ou SMTP liberado).
 
 ## 3. Gmail API
 Contorna o bloqueio de SMTP (usa só a porta 443). Arquivos em `DATA_WRITE` (gitignored):

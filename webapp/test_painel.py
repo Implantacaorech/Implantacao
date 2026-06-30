@@ -366,6 +366,29 @@ def test_dedup_fechamento():
         s.delete(s.get(db.Projeto, pid1)); s.commit()
 
 
+def test_notificar_assincrono_nao_bloqueia(client, monkeypatch):
+    """A notificação por e-mail roda em segundo plano: um envio lento NÃO trava a chamada,
+    e o evento é gravado na timeline pela thread."""
+    import time, threading, mailer
+    pid = int(_novo(client, cliente="Async LTDA", modulos="FAT"))
+    monkeypatch.setitem(A.app.config, "TESTING", False)        # força o caminho assíncrono
+    monkeypatch.setattr(mailer, "configurado", lambda: True)
+    monkeypatch.setattr(mailer, "enviar", lambda d, a, c, anexos=None: (time.sleep(1.5) or (True, None)))
+    assunto = "AsyncTest-%d" % time.time()                     # assunto único (evita colisão por reuso de id)
+    t0 = time.time()
+    A._notificar(pid, ["x@y.com"], assunto, "Corpo")
+    assert time.time() - t0 < 0.8                              # retornou sem esperar o envio (1.5s)
+    for t in threading.enumerate():                            # aguarda a thread concluir
+        if t.name == "notificar":
+            t.join(5)
+    with db.Session() as s:
+        n = s.query(db.Evento).filter(db.Evento.projeto_id == pid, db.Evento.tipo == "email",
+                                      db.Evento.descricao.like("%" + assunto + "%")).count()
+    assert n == 1
+    monkeypatch.setitem(A.app.config, "TESTING", True)
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_usuarios_grava_email_e_perfil(client):
     client.post("/usuarios", data={"nome": "Coord", "email": "coord@x.com", "perfil": "Coordenador",
                                    "codigo_sicla": "C77", "ativo": "on"})
