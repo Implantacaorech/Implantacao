@@ -1023,6 +1023,35 @@ def test_projeto_origem_gate_modelo_e_importacao(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_projeto_detalhamento_uma_linha_por_topico(client):
+    """Detalhamento das Rotinas do Projeto: cada tópico do Levantamento vira UMA linha
+    (não emendado numa única com '·'), respeitando a formatação do modelo."""
+    import gerar_layout
+    pid = _novo(client, cliente="ListaDet LTDA", cnpj="00.000.000/0001-00", numero_projeto="LD-1",
+                modulos="FAT", horas_cobradas="10")
+    db.levantamento_seed(int(pid), "FAT")
+    rs = db.levantamento_respostas(int(pid))
+    assert len(rs) >= 2
+    client.post("/projetos/%s/levantamento" % pid, data={
+        "resposta_%d" % rs[0]["id"]: "AAA_PRIMEIRO",
+        "resposta_%d" % rs[1]["id"]: "BBB_SEGUNDO"})
+    with db.Session() as s:
+        proj = db.to_dict(s.get(db.Projeto, int(pid)))
+    path = gerar_layout.gerar("projeto", proj)
+    from docx import Document
+    paras = [p.text for p in Document(path).paragraphs]
+    # cada resposta aparece no Detalhamento das Rotinas E no bloco anexado (>= 2 parágrafos)
+    assert sum(1 for t in paras if "AAA_PRIMEIRO" in t) >= 2
+    assert sum(1 for t in paras if "BBB_SEGUNDO" in t) >= 2
+    # nenhum parágrafo único contém as duas respostas (não foram emendadas com '·')
+    assert not any(("AAA_PRIMEIRO" in t and "BBB_SEGUNDO" in t) for t in paras)
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_detalhamento_so_areas_contratadas(client):
     """No Projeto, o Detalhamento das Rotinas mantém SÓ as áreas dos módulos contratados."""
     import gerar_layout

@@ -70,6 +70,23 @@ def _anexar_respostas_projeto(doc, projeto_id):
     return total
 
 
+def _emitir_lista_detalhamento(anchor_p, itens):
+    """O modelo traz UM parágrafo-marcador (com bullet) para o detalhamento. Em vez de emendar
+    tudo numa linha, emite UMA linha por item, clonando o parágrafo para preservar a formatação
+    (bullet/indentação) do modelo."""
+    import copy
+    from docx.text.paragraph import Paragraph
+    if not itens:
+        return
+    PL._aplica_no_paragrafo(anchor_p, itens[0])         # 1º item no próprio marcador
+    el = anchor_p._p
+    for txt in itens[1:]:
+        novo = copy.deepcopy(anchor_p._p)               # clona pPr (numeração/indent) + run
+        el.addnext(novo)
+        PL._aplica_no_paragrafo(Paragraph(novo, anchor_p._parent), txt)
+        el = novo
+
+
 def _preencher_detalhamento_projeto(doc, projeto, guia=False):
     """No 'Detalhamento das Rotinas' do Projeto: mantém SÓ as áreas dos módulos
     contratados (remove as demais e os grupos que ficarem vazios) e preenche cada
@@ -110,13 +127,13 @@ def _preencher_detalhamento_projeto(doc, projeto, guia=False):
         if campo == "detalhamento":
             base = resp_por_k.get(k)
             if base:
-                return "  ·  ".join(base)
+                return base                # lista -> 1 linha por tópico (respeita o modelo)
             if guia:                       # modelo manual: usa as perguntas do Índice como guia
                 qs = []
                 for sig in inter_by_k.get(k, []):
                     tops, _ = db.indice_listar(modulo=sig)
                     qs += [(t.get("topico") or "").strip() for t in tops if (t.get("topico") or "").strip()]
-                return "  ·  ".join(qs)
+                return qs
         return ""
 
     rotulos = [("módulos previsto", "modulos"), ("detalhamento das rotinas", "detalhamento"),
@@ -160,7 +177,11 @@ def _preencher_detalhamento_projeto(doc, projeto, guia=False):
                 campo = lab
             elif campo and _eh_marcador(p.text):
                 val = _valor(k, campo)
-                if val:
+                if isinstance(val, list):
+                    if val:                                  # detalhamento -> uma linha por item
+                        _emitir_lista_detalhamento(p, val)
+                        n += 1
+                elif val:
                     PL._aplica_no_paragrafo(p, val)
                     n += 1
                 campo = None
