@@ -4,7 +4,7 @@
 > Mantido acumulativo: a cada nova função/assunto entregue, esta lista é atualizada.
 > Registre a mudança no rodapé (**Atualizações**).
 >
-> Última atualização: **2026-06-29** (vínculo usuário↔SICLA na agenda).
+> Última atualização: **2026-06-30** (exclusão de documento respeitando o fluxo).
 
 ---
 
@@ -15,6 +15,7 @@ O Painel de Implantação é uma aplicação web interna que centraliza, control
 **1. Gestão da carteira e da ficha do cliente**
 - Carteira única de projetos com status por etapa, situação, atrasos e busca/filtro.
 - Ficha por cliente com dados cadastrais, fase atual, documentos anexados e linha do tempo (histórico) de todos os eventos (mudanças de etapa, documentos, e-mails e notas).
+- Exclusão de documento gerado (para regerar) **respeitando o fluxo**: só exclui se nenhum documento posterior existir (ex.: exclua o Projeto antes do Levantamento).
 
 **2. Fluxo guiado e controle de qualidade**
 - Sequência de etapas com gates de documentos e ações obrigatórias por fase.
@@ -78,3 +79,7 @@ O Painel de Implantação centraliza e automatiza a implantação do SIGER® por
 - **2026-06-29** — Vínculo usuário↔SICLA: Código SICLA obrigatório no cadastro (todos os
   perfis), casado com a coluna `tecnico` do SELECT de disponibilidade; bloqueio de
   alocação em datas passadas e em slots ocupados na montagem do cronograma (itens 6, 7 e 11).
+- **2026-06-30** — Exclusão de documento gerado (para regerar) respeitando o fluxo/dependências
+  (item 1). Correções de fidelidade do Projeto: Detalhamento das Rotinas com uma linha por
+  tópico e remoção do bloco duplicado do Levantamento após a assinatura. Notificações por
+  e-mail passam a ser assíncronas (não travam a etapa).

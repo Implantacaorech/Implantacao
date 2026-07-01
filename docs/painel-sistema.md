@@ -157,6 +157,9 @@ etapa atual (o que falta), documentos anexados, linha do tempo de eventos, e aç
 contextuais (gerar pendentes, anexar, nota, avançar, excluir). Inclui:
 - **Gerar pendentes** — gera de uma vez os documentos da fase que faltam (respeitando perfil e etapa).
 - **Anexar** documento manualmente (para satisfazer o gate).
+- **Excluir documento gerado** (para regerar), **respeitando o fluxo**: um documento só pode ser
+  excluído se nenhum documento posterior existir (ex.: exclua o Projeto antes do Levantamento);
+  a cadeia é `levantamento < projeto < cronograma/checklist < termo`.
 - **Nota** — registro livre na timeline.
 - **Avançar** etapa manualmente (com checagem de campos obrigatórios).
 
