@@ -13,8 +13,7 @@ import preencher_layout as PL
 from gl_comum import area_do_modulo, _saida   # noqa: F401  (area_do_modulo é interface pública)
 from gl_levantamento import (_repl_levantamento, _montar_blocos_levantamento,
                              _preencher_levantamento_tabelas, _preencher_levantamento_usuarios)
-from gl_projeto import (_repl_projeto, _preencher_detalhamento_projeto,
-                        _preencher_projeto_tabelas, _anexar_respostas_projeto)
+from gl_projeto import _repl_projeto, _preencher_detalhamento_projeto, _preencher_projeto_tabelas
 from gl_termo import _repl_termo, _preencher_termo_grade
 from gl_xlsx import gerar_agenda_xlsx, _preencher_cronograma_xlsx   # noqa: F401  (gerar_agenda_xlsx é interface pública)
 
@@ -40,10 +39,9 @@ def gerar(slug, projeto, modo="auto"):
             _montar_blocos_levantamento(doc, projeto)
             _preencher_levantamento_tabelas(doc, projeto)
             _preencher_levantamento_usuarios(doc, projeto)
-        elif slug == "projeto":      # detalhamento por área + tabelas (usuários/cronograma) + respostas
+        elif slug == "projeto":      # detalhamento por área + tabelas (usuários/cronograma)
             _preencher_detalhamento_projeto(doc, projeto, guia=(modo == "modelo"))
             _preencher_projeto_tabelas(doc, projeto)
-            _anexar_respostas_projeto(doc, projeto.get("id"))
         elif slug == "termo":        # preenche a grade Resumo Geral com os módulos contratados
             _preencher_termo_grade(doc, projeto.get("modulos", ""))
         PL.remover_marcadores_docx(doc)   # remove todos os marcadores <...> restantes

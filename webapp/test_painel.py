@@ -789,7 +789,7 @@ def test_projeto_exige_levantamento_realizado(client):
 def test_projeto_puxa_respostas_do_levantamento(client):
     """O Projeto gerado consome as respostas do Levantamento (liga as fases)."""
     import gerar_layout
-    sig = db.indice_modulos()[0]["sigla"]
+    sig = "FAT"                                          # mapeia para a área Vendas e Faturamento
     pid = _novo(client, cliente="Liga LTDA", cnpj="00.000.000/0001-00", numero_projeto="L-1",
                 modulos=sig, horas_cobradas="10")
     db.levantamento_seed(int(pid), sig)
@@ -802,9 +802,10 @@ def test_projeto_puxa_respostas_do_levantamento(client):
     path = gerar_layout.gerar("projeto", proj)
     from docx import Document
     txt = "\n".join(p.text for p in Document(path).paragraphs)
-    assert "Detalhamento do Levantamento por módulo" in txt
-    assert "RESPOSTA QUE LIGA AO PROJETO" in txt        # a resposta aparece no Projeto
+    # a resposta aparece no Detalhamento das Rotinas (não há mais bloco duplicado após a assinatura)
+    assert "RESPOSTA QUE LIGA AO PROJETO" in txt
     assert topico[:25] in txt
+    assert "Detalhamento do Levantamento por módulo" not in txt   # bloco redundante removido
     try:
         os.remove(path)
     except OSError:
@@ -1040,10 +1041,9 @@ def test_projeto_detalhamento_uma_linha_por_topico(client):
     path = gerar_layout.gerar("projeto", proj)
     from docx import Document
     paras = [p.text for p in Document(path).paragraphs]
-    # cada resposta aparece no Detalhamento das Rotinas E no bloco anexado (>= 2 parágrafos)
-    assert sum(1 for t in paras if "AAA_PRIMEIRO" in t) >= 2
-    assert sum(1 for t in paras if "BBB_SEGUNDO" in t) >= 2
-    # nenhum parágrafo único contém as duas respostas (não foram emendadas com '·')
+    # ambas aparecem no Detalhamento das Rotinas, cada uma na SUA linha (não emendadas com '·')
+    assert any("AAA_PRIMEIRO" in t for t in paras)
+    assert any("BBB_SEGUNDO" in t for t in paras)
     assert not any(("AAA_PRIMEIRO" in t and "BBB_SEGUNDO" in t) for t in paras)
     try:
         os.remove(path)

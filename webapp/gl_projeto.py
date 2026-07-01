@@ -33,43 +33,6 @@ def _repl_projeto(p):
     return repl, paras
 
 
-def _anexar_respostas_projeto(doc, projeto_id):
-    """Acrescenta ao Projeto o detalhamento do Levantamento (tópicos JÁ respondidos no
-    painel), por módulo contratado — liga as respostas do Levantamento ao Projeto."""
-    if not projeto_id:
-        return 0
-    rs = [r for r in db.levantamento_respostas(projeto_id) if (r.get("resposta") or "").strip()]
-    if not rs:
-        return 0
-
-    def linha(txt="", bold=False):
-        p = doc.add_paragraph()
-        if txt:
-            p.add_run(txt).bold = bold
-        return p
-
-    linha()
-    linha("Detalhamento do Levantamento por módulo", bold=True)
-    linha("Rotinas e particularidades identificadas no Levantamento (respostas registradas no painel).")
-    mod_atual = adic_atual = None
-    total = 0
-    for r in rs:
-        sig = r.get("modulo_sigla", "")
-        if sig != mod_atual:
-            mod_atual, adic_atual = sig, None
-            linha()
-            linha("%s — %s" % (sig, r.get("modulo", "") or ""), bold=True)
-        adic = (r.get("adicional") or "").strip()
-        if adic and adic != adic_atual:
-            adic_atual = adic
-            linha(adic, bold=True)
-        p = doc.add_paragraph()
-        p.add_run(((r.get("topico") or "").strip() + ": ")).bold = True
-        p.add_run((r.get("resposta") or "").strip())
-        total += 1
-    return total
-
-
 def _emitir_lista_detalhamento(anchor_p, itens):
     """O modelo traz UM parágrafo-marcador (com bullet) para o detalhamento. Em vez de emendar
     tudo numa linha, emite UMA linha por item, clonando o parágrafo para preservar a formatação
