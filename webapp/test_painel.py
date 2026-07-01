@@ -1052,6 +1052,38 @@ def test_projeto_detalhamento_uma_linha_por_topico(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_excluir_documento_respeita_fluxo(client):
+    """Excluir documento gerado: não exclui um documento se existe outro que depende dele.
+    Primeiro exclui o Projeto, depois o Levantamento."""
+    pid = int(_novo(client, cliente="DelDoc LTDA", cnpj="00.000.000/0001-00", numero_projeto="DD-1",
+                    modulos="FAT", horas_cobradas="10"))
+    with db.Session() as s:
+        lev = db.Documento(projeto_id=pid, tipo="levantamento", arquivo="lev.docx", caminho="")
+        proj = db.Documento(projeto_id=pid, tipo="projeto", arquivo="proj.docx", caminho="")
+        s.add_all([lev, proj]); s.commit()
+        lev_id, proj_id = lev.id, proj.id
+    # regra de dependência
+    ok, motivo = db.pode_excluir_documento(pid, "levantamento")
+    assert ok is False and "Projeto" in motivo
+    assert db.pode_excluir_documento(pid, "projeto")[0] is True
+    # 1) excluir o Levantamento com o Projeto existente -> bloqueado (documento permanece)
+    r = client.post("/projetos/%s/doc/%s/excluir" % (pid, lev_id))
+    assert r.status_code == 302
+    with db.Session() as s:
+        assert s.get(db.Documento, lev_id) is not None
+    # 2) excluir o Projeto -> ok
+    r = client.post("/projetos/%s/doc/%s/excluir" % (pid, proj_id))
+    assert r.status_code == 302
+    with db.Session() as s:
+        assert s.get(db.Documento, proj_id) is None
+    # 3) agora o Levantamento pode ser excluído
+    r = client.post("/projetos/%s/doc/%s/excluir" % (pid, lev_id))
+    assert r.status_code == 302
+    with db.Session() as s:
+        assert s.get(db.Documento, lev_id) is None
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_detalhamento_so_areas_contratadas(client):
     """No Projeto, o Detalhamento das Rotinas mantém SÓ as áreas dos módulos contratados."""
     import gerar_layout

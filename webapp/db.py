@@ -243,6 +243,57 @@ class Documento(Base):
     criado_em = Column(DateTime, default=datetime.now)
 
 
+# Precedência dos documentos no fluxo — a EXCLUSÃO respeita as dependências: um documento só
+# pode ser excluído se NENHUM documento posterior existir (ex.: exclua o Projeto antes do
+# Levantamento). cronograma e checklist são irmãos (mesmo nível); o Termo depende de ambos.
+DOC_ORDEM = {"levantamento": 0, "projeto": 1, "cronograma": 2, "checklist": 2, "termo": 3}
+
+
+def tipo_excluivel(tipo, tipos_existentes):
+    """Puro (sem consultar o banco): True se nenhum documento POSTERIOR no fluxo está presente
+    em `tipos_existentes`. Tipos livres (anexos 'outro') não têm dependência."""
+    rank = DOC_ORDEM.get((tipo or "").strip().lower())
+    if rank is None:
+        return True
+    return not any(DOC_ORDEM.get((t or "").strip().lower(), -1) > rank for t in tipos_existentes)
+
+
+def pode_excluir_documento(projeto_id, tipo):
+    """(ok, motivo|None) — só permite excluir se nenhum documento posterior no fluxo existir."""
+    with Session() as s:
+        tipos = {(t or "").strip().lower() for (t,) in
+                 s.query(Documento.tipo).filter_by(projeto_id=projeto_id).distinct()}
+    if tipo_excluivel(tipo, tipos):
+        return True, None
+    rank = DOC_ORDEM.get((tipo or "").strip().lower(), -1)
+    post = sorted({DOC_LABELS.get(t, t) for t in tipos if DOC_ORDEM.get(t, -1) > rank})
+    return False, ("Exclua antes: %s — depende(m) de %s."
+                   % (", ".join(post), DOC_LABELS.get((tipo or "").strip().lower(), tipo)))
+
+
+def excluir_documento(doc_id, projeto_id, autor=""):
+    """Exclui um documento gerado respeitando o fluxo (remove o arquivo, o registro e anota na
+    timeline). Devolve (ok, mensagem)."""
+    with Session() as s:
+        d = s.get(Documento, doc_id)
+        if not d or d.projeto_id != projeto_id:
+            return False, "Documento não encontrado."
+        ok, motivo = pode_excluir_documento(projeto_id, d.tipo)
+        if not ok:
+            return False, motivo
+        tipo, arquivo, caminho = d.tipo, d.arquivo, d.caminho
+        s.delete(d)
+        registrar_evento(s, projeto_id, "documento",
+                         "Excluiu %s (%s) para regerar." % (arquivo or DOC_LABELS.get(tipo, tipo), tipo), autor)
+        s.commit()
+    try:
+        if caminho and os.path.exists(caminho):
+            os.remove(caminho)
+    except OSError:
+        pass
+    return True, "Documento excluído — você já pode gerá-lo novamente."
+
+
 class Evento(Base):
     """Item da timeline/histórico de um projeto (auditoria + passagem de bastão)."""
     __tablename__ = "eventos"

@@ -681,6 +681,9 @@ def projeto_ficha(pid):
         d = db.to_dict(p)
         docs = [db.to_dict(x) for x in s.query(db.Documento)
                 .filter_by(projeto_id=pid).order_by(db.Documento.criado_em.desc()).all()]
+        tipos_exist = {(x["tipo"] or "").strip().lower() for x in docs}
+        for x in docs:                        # respeita o fluxo: só exclui se não há posterior
+            x["excluivel"] = db.tipo_excluivel(x["tipo"], tipos_exist)
         gate = db.gate_status(d["etapa"], docs)
         eventos = [db.to_dict(x) for x in s.query(db.Evento)
                    .filter_by(projeto_id=pid).order_by(db.Evento.criado_em.desc()).all()]
@@ -769,6 +772,21 @@ def projeto_anexar(pid):
                             "Anexou %s (%s)" % (os.path.basename(path), tipo), _autor())
         s.commit()
     return redirect(url_for("projeto_ficha", pid=pid, salvo=1))
+
+
+@app.route("/projetos/<int:pid>/doc/<int:doc_id>/excluir", methods=["POST"])
+def projeto_doc_excluir(pid, doc_id):
+    """Exclui um documento gerado para permitir regerá-lo — respeitando o fluxo (não exclui
+    um documento se já existe outro que dependa dele; ex.: Projeto antes do Levantamento)."""
+    with db.Session() as s:
+        d = s.get(db.Documento, doc_id)
+        tipo = d.tipo if (d and d.projeto_id == pid) else None
+    if tipo is None:
+        abort(404)
+    if not pode_gerar(tipo):              # quem pode gerar o documento pode excluí-lo p/ regerar
+        abort(403)
+    ok, msg = db.excluir_documento(doc_id, pid, _autor())
+    return redirect(url_for("projeto_ficha", pid=pid, salvo=(1 if ok else None), aviso=msg))
 
 
 @app.route("/projetos/<int:pid>/nota", methods=["POST"])

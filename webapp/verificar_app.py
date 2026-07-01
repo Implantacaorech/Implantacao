@@ -29,6 +29,7 @@ CRITICOS = [
     ("usuarios", {}),                               # núcleo
     ("projetos", {}),                               # núcleo
     ("projeto_ficha", {"pid": 1}),                  # núcleo
+    ("projeto_doc_excluir", {"pid": 1, "doc_id": 1}),  # núcleo (excluir documento gerado)
     ("projeto_agenda", {"pid": 1}),                 # routes_agenda
     ("projeto_agenda_alocar", {"pid": 1}),          # routes_agenda
     ("config", {}),                                 # routes_config

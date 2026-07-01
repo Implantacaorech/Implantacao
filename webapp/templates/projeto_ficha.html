@@ -783,6 +783,19 @@
           <a class="btn" href="{{ url_for('download', path=d.caminho) }}" title="Baixar">
             <svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> Baixar
           </a>
+          {% if d.excluivel %}
+          <form method="post" action="{{ url_for('projeto_doc_excluir', pid=p.id, doc_id=d.id) }}"
+                style="display:inline" onsubmit="return confirm('Excluir este documento para gerá-lo novamente?')">
+            <button class="btn perigo" type="submit" title="Excluir para regerar">
+              <svg class="svgi" aria-hidden="true"><use href="#ic-trash"/></svg> Excluir
+            </button>
+          </form>
+          {% else %}
+          <button class="btn" type="button" disabled
+                  title="Exclua antes os documentos que dependem deste (respeita o fluxo)">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-trash"/></svg> Excluir
+          </button>
+          {% endif %}
         </div>
       </div>
       {% endfor %}
