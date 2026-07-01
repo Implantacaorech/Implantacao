@@ -46,6 +46,7 @@ CRITICOS = [
     ("projeto_email", {"pid": 1}),                  # routes_fluxo
     ("mapa", {}),                                   # routes_fluxo
     ("projeto_doc_ver", {"pid": 1, "doc_id": 1}),   # routes_fluxo
+    ("projeto_doc_pdf", {"pid": 1, "doc_id": 1}),   # routes_fluxo (PDF fiel)
 ]
 
 

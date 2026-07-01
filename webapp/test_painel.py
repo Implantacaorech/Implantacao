@@ -1052,6 +1052,36 @@ def test_projeto_detalhamento_uma_linha_por_topico(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_doc_ver_espelho_pdf(client, monkeypatch, tmp_path):
+    """O 'Ver' mostra o PDF FIEL (iframe) quando disponível; sem PDF, cai na visão HTML."""
+    import os as _os, docview, _common as C
+    from docx import Document as _D
+    pid = int(_novo(client, cliente="VerPDF LTDA", cnpj="00.000.000/0001-00", numero_projeto="VP-1",
+                    modulos="FAT", horas_cobradas="10"))
+    doc_path = _os.path.join(C.DATA_WRITE, "ver_teste_%s.docx" % pid)
+    _d = _D(); _d.add_paragraph("conteudo do documento"); _d.save(doc_path)
+    with db.Session() as s:
+        d = db.Documento(projeto_id=pid, tipo="projeto", arquivo=_os.path.basename(doc_path), caminho=doc_path)
+        s.add(d); s.commit(); did = d.id
+    # (a) com PDF disponível -> iframe apontando para a rota /pdf
+    pdf_fake = _os.path.join(str(tmp_path), "f.pdf"); open(pdf_fake, "wb").write(b"%PDF-1.4\n1 0 obj<<>>endobj\n%%EOF\n")
+    monkeypatch.setattr(docview, "to_pdf", lambda p: pdf_fake)
+    r = client.get("/projetos/%s/doc/%s/ver" % (pid, did))
+    body = r.get_data(as_text=True)
+    assert r.status_code == 200 and "<iframe" in body and "/doc/%s/pdf" % did in body
+    r2 = client.get("/projetos/%s/doc/%s/pdf" % (pid, did))
+    assert r2.status_code == 200 and r2.mimetype == "application/pdf"
+    # (b) sem PDF (None) -> cai no HTML (sem iframe, mostra o conteúdo)
+    monkeypatch.setattr(docview, "to_pdf", lambda p: None)
+    r3 = client.get("/projetos/%s/doc/%s/ver" % (pid, did))
+    assert r3.status_code == 200 and "<iframe" not in r3.get_data(as_text=True)
+    try:
+        _os.remove(doc_path)
+    except OSError:
+        pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_excluir_documento_respeita_fluxo(client):
     """Excluir documento gerado: não exclui um documento se existe outro que depende dele.
     Primeiro exclui o Projeto, depois o Levantamento."""

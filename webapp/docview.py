@@ -3,6 +3,66 @@
 para ver o documento na tela (folha A4), sem precisar baixar e abrir o Office."""
 import os
 import html
+import threading
+
+_PDF_LOCK = threading.Lock()   # serializa as conversões (Word COM não gosta de concorrência)
+
+
+def to_pdf(path):
+    """Caminho de um PDF FIEL do .docx — renderizado pelo próprio Word (espelho exato),
+    com cache por arquivo+mtime. Devolve None se não for .docx, se o Word não estiver
+    disponível ou se a conversão falhar (o chamador cai no HTML). A conversão roda num
+    SUBPROCESSO isolado, para não desestabilizar o servidor web."""
+    if os.path.splitext(path)[1].lower() != ".docx" or not os.path.exists(path):
+        return None
+    import hashlib
+    import subprocess
+    import sys
+    try:
+        import _common as C
+        base = C.DATA_WRITE
+    except Exception:
+        base = os.path.dirname(os.path.abspath(path))
+    cache = os.path.join(base, "_preview")
+    key = hashlib.md5(("%s|%s" % (os.path.abspath(path), os.path.getmtime(path))).encode()).hexdigest()
+    pdf = os.path.join(cache, key + ".pdf")
+    if os.path.exists(pdf) and os.path.getsize(pdf) > 0:
+        return pdf
+    with _PDF_LOCK:
+        if os.path.exists(pdf) and os.path.getsize(pdf) > 0:
+            return pdf
+        os.makedirs(cache, exist_ok=True)
+        try:
+            subprocess.run([sys.executable, os.path.abspath(__file__),
+                            os.path.abspath(path), os.path.abspath(pdf)],
+                           capture_output=True, timeout=120)
+        except Exception:
+            import logging
+            logging.exception("Falha ao converter docx->pdf (%s)", path)
+        if os.path.exists(pdf) and os.path.getsize(pdf) > 0:
+            return pdf
+    return None
+
+
+def _convert_docx_to_pdf(src, dst):
+    """Conversão Word COM (Windows). Roda em subprocesso isolado — ver o bloco __main__."""
+    import pythoncom
+    import win32com.client
+    pythoncom.CoInitialize()
+    word = None
+    try:
+        word = win32com.client.DispatchEx("Word.Application")
+        word.Visible = False
+        doc = word.Documents.Open(os.path.abspath(src), ReadOnly=True)
+        doc.SaveAs(os.path.abspath(dst), FileFormat=17)   # 17 = wdFormatPDF
+        doc.Close(False)
+    finally:
+        if word is not None:
+            try:
+                word.Quit()
+            except Exception:
+                pass
+        pythoncom.CoUninitialize()
 
 
 def _esc(t):
@@ -107,3 +167,13 @@ def _xlsx_html(path):
         out.append("<table class='doc-tab'>%s</table>" % "".join(trs))
     wb.close()
     return "\n".join(out)
+
+
+if __name__ == "__main__":   # subprocesso de conversão: python docview.py <src.docx> <dst.pdf>
+    import sys
+    if len(sys.argv) == 3:
+        try:
+            _convert_docx_to_pdf(sys.argv[1], sys.argv[2])
+        except Exception as e:
+            sys.stderr.write("%s: %s\n" % (type(e).__name__, e))
+            sys.exit(1)

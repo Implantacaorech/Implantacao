@@ -4,10 +4,11 @@ e-mail por projeto (/projetos/<pid>/email), mapa mental do setor (/mapa) e
 pré-visualização WYSIWYG de documentos (/projetos/<pid>/doc/<id>/ver).
 Separadas do app.py (ver register())."""
 import os
+import logging
 
 import db
 import runner
-from flask import request, render_template, redirect, url_for, abort
+from flask import request, render_template, redirect, url_for, abort, send_file
 
 # Injetados por register():
 _autor = _notificar_evento = pode_ver = None
@@ -205,11 +206,40 @@ def projeto_doc_ver(pid, doc_id):
             path.startswith(os.path.abspath(x)) for x in ALLOWED_DIRS):
         abort(403)
     import docview
+    pdf = None
     try:
-        corpo = docview.to_html(path)
-    except Exception as e:
-        corpo = "<p class='aviso'>Não foi possível pré-visualizar (%s). Use “Baixar”.</p>" % type(e).__name__
+        pdf = docview.to_pdf(path)         # .docx -> PDF FIEL (renderizado pelo Word), com cache
+    except Exception:
+        logging.exception("Falha ao preparar PDF de pré-visualização")
+    if pdf:                                # espelho exato: mostra o próprio documento (PDF) num iframe
+        corpo = ('<iframe src="%s" title="Documento" '
+                 'style="width:100%%;height:82vh;border:0;display:block;background:#525659"></iframe>'
+                 % url_for("projeto_doc_pdf", pid=pid, doc_id=doc_id))
+    else:
+        try:
+            corpo = docview.to_html(path)  # xlsx ou sem Word: cai na visualização HTML
+        except Exception as e:
+            corpo = "<p class='aviso'>Não foi possível pré-visualizar (%s). Use “Baixar”.</p>" % type(e).__name__
     return render_template("doc_view.html", p=proj, d=doc, corpo=corpo, pid=pid)
+
+
+def projeto_doc_pdf(pid, doc_id):
+    """Serve o PDF fiel do documento (renderizado pelo Word) inline — usado pelo iframe do 'Ver'."""
+    with db.Session() as s:
+        d = s.get(db.Documento, doc_id)
+        if not d or d.projeto_id != pid:
+            abort(404)
+        caminho = d.caminho
+    path = os.path.abspath(caminho or "")
+    if not os.path.exists(path) or not any(
+            path.startswith(os.path.abspath(x)) for x in ALLOWED_DIRS):
+        abort(403)
+    import docview
+    pdf = docview.to_pdf(path)
+    if not pdf or not os.path.exists(pdf):
+        abort(404)
+    return send_file(pdf, mimetype="application/pdf", as_attachment=False,
+                     download_name=os.path.splitext(os.path.basename(path))[0] + ".pdf")
 
 
 def register(app, **deps):
@@ -223,3 +253,4 @@ def register(app, **deps):
     rota("/fluxo/criar", fluxo_criar, ["POST"])
     rota("/mapa", mapa)
     rota("/projetos/<int:pid>/doc/<int:doc_id>/ver", projeto_doc_ver)
+    rota("/projetos/<int:pid>/doc/<int:doc_id>/pdf", projeto_doc_pdf)
