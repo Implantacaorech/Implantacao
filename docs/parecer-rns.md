@@ -79,6 +79,9 @@ O Painel de Implantação centraliza e automatiza a implantação do SIGER® por
 - **2026-06-29** — Vínculo usuário↔SICLA: Código SICLA obrigatório no cadastro (todos os
   perfis), casado com a coluna `tecnico` do SELECT de disponibilidade; bloqueio de
   alocação em datas passadas e em slots ocupados na montagem do cronograma (itens 6, 7 e 11).
+- **2026-07-01** — Pré-visualização ("Ver") fiel: documento `.docx` exibido como espelho exato
+  (PDF renderizado pelo Word, com cache); `.xlsx`/sem Word cai na visão HTML. Disponibilidade da
+  agenda filtra por `:tecnicos` + janela de 18 meses (SELECT de ocupação).
 - **2026-06-30** — Exclusão de documento gerado (para regerar) respeitando o fluxo/dependências
   (item 1). Correções de fidelidade do Projeto: Detalhamento das Rotinas com uma linha por
   tópico e remoção do bloco duplicado do Levantamento após a assinatura. Notificações por

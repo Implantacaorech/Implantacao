@@ -242,7 +242,10 @@ Início do processo a partir do **e-mail de fechamento do Comercial**:
 Visão em árvore de papéis, fases, itens de qualidade e convenções da implantação SIGER.
 
 ### 5.15 Pré-visualização de documentos (`/projetos/<id>/doc/<id>/ver`)
-Renderiza o `.docx`/`.xlsx` gerado em HTML (WYSIWYG) sem precisar baixar.
+Mostra o documento gerado na tela, só leitura. Para `.docx`, exibe um **espelho fiel** — o próprio
+documento renderizado em **PDF pelo Word** (layout, quebras de linha e formatação idênticos),
+convertido em segundo plano e **cacheado** (rápido a partir do 2º acesso). Sem Word disponível ou
+para `.xlsx`, cai numa visualização HTML do conteúdo. O arquivo oficial continua sendo o do "Baixar".
 
 ### 5.16 Papéis / Ferramentas (`/papel/<id>` · `/acao/...`)
 Atalhos por papel (Coordenação, Setor Adm, Consultor) para ferramentas de apoio:
