@@ -1218,7 +1218,8 @@ def test_agenda_bloqueia_por_ocupacao_sicla(client, monkeypatch):
         sess["auth"] = True; sess["perfil"] = "ADM"; sess["perfil_nome"] = "ADM"
     dia = (datetime.date.today() + datetime.timedelta(days=3)).isoformat()
     monkeypatch.setattr(D, "configurado", lambda: True)
-    monkeypatch.setattr(D, "ocupacao_por_slot", lambda i, f, cfg=None: {("z9", dia, "manha"): True})
+    monkeypatch.setattr(D, "ocupacao_por_slot",
+                        lambda i, f, tecnicos=None, cfg=None: {("z9", dia, "manha"): True})
     r = client.post("/projetos/%s/agenda/alocar" % pid,
                     data={"atividade_id": aid, "data": dia, "turno": "manha"})
     assert r.status_code == 409 and "ocupado" in (r.get_json().get("erro") or "").lower()
@@ -1333,6 +1334,28 @@ def test_config_disponibilidade(client):
     assert client.get("/config/disponibilidade").status_code == 200
 
 
+def test_disponibilidade_filtra_por_tecnico(monkeypatch):
+    """Detecta se o SELECT usa o filtro :tecnicos (define se amplia a janela de datas)."""
+    import disponibilidade as D
+    monkeypatch.setattr(D, "load_cfg", lambda: {"select": "SELECT c AS tecnico FROM a WHERE c IN :tecnicos"})
+    assert D.filtra_por_tecnico() is True
+    monkeypatch.setattr(D, "load_cfg", lambda: {"select": "SELECT c AS tecnico FROM a"})
+    assert D.filtra_por_tecnico() is False
+
+
+def test_disponibilidade_ocupacao_repassa_tecnicos(monkeypatch):
+    """ocupacao_por_slot repassa os códigos dos consultores para consultar (filtro no banco)."""
+    import disponibilidade as D
+    capturado = {}
+    def fake_consultar(di, df, tecnicos=None, cfg=None):
+        capturado["tecnicos"] = tecnicos
+        return [{"tecnico": "Z9", "data": "2027-01-05", "turno": "manha"}]
+    monkeypatch.setattr(D, "consultar", fake_consultar)
+    ocup = D.ocupacao_por_slot("2027-01-01", "2027-06-01", ["Z9", "A1"])
+    assert capturado["tecnicos"] == ["Z9", "A1"]
+    assert ocup.get(("z9", "2027-01-05", "manha")) is True
+
+
 def test_agenda_disponibilidade_modos(client, monkeypatch):
     """Disponibilidade: análise CONJUNTA bloqueia se qualquer envolvido está ocupado;
     INDIVIDUAL bloqueia só conforme o técnico escolhido."""
@@ -1355,7 +1378,9 @@ def test_agenda_disponibilidade_modos(client, monkeypatch):
     hoje = _dt.date.today()
     seg = (hoje - _dt.timedelta(days=hoje.weekday())).isoformat()      # 2ª da semana
     monkeypatch.setattr(D, "configurado", lambda: True)
-    monkeypatch.setattr(D, "ocupacao_por_slot", lambda di, df: {("an1", seg, "manha"): True})  # casa por código
+    monkeypatch.setattr(D, "filtra_por_tecnico", lambda cfg=None: True)
+    monkeypatch.setattr(D, "ocupacao_por_slot",
+                        lambda di, df, tecnicos=None, cfg=None: {("an1", seg, "manha"): True})  # casa por código
     base = "/projetos/%s/agenda?ref=%s" % (pid, seg)
     assert "Ocupado: Ana" in client.get(base).get_data(as_text=True)                       # conjunta
     assert "Ocupado:" not in client.get(base + "&modo=individual&tec=Beto").get_data(as_text=True)   # Beto livre

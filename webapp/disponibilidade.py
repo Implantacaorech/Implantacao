@@ -9,12 +9,18 @@ os técnicos envolvidos.
 Config fica em DATA_WRITE/disponibilidade.json (gitignored, fora do versionamento).
 
 Contrato do SELECT (o ADM escreve livremente):
-  - parâmetros disponíveis: :data_ini e :data_fim (intervalo, 'AAAA-MM-DD');
+  - parâmetros disponíveis:
+      :data_ini e :data_fim -> intervalo ('AAAA-MM-DD'); o painel passa hoje..+18 meses;
+      :tecnicos             -> OPCIONAL, lista de CÓDIGOS dos consultores envolvidos (IN).
+                               Use `... IN :tecnicos` para o banco já devolver só eles
+                               (muito mais rápido). Sem :tecnicos, a janela fica na semana.
   - colunas esperadas no resultado (use AS para renomear):
       tecnico  -> CÓDIGO do técnico no SICLA — casa com o "Código SICLA" do cadastro de usuário
       data     -> data do compromisso ('AAAA-MM-DD' ou DATE)
       turno    -> opcional: 'manha' | 'tarde' (se ausente/vazio, considera o DIA inteiro ocupado)
   - cada linha representa um compromisso (ocupação) do técnico.
+  - exemplo: SELECT cod AS tecnico, dia AS data, periodo AS turno FROM agenda
+             WHERE dia BETWEEN :data_ini AND :data_fim AND cod IN :tecnicos
 """
 import os
 import json
@@ -116,14 +122,27 @@ def _engine(cfg):
     return create_engine(url, pool_pre_ping=True)
 
 
-def consultar(data_ini, data_fim, cfg=None):
-    """Executa o SELECT no intervalo e devolve a OCUPAÇÃO normalizada:
+def filtra_por_tecnico(cfg=None):
+    """True se o SELECT usa o filtro :tecnicos — então vale ampliar a janela de datas
+    (a consulta já vem restrita aos consultores envolvidos)."""
+    cfg = cfg or load_cfg()
+    return ":tecnicos" in (cfg.get("select") or "")
+
+
+def consultar(data_ini, data_fim, tecnicos=None, cfg=None):
+    """Executa o SELECT no intervalo (:data_ini/:data_fim) e, se o SELECT usar :tecnicos,
+    filtra pelos CÓDIGOS informados — devolve a OCUPAÇÃO normalizada como
     lista de {'tecnico','data','turno'} (turno '' = dia inteiro)."""
     cfg = cfg or load_cfg()
-    from sqlalchemy import text
+    from sqlalchemy import text, bindparam
+    sql = cfg.get("select") or ""
+    clause = text(sql)
+    params = {"data_ini": data_ini, "data_fim": data_fim}
+    if ":tecnicos" in sql:                                  # filtro server-side por consultor
+        clause = clause.bindparams(bindparam("tecnicos", expanding=True))
+        params["tecnicos"] = [str(t).strip() for t in (tecnicos or []) if str(t).strip()]
     with _engine(cfg).connect() as conn:
-        rows = conn.execute(text(cfg.get("select") or ""),
-                            {"data_ini": data_ini, "data_fim": data_fim}).mappings().all()
+        rows = conn.execute(clause, params).mappings().all()
     out = []
     for r in rows:
         d = dict(r)
@@ -140,7 +159,7 @@ def testar(cfg=None):
     import datetime as _dt
     hoje = _dt.date.today()
     try:
-        linhas = consultar(hoje.isoformat(), (hoje + _dt.timedelta(days=30)).isoformat(), cfg)
+        linhas = consultar(hoje.isoformat(), (hoje + _dt.timedelta(days=30)).isoformat(), cfg=cfg)
         return True, "Conexão OK — %d compromisso(s) no período de teste." % len(linhas), linhas[:8]
     except ModuleNotFoundError:
         url = _build_url(cfg)
@@ -168,11 +187,11 @@ def testar(cfg=None):
         return False, "%s: %s" % (type(e).__name__, msg[:300]), []
 
 
-def ocupacao_por_slot(data_ini, data_fim, cfg=None):
-    """{(tecnico_lower, data, turno): True} dos compromissos. turno '' marca o dia inteiro
-    (expande para manha e tarde)."""
+def ocupacao_por_slot(data_ini, data_fim, tecnicos=None, cfg=None):
+    """{(tecnico_lower, data, turno): True} dos compromissos (opcionalmente restrito aos
+    códigos em `tecnicos`). turno '' marca o dia inteiro (expande para manha e tarde)."""
     ocup = {}
-    for r in consultar(data_ini, data_fim, cfg):
+    for r in consultar(data_ini, data_fim, tecnicos, cfg):
         tec = (r["tecnico"] or "").strip().lower()
         if not tec or not r["data"]:
             continue

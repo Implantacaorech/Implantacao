@@ -53,12 +53,14 @@
     </div>
 
     <h3 style="color:var(--navy);margin:14px 0 6px">Consulta (SELECT)</h3>
-    <p class="dica" style="margin:0 0 6px">Parâmetros disponíveis: <code>:data_ini</code> e <code>:data_fim</code>.
-      Use <code>AS</code> para devolver as colunas <code>tecnico</code>, <code>data</code> e (opcional) <code>turno</code>
-      (<code>manha</code>/<code>tarde</code>; vazio = dia inteiro). Cada linha = um compromisso (ocupação).</p>
+    <p class="dica" style="margin:0 0 6px">Parâmetros disponíveis: <code>:data_ini</code>, <code>:data_fim</code>
+      e <code>:tecnicos</code> (lista de códigos dos consultores). <strong>Use <code>… IN :tecnicos</code></strong>
+      para o banco já devolver só os consultores da visita — muito mais rápido (o painel consulta
+      hoje…+18 meses). Devolva as colunas <code>tecnico</code> (= Código SICLA), <code>data</code> e (opcional)
+      <code>turno</code> (<code>manha</code>/<code>tarde</code>; vazio = dia inteiro). Cada linha = um compromisso.</p>
     <label class="campo">
       <textarea name="select" rows="7" style="font-family:monospace;font-size:.85rem"
-        placeholder="SELECT tecnico_nome AS tecnico, data_visita AS data, periodo AS turno&#10;FROM agenda_tecnicos&#10;WHERE data_visita BETWEEN :data_ini AND :data_fim">{{ cfg.select or '' }}</textarea>
+        placeholder="SELECT cod AS tecnico, data_visita AS data, periodo AS turno&#10;FROM agenda_tecnicos&#10;WHERE data_visita BETWEEN :data_ini AND :data_fim AND cod IN :tecnicos">{{ cfg.select or '' }}</textarea>
     </label>
 
     <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">

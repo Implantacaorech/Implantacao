@@ -31,8 +31,8 @@ def _slot_indisponivel(data, turno, tecnico_nome):
     try:
         import disponibilidade as D
         if D.configurado() and (tecnico_nome or "").strip():
-            cod = (db.codigo_sicla_do_usuario(tecnico_nome) or "").strip().lower()
-            if cod and D.ocupacao_por_slot(data, data).get((cod, data, turno)):
+            cod = (db.codigo_sicla_do_usuario(tecnico_nome) or "").strip()   # código bruto p/ o filtro
+            if cod and D.ocupacao_por_slot(data, data, [cod]).get((cod.lower(), data, turno)):
                 return "%s está ocupado nesse dia/turno (agenda do SICLA)." % tecnico_nome
     except Exception:
         logging.exception("Falha ao checar disponibilidade na alocação")
@@ -108,12 +108,22 @@ def projeto_agenda(pid):
         tec_sel, alvos = "", envolvidos
     bloqueados, disp_aviso, disp_ativa = {}, None, False
     cods = db.codigos_sicla_por_nome(alvos)          # nome_lower -> código SICLA (elo com a agenda)
+    tec_codigos = [cods[e.lower()] for e in alvos if cods.get(e.lower())]   # códigos p/ filtrar a consulta
     sem_codigo = sorted(e for e in alvos if not cods.get(e.lower()))
     try:
         import disponibilidade as D
         if D.configurado() and alvos:
             disp_ativa = True
-            ocup = D.ocupacao_por_slot(dias[0].isoformat(), dias[-1].isoformat())
+            if D.filtra_por_tecnico():               # SELECT filtra por consultor -> janela ampla (hoje..+18 meses)
+                import calendar
+                hoje = date.today()
+                _m = hoje.month - 1 + 18
+                _ano, _mes = hoje.year + _m // 12, _m % 12 + 1
+                fim18 = date(_ano, _mes, min(hoje.day, calendar.monthrange(_ano, _mes)[1]))
+                di, df = hoje.isoformat(), fim18.isoformat()
+            else:                                    # sem filtro -> mantém a semana (não puxa tudo)
+                di, df = dias[0].isoformat(), dias[-1].isoformat()
+            ocup = D.ocupacao_por_slot(di, df, tec_codigos)
             for d in dias:
                 for t in ("manha", "tarde"):
                     ocs = [e for e in alvos
