@@ -68,6 +68,10 @@ reprocessa) e notifica a Coordenação. Liga sozinho no modo servidor quando o I
 Config em **Config → Disponibilidade** (`disponibilidade.json`): `tipo`/`host`/`porta`/`banco`/
 `usuario`/`senha` **ou** `url` (SQLAlchemy), mais o `select` e (Oracle) `oracle_thick`/`oracle_lib_dir`.
 O `select` deve devolver `tecnico` (= **Código SICLA** do cadastro), `data`, `turno`.
+Parâmetros: `:data_ini`/`:data_fim` (o painel passa **hoje…+18 meses**) e `:tecnicos` (lista de
+códigos dos consultores da visita). **Use `… IN :tecnicos`** para o banco devolver só eles — é o
+que dá agilidade. Sem `:tecnicos`, o painel restringe à semana visível (não puxa 18 meses de todos).
+Ex.: `SELECT cod AS tecnico, dia AS data, turno FROM agenda WHERE dia BETWEEN :data_ini AND :data_fim AND cod IN :tecnicos`.
 
 | Erro | Causa | Ação |
 |---|---|---|
