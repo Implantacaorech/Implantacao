@@ -4,7 +4,7 @@
 > Mantido acumulativo: a cada nova função/assunto entregue, esta lista é atualizada.
 > Registre a mudança no rodapé (**Atualizações**).
 >
-> Última atualização: **2026-06-30** (exclusão de documento respeitando o fluxo).
+> Última atualização: **2026-07-02** (desempenho e operação).
 
 ---
 
