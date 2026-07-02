@@ -79,6 +79,10 @@ O Painel de Implantação centraliza e automatiza a implantação do SIGER® por
 - **2026-06-29** — Vínculo usuário↔SICLA: Código SICLA obrigatório no cadastro (todos os
   perfis), casado com a coluna `tecnico` do SELECT de disponibilidade; bloqueio de
   alocação em datas passadas e em slots ocupados na montagem do cronograma (itens 6, 7 e 11).
+- **2026-07-02** — Pacote de desempenho e operação: cache com TTL na consulta de disponibilidade
+  (navegação instantânea no agendador), pré-aquecimento do PDF da pré-visualização (1º "Ver"
+  instantâneo), limpeza automática do cache de PDFs, criação retroativa de índices na
+  auto-migração e verificação completa de operação em um comando (`verificar_tudo.py`).
 - **2026-07-01** — Pré-visualização ("Ver") fiel: documento `.docx` exibido como espelho exato
   (PDF renderizado pelo Word, com cache); `.xlsx`/sem Word cai na visão HTML. Disponibilidade da
   agenda filtra por `:tecnicos` + janela de 18 meses (SELECT de ocupação).
