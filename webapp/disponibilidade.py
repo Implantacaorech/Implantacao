@@ -187,6 +187,29 @@ def testar(cfg=None):
         return False, "%s: %s" % (type(e).__name__, msg[:300]), []
 
 
+# Cache em memória da ocupação (TTL curto): evita reconsultar o banco externo a cada
+# navegação de semana no agendador. Chave = (janela, técnicos); invalida por tempo.
+_CACHE = {}
+_CACHE_TTL = 180   # segundos
+
+
+def ocupacao_por_slot_cache(data_ini, data_fim, tecnicos=None, cfg=None):
+    """Como ocupacao_por_slot, com cache de _CACHE_TTL segundos por (janela, técnicos).
+    Use nas TELAS (navegação rápida); a validação final de alocação pode usar a direta."""
+    import time
+    chave = (data_ini, data_fim, tuple(sorted(str(t).strip().lower() for t in (tecnicos or []))))
+    hit = _CACHE.get(chave)
+    agora = time.time()
+    if hit and agora - hit[0] < _CACHE_TTL:
+        return hit[1]
+    ocup = ocupacao_por_slot(data_ini, data_fim, tecnicos, cfg)
+    _CACHE[chave] = (agora, ocup)
+    if len(_CACHE) > 64:                      # nunca cresce sem limite
+        for k, _ in sorted(_CACHE.items(), key=lambda kv: kv[1][0])[:32]:
+            _CACHE.pop(k, None)
+    return ocup
+
+
 def ocupacao_por_slot(data_ini, data_fim, tecnicos=None, cfg=None):
     """{(tecnico_lower, data, turno): True} dos compromissos (opcionalmente restrito aos
     códigos em `tecnicos`). turno '' marca o dia inteiro (expande para manha e tarde)."""

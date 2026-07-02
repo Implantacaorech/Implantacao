@@ -68,6 +68,8 @@ def _gerar_e_anexar_fiel(pid, slug, proj, modo="auto"):
                            arquivo=os.path.basename(path), caminho=path))
         db.registrar_evento(s, pid, "documento", rotulo, _autor())
         s.commit()
+    import docview
+    docview.preaquecer(path)   # converte o PDF do 'Ver' em segundo plano (1º acesso instantâneo)
     return path
 
 

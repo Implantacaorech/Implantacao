@@ -29,7 +29,8 @@ que mantém o Painel no ar.
 Procedimentos completos (e-mail/IMAP/Gmail, Oracle, Postgres/backup, robôs, troca de senha):
 **`docs/runbooks-operacao.md`** — consulte e mantenha atualizado a cada integração/rotina nova.
 Diagnóstico rápido de e-mail: **`python webapp/verificar_email.py`** (Gmail/SMTP + destinatários +
-timeline; sai 1 se a entrega está falhando).
+timeline; sai 1 se a entrega está falhando). Verificação completa de operação num comando:
+**`python webapp/verificar_tudo.py`** (rotas + banco + e-mail + disponibilidade + backup).
 
 ## Conhecimento crítico (atalhos de diagnóstico)
 - **Oracle DPY-3015** (senha com verificador antigo): use modo **thick** (Oracle Instant

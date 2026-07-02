@@ -21,6 +21,8 @@
 ---
 
 ## 1. Diagnóstico rápido
+- **Tudo de uma vez:** `python webapp/verificar_tudo.py` — um comando, um veredito: rotas (smoke),
+  banco, e-mail, disponibilidade e idade do backup. Sai **1** se algo essencial falhou.
 - **App no ar?** `GET /health` deve responder `{"status":"ok"}` (200). `degraded`/503 = banco inacessível.
 - **Rotas/registro ok?** `python webapp/verificar_app.py` (segundos).
 - **E-mail saindo?** `python webapp/verificar_email.py` — checa Gmail/SMTP, destinatários e as

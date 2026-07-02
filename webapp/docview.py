@@ -44,6 +44,41 @@ def to_pdf(path):
     return None
 
 
+def preaquecer(path):
+    """Dispara a conversão docx->PDF em segundo plano (thread daemon) logo após o documento
+    ser gerado — o primeiro 'Ver' abre instantâneo. Nunca propaga erro. Aproveita para
+    limpar PDFs antigos do cache."""
+    if os.path.splitext(path)[1].lower() != ".docx":
+        return
+    def _worker():
+        try:
+            to_pdf(path)
+            _limpar_cache_antigo()
+        except Exception:
+            pass
+    threading.Thread(target=_worker, daemon=True, name="preaquecer-pdf").start()
+
+
+def _limpar_cache_antigo(dias=30):
+    """Remove do cache _preview os PDFs sem acesso há mais de `dias` (não cresce sem limite)."""
+    import time
+    try:
+        import _common as C
+        cache = os.path.join(C.DATA_WRITE, "_preview")
+    except Exception:
+        return
+    if not os.path.isdir(cache):
+        return
+    limite = time.time() - dias * 86400
+    for nome in os.listdir(cache):
+        p = os.path.join(cache, nome)
+        try:
+            if nome.endswith(".pdf") and os.path.getmtime(p) < limite:
+                os.remove(p)
+        except OSError:
+            pass
+
+
 def _convert_docx_to_pdf(src, dst):
     """Conversão Word COM (Windows). Roda em subprocesso isolado — ver o bloco __main__."""
     import pythoncom

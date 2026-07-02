@@ -123,7 +123,7 @@ def projeto_agenda(pid):
                 di, df = hoje.isoformat(), fim18.isoformat()
             else:                                    # sem filtro -> mantém a semana (não puxa tudo)
                 di, df = dias[0].isoformat(), dias[-1].isoformat()
-            ocup = D.ocupacao_por_slot(di, df, tec_codigos)
+            ocup = D.ocupacao_por_slot_cache(di, df, tec_codigos)   # TTL curto: navegação instantânea
             for d in dias:
                 for t in ("manha", "tarde"):
                     ocs = [e for e in alvos

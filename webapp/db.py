@@ -1756,8 +1756,9 @@ def doc_conteudo_salvar(projeto_id, doc, campos, form):
 
 
 def _auto_migrar():
-    """Migração leve aditiva: cria colunas novas que faltarem (SQLite e Postgres).
-    Cobre a evolução de schema entre versões; só adiciona, nunca remove dados."""
+    """Migração leve aditiva: cria colunas novas que faltarem (SQLite e Postgres) e os
+    ÍNDICES declarados (index=True) que ainda não existirem em tabelas antigas — o
+    create_all não cria índice em tabela que já existe. Só adiciona, nunca remove dados."""
     from sqlalchemy import inspect, text
     insp = inspect(engine)
     tabelas = set(insp.get_table_names())
@@ -1770,6 +1771,11 @@ def _auto_migrar():
                 if col.name not in cols:
                     tipo = col.type.compile(engine.dialect)
                     conn.execute(text("ALTER TABLE %s ADD COLUMN %s %s" % (tbl.name, col.name, tipo)))
+            idx_cols = {c for i in insp.get_indexes(tbl.name) for c in i["column_names"]}
+            for col in tbl.columns:
+                if col.index and col.name not in idx_cols:
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_%s_%s ON %s (%s)"
+                                      % (tbl.name, col.name, tbl.name, col.name)))
 
 
 _MIGRA_ETAPA = {

@@ -1386,6 +1386,36 @@ def test_disponibilidade_ocupacao_repassa_tecnicos(monkeypatch):
     assert ocup.get(("z9", "2027-01-05", "manha")) is True
 
 
+def test_disponibilidade_cache_ttl(monkeypatch):
+    """ocupacao_por_slot_cache: mesma janela+técnicos dentro do TTL consulta o banco 1 vez."""
+    import disponibilidade as D
+    chamadas = {"n": 0}
+    def fake(di, df, tecnicos=None, cfg=None):
+        chamadas["n"] += 1
+        return {("z9", di, "manha"): True}
+    monkeypatch.setattr(D, "ocupacao_por_slot", fake)
+    D._CACHE.clear()
+    a = D.ocupacao_por_slot_cache("2027-02-01", "2027-08-01", ["Z9"])
+    b = D.ocupacao_por_slot_cache("2027-02-01", "2027-08-01", ["z9"])   # mesma chave (case-insensitive)
+    assert a == b and chamadas["n"] == 1
+    D.ocupacao_por_slot_cache("2027-02-01", "2027-08-01", ["A1"])       # técnicos diferentes -> nova consulta
+    assert chamadas["n"] == 2
+    D._CACHE.clear()
+
+
+def test_docview_preaquecer(monkeypatch, tmp_path):
+    """preaquecer() converte o PDF em segundo plano para .docx e ignora outros tipos."""
+    import threading, docview
+    feito = threading.Event()
+    monkeypatch.setattr(docview, "to_pdf", lambda p: feito.set())
+    monkeypatch.setattr(docview, "_limpar_cache_antigo", lambda dias=30: None)
+    docview.preaquecer(str(tmp_path / "doc.docx"))
+    assert feito.wait(5)                                # converteu em background
+    feito.clear()
+    docview.preaquecer(str(tmp_path / "planilha.xlsx"))  # não-docx: não dispara
+    assert not feito.wait(0.3)
+
+
 def test_agenda_disponibilidade_modos(client, monkeypatch):
     """Disponibilidade: análise CONJUNTA bloqueia se qualquer envolvido está ocupado;
     INDIVIDUAL bloqueia só conforme o técnico escolhido."""
@@ -1411,6 +1441,7 @@ def test_agenda_disponibilidade_modos(client, monkeypatch):
     monkeypatch.setattr(D, "filtra_por_tecnico", lambda cfg=None: True)
     monkeypatch.setattr(D, "ocupacao_por_slot",
                         lambda di, df, tecnicos=None, cfg=None: {("an1", seg, "manha"): True})  # casa por código
+    D._CACHE.clear()                                     # a view usa o cache TTL — começa limpo
     base = "/projetos/%s/agenda?ref=%s" % (pid, seg)
     assert "Ocupado: Ana" in client.get(base).get_data(as_text=True)                       # conjunta
     assert "Ocupado:" not in client.get(base + "&modo=individual&tec=Beto").get_data(as_text=True)   # Beto livre
