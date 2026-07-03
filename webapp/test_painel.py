@@ -1155,6 +1155,38 @@ def test_protocolo_varredura_pasta(client, tmp_path, monkeypatch):
         s.delete(s.get(db.Protocolo, novos[0])); s.commit()
 
 
+def test_protocolo_reprocessa_sem_retranscrever(client, tmp_path, monkeypatch):
+    """Reprocessar com transcrição já existente: NÃO chama o whisper de novo — vai direto
+    para a análise IA (ex.: recarga de créditos após falha na análise)."""
+    import protocolos as P
+    import transcritor, protocolo_ia
+    v = _video_fake(tmp_path, "ja_transcrito.mp4")
+    pid, _ = db.protocolo_criar("ja_transcrito.mp4", v, "upload", "Tester")
+    with db.Session() as s:
+        obj = s.get(db.Protocolo, pid)
+        obj.transcricao = "[0:05] Conteúdo já transcrito antes da falha."
+        s.commit()
+    def _nao_pode(*a, **k):
+        raise AssertionError("não deveria transcrever de novo")
+    monkeypatch.setattr(transcritor, "transcrever_isolado", _nao_pode)
+    monkeypatch.setattr(protocolo_ia, "analisar", lambda t, n="": (
+        {c: ("Fiscal" if c == "modulo" else "x") for c in db.PROTO_CAMPOS_TEXTO}, "{}"))
+    ok, _msg = P.processar(pid, "Tester")
+    assert ok and db.protocolo_get(pid)["status"] == "Em revisão"
+    with db.Session() as s:
+        s.delete(s.get(db.Protocolo, pid)); s.commit()
+
+
+def test_protocolo_erro_amigavel():
+    """Erros comuns da API viram mensagens claras (créditos, chave, sobrecarga)."""
+    import protocolos as P
+    assert "Créditos da API" in P._erro_amigavel(RuntimeError(
+        "Error code: 400 - Your credit balance is too low to access the Anthropic API."))
+    assert "Chave da API" in P._erro_amigavel(RuntimeError("authentication_error: invalid x-api-key"))
+    assert "sobrecarregada" in P._erro_amigavel(RuntimeError("Error code: 529 - overloaded_error"))
+    assert "ValueError" in P._erro_amigavel(ValueError("outra coisa"))
+
+
 def test_protocolo_status_e_progresso(client, tmp_path, monkeypatch):
     """Linha do tempo: /status devolve o andamento; durante a transcrição expõe o % gravado
     pelo subprocesso no arquivo de progresso; a tela mostra o stepper."""

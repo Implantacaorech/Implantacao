@@ -107,32 +107,51 @@ def _mover_video(pid, destino_nome):
         logging.exception("Falha ao mover vídeo do protocolo %s", pid)
 
 
+def _erro_amigavel(e):
+    """Traduz erros comuns da API/pipeline para uma mensagem clara ao usuário."""
+    txt = "%s: %s" % (type(e).__name__, e)
+    low = txt.lower()
+    if "credit balance is too low" in low:
+        return ("Créditos da API de IA esgotados — recarregue em console.anthropic.com "
+                "(Plans & Billing) e clique em Processar agora. A transcrição já feita "
+                "será aproveitada (não transcreve de novo).")
+    if "authentication" in low or "invalid x-api-key" in low or "401" in low:
+        return "Chave da API de IA inválida — confira em Config → IA."
+    if "overloaded" in low or "529" in low:
+        return "API de IA sobrecarregada no momento — tente Processar agora em alguns minutos."
+    return txt
+
+
 def processar(pid, autor="robô"):
-    """Roda o pipeline completo de UM protocolo: transcreve -> analisa -> Em revisão.
-    Em falha, marca Erro e move o vídeo para 'Videos Com Erro'. Devolve (ok, msg)."""
+    """Roda o pipeline de UM protocolo: transcreve -> analisa -> Em revisão. Se a transcrição
+    JÁ existe (ex.: reprocessando após falha da IA ou edição), ela é APROVEITADA — vai direto
+    para a análise. Em falha, marca Erro e move o vídeo p/ 'Videos Com Erro'. Devolve (ok, msg)."""
     import transcritor
     import protocolo_ia
     p = db.protocolo_get(pid)
     if not p:
         return False, "Protocolo não encontrado."
     video = p.get("video_caminho") or ""
-    if not os.path.exists(video):
+    texto = (p.get("transcricao") or "").strip()
+    if not texto and not os.path.exists(video):
         db.protocolo_atualizar_status(pid, "Erro", "Arquivo de vídeo não encontrado.", autor)
         return False, "Arquivo de vídeo não encontrado."
     with _BUSY:                                       # serializa (transcrição é pesada)
         try:
-            db.protocolo_atualizar_status(pid, "Transcrevendo", autor=autor)
-            t = transcritor.transcrever_isolado(video, progress_file=_progresso_path(pid))
-            with db.Session() as s:
-                obj = s.get(db.Protocolo, pid)
-                obj.transcricao = t.get("texto") or ""
-                obj.duracao_seg = int(t.get("duracao") or 0)
-                s.commit()
-            if not (t.get("texto") or "").strip():
-                raise RuntimeError("Transcrição vazia (vídeo sem fala reconhecível?).")
+            if not texto:                             # só transcreve se ainda não há transcrição
+                db.protocolo_atualizar_status(pid, "Transcrevendo", autor=autor)
+                t = transcritor.transcrever_isolado(video, progress_file=_progresso_path(pid))
+                with db.Session() as s:
+                    obj = s.get(db.Protocolo, pid)
+                    obj.transcricao = t.get("texto") or ""
+                    obj.duracao_seg = int(t.get("duracao") or 0)
+                    s.commit()
+                texto = (t.get("texto") or "").strip()
+                if not texto:
+                    raise RuntimeError("Transcrição vazia (vídeo sem fala reconhecível?).")
 
             db.protocolo_atualizar_status(pid, "Analisando", autor=autor)
-            campos, bruto = protocolo_ia.analisar(t["texto"], p.get("video_nome") or "")
+            campos, bruto = protocolo_ia.analisar(texto, p.get("video_nome") or "")
             with db.Session() as s:
                 obj = s.get(db.Protocolo, pid)
                 for c, v in campos.items():
@@ -146,7 +165,7 @@ def processar(pid, autor="robô"):
             return True, "Protocolo pronto para revisão."
         except Exception as e:
             logging.exception("Pipeline do protocolo %s falhou", pid)
-            db.protocolo_atualizar_status(pid, "Erro", "%s: %s" % (type(e).__name__, e), autor)
+            db.protocolo_atualizar_status(pid, "Erro", _erro_amigavel(e), autor)
             if (p.get("video_origem") or "") == "sharepoint":
                 _mover_video(pid, "Videos Com Erro")
             return False, "Falha no processamento: %s" % type(e).__name__

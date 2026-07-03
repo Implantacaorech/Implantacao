@@ -101,7 +101,7 @@
     </p>
     <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
       <form method="post" action="{{ url_for('protocolo_processar', pid=p.id) }}"
-            onsubmit="return confirm('Reprocessar o vídeo? A transcrição e a análise da IA serão refeitas (a edição manual será sobrescrita).')">
+            onsubmit="return confirm('Reprocessar? A análise da IA será refeita (a edição manual será sobrescrita). A transcrição já feita é aproveitada — não transcreve de novo.')">
         <button class="btn" type="submit">🔁 {{ 'Processar agora' if p.status in ('Pendente','Erro') else 'Reprocessar' }}</button>
       </form>
       {% if pode_aprovar and p.status == 'Em revisão' %}
