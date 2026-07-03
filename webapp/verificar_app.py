@@ -50,6 +50,7 @@ CRITICOS = [
     ("protocolos_lista", {}),                       # routes_protocolos
     ("protocolo_revisar", {"pid": 1}),              # routes_protocolos
     ("protocolo_video", {"pid": 1}),                # routes_protocolos
+    ("protocolo_status", {"pid": 1}),               # routes_protocolos (linha do tempo)
 ]
 
 

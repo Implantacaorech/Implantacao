@@ -1094,8 +1094,9 @@ def test_protocolo_pipeline_mock(client, tmp_path, monkeypatch):
     import transcritor, protocolo_ia
     v = _video_fake(tmp_path, "rotina_fiscal.mp4")
     monkeypatch.setattr(transcritor, "transcrever_isolado",
-                        lambda path, timeout=0: {"texto": "[0:05] Configurando a regra fiscal.",
-                                                 "duracao": 65, "idioma": "pt"})
+                        lambda path, timeout=0, progress_file=None:
+                        {"texto": "[0:05] Configurando a regra fiscal.",
+                         "duracao": 65, "idioma": "pt"})
     monkeypatch.setattr(protocolo_ia, "analisar", lambda t, n="": (
         {"titulo": "Configuração de Regra Fiscal", "modulo": "Fiscal", "menu": "2.6-R",
          "assunto": "Regras de tributação", "resumo": "Mostra a configuração.",
@@ -1125,7 +1126,8 @@ def test_protocolo_pipeline_erro(client, tmp_path, monkeypatch):
     import transcritor
     v = _video_fake(tmp_path, "corrompido.mp4")
     monkeypatch.setattr(transcritor, "transcrever_isolado",
-                        lambda path, timeout=0: (_ for _ in ()).throw(RuntimeError("audio ilegivel")))
+                        lambda path, timeout=0, progress_file=None:
+                        (_ for _ in ()).throw(RuntimeError("audio ilegivel")))
     pid, _ = db.protocolo_criar("corrompido.mp4", v, "upload", "Tester")
     ok, _msg = P.processar(pid, "Tester")
     assert ok is False
@@ -1151,6 +1153,31 @@ def test_protocolo_varredura_pasta(client, tmp_path, monkeypatch):
     assert p["video_origem"] == "sharepoint" and p["status"] == "Pendente"
     with db.Session() as s:
         s.delete(s.get(db.Protocolo, novos[0])); s.commit()
+
+
+def test_protocolo_status_e_progresso(client, tmp_path, monkeypatch):
+    """Linha do tempo: /status devolve o andamento; durante a transcrição expõe o % gravado
+    pelo subprocesso no arquivo de progresso; a tela mostra o stepper."""
+    import json as _json
+    import protocolos as P
+    v = _video_fake(tmp_path, "andamento.mp4")
+    pid, _ = db.protocolo_criar("andamento.mp4", v, "upload", "Tester")
+    # Pendente: status sem pct
+    r = client.get("/protocolos/%s/status" % pid)
+    assert r.status_code == 200 and r.get_json()["status"] == "Pendente"
+    # Transcrevendo + arquivo de progresso -> pct/pos/dur no JSON
+    db.protocolo_atualizar_status(pid, "Transcrevendo")
+    with open(P._progresso_path(pid), "w", encoding="utf-8") as f:
+        _json.dump({"pos": 90, "dur": 300, "pct": 30}, f)
+    j = client.get("/protocolos/%s/status" % pid).get_json()
+    assert j["status"] == "Transcrevendo" and j["pct"] == 30 and j["dur"] == 300
+    # a tela de revisão traz a linha do tempo
+    html = client.get("/protocolos/%s" % pid).get_data(as_text=True)
+    assert "pt-timeline" in html and "Transcrição" in html
+    assert client.get("/protocolos/999999/status").status_code == 404
+    os.remove(P._progresso_path(pid))
+    with db.Session() as s:
+        s.delete(s.get(db.Protocolo, pid)); s.commit()
 
 
 def test_protocolo_rotas_e_revisao(client, tmp_path):

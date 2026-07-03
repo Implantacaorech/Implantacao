@@ -34,6 +34,31 @@ def configurado():
     return os.path.isdir(_pasta("Videos Pendentes"))
 
 
+def _progresso_path(pid):
+    import _common as C
+    d = os.path.join(C.DATA_WRITE, "_progresso")
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, "protocolo_%d.json" % int(pid))
+
+
+def progresso(pid):
+    """Andamento do protocolo p/ a tela: {status, pct, pos, dur}. O pct só existe
+    durante a transcrição (o subprocesso grava no arquivo de progresso)."""
+    import json
+    p = db.protocolo_get(pid)
+    if not p:
+        return None
+    out = {"status": p["status"], "pct": None, "pos": 0, "dur": 0}
+    if p["status"] == "Transcrevendo":
+        try:
+            with open(_progresso_path(pid), encoding="utf-8") as f:
+                j = json.load(f)
+            out.update(pct=j.get("pct"), pos=j.get("pos") or 0, dur=j.get("dur") or 0)
+        except Exception:
+            pass
+    return out
+
+
 def varrer_pasta(responsavel="robô"):
     """Registra (status Pendente) os vídeos novos da pasta 'Videos Pendentes'.
     Dedup por hash — o mesmo vídeo não é registrado duas vezes. Devolve os ids novos."""
@@ -97,7 +122,7 @@ def processar(pid, autor="robô"):
     with _BUSY:                                       # serializa (transcrição é pesada)
         try:
             db.protocolo_atualizar_status(pid, "Transcrevendo", autor=autor)
-            t = transcritor.transcrever_isolado(video)
+            t = transcritor.transcrever_isolado(video, progress_file=_progresso_path(pid))
             with db.Session() as s:
                 obj = s.get(db.Protocolo, pid)
                 obj.transcricao = t.get("texto") or ""

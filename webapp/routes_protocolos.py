@@ -7,7 +7,7 @@ import logging
 
 import db
 import protocolos as P
-from flask import request, render_template, redirect, url_for, abort, send_file
+from flask import request, render_template, redirect, url_for, abort, send_file, jsonify
 
 import _common as C
 
@@ -100,6 +100,14 @@ def protocolo_reprovar(pid):
     return redirect(url_for("protocolo_revisar", pid=pid, salvo=1))
 
 
+def protocolo_status(pid):
+    """Andamento do processamento (JSON) — o polling da tela usa p/ a linha do tempo."""
+    prog = P.progresso(pid)
+    if prog is None:
+        abort(404)
+    return jsonify(prog)
+
+
 def protocolo_video(pid):
     """Serve o vídeo para o player da revisão (suporta range/streaming)."""
     p = db.protocolo_get(pid)
@@ -122,4 +130,5 @@ def register(app, **deps):
     rota("/protocolos/<int:pid>/processar", protocolo_processar, ["POST"])
     rota("/protocolos/<int:pid>/aprovar", protocolo_aprovar, ["POST"])
     rota("/protocolos/<int:pid>/reprovar", protocolo_reprovar, ["POST"])
+    rota("/protocolos/<int:pid>/status", protocolo_status)
     rota("/protocolos/<int:pid>/video", protocolo_video)

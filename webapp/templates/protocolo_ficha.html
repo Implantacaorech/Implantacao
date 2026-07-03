@@ -14,6 +14,83 @@
   <div class="resultado erro" style="padding:8px 14px">⚠️ <strong>Erro no processamento:</strong> {{ p.log_erro }}</div>
   {% endif %}
 
+  {# Linha do tempo do processamento — atualiza sozinha enquanto processa #}
+  {% set etapas = ['Recebido', 'Transcrição', 'Análise IA', 'Em revisão', 'Aprovado'] %}
+  {% set idx = {'Pendente': 0, 'Transcrevendo': 1, 'Analisando': 2, 'Em revisão': 3,
+                'Reprovado / Ajustar': 3, 'Aprovado': 4, 'Erro': -1}.get(p.status, 0) %}
+  <div class="painel" id="pt-timeline" data-status="{{ p.status }}"
+       data-url="{{ url_for('protocolo_status', pid=p.id) }}">
+    <div class="pt-steps">
+      {% for e in etapas %}
+      {% set st = 'erro' if (idx == -1 and loop.index0 <= 2 and e != 'Recebido')
+                  else ('feita' if (idx > loop.index0 or (idx == 4 and loop.index0 == 4))
+                  else ('ativa' if idx == loop.index0 else '')) %}
+      <div class="pt-step {{ st }}">
+        <span class="pt-dot">{% if st == 'feita' %}✓{% elif st == 'ativa' %}●{% else %}{{ loop.index }}{% endif %}</span>
+        <span class="pt-rot">{{ e }}</span>
+      </div>
+      {% if not loop.last %}<div class="pt-linha {{ 'feita' if idx > loop.index0 }}"></div>{% endif %}
+      {% endfor %}
+    </div>
+    <div id="pt-detalhe" class="dica" style="margin:10px 0 0;text-align:center">
+      {% if p.status == 'Pendente' %}Aguardando o processamento iniciar…
+      {% elif p.status == 'Transcrevendo' %}Transcrevendo o áudio do vídeo…
+      {% elif p.status == 'Analisando' %}IA organizando o protocolo (módulo, menu, passo a passo)…
+      {% elif p.status == 'Em revisão' %}Pronto! Revise os campos abaixo e aprove.
+      {% elif p.status == 'Aprovado' %}Publicado na base de conhecimento.
+      {% elif p.status == 'Reprovado / Ajustar' %}Devolvido para ajuste — edite e reprocesse ou aprove.
+      {% elif p.status == 'Erro' %}O processamento falhou — veja o erro acima e use “Processar agora”.
+      {% endif %}
+    </div>
+    <div id="pt-barra-wrap" style="display:none;max-width:520px;margin:8px auto 0">
+      <div style="background:#e2e8f0;border-radius:999px;height:10px;overflow:hidden">
+        <div id="pt-barra" style="background:var(--brand,#2563eb);height:100%;width:0%;transition:width .8s"></div>
+      </div>
+      <div id="pt-barra-txt" class="dica" style="text-align:center;margin:4px 0 0"></div>
+    </div>
+  </div>
+
+  <style>
+    .pt-steps{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
+    .pt-step{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:86px}
+    .pt-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+            background:#e2e8f0;color:#64748b;font-weight:700;font-size:.85rem}
+    .pt-rot{font-size:.75rem;color:#64748b;font-weight:600}
+    .pt-step.feita .pt-dot{background:var(--ok,#1e8e5a);color:#fff}
+    .pt-step.feita .pt-rot{color:var(--ok,#1e8e5a)}
+    .pt-step.ativa .pt-dot{background:var(--brand,#2563eb);color:#fff;animation:pt-pulsa 1.4s infinite}
+    .pt-step.ativa .pt-rot{color:var(--brand,#2563eb)}
+    .pt-step.erro .pt-dot{background:var(--err,#b3413a);color:#fff}
+    .pt-linha{flex:1;height:3px;background:#e2e8f0;border-radius:2px;min-width:22px;margin-bottom:18px}
+    .pt-linha.feita{background:var(--ok,#1e8e5a)}
+    @keyframes pt-pulsa{0%,100%{box-shadow:0 0 0 0 rgba(37,99,235,.45)}50%{box-shadow:0 0 0 8px rgba(37,99,235,0)}}
+  </style>
+
+  <script>
+  (function(){
+    var box = document.getElementById('pt-timeline');
+    var status = box.dataset.status;
+    if (['Pendente','Transcrevendo','Analisando'].indexOf(status) < 0) return;   // nada a acompanhar
+    var wrap = document.getElementById('pt-barra-wrap');
+    var barra = document.getElementById('pt-barra');
+    var btxt = document.getElementById('pt-barra-txt');
+    function fmt(s){ s=Math.max(0,s|0); var m=(s/60)|0; return m+':'+('0'+(s%60)).slice(-2); }
+    function tick(){
+      fetch(box.dataset.url).then(function(r){ return r.json(); }).then(function(j){
+        if (!j) return;
+        if (j.status !== status) { location.reload(); return; }   // mudou de etapa -> redesenha
+        if (j.status === 'Transcrevendo' && j.pct != null) {
+          wrap.style.display = 'block';
+          barra.style.width = j.pct + '%';
+          btxt.textContent = j.pct + '% transcrito' + (j.dur ? ' — ' + fmt(j.pos) + ' de ' + fmt(j.dur) : '');
+        }
+      }).catch(function(){});
+    }
+    tick();
+    setInterval(tick, 4000);
+  })();
+  </script>
+
   <div class="painel">
     <p class="dica" style="margin:0">
       <strong>Vídeo:</strong> {{ p.video_nome }} · <strong>Origem:</strong> {{ 'SharePoint' if p.video_origem == 'sharepoint' else 'Upload manual' }}
