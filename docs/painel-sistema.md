@@ -254,7 +254,27 @@ Atalhos por papel (Coordenação, Setor Adm, Consultor) para ferramentas de apoi
 - **Importar Levantamento → tudo** (gera Projeto, Check-list e Termo em sequência);
 - **Tempo verbal e ortografia** (Presente→Futuro + correção, offline).
 
-### 5.17 Autocadastro e usuários
+### 5.17 Protocolos de Treinamento (`/protocolos`) — vídeos → base de conhecimento
+Transforma **vídeos de treinamento** em **registros de protocolo** revisáveis:
+- **Entrada:** upload manual na tela OU o **robô da pasta do SharePoint** (sincronizada pelo
+  OneDrive): `PortalImplantacao/Treinamentos/Videos Pendentes` → após processar, o vídeo vai
+  para `Videos Processados` (ou `Videos Com Erro`). Dedup por hash (não processa 2×).
+- **Transcrição local** (faster-whisper, CPU, subprocesso isolado — o áudio não sai da rede),
+  com timestamps por bloco de fala.
+- **Análise IA** (Claude, mesma chave do Config → IA): identifica título, **módulo**, **menu**,
+  resumo, objetivo, quando utilizar, pré-requisitos, **passo a passo numerado**, configurações,
+  dependências, regras de negócio, pontos de atenção e exemplos. **Remove** conversas paralelas
+  e assuntos irrelevantes, **listando-os para auditoria**; nunca inventa (`Módulo a validar`,
+  `Menu não identificado - revisar manualmente`, `Informação não detalhada no vídeo`).
+- **Revisão humana:** tela com o vídeo (player), a transcrição completa, todos os campos
+  editáveis, pendências destacadas, histórico e decisão (**Aprovar e publicar** /
+  **Reprovar / Ajustar** — ADM/Coordenador).
+- **Consulta (base de conhecimento):** filtros por módulo, menu, status, origem e palavra-chave
+  (busca em resumo, passo a passo, configurações, regras e dependências).
+- Config: `PROTOCOLOS_DIR` (pasta raiz), `PROTOCOLOS_POLL_MIN` (robô, padrão 10 min),
+  `PROTOCOLOS_WHISPER` (modelo, padrão `small`).
+
+### 5.18 Autocadastro e usuários
 - **Autocadastro** (`/cadastro`) com **validação por código enviado por e-mail**.
 - **Usuários** (`/usuarios`, só ADM) — gestão de perfis, e-mail e hierarquia.
 - **Código SICLA** obrigatório no cadastro (autocadastro e `/usuarios`, todos os perfis) — é o

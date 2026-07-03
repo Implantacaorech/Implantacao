@@ -21,6 +21,18 @@ import db              # noqa: E402
 import fluxo           # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def _suite_hermetica(monkeypatch):
+    """Isola a suíte de serviços REAIS da máquina (rede): sem envio de e-mail de verdade
+    (Gmail/SMTP) e sem consultar o banco externo de disponibilidade (Oracle). Testes que
+    exercitam esses caminhos re-mockam por cima (monkeypatch do teste prevalece)."""
+    import mailer
+    import disponibilidade as D
+    monkeypatch.setattr(mailer, "enviar", lambda *a, **k: (True, None))
+    monkeypatch.setattr(D, "configurado", lambda cfg=None: False)
+    D._CACHE.clear()
+
+
 @pytest.fixture
 def client():
     A.app.config["TESTING"] = True
@@ -1050,6 +1062,118 @@ def test_projeto_detalhamento_uma_linha_por_topico(client):
     except OSError:
         pass
     client.post("/projetos/%s/excluir" % pid)
+
+
+# ---- Protocolos de treinamento (vídeo -> transcrição -> IA -> revisão) ----
+
+def _video_fake(tmp_path, nome="treino.mp4", conteudo=b"VIDEOFAKE"):
+    p = tmp_path / nome
+    p.write_bytes(conteudo)
+    return str(p)
+
+
+def test_protocolo_criar_dedup_e_decisao(client, tmp_path):
+    """Cria o registro do vídeo, deduplica pelo hash e aprova/reprova com histórico."""
+    v = _video_fake(tmp_path)
+    pid, novo = db.protocolo_criar("treino.mp4", v, "sharepoint", "Tester")
+    assert novo is True
+    pid2, novo2 = db.protocolo_criar("treino.mp4", v, "sharepoint", "Tester")
+    assert pid2 == pid and novo2 is False                 # dedup por hash
+    assert db.protocolo_atualizar_status(pid, "Em revisão", autor="Tester")
+    assert db.protocolo_decidir(pid, True, "Chefe")
+    p = db.protocolo_get(pid)
+    assert p["status"] == "Aprovado" and p["aprovador"] == "Chefe" and p["aprovado_em"]
+    assert "APROVADO" in p["historico"]
+    with db.Session() as s:
+        s.delete(s.get(db.Protocolo, pid)); s.commit()
+
+
+def test_protocolo_pipeline_mock(client, tmp_path, monkeypatch):
+    """Pipeline completo (mocks): transcreve -> analisa -> Em revisão, campos preenchidos."""
+    import protocolos as P
+    import transcritor, protocolo_ia
+    v = _video_fake(tmp_path, "rotina_fiscal.mp4")
+    monkeypatch.setattr(transcritor, "transcrever_isolado",
+                        lambda path, timeout=0: {"texto": "[0:05] Configurando a regra fiscal.",
+                                                 "duracao": 65, "idioma": "pt"})
+    monkeypatch.setattr(protocolo_ia, "analisar", lambda t, n="": (
+        {"titulo": "Configuração de Regra Fiscal", "modulo": "Fiscal", "menu": "2.6-R",
+         "assunto": "Regras de tributação", "resumo": "Mostra a configuração.",
+         "objetivo": "Configurar regra.", "quando_utilizar": "Na implantação.",
+         "pre_requisitos": "- Cadastro de produtos", "passo_a_passo": "1. Acessar o menu 2.6-R",
+         "configuracoes": "- Regra padrão", "dependencias": "- Fiscal x Estoque",
+         "regras_negocio": "- NCM define aliquota", "pontos_atencao": "- Conferir CFOP",
+         "exemplos": "Informação não detalhada no vídeo",
+         "assuntos_removidos": "- Conversa sobre agenda interna",
+         "pendencias": "- Menu citado rapidamente"}, "{json bruto}"))
+    pid, _ = db.protocolo_criar("rotina_fiscal.mp4", v, "upload", "Tester")
+    ok, msg = P.processar(pid, "Tester")
+    assert ok, msg
+    p = db.protocolo_get(pid)
+    assert p["status"] == "Em revisão" and p["modulo"] == "Fiscal" and p["menu"] == "2.6-R"
+    assert p["duracao_seg"] == 65 and "regra fiscal" in p["transcricao"].lower()
+    assert "agenda interna" in p["assuntos_removidos"]     # auditoria do removido
+    # upload NÃO move o arquivo (segue no lugar)
+    assert os.path.exists(v)
+    with db.Session() as s:
+        s.delete(s.get(db.Protocolo, pid)); s.commit()
+
+
+def test_protocolo_pipeline_erro(client, tmp_path, monkeypatch):
+    """Falha na transcrição -> status Erro com log; vídeo de upload não é movido."""
+    import protocolos as P
+    import transcritor
+    v = _video_fake(tmp_path, "corrompido.mp4")
+    monkeypatch.setattr(transcritor, "transcrever_isolado",
+                        lambda path, timeout=0: (_ for _ in ()).throw(RuntimeError("audio ilegivel")))
+    pid, _ = db.protocolo_criar("corrompido.mp4", v, "upload", "Tester")
+    ok, _msg = P.processar(pid, "Tester")
+    assert ok is False
+    p = db.protocolo_get(pid)
+    assert p["status"] == "Erro" and "audio ilegivel" in p["log_erro"]
+    with db.Session() as s:
+        s.delete(s.get(db.Protocolo, pid)); s.commit()
+
+
+def test_protocolo_varredura_pasta(client, tmp_path, monkeypatch):
+    """Robô: varre 'Videos Pendentes', registra vídeos novos e ignora repetidos/extensões."""
+    import protocolos as P
+    raiz = tmp_path / "Treinamentos"
+    (raiz / "Videos Pendentes").mkdir(parents=True)
+    (raiz / "Videos Pendentes" / "aula1.mp4").write_bytes(b"AULA1")
+    (raiz / "Videos Pendentes" / "notas.txt").write_text("nao é video")
+    monkeypatch.setenv("PROTOCOLOS_DIR", str(raiz))
+    assert P.configurado()
+    novos = P.varrer_pasta("robô")
+    assert len(novos) == 1
+    assert P.varrer_pasta("robô") == []                    # 2ª varredura: nada novo
+    p = db.protocolo_get(novos[0])
+    assert p["video_origem"] == "sharepoint" and p["status"] == "Pendente"
+    with db.Session() as s:
+        s.delete(s.get(db.Protocolo, novos[0])); s.commit()
+
+
+def test_protocolo_rotas_e_revisao(client, tmp_path):
+    """Telas: consulta renderiza; revisão mostra o protocolo; salvar edição e aprovar."""
+    v = _video_fake(tmp_path, "tela.mp4")
+    pid, _ = db.protocolo_criar("tela.mp4", v, "upload", "Tester")
+    db.protocolo_atualizar_status(pid, "Em revisão")
+    r = client.get("/protocolos")
+    assert r.status_code == 200 and "Protocolos de Treinamento" in r.get_data(as_text=True)
+    r = client.get("/protocolos?modulo=Fiscal&q=regra")     # filtros não quebram
+    assert r.status_code == 200
+    r = client.get("/protocolos/%s" % pid)
+    assert r.status_code == 200 and "tela.mp4" in r.get_data(as_text=True)
+    r = client.post("/protocolos/%s/salvar" % pid,
+                    data={"titulo": "Título Editado", "modulo": "Estoque", "menu": "14-I"})
+    assert r.status_code == 302
+    p = db.protocolo_get(pid)
+    assert p["titulo"] == "Título Editado" and p["modulo"] == "Estoque"
+    r = client.post("/protocolos/%s/aprovar" % pid)
+    assert r.status_code == 302 and db.protocolo_get(pid)["status"] == "Aprovado"
+    assert client.get("/protocolos/999999").status_code == 404
+    with db.Session() as s:
+        s.delete(s.get(db.Protocolo, pid)); s.commit()
 
 
 def test_doc_ver_espelho_pdf(client, monkeypatch, tmp_path):

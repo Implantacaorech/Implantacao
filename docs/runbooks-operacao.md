@@ -99,6 +99,14 @@ Threads de fundo que ligam sozinhas no modo servidor:
 - **Digest diário** (`_agendador_digest`): envia o resumo na hora `DIGEST_HORA` (padrão 8h) aos
   destinatários `DIGEST_PARA`/`digest_para.txt`. Envio manual: botão na tela **Coordenação** (`/digest/enviar`).
 - **Robô da caixa** (`_agendador_caixa`): seção 4.
+- **Robô de protocolos** (`protocolos.agendador`): a cada `PROTOCOLOS_POLL_MIN` min (padrão 10),
+  varre `Treinamentos/Videos Pendentes` (pasta do SharePoint sincronizada pelo OneDrive),
+  registra vídeos novos (dedup por hash), **transcreve localmente** (faster-whisper, subprocesso)
+  e **analisa com a IA** (chave do Config → IA) → status *Em revisão*; move o vídeo para
+  `Videos Processados` ou `Videos Com Erro`. Pasta raiz: `PROTOCOLOS_DIR`
+  (padrão `C:\SEG-EVE\OneDrive - rech.com.br\PortalImplantacao\Treinamentos`).
+  **Não processa?** confira: a pasta existe/sincroniza; a chave de IA está configurada;
+  o status/erro aparecem na tela do protocolo (`/protocolos`). Transcrição de 1h ≈ 15–30 min (CPU).
 - Não dispararam? confirme que **há destinatários/IMAP configurado** e que o processo subiu em **modo servidor** (não em `flask run` de dev).
 
 ## 8. Trocar a senha padrão do Postgres

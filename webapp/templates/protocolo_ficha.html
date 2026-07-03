@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block titulo %}Protocolo — {{ p.titulo or p.video_nome }}{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('protocolos_lista') }}">Protocolos</a> › Revisão</div>{% endblock %}
+{% block conteudo %}
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+    <h1 style="margin:0">🎬 {{ p.titulo or p.video_nome }}</h1>
+    <span style="background:#eef2ff;color:#1f4e78;padding:3px 10px;border-radius:999px;font-size:.78rem;font-weight:700">{{ p.status }}</span>
+    <span style="flex:1"></span>
+    <a class="btn" href="{{ url_for('protocolos_lista') }}">← Protocolos</a>
+  </div>
+  {% if salvo %}<div class="resultado ok" style="padding:8px 14px">✅ Salvo.</div>{% endif %}
+  {% if aviso %}<div class="resultado" style="padding:8px 14px">ℹ️ {{ aviso }}</div>{% endif %}
+  {% if p.status == 'Erro' and p.log_erro %}
+  <div class="resultado erro" style="padding:8px 14px">⚠️ <strong>Erro no processamento:</strong> {{ p.log_erro }}</div>
+  {% endif %}
+
+  <div class="painel">
+    <p class="dica" style="margin:0">
+      <strong>Vídeo:</strong> {{ p.video_nome }} · <strong>Origem:</strong> {{ 'SharePoint' if p.video_origem == 'sharepoint' else 'Upload manual' }}
+      · <strong>Registrado:</strong> {{ p.criado_em.strftime('%d/%m/%Y %H:%M') if p.criado_em else '—' }}
+      {% if p.processado_em %} · <strong>Processado:</strong> {{ p.processado_em.strftime('%d/%m/%Y %H:%M') }}{% endif %}
+      {% if p.duracao_seg %} · <strong>Duração:</strong> {{ '%d:%02d' % (p.duracao_seg // 60, p.duracao_seg % 60) }}{% endif %}
+      {% if p.aprovado_em %} · <strong>Aprovado:</strong> {{ p.aprovado_em.strftime('%d/%m/%Y') }} por {{ p.aprovador }}{% endif %}
+    </p>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <form method="post" action="{{ url_for('protocolo_processar', pid=p.id) }}"
+            onsubmit="return confirm('Reprocessar o vídeo? A transcrição e a análise da IA serão refeitas (a edição manual será sobrescrita).')">
+        <button class="btn" type="submit">🔁 {{ 'Processar agora' if p.status in ('Pendente','Erro') else 'Reprocessar' }}</button>
+      </form>
+      {% if pode_aprovar and p.status == 'Em revisão' %}
+      <form method="post" action="{{ url_for('protocolo_aprovar', pid=p.id) }}">
+        <button class="btn primario" type="submit">✅ Aprovar e publicar</button>
+      </form>
+      <form method="post" action="{{ url_for('protocolo_reprovar', pid=p.id) }}">
+        <button class="btn perigo" type="submit">✖ Reprovar / Ajustar</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="painel">
+    <h3 style="color:var(--navy);margin-top:0">Vídeo original</h3>
+    <video controls preload="metadata" style="width:100%;max-height:420px;background:#000;border-radius:6px"
+           src="{{ url_for('protocolo_video', pid=p.id) }}"></video>
+  </div>
+
+  {% if p.pendencias %}
+  <div class="painel" style="border-left:3px solid var(--warn,#c77a11)">
+    <h3 style="color:var(--navy);margin-top:0">⚠ Pendências de validação</h3>
+    <pre style="white-space:pre-wrap;font-family:inherit;margin:0">{{ p.pendencias }}</pre>
+  </div>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('protocolo_salvar', pid=p.id) }}" class="painel">
+    <h3 style="color:var(--navy);margin-top:0">Registro do protocolo (edite antes de aprovar)</h3>
+    <div class="grade2">
+      <label class="campo"><span>Título</span><input name="titulo" value="{{ p.titulo }}"></label>
+      <label class="campo"><span>Assunto principal</span><input name="assunto" value="{{ p.assunto }}"></label>
+      <label class="campo"><span>Módulo</span>
+        <select name="modulo">{% for m in modulos %}<option {{ 'selected' if p.modulo == m }}>{{ m }}</option>{% endfor %}</select></label>
+      <label class="campo"><span>Menu</span><input name="menu" value="{{ p.menu }}"></label>
+    </div>
+    {% for c, rotulo, linhas in [
+        ('resumo', 'Resumo do treinamento', 4), ('objetivo', 'Objetivo da rotina', 3),
+        ('quando_utilizar', 'Quando utilizar', 3), ('pre_requisitos', 'Pré-requisitos', 4),
+        ('passo_a_passo', 'Passo a passo', 8), ('configuracoes', 'Configurações envolvidas', 4),
+        ('dependencias', 'Dependências', 3), ('regras_negocio', 'Regras de negócio', 4),
+        ('pontos_atencao', 'Pontos de atenção', 3), ('exemplos', 'Exemplos citados', 3),
+        ('assuntos_removidos', 'Assuntos removidos (auditoria)', 3),
+        ('pendencias', 'Pendências de validação', 3)] %}
+    <label class="campo"><span>{{ rotulo }}</span>
+      <textarea name="{{ c }}" rows="{{ linhas }}">{{ p[c] }}</textarea></label>
+    {% endfor %}
+    <button class="btn primario" type="submit">💾 Salvar edição</button>
+  </form>
+
+  <details class="painel">
+    <summary style="cursor:pointer;font-weight:700;color:var(--navy)">Transcrição completa (com tempos)</summary>
+    <pre style="white-space:pre-wrap;font-family:inherit;max-height:420px;overflow:auto;margin:8px 0 0">{{ p.transcricao or '(ainda não transcrito)' }}</pre>
+  </details>
+
+  <details class="painel">
+    <summary style="cursor:pointer;font-weight:700;color:var(--navy)">Histórico</summary>
+    <pre style="white-space:pre-wrap;font-family:inherit;margin:8px 0 0">{{ p.historico }}</pre>
+  </details>
+{% endblock %}

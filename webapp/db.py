@@ -1755,6 +1755,165 @@ def doc_conteudo_salvar(projeto_id, doc, campos, form):
         s.commit()
 
 
+# --- Protocolos de treinamento (vídeo -> transcrição -> IA -> registro revisável) ---
+PROTO_STATUS = ["Pendente", "Transcrevendo", "Analisando", "Em revisão",
+                "Aprovado", "Reprovado / Ajustar", "Erro"]
+PROTO_MODULOS = ["Fiscal", "Estoque", "Financeiro", "Comercial", "Produção", "Contábil",
+                 "Compras", "WMS", "Folha de Pagamento", "Implantação", "Consultoria",
+                 "Módulo a validar"]
+# Campos de conteúdo editáveis na tela de revisão (nome da coluna = nome do input).
+PROTO_CAMPOS_TEXTO = ["titulo", "modulo", "menu", "assunto", "resumo", "objetivo",
+                      "quando_utilizar", "pre_requisitos", "passo_a_passo", "configuracoes",
+                      "dependencias", "regras_negocio", "pontos_atencao", "exemplos",
+                      "assuntos_removidos", "pendencias"]
+
+
+class Protocolo(Base):
+    """Registro de protocolo gerado a partir de um vídeo de treinamento (transcrito e
+    analisado pela IA), com revisão humana antes da aprovação."""
+    __tablename__ = "protocolos"
+    id = Column(Integer, primary_key=True)
+    titulo = Column(String(255), default="")
+    modulo = Column(String(60), default="Módulo a validar")
+    menu = Column(String(120), default="Menu não identificado - revisar manualmente")
+    assunto = Column(String(255), default="")
+    resumo = Column(Text, default="")
+    objetivo = Column(Text, default="")
+    quando_utilizar = Column(Text, default="")
+    pre_requisitos = Column(Text, default="")
+    passo_a_passo = Column(Text, default="")
+    configuracoes = Column(Text, default="")
+    dependencias = Column(Text, default="")
+    regras_negocio = Column(Text, default="")
+    pontos_atencao = Column(Text, default="")
+    exemplos = Column(Text, default="")
+    assuntos_removidos = Column(Text, default="")    # auditoria do que a IA descartou
+    pendencias = Column(Text, default="")            # pontos p/ validação humana
+    video_nome = Column(String(255), default="")
+    video_caminho = Column(Text, default="")
+    video_origem = Column(String(20), default="sharepoint")   # sharepoint | upload
+    video_hash = Column(String(40), default="", index=True)   # dedup
+    duracao_seg = Column(Integer, default=0)
+    transcricao = Column(Text, default="")            # original, com timestamps
+    texto_ia = Column(Text, default="")               # resposta bruta da IA (auditoria)
+    status = Column(String(30), default="Pendente")
+    log_erro = Column(Text, default="")
+    historico = Column(Text, default="")              # linhas "data | autor | ação"
+    responsavel = Column(String(120), default="")
+    aprovador = Column(String(120), default="")
+    criado_em = Column(DateTime, default=datetime.now)
+    processado_em = Column(DateTime)
+    aprovado_em = Column(DateTime)
+
+
+def protocolo_hash(path):
+    """Hash rápido p/ dedup: nome + tamanho + primeiro 1 MB do arquivo."""
+    import hashlib
+    h = hashlib.md5()
+    h.update(os.path.basename(path).encode("utf-8", "ignore"))
+    try:
+        h.update(str(os.path.getsize(path)).encode())
+        with open(path, "rb") as f:
+            h.update(f.read(1024 * 1024))
+    except OSError:
+        pass
+    return h.hexdigest()
+
+
+def _proto_hist(p, acao, autor=""):
+    linha = "%s | %s | %s" % (datetime.now().strftime("%d/%m/%Y %H:%M"), autor or "sistema", acao)
+    p.historico = ((p.historico or "") + "\n" + linha).strip()
+
+
+def protocolo_criar(video_nome, caminho, origem, responsavel=""):
+    """Cria o registro do vídeo (status Pendente). Dedup por hash: devolve
+    (id, novo?) — se o mesmo vídeo já foi registrado, retorna o existente."""
+    vh = protocolo_hash(caminho)
+    with Session() as s:
+        ja = s.query(Protocolo).filter_by(video_hash=vh).first()
+        if ja:
+            return ja.id, False
+        p = Protocolo(video_nome=video_nome, video_caminho=caminho, video_origem=origem,
+                      video_hash=vh, responsavel=responsavel)
+        _proto_hist(p, "Vídeo registrado (%s)." % origem, responsavel)
+        s.add(p)
+        s.commit()
+        return p.id, True
+
+
+def protocolo_get(pid):
+    with Session() as s:
+        p = s.get(Protocolo, pid)
+        return to_dict(p) if p else None
+
+
+def protocolos_listar(modulo="", menu="", status="", q="", origem=""):
+    """Consulta da base de conhecimento, com filtros; mais recentes primeiro."""
+    from sqlalchemy import or_
+    with Session() as s:
+        qry = s.query(Protocolo)
+        if modulo:
+            qry = qry.filter(Protocolo.modulo == modulo)
+        if status:
+            qry = qry.filter(Protocolo.status == status)
+        if origem:
+            qry = qry.filter(Protocolo.video_origem == origem)
+        if menu:
+            qry = qry.filter(Protocolo.menu.ilike("%" + menu + "%"))
+        if q:
+            like = "%" + q + "%"
+            qry = qry.filter(or_(Protocolo.titulo.ilike(like), Protocolo.assunto.ilike(like),
+                                 Protocolo.resumo.ilike(like), Protocolo.passo_a_passo.ilike(like),
+                                 Protocolo.configuracoes.ilike(like), Protocolo.regras_negocio.ilike(like),
+                                 Protocolo.dependencias.ilike(like)))
+        return [to_dict(x) for x in qry.order_by(Protocolo.criado_em.desc()).all()]
+
+
+def protocolo_atualizar_status(pid, status, erro=None, autor=""):
+    with Session() as s:
+        p = s.get(Protocolo, pid)
+        if not p:
+            return False
+        p.status = status
+        if erro is not None:
+            p.log_erro = str(erro)[:2000]
+        if status == "Em revisão":
+            p.processado_em = datetime.now()
+        _proto_hist(p, "Status: %s%s" % (status, (" — " + str(erro)[:120]) if erro else ""), autor)
+        s.commit()
+        return True
+
+
+def protocolo_salvar_edicao(pid, form, autor=""):
+    """Salva a edição humana da tela de revisão (campos de conteúdo)."""
+    with Session() as s:
+        p = s.get(Protocolo, pid)
+        if not p:
+            return False
+        for c in PROTO_CAMPOS_TEXTO:
+            if c in form:
+                setattr(p, c, (form.get(c) or "").strip())
+        _proto_hist(p, "Edição salva na revisão.", autor)
+        s.commit()
+        return True
+
+
+def protocolo_decidir(pid, aprovado, autor=""):
+    """Aprova (publica na base) ou reprova (volta p/ ajuste) o protocolo."""
+    with Session() as s:
+        p = s.get(Protocolo, pid)
+        if not p:
+            return False
+        if aprovado:
+            p.status, p.aprovador, p.aprovado_em = "Aprovado", autor, datetime.now()
+            _proto_hist(p, "APROVADO — publicado na base de conhecimento.", autor)
+        else:
+            p.status = "Reprovado / Ajustar"
+            _proto_hist(p, "Reprovado — devolvido para ajuste.", autor)
+        s.commit()
+        return True
+
+
 def _auto_migrar():
     """Migração leve aditiva: cria colunas novas que faltarem (SQLite e Postgres) e os
     ÍNDICES declarados (index=True) que ainda não existirem em tabelas antigas — o

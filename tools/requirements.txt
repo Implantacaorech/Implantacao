@@ -12,3 +12,4 @@ google-auth-oauthlib>=1.0 # fluxo de autorização OAuth do Gmail
 httpx>=0.27               # chamadas HTTPS à API do Gmail
 
 pywin32>=306 ; sys_platform == "win32"   # Word COM p/ pré-visualização fiel (docx->PDF)
+faster-whisper>=1.0   # transcricao local de videos (Protocolos de Treinamento)

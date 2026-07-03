@@ -78,6 +78,10 @@
           <svg class="svgi" aria-hidden="true"><use href="#ic-folder"/></svg>Carteira
           <span class="side-tip">Projetos</span>
         </a>
+        <a class="side-link {{ 'on' if request.endpoint in ('protocolos_lista','protocolo_revisar') }}" href="{{ url_for('protocolos_lista') }}">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-bulb"/></svg>Protocolos
+          <span class="side-tip">Vídeos → conhecimento</span>
+        </a>
         {% if pode_ver('gestao') %}
         <div class="side-grp">Gestão</div>
         <a class="side-link {{ 'on' if request.endpoint=='coordenacao' }}" href="{{ url_for('coordenacao') }}">

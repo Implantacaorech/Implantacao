@@ -4,7 +4,7 @@
 > Mantido acumulativo: a cada nova função/assunto entregue, esta lista é atualizada.
 > Registre a mudança no rodapé (**Atualizações**).
 >
-> Última atualização: **2026-07-02** (desempenho e operação).
+> Última atualização: **2026-07-02** (Protocolos de Treinamento por vídeo + desempenho).
 
 ---
 
@@ -49,15 +49,19 @@ O Painel de Implantação é uma aplicação web interna que centraliza, control
 **9. Gestão e indicadores**
 - Painel de Coordenação (indicadores e alertas), Atividade (feed e métricas de uso) e Monitoramento operacional por setor (saúde, carga por colaborador e próximas entregas).
 
-**10. Cadastros e configurações**
+**10. Protocolos de Treinamento (vídeos → base de conhecimento)**
+- Vídeos de treinamento (upload manual ou capturados automaticamente da pasta do SharePoint) são **transcritos localmente** (o áudio não sai da rede) e **analisados por IA**, gerando um registro de protocolo estruturado: título, módulo, menu, resumo, objetivo, quando utilizar, pré-requisitos, passo a passo numerado, configurações, dependências, regras de negócio, pontos de atenção e exemplos — com **remoção auditada** de assuntos irrelevantes e **sem inventar** informação.
+- Revisão humana obrigatória (vídeo + transcrição + campos editáveis) antes da aprovação; consulta com filtros (módulo, menu, status, palavra-chave) forma a base de conhecimento.
+
+**11. Cadastros e configurações**
 - Cadastros de referência (Check-list, Índice de Tópicos, Modelos de Documentos com versões).
 - Configurações de envio/recebimento (SMTP, IMAP, Gmail), de IA, de disponibilidade e de modelos de e-mail.
 
-**11. Segurança e acesso**
+**12. Segurança e acesso**
 - Login por usuário com 5 perfis (ADM, Coordenador, Administrativo, GCI, Consultor) e permissões aplicadas também no backend; autocadastro com validação por e-mail; senha mestra de contingência; download de arquivos restrito a diretórios autorizados; filtro de visão por perfil.
 - **Código SICLA obrigatório** no cadastro de usuário (todos os perfis) — elo do usuário com a sua agenda no SICLA.
 
-**12. Arquitetura**
+**13. Arquitetura**
 - Banco de dados agnóstico (SQLite ou PostgreSQL) com migração automática de schema; servidor de produção (waitress) na rede interna; cobertura por testes automatizados.
 
 **Parecer:** o sistema já entrega, de ponta a ponta, o controle e a padronização do processo de implantação, com automações que reduzem retrabalho e aumentam a rastreabilidade. Evoluções previstas (dependentes de liberação de acesso ao SICLA/SIGER e de chave de IA): integração com SICLA/RNS, pipeline de conversão e gate de virada, disparadores de encerramento e copiloto de IA ao consultor.
@@ -74,6 +78,10 @@ O Painel de Implantação centraliza e automatiza a implantação do SIGER® por
 
 > Ao acrescentar um assunto/função novo ao parecer, registre aqui (data + o que entrou).
 
+- **2026-07-02** — **Protocolos de Treinamento** (novo item 10): vídeos (upload ou pasta do
+  SharePoint via robô) transcritos localmente (faster-whisper) e analisados por IA, gerando
+  registro estruturado por módulo/menu com remoção auditada de assuntos irrelevantes, revisão
+  humana obrigatória e consulta como base de conhecimento.
 - **2026-06-29** — Versão inicial consolidada a partir da documentação do sistema
   ([painel-sistema.md](painel-sistema.md)). Cobre as 12 áreas de função atuais.
 - **2026-06-29** — Vínculo usuário↔SICLA: Código SICLA obrigatório no cadastro (todos os

@@ -895,6 +895,8 @@ routes_fluxo.register(app, _autor=_autor, _notificar_evento=_notificar_evento,
                       pode_ver=pode_ver, ALLOWED_DIRS=ALLOWED_DIRS)
 import routes_painel  # noqa: E402  (telas-painel: /, /coordenacao, /atividade, /monitoramento)
 routes_painel.register(app, _so_meus=_so_meus, pode_ver=pode_ver)
+import routes_protocolos  # noqa: E402  (vídeos de treinamento -> protocolos revisáveis)
+routes_protocolos.register(app, _autor=_autor, _perfil=_perfil)
 
 
 if __name__ == "__main__":
@@ -911,6 +913,14 @@ if __name__ == "__main__":
         if _imap.configurado():
             threading.Thread(target=_agendador_caixa, daemon=True).start()
             logging.info("Robô da caixa ativo (IMAP_POLL_MIN=%s).", os.environ.get("IMAP_POLL_MIN", "10"))
+    except Exception:
+        pass
+    try:
+        import protocolos as _prot
+        if _prot.configurado():
+            threading.Thread(target=_prot.agendador, daemon=True).start()
+            logging.info("Robô de protocolos ativo (PROTOCOLOS_POLL_MIN=%s).",
+                         os.environ.get("PROTOCOLOS_POLL_MIN", "10"))
     except Exception:
         pass
     try:
