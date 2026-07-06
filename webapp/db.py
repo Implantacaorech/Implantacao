@@ -197,7 +197,9 @@ def _db_url():
     return "sqlite:///" + path
 
 
-engine = create_engine(_db_url(), future=True)
+# pool_pre_ping valida a conexão antes de usar — sem ele, uma queda/restart do Postgres
+# deixa conexões mortas no pool e as requisições seguintes falham até reiniciar o app.
+engine = create_engine(_db_url(), future=True, pool_pre_ping=True)
 Session = sessionmaker(bind=engine, future=True)
 Base = declarative_base()
 

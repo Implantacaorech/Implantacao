@@ -4,6 +4,7 @@ e Modelos de Documentos (layouts + versões + campos). Separadas do app.py (regi
 import os
 
 import db
+import _common as C
 from flask import request, render_template, redirect, url_for, abort, send_file
 
 # Injetados por register():
@@ -148,8 +149,7 @@ def cad_modelo_baixar(mid, vid=None):
     path = db.modelo_documento_arquivo_path(mid, vid)
     if not modelo or not path or not os.path.exists(path):
         abort(404)
-    store = os.path.abspath(db._modelos_doc_store())
-    if not os.path.abspath(path).startswith(store):
+    if not C.path_dentro(path, db._modelos_doc_store()):
         abort(403)
     nome = "%s_%s.%s" % (modelo["slug"], (("v%d" % vid) if vid else "vigente"), modelo["tipo"])
     return send_file(path, as_attachment=True, download_name=nome)

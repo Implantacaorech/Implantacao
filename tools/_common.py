@@ -54,6 +54,20 @@ def ensure_out():
     return OUT
 
 
+def path_dentro(path, *raizes):
+    """True se `path` está DENTRO de uma das raízes (comparação por componente —
+    startswith puro deixaria C:\\Dados casar com C:\\DadosXyz)."""
+    try:
+        p = os.path.normcase(os.path.abspath(path))
+        for r in raizes:
+            r = os.path.normcase(os.path.abspath(r))
+            if p == r or p.startswith(r.rstrip("\\/") + os.sep):
+                return True
+    except (TypeError, ValueError):
+        pass
+    return False
+
+
 def today():
     return datetime.date.today().strftime("%d/%m/%Y")
 

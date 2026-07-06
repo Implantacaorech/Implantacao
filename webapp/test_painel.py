@@ -1146,6 +1146,8 @@ def test_protocolo_varredura_pasta(client, tmp_path, monkeypatch):
     (raiz / "Videos Pendentes" / "notas.txt").write_text("nao é video")
     monkeypatch.setenv("PROTOCOLOS_DIR", str(raiz))
     assert P.configurado()
+    assert P.varrer_pasta("robô") == []               # recém-copiado = instável, aguarda
+    monkeypatch.setattr(P, "ESTAVEL_SEG", 0)          # simula arquivo já estável
     novos = P.varrer_pasta("robô")
     assert len(novos) == 1
     assert P.varrer_pasta("robô") == []                    # 2ª varredura: nada novo
@@ -1185,6 +1187,28 @@ def test_protocolo_erro_amigavel():
     assert "Chave da API" in P._erro_amigavel(RuntimeError("authentication_error: invalid x-api-key"))
     assert "sobrecarregada" in P._erro_amigavel(RuntimeError("Error code: 529 - overloaded_error"))
     assert "ValueError" in P._erro_amigavel(ValueError("outra coisa"))
+
+
+# ---- Endurecimento (auditoria 2026-07-06) ----
+
+def test_path_dentro_sem_bypass_de_prefixo(tmp_path):
+    """Validação de diretório por componente: C:\\Dados não pode casar com C:\\DadosXyz."""
+    import _common as C
+    raiz = str(tmp_path / "Dados")
+    quase = str(tmp_path / "DadosSecretos" / "x.txt")
+    dentro = str(tmp_path / "Dados" / "sub" / "x.txt")
+    assert C.path_dentro(dentro, raiz)
+    assert C.path_dentro(raiz, raiz)                   # a própria raiz
+    assert not C.path_dentro(quase, raiz)              # prefixo parecido NÃO passa
+    assert not C.path_dentro("", raiz) and not C.path_dentro(None, raiz)
+
+
+def test_config_endurecida(client):
+    """Teto de upload e cookie de sessão endurecido ficam ativos."""
+    assert A.app.config["MAX_CONTENT_LENGTH"] == 4096 * 1024 * 1024
+    assert A.app.config["SESSION_COOKIE_SAMESITE"] == "Lax"
+    assert A.app.config["SESSION_COOKIE_HTTPONLY"] is True
+    assert db.engine.pool._pre_ping is True            # conexões mortas não derrubam requests
 
 
 def test_protocolo_aceita_audio(client, tmp_path):

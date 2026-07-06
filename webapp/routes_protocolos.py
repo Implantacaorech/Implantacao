@@ -116,8 +116,7 @@ def protocolo_video(pid):
     if not p:
         abort(404)
     path = os.path.abspath(p.get("video_caminho") or "")
-    permitidos = [os.path.abspath(P.pasta_raiz()), os.path.abspath(C.DATA_WRITE)]
-    if not os.path.exists(path) or not any(path.startswith(x) for x in permitidos):
+    if not os.path.exists(path) or not C.path_dentro(path, P.pasta_raiz(), C.DATA_WRITE):
         abort(403)
     return send_file(path, conditional=True)
 

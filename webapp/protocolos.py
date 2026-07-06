@@ -65,6 +65,19 @@ def progresso(pid):
     return out
 
 
+ESTAVEL_SEG = 90     # arquivo precisa estar sem modificação há N s (OneDrive ainda copiando)
+
+
+def _arquivo_estavel(caminho):
+    """Evita registrar arquivo AINDA SINCRONIZANDO (OneDrive/cópia em andamento):
+    transcreveria pela metade e o hash parcial duplicaria o registro depois."""
+    import time
+    try:
+        return (time.time() - os.path.getmtime(caminho)) >= ESTAVEL_SEG
+    except OSError:
+        return False
+
+
 def varrer_pasta(responsavel="robô"):
     """Registra (status Pendente) os vídeos novos da pasta 'Videos Pendentes'.
     Dedup por hash — o mesmo vídeo não é registrado duas vezes. Devolve os ids novos."""
@@ -76,6 +89,8 @@ def varrer_pasta(responsavel="robô"):
         if not nome.lower().endswith(EXTS):
             continue
         caminho = os.path.join(pend, nome)
+        if not _arquivo_estavel(caminho):
+            continue                                  # pega na próxima varredura
         try:
             pid, novo = db.protocolo_criar(nome, caminho, "sharepoint", responsavel)
         except Exception:

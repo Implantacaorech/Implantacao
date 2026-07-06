@@ -58,6 +58,11 @@ def _carrega_secret():
 
 
 app.secret_key = _carrega_secret()
+# Teto de upload (vídeos de treinamento são grandes): PAINEL_MAX_UPLOAD_MB, padrão 4 GB.
+app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("PAINEL_MAX_UPLOAD_MB", "4096")) * 1024 * 1024
+# Cookie de sessão: SameSite mitiga CSRF vindo de outros sites (app é POST sem token).
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
 
 UPLOADS = os.path.join(C.DATA_WRITE if FROZEN else HERE, "_uploads")
 os.makedirs(UPLOADS, exist_ok=True)
@@ -812,8 +817,7 @@ def projeto_nota(pid):
 @app.route("/download")
 def download():
     path = os.path.abspath(request.args.get("path", ""))
-    if not os.path.exists(path) or not any(
-            path.startswith(os.path.abspath(d)) for d in ALLOWED_DIRS):
+    if not os.path.exists(path) or not C.path_dentro(path, *ALLOWED_DIRS):
         abort(403)
     return send_file(path, as_attachment=True)
 
