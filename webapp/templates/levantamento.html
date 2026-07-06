@@ -7,6 +7,7 @@
   <a href="{{ url_for('projeto_ficha', pid=pid) }}">{{ p.cliente }}</a>
   <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Levantamento</div>{% endblock %}
 {% block conteudo %}
+{% include "_ctx_projeto.html" %}
   <h1 style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
     <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-compass"/></svg>
     Levantamento — {{ p.cliente }}

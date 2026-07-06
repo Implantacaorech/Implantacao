@@ -7,6 +7,7 @@
   <a href="{{ url_for('projeto_ficha', pid=pid) }}">{{ p.cliente }}</a>
   <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Gerar Projeto</div>{% endblock %}
 {% block conteudo %}
+{% include "_ctx_projeto.html" %}
   <h1 style="display:flex;align-items:center;gap:10px">
     <svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-file"/></svg>
     Gerar Projeto — {{ p.cliente }}

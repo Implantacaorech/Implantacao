@@ -2,6 +2,7 @@
 {% block titulo %}Designar — {{ p.cliente }}{% endblock %}
 {% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a><svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg><a href="{{ url_for('projetos') }}">Projetos</a><svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg><a href="{{ url_for('projeto_ficha', pid=p.id) }}">{{ p.cliente }}</a><svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg>Designar</div>{% endblock %}
 {% block conteudo %}
+{% include "_ctx_projeto.html" %}
   <h1 style="display:flex;align-items:center;gap:10px"><svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-users"/></svg> Designar responsáveis — {{ p.cliente }}</h1>
   <p class="sub">Defina o GCI do Levantamento e os Consultores por módulo. Os designados são notificados por e-mail.</p>
   <form method="post" class="painel">

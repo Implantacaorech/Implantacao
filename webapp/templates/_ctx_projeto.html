@@ -1,0 +1,15 @@
+{# Faixa de contexto do projeto — presente em TODAS as subtelas do fluxo, para o
+   usuário nunca perder de vista o cliente, a fase e o caminho de volta à ficha. #}
+{% if p %}
+{% set _fase_cls = {'Agendamento':'fase-0','Levantamento':'fase-1','Projeto':'fase-2','Designação':'fase-2','Cronograma e Check-list':'fase-3','Encerramento':'fase-4'} %}
+<div class="painel" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;margin-bottom:12px">
+  <a href="{{ url_for('projeto_ficha', pid=p.id) }}" class="btn" style="flex:none" title="Voltar à ficha do projeto">←</a>
+  <strong style="color:var(--navy);font-size:1.02rem">{{ p.cliente }}</strong>
+  {% if p.etapa %}
+  <span class="workspace-header fase-badge {{ _fase_cls.get(p.etapa,'') }}" style="display:inline-flex;padding:3px 10px;font-size:.72rem">{{ p.etapa }}</span>
+  {% endif %}
+  {% if p.situacao %}<span class="badge-sit" data-s="{{ p.situacao }}">{{ p.situacao }}</span>{% endif %}
+  <span style="flex:1"></span>
+  <a class="btn" href="{{ url_for('projeto_ficha', pid=p.id) }}">Ficha do projeto</a>
+</div>
+{% endif %}

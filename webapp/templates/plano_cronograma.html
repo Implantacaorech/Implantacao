@@ -2,6 +2,7 @@
 {% block titulo %}Cronograma — {{ p.cliente }}{% endblock %}
 {% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> <svg class="svgi" style="width:12px;height:12px;color:var(--faint)" aria-hidden="true"><use href="#ic-arrow-right"/></svg> <a href="{{ url_for('projetos') }}">Carteira</a> <svg class="svgi" style="width:12px;height:12px;color:var(--faint)" aria-hidden="true"><use href="#ic-arrow-right"/></svg> <a href="{{ url_for('projeto_ficha', pid=pid) }}">{{ p.cliente }}</a> <svg class="svgi" style="width:12px;height:12px;color:var(--faint)" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Cronograma</div>{% endblock %}
 {% block conteudo %}
+{% include "_ctx_projeto.html" %}
   <h1 style="margin-bottom:2px">Cronograma — {{ p.cliente }}</h1>
   <p class="sub">Edite as agendas durante a implantação. Cada alteração fica registrada no histórico.</p>
   {% if salvo %}

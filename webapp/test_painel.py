@@ -1189,6 +1189,28 @@ def test_protocolo_erro_amigavel():
     assert "ValueError" in P._erro_amigavel(ValueError("outra coisa"))
 
 
+def test_subtelas_tem_contexto_do_projeto(client):
+    """Uniformidade do fluxo: TODA subtela do projeto carrega a faixa de contexto
+    (cliente + fase + volta à ficha) — o usuário nunca perde onde está."""
+    pid = int(_novo(client, cliente="Contexto Ltda", numero_projeto="CTX-1"))
+    with db.Session() as s:
+        s.get(db.Projeto, pid).etapa = "Projeto"      # etapa que libera o gate da origem
+        s.commit()
+    telas = ["projeto_cronograma", "projeto_checklist", "projeto_levantamento",
+             "projeto_email", "projeto_origem", "projeto_designar"]
+    with A.app.test_request_context():
+        from flask import url_for
+        urls = [url_for(ep, pid=pid) for ep in telas]
+    for ep, u in zip(telas, urls):
+        r = client.get(u, follow_redirects=True)
+        assert r.status_code == 200, "%s -> %s" % (ep, r.status_code)
+        html = r.get_data(as_text=True)
+        assert "Ficha do projeto" in html and "Contexto Ltda" in html, \
+            "%s sem a faixa de contexto do projeto" % ep
+    with db.Session() as s:
+        s.delete(s.get(db.Projeto, pid)); s.commit()
+
+
 # ---- Endurecimento (auditoria 2026-07-06) ----
 
 def test_path_dentro_sem_bypass_de_prefixo(tmp_path):

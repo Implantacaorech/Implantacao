@@ -12,6 +12,7 @@
 </div>
 {% endblock %}
 {% block conteudo %}
+{% include "_ctx_projeto.html" %}
   <h1 style="margin-bottom:2px;display:flex;align-items:center;gap:8px">
     <svg class="svgi" style="width:20px;height:20px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
     Check-list — {{ p.cliente }}
