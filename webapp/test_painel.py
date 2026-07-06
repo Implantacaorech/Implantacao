@@ -1187,6 +1187,22 @@ def test_protocolo_erro_amigavel():
     assert "ValueError" in P._erro_amigavel(ValueError("outra coisa"))
 
 
+def test_protocolo_aceita_audio(client, tmp_path):
+    """Áudio gravado (.mp3/.wav/...) entra no MESMO fluxo; a revisão mostra player de áudio."""
+    import protocolos as P
+    assert P.eh_audio("reuniao.mp3") and P.eh_audio("call.WAV")
+    assert not P.eh_audio("treino.mp4")
+    for e in (".mp3", ".wav", ".m4a", ".ogg", ".opus", ".flac"):
+        assert e in P.EXTS                            # formatos de áudio aceitos
+    a = tmp_path / "gravacao.mp3"
+    a.write_bytes(b"AUDIOFAKE")
+    pid, _ = db.protocolo_criar("gravacao.mp3", str(a), "upload", "Tester")
+    html = client.get("/protocolos/%s" % pid).get_data(as_text=True)
+    assert "<audio" in html and "Áudio original" in html and "<video" not in html
+    with db.Session() as s:
+        s.delete(s.get(db.Protocolo, pid)); s.commit()
+
+
 def test_protocolo_status_e_progresso(client, tmp_path, monkeypatch):
     """Linha do tempo: /status devolve o andamento; durante a transcrição expõe o % gravado
     pelo subprocesso no arquivo de progresso; a tela mostra o stepper."""

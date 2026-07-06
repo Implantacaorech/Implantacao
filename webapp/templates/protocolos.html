@@ -3,17 +3,17 @@
 {% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › Protocolos</div>{% endblock %}
 {% block conteudo %}
   <h1>🎬 Protocolos de Treinamento</h1>
-  <p class="sub">Base de conhecimento gerada a partir de <strong>vídeos</strong>: o robô lê a pasta do SharePoint
+  <p class="sub">Base de conhecimento gerada a partir de <strong>vídeos ou áudios</strong>: o robô lê a pasta do SharePoint
     (<code>{{ pasta }}</code>), transcreve, a IA organiza por módulo/menu e você revisa antes de aprovar.</p>
   {% if salvo %}<div class="resultado ok" style="padding:8px 14px">✅ Salvo.</div>{% endif %}
   {% if aviso %}<div class="resultado" style="padding:8px 14px">ℹ️ {{ aviso }}</div>{% endif %}
-  {% if not robo_ok %}<div class="resultado erro" style="padding:8px 14px">⚠️ Pasta de vídeos não encontrada — o robô está inativo. Verifique <code>{{ pasta }}</code>.</div>{% endif %}
+  {% if not robo_ok %}<div class="resultado erro" style="padding:8px 14px">⚠️ Pasta não encontrada — o robô está inativo. Verifique <code>{{ pasta }}</code>.</div>{% endif %}
 
   <div class="painel">
-    <h3 style="color:var(--navy);margin-top:0">Enviar vídeo (upload manual)</h3>
+    <h3 style="color:var(--navy);margin-top:0">Enviar vídeo ou áudio (upload manual)</h3>
     <form method="post" action="{{ url_for('protocolo_novo') }}" enctype="multipart/form-data"
           style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <input type="file" name="video" accept="video/*" required>
+      <input type="file" name="video" accept="video/*,audio/*" required>
       <button class="btn primario" type="submit">📤 Enviar e processar</button>
       <span class="dica" style="margin:0">ou solte o arquivo na pasta <code>Videos Pendentes</code> do SharePoint — o robô captura sozinho.</span>
     </form>
@@ -52,5 +52,5 @@
     {% endfor %}
     </tbody>
   </table>
-  {% else %}<p class="dica">Nenhum protocolo ainda — envie um vídeo acima ou coloque na pasta do SharePoint.</p>{% endif %}
+  {% else %}<p class="dica">Nenhum protocolo ainda — envie um vídeo ou áudio acima ou coloque na pasta do SharePoint.</p>{% endif %}
 {% endblock %}

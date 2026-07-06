@@ -17,7 +17,13 @@ import threading
 import db
 
 RAIZ_PADRAO = r"C:\SEG-EVE\OneDrive - rech.com.br\PortalImplantacao\Treinamentos"
-EXTS = (".mp4", ".m4v", ".mkv", ".avi", ".mov", ".webm", ".wmv")
+EXTS_VIDEO = (".mp4", ".m4v", ".mkv", ".avi", ".mov", ".webm", ".wmv")
+EXTS_AUDIO = (".mp3", ".wav", ".m4a", ".aac", ".ogg", ".oga", ".opus", ".flac", ".wma")
+EXTS = EXTS_VIDEO + EXTS_AUDIO      # o Whisper transcreve vídeo E áudio (extrai o áudio)
+
+
+def eh_audio(nome):
+    return (nome or "").lower().endswith(EXTS_AUDIO)
 
 _BUSY = threading.Lock()      # 1 processamento por vez (transcrição usa CPU pesado)
 

@@ -31,14 +31,15 @@ def protocolos_lista():
 
 
 def protocolo_novo():
-    """Upload manual: salva o vídeo na pasta 'Videos Pendentes' e dispara o pipeline."""
+    """Upload manual: salva o vídeo/áudio na pasta 'Videos Pendentes' e dispara o pipeline."""
     f = request.files.get("video")
     if not (f and f.filename):
-        return redirect(url_for("protocolos_lista", aviso="Selecione um arquivo de vídeo."))
+        return redirect(url_for("protocolos_lista", aviso="Selecione um arquivo de vídeo ou áudio."))
     ext = os.path.splitext(f.filename)[1].lower()
     if ext not in P.EXTS:
         return redirect(url_for("protocolos_lista",
-                                aviso="Formato não suportado (%s). Use: %s" % (ext, ", ".join(P.EXTS))))
+                                aviso="Formato não suportado (%s). Vídeo: %s | Áudio: %s"
+                                % (ext, ", ".join(P.EXTS_VIDEO), ", ".join(P.EXTS_AUDIO))))
     dest_dir = os.path.join(P.pasta_raiz(), "Videos Pendentes")
     os.makedirs(dest_dir, exist_ok=True)
     nome = C.slug(os.path.splitext(os.path.basename(f.filename))[0]) + ext
@@ -66,6 +67,7 @@ def protocolo_revisar(pid):
     return render_template("protocolo_ficha.html", p=p, campos=db.PROTO_CAMPOS_TEXTO,
                            modulos=db.PROTO_MODULOS, status_op=db.PROTO_STATUS,
                            pode_aprovar=_pode_aprovar(), ia_ok=True,
+                           eh_audio=P.eh_audio(p.get("video_nome")),
                            salvo=request.args.get("salvo"), aviso=request.args.get("aviso"))
 
 

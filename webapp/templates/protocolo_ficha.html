@@ -3,7 +3,7 @@
 {% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › <a href="{{ url_for('protocolos_lista') }}">Protocolos</a> › Revisão</div>{% endblock %}
 {% block conteudo %}
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-    <h1 style="margin:0">🎬 {{ p.titulo or p.video_nome }}</h1>
+    <h1 style="margin:0">{{ '🎧' if eh_audio else '🎬' }} {{ p.titulo or p.video_nome }}</h1>
     <span style="background:#eef2ff;color:#1f4e78;padding:3px 10px;border-radius:999px;font-size:.78rem;font-weight:700">{{ p.status }}</span>
     <span style="flex:1"></span>
     <a class="btn" href="{{ url_for('protocolos_lista') }}">← Protocolos</a>
@@ -93,7 +93,7 @@
 
   <div class="painel">
     <p class="dica" style="margin:0">
-      <strong>Vídeo:</strong> {{ p.video_nome }} · <strong>Origem:</strong> {{ 'SharePoint' if p.video_origem == 'sharepoint' else 'Upload manual' }}
+      <strong>Arquivo:</strong> {{ p.video_nome }} · <strong>Origem:</strong> {{ 'SharePoint' if p.video_origem == 'sharepoint' else 'Upload manual' }}
       · <strong>Registrado:</strong> {{ p.criado_em.strftime('%d/%m/%Y %H:%M') if p.criado_em else '—' }}
       {% if p.processado_em %} · <strong>Processado:</strong> {{ p.processado_em.strftime('%d/%m/%Y %H:%M') }}{% endif %}
       {% if p.duracao_seg %} · <strong>Duração:</strong> {{ '%d:%02d' % (p.duracao_seg // 60, p.duracao_seg % 60) }}{% endif %}
@@ -116,9 +116,14 @@
   </div>
 
   <div class="painel">
-    <h3 style="color:var(--navy);margin-top:0">Vídeo original</h3>
+    <h3 style="color:var(--navy);margin-top:0">{{ 'Áudio original' if eh_audio else 'Vídeo original' }}</h3>
+    {% if eh_audio %}
+    <audio controls preload="metadata" style="width:100%"
+           src="{{ url_for('protocolo_video', pid=p.id) }}"></audio>
+    {% else %}
     <video controls preload="metadata" style="width:100%;max-height:420px;background:#000;border-radius:6px"
            src="{{ url_for('protocolo_video', pid=p.id) }}"></video>
+    {% endif %}
   </div>
 
   {% if p.pendencias %}

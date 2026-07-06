@@ -254,8 +254,10 @@ Atalhos por papel (Coordenação, Setor Adm, Consultor) para ferramentas de apoi
 - **Importar Levantamento → tudo** (gera Projeto, Check-list e Termo em sequência);
 - **Tempo verbal e ortografia** (Presente→Futuro + correção, offline).
 
-### 5.17 Protocolos de Treinamento (`/protocolos`) — vídeos → base de conhecimento
-Transforma **vídeos de treinamento** em **registros de protocolo** revisáveis:
+### 5.17 Protocolos de Treinamento (`/protocolos`) — vídeos/áudios → base de conhecimento
+Transforma **vídeos ou áudios de treinamento** (o Whisper transcreve ambos — vídeo
+`.mp4/.mkv/.mov/...` ou áudio `.mp3/.wav/.m4a/.ogg/.opus/.flac/...`) em **registros de
+protocolo** revisáveis:
 - **Entrada:** upload manual na tela OU o **robô da pasta do SharePoint** (sincronizada pelo
   OneDrive): `PortalImplantacao/Treinamentos/Videos Pendentes` → após processar, o vídeo vai
   para `Videos Processados` (ou `Videos Com Erro`). Dedup por hash (não processa 2×).

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Transcrição LOCAL de vídeos (faster-whisper, CPU int8) — o áudio não sai da rede.
+"""Transcrição LOCAL de vídeo OU áudio (faster-whisper, CPU int8) — o áudio não sai da rede.
+Aceita vídeo (extrai o áudio) e arquivos de áudio direto (mp3/wav/m4a/ogg/opus/flac/...).
 
 `transcrever_isolado(video)` roda a transcrição num SUBPROCESSO (isola ~1–2 GB de RAM do
 modelo e protege o servidor web); devolve dict {"texto","duracao","idioma"} ou lança.
