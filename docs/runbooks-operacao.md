@@ -124,14 +124,26 @@ Threads de fundo que ligam sozinhas no modo servidor:
   o status/erro aparecem na tela do protocolo (`/protocolos`). Transcrição de 1h ≈ 15–30 min (CPU).
 - Não dispararam? confirme que **há destinatários/IMAP configurado** e que o processo subiu em **modo servidor** (não em `flask run` de dev).
 
-## 8. Trocar a senha padrão do Postgres
+## 8. Robô de integridade (verificação diária automática)
+Tarefa do Windows **"Painel - Verificacao de Integridade"** (diária, 07:30) roda
+`Verificar_Integridade.bat` → `webapp/robo_integridade.py`, que verifica:
+1. **Site no ar** (`GET /health` na porta do Painel);
+2. **Operação** (`verificar_tudo.py`: rotas, banco, e-mail, disponibilidade, idade do backup);
+3. **Suíte completa** (pytest, banco de teste zerado).
+
+Resultado em `C:\PainelBackups\integridade.log`; em falha, e-mail para `INTEGRIDADE_PARA`
+(env, `;`-separado) ou para os ADM/Coordenadores do cadastro. Rodar na mão:
+`Verificar_Integridade.bat` (ou `python webapp/robo_integridade.py`).
+Conferir o agendamento: `schtasks /Query /TN "Painel - Verificacao de Integridade"`.
+
+## 9. Trocar a senha padrão do Postgres
 > Pendência de segurança conhecida (padrão `painel2026`). Faça nos **três** lugares:
 1. **No banco:** `docker exec -it painel-db psql -U painel -d painel -c "ALTER USER painel WITH PASSWORD 'NOVA_SENHA';"`
 2. **Na app:** atualizar `PAINEL_DB_URL` (variável de usuário) com a nova senha.
 3. **No backup:** atualizar `PGPASSWORD` em `tools/painel-backup.sh` (não comitar a senha real).
 Reinicie o Painel e rode `tools/painel-backup.sh` uma vez para validar.
 
-## 9. Variáveis de ambiente e arquivos de config
+## 10. Variáveis de ambiente e arquivos de config
 
 | Item | Onde | Para quê |
 |---|---|---|
