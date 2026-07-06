@@ -272,7 +272,8 @@ Transforma **vídeos de treinamento** em **registros de protocolo** revisáveis:
 - **Consulta (base de conhecimento):** filtros por módulo, menu, status, origem e palavra-chave
   (busca em resumo, passo a passo, configurações, regras e dependências).
 - Config: `PROTOCOLOS_DIR` (pasta raiz), `PROTOCOLOS_POLL_MIN` (robô, padrão 10 min),
-  `PROTOCOLOS_WHISPER` (modelo, padrão `small`).
+  `PROTOCOLOS_WHISPER` (modelo, padrão `base` — rápido; use `small`/`medium` p/ mais
+  precisão) e `PROTOCOLOS_THREADS` (0 = automático/todos os núcleos, o mais rápido).
 
 ### 5.18 Autocadastro e usuários
 - **Autocadastro** (`/cadastro`) com **validação por código enviado por e-mail**.

@@ -5,14 +5,17 @@
 modelo e protege o servidor web); devolve dict {"texto","duracao","idioma"} ou lança.
 O texto sai com timestamps por bloco de fala:  [MM:SS] fala...
 
-Modelo: env PROTOCOLOS_WHISPER (padrão 'small' — bom pt-BR em CPU; 'medium' = mais
-qualidade e mais lento). Primeiro uso baixa o modelo (~460 MB) para o cache local.
+Modelo: env PROTOCOLOS_WHISPER (padrão 'base' — rápido e bom o suficiente em pt-BR;
+'small'/'medium' = mais precisão e mais lentos). Primeiro uso baixa o modelo para o cache.
+Threads: env PROTOCOLOS_THREADS (padrão 0 = automático, usa todos os núcleos — o mais
+rápido nesta CPU, medido em benchmark; só reduza se quiser deixar a máquina mais livre).
 """
 import os
 import sys
 import json
 
-MODELO = os.environ.get("PROTOCOLOS_WHISPER", "small")
+MODELO = os.environ.get("PROTOCOLOS_WHISPER", "base")
+THREADS = int(os.environ.get("PROTOCOLOS_THREADS", "0") or 0)   # 0 = auto (todos os núcleos)
 
 
 def _fmt_ts(seg):
@@ -25,8 +28,9 @@ def transcrever(video_path, progress_cb=None):
     """Transcreve o vídeo (roda NO PROCESSO ATUAL — prefira transcrever_isolado).
     `progress_cb(pos_seg, dur_seg)` é chamado conforme a transcrição avança."""
     from faster_whisper import WhisperModel
-    model = WhisperModel(MODELO, device="cpu", compute_type="int8")
-    segments, info = model.transcribe(video_path, language="pt", vad_filter=True)
+    model = WhisperModel(MODELO, device="cpu", compute_type="int8", cpu_threads=THREADS)
+    segments, info = model.transcribe(video_path, language="pt", vad_filter=True,
+                                      beam_size=1, condition_on_previous_text=False)
     dur_total = int(getattr(info, "duration", 0) or 0)
     linhas, dur = [], 0
     for seg in segments:
