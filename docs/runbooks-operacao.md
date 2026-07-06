@@ -31,6 +31,21 @@
 - **Logs:** o app loga em arquivo (modo servidor). Backup do Postgres loga em `C:\PainelBackups\backup.log`.
 - **Configurado?** cada conector tem `configurado()`: e-mail/IMAP/Gmail/disponibilidade só atuam quando verdadeiro.
 
+## 1b. Acesso de outros computadores da rede
+Endereço para a equipe (o servidor roda na máquina `I7M1700-01-EVE`):
+- **`http://I7M1700-01-EVE:5000`** (preferido — sobrevive a troca de IP) ou `http://192.168.1.43:5000`.
+- **`http://localhost:5000` NÃO funciona em outro PC** — localhost aponta para o próprio
+  computador de quem digita. Vale só na máquina do servidor.
+
+Se não abrir de outro PC, na ordem:
+1. Na máquina do servidor: `GET /health` responde? Servidor precisa estar **escutando a rede**
+   (`PAINEL_HOST=0.0.0.0` no iniciador; conferir: `Get-NetTCPConnection -LocalPort 5000 -State Listen`
+   deve mostrar `0.0.0.0`, não `127.0.0.1`).
+2. Firewall do Windows: regra de **entrada** liberando o `python.exe` (ou a porta 5000) nos perfis
+   **Domínio/Privado**. Conferir: `Get-NetFirewallRule -Direction Inbound | ? DisplayName -match python`.
+3. No outro PC: `Test-NetConnection I7M1700-01-EVE -Port 5000`. Falhou com 1 e 2 ok = rede
+   diferente (Wi-Fi de visitantes, VPN, outra VLAN) — chamar a TI da rede.
+
 ## 2. E-mail SMTP não envia
 **Sintoma:** envio pela ficha falha; eventos de e-mail viram "Notificação pendente".
 - **"Notificação pendente (…): TimeoutError: timed out"** na timeline = a **rede bloqueia a
