@@ -107,13 +107,13 @@
         <h3 style="color:var(--navy);margin:0 0 12px;display:flex;align-items:center;gap:7px">
           <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg> Funil por fase
         </h3>
-        <canvas id="gFunil" height="220"></canvas>
+        <div style="position:relative;height:240px"><canvas id="gFunil"></canvas></div>
       </div>
       <div>
         <h3 style="color:var(--navy);margin:0 0 12px;display:flex;align-items:center;gap:7px">
           <svg class="svgi" aria-hidden="true"><use href="#ic-chart"/></svg> Distribuição por status
         </h3>
-        <canvas id="gStatus" height="220"></canvas>
+        <div style="position:relative;height:240px;max-width:420px;margin:0 auto"><canvas id="gStatus"></canvas></div>
       </div>
     </div>
   </div>
@@ -195,7 +195,8 @@
       labels:etapas,
       datasets:[{data:etapas.map(function(e){return porEtapa[e]||0;}),
         backgroundColor:cores_etapa,borderRadius:6,borderSkipped:false}]
-    },options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0},grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}});
+    },options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0},grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}});
     var cores_sit={'Em andamento':'#003399','Em risco':'#ef4444','Pausado':'#94a3b8','Concluído':'#22c55e'};
     var st=document.getElementById('gStatus');
     if(st) new Chart(st,{type:'doughnut',data:{
@@ -203,7 +204,8 @@
       datasets:[{data:sits.map(function(s){return porSit[s]||0;}),
         backgroundColor:sits.map(function(s){return cores_sit[s]||'#003399';}),
         borderWidth:2,borderColor:'#fff'}]
-    },options:{plugins:{legend:{position:'bottom',labels:{padding:16,usePointStyle:true}}},cutout:'60%'}});
+    },options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{padding:12,usePointStyle:true}}},cutout:'62%'}});
   })();
   </script>
 {% endblock %}
