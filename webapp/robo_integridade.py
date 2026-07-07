@@ -45,7 +45,7 @@ def _alerta(resumo, detalhes):
             with db.Session() as s:
                 dest = [u.login for u in s.query(db.Usuario)
                         .filter(db.Usuario.perfil.in_(["ADM", "Coordenador"]),
-                                db.Usuario.ativo.is_(True)).all() if u.login and "@" in u.login]
+                                db.Usuario.ativo == 1).all() if u.login and "@" in u.login]
         if dest and mailer.configurado():
             mailer.enviar(dest, "⚠ Painel — verificação de integridade FALHOU",
                           "Verificação automática do Painel de Implantação falhou em %s.\n\n%s\n\n"

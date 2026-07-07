@@ -14,6 +14,9 @@
       <p class="sub" style="margin:0">Visão de portfólio em tempo real — KPIs, alertas e ocupação da equipe.</p>
     </div>
     <div style="display:flex;gap:8px;align-self:center;flex-wrap:wrap">
+      <a class="btn primario" href="{{ url_for('capacidade') }}" title="Quem pode receber um cliente novo e a partir de quando">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg> Capacidade da equipe
+      </a>
       <form method="post" action="{{ url_for('digest_enviar') }}" style="margin:0">
         <button class="btn" type="submit">
           <svg class="svgi" aria-hidden="true"><use href="#ic-mail"/></svg> Enviar resumo por e-mail

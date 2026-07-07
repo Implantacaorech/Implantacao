@@ -53,6 +53,7 @@ CRITICOS = [
     ("protocolo_status", {"pid": 1}),               # routes_protocolos (linha do tempo)
     ("matriz_lista", {}),                           # routes_matriz
     ("matriz_ficha", {"tid": 1}),                   # routes_matriz
+    ("capacidade", {}),                             # routes_painel (capacidade da equipe)
 ]
 
 

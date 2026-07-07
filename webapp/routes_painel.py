@@ -349,11 +349,29 @@ def monitoramento():
     dados = _monitoramento_operacional(meus, docs_map, eventos, cronos, checks, designacoes)
     return render_template("monitoramento_operacional.html", **dados)
 
+def capacidade():
+    """Capacidade da equipe p/ receber cliente novo: módulos × matriz de conhecimento ×
+    agenda (Painel + SICLA) × go-live previsto. Responde 'quem' e 'a partir de quando'."""
+    if not pode_ver("gestao"):
+        abort(403)
+    import capacidade as CAP
+    modulos = [m for m in (request.args.get("modulos") or "").replace(";", ",").split(",")
+               if m.strip()]
+    try:
+        semanas = max(2, min(12, int(request.args.get("semanas") or 6)))
+    except ValueError:
+        semanas = 6
+    r = CAP.avaliar_equipe(modulos, semanas=semanas)
+    return render_template("capacidade.html", r=r, filtro=", ".join(r["modulos"]),
+                           semanas=semanas)
+
+
 def register(app, **deps):
     globals().update(deps)   # _so_meus, pode_ver
     rota = lambda regra, fn: app.add_url_rule(regra, view_func=fn)
     rota("/", home)
     rota("/coordenacao", coordenacao)
+    rota("/coordenacao/capacidade", capacidade)
     rota("/atividade", atividade)
     rota("/monitoramento", monitoramento)
 

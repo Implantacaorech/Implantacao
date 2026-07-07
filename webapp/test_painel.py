@@ -1313,6 +1313,75 @@ def test_matriz_permissoes_por_perfil(client, tmp_path):
     _limpa_matriz()
 
 
+# ---- Capacidade da equipe (Coordenação) ----
+
+def test_capacidade_motor(client, tmp_path):
+    """Motor: cruza matriz + carga de clientes + agenda + go-live e ranqueia."""
+    import json as _json
+    import capacidade as CAP
+    _limpa_matriz()
+    with db.Session() as s:
+        s.add(db.MatrizCompetencia(sigla="FAT", area="Negócios", ordem=1))
+        s.add(db.MatrizTecnico(nome="Alfa", setor="GRM-Consultoria",
+                               notas=_json.dumps({"FAT": 9})))
+        s.add(db.MatrizTecnico(nome="Beta", setor="GRM-Consultoria",
+                               notas=_json.dumps({"FAT": 3})))
+        ua = db.Usuario(login="alfa@x.com", nome="Alfa", perfil="Consultor",
+                        codigo_sicla="Alfa", ativo=True)
+        ub = db.Usuario(login="beta@x.com", nome="Beta", perfil="Consultor",
+                        codigo_sicla="Beta", ativo=True)
+        s.add_all([ua, ub]); s.commit()
+        uids = [ua.id, ub.id]
+    with client.session_transaction() as sess:      # há usuários -> login ativo
+        sess["auth"] = True; sess["perfil"] = "ADM"; sess["perfil_nome"] = "Boss"
+    # Beta está carregado: 3 clientes ativos, um com go-live futuro
+    golive = _dia_util(30)
+    pids = [int(_novo(client, cliente="C%d SA" % i, consultor="Beta",
+                      data_uso_oficial=(golive if i == 0 else ""))) for i in range(3)]
+    r = CAP.avaliar_equipe(["FAT"], semanas=4)
+    por_nome = {t["nome"]: t for t in r["equipe"]}
+    alfa, beta = por_nome["Alfa"], por_nome["Beta"]
+    assert alfa["notas_modulos"] == {"FAT": 9} and beta["notas_modulos"] == {"FAT": 3}
+    assert alfa["clientes"] == 0 and beta["clientes"] == 3
+    assert beta["libera_em"] == golive
+    assert alfa["score"] > beta["score"]              # mais nota + menos carga = 1º do ranking
+    assert alfa["veredito"] == "Pronto" and beta["veredito"] == "Parcial"
+    assert alfa["janela"]                             # agenda vazia -> janela imediata
+    assert r["equipe"][0]["nome"] == "Alfa"
+    for pid in pids:
+        client.post("/projetos/%s/excluir" % pid)
+    with db.Session() as s:
+        for uid in uids:
+            s.delete(s.get(db.Usuario, uid))
+        s.commit()
+    with client.session_transaction() as sess:
+        sess.clear()
+    _limpa_matriz()
+
+
+def test_capacidade_tela(client):
+    """Tela: abre pela Coordenação com o filtro de módulos e monta a resposta ao Comercial."""
+    with db.Session() as s:
+        u = db.Usuario(login="gama@x.com", nome="Gama", perfil="Consultor",
+                       codigo_sicla="Gama", ativo=True)
+        s.add(u); s.commit(); uid = u.id
+    with client.session_transaction() as sess:
+        sess["auth"] = True; sess["perfil"] = "Coordenador"; sess["perfil_nome"] = "Coord"
+    r = client.get("/coordenacao/capacidade?modulos=FAT,CTB&semanas=4")
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert "Capacidade da equipe" in html and "Resposta ao Comercial" in html and "Gama" in html
+    assert "Capacidade da equipe" in client.get("/coordenacao").get_data(as_text=True)
+    # perfil sem gestão não entra
+    with client.session_transaction() as sess:
+        sess["auth"] = True; sess["perfil"] = "Consultor"; sess["perfil_nome"] = "Gama"; sess["user_id"] = uid
+    assert client.get("/coordenacao/capacidade").status_code == 403
+    with client.session_transaction() as sess:
+        sess.clear()
+    with db.Session() as s:
+        s.delete(s.get(db.Usuario, uid)); s.commit()
+
+
 # ---- Endurecimento (auditoria 2026-07-06) ----
 
 def test_path_dentro_sem_bypass_de_prefixo(tmp_path):

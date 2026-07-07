@@ -289,7 +289,17 @@ preserva quem já existe). Permissões:
 Cada linha guarda quem alterou e quando; escala visual das notas (verde 9–10, amarelo 6–8,
 vermelho 1–5).
 
-### 5.19 Autocadastro e usuários
+### 5.19 Capacidade da equipe (`/coordenacao/capacidade`)
+Responde ao Comercial **"dá para receber um cliente novo? quem atende? a partir de quando?"**
+cruzando, por Consultor/GCI ativo: **módulos** do cliente novo × **Matriz de Conhecimento**
+(nota média nos módulos) × **agenda** (alocações do agendador do Painel + compromissos do
+SICLA, janela de 4–12 semanas) × **go-live previsto** (quando libera). Mostra ranking com
+score explicável (45% conhecimento + 35% folga de agenda + 20% carga de clientes), veredito
+(✅ Pronto / 🟡 Parcial / 🔴 sem janela), mini-gráfico de turnos livres por semana e o bloco
+**"Resposta ao Comercial"** pronto (quem + data de início). Acesso: perfis de gestão, pelo
+botão **Capacidade da equipe** na Coordenação.
+
+### 5.20 Autocadastro e usuários
 - **Autocadastro** (`/cadastro`) com **validação por código enviado por e-mail**.
 - **Usuários** (`/usuarios`, só ADM) — gestão de perfis, e-mail e hierarquia.
 - **Código SICLA** obrigatório no cadastro (autocadastro e `/usuarios`, todos os perfis) — é o
