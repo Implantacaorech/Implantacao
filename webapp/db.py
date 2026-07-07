@@ -1916,6 +1916,109 @@ def protocolo_decidir(pid, aprovado, autor=""):
         return True
 
 
+# ---------------- Matriz de Conhecimento (notas 1-10 por técnico × competência) ----------------
+
+class MatrizCompetencia(Base):
+    """Catálogo de competências (colunas da planilha), agrupadas por área, na ordem original."""
+    __tablename__ = "matriz_competencias"
+    id = Column(Integer, primary_key=True)
+    sigla = Column(String(80), default="", index=True)
+    area = Column(String(80), default="")
+    ordem = Column(Integer, default=0)
+
+
+class MatrizTecnico(Base):
+    """Linha da matriz: um técnico e suas notas ({sigla: nota} em JSON)."""
+    __tablename__ = "matriz_tecnicos"
+    id = Column(Integer, primary_key=True)
+    nome = Column(String(120), default="", index=True)   # nome do técnico (= Código SICLA)
+    setor = Column(String(80), default="")
+    dias = Column(String(20), default="")                # dias de empresa (coluna da planilha)
+    notas = Column(Text, default="{}")                   # JSON {sigla: nota 0-10}
+    atualizado_em = Column(DateTime, default=None)
+    atualizado_por = Column(String(120), default="")
+
+
+def matriz_competencias():
+    with Session() as s:
+        return [to_dict(c) for c in s.query(MatrizCompetencia)
+                .order_by(MatrizCompetencia.ordem).all()]
+
+
+def matriz_listar():
+    with Session() as s:
+        return [to_dict(t) for t in s.query(MatrizTecnico).order_by(MatrizTecnico.nome).all()]
+
+
+def matriz_get(tid):
+    with Session() as s:
+        t = s.get(MatrizTecnico, tid)
+        return to_dict(t) if t else None
+
+
+def matriz_notas(t):
+    import json
+    try:
+        return {k: v for k, v in json.loads(t.get("notas") or "{}").items()}
+    except Exception:
+        return {}
+
+
+def matriz_linha_do_usuario(user_id):
+    """A linha da matriz do usuário logado: casa o Nome da matriz com o Código SICLA
+    (ou com o nome) do cadastro de usuários. Devolve dict ou None."""
+    if not user_id:
+        return None
+    with Session() as s:
+        u = s.get(Usuario, int(user_id))
+        if not u:
+            return None
+        chaves = {x.strip().lower() for x in (u.codigo_sicla or "", u.nome or "") if x.strip()}
+        if not chaves:
+            return None
+        for t in s.query(MatrizTecnico).all():
+            if (t.nome or "").strip().lower() in chaves:
+                return to_dict(t)
+    return None
+
+
+def matriz_salvar_notas(tid, form, autor=""):
+    """Grava as notas (0-10; vazio remove) e setor/dias. Devolve True se existia."""
+    import json
+    with Session() as s:
+        t = s.get(MatrizTecnico, tid)
+        if not t:
+            return False
+        notas = {}
+        try:
+            notas = json.loads(t.notas or "{}")
+        except Exception:
+            pass
+        siglas = {c.sigla for c in s.query(MatrizCompetencia).all()}
+        for sigla in siglas:
+            campo = "nota__" + sigla
+            if campo not in form:
+                continue
+            v = (form.get(campo) or "").strip().replace(",", ".")
+            if v == "":
+                notas.pop(sigla, None)
+                continue
+            try:
+                n = int(float(v))
+            except ValueError:
+                continue
+            notas[sigla] = max(0, min(10, n))
+        t.notas = json.dumps(notas, ensure_ascii=False)
+        if "setor" in form:
+            t.setor = (form.get("setor") or "").strip()
+        if "dias" in form:
+            t.dias = (form.get("dias") or "").strip()
+        t.atualizado_em = datetime.now()
+        t.atualizado_por = autor or ""
+        s.commit()
+        return True
+
+
 def _auto_migrar():
     """Migração leve aditiva: cria colunas novas que faltarem (SQLite e Postgres) e os
     ÍNDICES declarados (index=True) que ainda não existirem em tabelas antigas — o

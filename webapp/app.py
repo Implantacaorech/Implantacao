@@ -902,6 +902,10 @@ routes_painel.register(app, _so_meus=_so_meus, pode_ver=pode_ver)
 import routes_protocolos  # noqa: E402  (vídeos de treinamento -> protocolos revisáveis)
 routes_protocolos.register(app, _autor=_autor, _perfil=_perfil)
 
+import routes_matriz  # noqa: E402  (Matriz de Conhecimento: notas por técnico × competência)
+routes_matriz.register(app, _autor=_autor, _perfil=_perfil,
+                       _user_id=lambda: session.get("user_id"))
+
 
 if __name__ == "__main__":
     import threading

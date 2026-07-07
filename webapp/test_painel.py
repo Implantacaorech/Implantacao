@@ -45,6 +45,16 @@ def _novo(client, **dados):
     return re.search(r"/projetos/(\d+)", r.headers["Location"]).group(1)
 
 
+def _dia_util(dias_a_frente=0):
+    """Data >= hoje que caia em dia útil (as rotas bloqueiam agendar no passado —
+    datas FIXAS em teste viram bomba-relógio quando o calendário passa por elas)."""
+    import datetime as _dt
+    d = _dt.date.today() + _dt.timedelta(days=dias_a_frente)
+    while d.weekday() >= 5:
+        d += _dt.timedelta(days=1)
+    return d.strftime("%Y-%m-%d")
+
+
 def test_health(client):
     j = client.get("/health").get_json()
     assert j["status"] in ("ok", "degraded")
@@ -175,11 +185,12 @@ def test_agendamento_define_gci_e_data_e_avanca(client):
         p = s.get(db.Projeto, pid)
         assert p.gci == "GCI Teste" and p.etapa == "Agendamento"  # ainda em Agendamento
     # Etapa 2: definir data (com GCI já definido)
-    r2 = client.post("/projetos/%s/agendar" % pid, data={"data_levantamento": "2026-07-15"})
+    dia_lev = _dia_util(8)
+    r2 = client.post("/projetos/%s/agendar" % pid, data={"data_levantamento": dia_lev})
     assert r2.status_code == 302
     with db.Session() as s:
         p = s.get(db.Projeto, pid)
-        assert p.data_levantamento == "2026-07-15" and p.etapa == "Levantamento"
+        assert p.data_levantamento == dia_lev and p.etapa == "Levantamento"
     client.post("/projetos/%s/excluir" % pid)
     with client.session_transaction() as sess:
         sess.clear()
@@ -1211,6 +1222,97 @@ def test_subtelas_tem_contexto_do_projeto(client):
         s.delete(s.get(db.Projeto, pid)); s.commit()
 
 
+# ---- Matriz de Conhecimento ----
+
+def _planilha_matriz(tmp_path):
+    """Planilha mínima no formato real: linha 7 áreas, linha 8 cabeçalhos, 9+ técnicos."""
+    from openpyxl import Workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Matriz"
+    ws.cell(row=7, column=6, value="AREA: C")
+    ws.cell(row=7, column=8, value="AREA F")
+    for col, h in ((2, "Nome"), (3, "Dias"), (4, "Setor"), (5, "Ár"),
+                   (6, "CTB"), (7, "CCC"), (8, "FIN")):
+        ws.cell(row=8, column=col, value=h)
+    for r, (nome, setor, n1, n2, n3) in enumerate(
+            [("Zeta", "GRM-Consultoria", 9, 5, ""), ("Ypson", "GRM-Suporte", 2, "", 7)], start=9):
+        ws.cell(row=r, column=2, value=nome); ws.cell(row=r, column=4, value=setor)
+        ws.cell(row=r, column=6, value=n1); ws.cell(row=r, column=7, value=n2)
+        ws.cell(row=r, column=8, value=n3)
+    p = tmp_path / "matriz_teste.xlsx"
+    wb.save(str(p))
+    return str(p)
+
+
+def _limpa_matriz():
+    with db.Session() as s:
+        s.query(db.MatrizTecnico).delete(); s.query(db.MatrizCompetencia).delete(); s.commit()
+
+
+def test_matriz_importa_planilha(client, tmp_path):
+    """Importa áreas/siglas/técnicos/notas; reimportar preserva os existentes."""
+    import matriz as M
+    _limpa_matriz()
+    n_c, n_t, ig = M.importar(_planilha_matriz(tmp_path), autor="teste")
+    assert (n_c, n_t, ig) == (3, 2, 0)
+    comps = db.matriz_competencias()
+    assert [c["sigla"] for c in comps] == ["CTB", "CCC", "FIN"]
+    assert comps[0]["area"] == "Controladoria" and comps[2]["area"] == "Finanças"
+    zeta = [t for t in db.matriz_listar() if t["nome"] == "Zeta"][0]
+    assert db.matriz_notas(zeta) == {"CTB": 9, "CCC": 5}
+    # reimportação: nada duplicado, técnicos preservados
+    assert M.importar(_planilha_matriz(tmp_path), autor="teste") == (0, 0, 2)
+    _limpa_matriz()
+
+
+def test_matriz_permissoes_por_perfil(client, tmp_path):
+    """ADM edita tudo; Administrativo só consulta; Consultor só a própria linha."""
+    import matriz as M
+    _limpa_matriz()
+    M.importar(_planilha_matriz(tmp_path), autor="teste")
+    itens = {t["nome"]: t for t in db.matriz_listar()}
+    zeta, ypson = itens["Zeta"], itens["Ypson"]
+    with db.Session() as s:
+        u = db.Usuario(login="zeta@x.com", nome="Zeta Silva", perfil="Consultor",
+                       codigo_sicla="Zeta", ativo=True)
+        s.add(u); s.commit(); uid = u.id
+
+    # Consultor: a lista redireciona para a própria ficha; a alheia dá 403
+    with client.session_transaction() as sess:
+        sess["auth"] = True; sess["perfil"] = "Consultor"
+        sess["perfil_nome"] = "Zeta Silva"; sess["user_id"] = uid
+    r = client.get("/matriz")
+    assert r.status_code == 302 and "/matriz/%d" % zeta["id"] in r.headers["Location"]
+    assert client.get("/matriz/%d" % ypson["id"]).status_code == 403
+    assert client.post("/matriz/%d/salvar" % ypson["id"], data={"nota__CTB": "1"}).status_code == 403
+    r = client.post("/matriz/%d/salvar" % zeta["id"], data={"nota__CTB": "10", "nota__CCC": ""})
+    assert r.status_code == 302
+    assert db.matriz_notas(db.matriz_get(zeta["id"])) == {"CTB": 10}   # CCC vazio = removida
+
+    # Administrativo: vê tudo, não altera nada
+    with client.session_transaction() as sess:
+        sess["auth"] = True; sess["perfil"] = "Administrativo"
+        sess["perfil_nome"] = "Adm"; sess["user_id"] = None
+    html = client.get("/matriz").get_data(as_text=True)
+    assert "Zeta" in html and "Ypson" in html and "Importar planilha" not in html
+    assert "Somente consulta" in client.get("/matriz/%d" % zeta["id"]).get_data(as_text=True)
+    assert client.post("/matriz/%d/salvar" % zeta["id"], data={"nota__CTB": "1"}).status_code == 403
+    assert client.post("/matriz/importar").status_code == 403
+
+    # ADM: altera qualquer linha
+    with client.session_transaction() as sess:
+        sess["auth"] = True; sess["perfil"] = "ADM"; sess["perfil_nome"] = "Boss"; sess["user_id"] = None
+    assert client.post("/matriz/%d/salvar" % ypson["id"], data={"nota__FIN": "9"}).status_code == 302
+    assert db.matriz_notas(db.matriz_get(ypson["id"]))["FIN"] == 9
+
+    with client.session_transaction() as sess:
+        sess.clear()
+    with db.Session() as s:
+        s.delete(s.get(db.Usuario, uid)); s.commit()
+    _limpa_matriz()
+
+
 # ---- Endurecimento (auditoria 2026-07-06) ----
 
 def test_path_dentro_sem_bypass_de_prefixo(tmp_path):
@@ -1586,11 +1688,12 @@ def test_agenda_alocar_visita_inteira(client):
     db.cronograma_atividades_seed(int(pid), "FAT")
     g = db.cronograma_visitas(int(pid))[0]
     seq, nat = g["seq"], len(g["atividades"])
+    dia = _dia_util()
     r = client.post("/projetos/%s/agenda/alocar_visita" % pid,
-                    data={"modulo": "FAT", "seq": seq, "data": "2026-07-06", "turno": "manha"})
+                    data={"modulo": "FAT", "seq": seq, "data": dia, "turno": "manha"})
     assert r.status_code == 200 and r.get_json()["ok"] is True and r.get_json()["n"] == nat
     alocadas = [a for a in db.cronograma_atividades(int(pid)) if a["modulo"] == "FAT" and a["seq"] == seq]
-    assert alocadas and all(a["data"] == "2026-07-06" and a["turno"] == "manha"
+    assert alocadas and all(a["data"] == dia and a["turno"] == "manha"
                             and a["status"] == "Agendada" for a in alocadas)
     html = client.get("/projetos/%s/agenda" % pid).get_data(as_text=True)
     assert "Recolher tudo" in html and "ag-visita-d" in html      # acordeão na sidebar

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block titulo %}Matriz de Conhecimento{% endblock %}
+{% block migalha %}<div class="migalha"><a href="{{ url_for('home') }}">Início</a> › Matriz de Conhecimento</div>{% endblock %}
+{% block conteudo %}
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+    <h1 style="margin:0">📊 Matriz de Conhecimento</h1>
+    <span style="flex:1"></span>
+    {% if pode_admin %}
+    <form method="post" action="{{ url_for('matriz_importar') }}"
+          onsubmit="return confirm('Importar da planilha docs/Matriz de Conhecimento.xlsx? Técnicos já cadastrados são preservados (não sobrescreve).')">
+      <button class="btn" type="submit">📥 Importar planilha</button>
+    </form>
+    {% endif %}
+  </div>
+  <p class="sub">Notas de 1 a 10 por competência. <strong>1</strong> não conhece ·
+    <strong>2–5</strong> conhece partes · <strong>6–8</strong> conhece grande parte ·
+    <strong>9–10</strong> domina / referência.</p>
+  {% if salvo %}<div class="resultado ok" style="padding:8px 14px">✅ Salvo.</div>{% endif %}
+  {% if aviso %}<div class="resultado" style="padding:8px 14px">ℹ️ {{ aviso }}</div>{% endif %}
+
+  {% if restrito %}
+  <div class="painel">
+    <p class="dica" style="margin:0">Seu usuário ainda não tem linha na matriz — o nome/Código SICLA
+      do seu cadastro não casou com nenhum técnico. Peça ao Administrador para incluir sua linha
+      (ou ajustar o Código SICLA no seu cadastro de usuário).</p>
+  </div>
+  {% else %}
+  <div class="painel" style="padding:10px 16px">
+    <input id="mz-filtro" placeholder="Filtrar por nome ou setor…" style="width:100%;max-width:360px"
+           oninput="(function(v){document.querySelectorAll('#mz-tab tbody tr').forEach(function(tr){tr.style.display = tr.textContent.toLowerCase().indexOf(v)>=0?'':'none';});})(this.value.toLowerCase())">
+  </div>
+  <table class="form-tab" id="mz-tab">
+    <thead><tr><th>Técnico</th><th>Setor</th><th>Notas lançadas</th><th>Última atualização</th><th></th></tr></thead>
+    <tbody>
+    {% for t in itens %}
+      <tr>
+        <td><strong>{{ t.nome }}</strong></td>
+        <td>{{ t.setor }}</td>
+        <td>{{ t.qtd_notas }}</td>
+        <td>{{ t.atualizado_em.strftime('%d/%m/%Y %H:%M') if t.atualizado_em else '—' }}
+            {% if t.atualizado_por %} <span class="dica">por {{ t.atualizado_por }}</span>{% endif %}</td>
+        <td><a class="btn" href="{{ url_for('matriz_ficha', tid=t.id) }}">Abrir</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if not itens %}<p class="dica">Nenhum técnico ainda — use “Importar planilha”.</p>{% endif %}
+  {% endif %}
+{% endblock %}

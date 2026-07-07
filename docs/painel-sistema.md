@@ -277,7 +277,19 @@ protocolo** revisáveis:
   `PROTOCOLOS_WHISPER` (modelo, padrão `base` — rápido; use `small`/`medium` p/ mais
   precisão) e `PROTOCOLOS_THREADS` (0 = automático/todos os núcleos, o mais rápido).
 
-### 5.18 Autocadastro e usuários
+### 5.18 Matriz de Conhecimento (`/matriz`)
+Cadastro das notas de conhecimento (1–10) por **técnico × competência** (153 competências em
+8 áreas — Controladoria, Folha, Negócios, Finanças, Produção, Gerais, Outras, Formulários),
+importado da planilha `docs/Matriz de Conhecimento.xlsx` (botão **Importar** — aditivo,
+preserva quem já existe). Permissões:
+- **ADM (Administrador):** vê tudo e altera qualquer linha (+ importar planilha);
+- **Administrativo e Coordenador:** veem tudo, somente consulta;
+- **Consultor e GCI:** veem e alteram **apenas a própria linha** (casada pelo Código
+  SICLA/nome do cadastro de usuários).
+Cada linha guarda quem alterou e quando; escala visual das notas (verde 9–10, amarelo 6–8,
+vermelho 1–5).
+
+### 5.19 Autocadastro e usuários
 - **Autocadastro** (`/cadastro`) com **validação por código enviado por e-mail**.
 - **Usuários** (`/usuarios`, só ADM) — gestão de perfis, e-mail e hierarquia.
 - **Código SICLA** obrigatório no cadastro (autocadastro e `/usuarios`, todos os perfis) — é o

@@ -82,6 +82,10 @@
           <svg class="svgi" aria-hidden="true"><use href="#ic-bulb"/></svg>Protocolos
           <span class="side-tip">Vídeos → conhecimento</span>
         </a>
+        <a class="side-link {{ 'on' if request.endpoint in ('matriz_lista','matriz_ficha') }}" href="{{ url_for('matriz_lista') }}">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg>Matriz
+          <span class="side-tip">Matriz de Conhecimento</span>
+        </a>
         {% if pode_ver('gestao') %}
         <div class="side-grp">Gestão</div>
         <a class="side-link {{ 'on' if request.endpoint=='coordenacao' }}" href="{{ url_for('coordenacao') }}">
