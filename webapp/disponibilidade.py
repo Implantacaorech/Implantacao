@@ -15,7 +15,9 @@ Contrato do SELECT (o ADM escreve livremente):
                                Use `... IN :tecnicos` para o banco já devolver só eles
                                (muito mais rápido). Sem :tecnicos, a janela fica na semana.
   - colunas esperadas no resultado (use AS para renomear):
-      tecnico  -> CÓDIGO do técnico no SICLA — casa com o "Código SICLA" do cadastro de usuário
+      tecnico  -> identificador do técnico como o SELECT o devolve (no SICLA é o NOME). O painel
+                  aceita no cadastro tanto o CÓDIGO numérico quanto o nome: ele traduz um pelo
+                  outro via `select_tecnicos` (SELECT_TECNICOS_PADRAO) antes de consultar.
       data     -> data do compromisso ('AAAA-MM-DD' ou DATE)
       turno    -> opcional: 'manha' | 'tarde' (se ausente/vazio, considera o DIA inteiro ocupado)
   - cada linha representa um compromisso (ocupação) do técnico.
@@ -192,6 +194,41 @@ def testar(cfg=None):
 _CACHE = {}
 _CACHE_TTL = 180   # segundos
 
+# Consulta que mapeia CÓDIGO<->NOME do técnico no SICLA. O SELECT de ocupação casa pelo
+# NOME (tec.TECNICO), mas o cadastro pode ter o CÓDIGO numérico OU o nome — esta consulta
+# permite aceitar os dois (o painel traduz para o nome antes de consultar a ocupação).
+SELECT_TECNICOS_PADRAO = "SELECT CODIGO AS codigo, TECNICO AS tecnico FROM SICLA.TECNICOS"
+_TEC_CACHE = {"ts": 0.0, "map": {}}
+_TEC_TTL = 600     # segundos
+
+
+def mapa_tecnicos(cfg=None, ttl=_TEC_TTL):
+    """{chave_lower -> NOME canônico do técnico}, resolvendo tanto o CÓDIGO numérico quanto o
+    próprio nome. Vem de `select_tecnicos` (ou SELECT_TECNICOS_PADRAO). {} se indisponível —
+    aí o painel usa o valor do cadastro como está (comportamento antigo)."""
+    import time
+    cfg = cfg or load_cfg()
+    if _TEC_CACHE["map"] and (time.time() - _TEC_CACHE["ts"] < ttl):
+        return _TEC_CACHE["map"]
+    q = (cfg.get("select_tecnicos") or SELECT_TECNICOS_PADRAO).strip()
+    m = {}
+    try:
+        from sqlalchemy import text
+        with _engine(cfg).connect() as conn:
+            for r in conn.execute(text(q)).mappings().all():
+                nome = str(r.get("tecnico") or "").strip()
+                cod = str(r.get("codigo") or "").strip()
+                if not nome:
+                    continue
+                m[nome.strip().lower()] = nome
+                if cod:
+                    m[cod.strip().lower()] = nome
+        _TEC_CACHE.update(ts=time.time(), map=m)
+    except Exception:
+        import logging
+        logging.exception("Falha ao montar o mapa de técnicos do SICLA (código<->nome)")
+    return m
+
 
 def ocupacao_por_slot_cache(data_ini, data_fim, tecnicos=None, cfg=None):
     """Como ocupacao_por_slot, com cache de _CACHE_TTL segundos por (janela, técnicos).
@@ -211,14 +248,26 @@ def ocupacao_por_slot_cache(data_ini, data_fim, tecnicos=None, cfg=None):
 
 
 def ocupacao_por_slot(data_ini, data_fim, tecnicos=None, cfg=None):
-    """{(tecnico_lower, data, turno): True} dos compromissos (opcionalmente restrito aos
-    códigos em `tecnicos`). turno '' marca o dia inteiro (expande para manha e tarde)."""
+    """{(chave_lower, data, turno): True} dos compromissos. Aceita em `tecnicos` o CÓDIGO
+    numérico OU o nome do técnico: traduz para o nome antes de consultar (o SELECT casa por
+    nome) e re-indexa o resultado TAMBÉM pela chave original — assim a tela, que procura pelo
+    valor do cadastro (código ou nome), encontra a ocupação. turno '' = dia inteiro."""
+    cfg = cfg or load_cfg()
+    entradas = [str(t).strip() for t in (tecnicos or []) if str(t).strip()]
+    mapa = mapa_tecnicos(cfg) if entradas else {}
+    nomes, alias = [], {}                       # alias: nome_lower -> {chaves originais lower}
+    for e in entradas:
+        nome = mapa.get(e.lower(), e)           # cai no próprio valor se o mapa não resolver
+        nomes.append(nome)
+        alias.setdefault(nome.strip().lower(), set()).add(e.lower())
     ocup = {}
-    for r in consultar(data_ini, data_fim, tecnicos, cfg):
+    for r in consultar(data_ini, data_fim, (nomes or None), cfg):
         tec = (r["tecnico"] or "").strip().lower()
         if not tec or not r["data"]:
             continue
+        chaves = {tec} | alias.get(tec, set())  # nome canônico + apelidos (código/nome do cadastro)
         turnos = (r["turno"],) if r["turno"] else ("manha", "tarde")
         for t in turnos:
-            ocup[(tec, r["data"], t)] = True
+            for k in chaves:
+                ocup[(k, r["data"], t)] = True
     return ocup

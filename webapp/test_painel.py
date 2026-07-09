@@ -1790,6 +1790,33 @@ def test_disponibilidade_filtra_por_tecnico(monkeypatch):
     assert D.filtra_por_tecnico() is False
 
 
+def test_disponibilidade_aceita_codigo_ou_nome(monkeypatch):
+    """Regressão do bug 'tudo livre': o SELECT do SICLA casa pelo NOME do técnico, mas o
+    cadastro pode ter o CÓDIGO numérico. ocupacao_por_slot traduz código->nome e re-indexa
+    o resultado TAMBÉM pela chave original (o que a tela procura)."""
+    import disponibilidade as D
+    monkeypatch.setattr(D, "load_cfg", lambda: {"select": "... IN :tecnicos", "ativo": True})
+    monkeypatch.setattr(D, "mapa_tecnicos", lambda cfg=None, ttl=0: {"276": "Everton", "everton": "Everton"})
+
+    capturado = {}
+
+    def fake_consultar(di, df, tecnicos=None, cfg=None):
+        capturado["tecnicos"] = tecnicos               # o que foi para o SELECT
+        if tecnicos and "Everton" in tecnicos:         # SICLA só responde ao NOME
+            return [{"tecnico": "Everton", "data": "2026-08-10", "turno": "manha"}]
+        return []
+
+    monkeypatch.setattr(D, "consultar", fake_consultar)
+
+    # Passando o CÓDIGO numérico (como está no cadastro): antes dava vazio -> "tudo livre"
+    ocup = D.ocupacao_por_slot("2026-08-01", "2026-08-31", ["276"])
+    assert capturado["tecnicos"] == ["Everton"]         # traduziu código->nome no SELECT
+    assert ocup.get(("276", "2026-08-10", "manha")) is True     # chave pelo código (a tela usa)
+    assert ocup.get(("everton", "2026-08-10", "manha")) is True  # e pelo nome canônico
+    # Passando o NOME direto (ex.: Brito/Thomaz) também funciona
+    assert D.ocupacao_por_slot("2026-08-01", "2026-08-31", ["Everton"]).get(("everton", "2026-08-10", "manha"))
+
+
 def test_disponibilidade_ocupacao_repassa_tecnicos(monkeypatch):
     """ocupacao_por_slot repassa os códigos dos consultores para consultar (filtro no banco)."""
     import disponibilidade as D
