@@ -46,6 +46,19 @@ Se não abrir de outro PC, na ordem:
 3. No outro PC: `Test-NetConnection I7M1700-01-EVE -Port 5000`. Falhou com 1 e 2 ok = rede
    diferente (Wi-Fi de visitantes, VPN, outra VLAN) — chamar a TI da rede.
 
+## 1c. Servidor sempre no ar (guardião)
+Tarefa do Windows **"Painel - Guardiao"** (gatilho: no logon do `everton` + repetição a cada
+5 min, oculta, sem senha armazenada) roda `Guardiao_Painel.vbs`: checa `GET /health` e, se o
+Painel estiver fora do ar, sobe pelo `Iniciar_Servidor.bat` **oculto** (sem janela para fechar
+por engano). Log em `C:\PainelBackups\guardiao.log`.
+- Roda no contexto do usuário `everton` (necessário: a conexão do banco vem do env do usuário).
+- Testar/forçar agora: `schtasks /Run /TN "Painel - Guardiao"`.
+- Conferir: `schtasks /Query /TN "Painel - Guardiao" /V /FO LIST` (Último resultado = 0 = ok).
+- Parar de subir sozinho (manutenção): `schtasks /Change /TN "Painel - Guardiao" /DISABLE`.
+- **Ainda cai?** O guardião só age enquanto o `everton` está logado. Se a máquina fica
+  deslogada/desligada, o site fica fora — é o limite de rodar no notebook (ver migração p/
+  servidor fixo). Reinício do Windows: sobe de novo no próximo logon.
+
 ## 2. E-mail SMTP não envia
 **Sintoma:** envio pela ficha falha; eventos de e-mail viram "Notificação pendente".
 - **"Notificação pendente (…): TimeoutError: timed out"** na timeline = a **rede bloqueia a
