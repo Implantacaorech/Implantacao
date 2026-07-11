@@ -150,10 +150,16 @@ Resultado em `C:\PainelBackups\integridade.log`; em falha, e-mail para `INTEGRID
 Conferir o agendamento: `schtasks /Query /TN "Painel - Verificacao de Integridade"`.
 
 ## 9. Trocar a senha padrão do Postgres
-> Pendência de segurança conhecida (padrão `painel2026`). Faça nos **três** lugares:
+> Achado F-01 da auditoria técnica de 2026-07-10 (`docs/auditoria-2026-07/`) — **corrigido no
+> código** (sem mais senha padrão em `docker-compose.yml`/`painel-backup.sh`), mas a rotação da
+> senha real no servidor ainda precisa ser executada manualmente. Faça nos **três** lugares:
 1. **No banco:** `docker exec -it painel-db psql -U painel -d painel -c "ALTER USER painel WITH PASSWORD 'NOVA_SENHA';"`
+   — se o container ainda não foi recriado com a nova senha, primeiro defina
+   `PAINEL_DB_SENHA=NOVA_SENHA` (variável de ambiente) e suba de novo com `docker compose up -d`
+   (o compose agora **exige** essa variável, não tem mais padrão fixo).
 2. **Na app:** atualizar `PAINEL_DB_URL` (variável de usuário) com a nova senha.
-3. **No backup:** atualizar `PGPASSWORD` em `tools/painel-backup.sh` (não comitar a senha real).
+3. **No backup:** criar/atualizar `/usr/local/etc/painel-db.env` (no WSL, fora do repositório)
+   com a linha `PGPASSWORD=NOVA_SENHA` — `painel-backup.sh` lê daí, não tem mais senha no script.
 Reinicie o Painel e rode `tools/painel-backup.sh` uma vez para validar.
 
 ## 10. Variáveis de ambiente e arquivos de config

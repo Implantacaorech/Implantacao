@@ -4,6 +4,12 @@ Priorizadas: **P0** = crítico/bloqueia · **P1** = importante · **P2** = desej
 Backlog operacional do processo (não-IA) fica em [`docs/pendencias.md`](../docs/pendencias.md).
 
 ## P0 — crítico
+- [ ] **Rotacionar a senha real do Postgres no servidor** — achado F-01 da auditoria técnica de
+  2026-07-10. O lado de **código** já foi corrigido (2026-07-10): `docker-compose.yml` não tem
+  mais senha padrão (exige `PAINEL_DB_SENHA`, falha ao subir sem ela) e `tools/painel-backup.sh`
+  não tem mais `PGPASSWORD` hardcoded (lê de `/usr/local/etc/painel-db.env`, fora do repo).
+  **Falta:** trocar a senha real no container em produção e criar o `painel-db.env` no
+  servidor — passo a passo em `docs/runbooks-operacao.md` §9.
 - [x] **Integridade do avanço:** RESOLVIDO por decisão (2026-06-24) — `_auto_avancar` é **permissivo de propósito** (checa só gate de documentos + ação de entrada). A versão estrita travava Agendamento/Designação. `consultor` saiu de `CAMPOS_OBRIGATORIOS["Projeto"]` (definido na Designação). Ver `decisoes.md`.
 
 ## P1 — importante

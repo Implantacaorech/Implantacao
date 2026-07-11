@@ -14,13 +14,43 @@ jobs:
         with:
           python-version: "3.12"
       - name: Instalar dependências
-        run: pip install -r tools/requirements.txt pytest
+        run: pip install -r tools/requirements.txt pytest pytest-cov
       - name: Checagem de sintaxe
         run: python -m compileall -q webapp tools
       - name: Smoke do app (rotas registradas)
         run: python webapp/verificar_app.py
-      - name: Testes do painel (pytest)
-        run: pytest webapp/test_painel.py -q
+      - name: Testes do painel (pytest, com cobertura)
+        run: pytest webapp/test_painel.py -q --cov=webapp --cov-report=term-missing
       - name: Smoke dos geradores (best-effort; templates são locais)
         run: cd tools && python verificar.py
         continue-on-error: true
+
+  test-postgres:
+    # Paridade dev/prod (achado F-08): confere o schema contra um Postgres real, não só
+    # contra o SQLite que a suíte principal usa por isolamento de teste.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: painel
+          POSTGRES_USER: painel
+          POSTGRES_PASSWORD: postgres_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U painel -d painel"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar dependências
+        run: pip install -r tools/requirements.txt
+      - name: Smoke do schema contra Postgres real
+        env:
+          PAINEL_DB_URL: postgresql+psycopg2://painel:postgres_ci@localhost:5432/painel
+        run: python tools/ci_postgres_smoke.py

@@ -44,17 +44,24 @@ def _carrega_secret():
     s = os.environ.get("PAINEL_SECRET")
     if s:
         return s
+    import secrets
     p = os.path.join(C.DATA_WRITE, "secret.key")
     try:
         if os.path.exists(p):
             return open(p, encoding="utf-8").read().strip()
-        import secrets
         s = secrets.token_hex(32)
         with open(p, "w", encoding="utf-8") as f:
             f.write(s)
         return s
     except Exception:
-        return "painel-implantacao-rech"
+        # Sem valor fixo de propósito (achado F-03 da auditoria 2026-07-10): uma chave
+        # previsível permitiria forjar sessões. Gera uma chave aleatória só para esta
+        # execução — as sessões existentes são invalidadas a cada reinício até o disco
+        # voltar a aceitar escrita em C.DATA_WRITE.
+        logging.critical(
+            "Não consegui ler/gravar %s — usando uma chave de sessão aleatória só para esta "
+            "execução (sessões serão invalidadas a cada reinício até corrigir o disco).", p)
+        return secrets.token_hex(32)
 
 
 app.secret_key = _carrega_secret()
