@@ -7,7 +7,7 @@ anthropic>=0.40 # modo IA: reconferência de tempo verbal + ortografia (opcional
 SQLAlchemy>=2.0 # Hub "Projetos por Cliente" (banco; SQLite por padrão, agnóstico p/ Postgres)
 psycopg2-binary>=2.9 # driver PostgreSQL (banco em Docker via PAINEL_DB_URL)
 waitress>=3.0   # servidor WSGI de produção (substitui o app.run de desenvolvimento)
-google-auth>=2.0          # envio pela API do Gmail (OAuth) quando o SMTP é bloqueado
+google-auth>=2.55.2          # envio pela API do Gmail (OAuth) quando o SMTP é bloqueado
 google-auth-oauthlib>=1.0 # fluxo de autorização OAuth do Gmail
 httpx>=0.27               # chamadas HTTPS à API do Gmail
 
