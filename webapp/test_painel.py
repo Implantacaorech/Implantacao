@@ -2235,6 +2235,33 @@ def test_projeto_excluir_limpa_cronograma_config_e_periodos(client):
     assert db.cronograma_periodos_bloqueados(int(pid)) == []
 
 
+def test_agenda_periodo_bloqueado_por_tecnico(client):
+    """Período sem agenda pode ser restrito a técnicos específicos: bloqueia quem está na
+    lista, libera os demais (manual, distribuição e indicador visual do calendário)."""
+    pid = _novo(client, cliente="Recesso Tec LTDA", cnpj="00.000.000/0001-21", numero_projeto="RT-1",
+                horas_cobradas="10", etapa="Cronograma e Check-list", modulos="FAT,EST")
+    db.cronograma_atividades_seed(int(pid), "FAT,EST")
+    client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "FAT", "tecnico": "Ana"})
+    client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "EST", "tecnico": "Beto"})
+    dia = _dia_util(5)
+    client.post("/projetos/%s/agenda/periodo_bloqueado" % pid,
+                data={"data_ini": dia, "data_fim": dia, "motivo": "Ana de folga", "tecnicos": ["Ana"]})
+
+    periodos = db.cronograma_periodos_bloqueados(int(pid))
+    assert len(periodos) == 1 and periodos[0]["tecnicos"] == "Ana"
+
+    fat_id = [a for a in db.cronograma_atividades(int(pid)) if a["modulo"] == "FAT"][0]["id"]
+    r = client.post("/projetos/%s/agenda/alocar" % pid,
+                    data={"atividade_id": fat_id, "data": dia, "turno": "manha"})
+    assert r.status_code == 409 and "Período sem agenda" in r.get_json()["erro"] and "Ana" in r.get_json()["erro"]
+
+    est_id = [a for a in db.cronograma_atividades(int(pid)) if a["modulo"] == "EST"][0]["id"]
+    r2 = client.post("/projetos/%s/agenda/alocar" % pid,
+                     data={"atividade_id": est_id, "data": dia, "turno": "manha"})
+    assert r2.status_code == 200 and r2.get_json()["ok"] is True
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_config_disponibilidade(client):
     """Tela de Disponibilidade (ADM): monta a URL pelos campos, prioriza URL completa,
     e a página abre."""

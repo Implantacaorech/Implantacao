@@ -1667,13 +1667,19 @@ class CronogramaConfig(Base):
 class CronogramaPeriodoBloqueado(Base):
     """Período (data início/fim) em que o projeto NÃO pode ter visita alguma — recesso, férias
     coletivas, parada programada etc. Bloqueia tanto a distribuição automática quanto a
-    alocação manual (arrastar um cartão) nesse intervalo."""
+    alocação manual (arrastar um cartão) nesse intervalo. `tecnicos` vazio = vale para TODOS
+    os técnicos do projeto; preenchido (nomes separados por vírgula) = só para esses."""
     __tablename__ = "cronograma_periodos_bloqueados"
     id = Column(Integer, primary_key=True)
     projeto_id = Column(Integer, index=True)
     data_ini = Column(String(10), default="")   # "AAAA-MM-DD"
     data_fim = Column(String(10), default="")   # "AAAA-MM-DD", >= data_ini
     motivo = Column(String(160), default="")
+    tecnicos = Column(String(400), default="")   # "" = todos; senão nomes separados por vírgula
+
+
+def _periodo_tecnicos(p):
+    return [t.strip() for t in (p.get("tecnicos") or "").split(",") if t.strip()]
 
 
 def cronograma_periodos_bloqueados(projeto_id):
@@ -1682,15 +1688,17 @@ def cronograma_periodos_bloqueados(projeto_id):
                 .filter_by(projeto_id=projeto_id).order_by(CronogramaPeriodoBloqueado.data_ini).all()]
 
 
-def cronograma_periodo_bloqueado_criar(projeto_id, data_ini, data_fim, motivo=""):
-    """Cria um período sem agenda. Devolve o dict criado, ou None se as datas forem inválidas
-    (vazias ou fim antes do início)."""
+def cronograma_periodo_bloqueado_criar(projeto_id, data_ini, data_fim, motivo="", tecnicos=None):
+    """Cria um período sem agenda. `tecnicos`: lista de nomes (ou None/[] = vale para todos os
+    técnicos do projeto). Devolve o dict criado, ou None se as datas forem inválidas (vazias
+    ou fim antes do início)."""
     data_ini, data_fim = (data_ini or "").strip(), (data_fim or "").strip()
     if not data_ini or not data_fim or data_fim < data_ini:
         return None
+    tecs = ",".join(sorted({(t or "").strip() for t in (tecnicos or []) if (t or "").strip()}))
     with Session() as s:
         p = CronogramaPeriodoBloqueado(projeto_id=projeto_id, data_ini=data_ini, data_fim=data_fim,
-                                       motivo=(motivo or "").strip())
+                                       motivo=(motivo or "").strip(), tecnicos=tecs)
         s.add(p)
         s.commit()
         return to_dict(p)
@@ -1706,11 +1714,17 @@ def cronograma_periodo_bloqueado_excluir(periodo_id, projeto_id):
         return True
 
 
-def cronograma_periodo_que_bloqueia(projeto_id, data_iso):
-    """Devolve o primeiro período bloqueado do projeto que cobre `data_iso` (AAAA-MM-DD), ou
-    None se nenhum cobrir — usado para recusar alocação manual e pular na distribuição."""
+def cronograma_periodo_que_bloqueia(projeto_id, data_iso, tecnico=None):
+    """Devolve o primeiro período bloqueado do projeto que cobre `data_iso` (AAAA-MM-DD) E o
+    técnico informado (período sem técnicos definidos vale para todos; com técnico ainda
+    desconhecido — ex. cartão sem consultor — só bloqueia se o período valer para todos), ou
+    None se nenhum cobrir. Usado para recusar alocação manual e pular na distribuição."""
+    tecnico = (tecnico or "").strip()
     for p in cronograma_periodos_bloqueados(projeto_id):
-        if p["data_ini"] <= data_iso <= p["data_fim"]:
+        if not (p["data_ini"] <= data_iso <= p["data_fim"]):
+            continue
+        tecs = _periodo_tecnicos(p)
+        if not tecs or (tecnico and tecnico in tecs):
             return p
     return None
 

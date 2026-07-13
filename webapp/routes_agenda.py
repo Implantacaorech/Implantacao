@@ -73,11 +73,13 @@ def _slot_indisponivel(data, turno, tecnico_nome, projeto_id=None):
     if data < date.today().isoformat():
         return "Não é possível agendar em data passada — escolha hoje ou uma data futura."
     if projeto_id is not None:
-        p = db.cronograma_periodo_que_bloqueia(projeto_id, data)
+        p = db.cronograma_periodo_que_bloqueia(projeto_id, data, tecnico=tecnico_nome)
         if p:
             motivo = (" — %s" % p["motivo"]) if p.get("motivo") else ""
-            return ("Período sem agenda de %s a %s%s." %
-                    (p["data_ini"][8:10] + "/" + p["data_ini"][5:7], p["data_fim"][8:10] + "/" + p["data_fim"][5:7], motivo))
+            quem = (" (%s)" % p["tecnicos"]) if p.get("tecnicos") else ""
+            return ("Período sem agenda de %s a %s%s%s." %
+                    (p["data_ini"][8:10] + "/" + p["data_ini"][5:7], p["data_fim"][8:10] + "/" + p["data_fim"][5:7],
+                     quem, motivo))
     if turno not in ("manha", "tarde"):
         return None
     try:
@@ -211,16 +213,31 @@ def projeto_agenda(pid):
 
     # Períodos sem agenda (recesso/férias coletivas etc.) — reaproveita o mesmo dict/estilo
     # visual e a mesma rejeição no drag-and-drop já usados para a disponibilidade do SICLA.
+    # Um período com técnicos específicos só aparece bloqueado na visão CONJUNTA se algum dos
+    # envolvidos estiver na lista, e na visão INDIVIDUAL se o técnico selecionado estiver nela
+    # (mesma lógica de "conjunta bloqueia se qualquer um" / "individual só o escolhido" já usada
+    # para a disponibilidade do SICLA).
     periodos_bloqueados = db.cronograma_periodos_bloqueados(pid)
     for d in dias:
         iso = d.isoformat()
         for per in periodos_bloqueados:
-            if per["data_ini"] <= iso <= per["data_fim"]:
-                texto = per.get("motivo") or "Período sem agenda"
-                for t in ("manha", "tarde"):
-                    chave = "%s|%s" % (iso, t)
-                    bloqueados[chave] = (bloqueados[chave] + " · " + texto) if chave in bloqueados else texto
-                break
+            if not (per["data_ini"] <= iso <= per["data_fim"]):
+                continue
+            tecs_per = db._periodo_tecnicos(per)
+            if tecs_per:
+                if modo == "individual":
+                    afeta = bool(tec_sel) and tec_sel in tecs_per
+                else:
+                    afeta = any(e in tecs_per for e in envolvidos)
+                if not afeta:
+                    continue
+            texto = per.get("motivo") or "Período sem agenda"
+            if tecs_per:
+                texto += " (%s)" % ", ".join(tecs_per)
+            for t in ("manha", "tarde"):
+                chave = "%s|%s" % (iso, t)
+                bloqueados[chave] = (bloqueados[chave] + " · " + texto) if chave in bloqueados else texto
+            break
 
     extra = ("&modo=individual" + (("&tec=" + _quote(tec_sel)) if tec_sel else "")) if modo == "individual" else ""
     qs = ("&fds=1" if fds else "") + extra
@@ -432,8 +449,14 @@ def _distribuir_automatico(pid, modulo=None, incluir_alocadas=False):
     dias_excluidos = _parse_dias_excluidos(cfg["dias_turnos_excluidos"])  # {(weekday, turno)} nunca usados
     periodos = db.cronograma_periodos_bloqueados(pid)   # recesso/férias coletivas etc. — nunca usados
 
-    def periodo_bloqueia(iso):
-        return any(p["data_ini"] <= iso <= p["data_fim"] for p in periodos)
+    def periodo_bloqueia(iso, tec):
+        for p in periodos:
+            if not (p["data_ini"] <= iso <= p["data_fim"]):
+                continue
+            tecs = db._periodo_tecnicos(p)
+            if not tecs or tec in tecs:
+                return True
+        return False
     cods = db.codigos_sicla_por_nome(tecnicos)          # nome_lower -> código SICLA ("" se não tem)
     todos_cods = sorted({cods[t.lower()].lower() for t in tecnicos if cods.get(t.lower())})
     ocup_ext = {}
@@ -468,7 +491,7 @@ def _distribuir_automatico(pid, modulo=None, incluir_alocadas=False):
         slot = None
         for d in dias:
             iso = d.isoformat()
-            if periodo_bloqueia(iso):
+            if periodo_bloqueia(iso, tec):
                 continue
             for turno in ("manha", "tarde"):
                 if (d.weekday(), turno) in dias_excluidos:
@@ -633,7 +656,8 @@ def projeto_agenda_periodo_bloqueado(pid):
     else:
         p = db.cronograma_periodo_bloqueado_criar(pid, request.form.get("data_ini"),
                                                   request.form.get("data_fim"),
-                                                  request.form.get("motivo", ""))
+                                                  request.form.get("motivo", ""),
+                                                  tecnicos=request.form.getlist("tecnicos"))
         if not p:
             erro = "Informe data início e fim válidas (fim não pode ser antes do início)."
     return redirect(url_for("projeto_agenda", pid=pid, ref=ref or None,
