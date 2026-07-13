@@ -66,7 +66,9 @@ def projeto_agenda(pid):
         proj = db.to_dict(p)
     db.cronograma_atividades_seed(pid, proj.get("modulos", ""))
     ats = db.cronograma_atividades(pid)
-    tech = {d["modulo"]: d["consultor"] for d in db.designacoes_do_projeto(pid)}
+    designacoes = db.designacoes_do_projeto(pid)
+    tech = {d["modulo"]: d["consultor"] for d in designacoes}
+    ordem_mod = {d["modulo"]: d["ordem"] for d in designacoes}   # ordem de treinamento do módulo
     tecnicos = []                                             # técnicos atribuíveis por cartão
     for nome in list(tech.values()) + [c.strip() for c in (proj.get("consultor") or "").split(",")]:
         nome = (nome or "").strip()
@@ -108,13 +110,21 @@ def projeto_agenda(pid):
     h = db.cronograma_horarios(pid)                           # horário GLOBAL por turno (um só)
     hor = {"manha": {"ini": h["manha"][0], "fim": h["manha"][1]},
            "tarde": {"ini": h["tarde"][0], "fim": h["tarde"][1]}}
-    modulos_tec = [{"sigla": m, "tecnico": tech.get(m, "")}    # técnico por módulo (painel central)
-                   for m in sorted({a["modulo"] for a in ats})]
+    modulos_tec = sorted(
+        ({"sigla": m, "tecnico": tech.get(m, ""), "ordem": ordem_mod.get(m, 0)}   # técnico + ordem
+         for m in {a["modulo"] for a in ats}),
+        key=lambda x: (x["ordem"], x["sigla"]))
+    dist_faltantes = _modulos_sem_tecnico_valido(ats, tech,
+                     sorted({(tech.get(a["modulo"]) or "").strip() for a in ats if (tech.get(a["modulo"]) or "").strip()}))
 
     # Disponibilidade: análise CONJUNTA (todos os envolvidos) ou INDIVIDUAL (1 técnico).
+    # Padrão = modo salvo no projeto (também usado pela distribuição automática); a query
+    # string (?modo=) só troca a VISÃO desta tela, sem alterar o padrão salvo.
     from urllib.parse import quote as _quote
     envolvidos = sorted({(t or "").strip() for t in tech.values() if (t or "").strip()})
-    modo = "individual" if request.args.get("modo") == "individual" else "conjunta"
+    modo_dist = db.cronograma_modo_disponibilidade(pid)
+    modo_arg = request.args.get("modo")
+    modo = modo_arg if modo_arg in ("conjunta", "individual") else modo_dist
     tec_sel = (request.args.get("tec") or "").strip()
     if modo == "individual":
         if tec_sel not in envolvidos:
@@ -158,6 +168,7 @@ def projeto_agenda(pid):
     return render_template("agenda.html", p=proj, pid=pid, semana=semana, aloc=aloc, aloc_grp=aloc_grp,
                            modulos_visitas=modulos_visitas, tech=tech, tecnicos=tecnicos,
                            fora=fora, fds=fds, hor=hor, modulos_tec=modulos_tec,
+                           dist_faltantes=dist_faltantes, modo_dist=modo_dist,
                            bloqueados=bloqueados, disp_aviso=disp_aviso, disp_ativa=disp_ativa,
                            modo=modo, tec_sel=tec_sel, envolvidos=envolvidos,
                            hoje_iso=date.today().isoformat(),
@@ -196,7 +207,9 @@ def projeto_agenda_alocar(pid):
         motivo = _slot_indisponivel(data, turno, eff_tec)
         if motivo:
             return jsonify(ok=False, erro=motivo), 409
-    upd = db.cronograma_alocar(aid, projeto_id=pid, data=data, turno=turno, tecnico=tecnico)
+    # toque manual (arrastar um cartão) tira a atividade da gestão da distribuição automática
+    auto = False if data is not None else None
+    upd = db.cronograma_alocar(aid, projeto_id=pid, data=data, turno=turno, tecnico=tecnico, auto=auto)
     if not upd:
         return jsonify(ok=False, erro="atividade não encontrada"), 404
     return jsonify(ok=True, atividade=upd)
@@ -234,12 +247,141 @@ def projeto_agenda_alocar_visita(pid):
         if (a["status"] or "") not in ("", "Solicitada", "Agendada"):
             continue                                          # histórico não se move em bloco
         if desalocar:
-            db.cronograma_alocar(a["id"], projeto_id=pid, data="", turno="")
+            db.cronograma_alocar(a["id"], projeto_id=pid, data="", turno="", auto=False)
         else:
             t = (a["tecnico"] or "").strip() or (tech.get(modulo) or "")
-            db.cronograma_alocar(a["id"], projeto_id=pid, data=data, turno=turno, tecnico=(t or None))
+            db.cronograma_alocar(a["id"], projeto_id=pid, data=data, turno=turno, tecnico=(t or None), auto=False)
         n += 1
     return jsonify(ok=True, n=n)
+
+
+def _modulos_sem_tecnico_valido(ats, tech, tecnicos):
+    """Módulos usados no cronograma sem técnico definido (ou com um nome que não está mais
+    na lista de técnicos atribuíveis do projeto) — trava a distribuição automática."""
+    modulos = sorted({a["modulo"] for a in ats if a["modulo"]})
+    return [m for m in modulos if (tech.get(m) or "").strip() not in tecnicos]
+
+
+def _distribuir_automatico(pid):
+    """Distribui, 1 visita = 1 turno, as visitas 100% pendentes (nenhum assunto ainda alocado
+    e nenhuma em status final) no primeiro turno livre do técnico do respectivo módulo —
+    a partir de hoje, ~18 meses à frente (mesma janela da tela de disponibilidade). As visitas
+    são processadas na ORDEM DE TREINAMENTO DOS MÓDULOS definida em 'Técnico por módulo' (e,
+    dentro de um mesmo módulo, em ordem de V/seq) — a busca gulosa pelo turno livre mais cedo
+    garante tanto que um módulo prioritário não fique atrás de um posterior (quando o mesmo
+    técnico atende os dois) quanto que V2 nunca fique num turno igual ou anterior ao de V1.
+    Marca cada atividade alocada com auto_agendado=True — 'Refazer' desfaz só isso."""
+    from datetime import date, timedelta
+    import calendar as _cal
+
+    ats = db.cronograma_atividades(pid)
+    designacoes = db.designacoes_do_projeto(pid)
+    tech = {d["modulo"]: d["consultor"] for d in designacoes}
+    ordem_mod = {d["modulo"]: d["ordem"] for d in designacoes}
+    tecnicos = sorted({(tech.get(a["modulo"]) or "").strip() for a in ats if (tech.get(a["modulo"]) or "").strip()})
+    faltantes = _modulos_sem_tecnico_valido(ats, tech, tecnicos)
+    if faltantes:
+        return dict(ok=False, erro="Defina um técnico válido (em 'Técnico por módulo') para: %s "
+                                    "— a distribuição automática só roda com todos os módulos "
+                                    "designados." % ", ".join(faltantes))
+
+    visitas = db.cronograma_visitas(pid)
+    alvo = [g for g in visitas if g["atividades"]
+            and all((a["status"] or "") in ("", "Solicitada") and not (a["data"] and a["turno"])
+                     for a in g["atividades"])]
+    if not alvo:
+        return dict(ok=True, n=0, sem_slot=[],
+                    aviso="Não há visitas 100% pendentes para distribuir (as demais já foram "
+                          "alocadas manualmente ou concluídas).")
+    # ordem de treinamento do módulo primeiro; dentro do módulo, V1 antes de V2
+    alvo.sort(key=lambda g: (ordem_mod.get(g["modulo"], 0), g["modulo"], g["seq"]))
+
+    hoje = date.today()
+    _m = hoje.month - 1 + 18
+    ano_f, mes_f = hoje.year + _m // 12, _m % 12 + 1
+    fim = date(ano_f, mes_f, min(hoje.day, _cal.monthrange(ano_f, mes_f)[1]))
+    dias = []
+    d = hoje
+    while d <= fim:
+        if d.weekday() < 5:                 # útil (seg-sex); a auto-distribuição não usa fds
+            dias.append(d)
+        d += timedelta(days=1)
+
+    modo = db.cronograma_modo_disponibilidade(pid)   # 'conjunta' (em grupo) ou 'individual'
+    cods = db.codigos_sicla_por_nome(tecnicos)          # nome_lower -> código SICLA ("" se não tem)
+    todos_cods = sorted({cods[t.lower()].lower() for t in tecnicos if cods.get(t.lower())})
+    ocup_ext = {}
+    try:
+        import disponibilidade as D
+        if D.configurado() and todos_cods:
+            ocup_ext = D.ocupacao_por_slot_cache(hoje.isoformat(), fim.isoformat(), todos_cods)
+    except Exception:
+        logging.exception("Falha ao consultar disponibilidade na distribuição automática")
+
+    def cod_de(tec):
+        c = (cods.get(tec.strip().lower()) or "").strip()
+        return c.lower() if c else tec.strip().lower()
+
+    def bloqueado_ext(cod, iso, turno):
+        # 'conjunta' (em grupo): bloqueia p/ TODOS se QUALQUER técnico do projeto estiver ocupado;
+        # 'individual': só olha a própria agenda do técnico da visita.
+        if modo == "conjunta":
+            return any(ocup_ext.get((c, iso, turno)) for c in todos_cods)
+        return bool(ocup_ext.get((cod, iso, turno)))
+
+    ocupado = {}   # (tecnico, data_iso, turno) -> True (compromisso já existente, deste cronograma)
+    for a in ats:
+        t = (a["tecnico"] or "").strip()
+        if t and a["data"] and a["turno"]:
+            ocupado[(t, a["data"], a["turno"])] = True
+
+    alocadas, sem_slot = 0, []
+    for g in alvo:
+        tec = (tech.get(g["modulo"]) or "").strip()
+        cod = cod_de(tec)
+        slot = None
+        for d in dias:
+            iso = d.isoformat()
+            for turno in ("manha", "tarde"):
+                if ocupado.get((tec, iso, turno)) or bloqueado_ext(cod, iso, turno):
+                    continue
+                slot = (iso, turno)
+                break
+            if slot:
+                break
+        if not slot:
+            sem_slot.append("%s V%s" % (g["modulo"], g["seq"]))
+            continue
+        iso, turno = slot
+        for a in g["atividades"]:
+            db.cronograma_alocar(a["id"], projeto_id=pid, data=iso, turno=turno,
+                                 tecnico=(a["tecnico"] or tec or None), auto=True)
+        ocupado[(tec, iso, turno)] = True
+        alocadas += 1
+
+    aviso = "%d visita(s) distribuída(s) automaticamente." % alocadas
+    if sem_slot:
+        aviso += " Sem turno livre (dentro de ~18 meses) para: %s." % ", ".join(sem_slot)
+    return dict(ok=True, n=alocadas, sem_slot=sem_slot, aviso=aviso)
+
+
+def projeto_agenda_distribuir(pid):
+    """Distribuição de agendas conforme datas livres — 1ª vez (só visitas 100% pendentes)."""
+    if not pode_gerar("cronograma"):
+        abort(403)
+    return jsonify(_distribuir_automatico(pid))
+
+
+def projeto_agenda_redistribuir(pid):
+    """Refaz a distribuição automática: desaloca só o que a própria distribuição alocou e
+    ainda não foi tocado à mão (auto_agendado=True, status ainda aberto) e roda de novo.
+    Alocações manuais e visitas Realizada/Não Realizada/Postergada/Cancelada nunca são tocadas."""
+    if not pode_gerar("cronograma"):
+        abort(403)
+    for a in db.cronograma_atividades(pid):
+        if a["auto_agendado"] and (a["status"] or "") in ("", "Solicitada", "Agendada"):
+            db.cronograma_alocar(a["id"], projeto_id=pid, data="", turno="", auto=False)
+    return jsonify(_distribuir_automatico(pid))
 
 
 def projeto_agenda_horario(pid):
@@ -254,14 +396,32 @@ def projeto_agenda_horario(pid):
 
 
 def projeto_agenda_tecnico_modulo(pid):
-    """Define o técnico de um MÓDULO (aplica aos cartões e sincroniza a Designação)."""
+    """Define o técnico e/ou a ordem de treinamento de um MÓDULO (aplica o técnico aos cartões
+    e sincroniza a Designação; a ordem é usada pela distribuição automática de agendas)."""
     if not pode_gerar("cronograma"):
         abort(403)
-    n = db.cronograma_tecnico_modulo(pid, request.form.get("modulo"), request.form.get("tecnico"))
+    try:
+        ordem = int(request.form.get("ordem"))
+    except (TypeError, ValueError):
+        ordem = None
+    n = db.cronograma_tecnico_modulo(pid, request.form.get("modulo"), request.form.get("tecnico"), ordem=ordem)
     ref = (request.form.get("ref") or "").strip()
     return redirect(url_for("projeto_agenda", pid=pid, ref=ref or None,
                             fds=(1 if request.form.get("fds") else None),
                             aviso="Técnico do módulo aplicado a %d cartão(ões)." % n))
+
+
+def projeto_agenda_modo_disponibilidade(pid):
+    """Define o modo de análise de disponibilidade do projeto (conjunta/em grupo ou
+    individual por técnico) — padrão da tela e da distribuição automática."""
+    if not pode_gerar("cronograma"):
+        abort(403)
+    modo = db.cronograma_modo_disponibilidade_salvar(pid, request.form.get("modo"))
+    ref = (request.form.get("ref") or "").strip()
+    return redirect(url_for("projeto_agenda", pid=pid, ref=ref or None,
+                            fds=(1 if request.form.get("fds") else None),
+                            aviso=("Modo de disponibilidade: %s." % modo) if modo else None,
+                            erro=None if modo else "Modo inválido."))
 
 
 def projeto_agenda_status(pid):
@@ -377,8 +537,11 @@ def register(app, **deps):
     rota(base, projeto_agenda)
     rota(base + "/alocar", projeto_agenda_alocar, ["POST"])
     rota(base + "/alocar_visita", projeto_agenda_alocar_visita, ["POST"])
+    rota(base + "/distribuir", projeto_agenda_distribuir, ["POST"])
+    rota(base + "/redistribuir", projeto_agenda_redistribuir, ["POST"])
     rota(base + "/horario", projeto_agenda_horario, ["POST"])
     rota(base + "/tecnico_modulo", projeto_agenda_tecnico_modulo, ["POST"])
+    rota(base + "/modo_disponibilidade", projeto_agenda_modo_disponibilidade, ["POST"])
     rota(base + "/status", projeto_agenda_status, ["POST"])
     rota(base + "/acompanhamento", projeto_agenda_acompanhamento)
     rota(base + "/gerar", projeto_agenda_gerar, ["POST"])

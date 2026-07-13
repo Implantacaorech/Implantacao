@@ -776,12 +776,15 @@ class Designacao(Base):
     projeto_id = Column(Integer, index=True)
     modulo = Column(String(80), default="")
     consultor = Column(String(160), default="")
+    ordem = Column(Integer, default=0)   # ordem de treinamento do módulo (usada na distribuição
+                                          # automática de agendas); 0 para todos = cai no alfabético
 
 
 def designacoes_do_projeto(pid):
     with Session() as s:
-        return [{"modulo": d.modulo, "consultor": d.consultor}
-                for d in s.query(Designacao).filter_by(projeto_id=pid).order_by(Designacao.modulo).all()]
+        return [{"modulo": d.modulo, "consultor": d.consultor, "ordem": d.ordem or 0}
+                for d in s.query(Designacao).filter_by(projeto_id=pid)
+                .order_by(Designacao.ordem, Designacao.modulo).all()]
 
 
 def to_dict(obj):
@@ -1526,6 +1529,9 @@ class AtividadeCronograma(Base):
     novo_turno = Column(String(10), default="")
     origem_id = Column(Integer, default=0)      # id da atividade que originou (clone de postergação)
     is_copia = Column(Boolean, default=False)
+    auto_agendado = Column(Boolean, default=False)  # True = data/turno vieram da distribuição
+                                                     # automática e ainda não foram tocados à mão
+                                                     # (permite "Refazer" desfazer só isso)
 
 
 # Estados de uma agenda/atividade (para ver e contar no Acompanhamento).
@@ -1596,10 +1602,12 @@ def cronograma_visitas(projeto_id):
     return sorted(grupos.values(), key=lambda g: (g["modulo"], g["seq"]))
 
 
-def cronograma_alocar(atividade_id, projeto_id=None, data=None, turno=None, tecnico=None, status=None):
+def cronograma_alocar(atividade_id, projeto_id=None, data=None, turno=None, tecnico=None, status=None, auto=None):
     """Atualiza uma atividade do agendador. Cada campo é opcional: None = não mexe;
     para data/turno, "" desaloca (volta à lista de visitas). `projeto_id` (quando passado)
-    garante que a atividade pertence ao projeto. Devolve o dict atualizado ou None."""
+    garante que a atividade pertence ao projeto. `auto`: None = não mexe; True/False marca se
+    o posicionamento atual veio da distribuição automática (permite o "Refazer" desfazer só o
+    que a própria distribuição fez, nunca uma alocação manual). Devolve o dict atualizado ou None."""
     with Session() as s:
         a = s.get(AtividadeCronograma, int(atividade_id))
         if not a or (projeto_id is not None and a.projeto_id != projeto_id):
@@ -1616,6 +1624,8 @@ def cronograma_alocar(atividade_id, projeto_id=None, data=None, turno=None, tecn
             a.tecnico = (tecnico or "").strip()
         if status is not None:
             a.status = (status or "").strip() or "Solicitada"
+        if auto is not None:
+            a.auto_agendado = bool(auto)
         s.commit()
         return to_dict(a)
 
@@ -1633,6 +1643,40 @@ class SlotCronograma(Base):
     turno = Column(String(10), default="")      # "manha" | "tarde"
     hora_inicio = Column(String(5), default="")  # "HH:MM"
     hora_fim = Column(String(5), default="")
+
+
+class CronogramaConfig(Base):
+    """Configurações do agendador de visitas por projeto (uma linha por projeto)."""
+    __tablename__ = "cronograma_config"
+    id = Column(Integer, primary_key=True)
+    projeto_id = Column(Integer, index=True, unique=True)
+    modo_disponibilidade = Column(String(20), default="conjunta")  # "conjunta" (em grupo) | "individual"
+
+
+def cronograma_modo_disponibilidade(projeto_id):
+    """Modo de análise de disponibilidade do projeto: 'conjunta' (em grupo — bloqueia o turno
+    se QUALQUER técnico envolvido estiver ocupado) ou 'individual' (cada técnico só olha a
+    própria agenda). Usado como padrão da tela e pela distribuição automática. 'conjunta' se
+    não definido (comportamento histórico)."""
+    with Session() as s:
+        c = s.query(CronogramaConfig).filter_by(projeto_id=projeto_id).first()
+        m = (c.modo_disponibilidade or "").strip() if c else ""
+        return m if m in ("conjunta", "individual") else "conjunta"
+
+
+def cronograma_modo_disponibilidade_salvar(projeto_id, modo):
+    """Define o modo de análise de disponibilidade do projeto. Devolve o modo salvo ou None."""
+    modo = (modo or "").strip()
+    if modo not in ("conjunta", "individual"):
+        return None
+    with Session() as s:
+        c = s.query(CronogramaConfig).filter_by(projeto_id=projeto_id).first()
+        if not c:
+            c = CronogramaConfig(projeto_id=projeto_id)
+            s.add(c)
+        c.modo_disponibilidade = modo
+        s.commit()
+        return modo
 
 
 def cronograma_horarios(projeto_id):
@@ -1704,9 +1748,10 @@ def cronograma_postergar(atividade_id, projeto_id, nova_data, novo_turno):
         return {"original": to_dict(a), "novo": to_dict(clone)}
 
 
-def cronograma_tecnico_modulo(projeto_id, modulo, tecnico):
-    """Define o técnico de um MÓDULO: aplica a todos os cartões do módulo e sincroniza a
-    Designação do projeto (fonte única módulo→consultor). Devolve o nº de cartões afetados."""
+def cronograma_tecnico_modulo(projeto_id, modulo, tecnico, ordem=None):
+    """Define o técnico (e, opcionalmente, a ordem de treinamento) de um MÓDULO: aplica o
+    técnico a todos os cartões do módulo e sincroniza a Designação do projeto (fonte única
+    módulo→consultor→ordem). `ordem` None = não mexe. Devolve o nº de cartões afetados."""
     modulo, tecnico = (modulo or "").strip().upper(), (tecnico or "").strip()
     if not modulo:
         return 0
@@ -1720,6 +1765,8 @@ def cronograma_tecnico_modulo(projeto_id, modulo, tecnico):
             d = Designacao(projeto_id=projeto_id, modulo=modulo)
             s.add(d)
         d.consultor = tecnico
+        if ordem is not None:
+            d.ordem = ordem
         s.commit()
         return n
 

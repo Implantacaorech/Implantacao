@@ -56,7 +56,18 @@
     <span class="ag-hgrp" data-turno="tarde">Tarde
       <input type="time" class="ag-h-ini" value="{{ hor.tarde.ini }}"> – <input type="time" class="ag-h-fim" value="{{ hor.tarde.fim }}">
     </span>
-    <span style="margin-left:auto;display:flex;gap:8px">
+    <span style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      {% if dist_faltantes %}
+      <span class="dica" style="margin:0;color:var(--err,#d33)"
+            title="Defina o técnico em 'Técnico por módulo' para: {{ dist_faltantes|join(', ') }}">
+        Defina o técnico de {{ dist_faltantes|length }} módulo(s) para liberar a distribuição automática
+      </span>
+      {% else %}
+      <button type="button" class="btn" id="ag-distribuir"
+              title="Distribuição de agendas conforme datas livres: aloca as visitas 100% pendentes no primeiro turno livre do técnico do módulo, respeitando a ordem de treinamento">Distribuir agenda</button>
+      <button type="button" class="btn" id="ag-redistribuir"
+              title="Refazer distribuição de agendas conforme datas livres: desfaz só o que a própria distribuição automática alocou (nada manual é tocado) e roda de novo">Refazer distribuição</button>
+      {% endif %}
       <form method="post" action="{{ url_for('projeto_agenda_gerar', pid=pid) }}" style="display:inline">
         <button class="btn primario" type="submit"><svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> Gerar (.xlsx)</button>
       </form>
@@ -67,12 +78,25 @@
   {# Técnico por módulo (central) #}
   {% if modulos_tec %}
   <details class="ag-modtec-box">
-    <summary>Técnico por módulo <small class="dica" style="margin:0">— aplica aos cartões e à Designação</small></summary>
+    <summary>Técnico por módulo <small class="dica" style="margin:0">— ordem de treinamento e modo de disponibilidade usados pela distribuição automática</small></summary>
+    <div class="ag-modtec-modo">
+      <span class="dica" style="margin:0">Modo de disponibilidade (tela e distribuição automática):</span>
+      <form method="post" action="{{ url_for('projeto_agenda_modo_disponibilidade', pid=pid) }}" style="display:inline">
+        <input type="hidden" name="ref" value="{{ ref_cur }}">{% if fds %}<input type="hidden" name="fds" value="1">{% endif %}
+        <select name="modo" onchange="this.form.submit()">
+          <option value="conjunta" {{ 'selected' if modo_dist == 'conjunta' }}>Em grupo (bloqueia o turno se qualquer técnico estiver ocupado)</option>
+          <option value="individual" {{ 'selected' if modo_dist == 'individual' }}>Individual por técnico (cada um só vê a própria agenda)</option>
+        </select>
+      </form>
+    </div>
     <div class="ag-modtec-grid">
       {% for m in modulos_tec %}
       <form method="post" action="{{ url_for('projeto_agenda_tecnico_modulo', pid=pid) }}" class="ag-modtec">
         <input type="hidden" name="modulo" value="{{ m.sigla }}"><input type="hidden" name="ref" value="{{ ref_cur }}">{% if fds %}<input type="hidden" name="fds" value="1">{% endif %}
         <span class="ag-modtec-sig">{{ m.sigla }}</span>
+        <input type="number" name="ordem" class="ag-modtec-ordem" value="{{ m.ordem }}" min="0" step="1"
+               title="Ordem de treinamento do módulo (menor = treinado primeiro na distribuição automática)"
+               onchange="this.form.submit()">
         <select name="tecnico" onchange="this.form.submit()">
           <option value="">—</option>
           {% for t in tecnicos %}<option value="{{ t }}" {{ 'selected' if t == m.tecnico }}>{{ t }}</option>{% endfor %}
@@ -206,9 +230,12 @@
     .ag-hgrp input[type=time]{width:112px;font-size:.82rem;padding:3px 6px;border:1px solid var(--line);border-radius:5px}
     .ag-modtec-box{background:var(--surface,#fff);border:1px solid var(--line);border-radius:9px;padding:8px 12px;margin-bottom:12px}
     .ag-modtec-box>summary{cursor:pointer;font-weight:700;color:var(--navy)}
-    .ag-modtec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:10px}
+    .ag-modtec-modo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .ag-modtec-modo select{font-size:.8rem;padding:3px 6px;border:1px solid var(--line);border-radius:5px;background:#fff}
+    .ag-modtec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-top:10px}
     .ag-modtec{display:flex;align-items:center;gap:6px;margin:0}
     .ag-modtec-sig{font-weight:700;color:var(--navy);width:42px;flex:none}
+    .ag-modtec-ordem{width:46px;flex:none;font-size:.78rem;padding:2px 4px;border:1px solid var(--line);border-radius:5px}
     .ag-modtec select{flex:1;min-width:0;font-size:.78rem;padding:2px 4px;border:1px solid var(--line);border-radius:5px}
     .ag-wrap{display:grid;grid-template-columns:300px 1fr;gap:14px;align-items:start}
     @media (max-width:900px){.ag-wrap{grid-template-columns:1fr}}
@@ -280,8 +307,27 @@
     var url='{{ url_for("projeto_agenda_alocar", pid=pid) }}';
     var visitaUrl='{{ url_for("projeto_agenda_alocar_visita", pid=pid) }}';
     var horarioUrl='{{ url_for("projeto_agenda_horario", pid=pid) }}';
+    var distribuirUrl='{{ url_for("projeto_agenda_distribuir", pid=pid) }}';
+    var redistribuirUrl='{{ url_for("projeto_agenda_redistribuir", pid=pid) }}';
     var modal=document.getElementById('postModal');
     window.agExpand=function(open){ document.querySelectorAll('#ag-pend details').forEach(function(d){ d.open=open; }); };
+    function chamarDistribuicao(destUrl, btn){
+      if(btn) btn.disabled=true;
+      fetch(destUrl, {method:'POST'})
+        .then(function(r){ return r.json(); })
+        .then(function(j){
+          if(!j||!j.ok){ alert((j&&j.erro) || 'Não foi possível distribuir as agendas.'); if(btn) btn.disabled=false; return; }
+          if(j.n){ alert(j.aviso || (j.n + ' visita(s) distribuída(s).')); location.reload(); }
+          else { alert(j.aviso || 'Nada para distribuir.'); if(btn) btn.disabled=false; }
+        })
+        .catch(function(){ alert('Erro de rede ao distribuir as agendas.'); if(btn) btn.disabled=false; });
+    }
+    var btnDist=document.getElementById('ag-distribuir'), btnRedist=document.getElementById('ag-redistribuir');
+    if(btnDist) btnDist.addEventListener('click', function(){ chamarDistribuicao(distribuirUrl, btnDist); });
+    if(btnRedist) btnRedist.addEventListener('click', function(){
+      if(!confirm('Refazer a distribuição automática? Isso desfaz só o que a própria distribuição alocou (nenhuma alocação manual é tocada) e distribui de novo.')) return;
+      chamarDistribuicao(redistribuirUrl, btnRedist);
+    });
     function post(params, cb){
       fetch(url, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
             body:new URLSearchParams(params)})

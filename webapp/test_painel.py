@@ -1809,6 +1809,69 @@ def test_agenda_realocar_e_desalocar_visita_inteira(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_agenda_distribuir_exige_tecnico_valido(client):
+    """Sem técnico válido definido para o módulo, a distribuição automática recusa e diz
+    qual módulo está faltando (em vez de adivinhar ou distribuir parcialmente)."""
+    pid = _novo(client, cliente="Distrib LTDA", cnpj="00.000.000/0001-02", numero_projeto="DI-1",
+                horas_cobradas="10", etapa="Cronograma e Check-list", modulos="FAT")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    r = client.post("/projetos/%s/agenda/distribuir" % pid)
+    j = r.get_json()
+    assert j["ok"] is False and "FAT" in j["erro"]
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_agenda_distribuir_respeita_ordem_dos_modulos(client):
+    """Com o mesmo técnico em dois módulos, a distribuição segue a ORDEM DE TREINAMENTO
+    definida em 'Técnico por módulo' — não a ordem alfabética: o módulo com ordem menor
+    (FAT=1) sai inteiro na frente do de ordem maior (EST=2), mesmo EST vindo antes no
+    alfabeto."""
+    pid = _novo(client, cliente="Ordem LTDA", cnpj="00.000.000/0001-03", numero_projeto="OR-1",
+                horas_cobradas="10", etapa="Cronograma e Check-list", modulos="FAT,EST")
+    db.cronograma_atividades_seed(int(pid), "FAT,EST")
+    client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "EST", "tecnico": "Ana", "ordem": "2"})
+    client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "FAT", "tecnico": "Ana", "ordem": "1"})
+    r = client.post("/projetos/%s/agenda/distribuir" % pid)
+    j = r.get_json()
+    assert j["ok"] is True and j["n"] >= 2
+    ats = db.cronograma_atividades(int(pid))
+    fat = next(a for a in ats if a["modulo"] == "FAT")
+    est = next(a for a in ats if a["modulo"] == "EST")
+    assert fat["auto_agendado"] is True and est["auto_agendado"] is True
+    peso_turno = {"manha": 0, "tarde": 1}
+    assert (fat["data"], peso_turno[fat["turno"]]) < (est["data"], peso_turno[est["turno"]])
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_agenda_redistribuir_preserva_alocacao_manual(client):
+    """'Refazer' desfaz só o que a própria distribuição automática alocou (auto_agendado=True);
+    uma visita movida manualmente depois da 1ª distribuição fica intocada na 2ª rodada (mesmo
+    havendo outras visitas do mesmo módulo que o Refazer legitimamente redistribui)."""
+    pid = _novo(client, cliente="Refazer LTDA", cnpj="00.000.000/0001-04", numero_projeto="RF-1",
+                horas_cobradas="10", etapa="Cronograma e Check-list", modulos="FAT")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "FAT", "tecnico": "Ana"})
+    r = client.post("/projetos/%s/agenda/distribuir" % pid)
+    j = r.get_json()
+    assert j["ok"] is True and j["n"] >= 1
+
+    g = db.cronograma_visitas(int(pid))[0]
+    seq = g["seq"]
+    dia_manual = _dia_util(20)
+    client.post("/projetos/%s/agenda/alocar_visita" % pid,
+                data={"modulo": "FAT", "seq": seq, "data": dia_manual, "turno": "tarde"})
+    ats = [a for a in db.cronograma_atividades(int(pid)) if a["modulo"] == "FAT" and a["seq"] == seq]
+    assert all(a["auto_agendado"] is False for a in ats)          # tocar à mão tira do "auto"
+    assert all(a["data"] == dia_manual and a["turno"] == "tarde" for a in ats)
+
+    r2 = client.post("/projetos/%s/agenda/redistribuir" % pid)
+    j2 = r2.get_json()
+    assert j2["ok"] is True                          # outras visitas ainda "auto" podem mexer
+    ats2 = [a for a in db.cronograma_atividades(int(pid)) if a["modulo"] == "FAT" and a["seq"] == seq]
+    assert all(a["data"] == dia_manual and a["turno"] == "tarde" for a in ats2)   # a manual não mexeu
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_config_disponibilidade(client):
     """Tela de Disponibilidade (ADM): monta a URL pelos campos, prioriza URL completa,
     e a página abre."""
