@@ -1997,6 +1997,52 @@ def test_agenda_reorganizar_modulo_apos_postergar(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_agenda_desfazer_tudo(client):
+    """'Desfazer todas as agendas' devolve ao estágio inicial tanto o que veio da distribuição
+    automática quanto o que foi alocado manualmente, sem exigir nada além disso."""
+    pid = _novo(client, cliente="Desfazer LTDA", cnpj="00.000.000/0001-12", numero_projeto="DF-1",
+                horas_cobradas="10", etapa="Cronograma e Check-list", modulos="FAT,EST")
+    db.cronograma_atividades_seed(int(pid), "FAT,EST")
+    client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "FAT", "tecnico": "Ana"})
+    client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "EST", "tecnico": "Beto"})
+    r_dist = client.post("/projetos/%s/agenda/distribuir" % pid)
+    assert r_dist.get_json()["ok"] is True and r_dist.get_json()["n"] >= 1
+
+    # aloca mais uma manualmente (garante que "manual" também é desfeito)
+    dia = _dia_util(45)
+    client.post("/projetos/%s/agenda/alocar" % pid,
+                data={"atividade_id": db.cronograma_atividades(int(pid))[0]["id"], "data": dia, "turno": "manha"})
+
+    r = client.post("/projetos/%s/agenda/desfazer_tudo" % pid)
+    j = r.get_json()
+    assert j["ok"] is True and j["n"] >= 1
+    ats = db.cronograma_atividades(int(pid))
+    assert all(not a["data"] and not a["turno"] and a["status"] == "Solicitada"
+               and a["auto_agendado"] is False for a in ats)
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_agenda_desfazer_tudo_bloqueado_se_ja_ocorreu(client):
+    """Se qualquer visita já ocorreu (Realizada/Não Realizada), 'Desfazer todas as agendas'
+    fica bloqueado por completo — nada é alterado."""
+    pid = _novo(client, cliente="Ocorreu LTDA", cnpj="00.000.000/0001-13", numero_projeto="OC-1",
+                horas_cobradas="10", etapa="Cronograma e Check-list", modulos="FAT")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "FAT", "tecnico": "Ana"})
+    r_dist = client.post("/projetos/%s/agenda/distribuir" % pid)
+    assert r_dist.get_json()["ok"] is True
+
+    aid = db.cronograma_atividades(int(pid))[0]["id"]
+    client.post("/projetos/%s/agenda/status" % pid, data={"atividade_id": aid, "status": "Realizada"})
+    antes = db.cronograma_atividades(int(pid))
+
+    r = client.post("/projetos/%s/agenda/desfazer_tudo" % pid)
+    j = r.get_json()
+    assert j["ok"] is False and "Realizada" in j["erro"]
+    assert db.cronograma_atividades(int(pid)) == antes   # nada mudou
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_config_disponibilidade(client):
     """Tela de Disponibilidade (ADM): monta a URL pelos campos, prioriza URL completa,
     e a página abre."""

@@ -68,6 +68,8 @@
       <button type="button" class="btn" id="ag-redistribuir"
               title="Refazer distribuição de agendas conforme datas livres: desfaz só o que a própria distribuição automática alocou (nada manual é tocado) e roda de novo">Refazer distribuição</button>
       {% endif %}
+      <button type="button" class="btn" id="ag-desfazer-tudo" {{ 'disabled' if dist_ja_ocorreu }}
+              title="{{ 'Há visita(s) já Realizada(s)/Não Realizada(s) — não é possível desfazer.' if dist_ja_ocorreu else 'Desfaz TODAS as agendas (automáticas e manuais) deste cronograma, voltando ao estágio inicial.' }}">Desfazer todas as agendas</button>
       <form method="post" action="{{ url_for('projeto_agenda_gerar', pid=pid) }}" style="display:inline">
         <button class="btn primario" type="submit"><svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> Gerar (.xlsx)</button>
       </form>
@@ -324,6 +326,7 @@
     var redistribuirUrl='{{ url_for("projeto_agenda_redistribuir", pid=pid) }}';
     var postergarVisitaUrl='{{ url_for("projeto_agenda_postergar_visita", pid=pid) }}';
     var reorganizarUrl='{{ url_for("projeto_agenda_reorganizar_modulo", pid=pid) }}';
+    var desfazerTudoUrl='{{ url_for("projeto_agenda_desfazer_tudo", pid=pid) }}';
     var modal=document.getElementById('postModal');
     window.agExpand=function(open){ document.querySelectorAll('#ag-pend details').forEach(function(d){ d.open=open; }); };
     // "Técnico por módulo": cada alteração recarrega a página (form submit); sem isso, a caixa
@@ -353,6 +356,11 @@
     if(btnRedist) btnRedist.addEventListener('click', function(){
       if(!confirm('Refazer a distribuição automática? Isso desfaz só o que a própria distribuição alocou (nenhuma alocação manual é tocada) e distribui de novo.')) return;
       chamarDistribuicao(redistribuirUrl, btnRedist);
+    });
+    var btnDesfazerTudo=document.getElementById('ag-desfazer-tudo');
+    if(btnDesfazerTudo) btnDesfazerTudo.addEventListener('click', function(){
+      if(!confirm('Desfazer TODAS as agendas deste cronograma (automáticas e manuais)? Todos os assuntos ainda abertos voltam para a lista de pendentes. Isso não pode ser desfeito com um clique.')) return;
+      chamarDistribuicao(desfazerTudoUrl, btnDesfazerTudo);
     });
     function post(params, cb){
       fetch(url, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},

@@ -132,6 +132,7 @@ def projeto_agenda(pid):
         key=lambda x: (x["ordem"], x["sigla"]))
     dist_faltantes = _modulos_sem_tecnico_valido(ats, tech, nd_mod,
                      sorted({(tech.get(a["modulo"]) or "").strip() for a in ats if (tech.get(a["modulo"]) or "").strip()}))
+    dist_ja_ocorreu = _ja_ocorreu(ats)
 
     # Disponibilidade: análise CONJUNTA (todos os envolvidos) ou INDIVIDUAL (1 técnico).
     # Padrão = modo salvo no projeto (também usado pela distribuição automática); a query
@@ -187,7 +188,7 @@ def projeto_agenda(pid):
                            modulos_visitas=modulos_visitas, tech=tech, tecnicos=tecnicos,
                            fora=fora, fds=fds, hor=hor, modulos_tec=modulos_tec,
                            dist_faltantes=dist_faltantes, modo_dist=modo_dist, dist_data_inicio=dist_data_inicio,
-                           nd_sentinel=NAO_DISTRIBUIR,
+                           nd_sentinel=NAO_DISTRIBUIR, dist_ja_ocorreu=dist_ja_ocorreu,
                            bloqueados=bloqueados, disp_aviso=disp_aviso, disp_ativa=disp_ativa,
                            modo=modo, tec_sel=tec_sel, envolvidos=envolvidos,
                            hoje_iso=date.today().isoformat(),
@@ -280,6 +281,15 @@ def _modulos_sem_tecnico_valido(ats, tech, nd_mod, tecnicos):
     marcados "Não distribuir" nunca entram nessa lista (são ignorados, não exigem técnico)."""
     modulos = sorted({a["modulo"] for a in ats if a["modulo"] and not nd_mod.get(a["modulo"])})
     return [m for m in modulos if (tech.get(m) or "").strip() not in tecnicos]
+
+
+_STATUS_JA_OCORREU = ("Realizada", "Não Realizada")
+
+
+def _ja_ocorreu(ats):
+    """True se alguma visita do cronograma já ocorreu (Realizada/Não Realizada) — nesse caso
+    'Desfazer todas as agendas' fica bloqueado: não dá pra desfazer o que já aconteceu."""
+    return any((a["status"] or "") in _STATUS_JA_OCORREU for a in ats)
 
 
 def _distribuir_automatico(pid, modulo=None, incluir_alocadas=False):
@@ -471,6 +481,28 @@ def projeto_agenda_redistribuir(pid):
         if a["auto_agendado"] and (a["status"] or "") in ("", "Solicitada", "Agendada"):
             db.cronograma_alocar(a["id"], projeto_id=pid, data="", turno="", auto=False)
     return jsonify(_distribuir_automatico(pid))
+
+
+def projeto_agenda_desfazer_tudo(pid):
+    """Desfaz TODAS as agendas do cronograma (automáticas e manuais): devolve ao estágio
+    inicial — desaloca (data/turno em branco, status volta a Solicitada) toda atividade ainda
+    aberta (Solicitada/Agendada), do projeto inteiro, sem distinção de módulo/técnico. Nunca
+    toca Postergada/Cancelada (histórico permanece). Bloqueado por completo se qualquer visita
+    já tiver ocorrido (Realizada/Não Realizada) — não dá pra desfazer o que já aconteceu."""
+    if not pode_gerar("cronograma"):
+        abort(403)
+    ats = db.cronograma_atividades(pid)
+    if _ja_ocorreu(ats):
+        return jsonify(ok=False, erro="Há visita(s) já Realizada(s)/Não Realizada(s) neste "
+                                       "cronograma — não é possível desfazer as agendas.")
+    n = 0
+    for a in ats:
+        if (a["status"] or "") in ("", "Solicitada", "Agendada") and (a["data"] or a["turno"]):
+            db.cronograma_alocar(a["id"], projeto_id=pid, data="", turno="", auto=False)
+            n += 1
+    return jsonify(ok=True, n=n,
+                    aviso=("%d assunto(s) voltaram à lista de pendentes." % n) if n else
+                          "Não havia agenda alocada para desfazer.")
 
 
 def projeto_agenda_horario(pid):
@@ -673,6 +705,7 @@ def register(app, **deps):
     rota(base + "/alocar_visita", projeto_agenda_alocar_visita, ["POST"])
     rota(base + "/distribuir", projeto_agenda_distribuir, ["POST"])
     rota(base + "/redistribuir", projeto_agenda_redistribuir, ["POST"])
+    rota(base + "/desfazer_tudo", projeto_agenda_desfazer_tudo, ["POST"])
     rota(base + "/horario", projeto_agenda_horario, ["POST"])
     rota(base + "/tecnico_modulo", projeto_agenda_tecnico_modulo, ["POST"])
     rota(base + "/config_distribuicao", projeto_agenda_config_distribuicao, ["POST"])
