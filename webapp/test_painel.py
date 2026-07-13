@@ -2109,6 +2109,24 @@ def test_agenda_config_distribuicao_dias_turnos_excluidos(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_agenda_analista_responsavel(client):
+    """Analista responsável: um padrão por projeto, com sobreposição opcional por módulo (o
+    módulo sem sobreposição fica sem valor salvo — a tela usa o padrão como referência)."""
+    pid = _novo(client, cliente="Analista LTDA", cnpj="00.000.000/0001-16", numero_projeto="AN-1",
+                horas_cobradas="10", etapa="Cronograma e Check-list", modulos="FAT,EST")
+    db.cronograma_atividades_seed(int(pid), "FAT,EST")
+    client.post("/projetos/%s/agenda/config_distribuicao" % pid, data={"analista_padrao": "Bruna"})
+    client.post("/projetos/%s/agenda/tecnico_modulo" % pid,
+                data={"modulo": "EST", "tecnico": "Ana", "analista": "Carla"})
+
+    cfg = db.cronograma_config(int(pid))
+    assert cfg["analista_padrao"] == "Bruna"
+    designacoes = {d["modulo"]: d for d in db.designacoes_do_projeto(int(pid))}
+    assert designacoes["EST"]["analista"] == "Carla"
+    assert designacoes.get("FAT", {}).get("analista", "") == ""   # sem sobreposição
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_config_disponibilidade(client):
     """Tela de Disponibilidade (ADM): monta a URL pelos campos, prioriza URL completa,
     e a página abre."""

@@ -96,6 +96,10 @@
         <input type="date" name="data_inicio" value="{{ dist_data_inicio }}" min="{{ hoje_iso }}"
                title="Data a partir da qual a distribuição automática busca turnos livres (vazio = hoje)"
                onchange="this.form.submit()">
+        <span class="dica" style="margin:0">Analista responsável (padrão do cliente):</span>
+        <input type="text" name="analista_padrao" value="{{ dist_analista_padrao }}" class="ag-analista-padrao"
+               placeholder="Nome do analista" title="Analista responsável pelo cliente — cada módulo pode sobrepor abaixo"
+               onchange="this.form.submit()">
       </form>
     </div>
     <div class="ag-dias-turnos">
@@ -128,6 +132,10 @@
           {% if m.tecnico and m.tecnico not in tecnicos %}<option value="{{ m.tecnico }}" {{ 'selected' if not m.nao_distribuir }}>{{ m.tecnico }}</option>{% endif %}
           <option value="{{ nd_sentinel }}" {{ 'selected' if m.nao_distribuir }}>— Não distribuir —</option>
         </select>
+        <input type="text" name="analista" value="{{ m.analista }}" class="ag-modtec-analista"
+               placeholder="Analista{{ ' (' + dist_analista_padrao + ')' if dist_analista_padrao and not m.analista else '' }}"
+               title="Analista responsável deste módulo — vazio usa o padrão do cliente"
+               onchange="this.form.submit()">
       </form>
       {% endfor %}
     </div>
@@ -263,7 +271,8 @@
     .ag-modtec-modo{margin-top:10px}
     .ag-modtec-modo-form{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0}
     .ag-modtec-modo-form select, .ag-modtec-modo-form input[type=date]{font-size:.8rem;padding:3px 6px;border:1px solid var(--line);border-radius:5px;background:#fff}
-    .ag-modtec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-top:10px}
+    .ag-analista-padrao{font-size:.8rem;padding:3px 6px;border:1px solid var(--line);border-radius:5px;width:170px}
+    .ag-modtec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-top:10px}
     .ag-modtec{display:flex;align-items:center;gap:6px;margin:0;background:var(--surface-2,#f3f6fb);
       border:1px solid var(--line);border-radius:7px;padding:5px 8px}
     .ag-modtec-sig{font-weight:700;color:var(--navy);width:42px;flex:none}
@@ -271,6 +280,7 @@
       text-align:center;-moz-appearance:textfield}
     .ag-modtec-ordem::-webkit-outer-spin-button,.ag-modtec-ordem::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
     .ag-modtec select{flex:1;min-width:0;font-size:.78rem;padding:2px 4px;border:1px solid var(--line);border-radius:5px}
+    .ag-modtec-analista{flex:1;min-width:70px;font-size:.78rem;padding:2px 4px;border:1px solid var(--line);border-radius:5px}
     .ag-dias-turnos{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
     .ag-dt-grid{display:flex;flex-wrap:wrap;gap:8px;margin:0}
     .ag-dt-dia{display:flex;align-items:center;gap:10px;background:var(--surface-2,#f3f6fb);

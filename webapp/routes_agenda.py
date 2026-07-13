@@ -101,6 +101,7 @@ def projeto_agenda(pid):
     tech = {d["modulo"]: d["consultor"] for d in designacoes}
     ordem_mod = {d["modulo"]: d["ordem"] for d in designacoes}   # ordem de treinamento do módulo
     nd_mod = {d["modulo"]: d["nao_distribuir"] for d in designacoes}   # módulo fora da distribuição
+    analista_mod = {d["modulo"]: d["analista"] for d in designacoes}   # sobreposição por módulo
     tecnicos = []                                             # técnicos atribuíveis por cartão
     for nome in list(tech.values()) + [c.strip() for c in (proj.get("consultor") or "").split(",")]:
         nome = (nome or "").strip()
@@ -144,7 +145,7 @@ def projeto_agenda(pid):
            "tarde": {"ini": h["tarde"][0], "fim": h["tarde"][1]}}
     modulos_tec = sorted(
         ({"sigla": m, "tecnico": tech.get(m, ""), "ordem": ordem_mod.get(m, 0),   # técnico + ordem
-          "nao_distribuir": nd_mod.get(m, False)}
+          "nao_distribuir": nd_mod.get(m, False), "analista": analista_mod.get(m, "")}
          for m in {a["modulo"] for a in ats}),
         key=lambda x: (x["ordem"], x["sigla"]))
     dist_faltantes = _modulos_sem_tecnico_valido(ats, tech, nd_mod,
@@ -160,6 +161,7 @@ def projeto_agenda(pid):
     modo_dist = dist_cfg["modo_disponibilidade"]
     dist_data_inicio = dist_cfg["data_inicio"]
     dist_dias_excluidos = _parse_dias_excluidos(dist_cfg["dias_turnos_excluidos"])
+    dist_analista_padrao = dist_cfg["analista_padrao"]
     modo_arg = request.args.get("modo")
     modo = modo_arg if modo_arg in ("conjunta", "individual") else modo_dist
     tec_sel = (request.args.get("tec") or "").strip()
@@ -206,7 +208,7 @@ def projeto_agenda(pid):
                            modulos_visitas=modulos_visitas, tech=tech, tecnicos=tecnicos,
                            fora=fora, fds=fds, hor=hor, modulos_tec=modulos_tec,
                            dist_faltantes=dist_faltantes, modo_dist=modo_dist, dist_data_inicio=dist_data_inicio,
-                           dist_dias_excluidos=dist_dias_excluidos,
+                           dist_dias_excluidos=dist_dias_excluidos, dist_analista_padrao=dist_analista_padrao,
                            nd_sentinel=NAO_DISTRIBUIR, dist_ja_ocorreu=dist_ja_ocorreu,
                            bloqueados=bloqueados, disp_aviso=disp_aviso, disp_ativa=disp_ativa,
                            modo=modo, tec_sel=tec_sel, envolvidos=envolvidos,
@@ -552,8 +554,9 @@ def projeto_agenda_tecnico_modulo(pid):
     tecnico_form = request.form.get("tecnico")
     nao_distribuir = tecnico_form == NAO_DISTRIBUIR
     tecnico_arg = None if nao_distribuir else tecnico_form
+    analista = request.form.get("analista")
     n = db.cronograma_tecnico_modulo(pid, request.form.get("modulo"), tecnico_arg,
-                                     ordem=ordem, nao_distribuir=nao_distribuir)
+                                     ordem=ordem, nao_distribuir=nao_distribuir, analista=analista)
     ref = (request.form.get("ref") or "").strip()
     aviso = ("Módulo marcado como 'Não distribuir' (agenda automática vai ignorá-lo)." if nao_distribuir
              else "Técnico do módulo aplicado a %d cartão(ões)." % n)
@@ -582,7 +585,8 @@ def projeto_agenda_config_distribuicao(pid):
         dias_turnos_excluidos = ",".join("%d-%s" % (wd, t) for wd, t in excluidos)
     cfg = db.cronograma_config_salvar(pid, modo=request.form.get("modo"),
                                       data_inicio=request.form.get("data_inicio"),
-                                      dias_turnos_excluidos=dias_turnos_excluidos)
+                                      dias_turnos_excluidos=dias_turnos_excluidos,
+                                      analista_padrao=request.form.get("analista_padrao"))
     ref = (request.form.get("ref") or "").strip()
     return redirect(url_for("projeto_agenda", pid=pid, ref=ref or None,
                             fds=(1 if request.form.get("fds") else None),

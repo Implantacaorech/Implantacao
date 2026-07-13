@@ -780,12 +780,15 @@ class Designacao(Base):
                                           # automática de agendas); 0 para todos = cai no alfabético
     nao_distribuir = Column(Boolean, default=False)  # módulo ignorado pela distribuição
                                                       # automática (ex.: sem visita a agendar)
+    analista = Column(String(160), default="")   # analista responsável do módulo (texto livre;
+                                                  # "" = usa o analista padrão do projeto) — só
+                                                  # informativo, não entra na distribuição automática
 
 
 def designacoes_do_projeto(pid):
     with Session() as s:
         return [{"modulo": d.modulo, "consultor": d.consultor, "ordem": d.ordem or 0,
-                 "nao_distribuir": bool(d.nao_distribuir)}
+                 "nao_distribuir": bool(d.nao_distribuir), "analista": d.analista or ""}
                 for d in s.query(Designacao).filter_by(projeto_id=pid)
                 .order_by(Designacao.ordem, Designacao.modulo).all()]
 
@@ -1657,27 +1660,34 @@ class CronogramaConfig(Base):
     data_inicio = Column(String(10), default="")   # "AAAA-MM-DD"; "" = começa hoje
     dias_turnos_excluidos = Column(String(200), default="")   # "0-manha,2-tarde" (seg=0..sex=4);
                                                                 # "" = considera todos (seg-sex, manhã e tarde)
+    analista_padrao = Column(String(160), default="")   # analista responsável do cliente (texto
+                                                         # livre); módulo pode sobrepor em Designacao.analista
 
 
 def cronograma_config(projeto_id):
-    """{'modo_disponibilidade', 'data_inicio', 'dias_turnos_excluidos'} do projeto, com os
-    defaults do comportamento histórico ('conjunta', hoje, nenhum dia/turno excluído) quando
-    nada foi definido. modo: 'conjunta' (em grupo — bloqueia o turno se QUALQUER técnico
-    envolvido estiver ocupado) ou 'individual' (cada técnico só olha a própria agenda).
-    data_inicio: a partir de quando a distribuição automática passa a considerar turnos — ""
-    = hoje. dias_turnos_excluidos: dia da semana (0=segunda..4=sexta) + turno que a
-    distribuição automática NUNCA deve usar (usuário desmarcou em 'Considerar dias da
-    semana'), como string "wd-turno" separada por vírgula."""
+    """{'modo_disponibilidade', 'data_inicio', 'dias_turnos_excluidos', 'analista_padrao'} do
+    projeto, com os defaults do comportamento histórico ('conjunta', hoje, nenhum dia/turno
+    excluído, sem analista) quando nada foi definido. modo: 'conjunta' (em grupo — bloqueia o
+    turno se QUALQUER técnico envolvido estiver ocupado) ou 'individual' (cada técnico só olha
+    a própria agenda). data_inicio: a partir de quando a distribuição automática passa a
+    considerar turnos — "" = hoje. dias_turnos_excluidos: dia da semana (0=segunda..4=sexta) +
+    turno que a distribuição automática NUNCA deve usar (usuário desmarcou em 'Considerar dias
+    da semana'), como string "wd-turno" separada por vírgula. analista_padrao: analista
+    responsável do cliente (texto livre, só informativo — não entra na distribuição
+    automática); cada módulo pode sobrepor em Designacao.analista."""
     with Session() as s:
         c = s.query(CronogramaConfig).filter_by(projeto_id=projeto_id).first()
         modo = (c.modo_disponibilidade or "").strip() if c else ""
         data_inicio = (c.data_inicio or "").strip() if c else ""
         dias_turnos_excluidos = (c.dias_turnos_excluidos or "").strip() if c else ""
+        analista_padrao = (c.analista_padrao or "").strip() if c else ""
     return {"modo_disponibilidade": modo if modo in ("conjunta", "individual") else "conjunta",
-            "data_inicio": data_inicio, "dias_turnos_excluidos": dias_turnos_excluidos}
+            "data_inicio": data_inicio, "dias_turnos_excluidos": dias_turnos_excluidos,
+            "analista_padrao": analista_padrao}
 
 
-def cronograma_config_salvar(projeto_id, modo=None, data_inicio=None, dias_turnos_excluidos=None):
+def cronograma_config_salvar(projeto_id, modo=None, data_inicio=None, dias_turnos_excluidos=None,
+                              analista_padrao=None):
     """Atualiza a config do agendador. Cada campo é opcional: None = não mexe. `modo` inválido
     é ignorado (não altera). Devolve o dict atualizado (ver cronograma_config)."""
     modo = (modo or "").strip() or None
@@ -1694,6 +1704,8 @@ def cronograma_config_salvar(projeto_id, modo=None, data_inicio=None, dias_turno
             c.data_inicio = data_inicio.strip()
         if dias_turnos_excluidos is not None:
             c.dias_turnos_excluidos = dias_turnos_excluidos.strip()
+        if analista_padrao is not None:
+            c.analista_padrao = analista_padrao.strip()
         s.commit()
     return cronograma_config(projeto_id)
 
@@ -1782,11 +1794,13 @@ def cronograma_atividade_excluir(atividade_id, projeto_id):
         return True, "Excluído."
 
 
-def cronograma_tecnico_modulo(projeto_id, modulo, tecnico, ordem=None, nao_distribuir=None):
-    """Define o técnico, a ordem de treinamento e/ou o flag "não distribuir" de um MÓDULO.
-    `tecnico` None = não mexe no técnico/cartões (usado quando só ordem/nao_distribuir mudam
-    — ex.: marcar "Não distribuir" preserva o técnico já designado nos cartões). `ordem` e
-    `nao_distribuir` None = não mexem. Devolve o nº de cartões cujo técnico foi alterado."""
+def cronograma_tecnico_modulo(projeto_id, modulo, tecnico, ordem=None, nao_distribuir=None, analista=None):
+    """Define o técnico, a ordem de treinamento, o flag "não distribuir" e/ou o analista
+    responsável de um MÓDULO. `tecnico` None = não mexe no técnico/cartões (usado quando só
+    ordem/nao_distribuir/analista mudam — ex.: marcar "Não distribuir" preserva o técnico já
+    designado nos cartões). `ordem`/`nao_distribuir`/`analista` None = não mexem (`analista`
+    "" limpa a sobreposição e volta a usar o analista padrão do projeto). Devolve o nº de
+    cartões cujo técnico foi alterado."""
     modulo = (modulo or "").strip().upper()
     if not modulo:
         return 0
@@ -1807,6 +1821,8 @@ def cronograma_tecnico_modulo(projeto_id, modulo, tecnico, ordem=None, nao_distr
             d.ordem = ordem
         if nao_distribuir is not None:
             d.nao_distribuir = bool(nao_distribuir)
+        if analista is not None:
+            d.analista = analista.strip()
         s.commit()
         return n
 
