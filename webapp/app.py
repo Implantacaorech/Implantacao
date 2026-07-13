@@ -714,7 +714,8 @@ def projeto_excluir(pid):
         if p:
             for M in (db.Documento, db.Evento, db.Designacao, db.CronogramaItem,
                       db.ChecklistItem, db.Modificacao, db.LevantamentoResposta, db.DocConteudo,
-                      db.AtividadeCronograma, db.SlotCronograma):
+                      db.AtividadeCronograma, db.SlotCronograma, db.CronogramaConfig,
+                      db.CronogramaPeriodoBloqueado):
                 s.query(M).filter_by(projeto_id=pid).delete()
             s.delete(p)
             s.commit()

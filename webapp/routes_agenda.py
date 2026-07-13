@@ -61,9 +61,10 @@ def _agrupar_por_visita(atividades):
     return [grupos[k] for k in ordem]
 
 
-def _slot_indisponivel(data, turno, tecnico_nome):
+def _slot_indisponivel(data, turno, tecnico_nome, projeto_id=None):
     """Motivo (str) que impede alocar neste dia/turno, ou None se liberado.
-    Bloqueia (1) datas passadas — sempre; (2) técnico ocupado no SICLA — quando a
+    Bloqueia (1) datas passadas — sempre; (2) período sem agenda do projeto (recesso/férias
+    coletivas etc.) — quando `projeto_id` é informado; (3) técnico ocupado no SICLA — quando a
     disponibilidade está configurada e o usuário tem Código SICLA."""
     from datetime import date
     data = (data or "").strip()
@@ -71,6 +72,12 @@ def _slot_indisponivel(data, turno, tecnico_nome):
         return None
     if data < date.today().isoformat():
         return "Não é possível agendar em data passada — escolha hoje ou uma data futura."
+    if projeto_id is not None:
+        p = db.cronograma_periodo_que_bloqueia(projeto_id, data)
+        if p:
+            motivo = (" — %s" % p["motivo"]) if p.get("motivo") else ""
+            return ("Período sem agenda de %s a %s%s." %
+                    (p["data_ini"][8:10] + "/" + p["data_ini"][5:7], p["data_fim"][8:10] + "/" + p["data_fim"][5:7], motivo))
     if turno not in ("manha", "tarde"):
         return None
     try:
@@ -202,6 +209,19 @@ def projeto_agenda(pid):
         logging.exception("Falha ao consultar disponibilidade")
         disp_aviso = "Disponibilidade indisponível no momento — calendário liberado."
 
+    # Períodos sem agenda (recesso/férias coletivas etc.) — reaproveita o mesmo dict/estilo
+    # visual e a mesma rejeição no drag-and-drop já usados para a disponibilidade do SICLA.
+    periodos_bloqueados = db.cronograma_periodos_bloqueados(pid)
+    for d in dias:
+        iso = d.isoformat()
+        for per in periodos_bloqueados:
+            if per["data_ini"] <= iso <= per["data_fim"]:
+                texto = per.get("motivo") or "Período sem agenda"
+                for t in ("manha", "tarde"):
+                    chave = "%s|%s" % (iso, t)
+                    bloqueados[chave] = (bloqueados[chave] + " · " + texto) if chave in bloqueados else texto
+                break
+
     extra = ("&modo=individual" + (("&tec=" + _quote(tec_sel)) if tec_sel else "")) if modo == "individual" else ""
     qs = ("&fds=1" if fds else "") + extra
     return render_template("agenda.html", p=proj, pid=pid, semana=semana, aloc=aloc, aloc_grp=aloc_grp,
@@ -210,6 +230,7 @@ def projeto_agenda(pid):
                            dist_faltantes=dist_faltantes, modo_dist=modo_dist, dist_data_inicio=dist_data_inicio,
                            dist_dias_excluidos=dist_dias_excluidos, dist_analista_padrao=dist_analista_padrao,
                            nd_sentinel=NAO_DISTRIBUIR, dist_ja_ocorreu=dist_ja_ocorreu,
+                           periodos_bloqueados=periodos_bloqueados,
                            bloqueados=bloqueados, disp_aviso=disp_aviso, disp_ativa=disp_ativa,
                            modo=modo, tec_sel=tec_sel, envolvidos=envolvidos,
                            hoje_iso=date.today().isoformat(),
@@ -245,7 +266,7 @@ def projeto_agenda_alocar(pid):
                         eff_tec = (tech.get(a.modulo) or "").strip()
                         if tecnico is None:
                             tecnico = eff_tec or None
-        motivo = _slot_indisponivel(data, turno, eff_tec)
+        motivo = _slot_indisponivel(data, turno, eff_tec, projeto_id=pid)
         if motivo:
             return jsonify(ok=False, erro=motivo), 409
     # toque manual (arrastar um cartão) tira a atividade da gestão da distribuição automática
@@ -278,7 +299,7 @@ def projeto_agenda_alocar_visita(pid):
         return jsonify(ok=False, erro="parâmetros inválidos"), 400
     tech = {d["modulo"]: d["consultor"] for d in db.designacoes_do_projeto(pid)}
     if not desalocar:
-        motivo = _slot_indisponivel(data, turno, (tech.get(modulo) or ""))
+        motivo = _slot_indisponivel(data, turno, (tech.get(modulo) or ""), projeto_id=pid)
         if motivo:
             return jsonify(ok=False, erro=motivo), 409
     n = 0
@@ -409,6 +430,10 @@ def _distribuir_automatico(pid, modulo=None, incluir_alocadas=False):
 
     modo = cfg["modo_disponibilidade"]   # 'conjunta' (em grupo) ou 'individual'
     dias_excluidos = _parse_dias_excluidos(cfg["dias_turnos_excluidos"])  # {(weekday, turno)} nunca usados
+    periodos = db.cronograma_periodos_bloqueados(pid)   # recesso/férias coletivas etc. — nunca usados
+
+    def periodo_bloqueia(iso):
+        return any(p["data_ini"] <= iso <= p["data_fim"] for p in periodos)
     cods = db.codigos_sicla_por_nome(tecnicos)          # nome_lower -> código SICLA ("" se não tem)
     todos_cods = sorted({cods[t.lower()].lower() for t in tecnicos if cods.get(t.lower())})
     ocup_ext = {}
@@ -443,6 +468,8 @@ def _distribuir_automatico(pid, modulo=None, incluir_alocadas=False):
         slot = None
         for d in dias:
             iso = d.isoformat()
+            if periodo_bloqueia(iso):
+                continue
             for turno in ("manha", "tarde"):
                 if (d.weekday(), turno) in dias_excluidos:
                     continue
@@ -591,6 +618,26 @@ def projeto_agenda_config_distribuicao(pid):
     return redirect(url_for("projeto_agenda", pid=pid, ref=ref or None,
                             fds=(1 if request.form.get("fds") else None),
                             aviso="Configuração da distribuição automática atualizada." if cfg else None))
+
+
+def projeto_agenda_periodo_bloqueado(pid):
+    """Cria ou exclui um 'período sem agenda' (recesso/férias coletivas etc.) do projeto —
+    bloqueia tanto a distribuição automática quanto a alocação manual nesse intervalo."""
+    if not pode_gerar("cronograma"):
+        abort(403)
+    ref = (request.form.get("ref") or "").strip()
+    acao = request.form.get("acao") or ""
+    erro = None
+    if acao == "excluir":
+        db.cronograma_periodo_bloqueado_excluir(request.form.get("periodo_id"), pid)
+    else:
+        p = db.cronograma_periodo_bloqueado_criar(pid, request.form.get("data_ini"),
+                                                  request.form.get("data_fim"),
+                                                  request.form.get("motivo", ""))
+        if not p:
+            erro = "Informe data início e fim válidas (fim não pode ser antes do início)."
+    return redirect(url_for("projeto_agenda", pid=pid, ref=ref or None,
+                            fds=(1 if request.form.get("fds") else None), erro=erro))
 
 
 def projeto_agenda_status(pid):
@@ -761,6 +808,7 @@ def register(app, **deps):
     rota(base + "/horario", projeto_agenda_horario, ["POST"])
     rota(base + "/tecnico_modulo", projeto_agenda_tecnico_modulo, ["POST"])
     rota(base + "/config_distribuicao", projeto_agenda_config_distribuicao, ["POST"])
+    rota(base + "/periodo_bloqueado", projeto_agenda_periodo_bloqueado, ["POST"])
     rota(base + "/status", projeto_agenda_status, ["POST"])
     rota(base + "/acompanhamento", projeto_agenda_acompanhamento)
     rota(base + "/gerar", projeto_agenda_gerar, ["POST"])

@@ -118,6 +118,32 @@
         {% endfor %}
       </form>
     </div>
+    <div class="ag-periodos">
+      <span class="dica" style="margin:0 0 6px;display:block">Períodos sem agenda (recesso, férias coletivas etc.) — nenhuma visita entra nessas datas, nem manual nem automática:</span>
+      {% if periodos_bloqueados %}
+      <div class="ag-per-lista">
+        {% for per in periodos_bloqueados %}
+        <form method="post" action="{{ url_for('projeto_agenda_periodo_bloqueado', pid=pid) }}" class="ag-per-item">
+          <input type="hidden" name="ref" value="{{ ref_cur }}">{% if fds %}<input type="hidden" name="fds" value="1">{% endif %}
+          <input type="hidden" name="periodo_id" value="{{ per.id }}">
+          <input type="hidden" name="acao" value="excluir">
+          <span>{{ per.data_ini[8:10] }}/{{ per.data_ini[5:7] }}/{{ per.data_ini[0:4] }} – {{ per.data_fim[8:10] }}/{{ per.data_fim[5:7] }}/{{ per.data_fim[0:4] }}{% if per.motivo %} — {{ per.motivo }}{% endif %}</span>
+          <button type="submit" title="Excluir este período"
+                  onclick="return confirm('Excluir o período sem agenda {{ per.data_ini }} a {{ per.data_fim }}?')">🗑</button>
+        </form>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <form method="post" action="{{ url_for('projeto_agenda_periodo_bloqueado', pid=pid) }}" class="ag-per-novo">
+        <input type="hidden" name="ref" value="{{ ref_cur }}">{% if fds %}<input type="hidden" name="fds" value="1">{% endif %}
+        <span class="dica" style="margin:0">De:</span>
+        <input type="date" name="data_ini" required>
+        <span class="dica" style="margin:0">até:</span>
+        <input type="date" name="data_fim" required>
+        <input type="text" name="motivo" placeholder="Motivo (opcional) — ex.: Recesso de fim de ano" class="ag-per-motivo">
+        <button type="submit" class="btn">+ Adicionar período</button>
+      </form>
+    </div>
     <div class="ag-modtec-grid">
       {% for m in modulos_tec %}
       <form method="post" action="{{ url_for('projeto_agenda_tecnico_modulo', pid=pid) }}" class="ag-modtec">
@@ -288,6 +314,15 @@
     .ag-dt-dia-nome{font-weight:700;color:var(--navy);width:52px;flex:none}
     .ag-dt-dia label{display:inline-flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap}
     .ag-dt-dia input[type=checkbox]{width:15px;height:15px;cursor:pointer}
+    .ag-periodos{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+    .ag-per-lista{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+    .ag-per-item{display:flex;align-items:center;gap:10px;background:var(--surface-2,#f3f6fb);
+      border:1px solid var(--line);border-radius:7px;padding:5px 10px;font-size:.8rem;margin:0}
+    .ag-per-item span{flex:1}
+    .ag-per-item button{background:none;border:none;color:var(--err,#d33);cursor:pointer;font-size:.9rem;flex:none}
+    .ag-per-novo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0}
+    .ag-per-novo input[type=date]{font-size:.8rem;padding:3px 6px;border:1px solid var(--line);border-radius:5px}
+    .ag-per-motivo{font-size:.8rem;padding:3px 6px;border:1px solid var(--line);border-radius:5px;flex:1;min-width:180px}
     .ag-wrap{display:grid;grid-template-columns:300px 1fr;gap:14px;align-items:start}
     @media (max-width:900px){.ag-wrap{grid-template-columns:1fr}}
     .ag-side{background:var(--surface,#fff);border:1px solid var(--line);border-radius:10px;padding:12px;position:sticky;top:8px;max-height:calc(100vh - 40px);overflow:auto}

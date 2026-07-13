@@ -2156,6 +2156,85 @@ def test_agenda_analista_responsavel(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_agenda_periodo_bloqueado_impede_alocacao_manual(client):
+    """Um período sem agenda recusa alocação manual — assunto individual e bloco/visita."""
+    pid = _novo(client, cliente="Recesso LTDA", cnpj="00.000.000/0001-17", numero_projeto="RC-2",
+                horas_cobradas="10", etapa="Cronograma e Check-list", modulos="FAT")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    dia = _dia_util(5)
+    client.post("/projetos/%s/agenda/periodo_bloqueado" % pid,
+                data={"data_ini": dia, "data_fim": dia, "motivo": "Recesso"})
+    aid = db.cronograma_atividades(int(pid))[0]["id"]
+    r = client.post("/projetos/%s/agenda/alocar" % pid,
+                    data={"atividade_id": aid, "data": dia, "turno": "manha"})
+    assert r.status_code == 409 and "Período sem agenda" in r.get_json()["erro"]
+
+    g = db.cronograma_visitas(int(pid))[0]
+    r2 = client.post("/projetos/%s/agenda/alocar_visita" % pid,
+                     data={"modulo": "FAT", "seq": g["seq"], "data": dia, "turno": "tarde"})
+    assert r2.status_code == 409 and "Período sem agenda" in r2.get_json()["erro"]
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_agenda_periodo_bloqueado_pulado_na_distribuicao(client):
+    """A distribuição automática nunca aloca dentro de um período sem agenda."""
+    pid = _novo(client, cliente="Recesso Dist LTDA", cnpj="00.000.000/0001-18", numero_projeto="RD-1",
+                horas_cobradas="10", etapa="Cronograma e Check-list", modulos="FAT")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "FAT", "tecnico": "Ana"})
+    hoje = _dia_util()
+    fim_bloqueio = _dia_util(30)
+    client.post("/projetos/%s/agenda/periodo_bloqueado" % pid,
+                data={"data_ini": hoje, "data_fim": fim_bloqueio, "motivo": "Bloqueado"})
+    r = client.post("/projetos/%s/agenda/distribuir" % pid)
+    j = r.get_json()
+    assert j["ok"] is True and j["n"] >= 1
+    ats = [a for a in db.cronograma_atividades(int(pid)) if a["modulo"] == "FAT" and a["data"]]
+    assert all(a["data"] > fim_bloqueio for a in ats)
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_agenda_periodo_bloqueado_crud_e_calendario(client):
+    """Criar mostra o motivo no calendário (bloqueio visual reaproveitado da disponibilidade);
+    excluir libera de novo."""
+    import datetime as _dt
+    pid = _novo(client, cliente="Recesso CRUD LTDA", cnpj="00.000.000/0001-19", numero_projeto="RCU-1",
+                horas_cobradas="10", etapa="Cronograma e Check-list", modulos="FAT")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    dia = _dia_util(2)
+    client.post("/projetos/%s/agenda/periodo_bloqueado" % pid,
+                data={"data_ini": dia, "data_fim": dia, "motivo": "Feriado local"})
+    periodos = db.cronograma_periodos_bloqueados(int(pid))
+    assert len(periodos) == 1 and periodos[0]["motivo"] == "Feriado local"
+
+    d = _dt.date.fromisoformat(dia)
+    seg = (d - _dt.timedelta(days=d.weekday())).isoformat()
+    html = client.get("/projetos/%s/agenda?ref=%s" % (pid, seg)).get_data(as_text=True)
+    assert "Feriado local" in html
+
+    client.post("/projetos/%s/agenda/periodo_bloqueado" % pid,
+                data={"acao": "excluir", "periodo_id": periodos[0]["id"]})
+    assert db.cronograma_periodos_bloqueados(int(pid)) == []
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_projeto_excluir_limpa_cronograma_config_e_periodos(client):
+    """Regressão: excluir o projeto tem que limpar CronogramaConfig e
+    CronogramaPeriodoBloqueado também — senão ficam órfãs e, se o banco reciclar o mesmo id
+    (SQLite reaproveita rowid quando a tabela esvazia), 'vazam' para o próximo projeto."""
+    pid = _novo(client, cliente="Limpeza LTDA", cnpj="00.000.000/0001-20", numero_projeto="LP-1",
+                horas_cobradas="10", etapa="Cronograma e Check-list", modulos="FAT")
+    client.post("/projetos/%s/agenda/config_distribuicao" % pid, data={"analista_padrao": "Bruna"})
+    client.post("/projetos/%s/agenda/periodo_bloqueado" % pid,
+                data={"data_ini": "2026-12-20", "data_fim": "2027-01-05", "motivo": "Recesso"})
+    assert db.cronograma_config(int(pid))["analista_padrao"] == "Bruna"
+    assert len(db.cronograma_periodos_bloqueados(int(pid))) == 1
+
+    client.post("/projetos/%s/excluir" % pid)
+    assert db.cronograma_config(int(pid))["analista_padrao"] == ""     # volta ao default (nada salvo p/ esse id)
+    assert db.cronograma_periodos_bloqueados(int(pid)) == []
+
+
 def test_config_disponibilidade(client):
     """Tela de Disponibilidade (ADM): monta a URL pelos campos, prioriza URL completa,
     e a página abre."""

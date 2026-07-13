@@ -1664,6 +1664,57 @@ class CronogramaConfig(Base):
                                                          # livre); módulo pode sobrepor em Designacao.analista
 
 
+class CronogramaPeriodoBloqueado(Base):
+    """Período (data início/fim) em que o projeto NÃO pode ter visita alguma — recesso, férias
+    coletivas, parada programada etc. Bloqueia tanto a distribuição automática quanto a
+    alocação manual (arrastar um cartão) nesse intervalo."""
+    __tablename__ = "cronograma_periodos_bloqueados"
+    id = Column(Integer, primary_key=True)
+    projeto_id = Column(Integer, index=True)
+    data_ini = Column(String(10), default="")   # "AAAA-MM-DD"
+    data_fim = Column(String(10), default="")   # "AAAA-MM-DD", >= data_ini
+    motivo = Column(String(160), default="")
+
+
+def cronograma_periodos_bloqueados(projeto_id):
+    with Session() as s:
+        return [to_dict(p) for p in s.query(CronogramaPeriodoBloqueado)
+                .filter_by(projeto_id=projeto_id).order_by(CronogramaPeriodoBloqueado.data_ini).all()]
+
+
+def cronograma_periodo_bloqueado_criar(projeto_id, data_ini, data_fim, motivo=""):
+    """Cria um período sem agenda. Devolve o dict criado, ou None se as datas forem inválidas
+    (vazias ou fim antes do início)."""
+    data_ini, data_fim = (data_ini or "").strip(), (data_fim or "").strip()
+    if not data_ini or not data_fim or data_fim < data_ini:
+        return None
+    with Session() as s:
+        p = CronogramaPeriodoBloqueado(projeto_id=projeto_id, data_ini=data_ini, data_fim=data_fim,
+                                       motivo=(motivo or "").strip())
+        s.add(p)
+        s.commit()
+        return to_dict(p)
+
+
+def cronograma_periodo_bloqueado_excluir(periodo_id, projeto_id):
+    with Session() as s:
+        p = s.get(CronogramaPeriodoBloqueado, int(periodo_id))
+        if not p or p.projeto_id != projeto_id:
+            return False
+        s.delete(p)
+        s.commit()
+        return True
+
+
+def cronograma_periodo_que_bloqueia(projeto_id, data_iso):
+    """Devolve o primeiro período bloqueado do projeto que cobre `data_iso` (AAAA-MM-DD), ou
+    None se nenhum cobrir — usado para recusar alocação manual e pular na distribuição."""
+    for p in cronograma_periodos_bloqueados(projeto_id):
+        if p["data_ini"] <= data_iso <= p["data_fim"]:
+            return p
+    return None
+
+
 def cronograma_config(projeto_id):
     """{'modo_disponibilidade', 'data_inicio', 'dias_turnos_excluidos', 'analista_padrao'} do
     projeto, com os defaults do comportamento histórico ('conjunta', hoje, nenhum dia/turno
