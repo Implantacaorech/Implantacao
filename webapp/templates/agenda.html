@@ -193,6 +193,9 @@
                 <span class="ag-grip" draggable="true" onclick="event.preventDefault();event.stopPropagation()" title="Arraste o bloco inteiro para outro turno ou de volta para a lista">⠿</span>
                 <span class="ag-visita-t">{{ g.modulo }} · V{{ g.seq }}</span>
                 <span class="ag-count">{{ g.atividades|length }}</span>
+                <button type="button" class="ag-post ag-slot-visita-post" data-modulo="{{ g.modulo }}" data-seq="{{ g.seq }}"
+                        onclick="event.preventDefault()"
+                        title="Postergar o bloco inteiro (todos os assuntos abertos desta visita)">⤵</button>
               </summary>
               <div class="ag-slot-visita-cards">
                 {% for a in g.atividades %}{{ card(a, tecnicos) }}{% endfor %}
@@ -216,6 +219,7 @@
       <input type="hidden" name="atividade_id" id="pm-aid">
       <input type="hidden" name="data" id="pm-data">
       <input type="hidden" name="turno" id="pm-turno">
+      <input type="hidden" id="pm-modulo"><input type="hidden" id="pm-seq">
       <input type="hidden" name="ref" value="{{ ref_cur }}">{% if fds %}<input type="hidden" name="fds" value="1">{% endif %}
       <label class="campo"><span>Nova data</span>
         <input type="date" name="nova_data" id="pm-nova-data" required></label>
@@ -318,6 +322,8 @@
     var horarioUrl='{{ url_for("projeto_agenda_horario", pid=pid) }}';
     var distribuirUrl='{{ url_for("projeto_agenda_distribuir", pid=pid) }}';
     var redistribuirUrl='{{ url_for("projeto_agenda_redistribuir", pid=pid) }}';
+    var postergarVisitaUrl='{{ url_for("projeto_agenda_postergar_visita", pid=pid) }}';
+    var reorganizarUrl='{{ url_for("projeto_agenda_reorganizar_modulo", pid=pid) }}';
     var modal=document.getElementById('postModal');
     window.agExpand=function(open){ document.querySelectorAll('#ag-pend details').forEach(function(d){ d.open=open; }); };
     // "Técnico por módulo": cada alteração recarrega a página (form submit); sem isso, a caixa
@@ -388,15 +394,45 @@
       var sel=e.target.closest&&e.target.closest('.ag-tec'); if(!sel) return;
       post({atividade_id: sel.dataset.id, tecnico: sel.value}, function(ok, erro){ if(!ok) alert(erro || 'Não foi possível salvar o técnico.'); });
     });
-    // abrir modal de postergação (por assunto ou por turno)
+    // abrir modal de postergação (por assunto, por turno ou pelo bloco/visita inteiro)
     document.addEventListener('click', function(e){
       var cb=e.target.closest&&e.target.closest('.ag-card-post');
       var sb=e.target.closest&&e.target.closest('.ag-slot-post');
-      if(!cb && !sb) return;
+      var vb=e.target.closest&&e.target.closest('.ag-slot-visita-post');
+      if(!cb && !sb && !vb) return;
       document.getElementById('pm-aid').value = cb ? cb.dataset.id : '';
       document.getElementById('pm-data').value = sb ? sb.dataset.iso : '';
       document.getElementById('pm-turno').value = sb ? sb.dataset.turno : '';
+      document.getElementById('pm-modulo').value = vb ? vb.dataset.modulo : '';
+      document.getElementById('pm-seq').value = vb ? vb.dataset.seq : '';
+      modal.dataset.modo = vb ? 'bloco' : '';
       if(modal && modal.showModal) modal.showModal(); else modal.setAttribute('open','');
+    });
+    // postergar o BLOCO (visita) inteiro: fetch dedicado, depois oferece reorganizar o módulo
+    var postForm=modal.querySelector('form');
+    postForm.addEventListener('submit', function(e){
+      if(modal.dataset.modo !== 'bloco') return;   // por assunto/turno segue o submit normal
+      e.preventDefault();
+      var modulo=document.getElementById('pm-modulo').value;
+      var seq=document.getElementById('pm-seq').value;
+      var novaData=document.getElementById('pm-nova-data').value;
+      var novoTurno=document.getElementById('pm-novo-turno').value;
+      if(!novaData){ alert('Informe a nova data.'); return; }
+      fetch(postergarVisitaUrl, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+            body:new URLSearchParams({modulo:modulo, seq:seq, nova_data:novaData, novo_turno:novoTurno})})
+        .then(function(r){ return r.json(); })
+        .then(function(j){
+          if(!j||!j.ok){ alert((j&&j.erro)||'Não foi possível postergar a visita.'); return; }
+          modal.close();
+          if(confirm('Visita postergada (' + j.n + ' assunto(s)). Deseja reorganizar (realocar) as demais visitas deste módulo, respeitando a nova ordem?')){
+            fetch(reorganizarUrl, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                  body:new URLSearchParams({modulo:modulo})})
+              .then(function(r2){ return r2.json(); })
+              .then(function(j2){ alert((j2&&j2.aviso)||(j2&&j2.erro)||'Reorganização concluída.'); location.reload(); })
+              .catch(function(){ alert('Erro de rede ao reorganizar.'); location.reload(); });
+          } else { location.reload(); }
+        })
+        .catch(function(){ alert('Erro de rede ao postergar a visita.'); });
     });
     // soltar (move o cartão no DOM, sem recarregar)
     document.querySelectorAll('.ag-drop').forEach(function(zone){

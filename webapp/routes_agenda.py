@@ -282,16 +282,19 @@ def _modulos_sem_tecnico_valido(ats, tech, nd_mod, tecnicos):
     return [m for m in modulos if (tech.get(m) or "").strip() not in tecnicos]
 
 
-def _distribuir_automatico(pid):
-    """Distribui, 1 visita = 1 turno, as visitas 100% pendentes (nenhum assunto ainda alocado
-    e nenhuma em status final) no primeiro turno livre do técnico do respectivo módulo — a
-    partir da DATA DE INÍCIO configurada em 'Técnico por módulo' (hoje, se não definida ou se
-    já passou), ~18 meses à frente daí (mesma janela da tela de disponibilidade). As visitas
-    são processadas na ORDEM DE TREINAMENTO DOS MÓDULOS definida em 'Técnico por módulo' (e,
-    dentro de um mesmo módulo, em ordem de V/seq) — a busca gulosa pelo turno livre mais cedo
-    garante tanto que um módulo prioritário não fique atrás de um posterior (quando o mesmo
-    técnico atende os dois) quanto que V2 nunca fique num turno igual ou anterior ao de V1.
-    Marca cada atividade alocada com auto_agendado=True — 'Refazer' desfaz só isso."""
+def _distribuir_automatico(pid, modulo=None, incluir_alocadas=False):
+    """Distribui, 1 visita = 1 turno, as visitas elegíveis no primeiro turno livre do técnico
+    do respectivo módulo — a partir da DATA DE INÍCIO configurada em 'Técnico por módulo'
+    (hoje, se não definida ou se já passou), ~18 meses à frente daí (mesma janela da tela de
+    disponibilidade). Processa na ORDEM DE TREINAMENTO DOS MÓDULOS (e, dentro de um módulo, em
+    ordem de V/seq) — a busca gulosa pelo turno livre mais cedo garante que V2 nunca fique num
+    turno igual ou anterior ao de V1. Marca cada atividade com auto_agendado=True.
+
+    `modulo`: restringe a um único módulo (usado ao reorganizar após postergar um bloco).
+    `incluir_alocadas`: além das 100% pendentes, TAMBÉM desaloca e realoca visitas já alocadas
+    (Agendada) do módulo em questão — usado só na reorganização explicitamente confirmada pelo
+    usuário; Distribuir/Refazer normais nunca tocam alocação manual fora dessa exceção. Em
+    qualquer caso, Realizada/Não Realizada/Postergada/Cancelada nunca são tocadas."""
     from datetime import date, datetime as _dt, timedelta
     import calendar as _cal
 
@@ -303,6 +306,8 @@ def _distribuir_automatico(pid):
     tecnicos = sorted({(tech.get(a["modulo"]) or "").strip() for a in ats
                        if (tech.get(a["modulo"]) or "").strip() and not nd_mod.get(a["modulo"])})
     faltantes = _modulos_sem_tecnico_valido(ats, tech, nd_mod, tecnicos)
+    if modulo:
+        faltantes = [m for m in faltantes if m == modulo]
     if faltantes:
         return dict(ok=False, erro="Defina um técnico válido (em 'Técnico por módulo') para: %s "
                                     "— a distribuição automática só roda com todos os módulos "
@@ -310,16 +315,45 @@ def _distribuir_automatico(pid):
                                     "entra nesta agenda)." % ", ".join(faltantes))
 
     visitas = db.cronograma_visitas(pid)
-    alvo = [g for g in visitas if g["atividades"] and not nd_mod.get(g["modulo"])
-            and all((a["status"] or "") in ("", "Solicitada") and not (a["data"] and a["turno"])
-                     for a in g["atividades"])]
+    if modulo:
+        visitas = [g for g in visitas if g["modulo"] == modulo]
+
+    def elegivel(g):
+        if not g["atividades"] or nd_mod.get(g["modulo"]):
+            return False
+        for a in g["atividades"]:
+            if (a["status"] or "") not in ("", "Solicitada", "Agendada"):
+                return False                              # histórico nunca entra
+            if (a["data"] and a["turno"]) and not incluir_alocadas:
+                return False                               # sem incluir_alocadas, só 100% pendente
+        return True
+
+    alvo = [g for g in visitas if elegivel(g)]
     if not alvo:
         return dict(ok=True, n=0, sem_slot=[],
-                    aviso="Não há visitas 100% pendentes para distribuir (as demais já foram "
+                    aviso="Não há visitas pendentes para distribuir (as demais já foram "
                           "alocadas manualmente, concluídas ou pertencem a módulo marcado "
                           "'Não distribuir').")
     # ordem de treinamento do módulo primeiro; dentro do módulo, V1 antes de V2
     alvo.sort(key=lambda g: (ordem_mod.get(g["modulo"], 0), g["modulo"], g["seq"]))
+
+    # Piso do módulo reorganizado: nenhuma visita "de fora" do alvo (ex.: acabou de ser
+    # postergada) pode ficar com data anterior à visita que continua fixa — senão a
+    # reorganização voltaria a violar a ordem V1 < V2 que motivou o próprio pedido.
+    piso = None
+    if modulo:
+        alvo_chaves = {(g["modulo"], g["seq"]) for g in alvo}
+        datas_fixas = [d2 for d2 in (_parse_data(a["data"]) for a in ats
+                                     if a["modulo"] == modulo and (a["modulo"], a["seq"]) not in alvo_chaves
+                                     and a["data"]) if d2]
+        piso = max(datas_fixas) if datas_fixas else None
+
+    if incluir_alocadas:   # libera os slots atuais ANTES de calcular ocupação (ver "ats" abaixo)
+        for g in alvo:
+            for a in g["atividades"]:
+                if a["data"] or a["turno"]:
+                    db.cronograma_alocar(a["id"], projeto_id=pid, data="", turno="", auto=True)
+        ats = db.cronograma_atividades(pid)   # recarrega: reflete os slots agora livres
 
     cfg = db.cronograma_config(pid)
     hoje = date.today()
@@ -328,6 +362,10 @@ def _distribuir_automatico(pid):
     except ValueError:
         inicio = hoje
     inicio = max(inicio, hoje)   # nunca busca no passado, mesmo se a data configurada já passou
+    if piso and piso >= inicio:            # nunca antes da última visita fixa do módulo reorganizado
+        inicio = piso + timedelta(days=1)
+        while inicio.weekday() >= 5:
+            inicio += timedelta(days=1)
     _m = inicio.month - 1 + 18
     ano_f, mes_f = inicio.year + _m // 12, _m % 12 + 1
     fim = date(ano_f, mes_f, min(inicio.day, _cal.monthrange(ano_f, mes_f)[1]))
@@ -588,6 +626,43 @@ def projeto_agenda_postergar(pid):
                             fds=(1 if fds else None), aviso=aviso))
 
 
+def projeto_agenda_postergar_visita(pid):
+    """Posterga a VISITA (bloco) inteira — todos os assuntos ainda abertos de modulo+seq —
+    para uma nova data/turno (JSON). Cada assunto vira 'Postergada' (histórico) e nasce uma
+    nova ocorrência 'Agendada' no destino, igual ao postergar por assunto/turno."""
+    if not pode_gerar("cronograma"):
+        abort(403)
+    modulo = (request.form.get("modulo") or "").strip()
+    try:
+        seq = int(request.form.get("seq") or "")
+    except ValueError:
+        seq = None
+    nova_data = (request.form.get("nova_data") or "").strip()
+    novo_turno = (request.form.get("novo_turno") or "").strip()
+    if not (modulo and seq and nova_data and novo_turno in ("manha", "tarde")):
+        return jsonify(ok=False, erro="parâmetros inválidos"), 400
+    alvos = [a["id"] for a in db.cronograma_atividades(pid)
+             if a["modulo"] == modulo and a["seq"] == seq and a["data"] and a["turno"]
+             and (a["status"] or "") not in ("Postergada", "Cancelada")]
+    n = sum(1 for tid in alvos if db.cronograma_postergar(tid, pid, nova_data, novo_turno))
+    if not n:
+        return jsonify(ok=False, erro="Nada para postergar (a visita não está alocada ou já foi tratada).")
+    return jsonify(ok=True, n=n)
+
+
+def projeto_agenda_reorganizar_modulo(pid):
+    """Reorganiza (realoca) as visitas ainda abertas de UM módulo, respeitando a ordem
+    V1 < V2 < ... — usado depois de postergar um bloco, para resolver a ordem quebrada pelo
+    adiamento. Ao contrário de Distribuir/Refazer, TAMBÉM desaloca e realoca visitas já
+    alocadas manualmente deste módulo — só roda com confirmação explícita do usuário na tela."""
+    if not pode_gerar("cronograma"):
+        abort(403)
+    modulo = (request.form.get("modulo") or "").strip().upper()
+    if not modulo:
+        return jsonify(ok=False, erro="módulo ausente"), 400
+    return jsonify(_distribuir_automatico(pid, modulo=modulo, incluir_alocadas=True))
+
+
 def register(app, **deps):
     """Injeta os helpers do app.py e registra as rotas (endpoints = nome da função)."""
     globals().update(deps)   # pode_gerar, _autor, _notificar_evento, _auto_avancar, _EVT_DOC
@@ -605,3 +680,5 @@ def register(app, **deps):
     rota(base + "/acompanhamento", projeto_agenda_acompanhamento)
     rota(base + "/gerar", projeto_agenda_gerar, ["POST"])
     rota(base + "/postergar", projeto_agenda_postergar, ["POST"])
+    rota(base + "/postergar_visita", projeto_agenda_postergar_visita, ["POST"])
+    rota(base + "/reorganizar_modulo", projeto_agenda_reorganizar_modulo, ["POST"])

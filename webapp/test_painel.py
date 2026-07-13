@@ -1936,6 +1936,67 @@ def test_agenda_nao_distribuir_ignora_modulo(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_agenda_postergar_visita_bloco(client):
+    """Postergar o bloco (visita) inteiro posterga todos os assuntos abertos de uma vez: o
+    original vira 'Postergada' e nasce um clone 'Agendada' no destino, para cada assunto."""
+    pid = _novo(client, cliente="PostBloco LTDA", cnpj="00.000.000/0001-10", numero_projeto="PB-1",
+                horas_cobradas="10", etapa="Cronograma e Check-list", modulos="FAT")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    g = db.cronograma_visitas(int(pid))[0]
+    seq, nat = g["seq"], len(g["atividades"])
+    dia = _dia_util()
+    client.post("/projetos/%s/agenda/alocar_visita" % pid,
+                data={"modulo": "FAT", "seq": seq, "data": dia, "turno": "manha"})
+    nova_data = _dia_util(10)
+    r = client.post("/projetos/%s/agenda/postergar_visita" % pid,
+                    data={"modulo": "FAT", "seq": seq, "nova_data": nova_data, "novo_turno": "tarde"})
+    j = r.get_json()
+    assert j["ok"] is True and j["n"] == nat
+    ats = [a for a in db.cronograma_atividades(int(pid)) if a["modulo"] == "FAT" and a["seq"] == seq]
+    postergadas = [a for a in ats if a["status"] == "Postergada"]
+    novas = [a for a in ats if a["status"] == "Agendada"]
+    assert len(postergadas) == nat and len(novas) == nat
+    assert all(a["data"] == dia and a["turno"] == "manha" for a in postergadas)
+    assert all(a["data"] == nova_data and a["turno"] == "tarde" for a in novas)
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_agenda_reorganizar_modulo_apos_postergar(client):
+    """Postergar V1 para bem mais tarde quebra a ordem V1 < V2; reorganizar o módulo então
+    realoca as demais visitas para depois da nova data de V1, restaurando a ordem."""
+    pid = _novo(client, cliente="Reorg LTDA", cnpj="00.000.000/0001-11", numero_projeto="RO-1",
+                horas_cobradas="10", etapa="Cronograma e Check-list", modulos="FAT")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "FAT", "tecnico": "Ana"})
+    r = client.post("/projetos/%s/agenda/distribuir" % pid)
+    assert r.get_json()["ok"] is True
+
+    seqs = sorted({g["seq"] for g in db.cronograma_visitas(int(pid))})
+    assert len(seqs) >= 2
+    seq1, seq2 = seqs[0], seqs[1]
+
+    def data_de(seq, status=None):
+        ats = [a for a in db.cronograma_atividades(int(pid)) if a["modulo"] == "FAT" and a["seq"] == seq
+               and (status is None or a["status"] == status)]
+        return ats[0]["data"]
+
+    data_v2_antes = data_de(seq2)
+    nova_data = _dia_util(60)   # bem depois de onde a distribuição normal colocaria tudo
+    r2 = client.post("/projetos/%s/agenda/postergar_visita" % pid,
+                     data={"modulo": "FAT", "seq": seq1, "nova_data": nova_data, "novo_turno": "tarde"})
+    assert r2.get_json()["ok"] is True
+    assert data_v2_antes < nova_data   # sem reorganizar, V2 ficaria ANTES da nova data de V1
+
+    r3 = client.post("/projetos/%s/agenda/reorganizar_modulo" % pid, data={"modulo": "FAT"})
+    j3 = r3.get_json()
+    assert j3["ok"] is True and j3["n"] >= 1
+
+    data_v1_nova = data_de(seq1, status="Agendada")
+    assert data_v1_nova == nova_data
+    assert data_de(seq2) > data_v1_nova   # V2 agora vem depois da nova data de V1: ordem restaurada
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_config_disponibilidade(client):
     """Tela de Disponibilidade (ADM): monta a URL pelos campos, prioriza URL completa,
     e a página abre."""
