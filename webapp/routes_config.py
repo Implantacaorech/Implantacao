@@ -104,7 +104,14 @@ def config_consultas_bd():
             consultas = db.consultas_bd_listar()
             if acao == "testar":
                 consulta = db.consulta_bd_por_slug(aba)
-                ok, msg, cols, linhas = D.executar_sql(consulta["sql"])
+                import datetime as _dt
+                hoje = _dt.date.today()
+                # :data_ini/:data_fim são o contrato padrão (mesmo usado pela Disponibilidade e
+                # pelos Dashboards) — testa aqui com uma janela genérica de 1 ano à frente;
+                # se a consulta não usar esses parâmetros, são simplesmente ignorados.
+                params_teste = {"data_ini": hoje.isoformat(),
+                                "data_fim": (hoje + _dt.timedelta(days=365)).isoformat()}
+                ok, msg, cols, linhas = D.executar_sql(consulta["sql"], params=params_teste)
                 teste = {"ok": ok, "msg": msg, "colunas": cols, "linhas": linhas}
 
     cfg = D.load_cfg()

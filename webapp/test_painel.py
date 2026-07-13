@@ -2294,6 +2294,33 @@ def test_consultas_bd_cria_edita_exclui(client):
         sess.clear()
 
 
+def test_consultas_bd_testar_passa_data_ini_data_fim(client, monkeypatch):
+    """Regressão: 'Testar' numa consulta salva usa :data_ini/:data_fim no SQL — sem passar
+    esses parâmetros, o SQLAlchemy falhava com 'A value is required for bind parameter'.
+    A rota tem que fornecer uma janela padrão. Usa uma consulta própria (não a
+    'previsao_inicio_oficial' semeada) para não afetar outros testes que dependem dela."""
+    import disponibilidade as D
+    capturado = {}
+
+    def fake_executar_sql(sql, params=None, cfg=None, limite=500):
+        capturado["params"] = params or {}
+        return True, "0 linha(s).", [], []
+    monkeypatch.setattr(D, "executar_sql", fake_executar_sql)
+
+    db.consulta_bd_salvar("teste_params", nome="Teste Params",
+                          sql_texto="SELECT 1 FROM DUAL WHERE 1=1 AND :data_ini IS NOT NULL")
+    _login_como(client, "ADM")
+    r = client.post("/config/consultas-bd?aba=teste_params",
+                    data={"nome": "Teste Params",
+                          "sql": "SELECT 1 FROM DUAL WHERE 1=1 AND :data_ini IS NOT NULL",
+                          "acao": "testar"})
+    assert r.status_code == 200
+    assert "data_ini" in capturado["params"] and "data_fim" in capturado["params"]
+    db.consulta_bd_excluir("teste_params")
+    with client.session_transaction() as sess:
+        sess.clear()
+
+
 def test_disponibilidade_executar_sql_so_select():
     """executar_sql recusa qualquer coisa que não seja SELECT/WITH — proteção mínima contra
     colar um comando destrutivo por engano na tela de Consultas BD."""
