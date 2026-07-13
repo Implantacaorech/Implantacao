@@ -16,6 +16,9 @@
     {% if a.data and a.status != 'Postergada' %}
     <button type="button" class="ag-post ag-card-post" data-id="{{ a.id }}"
             title="Postergar este assunto">⤵</button>
+    {% elif a.status == 'Postergada' and e_adm %}
+    <button type="button" class="ag-post ag-card-del" data-id="{{ a.id }}"
+            title="Excluir esta visita postergada (histórico) — Administrador">🗑</button>
     {% endif %}
   </span>
   <span class="ag-card-desc">{{ a.descricao }}</span>
@@ -327,6 +330,7 @@
     var postergarVisitaUrl='{{ url_for("projeto_agenda_postergar_visita", pid=pid) }}';
     var reorganizarUrl='{{ url_for("projeto_agenda_reorganizar_modulo", pid=pid) }}';
     var desfazerTudoUrl='{{ url_for("projeto_agenda_desfazer_tudo", pid=pid) }}';
+    var excluirAtividadeUrl='{{ url_for("projeto_agenda_atividade_excluir", pid=pid) }}';
     var modal=document.getElementById('postModal');
     window.agExpand=function(open){ document.querySelectorAll('#ag-pend details').forEach(function(d){ d.open=open; }); };
     // "Técnico por módulo": cada alteração recarrega a página (form submit); sem isso, a caixa
@@ -415,6 +419,20 @@
       document.getElementById('pm-seq').value = vb ? vb.dataset.seq : '';
       modal.dataset.modo = vb ? 'bloco' : '';
       if(modal && modal.showModal) modal.showModal(); else modal.setAttribute('open','');
+    });
+    // excluir (Administrador) uma visita Postergada — histórico, não pode ser desfeito
+    document.addEventListener('click', function(e){
+      var delBtn=e.target.closest&&e.target.closest('.ag-card-del'); if(!delBtn) return;
+      if(!confirm('Excluir esta visita postergada em definitivo? Isso não pode ser desfeito.')) return;
+      var cardEl=delBtn.closest('.ag-card');
+      fetch(excluirAtividadeUrl, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+            body:new URLSearchParams({atividade_id: delBtn.dataset.id})})
+        .then(function(r){ return r.json(); })
+        .then(function(j){
+          if(!j||!j.ok){ alert((j&&j.erro)||'Não foi possível excluir.'); return; }
+          if(cardEl) cardEl.remove();
+        })
+        .catch(function(){ alert('Erro de rede ao excluir.'); });
     });
     // postergar o BLOCO (visita) inteiro: fetch dedicado, depois oferece reorganizar o módulo
     var postForm=modal.querySelector('form');

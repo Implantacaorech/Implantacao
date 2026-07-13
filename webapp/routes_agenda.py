@@ -12,7 +12,7 @@ import db
 from flask import request, render_template, redirect, url_for, abort, jsonify
 
 # Injetados por register() a partir do app.py:
-pode_gerar = _autor = _notificar_evento = _auto_avancar = None
+pode_gerar = _autor = _notificar_evento = _auto_avancar = _e_adm = None
 _EVT_DOC = {}
 
 NAO_DISTRIBUIR = "__nao_distribuir__"   # sentinela no <select> de técnico do módulo
@@ -682,6 +682,18 @@ def projeto_agenda_postergar_visita(pid):
     return jsonify(ok=True, n=n)
 
 
+def projeto_agenda_atividade_excluir(pid):
+    """Exclui em definitivo um assunto Postergada (limpeza de histórico de adiamento) —
+    exclusivo do perfil Administrador."""
+    if not _e_adm():
+        abort(403)
+    aid = request.form.get("atividade_id")
+    if not aid:
+        return jsonify(ok=False, erro="atividade_id ausente"), 400
+    ok, msg = db.cronograma_atividade_excluir(aid, pid)
+    return jsonify(ok=ok, erro=None if ok else msg)
+
+
 def projeto_agenda_reorganizar_modulo(pid):
     """Reorganiza (realoca) as visitas ainda abertas de UM módulo, respeitando a ordem
     V1 < V2 < ... — usado depois de postergar um bloco, para resolver a ordem quebrada pelo
@@ -714,4 +726,5 @@ def register(app, **deps):
     rota(base + "/gerar", projeto_agenda_gerar, ["POST"])
     rota(base + "/postergar", projeto_agenda_postergar, ["POST"])
     rota(base + "/postergar_visita", projeto_agenda_postergar_visita, ["POST"])
+    rota(base + "/atividade_excluir", projeto_agenda_atividade_excluir, ["POST"])
     rota(base + "/reorganizar_modulo", projeto_agenda_reorganizar_modulo, ["POST"])

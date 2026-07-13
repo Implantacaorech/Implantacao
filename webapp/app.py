@@ -883,7 +883,7 @@ def _abrir_navegador():
 import routes_agenda  # noqa: E402  (rotas /agenda/*)
 routes_agenda.register(app, pode_gerar=pode_gerar, _autor=_autor,
                        _notificar_evento=_notificar_evento, _auto_avancar=_auto_avancar,
-                       _EVT_DOC=_EVT_DOC)
+                       _EVT_DOC=_EVT_DOC, _e_adm=_e_adm)
 import routes_config  # noqa: E402  (rotas /config/*)
 routes_config.register(app, pode_ver=pode_ver, _e_adm=_e_adm)
 import routes_cadastros  # noqa: E402  (rotas /cadastros/*)

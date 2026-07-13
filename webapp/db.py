@@ -1759,6 +1759,21 @@ def cronograma_postergar(atividade_id, projeto_id, nova_data, novo_turno):
         return {"original": to_dict(a), "novo": to_dict(clone)}
 
 
+def cronograma_atividade_excluir(atividade_id, projeto_id):
+    """Exclui em definitivo uma atividade do agendador — só permitido para status Postergada
+    (limpeza de histórico de adiamento; a nova ocorrência 'Agendada' criada pelo adiamento não
+    é afetada). Devolve (ok, mensagem)."""
+    with Session() as s:
+        a = s.get(AtividadeCronograma, int(atividade_id))
+        if not a or a.projeto_id != projeto_id:
+            return False, "Atividade não encontrada."
+        if a.status != "Postergada":
+            return False, "Só é possível excluir uma visita/assunto já Postergada."
+        s.delete(a)
+        s.commit()
+        return True, "Excluído."
+
+
 def cronograma_tecnico_modulo(projeto_id, modulo, tecnico, ordem=None, nao_distribuir=None):
     """Define o técnico, a ordem de treinamento e/ou o flag "não distribuir" de um MÓDULO.
     `tecnico` None = não mexe no técnico/cartões (usado quando só ordem/nao_distribuir mudam

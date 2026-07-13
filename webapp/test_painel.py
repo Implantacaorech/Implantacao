@@ -2043,6 +2043,51 @@ def test_agenda_desfazer_tudo_bloqueado_se_ja_ocorreu(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_agenda_excluir_postergada_so_admin(client):
+    """Só Administrador pode excluir uma visita Postergada (histórico de adiamento); qualquer
+    outro perfil (ou sem login) recebe 403, e uma atividade que não é Postergada não sai."""
+    pid = _novo(client, cliente="ExclPost LTDA", cnpj="00.000.000/0001-14", numero_projeto="EP-1",
+                horas_cobradas="10", etapa="Cronograma e Check-list", modulos="FAT")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    g = db.cronograma_visitas(int(pid))[0]
+    seq = g["seq"]
+    dia = _dia_util()
+    client.post("/projetos/%s/agenda/alocar_visita" % pid,
+                data={"modulo": "FAT", "seq": seq, "data": dia, "turno": "manha"})
+    nova_data = _dia_util(10)
+    client.post("/projetos/%s/agenda/postergar_visita" % pid,
+                data={"modulo": "FAT", "seq": seq, "nova_data": nova_data, "novo_turno": "tarde"})
+    postergada_id = next(a["id"] for a in db.cronograma_atividades(int(pid))
+                        if a["modulo"] == "FAT" and a["seq"] == seq and a["status"] == "Postergada")
+    agendada_id = next(a["id"] for a in db.cronograma_atividades(int(pid))
+                       if a["modulo"] == "FAT" and a["seq"] == seq and a["status"] == "Agendada")
+
+    # sem login (perfil vazio) -> 403, nada excluído
+    r0 = client.post("/projetos/%s/agenda/atividade_excluir" % pid, data={"atividade_id": postergada_id})
+    assert r0.status_code == 403
+    assert db.cronograma_atividades(int(pid))   # ainda existe
+
+    # logado como Consultor -> ainda 403
+    _login_como(client, "Consultor")
+    r1 = client.post("/projetos/%s/agenda/atividade_excluir" % pid, data={"atividade_id": postergada_id})
+    assert r1.status_code == 403
+
+    # logado como ADM, mas tentando excluir uma Agendada (não Postergada) -> recusa
+    _login_como(client, "ADM")
+    r2 = client.post("/projetos/%s/agenda/atividade_excluir" % pid, data={"atividade_id": agendada_id})
+    j2 = r2.get_json()
+    assert j2["ok"] is False and "Postergada" in j2["erro"]
+    assert any(a["id"] == agendada_id for a in db.cronograma_atividades(int(pid)))
+
+    # ADM excluindo a Postergada -> sucesso, some do banco
+    r3 = client.post("/projetos/%s/agenda/atividade_excluir" % pid, data={"atividade_id": postergada_id})
+    assert r3.get_json()["ok"] is True
+    assert not any(a["id"] == postergada_id for a in db.cronograma_atividades(int(pid)))
+    with client.session_transaction() as sess:
+        sess.clear()
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_config_disponibilidade(client):
     """Tela de Disponibilidade (ADM): monta a URL pelos campos, prioriza URL completa,
     e a página abre."""
