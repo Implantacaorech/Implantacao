@@ -98,6 +98,27 @@
                onchange="this.form.submit()">
       </form>
     </div>
+    <div class="ag-dias-turnos">
+      <span class="dica" style="margin:0 0 4px;display:block">Considerar dias da semana (distribuição automática) — desmarque o que o técnico não pode:</span>
+      <form method="post" action="{{ url_for('projeto_agenda_config_distribuicao', pid=pid) }}" class="ag-dt-form">
+        <input type="hidden" name="ref" value="{{ ref_cur }}">{% if fds %}<input type="hidden" name="fds" value="1">{% endif %}
+        <input type="hidden" name="dt_marcado" value="1">
+        <table class="ag-dt-tab">
+          <thead><tr><th></th><th>Manhã</th><th>Tarde</th></tr></thead>
+          <tbody>
+            {% for wd, nome in [(0,'Segunda'),(1,'Terça'),(2,'Quarta'),(3,'Quinta'),(4,'Sexta')] %}
+            <tr>
+              <td>{{ nome }}</td>
+              <td><input type="checkbox" name="dt_{{ wd }}_manha" onchange="this.form.submit()"
+                         {{ 'checked' if (wd,'manha') not in dist_dias_excluidos }}></td>
+              <td><input type="checkbox" name="dt_{{ wd }}_tarde" onchange="this.form.submit()"
+                         {{ 'checked' if (wd,'tarde') not in dist_dias_excluidos }}></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </form>
+    </div>
     <div class="ag-modtec-grid">
       {% for m in modulos_tec %}
       <form method="post" action="{{ url_for('projeto_agenda_tecnico_modulo', pid=pid) }}" class="ag-modtec">
@@ -255,6 +276,12 @@
       text-align:center;-moz-appearance:textfield}
     .ag-modtec-ordem::-webkit-outer-spin-button,.ag-modtec-ordem::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
     .ag-modtec select{flex:1;min-width:0;font-size:.78rem;padding:2px 4px;border:1px solid var(--line);border-radius:5px}
+    .ag-dias-turnos{margin-top:10px}
+    .ag-dt-tab{border-collapse:collapse;font-size:.8rem}
+    .ag-dt-tab th{font-weight:700;color:var(--navy);text-align:center;padding:2px 12px}
+    .ag-dt-tab td{padding:2px 12px;text-align:center}
+    .ag-dt-tab td:first-child{text-align:left;font-weight:600;color:var(--navy);padding-left:0}
+    .ag-dt-tab input[type=checkbox]{width:16px;height:16px;cursor:pointer}
     .ag-wrap{display:grid;grid-template-columns:300px 1fr;gap:14px;align-items:start}
     @media (max-width:900px){.ag-wrap{grid-template-columns:1fr}}
     .ag-side{background:var(--surface,#fff);border:1px solid var(--line);border-radius:10px;padding:12px;position:sticky;top:8px;max-height:calc(100vh - 40px);overflow:auto}

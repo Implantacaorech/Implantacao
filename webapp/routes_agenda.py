@@ -30,6 +30,23 @@ def _parse_data(s):
     return None
 
 
+def _parse_dias_excluidos(s):
+    """"0-manha,2-tarde" -> {(0,'manha'), (2,'tarde')} (weekday 0=segunda..4=sexta)."""
+    out = set()
+    for tok in (s or "").split(","):
+        tok = tok.strip()
+        if not tok or "-" not in tok:
+            continue
+        wd_s, turno = tok.split("-", 1)
+        try:
+            wd = int(wd_s)
+        except ValueError:
+            continue
+        if 0 <= wd <= 4 and turno in ("manha", "tarde"):
+            out.add((wd, turno))
+    return out
+
+
 def _agrupar_por_visita(atividades):
     """Agrupa atividades alocadas num turno por visita (módulo+seq), preservando a ordem de
     1ª aparição — usado para renderizar o calendário com os blocos recolhidos por padrão
@@ -142,6 +159,7 @@ def projeto_agenda(pid):
     dist_cfg = db.cronograma_config(pid)
     modo_dist = dist_cfg["modo_disponibilidade"]
     dist_data_inicio = dist_cfg["data_inicio"]
+    dist_dias_excluidos = _parse_dias_excluidos(dist_cfg["dias_turnos_excluidos"])
     modo_arg = request.args.get("modo")
     modo = modo_arg if modo_arg in ("conjunta", "individual") else modo_dist
     tec_sel = (request.args.get("tec") or "").strip()
@@ -188,6 +206,7 @@ def projeto_agenda(pid):
                            modulos_visitas=modulos_visitas, tech=tech, tecnicos=tecnicos,
                            fora=fora, fds=fds, hor=hor, modulos_tec=modulos_tec,
                            dist_faltantes=dist_faltantes, modo_dist=modo_dist, dist_data_inicio=dist_data_inicio,
+                           dist_dias_excluidos=dist_dias_excluidos,
                            nd_sentinel=NAO_DISTRIBUIR, dist_ja_ocorreu=dist_ja_ocorreu,
                            bloqueados=bloqueados, disp_aviso=disp_aviso, disp_ativa=disp_ativa,
                            modo=modo, tec_sel=tec_sel, envolvidos=envolvidos,
@@ -387,6 +406,7 @@ def _distribuir_automatico(pid, modulo=None, incluir_alocadas=False):
         d += timedelta(days=1)
 
     modo = cfg["modo_disponibilidade"]   # 'conjunta' (em grupo) ou 'individual'
+    dias_excluidos = _parse_dias_excluidos(cfg["dias_turnos_excluidos"])  # {(weekday, turno)} nunca usados
     cods = db.codigos_sicla_por_nome(tecnicos)          # nome_lower -> código SICLA ("" se não tem)
     todos_cods = sorted({cods[t.lower()].lower() for t in tecnicos if cods.get(t.lower())})
     ocup_ext = {}
@@ -422,6 +442,8 @@ def _distribuir_automatico(pid, modulo=None, incluir_alocadas=False):
         for d in dias:
             iso = d.isoformat()
             for turno in ("manha", "tarde"):
+                if (d.weekday(), turno) in dias_excluidos:
+                    continue
                 if ocupado.get((tec, iso, turno)) or bloqueado_ext(cod, iso, turno):
                     continue
                 slot = (iso, turno)
@@ -541,12 +563,26 @@ def projeto_agenda_tecnico_modulo(pid):
 
 def projeto_agenda_config_distribuicao(pid):
     """Define o modo de análise de disponibilidade (conjunta/em grupo ou individual por
-    técnico) e/ou a data de início da busca por turnos livres — padrão da tela e usados pela
-    distribuição automática. Campos ausentes no form não são alterados."""
+    técnico), a data de início da busca por turnos livres e/ou os dias da semana + turnos que
+    a distribuição automática deve considerar — padrão da tela e usados pela distribuição
+    automática. Campos ausentes no form não são alterados. Os checkboxes de dia/turno só são
+    processados se o marcador 'dt_marcado' vier no form (evita apagar a config se este form
+    for enviado por engano sem os checkboxes, ex.: só o modo/data)."""
     if not pode_gerar("cronograma"):
         abort(403)
+    dias_turnos_excluidos = None
+    if request.form.get("dt_marcado"):
+        marcados = set()
+        for wd in range(5):
+            for turno in ("manha", "tarde"):
+                if request.form.get("dt_%d_%s" % (wd, turno)):
+                    marcados.add((wd, turno))
+        todos = {(wd, t) for wd in range(5) for t in ("manha", "tarde")}
+        excluidos = sorted(todos - marcados)
+        dias_turnos_excluidos = ",".join("%d-%s" % (wd, t) for wd, t in excluidos)
     cfg = db.cronograma_config_salvar(pid, modo=request.form.get("modo"),
-                                      data_inicio=request.form.get("data_inicio"))
+                                      data_inicio=request.form.get("data_inicio"),
+                                      dias_turnos_excluidos=dias_turnos_excluidos)
     ref = (request.form.get("ref") or "").strip()
     return redirect(url_for("projeto_agenda", pid=pid, ref=ref or None,
                             fds=(1 if request.form.get("fds") else None),

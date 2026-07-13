@@ -2088,6 +2088,27 @@ def test_agenda_excluir_postergada_so_admin(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_agenda_config_distribuicao_dias_turnos_excluidos(client):
+    """Desmarcar um turno em 'Considerar dias da semana' faz a distribuição automática nunca
+    usar aquele turno — aqui, exclui manhã em todos os dias úteis; só tarde deve ser usada."""
+    pid = _novo(client, cliente="DiasExcl LTDA", cnpj="00.000.000/0001-15", numero_projeto="DE-1",
+                horas_cobradas="10", etapa="Cronograma e Check-list", modulos="FAT")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "FAT", "tecnico": "Ana"})
+
+    payload = {"dt_marcado": "1"}    # manhã ausente em todos os dias = excluída; tarde marcada = mantida
+    for wd in range(5):
+        payload["dt_%d_tarde" % wd] = "1"
+    client.post("/projetos/%s/agenda/config_distribuicao" % pid, data=payload)
+
+    r = client.post("/projetos/%s/agenda/distribuir" % pid)
+    j = r.get_json()
+    assert j["ok"] is True and j["n"] >= 1
+    ats = [a for a in db.cronograma_atividades(int(pid)) if a["modulo"] == "FAT" and a["data"]]
+    assert ats and all(a["turno"] == "tarde" for a in ats)
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_config_disponibilidade(client):
     """Tela de Disponibilidade (ADM): monta a URL pelos campos, prioriza URL completa,
     e a página abre."""

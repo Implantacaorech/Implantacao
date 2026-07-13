@@ -1655,23 +1655,29 @@ class CronogramaConfig(Base):
     projeto_id = Column(Integer, index=True, unique=True)
     modo_disponibilidade = Column(String(20), default="conjunta")  # "conjunta" (em grupo) | "individual"
     data_inicio = Column(String(10), default="")   # "AAAA-MM-DD"; "" = começa hoje
+    dias_turnos_excluidos = Column(String(200), default="")   # "0-manha,2-tarde" (seg=0..sex=4);
+                                                                # "" = considera todos (seg-sex, manhã e tarde)
 
 
 def cronograma_config(projeto_id):
-    """{'modo_disponibilidade', 'data_inicio'} do projeto, com os defaults do comportamento
-    histórico ('conjunta', hoje) quando nada foi definido. modo: 'conjunta' (em grupo —
-    bloqueia o turno se QUALQUER técnico envolvido estiver ocupado) ou 'individual' (cada
-    técnico só olha a própria agenda). data_inicio: a partir de quando a distribuição
-    automática (e a busca de turnos livres) passa a considerar turnos — "" = hoje."""
+    """{'modo_disponibilidade', 'data_inicio', 'dias_turnos_excluidos'} do projeto, com os
+    defaults do comportamento histórico ('conjunta', hoje, nenhum dia/turno excluído) quando
+    nada foi definido. modo: 'conjunta' (em grupo — bloqueia o turno se QUALQUER técnico
+    envolvido estiver ocupado) ou 'individual' (cada técnico só olha a própria agenda).
+    data_inicio: a partir de quando a distribuição automática passa a considerar turnos — ""
+    = hoje. dias_turnos_excluidos: dia da semana (0=segunda..4=sexta) + turno que a
+    distribuição automática NUNCA deve usar (usuário desmarcou em 'Considerar dias da
+    semana'), como string "wd-turno" separada por vírgula."""
     with Session() as s:
         c = s.query(CronogramaConfig).filter_by(projeto_id=projeto_id).first()
         modo = (c.modo_disponibilidade or "").strip() if c else ""
         data_inicio = (c.data_inicio or "").strip() if c else ""
+        dias_turnos_excluidos = (c.dias_turnos_excluidos or "").strip() if c else ""
     return {"modo_disponibilidade": modo if modo in ("conjunta", "individual") else "conjunta",
-            "data_inicio": data_inicio}
+            "data_inicio": data_inicio, "dias_turnos_excluidos": dias_turnos_excluidos}
 
 
-def cronograma_config_salvar(projeto_id, modo=None, data_inicio=None):
+def cronograma_config_salvar(projeto_id, modo=None, data_inicio=None, dias_turnos_excluidos=None):
     """Atualiza a config do agendador. Cada campo é opcional: None = não mexe. `modo` inválido
     é ignorado (não altera). Devolve o dict atualizado (ver cronograma_config)."""
     modo = (modo or "").strip() or None
@@ -1686,6 +1692,8 @@ def cronograma_config_salvar(projeto_id, modo=None, data_inicio=None):
             c.modo_disponibilidade = modo
         if data_inicio is not None:
             c.data_inicio = data_inicio.strip()
+        if dias_turnos_excluidos is not None:
+            c.dias_turnos_excluidos = dias_turnos_excluidos.strip()
         s.commit()
     return cronograma_config(projeto_id)
 
