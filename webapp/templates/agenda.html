@@ -77,7 +77,7 @@
 
   {# Técnico por módulo (central) #}
   {% if modulos_tec %}
-  <details class="ag-modtec-box">
+  <details class="ag-modtec-box" id="ag-modtec-box">
     <summary>Técnico por módulo <small class="dica" style="margin:0">— ordem de treinamento e modo de disponibilidade usados pela distribuição automática</small></summary>
     <div class="ag-modtec-modo">
       <form method="post" action="{{ url_for('projeto_agenda_config_distribuicao', pid=pid) }}" class="ag-modtec-modo-form">
@@ -101,10 +101,11 @@
         <input type="number" name="ordem" class="ag-modtec-ordem" value="{{ m.ordem }}" min="0" step="1"
                title="Ordem de treinamento do módulo (menor = treinado primeiro na distribuição automática)"
                onchange="this.form.submit()">
-        <select name="tecnico" onchange="this.form.submit()">
+        <select name="tecnico" onchange="this.form.submit()" title="{{ 'Módulo ignorado pela distribuição automática' if m.nao_distribuir }}">
           <option value="">—</option>
-          {% for t in tecnicos %}<option value="{{ t }}" {{ 'selected' if t == m.tecnico }}>{{ t }}</option>{% endfor %}
-          {% if m.tecnico and m.tecnico not in tecnicos %}<option value="{{ m.tecnico }}" selected>{{ m.tecnico }}</option>{% endif %}
+          {% for t in tecnicos %}<option value="{{ t }}" {{ 'selected' if (not m.nao_distribuir and t == m.tecnico) }}>{{ t }}</option>{% endfor %}
+          {% if m.tecnico and m.tecnico not in tecnicos %}<option value="{{ m.tecnico }}" {{ 'selected' if not m.nao_distribuir }}>{{ m.tecnico }}</option>{% endif %}
+          <option value="{{ nd_sentinel }}" {{ 'selected' if m.nao_distribuir }}>— Não distribuir —</option>
         </select>
       </form>
       {% endfor %}
@@ -318,6 +319,17 @@
     var redistribuirUrl='{{ url_for("projeto_agenda_redistribuir", pid=pid) }}';
     var modal=document.getElementById('postModal');
     window.agExpand=function(open){ document.querySelectorAll('#ag-pend details').forEach(function(d){ d.open=open; }); };
+    // "Técnico por módulo": cada alteração recarrega a página (form submit); sem isso, a caixa
+    // recolhia de novo a cada campo mudado. Lembra o estado aberto/fechado por projeto.
+    (function(){
+      var box=document.getElementById('ag-modtec-box');
+      if(!box) return;
+      var key='ag-modtec-open-{{ pid }}';
+      if(localStorage.getItem(key)==='1') box.open=true;
+      box.addEventListener('toggle', function(){
+        try{ localStorage.setItem(key, box.open ? '1' : ''); }catch(_){}
+      });
+    })();
     function chamarDistribuicao(destUrl, btn){
       if(btn) btn.disabled=true;
       fetch(destUrl, {method:'POST'})

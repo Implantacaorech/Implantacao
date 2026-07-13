@@ -1910,6 +1910,32 @@ def test_agenda_distribuir_alerta_golive(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_agenda_nao_distribuir_ignora_modulo(client):
+    """'Não distribuir' (opção especial no combo de técnico) libera a distribuição mesmo sem
+    técnico nesse módulo, e a distribuição ignora as visitas desse módulo por completo."""
+    NAO_DISTRIBUIR = "__nao_distribuir__"   # tem que bater com routes_agenda.NAO_DISTRIBUIR
+    pid = _novo(client, cliente="NaoDist LTDA", cnpj="00.000.000/0001-08", numero_projeto="ND-1",
+                horas_cobradas="10", etapa="Cronograma e Check-list", modulos="FAT,EST")
+    db.cronograma_atividades_seed(int(pid), "FAT,EST")
+    client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "FAT", "tecnico": "Ana"})
+
+    # EST sem técnico -> normalmente bloqueia a distribuição
+    r0 = client.post("/projetos/%s/agenda/distribuir" % pid)
+    j0 = r0.get_json()
+    assert j0["ok"] is False and "EST" in j0["erro"]
+
+    # marca EST como "Não distribuir" (sem preencher técnico)
+    client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "EST", "tecnico": NAO_DISTRIBUIR})
+    r = client.post("/projetos/%s/agenda/distribuir" % pid)
+    j = r.get_json()
+    assert j["ok"] is True and j["n"] >= 1
+    est_ats = [a for a in db.cronograma_atividades(int(pid)) if a["modulo"] == "EST"]
+    assert all(not a["data"] and not a["turno"] for a in est_ats)   # EST ficou de fora
+    fat_ats = [a for a in db.cronograma_atividades(int(pid)) if a["modulo"] == "FAT"]
+    assert any(a["data"] and a["turno"] for a in fat_ats)           # FAT foi distribuído normalmente
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_config_disponibilidade(client):
     """Tela de Disponibilidade (ADM): monta a URL pelos campos, prioriza URL completa,
     e a página abre."""

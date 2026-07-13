@@ -15,6 +15,8 @@ from flask import request, render_template, redirect, url_for, abort, jsonify
 pode_gerar = _autor = _notificar_evento = _auto_avancar = None
 _EVT_DOC = {}
 
+NAO_DISTRIBUIR = "__nao_distribuir__"   # sentinela no <select> de técnico do módulo
+
 
 def _parse_data(s):
     """AAAA-MM-DD ou DD/MM/AAAA -> date, ou None se vazio/inválido."""
@@ -81,6 +83,7 @@ def projeto_agenda(pid):
     designacoes = db.designacoes_do_projeto(pid)
     tech = {d["modulo"]: d["consultor"] for d in designacoes}
     ordem_mod = {d["modulo"]: d["ordem"] for d in designacoes}   # ordem de treinamento do módulo
+    nd_mod = {d["modulo"]: d["nao_distribuir"] for d in designacoes}   # módulo fora da distribuição
     tecnicos = []                                             # técnicos atribuíveis por cartão
     for nome in list(tech.values()) + [c.strip() for c in (proj.get("consultor") or "").split(",")]:
         nome = (nome or "").strip()
@@ -123,10 +126,11 @@ def projeto_agenda(pid):
     hor = {"manha": {"ini": h["manha"][0], "fim": h["manha"][1]},
            "tarde": {"ini": h["tarde"][0], "fim": h["tarde"][1]}}
     modulos_tec = sorted(
-        ({"sigla": m, "tecnico": tech.get(m, ""), "ordem": ordem_mod.get(m, 0)}   # técnico + ordem
+        ({"sigla": m, "tecnico": tech.get(m, ""), "ordem": ordem_mod.get(m, 0),   # técnico + ordem
+          "nao_distribuir": nd_mod.get(m, False)}
          for m in {a["modulo"] for a in ats}),
         key=lambda x: (x["ordem"], x["sigla"]))
-    dist_faltantes = _modulos_sem_tecnico_valido(ats, tech,
+    dist_faltantes = _modulos_sem_tecnico_valido(ats, tech, nd_mod,
                      sorted({(tech.get(a["modulo"]) or "").strip() for a in ats if (tech.get(a["modulo"]) or "").strip()}))
 
     # Disponibilidade: análise CONJUNTA (todos os envolvidos) ou INDIVIDUAL (1 técnico).
@@ -183,6 +187,7 @@ def projeto_agenda(pid):
                            modulos_visitas=modulos_visitas, tech=tech, tecnicos=tecnicos,
                            fora=fora, fds=fds, hor=hor, modulos_tec=modulos_tec,
                            dist_faltantes=dist_faltantes, modo_dist=modo_dist, dist_data_inicio=dist_data_inicio,
+                           nd_sentinel=NAO_DISTRIBUIR,
                            bloqueados=bloqueados, disp_aviso=disp_aviso, disp_ativa=disp_ativa,
                            modo=modo, tec_sel=tec_sel, envolvidos=envolvidos,
                            hoje_iso=date.today().isoformat(),
@@ -269,10 +274,11 @@ def projeto_agenda_alocar_visita(pid):
     return jsonify(ok=True, n=n)
 
 
-def _modulos_sem_tecnico_valido(ats, tech, tecnicos):
+def _modulos_sem_tecnico_valido(ats, tech, nd_mod, tecnicos):
     """Módulos usados no cronograma sem técnico definido (ou com um nome que não está mais
-    na lista de técnicos atribuíveis do projeto) — trava a distribuição automática."""
-    modulos = sorted({a["modulo"] for a in ats if a["modulo"]})
+    na lista de técnicos atribuíveis do projeto) — trava a distribuição automática. Módulos
+    marcados "Não distribuir" nunca entram nessa lista (são ignorados, não exigem técnico)."""
+    modulos = sorted({a["modulo"] for a in ats if a["modulo"] and not nd_mod.get(a["modulo"])})
     return [m for m in modulos if (tech.get(m) or "").strip() not in tecnicos]
 
 
@@ -293,21 +299,25 @@ def _distribuir_automatico(pid):
     designacoes = db.designacoes_do_projeto(pid)
     tech = {d["modulo"]: d["consultor"] for d in designacoes}
     ordem_mod = {d["modulo"]: d["ordem"] for d in designacoes}
-    tecnicos = sorted({(tech.get(a["modulo"]) or "").strip() for a in ats if (tech.get(a["modulo"]) or "").strip()})
-    faltantes = _modulos_sem_tecnico_valido(ats, tech, tecnicos)
+    nd_mod = {d["modulo"]: d["nao_distribuir"] for d in designacoes}
+    tecnicos = sorted({(tech.get(a["modulo"]) or "").strip() for a in ats
+                       if (tech.get(a["modulo"]) or "").strip() and not nd_mod.get(a["modulo"])})
+    faltantes = _modulos_sem_tecnico_valido(ats, tech, nd_mod, tecnicos)
     if faltantes:
         return dict(ok=False, erro="Defina um técnico válido (em 'Técnico por módulo') para: %s "
                                     "— a distribuição automática só roda com todos os módulos "
-                                    "designados." % ", ".join(faltantes))
+                                    "designados (ou marque 'Não distribuir' se o módulo não "
+                                    "entra nesta agenda)." % ", ".join(faltantes))
 
     visitas = db.cronograma_visitas(pid)
-    alvo = [g for g in visitas if g["atividades"]
+    alvo = [g for g in visitas if g["atividades"] and not nd_mod.get(g["modulo"])
             and all((a["status"] or "") in ("", "Solicitada") and not (a["data"] and a["turno"])
                      for a in g["atividades"])]
     if not alvo:
         return dict(ok=True, n=0, sem_slot=[],
                     aviso="Não há visitas 100% pendentes para distribuir (as demais já foram "
-                          "alocadas manualmente ou concluídas).")
+                          "alocadas manualmente, concluídas ou pertencem a módulo marcado "
+                          "'Não distribuir').")
     # ordem de treinamento do módulo primeiro; dentro do módulo, V1 antes de V2
     alvo.sort(key=lambda g: (ordem_mod.get(g["modulo"], 0), g["modulo"], g["seq"]))
 
@@ -437,19 +447,26 @@ def projeto_agenda_horario(pid):
 
 
 def projeto_agenda_tecnico_modulo(pid):
-    """Define o técnico e/ou a ordem de treinamento de um MÓDULO (aplica o técnico aos cartões
-    e sincroniza a Designação; a ordem é usada pela distribuição automática de agendas)."""
+    """Define o técnico, a ordem de treinamento e/ou 'Não distribuir' de um MÓDULO. A opção
+    "Não distribuir" (sentinela no <select> de técnico) marca o módulo para ser ignorado pela
+    distribuição automática, SEM alterar o técnico já designado nos cartões — escolher um
+    técnico de verdade depois desmarca automaticamente."""
     if not pode_gerar("cronograma"):
         abort(403)
     try:
         ordem = int(request.form.get("ordem"))
     except (TypeError, ValueError):
         ordem = None
-    n = db.cronograma_tecnico_modulo(pid, request.form.get("modulo"), request.form.get("tecnico"), ordem=ordem)
+    tecnico_form = request.form.get("tecnico")
+    nao_distribuir = tecnico_form == NAO_DISTRIBUIR
+    tecnico_arg = None if nao_distribuir else tecnico_form
+    n = db.cronograma_tecnico_modulo(pid, request.form.get("modulo"), tecnico_arg,
+                                     ordem=ordem, nao_distribuir=nao_distribuir)
     ref = (request.form.get("ref") or "").strip()
+    aviso = ("Módulo marcado como 'Não distribuir' (agenda automática vai ignorá-lo)." if nao_distribuir
+             else "Técnico do módulo aplicado a %d cartão(ões)." % n)
     return redirect(url_for("projeto_agenda", pid=pid, ref=ref or None,
-                            fds=(1 if request.form.get("fds") else None),
-                            aviso="Técnico do módulo aplicado a %d cartão(ões)." % n))
+                            fds=(1 if request.form.get("fds") else None), aviso=aviso))
 
 
 def projeto_agenda_config_distribuicao(pid):

@@ -778,11 +778,14 @@ class Designacao(Base):
     consultor = Column(String(160), default="")
     ordem = Column(Integer, default=0)   # ordem de treinamento do módulo (usada na distribuição
                                           # automática de agendas); 0 para todos = cai no alfabético
+    nao_distribuir = Column(Boolean, default=False)  # módulo ignorado pela distribuição
+                                                      # automática (ex.: sem visita a agendar)
 
 
 def designacoes_do_projeto(pid):
     with Session() as s:
-        return [{"modulo": d.modulo, "consultor": d.consultor, "ordem": d.ordem or 0}
+        return [{"modulo": d.modulo, "consultor": d.consultor, "ordem": d.ordem or 0,
+                 "nao_distribuir": bool(d.nao_distribuir)}
                 for d in s.query(Designacao).filter_by(projeto_id=pid)
                 .order_by(Designacao.ordem, Designacao.modulo).all()]
 
@@ -1756,25 +1759,31 @@ def cronograma_postergar(atividade_id, projeto_id, nova_data, novo_turno):
         return {"original": to_dict(a), "novo": to_dict(clone)}
 
 
-def cronograma_tecnico_modulo(projeto_id, modulo, tecnico, ordem=None):
-    """Define o técnico (e, opcionalmente, a ordem de treinamento) de um MÓDULO: aplica o
-    técnico a todos os cartões do módulo e sincroniza a Designação do projeto (fonte única
-    módulo→consultor→ordem). `ordem` None = não mexe. Devolve o nº de cartões afetados."""
-    modulo, tecnico = (modulo or "").strip().upper(), (tecnico or "").strip()
+def cronograma_tecnico_modulo(projeto_id, modulo, tecnico, ordem=None, nao_distribuir=None):
+    """Define o técnico, a ordem de treinamento e/ou o flag "não distribuir" de um MÓDULO.
+    `tecnico` None = não mexe no técnico/cartões (usado quando só ordem/nao_distribuir mudam
+    — ex.: marcar "Não distribuir" preserva o técnico já designado nos cartões). `ordem` e
+    `nao_distribuir` None = não mexem. Devolve o nº de cartões cujo técnico foi alterado."""
+    modulo = (modulo or "").strip().upper()
     if not modulo:
         return 0
     with Session() as s:
         n = 0
-        for a in s.query(AtividadeCronograma).filter_by(projeto_id=projeto_id, modulo=modulo).all():
-            a.tecnico = tecnico
-            n += 1
+        if tecnico is not None:
+            tecnico = (tecnico or "").strip()
+            for a in s.query(AtividadeCronograma).filter_by(projeto_id=projeto_id, modulo=modulo).all():
+                a.tecnico = tecnico
+                n += 1
         d = s.query(Designacao).filter_by(projeto_id=projeto_id, modulo=modulo).first()
         if not d:
             d = Designacao(projeto_id=projeto_id, modulo=modulo)
             s.add(d)
-        d.consultor = tecnico
+        if tecnico is not None:
+            d.consultor = tecnico
         if ordem is not None:
             d.ordem = ordem
+        if nao_distribuir is not None:
+            d.nao_distribuir = bool(nao_distribuir)
         s.commit()
         return n
 
