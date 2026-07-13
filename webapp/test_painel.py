@@ -1769,6 +1769,46 @@ def test_agenda_alocar_visita_inteira(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_agenda_realocar_e_desalocar_visita_inteira(client):
+    """Arrastar o bloco (visita) já alocado para outro turno o move inteiro; arrastar de volta
+    para a lista (data/turno vazios) desaloca tudo. Atividade já 'Realizada' fica de fora —
+    não é tocada nem ao mover nem ao desalocar o resto do bloco."""
+    pid = _novo(client, cliente="Recolocar LTDA", cnpj="00.000.000/0001-01", numero_projeto="RC-1",
+                horas_cobradas="10", etapa="Cronograma e Check-list", modulos="FAT")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    g = db.cronograma_visitas(int(pid))[0]
+    seq, nat = g["seq"], len(g["atividades"])
+    dia = _dia_util()
+    r = client.post("/projetos/%s/agenda/alocar_visita" % pid,
+                    data={"modulo": "FAT", "seq": seq, "data": dia, "turno": "manha"})
+    assert r.get_json()["n"] == nat
+
+    # marca uma atividade como Realizada -> deve ficar de fora das próximas movimentações em bloco
+    realizada_id = g["atividades"][0]["id"]
+    client.post("/projetos/%s/agenda/status" % pid, data={"atividade_id": realizada_id, "status": "Realizada"})
+
+    # realoca o bloco (ainda aberto) para outro turno no mesmo dia
+    r = client.post("/projetos/%s/agenda/alocar_visita" % pid,
+                    data={"modulo": "FAT", "seq": seq, "data": dia, "turno": "tarde"})
+    j = r.get_json()
+    assert j["ok"] is True and j["n"] == nat - 1                 # a Realizada não se move
+    ats = [a for a in db.cronograma_atividades(int(pid)) if a["modulo"] == "FAT" and a["seq"] == seq]
+    realizada = next(a for a in ats if a["id"] == realizada_id)
+    assert realizada["data"] == dia and realizada["turno"] == "manha"   # ficou onde estava
+    abertas = [a for a in ats if a["id"] != realizada_id]
+    assert all(a["data"] == dia and a["turno"] == "tarde" for a in abertas)
+
+    # desaloca o bloco inteiro (arrastar de volta para a lista de pendentes)
+    r = client.post("/projetos/%s/agenda/alocar_visita" % pid,
+                    data={"modulo": "FAT", "seq": seq, "data": "", "turno": ""})
+    j = r.get_json()
+    assert j["ok"] is True and j["n"] == nat - 1
+    ats = [a for a in db.cronograma_atividades(int(pid)) if a["modulo"] == "FAT" and a["seq"] == seq]
+    abertas = [a for a in ats if a["id"] != realizada_id]
+    assert all(not a["data"] and not a["turno"] and a["status"] == "Solicitada" for a in abertas)
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_config_disponibilidade(client):
     """Tela de Disponibilidade (ADM): monta a URL pelos campos, prioriza URL completa,
     e a página abre."""

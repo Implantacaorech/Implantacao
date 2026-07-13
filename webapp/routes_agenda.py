@@ -203,7 +203,11 @@ def projeto_agenda_alocar(pid):
 
 
 def projeto_agenda_alocar_visita(pid):
-    """Aloca a VISITA inteira (todas as atividades pendentes de modulo+seq) num dia/turno."""
+    """Aloca, realoca ou desaloca a VISITA inteira (todas as atividades ainda em aberto —
+    ''/Solicitada/Agendada — de modulo+seq) num dia/turno. Data/turno vazios devolvem o bloco
+    para a lista de pendentes (arrastar o bloco de volta ou para outro turno, durante a
+    montagem do cronograma). Atividades Realizada/Não Realizada/Postergada/Cancelada não são
+    tocadas — ficam no histórico, mesmo que compartilhem a visita."""
     if not pode_gerar("cronograma"):
         abort(403)
     modulo = (request.form.get("modulo") or "").strip()
@@ -213,18 +217,28 @@ def projeto_agenda_alocar_visita(pid):
         seq = int(request.form.get("seq") or "")
     except ValueError:
         seq = None
-    if not (modulo and seq and data and turno in ("manha", "tarde")):
+    if not (modulo and seq):
+        return jsonify(ok=False, erro="parâmetros inválidos"), 400
+    desalocar = not data and not turno
+    if not desalocar and not (data and turno in ("manha", "tarde")):
         return jsonify(ok=False, erro="parâmetros inválidos"), 400
     tech = {d["modulo"]: d["consultor"] for d in db.designacoes_do_projeto(pid)}
-    motivo = _slot_indisponivel(data, turno, (tech.get(modulo) or ""))
-    if motivo:
-        return jsonify(ok=False, erro=motivo), 409
+    if not desalocar:
+        motivo = _slot_indisponivel(data, turno, (tech.get(modulo) or ""))
+        if motivo:
+            return jsonify(ok=False, erro=motivo), 409
     n = 0
     for a in db.cronograma_atividades(pid):
-        if a["modulo"] == modulo and a["seq"] == seq and not (a["data"] and a["turno"]):
+        if a["modulo"] != modulo or a["seq"] != seq:
+            continue
+        if (a["status"] or "") not in ("", "Solicitada", "Agendada"):
+            continue                                          # histórico não se move em bloco
+        if desalocar:
+            db.cronograma_alocar(a["id"], projeto_id=pid, data="", turno="")
+        else:
             t = (a["tecnico"] or "").strip() or (tech.get(modulo) or "")
             db.cronograma_alocar(a["id"], projeto_id=pid, data=data, turno=turno, tecnico=(t or None))
-            n += 1
+        n += 1
     return jsonify(ok=True, n=n)
 
 

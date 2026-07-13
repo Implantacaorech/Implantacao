@@ -161,6 +161,7 @@
             {% for g in aloc_grp[d.iso][turno] %}
             <details class="ag-slot-visita" data-group="{{ g.modulo }}-{{ g.seq }}" data-modulo="{{ g.modulo }}" data-seq="{{ g.seq }}">
               <summary class="ag-slot-visita-sum">
+                <span class="ag-grip" draggable="true" onclick="event.preventDefault();event.stopPropagation()" title="Arraste o bloco inteiro para outro turno ou de volta para a lista">⠿</span>
                 <span class="ag-visita-t">{{ g.modulo }} · V{{ g.seq }}</span>
                 <span class="ag-count">{{ g.atividades|length }}</span>
               </summary>
@@ -294,7 +295,7 @@
     document.addEventListener('dragstart', function(e){
       var grip=e.target.closest&&e.target.closest('.ag-grip');
       if(grip){
-        var det=grip.closest('.ag-visita-d');
+        var det=grip.closest('.ag-visita-d, .ag-slot-visita');
         groupDrag={modulo:det.dataset.modulo, seq:det.dataset.seq}; dragId=null;
         try{ e.dataTransfer.setData('text/plain','grupo'); }catch(_){}
         return;
@@ -346,14 +347,17 @@
           alert('Turno indisponível: técnico(s) envolvido(s) com compromisso nesse dia/turno.');
           groupDrag=null; return;
         }
-        if(groupDrag){                       // arrastou a VISITA inteira -> aloca o bloco
+        if(groupDrag){                       // arrastou a VISITA inteira -> aloca, realoca ou desaloca o bloco
           var gd=groupDrag; groupDrag=null;
-          if(!turno) return;                 // bloco só vai para um dia/turno do calendário
           fetch(visitaUrl, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
                 body:new URLSearchParams({modulo:gd.modulo, seq:gd.seq, data:iso, turno:turno})})
             .then(function(r){ return r.json(); })
-            .then(function(j){ if(j&&j.ok){ location.reload(); } else { alert((j&&j.erro) || 'Não foi possível alocar a visita.'); } })
-            .catch(function(){ alert('Erro de rede ao alocar a visita.'); });
+            .then(function(j){
+              if(!j||!j.ok){ alert((j&&j.erro) || 'Não foi possível mover a visita.'); return; }
+              if(!j.n){ alert('Nada para mover: os assuntos desse bloco já foram concluídos, cancelados ou postergados.'); return; }
+              location.reload();
+            })
+            .catch(function(){ alert('Erro de rede ao mover a visita.'); });
           return;
         }
         var id=(e.dataTransfer&&e.dataTransfer.getData('text/plain'))||dragId; if(!id||id==='grupo') return;
