@@ -80,13 +80,17 @@
   <details class="ag-modtec-box">
     <summary>Técnico por módulo <small class="dica" style="margin:0">— ordem de treinamento e modo de disponibilidade usados pela distribuição automática</small></summary>
     <div class="ag-modtec-modo">
-      <span class="dica" style="margin:0">Modo de disponibilidade (tela e distribuição automática):</span>
-      <form method="post" action="{{ url_for('projeto_agenda_modo_disponibilidade', pid=pid) }}" style="display:inline">
+      <form method="post" action="{{ url_for('projeto_agenda_config_distribuicao', pid=pid) }}" class="ag-modtec-modo-form">
         <input type="hidden" name="ref" value="{{ ref_cur }}">{% if fds %}<input type="hidden" name="fds" value="1">{% endif %}
+        <span class="dica" style="margin:0">Modo de disponibilidade:</span>
         <select name="modo" onchange="this.form.submit()">
           <option value="conjunta" {{ 'selected' if modo_dist == 'conjunta' }}>Em grupo (bloqueia o turno se qualquer técnico estiver ocupado)</option>
           <option value="individual" {{ 'selected' if modo_dist == 'individual' }}>Individual por técnico (cada um só vê a própria agenda)</option>
         </select>
+        <span class="dica" style="margin:0">Distribuir a partir de:</span>
+        <input type="date" name="data_inicio" value="{{ dist_data_inicio }}" min="{{ hoje_iso }}"
+               title="Data a partir da qual a distribuição automática busca turnos livres (vazio = hoje)"
+               onchange="this.form.submit()">
       </form>
     </div>
     <div class="ag-modtec-grid">
@@ -230,8 +234,9 @@
     .ag-hgrp input[type=time]{width:112px;font-size:.82rem;padding:3px 6px;border:1px solid var(--line);border-radius:5px}
     .ag-modtec-box{background:var(--surface,#fff);border:1px solid var(--line);border-radius:9px;padding:8px 12px;margin-bottom:12px}
     .ag-modtec-box>summary{cursor:pointer;font-weight:700;color:var(--navy)}
-    .ag-modtec-modo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
-    .ag-modtec-modo select{font-size:.8rem;padding:3px 6px;border:1px solid var(--line);border-radius:5px;background:#fff}
+    .ag-modtec-modo{margin-top:10px}
+    .ag-modtec-modo-form{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0}
+    .ag-modtec-modo-form select, .ag-modtec-modo-form input[type=date]{font-size:.8rem;padding:3px 6px;border:1px solid var(--line);border-radius:5px;background:#fff}
     .ag-modtec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-top:10px}
     .ag-modtec{display:flex;align-items:center;gap:6px;margin:0}
     .ag-modtec-sig{font-weight:700;color:var(--navy);width:42px;flex:none}

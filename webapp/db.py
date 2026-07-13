@@ -1651,32 +1651,40 @@ class CronogramaConfig(Base):
     id = Column(Integer, primary_key=True)
     projeto_id = Column(Integer, index=True, unique=True)
     modo_disponibilidade = Column(String(20), default="conjunta")  # "conjunta" (em grupo) | "individual"
+    data_inicio = Column(String(10), default="")   # "AAAA-MM-DD"; "" = começa hoje
 
 
-def cronograma_modo_disponibilidade(projeto_id):
-    """Modo de análise de disponibilidade do projeto: 'conjunta' (em grupo — bloqueia o turno
-    se QUALQUER técnico envolvido estiver ocupado) ou 'individual' (cada técnico só olha a
-    própria agenda). Usado como padrão da tela e pela distribuição automática. 'conjunta' se
-    não definido (comportamento histórico)."""
+def cronograma_config(projeto_id):
+    """{'modo_disponibilidade', 'data_inicio'} do projeto, com os defaults do comportamento
+    histórico ('conjunta', hoje) quando nada foi definido. modo: 'conjunta' (em grupo —
+    bloqueia o turno se QUALQUER técnico envolvido estiver ocupado) ou 'individual' (cada
+    técnico só olha a própria agenda). data_inicio: a partir de quando a distribuição
+    automática (e a busca de turnos livres) passa a considerar turnos — "" = hoje."""
     with Session() as s:
         c = s.query(CronogramaConfig).filter_by(projeto_id=projeto_id).first()
-        m = (c.modo_disponibilidade or "").strip() if c else ""
-        return m if m in ("conjunta", "individual") else "conjunta"
+        modo = (c.modo_disponibilidade or "").strip() if c else ""
+        data_inicio = (c.data_inicio or "").strip() if c else ""
+    return {"modo_disponibilidade": modo if modo in ("conjunta", "individual") else "conjunta",
+            "data_inicio": data_inicio}
 
 
-def cronograma_modo_disponibilidade_salvar(projeto_id, modo):
-    """Define o modo de análise de disponibilidade do projeto. Devolve o modo salvo ou None."""
-    modo = (modo or "").strip()
-    if modo not in ("conjunta", "individual"):
-        return None
+def cronograma_config_salvar(projeto_id, modo=None, data_inicio=None):
+    """Atualiza a config do agendador. Cada campo é opcional: None = não mexe. `modo` inválido
+    é ignorado (não altera). Devolve o dict atualizado (ver cronograma_config)."""
+    modo = (modo or "").strip() or None
+    if modo is not None and modo not in ("conjunta", "individual"):
+        modo = None
     with Session() as s:
         c = s.query(CronogramaConfig).filter_by(projeto_id=projeto_id).first()
         if not c:
             c = CronogramaConfig(projeto_id=projeto_id)
             s.add(c)
-        c.modo_disponibilidade = modo
+        if modo is not None:
+            c.modo_disponibilidade = modo
+        if data_inicio is not None:
+            c.data_inicio = data_inicio.strip()
         s.commit()
-        return modo
+    return cronograma_config(projeto_id)
 
 
 def cronograma_horarios(projeto_id):

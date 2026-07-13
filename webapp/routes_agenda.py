@@ -16,6 +16,18 @@ pode_gerar = _autor = _notificar_evento = _auto_avancar = None
 _EVT_DOC = {}
 
 
+def _parse_data(s):
+    """AAAA-MM-DD ou DD/MM/AAAA -> date, ou None se vazio/inválido."""
+    from datetime import datetime as _dt
+    s = (s or "").strip()
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
+        try:
+            return _dt.strptime(s, fmt).date()
+        except ValueError:
+            pass
+    return None
+
+
 def _agrupar_por_visita(atividades):
     """Agrupa atividades alocadas num turno por visita (módulo+seq), preservando a ordem de
     1ª aparição — usado para renderizar o calendário com os blocos recolhidos por padrão
@@ -122,7 +134,9 @@ def projeto_agenda(pid):
     # string (?modo=) só troca a VISÃO desta tela, sem alterar o padrão salvo.
     from urllib.parse import quote as _quote
     envolvidos = sorted({(t or "").strip() for t in tech.values() if (t or "").strip()})
-    modo_dist = db.cronograma_modo_disponibilidade(pid)
+    dist_cfg = db.cronograma_config(pid)
+    modo_dist = dist_cfg["modo_disponibilidade"]
+    dist_data_inicio = dist_cfg["data_inicio"]
     modo_arg = request.args.get("modo")
     modo = modo_arg if modo_arg in ("conjunta", "individual") else modo_dist
     tec_sel = (request.args.get("tec") or "").strip()
@@ -168,7 +182,7 @@ def projeto_agenda(pid):
     return render_template("agenda.html", p=proj, pid=pid, semana=semana, aloc=aloc, aloc_grp=aloc_grp,
                            modulos_visitas=modulos_visitas, tech=tech, tecnicos=tecnicos,
                            fora=fora, fds=fds, hor=hor, modulos_tec=modulos_tec,
-                           dist_faltantes=dist_faltantes, modo_dist=modo_dist,
+                           dist_faltantes=dist_faltantes, modo_dist=modo_dist, dist_data_inicio=dist_data_inicio,
                            bloqueados=bloqueados, disp_aviso=disp_aviso, disp_ativa=disp_ativa,
                            modo=modo, tec_sel=tec_sel, envolvidos=envolvidos,
                            hoje_iso=date.today().isoformat(),
@@ -264,14 +278,15 @@ def _modulos_sem_tecnico_valido(ats, tech, tecnicos):
 
 def _distribuir_automatico(pid):
     """Distribui, 1 visita = 1 turno, as visitas 100% pendentes (nenhum assunto ainda alocado
-    e nenhuma em status final) no primeiro turno livre do técnico do respectivo módulo —
-    a partir de hoje, ~18 meses à frente (mesma janela da tela de disponibilidade). As visitas
+    e nenhuma em status final) no primeiro turno livre do técnico do respectivo módulo — a
+    partir da DATA DE INÍCIO configurada em 'Técnico por módulo' (hoje, se não definida ou se
+    já passou), ~18 meses à frente daí (mesma janela da tela de disponibilidade). As visitas
     são processadas na ORDEM DE TREINAMENTO DOS MÓDULOS definida em 'Técnico por módulo' (e,
     dentro de um mesmo módulo, em ordem de V/seq) — a busca gulosa pelo turno livre mais cedo
     garante tanto que um módulo prioritário não fique atrás de um posterior (quando o mesmo
     técnico atende os dois) quanto que V2 nunca fique num turno igual ou anterior ao de V1.
     Marca cada atividade alocada com auto_agendado=True — 'Refazer' desfaz só isso."""
-    from datetime import date, timedelta
+    from datetime import date, datetime as _dt, timedelta
     import calendar as _cal
 
     ats = db.cronograma_atividades(pid)
@@ -296,25 +311,31 @@ def _distribuir_automatico(pid):
     # ordem de treinamento do módulo primeiro; dentro do módulo, V1 antes de V2
     alvo.sort(key=lambda g: (ordem_mod.get(g["modulo"], 0), g["modulo"], g["seq"]))
 
+    cfg = db.cronograma_config(pid)
     hoje = date.today()
-    _m = hoje.month - 1 + 18
-    ano_f, mes_f = hoje.year + _m // 12, _m % 12 + 1
-    fim = date(ano_f, mes_f, min(hoje.day, _cal.monthrange(ano_f, mes_f)[1]))
+    try:
+        inicio = _dt.strptime(cfg["data_inicio"], "%Y-%m-%d").date()
+    except ValueError:
+        inicio = hoje
+    inicio = max(inicio, hoje)   # nunca busca no passado, mesmo se a data configurada já passou
+    _m = inicio.month - 1 + 18
+    ano_f, mes_f = inicio.year + _m // 12, _m % 12 + 1
+    fim = date(ano_f, mes_f, min(inicio.day, _cal.monthrange(ano_f, mes_f)[1]))
     dias = []
-    d = hoje
+    d = inicio
     while d <= fim:
         if d.weekday() < 5:                 # útil (seg-sex); a auto-distribuição não usa fds
             dias.append(d)
         d += timedelta(days=1)
 
-    modo = db.cronograma_modo_disponibilidade(pid)   # 'conjunta' (em grupo) ou 'individual'
+    modo = cfg["modo_disponibilidade"]   # 'conjunta' (em grupo) ou 'individual'
     cods = db.codigos_sicla_por_nome(tecnicos)          # nome_lower -> código SICLA ("" se não tem)
     todos_cods = sorted({cods[t.lower()].lower() for t in tecnicos if cods.get(t.lower())})
     ocup_ext = {}
     try:
         import disponibilidade as D
         if D.configurado() and todos_cods:
-            ocup_ext = D.ocupacao_por_slot_cache(hoje.isoformat(), fim.isoformat(), todos_cods)
+            ocup_ext = D.ocupacao_por_slot_cache(inicio.isoformat(), fim.isoformat(), todos_cods)
     except Exception:
         logging.exception("Falha ao consultar disponibilidade na distribuição automática")
 
@@ -362,7 +383,27 @@ def _distribuir_automatico(pid):
     aviso = "%d visita(s) distribuída(s) automaticamente." % alocadas
     if sem_slot:
         aviso += " Sem turno livre (dentro de ~18 meses) para: %s." % ", ".join(sem_slot)
-    return dict(ok=True, n=alocadas, sem_slot=sem_slot, aviso=aviso)
+
+    # A última visita de cada técnico nunca pode cair no Go-live previsto (data_uso_oficial)
+    # ou depois — se cair, o técnico não tem janela livre suficiente antes da virada.
+    estourou_golive = []
+    with db.Session() as s:
+        p = s.get(db.Projeto, pid)
+        golive_raw = (p.data_uso_oficial or "").strip() if p else ""
+    golive = _parse_data(golive_raw)
+    if golive:
+        ats_final = db.cronograma_atividades(pid)
+        for tec in tecnicos:
+            datas_tec = [d2 for d2 in (_parse_data(a["data"]) for a in ats_final
+                                       if (a["tecnico"] or "").strip() == tec and a["data"]) if d2]
+            if datas_tec and max(datas_tec) >= golive:
+                estourou_golive.append(tec)
+        if estourou_golive:
+            aviso += (" Atenção: %s não tem agendas disponíveis dentro do período necessário — "
+                      "a última visita ficaria em %s (Go-live previsto) ou depois." %
+                      (", ".join(estourou_golive), golive.strftime("%d/%m/%Y")))
+
+    return dict(ok=True, n=alocadas, sem_slot=sem_slot, estourou_golive=estourou_golive, aviso=aviso)
 
 
 def projeto_agenda_distribuir(pid):
@@ -411,17 +452,18 @@ def projeto_agenda_tecnico_modulo(pid):
                             aviso="Técnico do módulo aplicado a %d cartão(ões)." % n))
 
 
-def projeto_agenda_modo_disponibilidade(pid):
-    """Define o modo de análise de disponibilidade do projeto (conjunta/em grupo ou
-    individual por técnico) — padrão da tela e da distribuição automática."""
+def projeto_agenda_config_distribuicao(pid):
+    """Define o modo de análise de disponibilidade (conjunta/em grupo ou individual por
+    técnico) e/ou a data de início da busca por turnos livres — padrão da tela e usados pela
+    distribuição automática. Campos ausentes no form não são alterados."""
     if not pode_gerar("cronograma"):
         abort(403)
-    modo = db.cronograma_modo_disponibilidade_salvar(pid, request.form.get("modo"))
+    cfg = db.cronograma_config_salvar(pid, modo=request.form.get("modo"),
+                                      data_inicio=request.form.get("data_inicio"))
     ref = (request.form.get("ref") or "").strip()
     return redirect(url_for("projeto_agenda", pid=pid, ref=ref or None,
                             fds=(1 if request.form.get("fds") else None),
-                            aviso=("Modo de disponibilidade: %s." % modo) if modo else None,
-                            erro=None if modo else "Modo inválido."))
+                            aviso="Configuração da distribuição automática atualizada." if cfg else None))
 
 
 def projeto_agenda_status(pid):
@@ -541,7 +583,7 @@ def register(app, **deps):
     rota(base + "/redistribuir", projeto_agenda_redistribuir, ["POST"])
     rota(base + "/horario", projeto_agenda_horario, ["POST"])
     rota(base + "/tecnico_modulo", projeto_agenda_tecnico_modulo, ["POST"])
-    rota(base + "/modo_disponibilidade", projeto_agenda_modo_disponibilidade, ["POST"])
+    rota(base + "/config_distribuicao", projeto_agenda_config_distribuicao, ["POST"])
     rota(base + "/status", projeto_agenda_status, ["POST"])
     rota(base + "/acompanhamento", projeto_agenda_acompanhamento)
     rota(base + "/gerar", projeto_agenda_gerar, ["POST"])

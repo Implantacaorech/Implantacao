@@ -1872,6 +1872,44 @@ def test_agenda_redistribuir_preserva_alocacao_manual(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_agenda_distribuir_respeita_data_inicio(client):
+    """A distribuição automática só considera turnos a partir da data configurada em
+    'Distribuir a partir de' — nunca antes dela."""
+    pid = _novo(client, cliente="Inicio LTDA", cnpj="00.000.000/0001-06", numero_projeto="IN-1",
+                horas_cobradas="10", etapa="Cronograma e Check-list", modulos="FAT")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "FAT", "tecnico": "Ana"})
+    data_ini = _dia_util(15)
+    client.post("/projetos/%s/agenda/config_distribuicao" % pid, data={"data_inicio": data_ini})
+    r = client.post("/projetos/%s/agenda/distribuir" % pid)
+    j = r.get_json()
+    assert j["ok"] is True and j["n"] >= 1
+    ats = [a for a in db.cronograma_atividades(int(pid)) if a["modulo"] == "FAT" and a["data"]]
+    assert all(a["data"] >= data_ini for a in ats)
+    assert any(a["data"] == data_ini for a in ats)   # a 1ª visita cai exatamente no início configurado
+    client.post("/projetos/%s/excluir" % pid)
+
+
+def test_agenda_distribuir_alerta_golive(client):
+    """Se a última visita alocada de um técnico cair no Go-live previsto (data_uso_oficial)
+    ou depois, a distribuição avisa que ele não tem agenda disponível a tempo."""
+    import datetime as _dtm
+    pid = _novo(client, cliente="Golive LTDA", cnpj="00.000.000/0001-07", numero_projeto="GL-1",
+                horas_cobradas="10", etapa="Cronograma e Check-list", modulos="FAT")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    client.post("/projetos/%s/agenda/tecnico_modulo" % pid, data={"modulo": "FAT", "tecnico": "Ana"})
+    with db.Session() as s:
+        p = s.get(db.Projeto, int(pid))
+        p.data_uso_oficial = _dtm.date.today().isoformat()   # go-live == hoje: a 1ª visita já estoura
+        s.commit()
+    r = client.post("/projetos/%s/agenda/distribuir" % pid)
+    j = r.get_json()
+    assert j["ok"] is True and j["n"] >= 1
+    assert "Ana" in j["estourou_golive"]
+    assert "Go-live" in j["aviso"]
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_config_disponibilidade(client):
     """Tela de Disponibilidade (ADM): monta a URL pelos campos, prioriza URL completa,
     e a página abre."""
