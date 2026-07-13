@@ -97,7 +97,7 @@
       <p class="dica" style="margin:4px 0 8px">Arraste o <b>⠿</b> da visita para alocar o <b>bloco inteiro</b>; ou um cartão para um único assunto. Para desalocar, arraste de volta.</p>
       <div id="ag-pend" class="ag-drop ag-pendzone" data-iso="" data-turno="">
         {% for m in modulos_visitas %}
-        <details class="ag-mod" {% if m.pend %}open{% endif %}>
+        <details class="ag-mod">
           <summary class="ag-mod-sum">{{ m.modulo }} <span class="ag-count">{{ m.pend }}/{{ m.n }}</span></summary>
           {% for g in m.visitas %}
           <details class="ag-visita ag-visita-d" data-group="{{ g.modulo }}-{{ g.seq }}" data-modulo="{{ g.modulo }}" data-seq="{{ g.seq }}">
@@ -158,7 +158,17 @@
             </div>
             {% if bloq %}<div class="ag-bloq-l" title="Sem disponibilidade: {{ bloq }}">🔒 Ocupado: {{ bloq }}</div>{% endif %}
             {% if passado %}<div class="ag-bloq-l" title="Data já passada — não recebe agendamentos">🚫 Data passada</div>{% endif %}
-            {% for a in aloc[d.iso][turno] %}{{ card(a, tecnicos) }}{% endfor %}
+            {% for g in aloc_grp[d.iso][turno] %}
+            <details class="ag-slot-visita" data-group="{{ g.modulo }}-{{ g.seq }}" data-modulo="{{ g.modulo }}" data-seq="{{ g.seq }}">
+              <summary class="ag-slot-visita-sum">
+                <span class="ag-visita-t">{{ g.modulo }} · V{{ g.seq }}</span>
+                <span class="ag-count">{{ g.atividades|length }}</span>
+              </summary>
+              <div class="ag-slot-visita-cards">
+                {% for a in g.atividades %}{{ card(a, tecnicos) }}{% endfor %}
+              </div>
+            </details>
+            {% endfor %}
           </div>
           {% endfor %}
         </div>
@@ -241,6 +251,13 @@
     @media (max-width:760px){.ag-grid{grid-template-columns:1fr !important}}
     .ag-day{border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--surface-2,#f3f6fb)}
     .ag-day-h{font-weight:700;color:var(--navy);text-align:center;padding:6px;background:#fff;border-bottom:1px solid var(--line);font-size:.82rem}
+    .ag-slot-visita{border:1px solid var(--line);border-radius:7px;margin-bottom:6px;background:#fff;overflow:hidden}
+    .ag-slot-visita-sum{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;padding:5px 8px;font-weight:700;color:var(--brand);font-size:.78rem}
+    .ag-slot-visita-sum::-webkit-details-marker{display:none}
+    .ag-slot-visita-sum::before{content:"▸";color:var(--brand);font-size:.75rem;transition:transform .15s}
+    .ag-slot-visita[open]>.ag-slot-visita-sum::before{transform:rotate(90deg)}
+    .ag-slot-visita-sum .ag-visita-t{flex:1;min-width:0}
+    .ag-slot-visita-cards{padding:0 6px 6px}
     .ag-slot{min-height:82px;padding:6px;border-bottom:1px dashed var(--line)}
     .ag-slot:last-child{border-bottom:none}
     .ag-slot-h{display:flex;align-items:center;justify-content:space-between;font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px}
@@ -343,7 +360,12 @@
         var cardEl=document.querySelector('.ag-card[data-id="'+id+'"]'); if(!cardEl) return;
         post({atividade_id:id, data:iso, turno:turno}, function(ok, erro){
           if(!ok){ alert(erro || 'Não foi possível mover a atividade.'); return; }
-          if(turno){ zone.appendChild(cardEl); }
+          if(turno){
+            // se já existe o bloco (mesma visita) recolhido neste turno, entra nele; senão fica solto
+            // no turno até a próxima atualização da página, que reagrupa em blocos.
+            var grp=zone.querySelector('.ag-slot-visita[data-group="'+cardEl.dataset.group+'"] .ag-slot-visita-cards');
+            (grp||zone).appendChild(cardEl);
+          }
           else {
             var grp=document.querySelector('#ag-pend [data-group="'+cardEl.dataset.group+'"] .ag-visita-cards');
             (grp||document.getElementById('ag-pend')).appendChild(cardEl);

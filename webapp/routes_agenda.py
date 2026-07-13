@@ -16,6 +16,20 @@ pode_gerar = _autor = _notificar_evento = _auto_avancar = None
 _EVT_DOC = {}
 
 
+def _agrupar_por_visita(atividades):
+    """Agrupa atividades alocadas num turno por visita (módulo+seq), preservando a ordem de
+    1ª aparição — usado para renderizar o calendário com os blocos recolhidos por padrão
+    (em vez de uma lista plana de cartões abertos, que estoura a tela com muitos assuntos)."""
+    grupos, ordem = {}, []
+    for a in atividades:
+        k = (a["modulo"], a["seq"])
+        if k not in grupos:
+            grupos[k] = {"modulo": a["modulo"], "seq": a["seq"], "atividades": []}
+            ordem.append(k)
+        grupos[k]["atividades"].append(a)
+    return [grupos[k] for k in ordem]
+
+
 def _slot_indisponivel(data, turno, tecnico_nome):
     """Motivo (str) que impede alocar neste dia/turno, ou None se liberado.
     Bloqueia (1) datas passadas — sempre; (2) técnico ocupado no SICLA — quando a
@@ -80,6 +94,8 @@ def projeto_agenda(pid):
                 aloc[a["data"]][a["turno"]].append(a)
             else:
                 fora += 1
+    aloc_grp = {iso: {t: _agrupar_por_visita(aloc[iso][t]) for t in ("manha", "tarde")}
+                for iso in aloc}                              # cartões do calendário agrupados por visita
     visitas = db.cronograma_visitas(pid)                      # todos os grupos (containers persistem)
     n_pend = sum(1 for a in ats if not (a["data"] and a["turno"]))
     mods = {}                                                 # visitas agrupadas por MÓDULO (acordeão)
@@ -139,7 +155,7 @@ def projeto_agenda(pid):
 
     extra = ("&modo=individual" + (("&tec=" + _quote(tec_sel)) if tec_sel else "")) if modo == "individual" else ""
     qs = ("&fds=1" if fds else "") + extra
-    return render_template("agenda.html", p=proj, pid=pid, semana=semana, aloc=aloc,
+    return render_template("agenda.html", p=proj, pid=pid, semana=semana, aloc=aloc, aloc_grp=aloc_grp,
                            modulos_visitas=modulos_visitas, tech=tech, tecnicos=tecnicos,
                            fora=fora, fds=fds, hor=hor, modulos_tec=modulos_tec,
                            bloqueados=bloqueados, disp_aviso=disp_aviso, disp_ativa=disp_ativa,
