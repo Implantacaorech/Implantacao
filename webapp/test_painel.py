@@ -1718,6 +1718,35 @@ def test_agenda_status_acompanhamento_e_xlsx(client):
     client.post("/projetos/%s/excluir" % pid)
 
 
+def test_agenda_xlsx_cabecalho_cliente_e_analista(client):
+    """O .xlsx do cronograma de visitas traz dados do cliente no cabeçalho e uma coluna de
+    Analista Responsável (sobreposição por módulo, senão o padrão do projeto)."""
+    pid = _novo(client, cliente="Analista XLS LTDA", cnpj="11.222.333/0001-44", numero_projeto="AX-1",
+                modulos="FAT", horas_cobradas="10", etapa="Cronograma e Check-list", consultor="Ana")
+    db.cronograma_atividades_seed(int(pid), "FAT")
+    client.post("/projetos/%s/agenda/config_distribuicao" % pid, data={"analista_padrao": "Bruna"})
+    aid = db.cronograma_atividades(int(pid))[0]["id"]
+    db.cronograma_alocar(aid, projeto_id=int(pid), data="2026-07-06", turno="manha", tecnico="Ana")
+    r = client.post("/projetos/%s/agenda/gerar" % pid)
+    assert r.status_code == 302
+    with db.Session() as s:
+        doc = s.query(db.Documento).filter_by(projeto_id=int(pid), tipo="cronograma").first()
+        path = doc.caminho
+    from openpyxl import load_workbook
+    ws = load_workbook(path).active
+    blob = " | ".join(str(c.value) for row in ws.iter_rows() for c in row if c.value is not None)
+    assert "Analista XLS LTDA" in blob        # cliente no cabeçalho
+    assert "11.222.333/0001-44" in blob       # CNPJ no cabeçalho
+    assert "Analista Responsável" in blob     # cabeçalho da nova coluna
+    assert "Bruna" in blob                    # valor herdado do analista padrão do projeto
+    assert len(ws._images) == 1                # logo Rech embutida
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    client.post("/projetos/%s/excluir" % pid)
+
+
 def test_agenda_horario_global_status_e_tecnico_modulo(client):
     """Horário GLOBAL por turno; contagem/filtro por status; técnico por módulo sincroniza Designação."""
     pid = _novo(client, cliente="Horario LTDA", cnpj="00.000.000/0001-00", numero_projeto="HR-1",

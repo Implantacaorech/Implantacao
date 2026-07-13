@@ -52,9 +52,18 @@ def _preencher_cronograma_xlsx(wb, projeto):
     return len(itens)
 
 
+def _logo_rech():
+    """Caminho da logo Rech (webapp/static) — None se o arquivo não existir (não quebra a
+    geração; só sai sem a imagem no cabeçalho)."""
+    p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "logo-rech-color.png")
+    return p if os.path.exists(p) else None
+
+
 def gerar_agenda_xlsx(projeto, atividades, horarios=None):
     """Gera o cronograma de visitas (.xlsx) a partir das atividades ALOCADAS (data+turno)
-    do agendador. `horarios` = horário global por turno (db.cronograma_horarios). Caminho."""
+    do agendador. `horarios` = horário global por turno (db.cronograma_horarios). Cabeçalho
+    com dados do cliente + logo Rech; cada linha traz também o Analista Responsável do módulo
+    (sobreposição em Designacao.analista, senão o padrão do projeto). Devolve o caminho."""
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     import datetime as _dt
@@ -64,12 +73,46 @@ def gerar_agenda_xlsx(projeto, atividades, horarios=None):
     aloc = [a for a in atividades if (a.get("data") and a.get("turno"))]
     aloc.sort(key=lambda a: (a["data"], 0 if a["turno"] == "manha" else 1, a["modulo"], a["seq"]))
 
+    pid = projeto.get("id")
+    designacoes = db.designacoes_do_projeto(pid) if pid else []
+    analista_mod = {d["modulo"]: (d.get("analista") or "").strip() for d in designacoes}
+    analista_padrao = ((db.cronograma_config(pid) or {}).get("analista_padrao") or "").strip() if pid else ""
+
+    def analista_de(modulo):
+        return analista_mod.get(modulo) or analista_padrao
+
     wb = Workbook()
     ws = wb.active
     ws.title = "Cronograma de Visitas"
-    ws.append(["Cronograma de Visitas — %s" % (projeto.get("cliente") or "")])
+
+    # Cabeçalho: dados do cliente (colunas C+; A/B reservadas para a logo) + logo Rech em A1.
     ws.append([])
-    cab = ["Data", "Dia", "Turno", "Horário", "Módulo", "Visita", "Atividade", "Tipo", "Técnico", "Status"]
+    ws.append(["", "", "Cronograma de Visitas — %s" % (projeto.get("cliente") or "")])
+    ws.append(["", "", "Cliente:", projeto.get("cliente") or "", "", "CNPJ:", projeto.get("cnpj") or ""])
+    ws.append(["", "", "Nº Projeto:", projeto.get("numero_projeto") or "",
+              "", "Consultor(es):", projeto.get("consultor") or ""])
+    ws.append([])
+    ws["C2"].font = Font(bold=True, size=13, color="1F4E79")
+    for cel in ("C3", "F3", "C4", "F4"):
+        ws[cel].font = Font(bold=True, size=9, color="595959")
+    for cel in ("D3", "G3", "D4", "G4"):
+        ws[cel].font = Font(size=9)
+    ws.row_dimensions[1].height = 6
+    for r in (2, 3, 4):
+        ws.row_dimensions[r].height = 16
+
+    logo = _logo_rech()
+    if logo:
+        try:
+            from openpyxl.drawing.image import Image as XLImage
+            img = XLImage(logo)
+            img.width, img.height = 150, 47   # mantém a proporção original (250x79)
+            ws.add_image(img, "A1")
+        except Exception:
+            pass   # ambiente sem Pillow ou logo corrompida — segue sem a imagem, não quebra a geração
+
+    cab = ["Data", "Dia", "Turno", "Horário", "Módulo", "Visita", "Atividade", "Tipo", "Técnico",
+           "Analista Responsável", "Status"]
     ws.append(cab)
     azul = PatternFill("solid", fgColor="1F4E79")
     borda = Border(*(Side(style="thin", color="D0D7E2"),) * 4)
@@ -88,12 +131,12 @@ def gerar_agenda_xlsx(projeto, atividades, horarios=None):
         hora_lbl = ("%s–%s" % (ini, fim)) if (ini or fim) else ""
         ws.append([data_lbl, dia_lbl, TURNOS.get(a["turno"], a["turno"]), hora_lbl, a["modulo"],
                    "V%s" % a["seq"], a.get("descricao", ""), a.get("tipo", ""),
-                   a.get("tecnico", ""), a.get("status", "")])
+                   a.get("tecnico", ""), analista_de(a["modulo"]), a.get("status", "")])
     for row in ws.iter_rows(min_row=hdr_row + 1, max_row=ws.max_row):
         for c in row:
             c.border = borda
             c.alignment = Alignment(vertical="top", wrap_text=True)
-    larg = [12, 6, 9, 12, 9, 8, 52, 16, 20, 12]
+    larg = [14, 6, 9, 12, 9, 8, 52, 16, 20, 20, 12]
     for i, w in enumerate(larg):
         ws.column_dimensions[chr(ord("A") + i)].width = w
     ws.freeze_panes = "A%d" % (hdr_row + 1)
