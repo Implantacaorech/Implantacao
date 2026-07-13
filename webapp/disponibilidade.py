@@ -155,17 +155,34 @@ def consultar(data_ini, data_fim, tecnicos=None, cfg=None):
     return out
 
 
+def _sem_comentarios_iniciais(sql):
+    """Pula comentários de linha (--) e de bloco (/* */) do INÍCIO do texto — só para decidir
+    se é um SELECT/WITH válido; o SQL executado continua sendo o original (com comentários)."""
+    s = sql
+    while True:
+        s2 = s.lstrip()
+        if s2.startswith("--"):
+            nl = s2.find("\n")
+            s = s2[nl + 1:] if nl != -1 else ""
+        elif s2.startswith("/*"):
+            fim = s2.find("*/")
+            s = s2[fim + 2:] if fim != -1 else ""
+        else:
+            return s2
+
+
 def executar_sql(sql, params=None, cfg=None, limite=500):
     """Roda um SQL arbitrário (SELECT) contra a MESMA conexão configurada para a
     Disponibilidade — usado pelas consultas nomeadas de 'Consultas BD' (área Sistema,
     Administrador) e pelos Dashboards que leem essas consultas. Só aceita SELECT/WITH (proteção
-    mínima contra colar um comando destrutivo por engano — quem edita já é Administrador).
+    mínima contra colar um comando destrutivo por engano — quem edita já é Administrador);
+    comentários (-- ou /* */) antes do SELECT são ignorados só para essa checagem.
     Devolve (ok, mensagem, colunas, linhas) — linhas como lista de dicts, cortada em `limite`."""
     cfg = cfg or load_cfg()
     sql_strip = (sql or "").strip()
     if not sql_strip:
         return False, "Consulta vazia.", [], []
-    inicio = sql_strip.lstrip("(").upper()
+    inicio = _sem_comentarios_iniciais(sql_strip).lstrip("(").upper()
     if not (inicio.startswith("SELECT") or inicio.startswith("WITH")):
         return False, "Só é permitido rodar comandos SELECT (ou WITH ... SELECT).", [], []
     from sqlalchemy import text

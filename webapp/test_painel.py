@@ -2304,6 +2304,17 @@ def test_disponibilidade_executar_sql_so_select():
     assert ok2 is False
 
 
+def test_disponibilidade_executar_sql_ignora_comentarios_iniciais():
+    """Regressão: a consulta semeada 'Previsão Início Oficial' começa com comentários (--) antes
+    do SELECT — a guarda não pode confundir isso com um comando não permitido."""
+    import disponibilidade as D
+    sql = "-- comentário\n-- outro comentário\nSELECT 1 FROM DUAL"
+    ok, msg, cols, linhas = D.executar_sql(sql)
+    assert msg != "Só é permitido rodar comandos SELECT (ou WITH ... SELECT)."
+    ok2, msg2, _, _ = D.executar_sql(db.consulta_bd_por_slug("previsao_inicio_oficial")["sql"])
+    assert msg2 != "Só é permitido rodar comandos SELECT (ou WITH ... SELECT)."
+
+
 def test_dashboards_periodo_e_atalhos_de_mes():
     """Período 'Avançar 12 meses a partir de agosto/2026' bate com o exemplo do Power BI:
     01/08/2026 a 31/07/2027, com um atalho por nome de mês dentro do período."""
