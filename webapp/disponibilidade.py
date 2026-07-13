@@ -155,6 +155,44 @@ def consultar(data_ini, data_fim, tecnicos=None, cfg=None):
     return out
 
 
+def executar_sql(sql, params=None, cfg=None, limite=500):
+    """Roda um SQL arbitrário (SELECT) contra a MESMA conexão configurada para a
+    Disponibilidade — usado pelas consultas nomeadas de 'Consultas BD' (área Sistema,
+    Administrador) e pelos Dashboards que leem essas consultas. Só aceita SELECT/WITH (proteção
+    mínima contra colar um comando destrutivo por engano — quem edita já é Administrador).
+    Devolve (ok, mensagem, colunas, linhas) — linhas como lista de dicts, cortada em `limite`."""
+    cfg = cfg or load_cfg()
+    sql_strip = (sql or "").strip()
+    if not sql_strip:
+        return False, "Consulta vazia.", [], []
+    inicio = sql_strip.lstrip("(").upper()
+    if not (inicio.startswith("SELECT") or inicio.startswith("WITH")):
+        return False, "Só é permitido rodar comandos SELECT (ou WITH ... SELECT).", [], []
+    from sqlalchemy import text
+    try:
+        with _engine(cfg).connect() as conn:
+            r = conn.execute(text(sql_strip), params or {})
+            cols = list(r.keys())
+            linhas = [dict(zip(cols, row)) for row in r.fetchmany(limite)]
+        return True, "%d linha(s)." % len(linhas), cols, linhas
+    except ModuleNotFoundError:
+        url = _build_url(cfg)
+        dial = url.split("://", 1)[0] if "://" in url else ""
+        pkg = DRIVER_PKG.get(dial, "o driver do banco")
+        return False, ("Driver do banco não instalado no servidor. Instale com: pip install %s "
+                       "(e reinicie o servidor)." % pkg), [], []
+    except Exception as e:
+        msg = str(e)
+        if "DPY-3015" in msg:
+            return False, ("Senha Oracle com verificador antigo (não aceito no modo thin). Marque "
+                           "'Modo thick' na aba Disponibilidade e informe a pasta do client, OU peça "
+                           "ao DBA para redefinir a senha com verificador 11g/12c."), [], []
+        if "DPI-1047" in msg or "126" in msg:
+            return False, ("Não consegui carregar o Oracle Instant Client (modo thick) — veja a aba "
+                           "Disponibilidade para os detalhes de configuração."), [], []
+        return False, "%s: %s" % (type(e).__name__, msg[:300]), [], []
+
+
 def testar(cfg=None):
     """Testa conexão+consulta numa janela de 30 dias. Devolve (ok, mensagem, amostra)."""
     cfg = cfg or load_cfg()

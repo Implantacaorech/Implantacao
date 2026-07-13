@@ -2255,3 +2255,104 @@ def test_agenda_disponibilidade_modos(client, monkeypatch):
                 s.delete(u)
         s.commit()
     client.post("/projetos/%s/excluir" % pid)
+
+
+def test_consultas_bd_acesso_restrito_a_admin(client):
+    """'Consultas BD' é mais estrita que as demais telas de Sistema: nem sem login (que ali é
+    permissivo) nem outro perfil vê — só ADM."""
+    assert client.get("/config/consultas-bd").status_code == 403
+    _login_como(client, "Coordenador")
+    assert client.get("/config/consultas-bd").status_code == 403
+    _login_como(client, "ADM")
+    assert client.get("/config/consultas-bd").status_code == 200
+    with client.session_transaction() as sess:
+        sess.clear()
+
+
+def test_consultas_bd_previsao_inicio_oficial_ja_semeada(client):
+    """A consulta 'Previsão Início Oficial' já vem pronta (seed), sem precisar criar do zero."""
+    c = db.consulta_bd_por_slug("previsao_inicio_oficial")
+    assert c and c["nome"] == "Previsão Início Oficial"
+    assert "POWERBI_IMP_RNIMPLANTACAO_2" in c["sql"]
+
+
+def test_consultas_bd_cria_edita_exclui(client):
+    _login_como(client, "ADM")
+    r = client.post("/config/consultas-bd?aba=nova", data={"nome": "Teste X", "sql": "SELECT 1 FROM DUAL"})
+    assert r.status_code == 302
+    c = db.consulta_bd_por_slug("teste_x")
+    assert c and c["sql"] == "SELECT 1 FROM DUAL"
+
+    client.post("/config/consultas-bd?aba=teste_x",
+                data={"nome": "Teste X editado", "sql": "SELECT 2 FROM DUAL", "acao": "salvar"})
+    c2 = db.consulta_bd_por_slug("teste_x")
+    assert c2["nome"] == "Teste X editado" and c2["sql"] == "SELECT 2 FROM DUAL"
+
+    client.post("/config/consultas-bd?aba=teste_x", data={"acao": "excluir"})
+    assert db.consulta_bd_por_slug("teste_x") is None
+    with client.session_transaction() as sess:
+        sess.clear()
+
+
+def test_disponibilidade_executar_sql_so_select():
+    """executar_sql recusa qualquer coisa que não seja SELECT/WITH — proteção mínima contra
+    colar um comando destrutivo por engano na tela de Consultas BD."""
+    import disponibilidade as D
+    ok, msg, cols, linhas = D.executar_sql("DELETE FROM algo")
+    assert ok is False and "SELECT" in msg
+    ok2, _, _, _ = D.executar_sql("   ")
+    assert ok2 is False
+
+
+def test_dashboards_periodo_e_atalhos_de_mes():
+    """Período 'Avançar 12 meses a partir de agosto/2026' bate com o exemplo do Power BI:
+    01/08/2026 a 31/07/2027, com um atalho por nome de mês dentro do período."""
+    import routes_dashboards as RD
+    periodo = RD._periodo({"ref": "2026-08", "direcao": "avancar", "n": "12"})
+    assert periodo["inicio"].isoformat() == "2026-08-01"
+    assert periodo["fim"].isoformat() == "2027-07-31"
+    atalhos = RD._atalhos_mes(periodo)
+    assert atalhos[8] == 2026 and atalhos[7] == 2027   # agosto/2026 .. julho/2027
+    assert len(atalhos) == 12
+
+
+def test_dashboards_acesso_restrito_a_gestao(client):
+    _login_como(client, "Consultor")
+    assert client.get("/dashboards").status_code == 403
+    with client.session_transaction() as sess:
+        sess.clear()
+
+
+def test_dashboards_sem_conexao_configurada(client):
+    """Sem a conexão externa ligada (padrão da suíte hermética), a tela avisa em vez de quebrar."""
+    r = client.get("/dashboards")
+    assert r.status_code == 200
+    assert "não configurada ou inativa" in r.get_data(as_text=True)
+
+
+def test_dashboards_grafico_tabela_e_filtros(client, monkeypatch):
+    """Com a conexão 'ligada' e dados fake: agrupa por mês, filtra por situação e o atalho de
+    mês restringe a tabela — sem precisar de um Oracle real."""
+    import disponibilidade as D
+    monkeypatch.setattr(D, "configurado", lambda cfg=None: True)
+    linhas_fake = [
+        {"CODIGO": "1", "CLIENTE": "Alfa", "DESCRICAO": "Financeiro", "RESPONSAVEL": "Pereira",
+         "DATA_CONTRATACAO": "2026-02-13", "PREVISAO_INICIO_OFICIAL": "2026-08-03", "SITUACAO": "Em andamento"},
+        {"CODIGO": "2", "CLIENTE": "Beta", "DESCRICAO": "Materiais", "RESPONSAVEL": "Medeiros",
+         "DATA_CONTRATACAO": "2026-03-17", "PREVISAO_INICIO_OFICIAL": "2026-09-01", "SITUACAO": "Não Iniciada"},
+    ]
+    monkeypatch.setattr(D, "executar_sql",
+                        lambda sql, params=None, cfg=None: (True, "2 linha(s).", list(linhas_fake[0]), linhas_fake))
+
+    r = client.get("/dashboards?ref=2026-08&n=12")
+    html = r.get_data(as_text=True)
+    assert r.status_code == 200 and "Alfa" in html and "Beta" in html
+    assert "Em andamento" in html and "Não Iniciada" in html
+
+    r2 = client.get("/dashboards?ref=2026-08&n=12&situacao=Em+andamento")
+    html2 = r2.get_data(as_text=True)
+    assert "Alfa" in html2 and "Beta" not in html2
+
+    r3 = client.get("/dashboards?ref=2026-08&n=12&mes_sel=9&ano_sel=2026")
+    html3 = r3.get_data(as_text=True)
+    assert "Beta" in html3 and "Alfa" not in html3

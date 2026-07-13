@@ -98,6 +98,9 @@
         <a class="side-link {{ 'on' if request.endpoint=='atividade' }}" href="{{ url_for('atividade') }}">
           <svg class="svgi" aria-hidden="true"><use href="#ic-activity"/></svg>Atividade
         </a>
+        <a class="side-link {{ 'on' if request.endpoint=='dashboards' }}" href="{{ url_for('dashboards') }}">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg>Dashboards
+        </a>
         {% endif %}
         {% if pode_ver('sistema') %}
         <div class="side-grp">Sistema</div>
@@ -116,9 +119,11 @@
         <a class="side-link {{ 'on' if request.endpoint in ('cad_modelos','cad_modelo') }}" href="{{ url_for('cad_modelos') }}">
           <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>Modelos de Docs
         </a>
-        <a class="side-link {{ 'on' if request.endpoint=='config_disponibilidade' }}" href="{{ url_for('config_disponibilidade') }}">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-calendar"/></svg>Disponibilidade
+        {% if e_adm %}
+        <a class="side-link {{ 'on' if request.endpoint=='config_consultas_bd' }}" href="{{ url_for('config_consultas_bd') }}">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg>Consultas BD
         </a>
+        {% endif %}
         {% endif %}
       </nav>
       <div class="side-rod">{% if versao %}v{{ versao }}{% endif %}</div>

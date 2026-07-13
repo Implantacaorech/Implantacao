@@ -2172,6 +2172,7 @@ def init_db():
         _seed_checklist_modelo()
         _seed_indice_topicos()
         _seed_modelos_documento()
+        _seed_consultas_bd()
     except Exception:
         pass
 
@@ -2367,3 +2368,87 @@ def cabecalho(d, docs):
         "campos_faltantes": cf,
         "bloqueios": bloqueios,
     }
+
+
+# --- Consultas BD (Administrador): SQLs nomeadas rodadas contra a conexão externa já
+# configurada em Disponibilidade — base dos Dashboards e de futuras análises ----------------
+class ConsultaBD(Base):
+    """Consulta SQL nomeada, salva pelo Administrador em 'Consultas BD' (área Sistema), rodada
+    contra a mesma conexão/credencial da Disponibilidade (disponibilidade.executar_sql)."""
+    __tablename__ = "consultas_bd"
+    id = Column(Integer, primary_key=True)
+    slug = Column(String(60), default="", index=True, unique=True)
+    nome = Column(String(160), default="")
+    sql = Column(Text, default="")
+    ordem = Column(Integer, default=0)
+
+
+def consultas_bd_listar():
+    with Session() as s:
+        return [to_dict(c) for c in s.query(ConsultaBD).order_by(ConsultaBD.ordem, ConsultaBD.nome).all()]
+
+
+def consulta_bd_por_slug(slug):
+    with Session() as s:
+        c = s.query(ConsultaBD).filter_by(slug=(slug or "").strip().lower()).first()
+        return to_dict(c) if c else None
+
+
+def consulta_bd_salvar(slug, nome=None, sql_texto=None, ordem=None):
+    """Cria (se novo) ou atualiza (se já existe) uma consulta salva — `slug` é a chave. Campos
+    None = não mexem (exceto na criação, que usa nome/sql_texto como estão, mesmo vazios).
+    Devolve o dict salvo, ou None se `slug` vier vazio."""
+    slug = (slug or "").strip().lower().replace(" ", "_")
+    if not slug:
+        return None
+    with Session() as s:
+        c = s.query(ConsultaBD).filter_by(slug=slug).first()
+        if not c:
+            c = ConsultaBD(slug=slug, nome=(nome or slug), sql=(sql_texto or ""))
+            s.add(c)
+        else:
+            if nome is not None:
+                c.nome = nome
+            if sql_texto is not None:
+                c.sql = sql_texto
+        if ordem is not None:
+            c.ordem = ordem
+        s.commit()
+        return to_dict(c)
+
+
+def consulta_bd_excluir(slug):
+    with Session() as s:
+        c = s.query(ConsultaBD).filter_by(slug=(slug or "").strip().lower()).first()
+        if not c:
+            return False
+        s.delete(c)
+        s.commit()
+        return True
+
+
+_SQL_PREVISAO_INICIO_OFICIAL = """\
+-- Clientes com Previsao de Inicio Oficial dentro do periodo informado (view POWERBI do SICLA).
+-- AJUSTE SE PRECISO: "DATA PREVISAO INICIO OFICIAL" foi o nome adotado seguindo o padrao da
+-- view (DATA CRIACAO, DATA CONTRATACAO, DATA ENCERRAMENTO...) -- confirme o nome real da
+-- coluna no banco (o Administrador tem acesso a rede/banco para conferir) e corrija aqui.
+SELECT
+  CODIGO,
+  DESCRICAO,
+  CLIENTE,
+  FANTASIA,
+  RESPONSAVELDES AS RESPONSAVEL,
+  "DATA CONTRATACAO" AS DATA_CONTRATACAO,
+  "DATA PREVISAO INICIO OFICIAL" AS PREVISAO_INICIO_OFICIAL,
+  STATUSIMP AS SITUACAO
+FROM POWERBI.POWERBI_IMP_RNIMPLANTACAO_2
+WHERE "DATA PREVISAO INICIO OFICIAL" BETWEEN :data_ini AND :data_fim
+ORDER BY "DATA PREVISAO INICIO OFICIAL\""""
+
+
+def _seed_consultas_bd():
+    """Semeia (1ª vez) a consulta 'Previsão Início Oficial' — não sobrescreve se o
+    Administrador já tiver editado (idempotente: só cria se o slug ainda não existir)."""
+    if not consulta_bd_por_slug("previsao_inicio_oficial"):
+        consulta_bd_salvar("previsao_inicio_oficial", nome="Previsão Início Oficial",
+                          sql_texto=_SQL_PREVISAO_INICIO_OFICIAL, ordem=1)

@@ -61,6 +61,62 @@ def config_disponibilidade():
                            tem_senha=bool(cfg.get("senha")), dialetos=sorted(D.DIALETOS))
 
 
+def config_consultas_bd():
+    """Consultas BD (Administrador): a mesma conexão externa da Disponibilidade (aba
+    'disponibilidade', config intacta) + consultas SQL nomeadas por assunto (aba <slug>),
+    base dos Dashboards. Só o Administrador vê/edita — mais estrito que as demais telas de
+    'Sistema' (essas usam pode_ver('sistema'), permissivo sem login; aqui exige ADM sempre)."""
+    if not _e_adm():
+        abort(403)
+    import disponibilidade as D
+    aba = (request.args.get("aba") or "disponibilidade").strip()
+    consultas = db.consultas_bd_listar()
+    slugs = {c["slug"] for c in consultas}
+    if aba not in ("disponibilidade", "nova") and aba not in slugs:
+        aba = "disponibilidade"
+    salvo, teste, erro = False, None, None
+
+    if request.method == "POST":
+        acao = request.form.get("acao") or ""
+        if aba == "disponibilidade":
+            D.salvar_cfg(request.form)
+            salvo = True
+            if acao == "testar":
+                ok, msg, amostra = D.testar()
+                teste = {"ok": ok, "msg": msg, "amostra": amostra}
+        elif aba == "nova":
+            nome = (request.form.get("nome") or "").strip()
+            slug = (request.form.get("slug") or nome).strip().lower().replace(" ", "_")
+            if not nome or not slug:
+                erro = "Informe um nome para a nova consulta."
+            elif slug in slugs:
+                erro = "Já existe uma consulta com esse identificador."
+            else:
+                db.consulta_bd_salvar(slug, nome=nome, sql_texto=request.form.get("sql", ""),
+                                      ordem=len(consultas) + 1)
+                return redirect(url_for("config_consultas_bd", aba=slug))
+        elif acao == "excluir":
+            db.consulta_bd_excluir(aba)
+            return redirect(url_for("config_consultas_bd"))
+        else:
+            db.consulta_bd_salvar(aba, nome=request.form.get("nome"), sql_texto=request.form.get("sql"))
+            salvo = True
+            consultas = db.consultas_bd_listar()
+            if acao == "testar":
+                consulta = db.consulta_bd_por_slug(aba)
+                ok, msg, cols, linhas = D.executar_sql(consulta["sql"])
+                teste = {"ok": ok, "msg": msg, "colunas": cols, "linhas": linhas}
+
+    cfg = D.load_cfg()
+    cfg_view = dict(cfg)
+    cfg_view.pop("senha", None)
+    consulta_atual = db.consulta_bd_por_slug(aba) if aba not in ("disponibilidade", "nova") else None
+    return render_template("config_consultas_bd.html", aba=aba, cfg=cfg_view, salvo=salvo,
+                           teste=teste, erro=erro, configurado=D.configurado(),
+                           tem_senha=bool(cfg.get("senha")), dialetos=sorted(D.DIALETOS),
+                           consultas=consultas, consulta_atual=consulta_atual)
+
+
 def config_modelos_email():
     if not _e_adm():
         abort(403)
@@ -173,6 +229,7 @@ def register(app, **deps):
     rota("/config", config, GP)
     rota("/config/email", config_email, GP)
     rota("/config/disponibilidade", config_disponibilidade, GP)
+    rota("/config/consultas-bd", config_consultas_bd, GP)
     rota("/config/modelos-email", config_modelos_email)
     rota("/config/modelos-email/novo", config_modelo_email_novo, GP)
     rota("/config/modelos-email/<int:mid>/editar", config_modelo_email_editar, GP)

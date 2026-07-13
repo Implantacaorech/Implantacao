@@ -886,6 +886,8 @@ routes_agenda.register(app, pode_gerar=pode_gerar, _autor=_autor,
                        _EVT_DOC=_EVT_DOC, _e_adm=_e_adm)
 import routes_config  # noqa: E402  (rotas /config/*)
 routes_config.register(app, pode_ver=pode_ver, _e_adm=_e_adm)
+import routes_dashboards  # noqa: E402  (rota /dashboards)
+routes_dashboards.register(app, pode_ver=pode_ver)
 import routes_cadastros  # noqa: E402  (rotas /cadastros/*)
 routes_cadastros.register(app, pode_ver=pode_ver, _arg_int=_arg_int,
                           _autor=_autor, _PAG_CHECK=_PAG_CHECK)
