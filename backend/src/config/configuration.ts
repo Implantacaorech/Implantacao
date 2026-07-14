@@ -11,6 +11,7 @@ export interface AppConfig {
     sqlitePath?: string;
   };
   corsOrigins: string[];
+  docserviceUrl: string;
 }
 
 // Todas as variáveis deste backend novo usam o prefixo MIGRACAO_ — nunca o prefixo PAINEL_
@@ -40,5 +41,9 @@ export default (): AppConfig => {
     corsOrigins: (
       process.env.MIGRACAO_CORS_ORIGINS ?? 'http://localhost:4200'
     ).split(','),
+    // Serviço interno (FastAPI) de geração de documentos — nunca exposto publicamente,
+    // roda no mesmo host (ver docservice/ e docs/migracao/02-decisao-arquitetura.md).
+    docserviceUrl:
+      process.env.MIGRACAO_DOCSERVICE_URL ?? 'http://127.0.0.1:8001',
   };
 };

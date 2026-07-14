@@ -7,6 +7,7 @@ import { CronogramaPeriodoBloqueado } from '../database/entities/cronograma-peri
 import { Designacao } from '../database/entities/designacao.entity';
 import { Projeto } from '../database/entities/projeto.entity';
 import { CatalogosModule } from '../catalogos/catalogos.module';
+import { GeracaoModule } from '../geracao/geracao.module';
 import { CronogramaService } from './cronograma.service';
 import { DesignacoesService } from './designacoes.service';
 import { DistribuicaoService } from './distribuicao.service';
@@ -23,6 +24,7 @@ import { CronogramaController } from './cronograma.controller';
       Projeto,
     ]),
     CatalogosModule,
+    GeracaoModule,
   ],
   controllers: [CronogramaController],
   providers: [CronogramaService, DesignacoesService, DistribuicaoService],

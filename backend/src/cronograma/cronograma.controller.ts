@@ -11,9 +11,11 @@ import {
   Post,
   Put,
   Query,
+  Res,
   UnprocessableEntityException,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -39,6 +41,7 @@ import { PostergarDto, PostergarVisitaDto } from './dto/postergar.dto';
 import { ReorganizarModuloDto } from './dto/reorganizar-modulo.dto';
 import { AcompanhamentoQueryDto } from './dto/acompanhamento-query.dto';
 import { ApiEnvelope } from '../common/dto/api-envelope';
+import { GeracaoDocumentosService } from '../geracao/geracao-documentos.service';
 
 @ApiTags('agenda')
 @ApiBearerAuth()
@@ -50,6 +53,7 @@ export class CronogramaController {
     private readonly cronograma: CronogramaService,
     private readonly designacoes: DesignacoesService,
     private readonly distribuicao: DistribuicaoService,
+    private readonly geracao: GeracaoDocumentosService,
   ) {}
 
   @Get('atividades')
@@ -421,5 +425,62 @@ export class CronogramaController {
         a.seq - b.seq,
     );
     return new ApiEnvelope({ atividades: filtradas, total: filtradas.length });
+  }
+
+  @Post('gerar')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Gera o cronograma de visitas (.xlsx) a partir das alocações — equivalente a ' +
+      'webapp/routes_agenda.py:projeto_agenda_gerar. Chama o serviço interno de geração ' +
+      '(docservice/). Pendência: ainda não anexa um Documento/Evento ao projeto (essa ' +
+      'infraestrutura ainda não foi convertida — ver docs/migracao/03-documento-conversao.md).',
+  })
+  async gerar(
+    @Param('projetoId', ParseIntPipe) projetoId: number,
+    @Res() res: Response,
+  ) {
+    const projeto = await this.cronograma.projetoParaGeracao(projetoId);
+    if (!projeto) throw new NotFoundException('Projeto não encontrado.');
+    const atividades = await this.cronograma.listarAtividades(projetoId);
+    if (!atividades.some((a) => a.data && a.turno)) {
+      throw new UnprocessableEntityException(
+        'Aloque ao menos uma atividade no calendário antes de gerar o cronograma.',
+      );
+    }
+    const horarios = await this.cronograma.horarios(projetoId);
+    const designacoes = await this.designacoes.doProjeto(projetoId);
+    const cfg = await this.cronograma.config(projetoId);
+
+    const arquivo = await this.geracao.postParaArquivo(
+      '/gerar/cronograma-visitas',
+      {
+        projeto,
+        atividades: atividades.map((a) => ({
+          id: a.id,
+          modulo: a.modulo,
+          seq: a.seq,
+          descricao: a.descricao,
+          tipo: a.tipo,
+          data: a.data,
+          turno: a.turno,
+          tecnico: a.tecnico,
+          status: a.status,
+        })),
+        horarios,
+        designacoes: designacoes.map((d) => ({
+          modulo: d.modulo,
+          consultor: d.consultor,
+          analista: d.analista,
+        })),
+        cronogramaConfig: { analistaPadrao: cfg.analistaPadrao },
+      },
+    );
+
+    res.set({
+      'Content-Type': arquivo.contentType,
+      'Content-Disposition': `attachment; filename="${arquivo.filename}"`,
+    });
+    res.send(arquivo.buffer);
   }
 }

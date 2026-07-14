@@ -101,6 +101,30 @@ export class CronogramaService {
     await this.atividadesSeed(projetoId, projeto.modulos || '');
   }
 
+  /** Campos do projeto necessários para a geração do cronograma de visitas (.xlsx) —
+   * ver docservice/main.py:GerarCronogramaVisitasRequest. */
+  async projetoParaGeracao(projetoId: number): Promise<{
+    id: number;
+    cliente: string;
+    cnpj: string;
+    numeroProjeto: string;
+    consultor: string;
+    horasCobradas: string;
+    horasBonificadas: string;
+  } | null> {
+    const p = await this.projetos.findOne({ where: { id: projetoId } });
+    if (!p) return null;
+    return {
+      id: p.id,
+      cliente: p.cliente,
+      cnpj: p.cnpj,
+      numeroProjeto: p.numeroProjeto,
+      consultor: p.consultor,
+      horasCobradas: p.horasCobradas,
+      horasBonificadas: p.horasBonificadas,
+    };
+  }
+
   // --- Atividades / Visitas -------------------------------------------------------------
 
   /** Semeia (1ª vez) as atividades a partir do Check List dos módulos contratados, agrupadas

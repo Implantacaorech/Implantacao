@@ -1,0 +1,12 @@
+# Serviço interno de geração de documentos (Levantamento/Projeto/Termo/Cronograma) —
+# nunca exposto publicamente, chamado só pela API NestJS via HTTP interno. Reaproveita
+# a lógica de preenchimento fiel já existente em webapp/gl_*.py (copiada, não importada,
+# para não puxar a dependência do Flask/SQLAlchemy do schema antigo — ver
+# docs/migracao/02-decisao-arquitetura.md, seção "Arquitetura híbrida").
+fastapi>=0.115
+uvicorn[standard]>=0.32
+pydantic>=2.9
+python-docx>=1.1
+openpyxl>=3.1
+Pillow>=10.0
+python-multipart>=0.0.12

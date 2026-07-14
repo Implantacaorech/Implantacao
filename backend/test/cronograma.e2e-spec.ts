@@ -11,6 +11,24 @@ import { Projeto } from '../src/database/entities/projeto.entity';
 import { ChecklistModelo } from '../src/database/entities/checklist-modelo.entity';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
+import { GeracaoDocumentosService } from '../src/geracao/geracao-documentos.service';
+
+// Fake do cliente do serviço Python (docservice/) — a lógica de geração em si já é coberta
+// pela suíte pytest do próprio serviço; aqui só verificamos que o NestJS monta o payload e
+// trata a resposta (sucesso/erro) corretamente.
+class GeracaoDocumentosServiceFake {
+  ultimoCorpo: unknown;
+  postParaArquivo(_caminho: string, corpo: unknown) {
+    this.ultimoCorpo = corpo;
+    // content-type texto de propósito neste fake — só testamos a orquestração do NestJS
+    // (payload montado + repasse de headers/arquivo), não o parsing de binário do supertest.
+    return Promise.resolve({
+      buffer: Buffer.from('conteudo-xlsx-fake'),
+      filename: 'cronograma_visitas_teste.xlsx',
+      contentType: 'text/plain',
+    });
+  }
+}
 
 // Suíte end-to-end do Agendador de Visitas (o módulo mais complexo do sistema — distribuição
 // automática, ordem V1<V2, períodos sem agenda por técnico). Cada teste usa um SQLite em
@@ -18,6 +36,7 @@ import { ResponseInterceptor } from '../src/common/interceptors/response.interce
 // é dado local fora do git — ver src/catalogos/checklist-modelo.service.ts).
 describe('Agendador de Visitas (e2e)', () => {
   let app: INestApplication<App>;
+  let moduleFixture: TestingModule;
   let usuarios: Repository<Usuario>;
   let projetos: Repository<Projeto>;
   let checklist: Repository<ChecklistModelo>;
@@ -30,9 +49,12 @@ describe('Agendador de Visitas (e2e)', () => {
     process.env.MIGRACAO_DB_URL = '';
     process.env.MIGRACAO_DB_SQLITE = ':memory:';
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
+    moduleFixture = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(GeracaoDocumentosService)
+      .useClass(GeracaoDocumentosServiceFake)
+      .compile();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
       new ValidationPipe({
@@ -378,5 +400,64 @@ describe('Agendador de Visitas (e2e)', () => {
       ),
     );
     expect(excluirPostergada.status).toBe(200);
+  });
+
+  describe('Gerar cronograma de visitas (.xlsx) via serviço de geração', () => {
+    it('rejeita gerar sem nenhuma atividade alocada', async () => {
+      const pid = await novoProjeto('Cliente GerarVazio LTDA', 'EST');
+      await auth(request(server()).get(`/api/projetos/${pid}/agenda/visitas`));
+      const res = await auth(
+        request(server()).post(`/api/projetos/${pid}/agenda/gerar`),
+      );
+      expect(res.status).toBe(422);
+    });
+
+    it('monta o payload corretamente e devolve o arquivo do serviço de geração', async () => {
+      const pid = await novoProjeto('Cliente Gerar LTDA', 'EST');
+      const visitas = (
+        await auth(request(server()).get(`/api/projetos/${pid}/agenda/visitas`))
+      ).body.data;
+      const atividadeId = visitas[0].atividades[0].id;
+      const hoje = new Date().toISOString().slice(0, 10);
+      await auth(
+        request(server()).post(
+          `/api/projetos/${pid}/agenda/alocar/${atividadeId}`,
+        ),
+      ).send({
+        data: hoje,
+        turno: 'manha',
+        tecnico: 'Ana',
+      });
+      await auth(
+        request(server()).put(`/api/projetos/${pid}/agenda/designacoes`),
+      ).send({
+        modulo: 'EST',
+        tecnico: 'Ana',
+        analista: 'Carla',
+      });
+
+      const res = await auth(
+        request(server()).post(`/api/projetos/${pid}/agenda/gerar`),
+      );
+      expect(res.status).toBe(200);
+      expect(res.headers['content-disposition']).toContain(
+        'cronograma_visitas_teste.xlsx',
+      );
+      expect(res.text).toBe('conteudo-xlsx-fake');
+
+      const fake = moduleFixture.get<GeracaoDocumentosServiceFake>(
+        GeracaoDocumentosService,
+      );
+      const corpo = fake.ultimoCorpo as {
+        projeto: { cliente: string };
+        atividades: unknown[];
+        designacoes: { analista: string }[];
+      };
+      expect(corpo.projeto.cliente).toBe('Cliente Gerar LTDA');
+      expect(corpo.atividades).toHaveLength(1);
+      expect(
+        corpo.designacoes.find((d) => d.analista === 'Carla'),
+      ).toBeDefined();
+    });
   });
 });

@@ -2,8 +2,9 @@
 
 **Branch:** `feature/migracao-angular-backend-moderno` (não mesclada em `main`; o Flask
 em produção não foi tocado). Status: autenticação, Projetos, o **Agendador de Visitas**
-(o módulo mais complexo do sistema) e **Cadastros** (pré-requisito da geração de
-documentos) convertidos ponta a ponta, com o padrão replicável documentado para o
+(o módulo mais complexo do sistema), **Cadastros** (pré-requisito da geração de
+documentos) e o **início da geração de documentos** (serviço Python híbrido, cronograma
+de visitas) convertidos ponta a ponta, com o padrão replicável documentado para o
 restante. Ver honestidade de escopo em
 [02-decisao-arquitetura.md](02-decisao-arquitetura.md#escopo-desta-fase-da-migração-honestidade-de-escopo).
 
@@ -61,6 +62,17 @@ Python mantido só para geração de documentos e transcrição) em
   (calendário semanal, designação de técnico por módulo, períodos sem agenda, ações
   Distribuir/Refazer/Desfazer tudo com indicador de progresso). Ver §9 sobre a
   simplificação de interação (sem arrastar-e-soltar nesta primeira versão).
+- **Geração de documentos — início** (`docservice/`, novo serviço Python/FastAPI + 
+  `backend/src/geracao/*`): implementa a arquitetura híbrida decidida em
+  [02-decisao-arquitetura.md](02-decisao-arquitetura.md) — um serviço Python interno,
+  nunca exposto publicamente, que reaproveita `webapp/gl_xlsx.py` **copiado sem alterar a
+  lógica** (só a fonte de dados muda, via um `db.py`/`_common.py` "shim" que lê de um
+  contexto por requisição em vez de um banco). Endpoint `POST /gerar/cronograma-visitas`
+  gera o cronograma de visitas (.xlsx) do Agendador; o NestJS monta o payload (projeto,
+  atividades, horários, designações, config) a partir do próprio schema novo e expõe
+  `POST /projetos/:id/agenda/gerar`, devolvendo o arquivo binário ao cliente. **Escopo desta
+  fatia**: só o cronograma de visitas — Levantamento/Projeto/Termo (`.docx`, com blocos
+  condicionais por módulo contratado) ficam para a próxima fatia (ver §8).
 
 ## 3. Funcionalidades preservadas (nesta fatia)
 
@@ -164,6 +176,20 @@ porque são o tipo de erro fácil de reintroduzir ao converter os módulos que f
    os testes continuam controlando seus próprios dados sintéticos. **Lição: ao introduzir
    um serviço com seed idempotente, registrar no mesmo commit onde/quando ele é chamado —
    "pronto para usar" não é o mesmo que "em uso".**
+8. **Corrupção silenciosa de acentos no serviço Python — codepage do Windows em vez de
+   UTF-8** (achado só no smoke manual, não pego pelos testes na primeira tentativa): os
+   módulos copiados de `webapp/gl_*.py` têm strings com acento/travessão (`"—"`). Neste
+   Windows, sem o interpretador em UTF-8 mode, ele decodifica esses arquivos `.py` com a
+   codepage do sistema em vez de UTF-8 — o travessão de "Cronograma de Visitas — Cliente"
+   virava um caractere de substituição (`�`), e o teste original só checava
+   `"Cliente" in valor`, então passou mesmo com o texto corrompido. Corrigido em duas
+   camadas: (1) `docservice/main.py` verifica `sys.flags.utf8_mode` e recusa subir com um
+   erro claro se não estiver ativo — falha rápido em vez de gerar documento corrompido
+   silenciosamente; (2) `docservice/iniciar.bat` sempre define `PYTHONUTF8=1`. O teste
+   também foi reforçado para checar o caractere exato (`ord(valor[i]) == 0x2014`), não só
+   uma substring. **Lição: ao portar módulos com texto acentuado para um ambiente novo,
+   testar o caractere exato, não só a presença de uma palavra-chave ASCII** — um teste
+   "verde" só prova o que ele realmente checa.
 
 ## 7. Vulnerabilidades / débitos de segurança do sistema atual, tratados na conversão
 
@@ -197,18 +223,25 @@ service → controller → tela Angular → testes):
    lê essa tabela, então isso não bloqueia o item 3. **Tela Angular de Cadastros ainda não
    existe** — só backend/API nesta fatia; ninguém no time consegue editar os catálogos pela
    UI ainda (só reimportar do YAML/gerenciar modelos via API/Swagger diretamente).
-3. **Geração de documentos** (Levantamento/Projeto/Termo/Cronograma, incluindo o cronograma
-   de visitas `.xlsx` do próprio Agendador) — agora desbloqueado pelo item 2. Falta a
-   arquitetura híbrida em si (serviço Python interno reaproveitando `gerar_layout.py`/
-   `gl_*.py` sem reescrever a lógica de preenchimento, §Arquitetura híbrida em
-   [02-decisao-arquitetura.md](02-decisao-arquitetura.md)) e a integração NestJS→Python.
+3. ~~Geração de documentos~~ — **iniciado**: serviço Python híbrido (`docservice/`, FastAPI)
+   criado e funcionando, com o **cronograma de visitas** (`.xlsx`) do Agendador convertido
+   ponta a ponta (`POST /gerar/cronograma-visitas` no docservice + `POST
+   /projetos/:id/agenda/gerar` no NestJS). **Pendente dentro deste mesmo item**:
+   Levantamento/Projeto/Termo (`.docx`) — substancialmente mais complexos (blocos
+   condicionais por módulo contratado, remoção de áreas não contratadas, tabelas de
+   usuários) e ainda não convertidos; e a persistência de `Documento`/`Evento` (o
+   cronograma gerado hoje só é devolvido para download — não fica anexado à ficha do
+   projeto nem gera entrada na timeline, porque essas entidades ainda não existem no
+   schema novo).
 4. **Protocolos de Treinamento** (vídeo/transcrição via faster-whisper) — mesma
-   dependência do serviço Python híbrido.
+   dependência do serviço Python híbrido (agora já existe e está rodando — `docservice/`).
 5. **E-mail/IMAP/Gmail** (`mailer.py`, `imap_intake.py`, `gmail_api.py`) — bindings Node
    diretos (`nodemailer`, `imapflow`, `googleapis`), não convertidos ainda.
 6. **Disponibilidade externa/Consultas BD/Dashboards** (conexão Oracle configurável,
    `oracledb` tem binding Node oficial) — não convertido; destrava a lacuna do item 1.
-7. **Matriz de Conhecimento**, **telas executivas** (`routes_painel.py`) — não convertidos.
+7. **Matriz de Conhecimento**, **telas executivas** (`routes_painel.py`), **`Documento`/
+   `Evento`** (histórico de documentos e timeline do projeto — bloqueia o item 3 anexar o
+   cronograma gerado à ficha) — não convertidos.
 8. **Usuários** (`/usuarios`, CRUD completo) e **auto-cadastro com código por e-mail** —
    `UsersService` já tem a base (`criar`), falta o controller/tela e a integração com
    e-mail (item 5).
@@ -222,7 +255,13 @@ service → controller → tela Angular → testes):
   virada — não há como migrar o hash diretamente. Ver script de importação a criar
   (pendência).
 - **`pywin32`/Word COM e `faster-whisper`** não têm equivalente Node/Java maduro — mantidos
-  como serviço Python interno (decisão registrada, serviço ainda não criado nesta fatia).
+  como serviço Python interno (`docservice/`, já criado e rodando para o cronograma de
+  visitas; Word COM/faster-whisper ainda não usados por ele nesta fatia).
+- **`docservice/` exige `PYTHONUTF8=1`** neste Windows — sem isso, o interpretador decodifica
+  os módulos copiados de `webapp/gl_*.py` (que têm acento/travessão) com a codepage do
+  sistema em vez de UTF-8, corrompendo texto nos documentos gerados. `main.py` falha rápido
+  com erro claro se detectar que não está em UTF-8 mode; `docservice/iniciar.bat` já define a
+  variável — sempre usar esse script (ou `python -X utf8`) para subir o serviço.
 - **TypeORM 1.1.0 existe no npm** (tag `latest`) mas foi **propositalmente NÃO usado** —
   fixado em `0.3.31` (tag `legacy` do próprio pacote) porque é a versão cujo comportamento
   e API eu conseguia verificar com confiança; o major 1.x é recente demais para eu revisar
@@ -271,15 +310,34 @@ npm run build     # build de produção em dist/frontend
 npm test          # unitários (Vitest via @angular/build:unit-test)
 ```
 
+### Serviço de geração de documentos (`docservice/`)
+
+```bash
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+iniciar.bat                       # já define PYTHONUTF8=1 — ver §9 sobre por que é obrigatório
+set PYTHONUTF8=1 && .venv\Scripts\python -m pytest tests/ -v
+```
+
+Swagger/OpenAPI: `http://127.0.0.1:8001/docs` (com o serviço rodando). Nunca exponha esta
+porta fora do host — é um serviço interno, chamado só pelo backend NestJS
+(`MIGRACAO_DOCSERVICE_URL`).
+
 ## 12. Como validar esta entrega
 
-1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo, 55/55
-   testes passando (20 unitários + 35 e2e), incluindo as suítes dedicadas do Agendador de
-   Visitas (`test/cronograma.e2e-spec.ts`) e de Cadastros (`test/cadastros.e2e-spec.ts`).
+1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo, 57/57
+   testes passando (20 unitários + 37 e2e), incluindo as suítes dedicadas do Agendador de
+   Visitas (`test/cronograma.e2e-spec.ts`, com o teste do endpoint `/agenda/gerar` usando um
+   fake do serviço Python) e de Cadastros (`test/cadastros.e2e-spec.ts`).
 2. `cd frontend && npm run build && npm test` — build limpo, 6/6 testes passando.
-3. Smoke manual feito nesta sessão: backend + frontend rodando lado a lado, login real,
-   CRUD de projeto e fluxo completo do Agendador (seed de atividades, designação de técnico,
-   distribuição automática, período sem agenda por técnico) confirmados por `curl` contra o
+3. `cd docservice && set PYTHONUTF8=1 && .venv\Scripts\python -m pytest tests/ -v` — 4/4
+   testes passando, incluindo checagem estrita de caractere (não só substring) para pegar
+   corrupção de encoding.
+4. Smoke manual feito nesta sessão: backend + frontend + docservice rodando juntos (3
+   processos reais, não mockados), login real, CRUD de projeto, fluxo completo do Agendador
+   (seed de atividades, designação de técnico, distribuição automática, período sem agenda
+   por técnico) e **geração real do cronograma de visitas .xlsx** (baixado e inspecionado
+   byte a byte para confirmar a correção do bug de encoding) confirmados por `curl` contra o
    servidor real (ver histórico de comandos desta sessão). **Teste visual em navegador não
    foi realizado** — este ambiente não tem uma ferramenta de navegador disponível;
    recomenda-se abrir `http://localhost:4200` manualmente antes de considerar as telas de
