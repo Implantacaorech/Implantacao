@@ -31,7 +31,7 @@ export class LoginComponent {
     try {
       const { login, senha } = this.form.getRawValue();
       await this.auth.login(login, senha);
-      await this.router.navigateByUrl('/projetos');
+      await this.router.navigateByUrl('/home');
     } catch (e) {
       const msg =
         e instanceof HttpErrorResponse && typeof e.error?.message === 'string'

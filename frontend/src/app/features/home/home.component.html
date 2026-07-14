@@ -1,0 +1,93 @@
+<div class="cabecalho">
+  <h1>Painel</h1>
+</div>
+
+@if (erro()) {
+  <p class="erro">{{ erro() }}</p>
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else if (dados(); as d) {
+  <div class="kpis">
+    <div class="kpi">
+      <span class="valor">{{ d.dados.ativos }}</span>
+      <span class="rotulo">Ativos</span>
+    </div>
+    <div class="kpi">
+      <span class="valor">{{ d.dados.noPrazo }}</span>
+      <span class="rotulo">No prazo</span>
+    </div>
+    <div class="kpi kpi-alerta">
+      <span class="valor">{{ d.dados.atrasados }}</span>
+      <span class="rotulo">Atrasados</span>
+    </div>
+    <div class="kpi kpi-alerta">
+      <span class="valor">{{ d.dados.risco }}</span>
+      <span class="rotulo">Em risco</span>
+    </div>
+    <div class="kpi">
+      <span class="valor">{{ d.dados.gatePendente }}</span>
+      <span class="rotulo">Docs pendentes</span>
+    </div>
+    <div class="kpi">
+      <span class="valor">{{ d.dados.concluidos }}</span>
+      <span class="rotulo">Concluídos</span>
+    </div>
+  </div>
+
+  @if (d.foco; as f) {
+    <section class="foco">
+      <h2>Em foco: {{ f.projeto.cliente }}</h2>
+      <div class="stepper">
+        @for (etapa of f.cabecalho.stepper; track etapa.nome) {
+          <span class="passo passo-{{ etapa.estado }}">{{ etapa.nome }}</span>
+        }
+      </div>
+      @if (f.cabecalho.atraso !== null) {
+        <p class="atraso">Atrasado há {{ f.cabecalho.atraso }} dia(s)</p>
+      }
+      @if (f.cabecalho.proxima; as proxima) {
+        <p class="proxima-acao">Próxima ação: {{ proxima.label }}</p>
+      }
+      <a [routerLink]="['/projetos', f.projeto.id]" class="botao">Ver ficha</a>
+    </section>
+  }
+
+  <div class="colunas">
+    <section class="pendencias">
+      <h2>Próximas ações</h2>
+      @if (d.pendencias.length === 0) {
+        <p class="vazio">Nenhuma pendência.</p>
+      } @else {
+        <ul>
+          @for (item of d.pendencias; track item.id + item.tipo) {
+            <li>
+              <a [routerLink]="rotaAcao(item)">
+                <strong>{{ item.cliente }}</strong> — {{ item.acao }}
+                @if (item.atraso !== null) {
+                  <span class="atraso-tag">{{ item.atraso }}d atraso</span>
+                }
+              </a>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <section class="alertas">
+      <h2>Alertas</h2>
+      @if (d.alertas.length === 0) {
+        <p class="vazio">Sem alertas no momento.</p>
+      } @else {
+        <ul>
+          @for (a of d.alertas; track $index) {
+            <li class="alerta-{{ a.nivel }}">
+              <strong>{{ a.cliente }}</strong> — {{ a.msg }}
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </div>
+}
