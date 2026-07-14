@@ -2,11 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppConfig } from '../config/configuration';
-import { Usuario } from './entities/usuario.entity';
-import { Projeto } from './entities/projeto.entity';
-import { RefreshToken } from './entities/refresh-token.entity';
-
-const ENTITIES = [Usuario, Projeto, RefreshToken];
+import { ENTITIES } from './entities';
 
 @Module({
   imports: [

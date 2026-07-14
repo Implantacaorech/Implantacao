@@ -14,6 +14,7 @@ import { RefreshDto } from './dto/refresh.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
+import { ApiEnvelope } from '../common/dto/api-envelope';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -45,7 +46,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Revoga o refresh token da sessão atual' })
   async logout(@Body() dto: RefreshDto) {
     await this.auth.logout(dto.refreshToken);
-    return { data: null, message: 'Sessão encerrada' };
+    return new ApiEnvelope(null, 'Sessão encerrada');
   }
 
   @Get('me')

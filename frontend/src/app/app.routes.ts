@@ -26,6 +26,10 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/projetos/projeto-form.component').then((m) => m.ProjetoFormComponent),
       },
+      {
+        path: 'projetos/:id/agenda',
+        loadComponent: () => import('./features/agenda/agenda.component').then((m) => m.AgendaComponent),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

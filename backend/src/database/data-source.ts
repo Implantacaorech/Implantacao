@@ -1,8 +1,6 @@
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
-import { Usuario } from './entities/usuario.entity';
-import { Projeto } from './entities/projeto.entity';
-import { RefreshToken } from './entities/refresh-token.entity';
+import { ENTITIES } from './entities';
 
 // DataSource dedicado ao TypeORM CLI (migration:generate/run/revert) — não é usado em
 // runtime pelo Nest (que usa DatabaseModule/TypeOrmModule.forRootAsync).
@@ -15,14 +13,14 @@ export const AppDataSource = new DataSource(
     ? {
         type: 'postgres',
         url: dbUrl,
-        entities: [Usuario, Projeto, RefreshToken],
+        entities: ENTITIES,
         migrations: ['src/database/migrations/*.ts'],
         synchronize: false,
       }
     : {
         type: 'better-sqlite3',
         database: process.env.MIGRACAO_DB_SQLITE ?? 'dados/painel.sqlite',
-        entities: [Usuario, Projeto, RefreshToken],
+        entities: ENTITIES,
         migrations: ['src/database/migrations/*.ts'],
         // SQLite local (dev/seed) pode sincronizar direto — só o Postgres (produção) exige
         // migration versionada.

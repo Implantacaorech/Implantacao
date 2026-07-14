@@ -1,0 +1,189 @@
+<div class="cabecalho">
+  <h1>Agendador de Visitas</h1>
+  <a [routerLink]="['/projetos', projetoId]" class="voltar">← Voltar ao projeto</a>
+</div>
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  @if (erro()) {
+    <p class="msg erro">{{ erro() }}</p>
+  }
+  @if (aviso()) {
+    <p class="msg aviso">{{ aviso() }}</p>
+  }
+  @if (processando()) {
+    <div class="progresso">
+      <span>{{ processando() }}</span>
+      <div class="barra"><div class="fill"></div></div>
+    </div>
+  }
+
+  @if (prontidao().faltantes.length > 0) {
+    <p class="msg alerta">
+      Defina um técnico válido para: {{ prontidao().faltantes.join(', ') }} — a distribuição automática só roda com
+      todos os módulos designados.
+    </p>
+  }
+
+  <div class="acoes-topo">
+    <button type="button" (click)="distribuir()" [disabled]="!!processando() || prontidao().faltantes.length > 0">
+      Distribuir agenda
+    </button>
+    <button type="button" (click)="redistribuir()" [disabled]="!!processando() || prontidao().faltantes.length > 0">
+      Refazer distribuição
+    </button>
+    <button
+      type="button"
+      (click)="desfazerTudo()"
+      [disabled]="!!processando() || prontidao().jaOcorreu"
+      [title]="prontidao().jaOcorreu ? 'Há visita(s) já Realizada(s) — não é possível desfazer' : ''"
+    >
+      Desfazer todas as agendas
+    </button>
+  </div>
+
+  <details class="caixa designacoes">
+    <summary>Técnico por módulo — ordem de treinamento</summary>
+    <table>
+      <thead>
+        <tr>
+          <th>Módulo</th>
+          <th>Técnico</th>
+          <th>Ordem</th>
+          <th>Não distribuir</th>
+          <th>Analista</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (par of modulosVisitas(); track par[0]) {
+          <tr>
+            <td>{{ par[0] }}</td>
+            <td>
+              <input
+                type="text"
+                [value]="designacaoDe(par[0]).consultor"
+                (change)="salvarDesignacao(par[0], { tecnico: $any($event.target).value })"
+              />
+            </td>
+            <td>
+              <input
+                type="number"
+                [value]="designacaoDe(par[0]).ordem"
+                (change)="salvarDesignacao(par[0], { ordem: +$any($event.target).value })"
+              />
+            </td>
+            <td>
+              <input
+                type="checkbox"
+                [checked]="designacaoDe(par[0]).naoDistribuir"
+                (change)="salvarDesignacao(par[0], { naoDistribuir: $any($event.target).checked })"
+              />
+            </td>
+            <td>
+              <input
+                type="text"
+                [value]="designacaoDe(par[0]).analista"
+                (change)="salvarDesignacao(par[0], { analista: $any($event.target).value })"
+              />
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </details>
+
+  <details class="caixa periodos">
+    <summary>Períodos sem agenda (recesso, férias coletivas etc.)</summary>
+    @if (periodos().length > 0) {
+      <ul class="lista-periodos">
+        @for (p of periodos(); track p.id) {
+          <li>
+            {{ p.dataIni }} a {{ p.dataFim }} @if (p.motivo) {— {{ p.motivo }}}
+            <strong>{{ p.tecnicos ? p.tecnicos.replace(',', ', ') : 'Todos os técnicos' }}</strong>
+            <button type="button" (click)="excluirPeriodo(p.id)" title="Excluir">🗑</button>
+          </li>
+        }
+      </ul>
+    }
+    <div class="novo-periodo">
+      <label>De: <input type="date" [(ngModel)]="novoPeriodo.dataIni" /></label>
+      <label>até: <input type="date" [(ngModel)]="novoPeriodo.dataFim" /></label>
+      <input type="text" placeholder="Motivo (opcional)" [(ngModel)]="novoPeriodo.motivo" class="motivo" />
+      <span class="tecnicos-periodo">
+        @for (t of tecnicosEnvolvidos(); track t) {
+          <label>
+            <input
+              type="checkbox"
+              [checked]="novoPeriodo.tecnicos.includes(t)"
+              (change)="alternarTecnicoNoPeriodo(t, $any($event.target).checked)"
+            />
+            {{ t }}
+          </label>
+        }
+      </span>
+      <button type="button" (click)="criarPeriodo()" [disabled]="!novoPeriodo.dataIni || !novoPeriodo.dataFim">
+        + Adicionar período
+      </button>
+    </div>
+  </details>
+
+  <div class="corpo">
+    <aside class="pendentes">
+      <h2>Visitas pendentes</h2>
+      @for (v of pendentes(); track chave(v)) {
+        <div class="cartao-visita">
+          <strong>{{ v.modulo }} V{{ v.seq }}</strong>
+          <span class="qtd">{{ v.atividades.length }} assunto(s)</span>
+          <div class="mover">
+            <input type="date" [(ngModel)]="movimento(v).data" />
+            <select [(ngModel)]="movimento(v).turno">
+              <option value="manha">Manhã</option>
+              <option value="tarde">Tarde</option>
+            </select>
+            <button type="button" (click)="aplicarMovimento(v)" [disabled]="!movimento(v).data">Alocar</button>
+          </div>
+        </div>
+      } @empty {
+        <p class="vazio">Nenhuma visita pendente.</p>
+      }
+    </aside>
+
+    <section class="calendario">
+      <div class="nav-semana">
+        <button type="button" (click)="semanaAnterior()">« Semana anterior</button>
+        <button type="button" (click)="irParaHoje()">Hoje</button>
+        <button type="button" (click)="semanaSeguinte()">Próxima semana »</button>
+      </div>
+      <div class="grade">
+        @for (dia of semana(); track dia.iso) {
+          <div class="coluna-dia">
+            <div class="cabecalho-dia">{{ dia.label }}</div>
+            @for (turno of ['manha', 'tarde']; track turno) {
+              <div class="celula-turno">
+                <div class="rotulo-turno">{{ turno === 'manha' ? 'Manhã' : 'Tarde' }}</div>
+                @for (v of celula(dia.iso, turno); track chave(v)) {
+                  <div class="cartao-alocado">
+                    <strong>{{ v.modulo }} V{{ v.seq }}</strong>
+                    <span class="tecnico">{{ v.atividades[0].tecnico || '—' }}</span>
+                    @for (a of v.atividades; track a.id) {
+                      <div class="assunto">
+                        <span>{{ a.descricao }}</span>
+                        <select [ngModel]="a.status" (ngModelChange)="mudarStatus(a.id, $event)">
+                          @for (s of statusOpcoes; track s) {
+                            <option [value]="s">{{ s }}</option>
+                          }
+                        </select>
+                      </div>
+                    }
+                    <button type="button" class="btn-desalocar" (click)="desalocar(v)">Desalocar</button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+}

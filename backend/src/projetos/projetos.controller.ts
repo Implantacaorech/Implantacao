@@ -23,6 +23,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { PERFIS_DESIGNA } from '../common/constants/perfis';
+import { ApiEnvelope } from '../common/dto/api-envelope';
 
 @ApiTags('projetos')
 @ApiBearerAuth()
@@ -36,8 +37,12 @@ export class ProjetosController {
     summary:
       'Lista projetos, paginado, filtrado por perfil (equivalente a _so_meus)',
   })
-  listar(@Query() filtro: ListarProjetosDto, @CurrentUser() user: AuthUser) {
-    return this.service.listar(filtro, user);
+  async listar(
+    @Query() filtro: ListarProjetosDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    const resultado = await this.service.listar(filtro, user);
+    return new ApiEnvelope(resultado.data, undefined, resultado.pagination);
   }
 
   @Get(':id')
@@ -70,6 +75,6 @@ export class ProjetosController {
   })
   async excluir(@Param('id', ParseIntPipe) id: number) {
     await this.service.excluir(id);
-    return { data: null, message: 'Projeto excluído' };
+    return new ApiEnvelope(null, 'Projeto excluído');
   }
 }

@@ -1,9 +1,9 @@
 # Documento de conversão — Painel de Implantação → Angular + NestJS
 
 **Branch:** `feature/migracao-angular-backend-moderno` (não mesclada em `main`; o Flask
-em produção não foi tocado). Status: **primeiro corte funcional entregue** — autenticação
-e o módulo Projetos convertidos ponta a ponta, com o padrão replicável documentado para o
-restante. Ver honestidade de escopo em
+em produção não foi tocado). Status: autenticação, Projetos e o **Agendador de Visitas**
+(o módulo mais complexo do sistema) convertidos ponta a ponta, com o padrão replicável
+documentado para o restante. Ver honestidade de escopo em
 [02-decisao-arquitetura.md](02-decisao-arquitetura.md#escopo-desta-fase-da-migração-honestidade-de-escopo).
 
 ## 1. Tecnologia anterior → nova
@@ -33,9 +33,22 @@ Python mantido só para geração de documentos e transcrição) em
   Coordenador/Administrativo veem tudo, GCI só onde é GCI, Consultor só onde é designado).
   Escolhido como módulo de referência por ser a entidade raiz do sistema.
 - **Health check** (`backend/src/health/*`) — equivalente a `GET /health`.
+- **Agendador de Visitas** (`backend/src/cronograma/*`, `backend/src/catalogos/*`) —
+  conversão completa: atividades/visitas (seed a partir do Check List), alocação manual
+  (atividade e visita inteira), horários por turno, configuração da distribuição (modo
+  conjunta/individual, data início, dias/turnos excluídos, analista padrão), períodos sem
+  agenda (globais ou por técnico específico), status, postergação (por assunto/turno/visita
+  inteira), exclusão de histórico Postergada (ADM), e o **algoritmo de distribuição
+  automática** completo (`distribuicao.service.ts`) — busca gulosa do primeiro turno livre
+  em ordem de treinamento dos módulos, preservando V1 < V2, com piso de reorganização,
+  checagem de Go-live e "Não distribuir" por módulo. Equivalente a `webapp/routes_agenda.py`
+  inteiro. Ver §9 para a única lacuna proposital (disponibilidade externa SICLA).
 - **Frontend**: tela de login, guard de rota, interceptor HTTP (Bearer + renovação
   automática em 401), lista de projetos (paginada, com filtro), formulário de
-  criar/editar projeto, shell com navegação e logout.
+  criar/editar projeto, shell com navegação e logout, e a tela do **Agendador de Visitas**
+  (calendário semanal, designação de técnico por módulo, períodos sem agenda, ações
+  Distribuir/Refazer/Desfazer tudo com indicador de progresso). Ver §9 sobre a
+  simplificação de interação (sem arrastar-e-soltar nesta primeira versão).
 
 ## 3. Funcionalidades preservadas (nesta fatia)
 
@@ -47,6 +60,15 @@ Python mantido só para geração de documentos e transcrição) em
   teste** (é a regra de negócio mais fácil de esquecer numa reescrita).
 - Estrutura de campos do Projeto (cliente, CNPJ, etapa, situação, datas, módulos
   contratados, contatos etc.) — todos os campos de `db.Projeto` mapeados 1:1.
+- **Invariante V1 < V2 do Agendador de Visitas** — a distribuição automática processa
+  estritamente em ordem `(ordem do módulo, módulo, seq)` com busca gulosa pelo turno livre
+  mais cedo, o que garante matematicamente que uma visita nunca fica num turno igual ou
+  anterior ao da visita anterior do mesmo módulo. Coberto por teste dedicado.
+- **Período sem agenda por técnico específico** (recurso mais recente adicionado ao Flask
+  nesta mesma sessão de trabalho, antes de começar a migração) — replicado e testado:
+  período sem `tecnicos` bloqueia todos; com `tecnicos`, só os listados.
+- **"Não distribuir" por módulo** e **Go-live** (última visita de cada técnico nunca cai no
+  dia da virada ou depois) — replicados fielmente.
 
 ## 4. Funcionalidades melhoradas
 
@@ -98,6 +120,16 @@ porque são o tipo de erro fácil de reintroduzir ao converter os módulos que f
    de schema — nenhum dado foi alterado). Corrigido adotando o prefixo **`MIGRACAO_`**
    para toda variável de ambiente do backend novo, nunca reaproveitando nomes `PAINEL_*`.
    **Isto é uma regra permanente enquanto os dois stacks rodarem em paralelo.**
+5. **Envelope de resposta por duck-typing colidia com campos de entidade chamados `data`**:
+   o interceptor de resposta original detectava "isto já é um envelope `{data,message}`"
+   checando `'data' in payload` — mas `AtividadeCronograma.data` (a data da visita, AAAA-MM-DD)
+   é um campo real da entidade, então qualquer `AtividadeCronograma` devolvida crua virava
+   `payload.data` (uma string) sendo tratada como o envelope inteiro, quebrando a resposta.
+   Um teste e2e do Agendador (`alocação manual…`) pegou isso na hora. Corrigido substituindo
+   o duck-typing por uma classe explícita `ApiEnvelope` checada com `instanceof`
+   (`common/dto/api-envelope.ts`) — nenhuma entidade jamais colide com isso por acidente.
+   **Lição: nunca detectar formato de resposta por presença de propriedade — usar um tipo
+   explícito.**
 
 ## 7. Vulnerabilidades / débitos de segurança do sistema atual, tratados na conversão
 
@@ -114,21 +146,29 @@ porque são o tipo de erro fácil de reintroduzir ao converter os módulos que f
 Ordem sugerida para dar sequência (cada um segue o mesmo padrão: entidade TypeORM →
 service → controller → tela Angular → testes):
 
-1. **Agendador de Visitas** (`routes_agenda.py`, ~700 linhas, a funcionalidade mais
-   complexa do sistema — distribuição automática, períodos bloqueados por técnico, drag-
-   and-drop). Maior módulo, maior risco, converter com atenção redobrada aos testes
-   (128 testes Python cobrem hoje esse módulo sozinho).
-2. **Geração de documentos** (Levantamento/Projeto/Termo/Cronograma) — depende da decisão
-   de arquitetura híbrida (serviço Python interno, §Arquitetura híbrida em
+1. ~~Agendador de Visitas~~ — **convertido** (ver §2). Duas lacunas propositais dentro dele,
+   ambas registradas e não escondidas:
+   - **Disponibilidade externa (SICLA/Oracle)** não é consultada pela distribuição
+     automática nem pelo indicador visual do calendário ainda — depende do item 4 abaixo
+     (mesma conexão Oracle usada por Consultas BD/Dashboards). O algoritmo já tem o ponto de
+     extensão comentado em `distribuicao.service.ts`.
+   - **Sem arrastar-e-soltar** na tela Angular — a interação foi simplificada para
+     formulários de data/turno por visita (mesma capacidade funcional: alocar, mover,
+     desalocar), mais simples de implementar corretamente sob prazo e mais acessível por
+     teclado; drag-and-drop pode ser adicionado depois como polimento de UX.
+2. **Geração de documentos** (Levantamento/Projeto/Termo/Cronograma, incluindo o cronograma
+   de visitas `.xlsx` do próprio Agendador) — depende da decisão de arquitetura híbrida
+   (serviço Python interno, §Arquitetura híbrida em
    [02-decisao-arquitetura.md](02-decisao-arquitetura.md)), ainda não implementado.
 3. **Protocolos de Treinamento** (vídeo/transcrição via faster-whisper) — mesma
    dependência do serviço Python híbrido.
 4. **E-mail/IMAP/Gmail** (`mailer.py`, `imap_intake.py`, `gmail_api.py`) — bindings Node
    diretos (`nodemailer`, `imapflow`, `googleapis`), não convertidos ainda.
 5. **Disponibilidade externa/Consultas BD/Dashboards** (conexão Oracle configurável,
-   `oracledb` tem binding Node oficial) — não convertido.
-6. **Cadastros** (checklist/índice de tópicos/modelos de documento), **Matriz de
-   Conhecimento**, **telas executivas** (`routes_painel.py`) — não convertidos.
+   `oracledb` tem binding Node oficial) — não convertido; destrava a lacuna do item 1.
+6. **Cadastros** (checklist/índice de tópicos/modelos de documento — o `ChecklistModelo` já
+   tem entidade e seed, falta CRUD/tela), **Matriz de Conhecimento**, **telas executivas**
+   (`routes_painel.py`) — não convertidos.
 7. **Usuários** (`/usuarios`, CRUD completo) e **auto-cadastro com código por e-mail** —
    `UsersService` já tem a base (`criar`), falta o controller/tela e a integração com
    e-mail (item 4).
@@ -148,6 +188,11 @@ service → controller → tela Angular → testes):
   e API eu conseguia verificar com confiança; o major 1.x é recente demais para eu revisar
   com segurança sem acesso à documentação atualizada. Reavaliar quando houver tempo para
   validar a 1.x com calma.
+- **`tools/data/checklist_modulos.yaml` é dado local, fora do git** (mesma regra do Flask) —
+  o catálogo `ChecklistModelo` do backend novo é semeado a partir desse MESMO arquivo
+  (`ChecklistModeloService.seedDoYaml`, lido de `../tools/data/` relativo a `backend/`), nunca
+  copiado para dentro do repositório. Ambiente sem esse arquivo funciona normalmente, só com
+  o catálogo vazio (nenhuma atividade é semeada — comportamento consistente com o Flask).
 
 ## 10. Procedimento de rollback
 
@@ -188,12 +233,14 @@ npm test          # unitários (Vitest via @angular/build:unit-test)
 
 ## 12. Como validar esta entrega
 
-1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo, 22/22
-   testes passando (10 unitários + 12 e2e).
+1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo, 38/38
+   testes passando (16 unitários + 22 e2e, incluindo a suíte dedicada do Agendador de
+   Visitas em `test/cronograma.e2e-spec.ts`).
 2. `cd frontend && npm run build && npm test` — build limpo, 6/6 testes passando.
 3. Smoke manual feito nesta sessão: backend + frontend rodando lado a lado, login real,
-   criação/listagem/edição/exclusão de projeto via API confirmados por `curl` (ver histórico
-   de comandos desta sessão). **Teste visual em navegador não foi realizado** — este
-   ambiente não tem uma ferramenta de navegador disponível; recomenda-se abrir
-   `http://localhost:4200` manualmente antes de considerar a tela de Projetos
-   definitivamente validada do ponto de vista de UX.
+   CRUD de projeto e fluxo completo do Agendador (seed de atividades, designação de técnico,
+   distribuição automática, período sem agenda por técnico) confirmados por `curl` contra o
+   servidor real (ver histórico de comandos desta sessão). **Teste visual em navegador não
+   foi realizado** — este ambiente não tem uma ferramenta de navegador disponível;
+   recomenda-se abrir `http://localhost:4200` manualmente antes de considerar as telas de
+   Projetos e do Agendador definitivamente validadas do ponto de vista de UX.

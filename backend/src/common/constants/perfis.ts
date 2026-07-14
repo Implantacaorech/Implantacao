@@ -50,3 +50,10 @@ export const PERFIS_VEEM_TODOS_PROJETOS: Perfil[] = [
   'Coordenador',
   'Administrativo',
 ];
+// pode_gerar("cronograma") no Flask — todos os perfis exceto GCI.
+export const PERFIS_GERA_CRONOGRAMA: Perfil[] = [
+  'ADM',
+  'Coordenador',
+  'Administrativo',
+  'Consultor',
+];

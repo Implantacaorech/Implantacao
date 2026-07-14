@@ -17,6 +17,11 @@ h1 {
   font-size: 0.85rem;
 }
 
+.acoes-cabecalho {
+  display: flex;
+  gap: 16px;
+}
+
 .form-projeto {
   display: grid;
   grid-template-columns: 1fr 1fr;

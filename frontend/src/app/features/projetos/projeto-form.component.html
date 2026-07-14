@@ -1,6 +1,11 @@
 <div class="cabecalho">
   <h1>{{ projetoId() ? 'Editar projeto' : 'Novo projeto' }}</h1>
-  <a routerLink="/projetos" class="voltar">← Voltar</a>
+  <span class="acoes-cabecalho">
+    @if (projetoId()) {
+      <a [routerLink]="['/projetos', projetoId(), 'agenda']" class="voltar">Agendador de visitas</a>
+    }
+    <a routerLink="/projetos" class="voltar">← Voltar</a>
+  </span>
 </div>
 
 <form class="form-projeto" [formGroup]="form" (ngSubmit)="salvar()">
