@@ -10,6 +10,8 @@ import { CatalogosModule } from '../catalogos/catalogos.module';
 import { GeracaoModule } from '../geracao/geracao.module';
 import { DocumentosModule } from '../documentos/documentos.module';
 import { EmailModule } from '../email/email.module';
+import { UsersModule } from '../users/users.module';
+import { DisponibilidadeModule } from '../disponibilidade/disponibilidade.module';
 import { CronogramaService } from './cronograma.service';
 import { DesignacoesService } from './designacoes.service';
 import { DistribuicaoService } from './distribuicao.service';
@@ -29,6 +31,8 @@ import { CronogramaController } from './cronograma.controller';
     GeracaoModule,
     DocumentosModule,
     EmailModule,
+    UsersModule,
+    DisponibilidadeModule,
   ],
   controllers: [CronogramaController],
   providers: [CronogramaService, DesignacoesService, DistribuicaoService],

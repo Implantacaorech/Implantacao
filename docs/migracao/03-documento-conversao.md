@@ -8,8 +8,11 @@ de visitas + Levantamento/Projeto/Termo fiéis, com anexo Documento/Evento), os
 **Protocolos de Treinamento** (vídeo -> transcrição local via faster-whisper -> análise
 IA -> revisão/aprovação, incluindo o robô de varredura de pasta e a tela Config → IA) e
 **E-mail/IMAP/Gmail** (SMTP + Gmail API + modelos de e-mail + o robô da caixa de entrada
-que cria projetos a partir do e-mail de fechamento do Comercial) convertidos ponta a
-ponta, com o padrão replicável documentado para o restante. Ver honestidade de escopo em
+que cria projetos a partir do e-mail de fechamento do Comercial) e **Disponibilidade
+externa/Consultas BD/Dashboards** (conexão Oracle/SICLA, motor de dashboard genérico e a
+checagem de disponibilidade externa agora ligada à distribuição automática do Agendador —
+fecha a última lacuna documentada do item 1) convertidos ponta a ponta, com o padrão
+replicável documentado para o restante. Ver honestidade de escopo em
 [02-decisao-arquitetura.md](02-decisao-arquitetura.md#escopo-desta-fase-da-migração-honestidade-de-escopo).
 
 ## 1. Tecnologia anterior → nova
@@ -174,6 +177,44 @@ Python mantido só para geração de documentos e transcrição) em
     `DocumentosModule` porque `DocumentosModule` agora importa `EmailModule` (para o
     `DocumentosController` disparar `levantamento_ok`/`projeto_ok`/`termo_ok`); um import
     circular entre os dois quebraria o boot do Nest. Ver §6 item 13.
+- **Disponibilidade externa/Consultas BD/Dashboards** (`backend/src/disponibilidade/*`) —
+  100% Node/NestJS (decisão já tomada numa sessão de pesquisa anterior a esta: `oracledb`
+  tem driver Node oficial em modo thin puro-JS, sem detour pelo docservice). Equivalente a
+  `webapp/disponibilidade.py` + a fatia de `webapp/db.py` de `ConsultaBD` +
+  `webapp/routes_dashboards.py` + os 3 pontos de integração Oracle de
+  `webapp/routes_agenda.py`.
+  - `DisponibilidadeService`: conexão Oracle via `oracledb` (só o dialeto Oracle é
+    implementado de verdade — os outros que o Flask suportava genericamente via
+    SQLAlchemy, postgresql/mysql/sqlserver, nunca tiveram uso real neste sistema, só o
+    SICLA). Config em `dados/disponibilidade.json` (mesmo contrato de "reenvio do form
+    inteiro" — exceto senha — de `MailerService`/`ImapIntakeService`, ver §6 item 16).
+    `executarSql` só aceita `SELECT`/`WITH` (mesma proteção mínima do Flask — quem edita
+    já é Administrador). `:tecnicos` (o contrato do SELECT de ocupação, `... IN
+    :tecnicos`) é expandido manualmente em binds nomeados
+    (`:tecnicos_0, :tecnicos_1, ...`), já que o node-oracledb não tem o "expanding
+    bindparam" do SQLAlchemy. Caches em memória com TTL (180s ocupação, 600s mapa de
+    técnicos) preservados — protegem o Oracle do SICLA de ser martelado a cada
+    navegação de calendário.
+  - `ConsultaBdService`: CRUD + seed idempotente da consulta "Previsão Início Oficial"
+    (mesmo texto/comentários do Flask original).
+  - `DashboardsService`: **motor genérico** (decisão tomada com o usuário — o Flask
+    original só implementava de verdade UMA análise, hardcoded no Python, apesar do
+    comentário dizer "estrutura já pronta para novas análises"). Generalizado com 2
+    colunas novas em `ConsultaBD` (`colunaData`/`colunaSituacao`/`mostrarGrafico`) — a
+    consulta declara qual coluna do próprio SELECT é a data (filtro de período + bucket
+    mensal do gráfico) e qual é a situação (filtro multi-seleção); qualquer consulta
+    salva com `colunaData` preenchida vira um dashboard, sem escrever código novo.
+    Endpoints: `GET /dashboards` (lista as disponíveis), `GET /dashboards/:slug` (roda).
+  - **Fecha a pendência documentada do item 1** (Agendador de Visitas):
+    `DistribuicaoService.distribuirAutomatico` agora consulta a disponibilidade externa
+    (via `UsersService.codigosSiclaPorNome` + `DisponibilidadeService.ocupacaoPorSlotCache`)
+    e respeita `modo` (conjunta/individual) exatamente como
+    `webapp/routes_agenda.py:_distribuir_automatico` — fail-open (qualquer falha na
+    conexão externa só loga e segue sem bloquear). **Escopo reduzido**: só o algoritmo de
+    distribuição automática foi ligado — o guard da alocação manual (arrastar-e-soltar,
+    `_slot_indisponivel`) e o indicador visual de células bloqueadas no calendário
+    (`projeto_agenda`'s `bloqueados`) não foram portados nesta fatia (a tela do Agendador
+    em si já roda sem eles; ver §8).
 
 ## 3. Funcionalidades preservadas (nesta fatia)
 
@@ -404,6 +445,46 @@ porque são o tipo de erro fácil de reintroduzir ao converter os módulos que f
     "que parece de teste" (`.exemplo.com`, `.test.com`) — só os TLDs reservados
     (`.invalid`, `.example`, `.test`, `.localhost`, RFC 2606) garantem a falha rápida e
     sem depender de conectividade do ambiente.**
+16. **`salvarConfig` "sobrescreve o registro inteiro" não é intuitivo sem o contexto do
+    Flask** (achado ao escrever o próprio teste de `DisponibilidadeService`): os três
+    serviços de config baseados em arquivo desta migração (`MailerService`,
+    `ImapIntakeService`, `DisponibilidadeService`) espelham fielmente
+    `webapp/mailer.py:salvar_cfg` — TODOS os campos de texto são sobrescritos a cada
+    chamada (menos a senha, que só muda se reenviada não-vazia), porque o Flask original
+    é um formulário HTML que sempre reenvia a tela inteira. Um teste escrito assumindo
+    semântica de PATCH parcial (`salvarConfig({ativo: true})` preservando `host` de uma
+    chamada anterior) falhou — não porque o código estava errado, mas porque a suposição
+    do teste divergia do contrato real. **Lição: ao portar um `salvar_cfg` baseado em
+    formulário Flask, o contrato "reenvio do registro inteiro" é intencional e consistente
+    entre todos os serviços de config desta migração — documentar isso explicitamente no
+    código (não só no teste) evita a mesma suposição errada da próxima vez.**
+17. **`node-oracledb` não tem o "expanding bindparam" do SQLAlchemy**: o contrato do
+    SELECT de disponibilidade (`... IN :tecnicos`, documentado em
+    `webapp/disponibilidade.py`) depende do SQLAlchemy expandir automaticamente um único
+    bind nomeado numa lista de valores (`IN (:tecnicos_1, :tecnicos_2, ...)`). O driver
+    Node não tem esse recurso — implementado à mão em
+    `DisponibilidadeService.expandirTecnicos()`: substitui o token `:tecnicos` (com
+    fronteira de palavra `\b`, para não casar `:tecnicos_outros` por engano) por
+    `(:tecnicos_0, :tecnicos_1, ...)` e monta os binds nomeados correspondentes; lista
+    vazia vira `(NULL)` (nunca casa, em vez de gerar `IN ()`, SQL inválido). Coberto por
+    teste dedicado. **Lição: ao portar uma dependência de um ORM/toolkit maduro (SQLAlchemy)
+    para um driver mais fino (node-oracledb), vale conferir se cada "mágica" do
+    original (binds expansíveis, coerção de tipo, etc.) tem equivalente pronto ou precisa
+    ser reimplementada — não é sempre 1:1.**
+18. **Verificar contra o comportamento real do driver, não só contra a leitura do código
+    Python, quando não dá pra testar contra o sistema externo de verdade**: como não há
+    uma instância Oracle/SICLA acessível neste ambiente, `DisponibilidadeService` foi
+    validado só com `oracledb` mockado (`jest.mock('oracledb', ...)`) — a normalização de
+    linha (`normalizarLinha`, que baixa a caixa de toda chave antes de ler
+    `tecnico`/`data`/`turno`) é uma decisão defensiva, não uma certeza: o código Python
+    original tem uma inconsistência real entre `consultar()` (lê chaves em minúsculo,
+    confiando que o dialeto SQLAlchemy do Oracle já normaliza) e
+    `routes_dashboards.py` (que uppercasa defensivamente antes de ler, não confiando no
+    driver) — os dois `.get()` diferentes sugerem que nem o autor original tinha certeza
+    do case exato devolvido. **Lição, registrada explicitamente para quem for validar
+    esta fatia contra o SICLA de verdade: a normalização de case dos nomes de coluna
+    pode precisar de ajuste depois do primeiro teste manual contra um Oracle real — não
+    foi (nem podia ser) validada nesta sessão.**
 
 ## 7. Vulnerabilidades / débitos de segurança do sistema atual, tratados na conversão
 
@@ -420,12 +501,16 @@ porque são o tipo de erro fácil de reintroduzir ao converter os módulos que f
 Ordem sugerida para dar sequência (cada um segue o mesmo padrão: entidade TypeORM →
 service → controller → tela Angular → testes):
 
-1. ~~Agendador de Visitas~~ — **convertido** (ver §2). Duas lacunas propositais dentro dele,
-   ambas registradas e não escondidas:
-   - **Disponibilidade externa (SICLA/Oracle)** não é consultada pela distribuição
-     automática nem pelo indicador visual do calendário ainda — depende do item 4 abaixo
-     (mesma conexão Oracle usada por Consultas BD/Dashboards). O algoritmo já tem o ponto de
-     extensão comentado em `distribuicao.service.ts`.
+1. ~~Agendador de Visitas~~ — **convertido** (ver §2). A lacuna de **disponibilidade
+   externa (SICLA/Oracle) na distribuição automática foi fechada no item 6** (ver abaixo)
+   — `DistribuicaoService` agora consulta o SICLA. Duas lacunas propositais menores
+   continuam:
+   - **Guard manual + indicador visual do calendário**: a distribuição AUTOMÁTICA já
+     respeita o SICLA; falta portar `_slot_indisponivel` (bloqueia arrastar manualmente
+     para um slot ocupado no SICLA) e o cálculo de `bloqueados` do `projeto_agenda`
+     (células cinza no calendário) — puramente cosméticos/de guarda adicional, a tela já
+     funciona sem eles (o pior caso é o usuário alocar manualmente por cima de um
+     compromisso externo, sem aviso).
    - **Sem arrastar-e-soltar** na tela Angular — a interação foi simplificada para
      formulários de data/turno por visita (mesma capacidade funcional: alocar, mover,
      desalocar), mais simples de implementar corretamente sob prazo e mais acessível por
@@ -461,8 +546,14 @@ service → controller → tela Angular → testes):
    designado — essa tela do fluxo de Designação ainda não existe no NestJS, item 8 desta
    lista é só o CRUD de usuários, não essa tela); `fluxo_criar` não gera automaticamente o
    pacote de documentos + e-mail-resumo com anexos (só cria o projeto e notifica).
-6. **Disponibilidade externa/Consultas BD/Dashboards** (conexão Oracle configurável,
-   `oracledb` tem binding Node oficial) — não convertido; destrava a lacuna do item 1.
+6. ~~Disponibilidade externa/Consultas BD/Dashboards~~ — **convertido**: conexão Oracle
+   (`oracledb`, modo thin) + Consultas BD (CRUD + seed) + Dashboards (**motor genérico**,
+   decisão tomada com o usuário — ver §2) + a checagem de disponibilidade externa ligada
+   à distribuição automática do Agendador, fechando a lacuna do item 1. Lacunas
+   propositais: o guard manual de alocação e o indicador visual do calendário (ver item 1
+   acima); e os outros dialetos que o Flask suportava genericamente (postgresql/mysql/
+   sqlserver via SQLAlchemy) não têm equivalente Node implementado — só Oracle, o único
+   realmente usado neste sistema (SICLA).
 7. **Matriz de Conhecimento** e **telas executivas** (`routes_painel.py`) — não convertidos.
 8. **Usuários** (`/usuarios`, CRUD completo), **auto-cadastro com código por e-mail** e a
    tela de **Designação** (GCI/consultor por projeto, `routes_designacao.py`) —
@@ -553,7 +644,7 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
 ## 12. Como validar esta entrega
 
 1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo,
-   169/169 testes passando (109 unitários + 60 e2e), incluindo as suítes dedicadas do
+   224/224 testes passando (151 unitários + 73 e2e), incluindo as suítes dedicadas do
    Agendador de Visitas (`test/cronograma.e2e-spec.ts`, com o teste do endpoint
    `/agenda/gerar` usando um fake do serviço Python), de Cadastros
    (`test/cadastros.e2e-spec.ts`), de Geração de documentos fiéis
@@ -564,12 +655,17 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
    streaming do vídeo), de E-mail/Fluxo (`test/email-fluxo.e2e-spec.ts` — Config→E-mail/
    IMAP/Gmail com controle de acesso ADM-only, upload de credencial OAuth, callback
    público do Gmail, CRUD dos 7 modelos padrão, fluxo completo parse→criar com dedup por
-   CNPJ, e a notificação automática de `encerrado` ao mudar a situação do projeto) e o
-   teste unitário de `ProjetosService.excluir()` que garante a limpeza dos 5 módulos com
-   dado por-projeto (Cronograma, Designações, Levantamento-resposta, DocConteudo,
-   Documentos/Eventos — ver §6 item 9). Suíte e2e validada estável em múltiplas execuções
-   consecutivas (inclusive repetindo cada spec novo isoladamente, para pegar corridas de
-   estado entre execuções — ver §6 itens 10 e 15).
+   CNPJ, e a notificação automática de `encerrado` ao mudar a situação do projeto), de
+   Disponibilidade/Consultas BD/Dashboards (`test/disponibilidade-dashboards.e2e-spec.ts`
+   — Oracle mockado na fronteira de rede (`jest.mock('oracledb', ...)`), controle de
+   acesso ADM-only/gestão, CRUD de consultas nomeadas, motor de dashboard genérico rodando
+   de ponta a ponta) e testes unitários dedicados de `DistribuicaoService` para a nova
+   checagem de disponibilidade externa (modo conjunta/individual, fail-open em falha de
+   conexão) e o teste unitário de `ProjetosService.excluir()` que garante a limpeza dos 5
+   módulos com dado por-projeto (Cronograma, Designações, Levantamento-resposta,
+   DocConteudo, Documentos/Eventos — ver §6 item 9). Suíte e2e validada estável em
+   múltiplas execuções consecutivas (inclusive repetindo cada spec novo isoladamente, para
+   pegar corridas de estado entre execuções — ver §6 itens 10 e 15).
 2. `cd frontend && npm run build && npm test` — build limpo, 6/6 testes passando.
 3. `cd docservice && set PYTHONUTF8=1 && .venv\Scripts\python -m pytest tests/ -v` — 14/14
    testes passando: os 4 do cronograma de visitas (checagem estrita de caractere, não só
@@ -610,4 +706,15 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
    produção**: validar manualmente o envio SMTP com uma conta real (Gmail/Outlook exigem
    senha de app), a leitura IMAP com um e-mail de fechamento de teste, e o fluxo OAuth do
    Gmail ponta a ponta (upload do client "Aplicativo da Web", autorizar, callback,
-   enviar).
+   enviar). **Disponibilidade externa/Consultas BD/Dashboards: nenhuma consulta rodou
+   contra um Oracle/SICLA real nesta sessão** — não há instância acessível neste
+   ambiente. Todos os testes (unitários e e2e) mockam `oracledb.getConnection` na
+   fronteira de rede; a orquestração (config em disco, expansão de `:tecnicos`,
+   tradução de erro DPY-3015/DPI-1047, cache com TTL, motor de dashboard) foi validada de
+   ponta a ponta contra esse mock, mas **a normalização de case das colunas devolvidas
+   pelo driver real (ver §6 item 18) e os textos exatos de erro do `oracledb` Node
+   (DPY-3015 é um código do driver Python — o Node pode usar prefixos diferentes, ver
+   comentário em `DisponibilidadeService.mensagemErro`) não puderam ser confirmados.**
+   Antes de usar em produção: rodar `testar()` (Config → Disponibilidade) contra o SICLA
+   de verdade e ajustar `mensagemErro`/`normalizarLinha` conforme o comportamento real
+   observado.

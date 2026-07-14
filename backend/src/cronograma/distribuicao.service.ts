@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Projeto } from '../database/entities/projeto.entity';
@@ -17,6 +17,8 @@ import {
   toIso,
   weekdaySegunda0,
 } from './datas.util';
+import { UsersService } from '../users/users.service';
+import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
 
 export interface ResultadoDistribuicao {
   ok: boolean;
@@ -43,18 +45,19 @@ function modulosSemTecnicoValido(
 }
 
 /** Distribuição automática de agendas conforme datas livres — o coração do Agendador de
- * Visitas. Espelha webapp/routes_agenda.py:_distribuir_automatico linha a linha.
- *
- * PENDÊNCIA (item 5 da migração): a checagem de disponibilidade externa (SICLA/Oracle) ainda
- * não foi convertida — por ora a distribuição só considera compromissos já registrados NESTE
- * cronograma, períodos sem agenda do projeto e dias/turnos excluídos. Ver
- * docs/migracao/03-documento-conversao.md. */
+ * Visitas. Espelha webapp/routes_agenda.py:_distribuir_automatico linha a linha,
+ * incluindo a checagem de disponibilidade externa (SICLA/Oracle, item 6 da migração —
+ * fechada a pendência que existia aqui). */
 @Injectable()
 export class DistribuicaoService {
+  private readonly logger = new Logger('DistribuicaoService');
+
   constructor(
     private readonly cronograma: CronogramaService,
     private readonly designacoes: DesignacoesService,
     @InjectRepository(Projeto) private readonly projetos: Repository<Projeto>,
+    private readonly users: UsersService,
+    private readonly disponibilidade: DisponibilidadeService,
   ) {}
 
   async distribuirAutomatico(
@@ -194,8 +197,48 @@ export class DistribuicaoService {
       return false;
     };
 
-    // PENDÊNCIA item 5: disponibilidade externa (SICLA/Oracle) não é consultada aqui ainda —
-    // `modo` (conjunta/individual) só afeta a ocupação já registrada neste cronograma.
+    // Disponibilidade externa (SICLA/Oracle) — `cods` traduz nome -> código SICLA
+    // ("" se o usuário não tem um cadastrado); consulta única para toda a janela (~18
+    // meses), com cache de 180s (mesma consulta reaproveitada pela tela do calendário).
+    // Fail-open: qualquer falha na conexão externa apenas loga e segue sem bloquear pela
+    // disponibilidade externa (a distribuição não pode travar por causa de um sistema
+    // que este time não opera). Espelha webapp/routes_agenda.py:_distribuir_automatico.
+    const cods = await this.users.codigosSiclaPorNome(tecnicosValidos);
+    const todosCods = [
+      ...new Set(
+        tecnicosValidos
+          .map((t) => (cods[t.toLowerCase()] || '').trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    ].sort();
+    let ocupExt: Record<string, boolean> = {};
+    if (this.disponibilidade.configurado() && todosCods.length > 0) {
+      try {
+        ocupExt = await this.disponibilidade.ocupacaoPorSlotCache(
+          toIso(inicio),
+          toIso(fim),
+          todosCods,
+        );
+      } catch (e) {
+        this.logger.error(
+          'Falha ao consultar disponibilidade na distribuição automática',
+          e instanceof Error ? e.stack : String(e),
+        );
+      }
+    }
+    const codDe = (tec: string): string => {
+      const c = (cods[tec.trim().toLowerCase()] || '').trim();
+      return c ? c.toLowerCase() : tec.trim().toLowerCase();
+    };
+    // 'conjunta' (em grupo): bloqueia p/ TODOS se QUALQUER técnico do projeto estiver
+    // ocupado; 'individual': só olha a própria agenda do técnico da visita.
+    const bloqueadoExt = (cod: string, iso: string, turno: string): boolean => {
+      if (modo === 'conjunta') {
+        return todosCods.some((c) => ocupExt[`${c}|${iso}|${turno}`]);
+      }
+      return Boolean(ocupExt[`${cod}|${iso}|${turno}`]);
+    };
+
     const ocupado = new Map<string, boolean>();
     for (const a of ats) {
       const t = (a.tecnico || '').trim();
@@ -213,6 +256,7 @@ export class DistribuicaoService {
     const semSlot: string[] = [];
     for (const g of alvo) {
       const tec = (tech.get(g.modulo) || '').trim();
+      const cod = codDe(tec);
       let slot: { iso: string; turno: string } | null = null;
       for (const d of dias) {
         const iso = toIso(d);
@@ -221,7 +265,8 @@ export class DistribuicaoService {
           if (excluiSet.has(`${weekdaySegunda0(d)}|${turno}`)) continue;
           if (
             ocupado.get(`${tec}|${iso}|${turno}`) ||
-            ocupadoConjunta(iso, turno)
+            ocupadoConjunta(iso, turno) ||
+            bloqueadoExt(cod, iso, turno)
           )
             continue;
           slot = { iso, turno };

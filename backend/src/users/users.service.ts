@@ -22,6 +22,24 @@ export class UsersService {
     return this.repo.find({ where: { perfil, ativo: true } });
   }
 
+  /** `{nomeLower: codigoSicla}` dos usuários ativos (restringe a `nomes` se informado) — o
+   * elo entre um técnico/consultor deste sistema e a agenda de disponibilidade externa
+   * (SICLA/Oracle). Espelha webapp/db.py:codigos_sicla_por_nome. */
+  async codigosSiclaPorNome(nomes?: string[]): Promise<Record<string, string>> {
+    const alvo = new Set(
+      (nomes ?? []).map((n) => (n || '').trim().toLowerCase()).filter(Boolean),
+    );
+    const usuarios = await this.repo.find({ where: { ativo: true } });
+    const out: Record<string, string> = {};
+    for (const u of usuarios) {
+      const nl = (u.nome || '').trim().toLowerCase();
+      if (nl && (alvo.size === 0 || alvo.has(nl))) {
+        out[nl] = (u.codigoSicla || '').trim();
+      }
+    }
+    return out;
+  }
+
   async contarAtivos(): Promise<number> {
     return this.repo.count({ where: { ativo: true } });
   }

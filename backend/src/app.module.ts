@@ -14,6 +14,7 @@ import { IaModule } from './ia/ia.module';
 import { ProtocolosModule } from './protocolos/protocolos.module';
 import { EmailModule } from './email/email.module';
 import { FluxoModule } from './fluxo/fluxo.module';
+import { DisponibilidadeModule } from './disponibilidade/disponibilidade.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { FluxoModule } from './fluxo/fluxo.module';
     ProtocolosModule,
     EmailModule,
     FluxoModule,
+    DisponibilidadeModule,
   ],
 })
 export class AppModule {}
