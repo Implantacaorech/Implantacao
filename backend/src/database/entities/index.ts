@@ -21,6 +21,9 @@ import { ConsultaBD } from './consulta-bd.entity';
 import { MatrizCompetencia } from './matriz-competencia.entity';
 import { MatrizTecnico } from './matriz-tecnico.entity';
 import { CadastroPendente } from './cadastro-pendente.entity';
+import { CronogramaItem } from './cronograma-item.entity';
+import { ChecklistItem } from './checklist-item.entity';
+import { Modificacao } from './modificacao.entity';
 
 export * from './usuario.entity';
 export * from './projeto.entity';
@@ -45,6 +48,9 @@ export * from './consulta-bd.entity';
 export * from './matriz-competencia.entity';
 export * from './matriz-tecnico.entity';
 export * from './cadastro-pendente.entity';
+export * from './cronograma-item.entity';
+export * from './checklist-item.entity';
+export * from './modificacao.entity';
 
 // Lista única usada por DatabaseModule (runtime) e AppDataSource (CLI de migrations) —
 // evita as duas listas divergirem conforme novas entidades são adicionadas.
@@ -72,4 +78,7 @@ export const ENTITIES = [
   MatrizCompetencia,
   MatrizTecnico,
   CadastroPendente,
+  CronogramaItem,
+  ChecklistItem,
+  Modificacao,
 ];

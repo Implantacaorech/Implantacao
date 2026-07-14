@@ -20,6 +20,7 @@ import { PainelModule } from './painel/painel.module';
 import { CadastroModule } from './cadastro/cadastro.module';
 import { DesignacaoModule } from './designacao/designacao.module';
 import { DigestModule } from './digest/digest.module';
+import { PlanoCronogramaModule } from './plano-cronograma/plano-cronograma.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { DigestModule } from './digest/digest.module';
     CadastroModule,
     DesignacaoModule,
     DigestModule,
+    PlanoCronogramaModule,
   ],
 })
 export class AppModule {}

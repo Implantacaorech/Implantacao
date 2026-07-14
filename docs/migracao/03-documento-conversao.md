@@ -14,13 +14,16 @@ checagem de disponibilidade externa agora ligada à distribuição automática d
 fecha a última lacuna documentada do item 1) e a **Matriz de Conhecimento + telas
 executivas** (skill matrix técnico×competência com importador de planilha, motor de
 métricas/gates/alertas novo — pré-requisito descoberto nesta fatia, não só das telas —, e
-os painéis de Capacidade da equipe/Coordenação/Atividade/Home; **Monitoramento
-Operacional ficou de fora**, ver §8) os **Usuários (CRUD) + auto-cadastro por e-mail +
-tela de Designação** (GCI/consultor por projeto, com os 2 gates de permissão distintos do
-processo real preservados fielmente) e os **Jobs agendados** (resumo diário da
-Coordenação por e-mail, com botão de envio manual — os robôs de protocolos e da caixa de
-entrada já tinham sido convertidos nos itens 4 e 5) convertidos ponta a ponta, com o
-padrão replicável documentado para o restante. Ver honestidade de escopo em
+os painéis de Capacidade da equipe/Coordenação/Atividade/Home), os **Usuários (CRUD) +
+auto-cadastro por e-mail + tela de Designação** (GCI/consultor por projeto, com os 2
+gates de permissão distintos do processo real preservados fielmente), os **Jobs
+agendados** (resumo diário da Coordenação por e-mail, com botão de envio manual — os
+robôs de protocolos e da caixa de entrada já tinham sido convertidos nos itens 4 e 5) e as
+**linhas editáveis do Cronograma/Check List** (`CronogramaItem`/`ChecklistItem`/
+`Modificacao` — histórico de alterações, plano automático e roteiro por módulo; pré-
+requisito para o Monitoramento Operacional, ainda o único item pendente, ver §8)
+convertidos ponta a ponta, com o padrão replicável documentado para o restante. Ver
+honestidade de escopo em
 [02-decisao-arquitetura.md](02-decisao-arquitetura.md#escopo-desta-fase-da-migração-honestidade-de-escopo).
 
 ## 1. Tecnologia anterior → nova
@@ -338,6 +341,54 @@ Python mantido só para geração de documentos e transcrição) em
     `POST /painel/coordenacao/digest` (gate `PERFIS_GESTAO`, mesmo do resto do
     Painel) — substitui o `?digest=` por querystring do Flask (padrão PRG que não faz
     sentido numa API JSON) por uma resposta direta `{ok, mensagem}`.
+- **Linhas editáveis do Cronograma/Check List** (`backend/src/plano-cronograma/*`) —
+  equivalente a `webapp/routes_cronograma.py` + a fatia de `webapp/db.py` de
+  `CronogramaItem`/`ChecklistItem`/`Modificacao`/`salvar_linhas`/`registrar_modificacao`.
+  **Pré-requisito para o Monitoramento Operacional** (único item pendente, ver §8) —
+  construído a pedido explícito do usuário depois de fechar o restante do backlog
+  original. **Não confundir com `backend/src/cronograma/*`** (o Agendador de Visitas,
+  item 1 — motor de AGENDAMENTO de visitas técnicas); esta fatia são as linhas do
+  DOCUMENTO Cronograma/Check List, editáveis manualmente durante a implantação, com
+  status por linha — por isso o módulo novo vive em `plano-cronograma/` (mesmo prefixo
+  "plano" dos templates Flask `plano_cronograma.html`/`plano_checklist.html`, escolhido
+  de propósito para não colidir com o nome do módulo já existente).
+  - `CronogramaItensService`/`ChecklistItensService`: CRUD "apaga tudo e reinsere" por
+    projeto (`salvar`), com histórico de diffs em `Modificacao`
+    (`ModificacoesService`) — a comparação é **posicional** (linha 1 vs linha 1, linha 2
+    vs linha 2...), igual ao Flask original; **preservada de propósito uma limitação
+    conhecida**: inserir/remover uma linha no meio do plano faz todas as linhas
+    seguintes aparecerem como "todo campo mudou" no histórico, em vez de detectar um
+    deslocamento (documentado em `linhas-diff.util.ts`).
+  - `CronogramaItensService.gerarPlanoAutomatico`: porta fielmente
+    `tools/gerar_cronograma.py:_plano_automatico/_distribuir` (plano padrão de 8+
+    etapas, horas distribuídas pelo método do maior resto, datas em dias úteis a cada 5
+    dias a partir de `data_inicio`) + `tools/catalogo.py:resolve` (resolução de
+    módulo→descrição via `tools/data/catalogo_modulos.yaml`, dado local não versionado,
+    mesma convenção de `checklist_modulos.yaml`).
+  - `ChecklistItensService.gerarRoteiroDoCatalogo`: **diferença deliberada do Flask
+    original** — semeia a partir do catálogo `ChecklistModelo` já portado (Cadastros →
+    Check List) em vez de reler `tools/data/checklist_modulos.yaml` diretamente. No
+    Flask, essas duas fontes DIVERGEM (edições no catálogo do ADM nunca chegavam ao
+    seed por-projeto nem ao gerador do documento) — bug real encontrado durante a
+    pesquisa desta fatia, corrigido no port ao unificar a fonte.
+  - Endpoints (todos sob `/projetos/:id`): `GET/POST cronograma`, `POST
+    cronograma/seed`, `GET/POST checklist`, `POST checklist/seed`. **Gate aplicado a
+    TODAS as rotas, diferente do Flask original**: lá, só a rota de geração do
+    documento (não portada nesta fatia, ver abaixo) tinha `pode_gerar("cronograma")` —
+    as rotas de edição/seed não tinham NENHUM controle de acesso além do login estar
+    ativo. Deixar escrita sem gate de perfil não é comportamento a preservar por
+    fidelidade; aplicado `PERFIS_GERA_CRONOGRAMA` (mesmo grupo do Flask) a todas.
+  - **Escopo explicitamente cortado nesta fatia**: a GERAÇÃO do documento Cronograma
+    (`.docx`, botão "Gerar documento" da tela Flask) não foi portada — a pesquisa
+    revelou que o Flask original tem **três caminhos de geração concorrentes**
+    (`tools/gerar_cronograma.py` gerando `.docx` a partir das linhas editadas;
+    `gl_xlsx.py` preenchendo um `.xlsx` a partir das MESMAS linhas via um slug de
+    documento diferente; e `runner.py` recomputando um plano do zero, ignorando
+    qualquer edição, para o botão de "gerar pendentes" em lote) e que a geração do
+    Check List **não lê `ChecklistItem` de jeito nenhum** — usa só o catálogo estático.
+    O Monitoramento Operacional (próximo item) só precisa das LINHAS, não do
+    documento gerado, então esse trabalho de geração fica registrado como pendência
+    própria, não bloqueando a sequência atual.
 
 ## 3. Funcionalidades preservadas (nesta fatia)
 
@@ -641,6 +692,20 @@ porque são o tipo de erro fácil de reintroduzir ao converter os módulos que f
     nunca confiar em agrupamento automático; e lembrar que testes unitários com
     `QueryBuilder` mockado não substituem um teste de integração real para esse tipo de
     bug de precedência SQL.**
+21. **Duas fontes de verdade divergentes para o roteiro de Check List por módulo,
+    encontradas ao pesquisar `routes_cronograma.py`**: o catálogo `ChecklistModelo`
+    (tabela, editável pelo ADM em Cadastros → Check List, já portado num item anterior)
+    é semeado UMA VEZ a partir de `tools/data/checklist_modulos.yaml`, mas tanto o seed
+    do Check List por-projeto (`_seed_checklist`) quanto o gerador do documento Check
+    List (`tools/gerar_checklist_consultor.py`) releem o MESMO arquivo YAML
+    diretamente, **nunca** passando pelo catálogo em banco — uma edição do ADM no
+    catálogo simplesmente não tem efeito nenhum em nenhum dos dois. **Lição: ao portar
+    um catálogo "fonte única" que na verdade tem consumidores lendo de origens
+    diferentes (banco vs. arquivo), decidir explicitamente qual vira a fonte real no
+    port — aqui, `ChecklistItensService.gerarRoteiroDoCatalogo` foi escrito para ler do
+    `ChecklistModeloService` (banco), corrigindo a divergência em vez de replicá-la; a
+    escolha foi documentada explicitamente (§2) para não parecer um desvio silencioso
+    de comportamento.**
 
 ## 7. Vulnerabilidades / débitos de segurança do sistema atual, tratados na conversão
 
@@ -651,6 +716,13 @@ porque são o tipo de erro fácil de reintroduzir ao converter os módulos que f
   backend — todo login é usuário/senha real, com bcrypt (custo 12).
 - Refresh tokens são **hasheados (SHA-256) antes de persistir** e podem ser revogados
   individualmente (logout real, não só descarte no cliente).
+- **Rotas de edição/seed do Cronograma/Check List sem NENHUM controle de acesso** no
+  Flask original (`webapp/routes_cronograma.py` — só a rota de geração de documento
+  checava `pode_gerar`; editar/apagar as linhas de qualquer projeto exigia só estar
+  logado, perfil nenhum) — no port, todas as rotas de
+  `backend/src/plano-cronograma/*` exigem `PERFIS_GERA_CRONOGRAMA` (ADM/Coordenador/
+  Administrativo/Consultor), o mesmo grupo que já gatava a geração do documento no
+  original.
 
 ## 8. Pendências reais (não convertido ainda — priorizado)
 
@@ -741,23 +813,24 @@ service → controller → tela Angular → testes):
    também portado (`POST /painel/coordenacao/digest`). Ver §2.
 10. **Monitoramento Operacional** (`webapp/routes_painel.py:monitoramento`) — **não
     convertido; descoberto e escopado durante o item 7, decidido com o usuário adiar em
-    vez de expandir aquela fatia**. Bloqueio real: a tela infere 8 "setores" (Comercial/
+    vez de expandir aquela fatia**. A tela infere 8 "setores" (Comercial/
     Administrativo/Coordenação/GCI/Consultoria/Implantação/Suporte/Desenvolvimento), um
     score de saúde 0-100 e a carga por colaborador a partir de `CronogramaItem`/
     `ChecklistItem`/`Modificacao` — as linhas EDITÁVEIS (com status Previsto/Concluído/
-    Cancelado por linha) dos documentos Cronograma e Check List, geradas depois que esses
-    documentos são criados e editadas durante a implantação. **Esse é um subsistema
-    inteiro (tabelas + CRUD + regras) que nunca foi portado**, diferente e não confundir
-    com o Agendador de Visitas (item 1, já convertido — aquele é `AtividadeCronograma`/
-    `SlotCronograma`, o motor de AGENDAMENTO de visitas técnicas; `CronogramaItem`/
-    `ChecklistItem` são as linhas do DOCUMENTO gerado, com acompanhamento manual de
-    status). Pré-requisitos para converter esta tela, nesta ordem: (a) portar
-    `CronogramaItem`/`ChecklistItem`/`Modificacao` (entidades + CRUD + histórico de
-    edição linha-a-linha) — provavelmente maior que o resto do item 7 somado; (b) só então
-    portar `_monitoramento_operacional` (a função mais complexa de `routes_painel.py`:
-    infere estado de cada setor a partir de contagens/keywords, calcula `saude`,
-    `carga_colab`, `entregas`, `mapa` de progresso). Reaproveita `MetricasService`
-    (`metricas`/`alertas`/`gate_status`) e `soMeus`, já prontos.
+    Cancelado por linha) dos documentos Cronograma e Check List. **Pré-requisito (a) já
+    convertido** (`backend/src/plano-cronograma/*`, ver §2) — a pedido do usuário, feito
+    de propósito depois de fechar o restante do backlog original. **Falta só (b): portar
+    `_monitoramento_operacional`** (a função mais complexa de `routes_painel.py`: infere
+    estado de cada setor a partir de contagens/keywords, calcula `saude`, `carga_colab`,
+    `entregas`, `mapa` de progresso). Reaproveita `MetricasService`
+    (`metricas`/`alertas`/`gate_status`), `soMeus` e agora também
+    `CronogramaItensService`/`ChecklistItensService`, já prontos.
+11. **Geração dos documentos Cronograma/Check List** (`.docx`/`.xlsx`, a partir das linhas
+    de `CronogramaItem`/`ChecklistItem` ou do catálogo) — cortado de propósito do escopo
+    do item 10 (ver §2): o Flask original tem 3 caminhos de geração concorrentes para o
+    Cronograma e a geração do Check List não lê `ChecklistItem` de jeito nenhum (usa só
+    o catálogo estático) — um emaranhado que merece sua própria decisão de escopo antes
+    de portar, não um efeito colateral de desbloquear o Monitoramento.
 
 ## 9. Incompatibilidades / decisões de portabilidade
 
@@ -837,7 +910,7 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
 ## 12. Como validar esta entrega
 
 1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo,
-   372/372 testes passando (253 unitários + 119 e2e), incluindo as suítes dedicadas do
+   409/409 testes passando (282 unitários + 127 e2e), incluindo as suítes dedicadas do
    Agendador de Visitas (`test/cronograma.e2e-spec.ts`, com o teste do endpoint
    `/agenda/gerar` usando um fake do serviço Python), de Cadastros
    (`test/cadastros.e2e-spec.ts`), de Geração de documentos fiéis
@@ -872,8 +945,15 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
    `overrideProvider`, mesmo padrão já usado em `protocolos.e2e-spec.ts`), de
    `DigestService`/`RoboDigestService` (parsing de destinatários, corpo do resumo com/sem
    alertas, hora configurável, "só uma vez por dia", e o endpoint manual coberto em
-   `test/painel.e2e-spec.ts`) e o teste unitário de `ProjetosService.excluir()` que
-   garante a limpeza dos 5 módulos com dado por-projeto (Cronograma, Designações,
+   `test/painel.e2e-spec.ts`), das linhas editáveis de Cronograma/Check List
+   (`test/plano-cronograma.e2e-spec.ts` — gate único aplicado a todas as rotas, seed do
+   plano automático com datas em dias úteis reais, seed do roteiro a partir do catálogo
+   `ChecklistModelo`, histórico de diffs acumulado entre seed e edição; unitários
+   dedicados de `linhas-diff.util` — incluindo um teste que documenta a quirk da
+   comparação posicional preservada de propósito —, `catalogo-modulos.util`,
+   `datas-plano.util` e do algoritmo `_distribuir`/`_plano_automatico` em
+   `cronograma-itens.service.spec.ts`) e o teste unitário de `ProjetosService.excluir()`
+   que garante a limpeza dos 5 módulos com dado por-projeto (Cronograma, Designações,
    Levantamento-resposta, DocConteudo, Documentos/Eventos — ver §6 item 9). Suíte e2e
    validada estável em múltiplas execuções consecutivas (inclusive repetindo cada spec
    novo isoladamente, para pegar corridas de
@@ -945,4 +1025,11 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
    (nenhuma instância de e-mail real disponível neste ambiente). A geração do código de
    6 dígitos, sua expiração/lockout e o texto de cada e-mail foram validados; o envio de
    verdade (chegou na caixa de entrada, formatação correta em clientes de e-mail reais)
-   não foi.
+   não foi. **Linhas editáveis do Cronograma/Check List: `gerarPlanoAutomatico` foi
+   validado com datas reais** (2026-08-10 é segunda-feira; testes conferem os +5 dias
+   úteis exatos) **e contra o arquivo real `tools/data/catalogo_modulos.yaml`** (mesma
+   estrutura `{codigo, abrev, descricao, area}` usada em produção); o seed do Check List
+   foi validado contra o catálogo `ChecklistModelo` (banco), não contra o
+   `checklist_modulos.yaml` bruto — ver a divergência de fontes documentada no §6 item
+   21. Nenhuma linha foi gerada/testada contra um projeto real de produção nesta sessão
+   — só dados sintéticos de teste.
