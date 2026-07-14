@@ -97,7 +97,20 @@ export class ModeloDocumentoService implements OnModuleInit {
   }
 
   private store(): string {
-    const dir = join(process.cwd(), 'dados', 'modelos_documento');
+    // Em teste, cada arquivo *.e2e-spec.ts roda num processo Jest separado, mas todos
+    // compartilham este mesmo caminho real em disco (ao contrário do SQLite ':memory:',
+    // que já é isolado por processo) — dois specs chamando seedDefaults() em paralelo
+    // colidiam no mesmo `levantamento_v1.docx` e o copyFileSync falhava com EBUSY no
+    // Windows. Isolado por JEST_WORKER_ID para eliminar a corrida.
+    const dir =
+      process.env.NODE_ENV === 'test'
+        ? join(
+            process.cwd(),
+            'dados',
+            'modelos_documento_test',
+            process.env.JEST_WORKER_ID ?? '0',
+          )
+        : join(process.cwd(), 'dados', 'modelos_documento');
     mkdirSync(dir, { recursive: true });
     return dir;
   }

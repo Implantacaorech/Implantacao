@@ -437,8 +437,7 @@ export class CronogramaController {
     summary:
       'Gera o cronograma de visitas (.xlsx) a partir das alocações — equivalente a ' +
       'webapp/routes_agenda.py:projeto_agenda_gerar. Chama o serviço interno de geração ' +
-      '(docservice/). Pendência: ainda não anexa um Documento/Evento ao projeto (essa ' +
-      'infraestrutura ainda não foi convertida — ver docs/migracao/03-documento-conversao.md).',
+      '(docservice/) e anexa o arquivo ao projeto (Documento + Evento).',
   })
   async gerar(
     @Param('projetoId', ParseIntPipe) projetoId: number,

@@ -4,17 +4,17 @@ pela API NestJS via HTTP (localhost). Reaproveita a lógica de preenchimento fie
 existente em webapp/gl_*.py (copiada para gerador/, não importada — ver
 docs/migracao/02-decisao-arquitetura.md, "Arquitetura híbrida").
 
-Escopo desta fatia (item 3 da migração): só o cronograma de visitas do Agendador
-(`gerar_agenda_xlsx`). Levantamento/Projeto/Termo (.docx, com blocos condicionais por
-módulo contratado) ficam para a próxima fatia — são substancialmente mais complexos e
-não bloqueiam o Agendador de Visitas já convertido.
+Cobre o cronograma de visitas do Agendador (`gerar_agenda_xlsx`) e os três documentos
+.docx fiéis (Levantamento, Projeto, Termo — `gerar_docx`), com blocos condicionais por
+módulo contratado.
 """
+import base64
 import os
 import sys
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
 if not sys.flags.utf8_mode:
@@ -38,6 +38,7 @@ if not sys.flags.utf8_mode:
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "gerador"))
 import db as db_shim  # noqa: E402
 from gl_xlsx import gerar_agenda_xlsx  # noqa: E402
+from gerar_fiel import gerar_docx  # noqa: E402
 
 app = FastAPI(
     title="Painel de Implantação — Serviço de Geração de Documentos",
@@ -142,4 +143,105 @@ def gerar_cronograma_visitas(req: GerarCronogramaVisitasRequest):
         caminho,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         filename=nome,
+    )
+
+
+class ProjetoDocxDto(BaseModel):
+    id: int
+    cliente: str = ""
+    cnpj: str = ""
+    ramo: str = ""
+    gci: str = ""
+    consultor: str = ""
+    modulos: str = ""
+    numeroProjeto: str = ""
+    dataLevantamento: str = ""
+    dataEncerramento: str = ""
+    horasCobradas: str = ""
+    horasBonificadas: str = ""
+    observacoes: str = ""
+
+
+class IndiceModuloDto(BaseModel):
+    sigla: str
+    nome: str = ""
+
+
+class IndiceTopicoDto(BaseModel):
+    moduloSigla: str = ""
+    topico: str = ""
+    adicional: str = ""
+
+
+class LevantamentoRespostaDto(BaseModel):
+    moduloSigla: str = ""
+    topico: str = ""
+    resposta: str = ""
+
+
+class GerarDocumentoFielRequest(BaseModel):
+    slug: str            # "levantamento" | "projeto" | "termo"
+    modo: str = "auto"    # "modelo" só se aplica ao Projeto (guia de preenchimento manual)
+    modeloBase64: str     # bytes do template (.docx) vigente, já lido pelo NestJS
+    projeto: ProjetoDocxDto
+    docConteudo: Dict[str, str] = {}
+    indiceModulos: List[IndiceModuloDto] = []
+    indiceTopicos: List[IndiceTopicoDto] = []
+    levantamentoRespostas: List[LevantamentoRespostaDto] = []
+
+
+_SLUGS_DOCX = ("levantamento", "projeto", "termo")
+
+
+@app.post("/gerar/documento-fiel")
+def gerar_documento_fiel(req: GerarDocumentoFielRequest):
+    """Gera o Levantamento, Projeto ou Termo (.docx) pelo layout fiel vigente — equivalente
+    a webapp/routes_geracao.py:projeto_gerar_layout / gerar_layout.gerar(). Devolve o
+    arquivo binário."""
+    if req.slug not in _SLUGS_DOCX:
+        raise HTTPException(status_code=422, detail="slug inválido — use levantamento, projeto ou termo.")
+    try:
+        base_bytes = base64.b64decode(req.modeloBase64)
+    except Exception as e:
+        raise HTTPException(status_code=422, detail="modeloBase64 inválido.") from e
+
+    projeto = {
+        "id": req.projeto.id,
+        "cliente": req.projeto.cliente,
+        "cnpj": req.projeto.cnpj,
+        "ramo": req.projeto.ramo,
+        "gci": req.projeto.gci,
+        "consultor": req.projeto.consultor,
+        "modulos": req.projeto.modulos,
+        "numero_projeto": req.projeto.numeroProjeto,
+        "data_levantamento": req.projeto.dataLevantamento,
+        "data_encerramento": req.projeto.dataEncerramento,
+        "horas_cobradas": req.projeto.horasCobradas,
+        "horas_bonificadas": req.projeto.horasBonificadas,
+        "observacoes": req.projeto.observacoes,
+    }
+    db_shim.definir_contexto(
+        {
+            "doc_conteudo": req.docConteudo,
+            "indice_modulos": [{"sigla": m.sigla, "nome": m.nome} for m in req.indiceModulos],
+            "indice_topicos": [
+                {"modulo_sigla": t.moduloSigla, "topico": t.topico, "adicional": t.adicional}
+                for t in req.indiceTopicos
+            ],
+            "levantamento_respostas": [
+                {"modulo_sigla": r.moduloSigla, "topico": r.topico, "resposta": r.resposta}
+                for r in req.levantamentoRespostas
+            ],
+        }
+    )
+
+    try:
+        conteudo = gerar_docx(req.slug, projeto, base_bytes, modo=req.modo)
+    except Exception as e:  # nunca vaza detalhe interno — só loga no servidor
+        raise HTTPException(status_code=500, detail="Falha ao gerar o documento.") from e
+
+    return Response(
+        content=conteudo,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": 'attachment; filename="%s.docx"' % req.slug},
     )

@@ -3,9 +3,10 @@
 **Branch:** `feature/migracao-angular-backend-moderno` (não mesclada em `main`; o Flask
 em produção não foi tocado). Status: autenticação, Projetos, o **Agendador de Visitas**
 (o módulo mais complexo do sistema), **Cadastros** (pré-requisito da geração de
-documentos) e o **início da geração de documentos** (serviço Python híbrido, cronograma
-de visitas) convertidos ponta a ponta, com o padrão replicável documentado para o
-restante. Ver honestidade de escopo em
+documentos) e a **geração de documentos completa** (serviço Python híbrido — cronograma
+de visitas + Levantamento/Projeto/Termo fiéis, com anexo Documento/Evento) convertidos
+ponta a ponta, com o padrão replicável documentado para o restante. Ver honestidade de
+escopo em
 [02-decisao-arquitetura.md](02-decisao-arquitetura.md#escopo-desta-fase-da-migração-honestidade-de-escopo).
 
 ## 1. Tecnologia anterior → nova
@@ -62,17 +63,29 @@ Python mantido só para geração de documentos e transcrição) em
   (calendário semanal, designação de técnico por módulo, períodos sem agenda, ações
   Distribuir/Refazer/Desfazer tudo com indicador de progresso). Ver §9 sobre a
   simplificação de interação (sem arrastar-e-soltar nesta primeira versão).
-- **Geração de documentos — início** (`docservice/`, novo serviço Python/FastAPI + 
-  `backend/src/geracao/*`): implementa a arquitetura híbrida decidida em
-  [02-decisao-arquitetura.md](02-decisao-arquitetura.md) — um serviço Python interno,
-  nunca exposto publicamente, que reaproveita `webapp/gl_xlsx.py` **copiado sem alterar a
-  lógica** (só a fonte de dados muda, via um `db.py`/`_common.py` "shim" que lê de um
-  contexto por requisição em vez de um banco). Endpoint `POST /gerar/cronograma-visitas`
-  gera o cronograma de visitas (.xlsx) do Agendador; o NestJS monta o payload (projeto,
-  atividades, horários, designações, config) a partir do próprio schema novo e expõe
-  `POST /projetos/:id/agenda/gerar`, devolvendo o arquivo binário ao cliente. **Escopo desta
-  fatia**: só o cronograma de visitas — Levantamento/Projeto/Termo (`.docx`, com blocos
-  condicionais por módulo contratado) ficam para a próxima fatia (ver §8).
+- **Geração de documentos — completa** (`docservice/`, serviço Python/FastAPI +
+  `backend/src/geracao/*` + `backend/src/documentos/*`): implementa a arquitetura híbrida
+  decidida em [02-decisao-arquitetura.md](02-decisao-arquitetura.md) — um serviço Python
+  interno, nunca exposto publicamente, que reaproveita `webapp/gl_xlsx.py`,
+  `gl_levantamento.py`, `gl_projeto.py`, `gl_termo.py`, `doc_edit.py` e
+  `tools/preencher_layout.py` **copiados sem alterar a lógica** (só a fonte de dados muda,
+  via um `db.py`/`_common.py` "shim" que lê de um contexto por requisição em vez de um
+  banco).
+  - `POST /gerar/cronograma-visitas` gera o cronograma de visitas (.xlsx) do Agendador; o
+    NestJS monta o payload (projeto, atividades, horários, designações, config) e expõe
+    `POST /projetos/:id/agenda/gerar`.
+  - `POST /gerar/documento-fiel` gera Levantamento/Projeto/Termo (.docx, com blocos
+    condicionais por módulo contratado) a partir do template enviado em base64 (o NestJS lê
+    o arquivo vigente do `ModeloDocumentoService` e envia — o docservice nunca acessa um
+    banco nem o disco do NestJS); dispatcher novo `gerador/gerar_fiel.py` (adaptação
+    stateless de `webapp/gerar_layout.py:gerar()` — a substituição de placeholders em si
+    continua 100% nos módulos copiados). NestJS expõe
+    `POST /projetos/:id/gerar-layout/:slug` (`GeracaoLayoutService` monta o payload a partir
+    de Projeto + Índice de Tópicos + LevantamentoResposta + DocConteudo).
+  - Ambos os endpoints, depois de gerar com sucesso, anexam o arquivo ao projeto
+    (`Documento`) e registram na timeline (`Evento`) — mesmo comportamento de
+    `webapp/routes_agenda.py:projeto_agenda_gerar` /
+    `webapp/routes_geracao.py:_gerar_e_anexar_fiel`.
 
 ## 3. Funcionalidades preservadas (nesta fatia)
 
@@ -214,6 +227,20 @@ porque são o tipo de erro fácil de reintroduzir ao converter os módulos que f
    real. **Lição: uma afirmação arquitetural no documento de conversão é tão passível de
    verificação quanto uma linha de código — não escrever "X existe" sem ter rodado o grep que
    prova.**
+10. **Corrida entre specs e2e no mesmo caminho real em disco (`EBUSY` no Windows)**: ao
+    adicionar `geracao-layout.e2e-spec.ts` (que também chama
+    `ModeloDocumentoService.seedDefaults()`, igual a `cadastros.e2e-spec.ts`), a suíte
+    completa passou a falhar intermitentemente com `EBUSY: resource busy or locked` no
+    `copyFileSync` de `levantamento.docx`. Causa: cada arquivo `*.e2e-spec.ts` roda num
+    processo Jest separado com seu próprio SQLite `:memory:` (isolado por natureza), mas o
+    store de `ModeloDocumento` grava em `backend/dados/modelos_documento/` — um caminho
+    real, único, **compartilhado por todos os processos** — então dois specs rodando em
+    paralelo colidiam copiando para o mesmo `levantamento_v1.docx`. Corrigido isolando o
+    store por `JEST_WORKER_ID` quando `NODE_ENV==='test'`
+    (`modelo-documento.service.ts:store()`), mesmo padrão já usado para pular o auto-seed em
+    teste. **Lição: isolamento de teste por SQLite `:memory:` não isola gravação em disco —
+    qualquer serviço que grava arquivo (não só banco) precisa do mesmo cuidado assim que
+    dois specs e2e passam a exercitá-lo.**
 
 ## 7. Vulnerabilidades / débitos de segurança do sistema atual, tratados na conversão
 
@@ -247,25 +274,19 @@ service → controller → tela Angular → testes):
    lê essa tabela, então isso não bloqueia o item 3. **Tela Angular de Cadastros ainda não
    existe** — só backend/API nesta fatia; ninguém no time consegue editar os catálogos pela
    UI ainda (só reimportar do YAML/gerenciar modelos via API/Swagger diretamente).
-3. ~~Geração de documentos~~ — **iniciado**: serviço Python híbrido (`docservice/`, FastAPI)
-   criado e funcionando, com o **cronograma de visitas** (`.xlsx`) do Agendador convertido
-   ponta a ponta (`POST /gerar/cronograma-visitas` no docservice + `POST
-   /projetos/:id/agenda/gerar` no NestJS). **Pendente dentro deste mesmo item**:
-   Levantamento/Projeto/Termo (`.docx`) — substancialmente mais complexos (blocos
-   condicionais por módulo contratado, remoção de áreas não contratadas, tabelas de
-   usuários) e ainda não convertidos; e a persistência de `Documento`/`Evento` (o
-   cronograma gerado hoje só é devolvido para download — não fica anexado à ficha do
-   projeto nem gera entrada na timeline, porque essas entidades ainda não existem no
-   schema novo).
+3. ~~Geração de documentos~~ — **convertido**: serviço Python híbrido (`docservice/`,
+   FastAPI) com os quatro documentos fiéis — cronograma de visitas (`.xlsx`,
+   `POST /gerar/cronograma-visitas` + `POST /projetos/:id/agenda/gerar`) e
+   Levantamento/Projeto/Termo (`.docx`, blocos condicionais por módulo contratado,
+   `POST /gerar/documento-fiel` + `POST /projetos/:id/gerar-layout/:slug`). `Documento`/
+   `Evento` (entidades novas) persistem o anexo e a timeline em ambos os fluxos.
 4. **Protocolos de Treinamento** (vídeo/transcrição via faster-whisper) — mesma
    dependência do serviço Python híbrido (agora já existe e está rodando — `docservice/`).
 5. **E-mail/IMAP/Gmail** (`mailer.py`, `imap_intake.py`, `gmail_api.py`) — bindings Node
    diretos (`nodemailer`, `imapflow`, `googleapis`), não convertidos ainda.
 6. **Disponibilidade externa/Consultas BD/Dashboards** (conexão Oracle configurável,
    `oracledb` tem binding Node oficial) — não convertido; destrava a lacuna do item 1.
-7. **Matriz de Conhecimento**, **telas executivas** (`routes_painel.py`), **`Documento`/
-   `Evento`** (histórico de documentos e timeline do projeto — bloqueia o item 3 anexar o
-   cronograma gerado à ficha) — não convertidos.
+7. **Matriz de Conhecimento** e **telas executivas** (`routes_painel.py`) — não convertidos.
 8. **Usuários** (`/usuarios`, CRUD completo) e **auto-cadastro com código por e-mail** —
    `UsersService` já tem a base (`criar`), falta o controller/tela e a integração com
    e-mail (item 5).
@@ -349,17 +370,23 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
 
 ## 12. Como validar esta entrega
 
-1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo, 58/58
-   testes passando (21 unitários + 37 e2e), incluindo as suítes dedicadas do Agendador de
+1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo, 61/61
+   testes passando (21 unitários + 40 e2e), incluindo as suítes dedicadas do Agendador de
    Visitas (`test/cronograma.e2e-spec.ts`, com o teste do endpoint `/agenda/gerar` usando um
-   fake do serviço Python), de Cadastros (`test/cadastros.e2e-spec.ts`) e o teste unitário
-   de `ProjetosService.excluir()` que garante a limpeza dos 5 módulos com dado por-projeto
-   (Cronograma, Designações, Levantamento-resposta, DocConteudo, Documentos/Eventos — ver
-   §6 item 9).
+   fake do serviço Python), de Cadastros (`test/cadastros.e2e-spec.ts`), de Geração de
+   documentos fiéis (`test/geracao-layout.e2e-spec.ts`, endpoint
+   `/projetos/:id/gerar-layout/:slug`) e o teste unitário de `ProjetosService.excluir()` que
+   garante a limpeza dos 5 módulos com dado por-projeto (Cronograma, Designações,
+   Levantamento-resposta, DocConteudo, Documentos/Eventos — ver §6 item 9). Suíte e2e
+   validada estável em 3 execuções consecutivas (a corrida de `EBUSY` do §6 item 10 só
+   aparecia de forma intermitente).
 2. `cd frontend && npm run build && npm test` — build limpo, 6/6 testes passando.
-3. `cd docservice && set PYTHONUTF8=1 && .venv\Scripts\python -m pytest tests/ -v` — 4/4
-   testes passando, incluindo checagem estrita de caractere (não só substring) para pegar
-   corrupção de encoding.
+3. `cd docservice && set PYTHONUTF8=1 && .venv\Scripts\python -m pytest tests/ -v` — 9/9
+   testes passando: os 4 do cronograma de visitas (checagem estrita de caractere, não só
+   substring, para pegar corrupção de encoding) + os 5 novos de
+   `test_documento_fiel.py` — que geram Levantamento/Projeto/Termo a partir dos **templates
+   .docx reais** de `tools/templates/layouts/` (os mesmos usados em produção), não de
+   fixtures sintéticas.
 4. Smoke manual feito nesta sessão: backend + frontend + docservice rodando juntos (3
    processos reais, não mockados), login real, CRUD de projeto, fluxo completo do Agendador
    (seed de atividades, designação de técnico, distribuição automática, período sem agenda
@@ -368,4 +395,6 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
    servidor real (ver histórico de comandos desta sessão). **Teste visual em navegador não
    foi realizado** — este ambiente não tem uma ferramenta de navegador disponível;
    recomenda-se abrir `http://localhost:4200` manualmente antes de considerar as telas de
-   Projetos e do Agendador definitivamente validadas do ponto de vista de UX.
+   Projetos e do Agendador definitivamente validadas do ponto de vista de UX. A geração de
+   Levantamento/Projeto/Termo foi validada por testes automatizados reais (item 3 acima),
+   não por smoke manual adicional nesta sessão.
