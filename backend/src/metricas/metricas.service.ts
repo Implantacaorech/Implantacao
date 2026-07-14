@@ -223,7 +223,7 @@ export class MetricasService {
     return !!(proj.gci || '').trim();
   }
 
-  private acaoEntradaOk(etapa: Etapa | null, proj: Projeto): boolean {
+  acaoEntradaOk(etapa: Etapa | null, proj: Projeto): boolean {
     if (!etapa) return true;
     const req = ACAO_ENTRADA[etapa]?.[0];
     if (req === 'gci_e_data_levantamento') {
@@ -251,6 +251,26 @@ export class MetricasService {
       }
     }
     return { ok: bloqueios.length === 0, bloqueios };
+  }
+
+  /** Avança `projeto.etapa` (em memória — quem chama persiste e registra os eventos)
+   * enquanto o gate da PRÓXIMA etapa (documentos + ação de entrada) já estiver
+   * satisfeito. PERMISSIVO de propósito quanto aos campos obrigatórios — eles são
+   * cobrados no avanço MANUAL e sinalizados na ficha (`camposFaltantes`/`podeAvancar`);
+   * bloqueá-los aqui travaria o fluxo (ex.: Agendamento sem nº do projeto/horas ainda
+   * preenchidos). Nunca avança PARA FORA de "Levantamento" — a conclusão do
+   * Levantamento é confirmada manualmente pelo GCI (botão Avançar). Espelha
+   * webapp/app.py:_auto_avancar. */
+  autoAvancar(projeto: Projeto, docs: DocLeve[]): { etapaAnterior: Etapa; etapaNova: Etapa }[] {
+    const transicoes: { etapaAnterior: Etapa; etapaNova: Etapa }[] = [];
+    if (projeto.etapa === 'Levantamento') return transicoes;
+    let prox = this.proximaEtapa(projeto.etapa);
+    while (prox && this.gateStatus(prox, docs).ok && this.acaoEntradaOk(prox, projeto)) {
+      transicoes.push({ etapaAnterior: projeto.etapa, etapaNova: prox });
+      projeto.etapa = prox;
+      prox = this.proximaEtapa(projeto.etapa);
+    }
+    return transicoes;
   }
 
   /** Agrega a carteira p/ o Painel Coordenação. Espelha webapp/db.py:metricas. */

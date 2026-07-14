@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -15,6 +15,52 @@ export class UsersService {
 
   async porLogin(login: string): Promise<Usuario | null> {
     return this.repo.findOne({ where: { login: login.trim(), ativo: true } });
+  }
+
+  /** Todos os usuários (ativos e inativos), ordenados por nome — tela de Usuários (ADM). */
+  async listar(): Promise<Usuario[]> {
+    return this.repo.find({ order: { nome: 'ASC' } });
+  }
+
+  async buscarPorId(id: number): Promise<Usuario> {
+    const u = await this.repo.findOne({ where: { id } });
+    if (!u) throw new NotFoundException('Usuário não encontrado.');
+    return u;
+  }
+
+  /** Existe um usuário (ativo ou não) com esse login OU esse e-mail? Espelha
+   * webapp/db.py:existe_usuario — usado no auto-cadastro para rejeitar duplicidade antes
+   * de gerar o código de verificação. `ignorarId` exclui o próprio registro (edição). */
+  async existeUsuario(login: string, email: string, ignorarId?: number): Promise<boolean> {
+    const l = (login || '').trim().toLowerCase();
+    const e = (email || '').trim().toLowerCase();
+    if (!l && !e) return false;
+    // Parênteses explícitos são obrigatórios aqui: `.where()`/`.andWhere()` do TypeORM NÃO
+    // envolve strings cruas em parênteses automaticamente — sem eles, o `AND` (precedência
+    // maior que `OR` em SQL) se aplicaria só ao segundo termo do OR, e um login batendo
+    // sozinho já daria match mesmo com o próprio id excluído (achado escrevendo o teste
+    // e2e de edição: um usuário editando o próprio registro sempre "colidia consigo
+    // mesmo").
+    const qb = this.repo
+      .createQueryBuilder('u')
+      .where('(LOWER(u.login) = :l OR LOWER(u.email) = :e)', { l, e });
+    if (ignorarId) qb.andWhere('u.id != :id', { id: ignorarId });
+    return (await qb.getCount()) > 0;
+  }
+
+  /** E-mail de um usuário ATIVO pelo nome (prefere o campo `email`, cai no `login`) —
+   * exact match, case-insensitive. Espelha webapp/db.py:email_do_usuario, usado pela
+   * Designação para resolver o destinatário da notificação a partir de `Projeto.gci`/
+   * `Designacao.consultor` (strings de nome, não ids). */
+  async emailDoUsuario(nome: string): Promise<string | null> {
+    if (!nome) return null;
+    const u = await this.repo
+      .createQueryBuilder('u')
+      .where('LOWER(u.nome) = :nome', { nome: nome.trim().toLowerCase() })
+      .andWhere('u.ativo = :ativo', { ativo: true })
+      .getOne();
+    if (!u) return null;
+    return u.email || u.login || null;
   }
 
   /** Espelha webapp/db.py:usuarios_por_perfil — usuários ativos de um perfil. */
@@ -52,14 +98,13 @@ export class UsersService {
     perfil: Perfil;
     codigoSicla?: string;
   }): Promise<Usuario> {
-    const existente = await this.repo.findOne({
-      where: { login: dados.login.trim() },
-    });
-    if (existente)
-      throw new ConflictException('Já existe um usuário com este login');
+    const login = (dados.login || '').trim() || dados.email.trim(); // login em branco usa o e-mail
+    if (await this.existeUsuario(login, dados.email)) {
+      throw new ConflictException('Já existe um usuário com este login ou e-mail.');
+    }
     const senhaHash = await bcrypt.hash(dados.senha, SALT_ROUNDS);
     const usuario = this.repo.create({
-      login: dados.login.trim(),
+      login,
       nome: dados.nome,
       email: dados.email,
       senhaHash,
@@ -67,6 +112,37 @@ export class UsersService {
       codigoSicla: dados.codigoSicla ?? '',
       ativo: true,
     });
+    return this.repo.save(usuario);
+  }
+
+  /** Atualiza um usuário existente. `senha` só é alterada se enviada (não-vazia) — mesmo
+   * contrato de webapp/app.py:usuarios (edição via formulário, senha em branco = mantém a
+   * atual). */
+  async atualizar(
+    id: number,
+    dados: {
+      login?: string;
+      nome?: string;
+      email?: string;
+      senha?: string;
+      perfil?: Perfil;
+      codigoSicla?: string;
+      ativo?: boolean;
+    },
+  ): Promise<Usuario> {
+    const usuario = await this.buscarPorId(id);
+    const loginNovo = dados.login !== undefined ? dados.login.trim() || (dados.email ?? usuario.email).trim() : usuario.login;
+    const emailNovo = dados.email !== undefined ? dados.email : usuario.email;
+    if (await this.existeUsuario(loginNovo, emailNovo, id)) {
+      throw new ConflictException('Já existe um usuário com este login ou e-mail.');
+    }
+    usuario.login = loginNovo;
+    if (dados.nome !== undefined) usuario.nome = dados.nome;
+    usuario.email = emailNovo;
+    if (dados.perfil !== undefined) usuario.perfil = dados.perfil;
+    if (dados.codigoSicla !== undefined) usuario.codigoSicla = dados.codigoSicla;
+    if (dados.ativo !== undefined) usuario.ativo = dados.ativo;
+    if (dados.senha) usuario.senhaHash = await bcrypt.hash(dados.senha, SALT_ROUNDS);
     return this.repo.save(usuario);
   }
 

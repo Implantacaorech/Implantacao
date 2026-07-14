@@ -17,6 +17,8 @@ import { FluxoModule } from './fluxo/fluxo.module';
 import { DisponibilidadeModule } from './disponibilidade/disponibilidade.module';
 import { MatrizModule } from './matriz/matriz.module';
 import { PainelModule } from './painel/painel.module';
+import { CadastroModule } from './cadastro/cadastro.module';
+import { DesignacaoModule } from './designacao/designacao.module';
 
 @Module({
   imports: [
@@ -37,6 +39,8 @@ import { PainelModule } from './painel/painel.module';
     DisponibilidadeModule,
     MatrizModule,
     PainelModule,
+    CadastroModule,
+    DesignacaoModule,
   ],
 })
 export class AppModule {}

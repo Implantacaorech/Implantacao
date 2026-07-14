@@ -15,7 +15,9 @@ fecha a última lacuna documentada do item 1) e a **Matriz de Conhecimento + tel
 executivas** (skill matrix técnico×competência com importador de planilha, motor de
 métricas/gates/alertas novo — pré-requisito descoberto nesta fatia, não só das telas —, e
 os painéis de Capacidade da equipe/Coordenação/Atividade/Home; **Monitoramento
-Operacional ficou de fora**, ver §8) convertidos ponta a ponta, com o padrão replicável
+Operacional ficou de fora**, ver §8) e os **Usuários (CRUD) + auto-cadastro por e-mail +
+tela de Designação** (GCI/consultor por projeto, com os 2 gates de permissão distintos do
+processo real preservados fielmente) convertidos ponta a ponta, com o padrão replicável
 documentado para o restante. Ver honestidade de escopo em
 [02-decisao-arquitetura.md](02-decisao-arquitetura.md#escopo-desta-fase-da-migração-honestidade-de-escopo).
 
@@ -272,6 +274,49 @@ Python mantido só para geração de documentos e transcrição) em
     `ChecklistItem`/`Modificacao` (as linhas EDITÁVEIS do documento Cronograma/Check List,
     com status por linha — um subsistema inteiro, diferente do Agendador de Visitas do
     item 1) que nunca foi portado. Ver pendência detalhada em §8.
+- **Usuários (CRUD) + auto-cadastro + tela de Designação** (`backend/src/users/*`,
+  `backend/src/cadastro/*`, `backend/src/designacao/*`) — equivalente a
+  `webapp/app.py:usuarios`/`cadastro`/`cadastro_confirmar` + `webapp/routes_designacao.py`
+  (exceto a rota combinada `projeto_designar`, ver abaixo) + a fatia de `webapp/db.py` de
+  `CadastroPendente`/`existe_usuario`/`email_do_usuario`.
+  - **Usuários**: `UsersController` REST (`GET/POST /usuarios`, `PUT /usuarios/:id`) —
+    adapta o formulário único create/edit do Flask para verbos HTTP próprios; sem rota de
+    exclusão (igual ao original — desativação é o campo `ativo`). Nunca devolve
+    `senhaHash` na resposta (checagem explícita, o Flask original não tinha esse risco por
+    nunca serializar a entidade inteira p/ JSON). `UsersService` ganhou `atualizar`,
+    `existeUsuario` (login OU e-mail, exclui o próprio id na edição) e `emailDoUsuario`
+    (usado pela Designação).
+  - **Auto-cadastro** (`CadastroController`, rotas públicas — sem `JwtAuthGuard` de
+    propósito): código de 6 dígitos por e-mail, expira em 30min, 5 tentativas erradas
+    derrubam o cadastro pendente (tudo igual ao Flask). Cria o `Usuario` direto na
+    confirmação, **sempre** perfil `Consultor`, **sem fila de aprovação do ADM** (mesmo
+    comportamento do original) — e já devolve os tokens (login imediato), reaproveitando
+    `AuthService.emitirParaUsuario` (extraído de `AuthService.login`, sem mudar o
+    comportamento de login normal). O e-mail do código é enviado direto via
+    `MailerService.enviar()` (texto fixo, **não** passa pelo `ModeloEmail`/`{{VAR}}`,
+    igual ao Flask original — é um e-mail de sistema, não editável pelo ADM). Adaptação
+    deliberada: o Flask usa `session["cad_email"]` para lembrar o e-mail entre a etapa 1 e
+    a confirmação; a API REST (sem sessão de servidor) devolve o e-mail na resposta de
+    `POST /cadastro` e o frontend o reenvia explicitamente em `POST /cadastro/confirmar`.
+  - **Designação** (`DesignacaoController`, `/projetos/:id/{definir-gci,agendar,
+    consultores}`) — **decisão de fidelidade importante**: o Flask tem 3 gates de
+    permissão DIFERENTES nas 3 telas do mesmo fluxo, que pareciam inconsistentes à
+    primeira leitura (`definir_gci`/`agendar` = só ADM+Administrativo; `consultores` = só
+    ADM+GCI — nenhum dos dois usa a constante `PERFIS_DESIGNA` já existente no backend
+    novo). Perguntado ao usuário, que confirmou com uma tabela detalhada de
+    responsável-por-etapa do processo real: são deliberadamente distintos (Administrativo
+    agenda o Levantamento e define o GCI; o próprio GCI designa os consultores). Portado
+    fielmente com 2 constantes novas, `PERFIS_AGENDAMENTO`/`PERFIS_DESIGNA_CONSULTORES` —
+    **não** normalizado para `PERFIS_DESIGNA`. A rota combinada `projeto_designar` (que
+    fazia GCI+consultores numa tela só) **não foi portada**: confirmado que nenhum
+    template do Flask linka para ela — está morta na navegação atual, só o fluxo
+    `definir_gci` → `agendar` → `consultores` (3 telas separadas) é realmente usado.
+    Também portado nesta fatia (pré-requisito descoberto, não usado antes por nenhum
+    item): `MetricasService.autoAvancar` (espelha `webapp/app.py:_auto_avancar` — avança a
+    etapa automaticamente enquanto o gate da próxima já está satisfeito; nunca conclui
+    "Levantamento" sozinho, isso é sempre manual/GCI). A notificação de cada etapa usa
+    `MailerService.enviar()` direto (mesmo padrão do Flask — não passa pelo
+    `NotificacaoService`, que cobre outros eventos).
 
 ## 3. Funcionalidades preservadas (nesta fatia)
 
@@ -557,6 +602,24 @@ porque são o tipo de erro fácil de reintroduzir ao converter os módulos que f
     usar sempre `rowCount`/`columnCount` para limites de varredura — as variantes
     `actual*` só servem para contar densidade de preenchimento, não para dimensionar um
     loop.**
+20. **`QueryBuilder.where(string)` do TypeORM NÃO envolve a condição em parênteses
+    automaticamente** — `UsersService.existeUsuario` combinava `.where('LOWER(login)=:l
+    OR LOWER(email)=:e', ...)` com `.andWhere('id != :id', ...)` (para excluir o próprio
+    registro ao editar). SQL gerado: `WHERE LOWER(login)=? OR LOWER(email)=? AND id != ?`
+    — sem parênteses, `AND` tem precedência maior que `OR` em SQL, então a condição vira
+    `WHERE LOWER(login)=? OR (LOWER(email)=? AND id != ?)`: um usuário editando o PRÓPRIO
+    registro sempre "colidia consigo mesmo" (o primeiro termo do OR bate sozinho,
+    ignorando a exclusão de id). Pego pelo teste e2e de edição (`test/usuarios.e2e-spec.ts`
+    — editar um usuário sem trocar login/e-mail devolvia 409 em vez de 200); **o teste
+    unitário equivalente, com o `QueryBuilder` mockado, não pegou** porque o mock de
+    `getCount()` é um valor fixo, não uma simulação real do SQL gerado — só a suíte e2e
+    contra um banco real expõe esse tipo de bug de geração de SQL. Corrigido envolvendo a
+    condição OR em parênteses explícitos: `.where('(LOWER(login)=:l OR LOWER(email)=:e)',
+    ...)`. **Lição: ao combinar `.where()` com `.andWhere()` usando strings cruas no
+    TypeORM, parênteses em condições `OR` são responsabilidade de quem escreve a query —
+    nunca confiar em agrupamento automático; e lembrar que testes unitários com
+    `QueryBuilder` mockado não substituem um teste de integração real para esse tipo de
+    bug de precedência SQL.**
 
 ## 7. Vulnerabilidades / débitos de segurança do sistema atual, tratados na conversão
 
@@ -639,12 +702,17 @@ service → controller → tela Angular → testes):
    Fechar isso é uma mudança de comportamento do fluxo já publicado, então foi
    deliberadamente deixada fora desta fatia (decidido com o usuário) — avaliar como item
    próprio, não como parte de uma tela executiva.
-8. **Usuários** (`/usuarios`, CRUD completo), **auto-cadastro com código por e-mail** e a
-   tela de **Designação** (GCI/consultor por projeto, `routes_designacao.py`) —
-   `UsersService` já tem a base (`criar`, `porPerfil`) e o e-mail já está pronto (item 5);
-   falta o controller/tela de Usuários e a tela de Designação em si (essa tela vai
-   precisar de um lookup usuário-por-nome equivalente a `webapp/db.py:email_do_usuario`,
-   ainda não portado — não há chamador para ele nesta fatia).
+8. ~~Usuários (CRUD completo), auto-cadastro com código por e-mail e a tela de
+   Designação~~ — **convertido**: `UsersController` REST (`GET/POST /usuarios`,
+   `PUT /usuarios/:id`, nunca devolve `senhaHash`), auto-cadastro público
+   (`CadastroController` — código de 6 dígitos, 30min de expiração, 5 tentativas, cria o
+   `Usuario` direto com perfil `Consultor` e já loga — sem fila de aprovação do ADM, igual
+   ao Flask) e o fluxo de Designação (`DesignacaoController` —
+   `definir-gci`/`agendar`/`consultores`, com os 2 gates de permissão distintos do
+   processo real preservados fielmente, `email_do_usuario` portado como
+   `UsersService.emailDoUsuario`, e `MetricasService.autoAvancar` como pré-requisito novo
+   desta fatia). Ver §2. A rota combinada `projeto_designar` não foi portada por estar
+   morta na navegação do Flask original (nenhum template linka pra ela).
 9. **Jobs agendados** (digest diário, robô de caixa) — usar `@nestjs/schedule` (já
    instalado e registrado em `AppModule`; os robôs de protocolos e da caixa de entrada já
    foram implementados como parte dos itens 4 e 5, ver `RoboProtocolosService`/
@@ -749,7 +817,7 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
 ## 12. Como validar esta entrega
 
 1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo,
-   297/297 testes passando (202 unitários + 95 e2e), incluindo as suítes dedicadas do
+   356/356 testes passando (239 unitários + 117 e2e), incluindo as suítes dedicadas do
    Agendador de Visitas (`test/cronograma.e2e-spec.ts`, com o teste do endpoint
    `/agenda/gerar` usando um fake do serviço Python), de Cadastros
    (`test/cadastros.e2e-spec.ts`), de Geração de documentos fiéis
@@ -774,11 +842,19 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
    de gates/campos obrigatórios/alertas/cabeçalho, novo nesta sessão — ver §2 item 7), de
    `CapacidadeService`/`CoordenacaoService`/`AtividadeService`/`HomeService`, do parser da
    planilha da Matriz (`matriz-import.util.spec.ts`, com um caso de forward-fill de área e
-   clamp de nota) e o teste unitário de `ProjetosService.excluir()` que garante a limpeza
-   dos 5 módulos com dado por-projeto (Cronograma, Designações, Levantamento-resposta,
-   DocConteudo, Documentos/Eventos — ver §6 item 9). Suíte e2e validada estável em
-   múltiplas execuções consecutivas (inclusive repetindo cada spec novo isoladamente, para
-   pegar corridas de estado entre execuções — ver §6 itens 10 e 15).
+   clamp de nota), de Usuários (`test/usuarios.e2e-spec.ts` — CRUD ADM-only,
+   `senhaHash` nunca exposta, senha preservada/alterada conforme enviada ou não na edição;
+   pegou o bug de precedência SQL do §6 item 20), de Auto-cadastro
+   (`test/cadastro.e2e-spec.ts` — fluxo feliz completo com login imediato, e-mail
+   duplicado, código errado incrementando tentativas, reenvio) e de Designação
+   (`test/designacao.e2e-spec.ts` — os 2 gates de permissão distintos, notificação e
+   auto-avanço de etapa em cada uma das 3 telas; `MailerService` trocado por um fake via
+   `overrideProvider`, mesmo padrão já usado em `protocolos.e2e-spec.ts`) e o teste
+   unitário de `ProjetosService.excluir()` que garante a limpeza dos 5 módulos com dado
+   por-projeto (Cronograma, Designações, Levantamento-resposta, DocConteudo,
+   Documentos/Eventos — ver §6 item 9). Suíte e2e validada estável em múltiplas execuções
+   consecutivas (inclusive repetindo cada spec novo isoladamente, para pegar corridas de
+   estado entre execuções — ver §6 itens 10 e 15).
 2. `cd frontend && npm run build && npm test` — build limpo, 6/6 testes passando.
 3. `cd docservice && set PYTHONUTF8=1 && .venv\Scripts\python -m pytest tests/ -v` — 14/14
    testes passando: os 4 do cronograma de visitas (checagem estrita de caractere, não só
@@ -839,4 +915,11 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
    contagens/metadados de estrutura), por ser dado de avaliação de pessoas. Nenhuma
    importação real foi persistida em um banco de produção nesta sessão — só contra SQLite
    de teste. **Monitoramento Operacional não foi convertido** (ver §8) — não se aplica
-   validação aqui.
+   validação aqui. **Usuários/Auto-cadastro/Designação: os e-mails de notificação (código
+   de verificação, GCI/consultor designado) rodaram contra um `MailerService` trocado por
+   um fake (`overrideProvider`), não contra um transporte SMTP/Gmail real nesta sessão** —
+   mesma limitação de ambiente já registrada para o item de E-mail/IMAP/Gmail acima
+   (nenhuma instância de e-mail real disponível neste ambiente). A geração do código de
+   6 dígitos, sua expiração/lockout e o texto de cada e-mail foram validados; o envio de
+   verdade (chegou na caixa de entrada, formatação correta em clientes de e-mail reais)
+   não foi.

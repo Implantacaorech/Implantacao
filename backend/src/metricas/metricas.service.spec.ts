@@ -130,6 +130,55 @@ describe('MetricasService', () => {
     });
   });
 
+  describe('autoAvancar', () => {
+    it('já sentado em Levantamento, nunca avança sozinho — conclusão é manual (botão Avançar do GCI)', () => {
+      const p = projeto({ etapa: 'Levantamento' });
+      const r = service.autoAvancar(p, [{ tipo: 'levantamento' }]);
+      expect(r).toEqual([]);
+      expect(p.etapa).toBe('Levantamento');
+    });
+
+    it('avança uma etapa quando o gate da próxima já está ok', () => {
+      const p = projeto({
+        etapa: 'Agendamento',
+        gci: 'Ana',
+        dataLevantamento: '2026-08-01',
+      });
+      const r = service.autoAvancar(p, []); // Projeto exige "levantamento", ausente -> para aqui
+      expect(r).toEqual([{ etapaAnterior: 'Agendamento', etapaNova: 'Levantamento' }]);
+      expect(p.etapa).toBe('Levantamento');
+    });
+
+    it('encadeia mais de uma etapa na mesma chamada quando os gates seguintes já estão ok', () => {
+      const p = projeto({ etapa: 'Projeto', gci: 'Ana', consultor: 'Ana' });
+      // Designação exige a ação "gci definido" (presente); Cronograma e Check-list exige
+      // "consultores" (presente); ambos os gates de documento pedem só levantamento+projeto.
+      const docs = [{ tipo: 'levantamento' }, { tipo: 'projeto' }];
+      const r = service.autoAvancar(p, docs);
+      expect(r.map((t) => t.etapaNova)).toEqual(['Designação', 'Cronograma e Check-list']);
+      expect(p.etapa).toBe('Cronograma e Check-list'); // para aqui: falta cronograma/checklist p/ Encerramento
+    });
+
+    it('para no primeiro gate ainda pendente', () => {
+      const p = projeto({ etapa: 'Agendamento', gci: '', dataLevantamento: '' });
+      const r = service.autoAvancar(p, []);
+      expect(r).toEqual([]);
+      expect(p.etapa).toBe('Agendamento');
+    });
+
+    it('não avança quando já está na última etapa (Encerramento)', () => {
+      const p = projeto({ etapa: 'Encerramento', consultor: 'Ana', dataUsoOficial: '2026-01-01' });
+      const r = service.autoAvancar(p, [
+        { tipo: 'levantamento' },
+        { tipo: 'projeto' },
+        { tipo: 'cronograma' },
+        { tipo: 'checklist' },
+      ]);
+      expect(r).toEqual([]);
+      expect(p.etapa).toBe('Encerramento');
+    });
+  });
+
   describe('metricas', () => {
     it('agrega por situação/etapa, calcula atrasados (ordenados por dias desc) e gate pendente', () => {
       const projetos = [

@@ -6,6 +6,7 @@ import { createHash, randomBytes } from 'crypto';
 import { Repository } from 'typeorm';
 import { AppConfig } from '../config/configuration';
 import { RefreshToken } from '../database/entities/refresh-token.entity';
+import { Usuario } from '../database/entities/usuario.entity';
 import { UsersService } from '../users/users.service';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 
@@ -32,7 +33,13 @@ export class AuthService {
     if (!usuario) throw new UnauthorizedException('Login ou senha inválidos');
     const senhaOk = await this.users.validarSenha(usuario, senha);
     if (!senhaOk) throw new UnauthorizedException('Login ou senha inválidos');
+    return this.emitirParaUsuario(usuario);
+  }
 
+  /** Emite um par de tokens para um `Usuario` já resolvido/autenticado por outro meio
+   * (ex.: confirmação de auto-cadastro, que loga a pessoa na hora, igual
+   * webapp/app.py:cadastro_confirmar faz via sessão). */
+  async emitirParaUsuario(usuario: Usuario): Promise<TokenPair & { usuario: AuthUser }> {
     const payload: AuthUser = {
       sub: usuario.id,
       login: usuario.login,
