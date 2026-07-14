@@ -7,6 +7,12 @@ import { AtividadeCronograma } from './atividade-cronograma.entity';
 import { SlotCronograma } from './slot-cronograma.entity';
 import { CronogramaConfig } from './cronograma-config.entity';
 import { CronogramaPeriodoBloqueado } from './cronograma-periodo-bloqueado.entity';
+import { IndiceTopico } from './indice-topico.entity';
+import { ModeloDocumento } from './modelo-documento.entity';
+import { ModeloDocumentoVersao } from './modelo-documento-versao.entity';
+import { ModeloDocumentoCampo } from './modelo-documento-campo.entity';
+import { LevantamentoResposta } from './levantamento-resposta.entity';
+import { DocConteudo } from './doc-conteudo.entity';
 
 export * from './usuario.entity';
 export * from './projeto.entity';
@@ -17,6 +23,12 @@ export * from './atividade-cronograma.entity';
 export * from './slot-cronograma.entity';
 export * from './cronograma-config.entity';
 export * from './cronograma-periodo-bloqueado.entity';
+export * from './indice-topico.entity';
+export * from './modelo-documento.entity';
+export * from './modelo-documento-versao.entity';
+export * from './modelo-documento-campo.entity';
+export * from './levantamento-resposta.entity';
+export * from './doc-conteudo.entity';
 
 // Lista única usada por DatabaseModule (runtime) e AppDataSource (CLI de migrations) —
 // evita as duas listas divergirem conforme novas entidades são adicionadas.
@@ -30,4 +42,10 @@ export const ENTITIES = [
   SlotCronograma,
   CronogramaConfig,
   CronogramaPeriodoBloqueado,
+  IndiceTopico,
+  ModeloDocumento,
+  ModeloDocumentoVersao,
+  ModeloDocumentoCampo,
+  LevantamentoResposta,
+  DocConteudo,
 ];

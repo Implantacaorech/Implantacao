@@ -1,9 +1,10 @@
 # Documento de conversão — Painel de Implantação → Angular + NestJS
 
 **Branch:** `feature/migracao-angular-backend-moderno` (não mesclada em `main`; o Flask
-em produção não foi tocado). Status: autenticação, Projetos e o **Agendador de Visitas**
-(o módulo mais complexo do sistema) convertidos ponta a ponta, com o padrão replicável
-documentado para o restante. Ver honestidade de escopo em
+em produção não foi tocado). Status: autenticação, Projetos, o **Agendador de Visitas**
+(o módulo mais complexo do sistema) e **Cadastros** (pré-requisito da geração de
+documentos) convertidos ponta a ponta, com o padrão replicável documentado para o
+restante. Ver honestidade de escopo em
 [02-decisao-arquitetura.md](02-decisao-arquitetura.md#escopo-desta-fase-da-migração-honestidade-de-escopo).
 
 ## 1. Tecnologia anterior → nova
@@ -43,6 +44,17 @@ Python mantido só para geração de documentos e transcrição) em
   em ordem de treinamento dos módulos, preservando V1 < V2, com piso de reorganização,
   checagem de Go-live e "Não distribuir" por módulo. Equivalente a `webapp/routes_agenda.py`
   inteiro. Ver §9 para a única lacuna proposital (disponibilidade externa SICLA).
+- **Cadastros** (`backend/src/catalogos/*`, `backend/src/levantamento/*`) — pré-requisito
+  da geração de documentos (ver §6 item 6 desta versão anterior do documento): CRUD
+  completo do Check List (já convertido no item anterior, ganhou filtro/paginação/
+  reimportar), `IndiceTopico` (catálogo + seed do YAML, mesmo padrão do Check List),
+  `ModeloDocumento`+`ModeloDocumentoVersao` (registro, versionamento, upload/download do
+  arquivo fiel — `ModeloDocumentoCampo`, só informativo, tem CRUD mas sem seed nesta
+  fatia), e o questionário do Levantamento (`LevantamentoResposta`, semeado do Índice
+  pelos módulos contratados) + `DocConteudo` (conteúdo estruturado por documento).
+  **Todos os três catálogos globais (Check List, Índice, Modelos) agora se semeiam
+  sozinhos no boot** (`OnModuleInit`, pulado em teste via `NODE_ENV=test` — ver §6 item 7).
+  Só backend nesta fatia; tela Angular de Cadastros ainda não foi construída (ver §8).
 - **Frontend**: tela de login, guard de rota, interceptor HTTP (Bearer + renovação
   automática em 401), lista de projetos (paginada, com filtro), formulário de
   criar/editar projeto, shell com navegação e logout, e a tela do **Agendador de Visitas**
@@ -130,6 +142,28 @@ porque são o tipo de erro fácil de reintroduzir ao converter os módulos que f
    (`common/dto/api-envelope.ts`) — nenhuma entidade jamais colide com isso por acidente.
    **Lição: nunca detectar formato de resposta por presença de propriedade — usar um tipo
    explícito.**
+6. **Geração de documentos (item 2 original) não é isolável de Cadastros (item 6
+   original)**: `gerar_layout.py`/`gl_*.py` dependem diretamente de `db.modelos_documento_*`
+   (arquivo-base do layout), `db.indice_modulos`/`db.indice_listar` (catálogo do
+   Levantamento), `db.levantamento_respostas` e `db.doc_conteudo` — nenhum desses ainda
+   existe no schema novo. Gerar documentos para um projeto criado no Angular exigiria ler
+   esses dados do banco Flask antigo, reacoplando os dois schemas (o que o item 4 desta
+   lista evitou de propósito). **Decisão (confirmada com o usuário): inverter a ordem** —
+   Cadastros (`ModeloDocumento`+versão, `IndiceTopico`, `LevantamentoResposta`,
+   `DocConteudo`) passa a vir ANTES da geração de documentos no backlog. Ver §8.
+7. **Seed dos catálogos nunca era chamado (bug real, sem teste que pegasse)**: os três
+   serviços de catálogo (`ChecklistModeloService`, depois `IndiceTopicoService` e
+   `ModeloDocumentoService`) tinham `seedDoYaml()`/`seedDefaults()` prontos, mas nada no
+   `AppModule` os invocava — numa instalação nova de verdade, as tabelas ficariam vazias
+   para sempre (o Agendador só "funcionou" nos testes porque cada teste insere seus
+   próprios dados sintéticos diretamente, mascarando a ausência do seed automático). Só
+   percebi ao ir registrar o mesmo padrão pela terceira vez. Corrigido implementando
+   `OnModuleInit` nos três serviços (mesmo padrão do `init_db()` do Flask, que semeia a
+   cada subida). Para não vazar o catálogo real da empresa para dentro dos testes, o
+   `onModuleInit` é pulado quando `NODE_ENV==='test'` (setado automaticamente pelo Jest) —
+   os testes continuam controlando seus próprios dados sintéticos. **Lição: ao introduzir
+   um serviço com seed idempotente, registrar no mesmo commit onde/quando ele é chamado —
+   "pronto para usar" não é o mesmo que "em uso".**
 
 ## 7. Vulnerabilidades / débitos de segurança do sistema atual, tratados na conversão
 
@@ -156,23 +190,29 @@ service → controller → tela Angular → testes):
      formulários de data/turno por visita (mesma capacidade funcional: alocar, mover,
      desalocar), mais simples de implementar corretamente sob prazo e mais acessível por
      teclado; drag-and-drop pode ser adicionado depois como polimento de UX.
-2. **Geração de documentos** (Levantamento/Projeto/Termo/Cronograma, incluindo o cronograma
-   de visitas `.xlsx` do próprio Agendador) — depende da decisão de arquitetura híbrida
-   (serviço Python interno, §Arquitetura híbrida em
-   [02-decisao-arquitetura.md](02-decisao-arquitetura.md)), ainda não implementado.
-3. **Protocolos de Treinamento** (vídeo/transcrição via faster-whisper) — mesma
+2. ~~Cadastros~~ — **convertido** (backend completo: `ChecklistModelo` CRUD, `IndiceTopico`
+   com seed, `ModeloDocumento`+`ModeloDocumentoVersao` com upload/download de versão,
+   `LevantamentoResposta` e `DocConteudo`). Lacuna proposital: `ModeloDocumentoCampo` (mapa
+   de preenchimento, só informativo) tem CRUD mas **sem seed** — a geração de documentos não
+   lê essa tabela, então isso não bloqueia o item 3. **Tela Angular de Cadastros ainda não
+   existe** — só backend/API nesta fatia; ninguém no time consegue editar os catálogos pela
+   UI ainda (só reimportar do YAML/gerenciar modelos via API/Swagger diretamente).
+3. **Geração de documentos** (Levantamento/Projeto/Termo/Cronograma, incluindo o cronograma
+   de visitas `.xlsx` do próprio Agendador) — agora desbloqueado pelo item 2. Falta a
+   arquitetura híbrida em si (serviço Python interno reaproveitando `gerar_layout.py`/
+   `gl_*.py` sem reescrever a lógica de preenchimento, §Arquitetura híbrida em
+   [02-decisao-arquitetura.md](02-decisao-arquitetura.md)) e a integração NestJS→Python.
+4. **Protocolos de Treinamento** (vídeo/transcrição via faster-whisper) — mesma
    dependência do serviço Python híbrido.
-4. **E-mail/IMAP/Gmail** (`mailer.py`, `imap_intake.py`, `gmail_api.py`) — bindings Node
+5. **E-mail/IMAP/Gmail** (`mailer.py`, `imap_intake.py`, `gmail_api.py`) — bindings Node
    diretos (`nodemailer`, `imapflow`, `googleapis`), não convertidos ainda.
-5. **Disponibilidade externa/Consultas BD/Dashboards** (conexão Oracle configurável,
+6. **Disponibilidade externa/Consultas BD/Dashboards** (conexão Oracle configurável,
    `oracledb` tem binding Node oficial) — não convertido; destrava a lacuna do item 1.
-6. **Cadastros** (checklist/índice de tópicos/modelos de documento — o `ChecklistModelo` já
-   tem entidade e seed, falta CRUD/tela), **Matriz de Conhecimento**, **telas executivas**
-   (`routes_painel.py`) — não convertidos.
-7. **Usuários** (`/usuarios`, CRUD completo) e **auto-cadastro com código por e-mail** —
+7. **Matriz de Conhecimento**, **telas executivas** (`routes_painel.py`) — não convertidos.
+8. **Usuários** (`/usuarios`, CRUD completo) e **auto-cadastro com código por e-mail** —
    `UsersService` já tem a base (`criar`), falta o controller/tela e a integração com
-   e-mail (item 4).
-8. **Jobs agendados** (digest diário, robô de caixa, robô de protocolos) — usar
+   e-mail (item 5).
+9. **Jobs agendados** (digest diário, robô de caixa, robô de protocolos) — usar
    `@nestjs/schedule` (já instalado e registrado em `AppModule`, nenhum job criado ainda).
 
 ## 9. Incompatibilidades / decisões de portabilidade
@@ -233,9 +273,9 @@ npm test          # unitários (Vitest via @angular/build:unit-test)
 
 ## 12. Como validar esta entrega
 
-1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo, 38/38
-   testes passando (16 unitários + 22 e2e, incluindo a suíte dedicada do Agendador de
-   Visitas em `test/cronograma.e2e-spec.ts`).
+1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo, 55/55
+   testes passando (20 unitários + 35 e2e), incluindo as suítes dedicadas do Agendador de
+   Visitas (`test/cronograma.e2e-spec.ts`) e de Cadastros (`test/cadastros.e2e-spec.ts`).
 2. `cd frontend && npm run build && npm test` — build limpo, 6/6 testes passando.
 3. Smoke manual feito nesta sessão: backend + frontend rodando lado a lado, login real,
    CRUD de projeto e fluxo completo do Agendador (seed de atividades, designação de técnico,

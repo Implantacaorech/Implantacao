@@ -57,3 +57,10 @@ export const PERFIS_GERA_CRONOGRAMA: Perfil[] = [
   'Administrativo',
   'Consultor',
 ];
+// pode_gerar("levantamento") no Flask — todos os perfis exceto Consultor.
+export const PERFIS_GERA_LEVANTAMENTO: Perfil[] = [
+  'ADM',
+  'Coordenador',
+  'Administrativo',
+  'GCI',
+];

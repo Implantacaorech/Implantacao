@@ -9,6 +9,7 @@ import { ProjetosModule } from './projetos/projetos.module';
 import { HealthModule } from './health/health.module';
 import { CatalogosModule } from './catalogos/catalogos.module';
 import { CronogramaModule } from './cronograma/cronograma.module';
+import { LevantamentoModule } from './levantamento/levantamento.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { CronogramaModule } from './cronograma/cronograma.module';
     HealthModule,
     CatalogosModule,
     CronogramaModule,
+    LevantamentoModule,
   ],
 })
 export class AppModule {}
