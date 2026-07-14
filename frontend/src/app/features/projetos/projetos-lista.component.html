@@ -1,0 +1,69 @@
+<div class="cabecalho">
+  <h1>Projetos</h1>
+  <a routerLink="/projetos/novo" class="botao">+ Novo projeto</a>
+</div>
+
+<div class="filtros">
+  <input
+    type="text"
+    placeholder="Buscar por cliente…"
+    [(ngModel)]="filtroCliente"
+    (keyup.enter)="buscar()"
+  />
+  <select [(ngModel)]="filtroEtapa" (change)="buscar()">
+    <option value="">Todas as etapas</option>
+    @for (etapa of etapas; track etapa) {
+      <option [value]="etapa">{{ etapa }}</option>
+    }
+  </select>
+  <button type="button" (click)="buscar()">Filtrar</button>
+</div>
+
+@if (erro()) {
+  <p class="erro">{{ erro() }}</p>
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <table class="tabela">
+    <thead>
+      <tr>
+        <th>Cliente</th>
+        <th>Etapa</th>
+        <th>Situação</th>
+        <th>GCI</th>
+        <th>Consultor</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (p of projetos(); track p.id) {
+        <tr>
+          <td><a [routerLink]="['/projetos', p.id]">{{ p.cliente }}</a></td>
+          <td>{{ p.etapa }}</td>
+          <td>{{ p.situacao }}</td>
+          <td>{{ p.gci }}</td>
+          <td>{{ p.consultor }}</td>
+          <td class="acoes">
+            <button type="button" (click)="excluir(p)" title="Excluir">🗑</button>
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="6" class="vazio">Nenhum projeto encontrado.</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+
+  @if (paginacao(); as pg) {
+    <div class="paginacao">
+      <button type="button" [disabled]="pg.page <= 1" (click)="irParaPagina(pg.page - 1)">« Anterior</button>
+      <span>Página {{ pg.page }} de {{ pg.totalPages }} ({{ pg.totalItems }} projetos)</span>
+      <button type="button" [disabled]="pg.page >= pg.totalPages" (click)="irParaPagina(pg.page + 1)">
+        Próxima »
+      </button>
+    </div>
+  }
+}

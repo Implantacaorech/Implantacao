@@ -1,0 +1,104 @@
+.cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: #0f2f52;
+}
+
+.botao {
+  background: #0f2f52;
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.filtros {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.filtros input,
+.filtros select {
+  padding: 7px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.filtros input {
+  flex: 1;
+}
+
+.filtros button {
+  padding: 7px 14px;
+  border: none;
+  border-radius: 6px;
+  background: #eee;
+  cursor: pointer;
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.tabela th,
+.tabela td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+  font-size: 0.88rem;
+}
+
+.tabela a {
+  color: #0f2f52;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.acoes button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.vazio {
+  text-align: center;
+  color: #888;
+  padding: 20px;
+}
+
+.paginacao {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  font-size: 0.85rem;
+}
+
+.paginacao button {
+  padding: 5px 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.paginacao button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.erro {
+  color: #d33;
+}

@@ -1,0 +1,16 @@
+<header class="topo">
+  <span class="marca">Painel de Implantação</span>
+  <nav>
+    <a routerLink="/projetos">Projetos</a>
+  </nav>
+  <span class="usuario">
+    @if (auth.usuario(); as u) {
+      {{ u.nome }} · {{ u.perfil }}
+    }
+    <button type="button" (click)="sair()">Sair</button>
+  </span>
+</header>
+
+<main class="conteudo">
+  <router-outlet />
+</main>

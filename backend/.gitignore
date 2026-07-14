@@ -1,0 +1,7 @@
+/dist
+/node_modules
+/coverage
+/dados
+*.sqlite
+.env
+npm-debug.log*

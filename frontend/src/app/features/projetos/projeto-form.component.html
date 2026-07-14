@@ -1,0 +1,104 @@
+<div class="cabecalho">
+  <h1>{{ projetoId() ? 'Editar projeto' : 'Novo projeto' }}</h1>
+  <a routerLink="/projetos" class="voltar">← Voltar</a>
+</div>
+
+<form class="form-projeto" [formGroup]="form" (ngSubmit)="salvar()">
+  <label class="col-2">
+    Cliente *
+    <input type="text" formControlName="cliente" />
+  </label>
+
+  <label>
+    CNPJ
+    <input type="text" formControlName="cnpj" />
+  </label>
+
+  <label>
+    Nº do projeto (SICLA)
+    <input type="text" formControlName="numeroProjeto" />
+  </label>
+
+  <label>
+    Nº da proposta
+    <input type="text" formControlName="numeroProposta" />
+  </label>
+
+  <label>
+    Ramo
+    <input type="text" formControlName="ramo" />
+  </label>
+
+  <label>
+    GCI
+    <input type="text" formControlName="gci" />
+  </label>
+
+  <label>
+    Consultor
+    <input type="text" formControlName="consultor" />
+  </label>
+
+  <label>
+    Responsável
+    <input type="text" formControlName="responsavel" />
+  </label>
+
+  <label>
+    Etapa
+    <select formControlName="etapa">
+      @for (etapa of etapas; track etapa) {
+        <option [value]="etapa">{{ etapa }}</option>
+      }
+    </select>
+  </label>
+
+  <label>
+    Situação
+    <select formControlName="situacao">
+      @for (situacao of situacoes; track situacao) {
+        <option [value]="situacao">{{ situacao }}</option>
+      }
+    </select>
+  </label>
+
+  <label>
+    Módulos contratados
+    <input type="text" formControlName="modulos" placeholder="ex.: FAT,EST" />
+  </label>
+
+  <label>
+    Horas cobradas
+    <input type="text" formControlName="horasCobradas" />
+  </label>
+
+  <label>
+    Contato — nome
+    <input type="text" formControlName="contatoNome" />
+  </label>
+
+  <label>
+    Contato — e-mail
+    <input type="email" formControlName="contatoEmail" />
+  </label>
+
+  <label>
+    Contato — telefone
+    <input type="text" formControlName="contatoTel" />
+  </label>
+
+  <label class="col-2">
+    Observações
+    <textarea formControlName="observacoes" rows="3"></textarea>
+  </label>
+
+  @if (erro()) {
+    <p class="erro col-2">{{ erro() }}</p>
+  }
+
+  <div class="acoes col-2">
+    <button type="submit" [disabled]="form.invalid || salvando()">
+      {{ salvando() ? 'Salvando…' : 'Salvar' }}
+    </button>
+  </div>
+</form>

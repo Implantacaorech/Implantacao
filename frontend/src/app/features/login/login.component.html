@@ -1,0 +1,24 @@
+<div class="tela-login">
+  <form class="cartao-login" [formGroup]="form" (ngSubmit)="enviar()">
+    <h1>Painel de Implantação</h1>
+    <p class="subtitulo">Entre com seu usuário e senha</p>
+
+    <label>
+      Login
+      <input type="text" formControlName="login" autocomplete="username" />
+    </label>
+
+    <label>
+      Senha
+      <input type="password" formControlName="senha" autocomplete="current-password" />
+    </label>
+
+    @if (erro()) {
+      <p class="erro">{{ erro() }}</p>
+    }
+
+    <button type="submit" [disabled]="form.invalid || enviando()">
+      {{ enviando() ? 'Entrando…' : 'Entrar' }}
+    </button>
+  </form>
+</div>
