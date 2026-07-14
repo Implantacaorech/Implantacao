@@ -1,29 +1,15 @@
 # Documento de conversão — Painel de Implantação → Angular + NestJS
 
 **Branch:** `feature/migracao-angular-backend-moderno` (não mesclada em `main`; o Flask
-em produção não foi tocado). Status: autenticação, Projetos, o **Agendador de Visitas**
-(o módulo mais complexo do sistema), **Cadastros** (pré-requisito da geração de
-documentos), a **geração de documentos completa** (serviço Python híbrido — cronograma
-de visitas + Levantamento/Projeto/Termo fiéis, com anexo Documento/Evento), os
-**Protocolos de Treinamento** (vídeo -> transcrição local via faster-whisper -> análise
-IA -> revisão/aprovação, incluindo o robô de varredura de pasta e a tela Config → IA) e
-**E-mail/IMAP/Gmail** (SMTP + Gmail API + modelos de e-mail + o robô da caixa de entrada
-que cria projetos a partir do e-mail de fechamento do Comercial), **Disponibilidade
-externa/Consultas BD/Dashboards** (conexão Oracle/SICLA, motor de dashboard genérico e a
-checagem de disponibilidade externa agora ligada à distribuição automática do Agendador —
-fecha a última lacuna documentada do item 1) e a **Matriz de Conhecimento + telas
-executivas** (skill matrix técnico×competência com importador de planilha, motor de
-métricas/gates/alertas novo — pré-requisito descoberto nesta fatia, não só das telas —, e
-os painéis de Capacidade da equipe/Coordenação/Atividade/Home), os **Usuários (CRUD) +
-auto-cadastro por e-mail + tela de Designação** (GCI/consultor por projeto, com os 2
-gates de permissão distintos do processo real preservados fielmente), os **Jobs
-agendados** (resumo diário da Coordenação por e-mail, com botão de envio manual — os
-robôs de protocolos e da caixa de entrada já tinham sido convertidos nos itens 4 e 5) e as
-**linhas editáveis do Cronograma/Check List** (`CronogramaItem`/`ChecklistItem`/
-`Modificacao` — histórico de alterações, plano automático e roteiro por módulo; pré-
-requisito para o Monitoramento Operacional, ainda o único item pendente, ver §8)
-convertidos ponta a ponta, com o padrão replicável documentado para o restante. Ver
-honestidade de escopo em
+em produção não foi tocado). **Status: o backlog original de conversão do backend está
+INTEIRO convertido** — autenticação, Projetos, Agendador de Visitas, Cadastros, geração
+de documentos (Levantamento/Projeto/Termo + cronograma de visitas), Protocolos de
+Treinamento, E-mail/IMAP/Gmail, Disponibilidade externa/Consultas BD/Dashboards, Matriz
+de Conhecimento + telas executivas (Capacidade/Coordenação/Atividade/Home/
+Monitoramento Operacional), Usuários (CRUD) + auto-cadastro + Designação, Jobs agendados
+(digest diário) e as linhas editáveis do Cronograma/Check List. Ver a lista detalhada de
+cada item em §2 e a única pendência real que ficou de fora — geração dos documentos
+Cronograma/Check List a partir das linhas editáveis — em §8. Ver honestidade de escopo em
 [02-decisao-arquitetura.md](02-decisao-arquitetura.md#escopo-desta-fase-da-migração-honestidade-de-escopo).
 
 ## 1. Tecnologia anterior → nova
@@ -389,6 +375,36 @@ Python mantido só para geração de documentos e transcrição) em
     O Monitoramento Operacional (próximo item) só precisa das LINHAS, não do
     documento gerado, então esse trabalho de geração fica registrado como pendência
     própria, não bloqueando a sequência atual.
+- **Monitoramento Operacional** (`backend/src/painel/monitoramento.service.ts`) —
+  equivalente a `webapp/routes_painel.py:_monitoramento_operacional`/`monitoramento`, a
+  função mais complexa de todo o Flask original. **Fecha o backlog inteiro** desta
+  migração de backend (ver cabeçalho). `GET /painel/monitoramento`, gate `PERFIS_GESTAO`
+  (mesmo do resto do Painel).
+  - Consolida a carteira visível (`soMeus`) em **8 "setores" inferidos** (Comercial/
+    Administrativo/Coordenação/GCI/Consultoria/Implantação/Suporte/Desenvolvimento) —
+    não são uma tabela própria, só contagens/keywords sobre projetos, gates
+    (`MetricasService.gateStatus`/`camposFaltantes`), `CronogramaItem`/`ChecklistItem`
+    (pendentes/atrasados/concluídos) e alertas (`MetricasService.alertas`), cada um com
+    um estado (`normal`/`pendencias`/`sobrecarregado`/`aprovacao`/`espera`/`concluido`)
+    calculado por limiares fixos (`estadoSetor`, ex.: `atrasadas >= 2 || pendentes >= 6
+    || andamento >= 8` → sobrecarregado).
+  - Score de **saúde 0-100**: começa em 100 e desconta por atrasados (até 35),
+    em-risco (até 25), gate pendente (até 20) e setores sobrecarregados (até 20).
+  - **Carga por colaborador**: soma horas + nº de projetos por GCI/consultor, juntando o
+    que vem do campo `Projeto.gci`/`.consultor` (string bruta, separada em nomes
+    individuais) com as `Designacao` do projeto (que podem ter um consultor não
+    refletido no campo denormalizado do Projeto).
+  - **Próximas entregas**: junta `dataLevantamento`/`dataUsoOficial` dos projetos ativos
+    com as datas pendentes de `CronogramaItem`, ordenadas cronologicamente.
+  - **Mapa de progresso**: % de avanço pela posição da etapa em `ETAPAS`, ordenado
+    atrasado → em risco → mais alertas → nome do cliente.
+  - **Quirk do Flask original preservada de propósito, encontrada ao portar**: no setor
+    "Suporte", os campos `andamento` e `pendentes` recebem o MESMO valor
+    (`len(suporte_pend)`) — todos os outros setores têm valores distintos para os dois.
+    Não corrigido por fidelidade (documentado em teste dedicado,
+    `monitoramento.service.spec.ts`).
+  - O parâmetro `eventos` do `_monitoramento_operacional` original **nunca era lido
+    dentro da função** (parâmetro morto) — não foi portado, nem a query que o alimentava.
 
 ## 3. Funcionalidades preservadas (nesta fatia)
 
@@ -811,26 +827,16 @@ service → controller → tela Angular → testes):
    5 (`RoboProtocolosService`/`RoboCaixaService`); o digest diário (`DigestService`/
    `RoboDigestService`) fecha a lista, com o botão "enviar agora" do Painel de Coordenação
    também portado (`POST /painel/coordenacao/digest`). Ver §2.
-10. **Monitoramento Operacional** (`webapp/routes_painel.py:monitoramento`) — **não
-    convertido; descoberto e escopado durante o item 7, decidido com o usuário adiar em
-    vez de expandir aquela fatia**. A tela infere 8 "setores" (Comercial/
-    Administrativo/Coordenação/GCI/Consultoria/Implantação/Suporte/Desenvolvimento), um
-    score de saúde 0-100 e a carga por colaborador a partir de `CronogramaItem`/
-    `ChecklistItem`/`Modificacao` — as linhas EDITÁVEIS (com status Previsto/Concluído/
-    Cancelado por linha) dos documentos Cronograma e Check List. **Pré-requisito (a) já
-    convertido** (`backend/src/plano-cronograma/*`, ver §2) — a pedido do usuário, feito
-    de propósito depois de fechar o restante do backlog original. **Falta só (b): portar
-    `_monitoramento_operacional`** (a função mais complexa de `routes_painel.py`: infere
-    estado de cada setor a partir de contagens/keywords, calcula `saude`, `carga_colab`,
-    `entregas`, `mapa` de progresso). Reaproveita `MetricasService`
-    (`metricas`/`alertas`/`gate_status`), `soMeus` e agora também
-    `CronogramaItensService`/`ChecklistItensService`, já prontos.
+10. ~~Monitoramento Operacional~~ — **convertido** (`backend/src/painel/
+    monitoramento.service.ts`, ver §2). Fecha o backlog original inteiro de conversão do
+    backend.
 11. **Geração dos documentos Cronograma/Check List** (`.docx`/`.xlsx`, a partir das linhas
-    de `CronogramaItem`/`ChecklistItem` ou do catálogo) — cortado de propósito do escopo
-    do item 10 (ver §2): o Flask original tem 3 caminhos de geração concorrentes para o
-    Cronograma e a geração do Check List não lê `ChecklistItem` de jeito nenhum (usa só
-    o catálogo estático) — um emaranhado que merece sua própria decisão de escopo antes
-    de portar, não um efeito colateral de desbloquear o Monitoramento.
+    de `CronogramaItem`/`ChecklistItem` ou do catálogo) — **única pendência real restante**
+    do backlog conhecido. Cortado de propósito do escopo do item das linhas editáveis (ver
+    §2): o Flask original tem 3 caminhos de geração concorrentes para o Cronograma e a
+    geração do Check List não lê `ChecklistItem` de jeito nenhum (usa só o catálogo
+    estático) — um emaranhado que merece sua própria decisão de escopo antes de portar,
+    não um efeito colateral de desbloquear o Monitoramento.
 
 ## 9. Incompatibilidades / decisões de portabilidade
 
@@ -910,7 +916,7 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
 ## 12. Como validar esta entrega
 
 1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo,
-   409/409 testes passando (282 unitários + 127 e2e), incluindo as suítes dedicadas do
+   440/440 testes passando (310 unitários + 130 e2e), incluindo as suítes dedicadas do
    Agendador de Visitas (`test/cronograma.e2e-spec.ts`, com o teste do endpoint
    `/agenda/gerar` usando um fake do serviço Python), de Cadastros
    (`test/cadastros.e2e-spec.ts`), de Geração de documentos fiéis
@@ -952,11 +958,15 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
    dedicados de `linhas-diff.util` — incluindo um teste que documenta a quirk da
    comparação posicional preservada de propósito —, `catalogo-modulos.util`,
    `datas-plano.util` e do algoritmo `_distribuir`/`_plano_automatico` em
-   `cronograma-itens.service.spec.ts`) e o teste unitário de `ProjetosService.excluir()`
-   que garante a limpeza dos 5 módulos com dado por-projeto (Cronograma, Designações,
-   Levantamento-resposta, DocConteudo, Documentos/Eventos — ver §6 item 9). Suíte e2e
-   validada estável em múltiplas execuções consecutivas (inclusive repetindo cada spec
-   novo isoladamente, para pegar corridas de
+   `cronograma-itens.service.spec.ts`), do Monitoramento Operacional
+   (`test/painel.e2e-spec.ts` — gate de gestão, mapa/carteira filtrados por `soMeus`;
+   unitários dedicados de `monitoramento.util` e de `monitoramento.service.spec.ts`
+   cobrindo os 8 setores, o score de saúde, a ordenação do mapa, entregas, carga por
+   colaborador e a quirk do setor Suporte preservada de propósito) e o teste unitário de
+   `ProjetosService.excluir()` que garante a limpeza dos 5 módulos com dado por-projeto
+   (Cronograma, Designações, Levantamento-resposta, DocConteudo, Documentos/Eventos —
+   ver §6 item 9). Suíte e2e validada estável em múltiplas execuções consecutivas
+   (inclusive repetindo cada spec novo isoladamente, para pegar corridas de
    estado entre execuções — ver §6 itens 10 e 15).
 2. `cd frontend && npm run build && npm test` — build limpo, 6/6 testes passando.
 3. `cd docservice && set PYTHONUTF8=1 && .venv\Scripts\python -m pytest tests/ -v` — 14/14
@@ -1032,4 +1042,10 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
    foi validado contra o catálogo `ChecklistModelo` (banco), não contra o
    `checklist_modulos.yaml` bruto — ver a divergência de fontes documentada no §6 item
    21. Nenhuma linha foi gerada/testada contra um projeto real de produção nesta sessão
-   — só dados sintéticos de teste.
+   — só dados sintéticos de teste. **Monitoramento Operacional: os 8 "setores" e o score
+   de saúde foram validados contra cenários sintéticos cobrindo cada estado possível**
+   (`normal`/`pendencias`/`sobrecarregado`/`aprovacao`/`espera`/`concluido`), mas nunca
+   contra a carteira real de clientes em produção — os limiares fixos (ex.: `atrasadas >=
+   2` para "sobrecarregado") vieram direto do Flask original sem ajuste; recomenda-se
+   observar se fazem sentido na prática antes de divulgar o score de saúde como métrica
+   oficial para a Coordenação.

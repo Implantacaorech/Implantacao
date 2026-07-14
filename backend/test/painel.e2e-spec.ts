@@ -215,4 +215,26 @@ describe('Painel (e2e)', () => {
       expect(res.body.data.mensagem).toContain('destinatários');
     });
   });
+
+  describe('GET /painel/monitoramento', () => {
+    it('Consultor não acessa (403)', async () => {
+      const res = await auth(request(server()).get('/api/painel/monitoramento'), tokenConsultor);
+      expect(res.status).toBe(403);
+    });
+
+    it('ADM vê os 8 setores, saúde e mapa cobrindo a carteira inteira', async () => {
+      const res = await auth(request(server()).get('/api/painel/monitoramento'), tokenAdm);
+      expect(res.status).toBe(200);
+      expect(res.body.data.setores).toHaveLength(8);
+      expect(typeof res.body.data.saude).toBe('number');
+      expect(res.body.data.mapa).toHaveLength(2); // os 2 projetos ativos vistos pelo ADM
+    });
+
+    it('GCI só vê o próprio projeto no mapa', async () => {
+      const res = await auth(request(server()).get('/api/painel/monitoramento'), tokenGci);
+      expect(res.status).toBe(200);
+      expect(res.body.data.mapa).toHaveLength(1);
+      expect(res.body.data.mapa[0].cliente).toBe('Cliente Visível ao GCI');
+    });
+  });
 });
