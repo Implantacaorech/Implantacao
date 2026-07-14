@@ -101,6 +101,16 @@ export class CronogramaService {
     await this.atividadesSeed(projetoId, projeto.modulos || '');
   }
 
+  /** Chamado por `ProjetosService.excluir` — sem isso, excluir um projeto deixaria as
+   * tabelas do Agendador órfãs (nenhuma entidade desta migração usa FK real com CASCADE
+   * ainda; ver docs/migracao/03-documento-conversao.md). */
+  async limparProjeto(projetoId: number): Promise<void> {
+    await this.atividades.delete({ projetoId });
+    await this.slots.delete({ projetoId });
+    await this.configs.delete({ projetoId });
+    await this.periodos.delete({ projetoId });
+  }
+
   /** Campos do projeto necessários para a geração do cronograma de visitas (.xlsx) —
    * ver docservice/main.py:GerarCronogramaVisitasRequest. */
   async projetoParaGeracao(projetoId: number): Promise<{

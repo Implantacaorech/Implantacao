@@ -4,6 +4,11 @@ import { NotFoundException } from '@nestjs/common';
 import { ProjetosService } from './projetos.service';
 import { Projeto } from '../database/entities/projeto.entity';
 import { AuthUser } from '../common/decorators/current-user.decorator';
+import { CronogramaService } from '../cronograma/cronograma.service';
+import { DesignacoesService } from '../cronograma/designacoes.service';
+import { LevantamentoRespostaService } from '../levantamento/levantamento-resposta.service';
+import { DocConteudoService } from '../levantamento/doc-conteudo.service';
+import { DocumentosService } from '../documentos/documentos.service';
 
 describe('ProjetosService', () => {
   let service: ProjetosService;
@@ -25,12 +30,25 @@ describe('ProjetosService', () => {
     remove: jest.fn(),
   };
 
+  // Limpadores de projeto (chamados por `excluir`) — cada módulo com dado por-projeto
+  // registra um aqui; ver comentário em projetos.service.ts.
+  const cronograma = { limparProjeto: jest.fn() };
+  const designacoes = { limparProjeto: jest.fn() };
+  const levantamentoResposta = { limparProjeto: jest.fn() };
+  const docConteudo = { limparProjeto: jest.fn() };
+  const documentos = { limparProjeto: jest.fn() };
+
   beforeEach(async () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProjetosService,
         { provide: getRepositoryToken(Projeto), useValue: repo },
+        { provide: CronogramaService, useValue: cronograma },
+        { provide: DesignacoesService, useValue: designacoes },
+        { provide: LevantamentoRespostaService, useValue: levantamentoResposta },
+        { provide: DocConteudoService, useValue: docConteudo },
+        { provide: DocumentosService, useValue: documentos },
       ],
     }).compile();
     service = module.get(ProjetosService);
@@ -102,5 +120,17 @@ describe('ProjetosService', () => {
       cliente: 'Antigo',
       situacao: 'Em risco',
     });
+  });
+
+  it('excluir limpa os dados de todos os módulos antes de remover o projeto (sem FK cascade no schema)', async () => {
+    const projeto = { id: 7, cliente: 'Cliente X' };
+    repo.findOne.mockResolvedValue(projeto);
+    await service.excluir(7);
+    expect(cronograma.limparProjeto).toHaveBeenCalledWith(7);
+    expect(designacoes.limparProjeto).toHaveBeenCalledWith(7);
+    expect(levantamentoResposta.limparProjeto).toHaveBeenCalledWith(7);
+    expect(docConteudo.limparProjeto).toHaveBeenCalledWith(7);
+    expect(documentos.limparProjeto).toHaveBeenCalledWith(7);
+    expect(repo.remove).toHaveBeenCalledWith(projeto);
   });
 });

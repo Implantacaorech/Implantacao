@@ -42,6 +42,9 @@ import { ReorganizarModuloDto } from './dto/reorganizar-modulo.dto';
 import { AcompanhamentoQueryDto } from './dto/acompanhamento-query.dto';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { GeracaoDocumentosService } from '../geracao/geracao-documentos.service';
+import { DocumentosService } from '../documentos/documentos.service';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { AuthUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('agenda')
 @ApiBearerAuth()
@@ -54,6 +57,7 @@ export class CronogramaController {
     private readonly designacoes: DesignacoesService,
     private readonly distribuicao: DistribuicaoService,
     private readonly geracao: GeracaoDocumentosService,
+    private readonly documentos: DocumentosService,
   ) {}
 
   @Get('atividades')
@@ -438,6 +442,7 @@ export class CronogramaController {
   })
   async gerar(
     @Param('projetoId', ParseIntPipe) projetoId: number,
+    @CurrentUser() user: AuthUser,
     @Res() res: Response,
   ) {
     const projeto = await this.cronograma.projetoParaGeracao(projetoId);
@@ -475,6 +480,18 @@ export class CronogramaController {
         })),
         cronogramaConfig: { analistaPadrao: cfg.analistaPadrao },
       },
+    );
+
+    // Anexa à ficha do projeto (Documento) + registra na timeline (Evento) — mesmo
+    // comportamento de webapp/routes_agenda.py:projeto_agenda_gerar. Feito depois de gerar
+    // com sucesso, sem bloquear o download caso a persistência falhe por algum motivo.
+    const salvo = this.documentos.salvarArquivoGerado(projetoId, arquivo.filename, arquivo.buffer);
+    await this.documentos.registrarDocumento(projetoId, 'cronograma', salvo.arquivo, salvo.caminho, 'gerado');
+    await this.documentos.registrarEvento(
+      projetoId,
+      'documento',
+      `Gerou cronograma de visitas ${arquivo.filename}`,
+      user.nome,
     );
 
     res.set({

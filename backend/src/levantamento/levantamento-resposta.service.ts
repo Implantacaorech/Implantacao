@@ -93,4 +93,10 @@ export class LevantamentoRespostaService {
       total: linhas.length,
     };
   }
+
+  /** Chamado por `ProjetosService.excluir` — ver comentário equivalente em
+   * cronograma.service.ts. */
+  async limparProjeto(projetoId: number): Promise<void> {
+    await this.repo.delete({ projetoId });
+  }
 }

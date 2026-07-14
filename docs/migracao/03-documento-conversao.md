@@ -14,7 +14,7 @@ restante. Ver honestidade de escopo em
 |---|---|---|
 | Frontend | Jinja2 (server-side, `webapp/templates/`) | Angular 22 (standalone components, TypeScript 6) |
 | Backend | Flask 3 (Python), rotas em `routes_*.py` | NestJS 11 (TypeScript), módulos em `backend/src/*` |
-| ORM | SQLAlchemy 2 (sem FKs declaradas) | TypeORM 0.3.31 (FKs reais, `onDelete: CASCADE`) |
+| ORM | SQLAlchemy 2 (sem FKs declaradas) | TypeORM 0.3.31 (sem FKs declaradas — mesmo padrão do Flask, ver §6) |
 | Auth | Sessão Flask + senha mestra de emergência | JWT (access curto + refresh rotativo revogável) |
 | Banco | Postgres (prod) / SQLite (dev/teste) | Mesmo padrão: Postgres (prod) / SQLite (dev/teste) |
 | Docs de API | Nenhuma | Swagger/OpenAPI em `/api/docs` |
@@ -99,10 +99,17 @@ Python mantido só para geração de documentos e transcrição) em
 - **Autenticação real com JWT + refresh rotativo e revogável** — o Flask usa sessão de
   servidor sem expiração/rotação de token e uma senha mestra que sempre loga como ADM
   incondicionalmente; o novo backend elimina esse modo de acesso irrestrito (ver §7).
-- **Integridade referencial real** (`onDelete: CASCADE`) em vez de limpeza manual de 9
-  tabelas em `projeto_excluir` — a categoria de bug já encontrada uma vez nesta mesma
-  sessão de trabalho (memória órfã ao excluir projeto) deixa de ser possível por
-  construção.
+- **Limpeza de projeto centralizada e testada** — nenhuma entidade nova declara FK/
+  `onDelete: CASCADE` (mesma ausência de FKs do SQLAlchemy original), então
+  `ProjetosService.excluir()` chama explicitamente `limparProjeto(id)` de cada serviço
+  dependente (Cronograma, Designações, Levantamento-resposta, DocConteudo, Documentos)
+  antes de remover o projeto — espelhando por injeção de dependência a mesma tupla de
+  limpeza hardcoded que `webapp/app.py:projeto_excluir` já usa. Diferença real em relação
+  ao Flask: aqui a chamada é coberta por teste dedicado (`projetos.service.spec.ts`), o que
+  reduz o risco de esquecer uma tabela nova — mas a categoria de bug (linha órfã se algum
+  `limparProjeto` for esquecido) continua existindo por construção, só fica mais difícil de
+  passar despercebida. Ver §6 para a lição completa (doc já teve, por um tempo, a afirmação
+  incorreta de que existiam FKs reais com cascade).
 - **Contrato de API padronizado** (`{success, data, message, timestamp}` /
   `{success:false, statusCode, error, message, details, path}`) com documentação Swagger
   automática — o Flask não tinha nenhuma API JSON documentada (era HTML renderizado no
@@ -190,6 +197,23 @@ porque são o tipo de erro fácil de reintroduzir ao converter os módulos que f
    uma substring. **Lição: ao portar módulos com texto acentuado para um ambiente novo,
    testar o caractere exato, não só a presença de uma palavra-chave ASCII** — um teste
    "verde" só prova o que ele realmente checa.
+9. **Este próprio documento afirmou por um tempo que o schema novo tinha FK real com
+   `onDelete: CASCADE`** (linha da tabela §1 e um item de §4) — falso: nenhuma entidade
+   declara `@ManyToOne`/`onDelete` em lugar nenhum (`grep -rn "ManyToOne\|onDelete"
+   backend/src/database/entities/` não retorna nada). Se `ProjetosService.excluir()` tivesse
+   sido escrito confiando nessa afirmação, todo `projeto_id` órfão em `documentos`/`eventos`
+   (e nas tabelas do Agendador/Levantamento) sobreviveria à exclusão do projeto — exatamente
+   a mesma classe de bug do item 1 desta lista, só que na documentação em vez do código.
+   Corrigido: (1) `ProjetosService.excluir()` injeta os 5 serviços com dado por-projeto
+   (`CronogramaService`, `DesignacoesService`, `LevantamentoRespostaService`,
+   `DocConteudoService`, `DocumentosService`) e chama `limparProjeto(id)` de cada um antes de
+   remover a linha do projeto — mesma tupla de limpeza do `webapp/app.py:projeto_excluir`,
+   agora via injeção de dependência em vez de lista hardcoded; (2) teste dedicado
+   (`projetos.service.spec.ts`, "excluir limpa os dados de todos os módulos...") garante que
+   os 5 `limparProjeto` são chamados; (3) texto de §1/§4 corrigido para não afirmar cascade
+   real. **Lição: uma afirmação arquitetural no documento de conversão é tão passível de
+   verificação quanto uma linha de código — não escrever "X existe" sem ter rodado o grep que
+   prova.**
 
 ## 7. Vulnerabilidades / débitos de segurança do sistema atual, tratados na conversão
 
@@ -325,10 +349,13 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
 
 ## 12. Como validar esta entrega
 
-1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo, 57/57
-   testes passando (20 unitários + 37 e2e), incluindo as suítes dedicadas do Agendador de
+1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo, 58/58
+   testes passando (21 unitários + 37 e2e), incluindo as suítes dedicadas do Agendador de
    Visitas (`test/cronograma.e2e-spec.ts`, com o teste do endpoint `/agenda/gerar` usando um
-   fake do serviço Python) e de Cadastros (`test/cadastros.e2e-spec.ts`).
+   fake do serviço Python), de Cadastros (`test/cadastros.e2e-spec.ts`) e o teste unitário
+   de `ProjetosService.excluir()` que garante a limpeza dos 5 módulos com dado por-projeto
+   (Cronograma, Designações, Levantamento-resposta, DocConteudo, Documentos/Eventos — ver
+   §6 item 9).
 2. `cd frontend && npm run build && npm test` — build limpo, 6/6 testes passando.
 3. `cd docservice && set PYTHONUTF8=1 && .venv\Scripts\python -m pytest tests/ -v` — 4/4
    testes passando, incluindo checagem estrita de caractere (não só substring) para pegar

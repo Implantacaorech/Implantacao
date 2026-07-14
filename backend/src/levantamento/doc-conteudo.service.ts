@@ -44,4 +44,10 @@ export class DocConteudoService {
     }
     if (paraSalvar.length > 0) await this.repo.save(paraSalvar);
   }
+
+  /** Chamado por `ProjetosService.excluir` — ver comentário equivalente em
+   * cronograma.service.ts. */
+  async limparProjeto(projetoId: number): Promise<void> {
+    await this.repo.delete({ projetoId });
+  }
 }

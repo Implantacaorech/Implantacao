@@ -69,4 +69,10 @@ export class DesignacoesService {
     await this.repo.save(d);
     return n;
   }
+
+  /** Chamado por `ProjetosService.excluir` — ver comentário equivalente em
+   * cronograma.service.ts. */
+  async limparProjeto(projetoId: number): Promise<void> {
+    await this.repo.delete({ projetoId });
+  }
 }
