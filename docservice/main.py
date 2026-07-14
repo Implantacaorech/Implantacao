@@ -40,6 +40,11 @@ import db as db_shim  # noqa: E402
 from gl_xlsx import gerar_agenda_xlsx  # noqa: E402
 from gerar_fiel import gerar_docx  # noqa: E402
 
+# transcricao/ usa o mesmo estilo de import "achatado" (`import transcritor`) — mesmo
+# motivo do gerador/ acima.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "transcricao"))
+import servico as transcricao_servico  # noqa: E402
+
 app = FastAPI(
     title="Painel de Implantação — Serviço de Geração de Documentos",
     description="Serviço interno (não público) chamado pela API NestJS.",
@@ -245,3 +250,34 @@ def gerar_documento_fiel(req: GerarDocumentoFielRequest):
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": 'attachment; filename="%s.docx"' % req.slug},
     )
+
+
+class IniciarTranscricaoRequest(BaseModel):
+    protocoloId: int
+    caminhoVideo: str
+
+
+@app.post("/transcrever", status_code=202)
+def iniciar_transcricao(req: IniciarTranscricaoRequest):
+    """Dispara a transcrição (faster-whisper, local, CPU) em segundo plano — devolve na
+    hora; o chamador acompanha via GET /transcrever/{id}/status. Equivalente a
+    webapp/protocolos.py:processar (só a etapa de transcrição — a análise por IA e a
+    máquina de estados do Protocolo continuam no NestJS, que é quem tem o banco)."""
+    try:
+        transcricao_servico.iniciar(req.protocoloId, req.caminhoVideo)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail="Arquivo de vídeo não encontrado.") from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    return {"status": "processando"}
+
+
+@app.get("/transcrever/{protocolo_id}/status")
+def status_transcricao(protocolo_id: int):
+    """Andamento do job: {status: 'processando'|'concluido'|'erro', pct, pos, dur} durante
+    o processamento, ou o resultado final (transcricao/duracaoSeg/idioma, ou mensagem de
+    erro) quando termina. 404 se a transcrição nunca foi iniciada para este id."""
+    job = transcricao_servico.status(protocolo_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Nenhuma transcrição iniciada para este protocolo.")
+    return job

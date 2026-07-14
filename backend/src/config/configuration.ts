@@ -12,6 +12,8 @@ export interface AppConfig {
   };
   corsOrigins: string[];
   docserviceUrl: string;
+  protocolosDir: string;
+  protocolosPollMin: number;
 }
 
 // Todas as variáveis deste backend novo usam o prefixo MIGRACAO_ — nunca o prefixo PAINEL_
@@ -45,5 +47,11 @@ export default (): AppConfig => {
     // roda no mesmo host (ver docservice/ e docs/migracao/02-decisao-arquitetura.md).
     docserviceUrl:
       process.env.MIGRACAO_DOCSERVICE_URL ?? 'http://127.0.0.1:8001',
+    // Protocolos de Treinamento: pasta raiz sincronizada pelo OneDrive (Videos Pendentes/
+    // Processados/Com Erro) — mesmo padrão de webapp/protocolos.py (env PROTOCOLOS_DIR).
+    protocolosDir:
+      process.env.MIGRACAO_PROTOCOLOS_DIR ??
+      'C:\\SEG-EVE\\OneDrive - rech.com.br\\PortalImplantacao\\Treinamentos',
+    protocolosPollMin: Number(process.env.MIGRACAO_PROTOCOLOS_POLL_MIN ?? 10),
   };
 };

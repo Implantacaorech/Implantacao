@@ -15,6 +15,7 @@ import { LevantamentoResposta } from './levantamento-resposta.entity';
 import { DocConteudo } from './doc-conteudo.entity';
 import { Documento } from './documento.entity';
 import { Evento } from './evento.entity';
+import { Protocolo } from './protocolo.entity';
 
 export * from './usuario.entity';
 export * from './projeto.entity';
@@ -33,6 +34,7 @@ export * from './levantamento-resposta.entity';
 export * from './doc-conteudo.entity';
 export * from './documento.entity';
 export * from './evento.entity';
+export * from './protocolo.entity';
 
 // Lista única usada por DatabaseModule (runtime) e AppDataSource (CLI de migrations) —
 // evita as duas listas divergirem conforme novas entidades são adicionadas.
@@ -54,4 +56,5 @@ export const ENTITIES = [
   DocConteudo,
   Documento,
   Evento,
+  Protocolo,
 ];

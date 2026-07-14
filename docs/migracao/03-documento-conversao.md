@@ -3,10 +3,12 @@
 **Branch:** `feature/migracao-angular-backend-moderno` (não mesclada em `main`; o Flask
 em produção não foi tocado). Status: autenticação, Projetos, o **Agendador de Visitas**
 (o módulo mais complexo do sistema), **Cadastros** (pré-requisito da geração de
-documentos) e a **geração de documentos completa** (serviço Python híbrido — cronograma
-de visitas + Levantamento/Projeto/Termo fiéis, com anexo Documento/Evento) convertidos
-ponta a ponta, com o padrão replicável documentado para o restante. Ver honestidade de
-escopo em
+documentos), a **geração de documentos completa** (serviço Python híbrido — cronograma
+de visitas + Levantamento/Projeto/Termo fiéis, com anexo Documento/Evento) e os
+**Protocolos de Treinamento** (vídeo -> transcrição local via faster-whisper -> análise
+IA -> revisão/aprovação, incluindo o robô de varredura de pasta e a tela Config → IA)
+convertidos ponta a ponta, com o padrão replicável documentado para o restante. Ver
+honestidade de escopo em
 [02-decisao-arquitetura.md](02-decisao-arquitetura.md#escopo-desta-fase-da-migração-honestidade-de-escopo).
 
 ## 1. Tecnologia anterior → nova
@@ -86,6 +88,32 @@ Python mantido só para geração de documentos e transcrição) em
     (`Documento`) e registram na timeline (`Evento`) — mesmo comportamento de
     `webapp/routes_agenda.py:projeto_agenda_gerar` /
     `webapp/routes_geracao.py:_gerar_e_anexar_fiel`.
+- **Protocolos de Treinamento** (`backend/src/protocolos/*`, `backend/src/ia/*`,
+  `backend/src/transcricao/*`, `docservice/transcricao/*`) — base de conhecimento de
+  vídeos de treinamento transcritos e analisados por IA, **sem vínculo com Projeto**.
+  Pipeline completo: upload manual OU robô de varredura da pasta OneDrive/SharePoint
+  (`Videos Pendentes`, com checagem de estabilidade de 90s) -> registro `Pendente`
+  (dedup por hash) -> `Transcrevendo` (faster-whisper local, CPU, no docservice) ->
+  `Analisando` (Claude via `@anthropic-ai/sdk`, chave gerenciada pela nova tela
+  Config → IA) -> `Em revisão` (edição humana dos 16 campos estruturados) -> `Aprovado`/
+  `Reprovado`, com histórico auditado em cada transição. Arquitetura: `transcritor.py`
+  copiado sem alterar a lógica para `docservice/transcricao/`, exposto como um job
+  assíncrono em memória (`POST /transcrever` devolve na hora, `GET
+  /transcrever/{id}/status` é feito polling) — diferente do resto do docservice
+  (stateless por request), aqui o estado do job vive em memória do processo Python
+  porque uma transcrição pode levar até 3h e nunca deve bloquear a resposta HTTP; quem
+  tem o banco e decide a máquina de estados continua sendo o NestJS
+  (`ProcessamentoProtocolosService`, com `RoboProtocolosService` fazendo a varredura
+  periódica via `SchedulerRegistry` — o intervalo é configurável em runtime, por isso não
+  dá pra usar `@Interval()` estático). A análise por IA roda **direto no NestJS** (não no
+  docservice) via `@anthropic-ai/sdk` — não precisa de Python, só o SDK oficial do
+  Anthropic em Node. Endpoints: `GET/POST /protocolos`, `GET /protocolos/:id`, `POST
+  /protocolos/:id/{salvar,processar,aprovar,reprovar}`, `GET
+  /protocolos/:id/{status,video}` (o último com suporte a `Range`, para o player).
+  Equivalente a `webapp/protocolos.py` + `webapp/protocolo_ia.py` +
+  `webapp/routes_protocolos.py` + `webapp/transcritor.py` + a fatia de `tools/ia.py` que
+  este módulo usa (chave/modelo — o resto de `tools/ia.py`, a correção verbal opcional
+  dos documentos gerados, não foi portado, ver §8).
 
 ## 3. Funcionalidades preservadas (nesta fatia)
 
@@ -240,7 +268,38 @@ porque são o tipo de erro fácil de reintroduzir ao converter os módulos que f
     (`modelo-documento.service.ts:store()`), mesmo padrão já usado para pular o auto-seed em
     teste. **Lição: isolamento de teste por SQLite `:memory:` não isola gravação em disco —
     qualquer serviço que grava arquivo (não só banco) precisa do mesmo cuidado assim que
-    dois specs e2e passam a exercitá-lo.**
+    dois specs e2e passam a exercitá-lo.** A mesma correção (isolar por `JEST_WORKER_ID`)
+    foi aplicada preventivamente em `IaService.arquivoChave()`, ao criá-la nesta mesma
+    sessão de trabalho, já sabendo do problema.
+11. **Coluna nullable com tipo TypeScript união (`Date | null`) vira `Object` para o
+    TypeORM, não `Date`** (achado ao rodar a suíte e2e completa pela primeira vez após
+    criar a entidade `Protocolo`): `processadoEm`/`aprovadoEm` foram declaradas
+    `Date | null`, e o `design:type` refletido por essa união é `Object` — o driver
+    `better-sqlite3` rejeita a entidade (`DataTypeNotSupportedError: ... "Object" ...`).
+    Uma primeira tentativa de corrigir com `type: 'timestamp'` explícito também falhou:
+    `'timestamp'` não existe no driver SQLite (só `'datetime'`), e `'datetime'` não existe
+    no driver Postgres (só `'timestamp'`) — não há um literal comum aos dois. Corrigido
+    declarando a propriedade como `Date` simples (sem `| null`, com `nullable: true` só no
+    `@Column()`) e deixando o TypeORM inferir o tipo nativo certo por driver a partir do
+    `design:type`. **Mesma causa-raiz do item 3 desta lista** (`import type` apagando o
+    `design:type` de colunas com tipo alias) — família de bug: **qualquer `@Column()` cuja
+    propriedade não seja exatamente uma classe concreta (união, tipo importado com `import
+    type`, etc.) precisa de atenção redobrada**, e datas nullable especificamente não têm
+    um `type` explícito universal entre SQLite/Postgres — deixar sem `type` e sem união é
+    o caminho seguro.
+12. **Teste e2e de dedup por upload testava um cenário que o próprio Flask original nunca
+    deduplicou**: a primeira versão de `protocolos.e2e-spec.ts` enviava o mesmo conteúdo
+    duas vezes com o mesmo nome original, esperando `novo=false` na segunda. Falhou — mas
+    ao reler `webapp/routes_protocolos.py:protocolo_novo`, o Flask original **também**
+    resolve a colisão de nome em disco (`nome_1.mp4`, `nome_2.mp4`, ...) ANTES de chamar
+    `protocolo_hash`, e o hash inclui o nome do arquivo salvo — então dois uploads com o
+    mesmo conteúdo e nome original geram hashes DIFERENTES (nomes salvos diferentes) em
+    ambos os sistemas; o dedup por hash só funciona de verdade para o robô de pasta
+    (revarrendo o MESMO caminho estável). Corrigido removendo o teste (premissa inválida)
+    e documentando a limitação no comentário do teste que ficou. **Lição: quando um teste
+    novo falha logo de cara, reler o comportamento ORIGINAL linha a linha antes de assumir
+    que é bug na porta — às vezes o teste é que está testando um comportamento que nunca
+    existiu.**
 
 ## 7. Vulnerabilidades / débitos de segurança do sistema atual, tratados na conversão
 
@@ -280,8 +339,13 @@ service → controller → tela Angular → testes):
    Levantamento/Projeto/Termo (`.docx`, blocos condicionais por módulo contratado,
    `POST /gerar/documento-fiel` + `POST /projetos/:id/gerar-layout/:slug`). `Documento`/
    `Evento` (entidades novas) persistem o anexo e a timeline em ambos os fluxos.
-4. **Protocolos de Treinamento** (vídeo/transcrição via faster-whisper) — mesma
-   dependência do serviço Python híbrido (agora já existe e está rodando — `docservice/`).
+4. ~~Protocolos de Treinamento~~ — **convertido**: pipeline completo vídeo -> transcrição
+   local (faster-whisper, no docservice) -> análise IA (Claude, direto no NestJS via
+   `@anthropic-ai/sdk`) -> revisão/aprovação, com robô de varredura de pasta
+   (`RoboProtocolosService`) e a nova tela Config → IA (`IaModule`). Ver §2. Lacuna
+   proposital: a correção verbal/ortográfica opcional dos documentos GERADOS (a outra
+   metade de `tools/ia.py` — `revisar`/`revisar_lote`, usada por `gl_*.py` no Flask) não
+   foi portada — só a chave/config (`IaService.obterChave`/`modelo`) é compartilhada.
 5. **E-mail/IMAP/Gmail** (`mailer.py`, `imap_intake.py`, `gmail_api.py`) — bindings Node
    diretos (`nodemailer`, `imapflow`, `googleapis`), não convertidos ainda.
 6. **Disponibilidade externa/Consultas BD/Dashboards** (conexão Oracle configurável,
@@ -290,8 +354,9 @@ service → controller → tela Angular → testes):
 8. **Usuários** (`/usuarios`, CRUD completo) e **auto-cadastro com código por e-mail** —
    `UsersService` já tem a base (`criar`), falta o controller/tela e a integração com
    e-mail (item 5).
-9. **Jobs agendados** (digest diário, robô de caixa, robô de protocolos) — usar
-   `@nestjs/schedule` (já instalado e registrado em `AppModule`, nenhum job criado ainda).
+9. **Jobs agendados** (digest diário, robô de caixa) — usar `@nestjs/schedule` (já
+   instalado e registrado em `AppModule`; o robô de protocolos já foi implementado como
+   parte do item 4, ver `RoboProtocolosService` — os outros dois jobs continuam pendentes).
 
 ## 9. Incompatibilidades / decisões de portabilidade
 
@@ -370,23 +435,27 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
 
 ## 12. Como validar esta entrega
 
-1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo, 61/61
-   testes passando (21 unitários + 40 e2e), incluindo as suítes dedicadas do Agendador de
+1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo, 93/93
+   testes passando (47 unitários + 46 e2e), incluindo as suítes dedicadas do Agendador de
    Visitas (`test/cronograma.e2e-spec.ts`, com o teste do endpoint `/agenda/gerar` usando um
    fake do serviço Python), de Cadastros (`test/cadastros.e2e-spec.ts`), de Geração de
    documentos fiéis (`test/geracao-layout.e2e-spec.ts`, endpoint
-   `/projetos/:id/gerar-layout/:slug`) e o teste unitário de `ProjetosService.excluir()` que
-   garante a limpeza dos 5 módulos com dado por-projeto (Cronograma, Designações,
-   Levantamento-resposta, DocConteudo, Documentos/Eventos — ver §6 item 9). Suíte e2e
-   validada estável em 3 execuções consecutivas (a corrida de `EBUSY` do §6 item 10 só
-   aparecia de forma intermitente).
+   `/projetos/:id/gerar-layout/:slug`), de Protocolos de Treinamento
+   (`test/protocolos.e2e-spec.ts` — upload multipart real, pipeline completo com
+   `TranscricaoService`/`ProtocoloIaService` mockados por `overrideProvider`, edição,
+   controle de acesso ADM/Coordenador em aprovar/reprovar, streaming do vídeo) e o teste
+   unitário de `ProjetosService.excluir()` que garante a limpeza dos 5 módulos com dado
+   por-projeto (Cronograma, Designações, Levantamento-resposta, DocConteudo,
+   Documentos/Eventos — ver §6 item 9). Suíte e2e validada estável em 5 execuções
+   consecutivas.
 2. `cd frontend && npm run build && npm test` — build limpo, 6/6 testes passando.
-3. `cd docservice && set PYTHONUTF8=1 && .venv\Scripts\python -m pytest tests/ -v` — 9/9
+3. `cd docservice && set PYTHONUTF8=1 && .venv\Scripts\python -m pytest tests/ -v` — 14/14
    testes passando: os 4 do cronograma de visitas (checagem estrita de caractere, não só
-   substring, para pegar corrupção de encoding) + os 5 novos de
-   `test_documento_fiel.py` — que geram Levantamento/Projeto/Termo a partir dos **templates
-   .docx reais** de `tools/templates/layouts/` (os mesmos usados em produção), não de
-   fixtures sintéticas.
+   substring, para pegar corrupção de encoding), os 5 de `test_documento_fiel.py` — que
+   geram Levantamento/Projeto/Termo a partir dos **templates .docx reais** de
+   `tools/templates/layouts/` (os mesmos usados em produção), não de fixtures sintéticas —
+   e os 5 novos de `test_transcricao.py` (job assíncrono de transcrição: sucesso, erro,
+   404, e rejeição de dois jobs concorrentes do mesmo protocolo).
 4. Smoke manual feito nesta sessão: backend + frontend + docservice rodando juntos (3
    processos reais, não mockados), login real, CRUD de projeto, fluxo completo do Agendador
    (seed de atividades, designação de técnico, distribuição automática, período sem agenda
@@ -397,4 +466,14 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
    recomenda-se abrir `http://localhost:4200` manualmente antes de considerar as telas de
    Projetos e do Agendador definitivamente validadas do ponto de vista de UX. A geração de
    Levantamento/Projeto/Termo foi validada por testes automatizados reais (item 3 acima),
-   não por smoke manual adicional nesta sessão.
+   não por smoke manual adicional nesta sessão. **Protocolos de Treinamento: o
+   `faster-whisper` real foi instalado e importado com sucesso no docservice (pacote
+   `faster-whisper>=1.0` + `ctranslate2`), mas nenhuma transcrição real foi executada
+   nesta sessão** (exigiria baixar um modelo Whisper e um arquivo de áudio/vídeo de
+   verdade) — a suíte de testes (docservice e NestJS) mocka
+   `transcritor.transcrever_isolado`/`TranscricaoService`, mesmo padrão já usado pelos
+   testes originais do Flask (`test_protocolo_pipeline_mock`). Da mesma forma, a análise
+   por IA (`ProtocoloIaService`/`@anthropic-ai/sdk`) não foi exercitada contra a API real
+   da Anthropic — só mockada. **Recomenda-se um teste manual ponta a ponta com um vídeo
+   curto real e uma chave de API válida antes de considerar este módulo pronto para
+   produção.**

@@ -10,3 +10,4 @@ python-docx>=1.1
 openpyxl>=3.1
 Pillow>=10.0
 python-multipart>=0.0.12
+faster-whisper>=1.0   # transcricao local de videos (Protocolos de Treinamento) — CPU int8

@@ -10,6 +10,8 @@ import { HealthModule } from './health/health.module';
 import { CatalogosModule } from './catalogos/catalogos.module';
 import { CronogramaModule } from './cronograma/cronograma.module';
 import { LevantamentoModule } from './levantamento/levantamento.module';
+import { IaModule } from './ia/ia.module';
+import { ProtocolosModule } from './protocolos/protocolos.module';
 
 @Module({
   imports: [
@@ -23,6 +25,8 @@ import { LevantamentoModule } from './levantamento/levantamento.module';
     CatalogosModule,
     CronogramaModule,
     LevantamentoModule,
+    IaModule,
+    ProtocolosModule,
   ],
 })
 export class AppModule {}

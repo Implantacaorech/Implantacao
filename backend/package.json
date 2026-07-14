@@ -25,6 +25,7 @@
     "seed:admin": "ts-node -r tsconfig-paths/register src/database/seeds/seed-admin.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.111.0",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
