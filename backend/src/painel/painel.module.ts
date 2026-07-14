@@ -8,6 +8,7 @@ import { AtividadeCronograma } from '../database/entities/atividade-cronograma.e
 import { DisponibilidadeModule } from '../disponibilidade/disponibilidade.module';
 import { MatrizModule } from '../matriz/matriz.module';
 import { MetricasModule } from '../metricas/metricas.module';
+import { DigestModule } from '../digest/digest.module';
 import { CapacidadeService } from './capacidade.service';
 import { CoordenacaoService } from './coordenacao.service';
 import { AtividadeService } from './atividade.service';
@@ -20,6 +21,7 @@ import { PainelController } from './painel.controller';
     DisponibilidadeModule,
     MatrizModule,
     MetricasModule,
+    DigestModule,
   ],
   controllers: [PainelController],
   providers: [CapacidadeService, CoordenacaoService, AtividadeService, HomeService],

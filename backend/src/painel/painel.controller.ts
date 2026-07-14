@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -11,6 +11,7 @@ import { CapacidadeService } from './capacidade.service';
 import { CoordenacaoService } from './coordenacao.service';
 import { AtividadeService } from './atividade.service';
 import { HomeService } from './home.service';
+import { DigestService } from '../digest/digest.service';
 import { QueryCapacidadeDto } from './dto/query-capacidade.dto';
 
 /** Telas-painel (visão executiva). Espelha webapp/routes_painel.py — gate único
@@ -26,6 +27,7 @@ export class PainelController {
     private readonly coordenacao: CoordenacaoService,
     private readonly atividade: AtividadeService,
     private readonly home: HomeService,
+    private readonly digest: DigestService,
   ) {}
 
   @Get('home')
@@ -62,5 +64,12 @@ export class PainelController {
   @ApiOperation({ summary: 'Atividade da operação: uso 30 dias, funil macro, feed de eventos' })
   async painelAtividade(@CurrentUser() user: AuthUser) {
     return new ApiEnvelope(await this.atividade.painel(user));
+  }
+
+  @Post('coordenacao/digest')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Dispara manualmente o resumo diário por e-mail (botão "enviar agora")' })
+  async enviarDigest() {
+    return new ApiEnvelope(await this.digest.enviar());
   }
 }

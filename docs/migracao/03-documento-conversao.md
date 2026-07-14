@@ -15,10 +15,12 @@ fecha a última lacuna documentada do item 1) e a **Matriz de Conhecimento + tel
 executivas** (skill matrix técnico×competência com importador de planilha, motor de
 métricas/gates/alertas novo — pré-requisito descoberto nesta fatia, não só das telas —, e
 os painéis de Capacidade da equipe/Coordenação/Atividade/Home; **Monitoramento
-Operacional ficou de fora**, ver §8) e os **Usuários (CRUD) + auto-cadastro por e-mail +
+Operacional ficou de fora**, ver §8) os **Usuários (CRUD) + auto-cadastro por e-mail +
 tela de Designação** (GCI/consultor por projeto, com os 2 gates de permissão distintos do
-processo real preservados fielmente) convertidos ponta a ponta, com o padrão replicável
-documentado para o restante. Ver honestidade de escopo em
+processo real preservados fielmente) e os **Jobs agendados** (resumo diário da
+Coordenação por e-mail, com botão de envio manual — os robôs de protocolos e da caixa de
+entrada já tinham sido convertidos nos itens 4 e 5) convertidos ponta a ponta, com o
+padrão replicável documentado para o restante. Ver honestidade de escopo em
 [02-decisao-arquitetura.md](02-decisao-arquitetura.md#escopo-desta-fase-da-migração-honestidade-de-escopo).
 
 ## 1. Tecnologia anterior → nova
@@ -317,6 +319,25 @@ Python mantido só para geração de documentos e transcrição) em
     "Levantamento" sozinho, isso é sempre manual/GCI). A notificação de cada etapa usa
     `MailerService.enviar()` direto (mesmo padrão do Flask — não passa pelo
     `NotificacaoService`, que cobre outros eventos).
+- **Jobs agendados — resumo diário** (`backend/src/digest/*`) — equivalente a
+  `webapp/app.py:_digest_destinos`/`_montar_digest`/`enviar_digest`/`_agendador_digest`.
+  Os outros dois jobs agendados do Flask original (robô de protocolos, robô da caixa de
+  entrada) já tinham sido convertidos nos itens 4 e 5 — este fecha a lista.
+  - `DigestService`: monta o resumo (KPIs de `MetricasService.metricas` + até 30 alertas
+    de `MetricasService.alertas`) e envia via `MailerService.enviar()` para os
+    destinatários de `MIGRACAO_DIGEST_PARA` (`;`/`,`/quebra de linha, mesmo parsing do
+    Flask). **Sem tela de configuração** (nem no Flask, nem aqui) — é ajuste de
+    ambiente/ops; o fallback de arquivo `digest_para.txt` do Flask original não foi
+    portado, por não ter UI que o gerencie (só o env var, que é o caminho realmente usado
+    em produção).
+  - `RoboDigestService`: espelha `_agendador_digest` — checa a cada 30min (mesmo
+    `time.sleep(1800)` do Flask, via `SchedulerRegistry`, mesmo padrão de
+    `RoboProtocolosService`/`RoboCaixaService`) se a hora atual bate com
+    `MIGRACAO_DIGEST_HORA` (default 8h) e ainda não enviou hoje.
+  - Botão "enviar agora" do Painel de Coordenação portado como
+    `POST /painel/coordenacao/digest` (gate `PERFIS_GESTAO`, mesmo do resto do
+    Painel) — substitui o `?digest=` por querystring do Flask (padrão PRG que não faz
+    sentido numa API JSON) por uma resposta direta `{ok, mensagem}`.
 
 ## 3. Funcionalidades preservadas (nesta fatia)
 
@@ -713,12 +734,11 @@ service → controller → tela Angular → testes):
    `UsersService.emailDoUsuario`, e `MetricasService.autoAvancar` como pré-requisito novo
    desta fatia). Ver §2. A rota combinada `projeto_designar` não foi portada por estar
    morta na navegação do Flask original (nenhum template linka pra ela).
-9. **Jobs agendados** (digest diário, robô de caixa) — usar `@nestjs/schedule` (já
-   instalado e registrado em `AppModule`; os robôs de protocolos e da caixa de entrada já
-   foram implementados como parte dos itens 4 e 5, ver `RoboProtocolosService`/
-   `RoboCaixaService` — só o digest diário continua pendente). O digest também é o
-   candidato natural para expor manualmente o botão "enviar agora" do Painel de
-   Coordenação (query `?digest=` no Flask original) — ver item 7.
+9. ~~Jobs agendados (digest diário, robô de caixa)~~ — **convertido**: os robôs de
+   protocolos e da caixa de entrada já tinham sido implementados como parte dos itens 4 e
+   5 (`RoboProtocolosService`/`RoboCaixaService`); o digest diário (`DigestService`/
+   `RoboDigestService`) fecha a lista, com o botão "enviar agora" do Painel de Coordenação
+   também portado (`POST /painel/coordenacao/digest`). Ver §2.
 10. **Monitoramento Operacional** (`webapp/routes_painel.py:monitoramento`) — **não
     convertido; descoberto e escopado durante o item 7, decidido com o usuário adiar em
     vez de expandir aquela fatia**. Bloqueio real: a tela infere 8 "setores" (Comercial/
@@ -817,7 +837,7 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
 ## 12. Como validar esta entrega
 
 1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo,
-   356/356 testes passando (239 unitários + 117 e2e), incluindo as suítes dedicadas do
+   372/372 testes passando (253 unitários + 119 e2e), incluindo as suítes dedicadas do
    Agendador de Visitas (`test/cronograma.e2e-spec.ts`, com o teste do endpoint
    `/agenda/gerar` usando um fake do serviço Python), de Cadastros
    (`test/cadastros.e2e-spec.ts`), de Geração de documentos fiéis
@@ -849,11 +869,14 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
    duplicado, código errado incrementando tentativas, reenvio) e de Designação
    (`test/designacao.e2e-spec.ts` — os 2 gates de permissão distintos, notificação e
    auto-avanço de etapa em cada uma das 3 telas; `MailerService` trocado por um fake via
-   `overrideProvider`, mesmo padrão já usado em `protocolos.e2e-spec.ts`) e o teste
-   unitário de `ProjetosService.excluir()` que garante a limpeza dos 5 módulos com dado
-   por-projeto (Cronograma, Designações, Levantamento-resposta, DocConteudo,
-   Documentos/Eventos — ver §6 item 9). Suíte e2e validada estável em múltiplas execuções
-   consecutivas (inclusive repetindo cada spec novo isoladamente, para pegar corridas de
+   `overrideProvider`, mesmo padrão já usado em `protocolos.e2e-spec.ts`), de
+   `DigestService`/`RoboDigestService` (parsing de destinatários, corpo do resumo com/sem
+   alertas, hora configurável, "só uma vez por dia", e o endpoint manual coberto em
+   `test/painel.e2e-spec.ts`) e o teste unitário de `ProjetosService.excluir()` que
+   garante a limpeza dos 5 módulos com dado por-projeto (Cronograma, Designações,
+   Levantamento-resposta, DocConteudo, Documentos/Eventos — ver §6 item 9). Suíte e2e
+   validada estável em múltiplas execuções consecutivas (inclusive repetindo cada spec
+   novo isoladamente, para pegar corridas de
    estado entre execuções — ver §6 itens 10 e 15).
 2. `cd frontend && npm run build && npm test` — build limpo, 6/6 testes passando.
 3. `cd docservice && set PYTHONUTF8=1 && .venv\Scripts\python -m pytest tests/ -v` — 14/14

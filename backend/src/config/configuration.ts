@@ -16,6 +16,8 @@ export interface AppConfig {
   protocolosPollMin: number;
   gmailRedirectUri: string;
   imapPollMin: number;
+  digestHora: number;
+  digestPara: string;
 }
 
 // Todas as variáveis deste backend novo usam o prefixo MIGRACAO_ — nunca o prefixo PAINEL_
@@ -65,5 +67,11 @@ export default (): AppConfig => {
     // Robô da caixa de entrada (fechamento automático via IMAP) — mesmo padrão do
     // PROTOCOLOS_POLL_MIN (piso real de 2 min), env IMAP_POLL_MIN no Flask original.
     imapPollMin: Number(process.env.MIGRACAO_IMAP_POLL_MIN ?? 10),
+    // Resumo diário da Coordenação (KPIs + alertas por e-mail) — envs DIGEST_HORA/
+    // DIGEST_PARA no Flask original. Sem tela de configuração (nem lá, nem aqui) — é
+    // ajuste de ambiente/ops, não algo editável pelo ADM. O fallback de arquivo
+    // `digest_para.txt` do Flask não foi portado (sem UI que o gerencie; só o env var).
+    digestHora: Number(process.env.MIGRACAO_DIGEST_HORA ?? 8),
+    digestPara: process.env.MIGRACAO_DIGEST_PARA ?? '',
   };
 };

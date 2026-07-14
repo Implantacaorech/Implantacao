@@ -201,4 +201,18 @@ describe('Painel (e2e)', () => {
       expect(total).toBe(2);
     });
   });
+
+  describe('POST /painel/coordenacao/digest', () => {
+    it('Consultor não acessa (403)', async () => {
+      const res = await auth(request(server()).post('/api/painel/coordenacao/digest'), tokenConsultor);
+      expect(res.status).toBe(403);
+    });
+
+    it('ADM aciona o envio manual — sem MIGRACAO_DIGEST_PARA configurado, devolve erro amigável (200)', async () => {
+      const res = await auth(request(server()).post('/api/painel/coordenacao/digest'), tokenAdm);
+      expect(res.status).toBe(200);
+      expect(res.body.data.ok).toBe(false);
+      expect(res.body.data.mensagem).toContain('destinatários');
+    });
+  });
 });

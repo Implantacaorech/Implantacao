@@ -19,6 +19,7 @@ import { MatrizModule } from './matriz/matriz.module';
 import { PainelModule } from './painel/painel.module';
 import { CadastroModule } from './cadastro/cadastro.module';
 import { DesignacaoModule } from './designacao/designacao.module';
+import { DigestModule } from './digest/digest.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { DesignacaoModule } from './designacao/designacao.module';
     PainelModule,
     CadastroModule,
     DesignacaoModule,
+    DigestModule,
   ],
 })
 export class AppModule {}
