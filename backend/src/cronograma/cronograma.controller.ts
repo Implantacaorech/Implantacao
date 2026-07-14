@@ -43,6 +43,7 @@ import { AcompanhamentoQueryDto } from './dto/acompanhamento-query.dto';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { GeracaoDocumentosService } from '../geracao/geracao-documentos.service';
 import { DocumentosService } from '../documentos/documentos.service';
+import { NotificacaoService } from '../email/notificacao.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 
@@ -58,6 +59,7 @@ export class CronogramaController {
     private readonly distribuicao: DistribuicaoService,
     private readonly geracao: GeracaoDocumentosService,
     private readonly documentos: DocumentosService,
+    private readonly notificacao: NotificacaoService,
   ) {}
 
   @Get('atividades')
@@ -492,6 +494,8 @@ export class CronogramaController {
       `Gerou cronograma de visitas ${arquivo.filename}`,
       user.nome,
     );
+    // Notifica a Coordenação — mesmo gatilho de webapp/app.py:_EVT_DOC["cronograma"].
+    await this.notificacao.notificarEvento(projetoId, 'cronograma_ok', projeto);
 
     res.set({
       'Content-Type': arquivo.contentType,

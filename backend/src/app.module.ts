@@ -12,6 +12,8 @@ import { CronogramaModule } from './cronograma/cronograma.module';
 import { LevantamentoModule } from './levantamento/levantamento.module';
 import { IaModule } from './ia/ia.module';
 import { ProtocolosModule } from './protocolos/protocolos.module';
+import { EmailModule } from './email/email.module';
+import { FluxoModule } from './fluxo/fluxo.module';
 
 @Module({
   imports: [
@@ -27,6 +29,8 @@ import { ProtocolosModule } from './protocolos/protocolos.module';
     LevantamentoModule,
     IaModule,
     ProtocolosModule,
+    EmailModule,
+    FluxoModule,
   ],
 })
 export class AppModule {}

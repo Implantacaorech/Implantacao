@@ -19,8 +19,16 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser, type AuthUser } from '../common/decorators/current-user.decorator';
 import { DocumentosService } from './documentos.service';
 import { GeracaoLayoutService, SlugDocumentoFiel } from './geracao-layout.service';
+import { NotificacaoService, EventoNotificacao } from '../email/notificacao.service';
 
 const _SLUGS_DOCX: readonly SlugDocumentoFiel[] = ['levantamento', 'projeto', 'termo'];
+
+// Espelha webapp/app.py:_EVT_DOC — slug do documento gerado -> evento de notificação.
+const _EVT_DOC: Record<SlugDocumentoFiel, EventoNotificacao> = {
+  levantamento: 'levantamento_ok',
+  projeto: 'projeto_ok',
+  termo: 'termo_ok',
+};
 
 @ApiTags('documentos')
 @ApiBearerAuth()
@@ -30,6 +38,7 @@ export class DocumentosController {
   constructor(
     private readonly documentos: DocumentosService,
     private readonly geracaoLayout: GeracaoLayoutService,
+    private readonly notificacao: NotificacaoService,
   ) {}
 
   @Get('projetos/:projetoId/documentos')
@@ -94,6 +103,8 @@ export class DocumentosController {
       `Gerou ${arquivo.filename} pelo layout oficial (${slug})` +
       (modo === 'modelo' ? ' — modelo p/ preenchimento manual' : '');
     await this.documentos.registrarEvento(projetoId, 'documento', rotulo, user.nome);
+    // Notifica a Coordenação — mesmo gatilho de webapp/app.py:_EVT_DOC.
+    await this.notificacao.notificarEvento(projetoId, _EVT_DOC[slug as SlugDocumentoFiel]);
 
     res.set({
       'Content-Type': arquivo.contentType,

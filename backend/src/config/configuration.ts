@@ -14,6 +14,8 @@ export interface AppConfig {
   docserviceUrl: string;
   protocolosDir: string;
   protocolosPollMin: number;
+  gmailRedirectUri: string;
+  imapPollMin: number;
 }
 
 // Todas as variáveis deste backend novo usam o prefixo MIGRACAO_ — nunca o prefixo PAINEL_
@@ -53,5 +55,15 @@ export default (): AppConfig => {
       process.env.MIGRACAO_PROTOCOLOS_DIR ??
       'C:\\SEG-EVE\\OneDrive - rech.com.br\\PortalImplantacao\\Treinamentos',
     protocolosPollMin: Number(process.env.MIGRACAO_PROTOCOLOS_POLL_MIN ?? 10),
+    // Gmail API (bypass de SMTP bloqueado): fluxo OAuth "Web application" com callback
+    // real (decisão deliberada, diferente do "Desktop app" do Flask original — ver
+    // GmailService e docs/migracao/03-documento-conversao.md). Precisa bater com o
+    // redirect URI autorizado cadastrado no Google Cloud Console.
+    gmailRedirectUri:
+      process.env.MIGRACAO_GMAIL_REDIRECT_URI ??
+      `http://localhost:${Number(process.env.MIGRACAO_PORT ?? 3000)}/api/config/gmail/callback`,
+    // Robô da caixa de entrada (fechamento automático via IMAP) — mesmo padrão do
+    // PROTOCOLOS_POLL_MIN (piso real de 2 min), env IMAP_POLL_MIN no Flask original.
+    imapPollMin: Number(process.env.MIGRACAO_IMAP_POLL_MIN ?? 10),
   };
 };

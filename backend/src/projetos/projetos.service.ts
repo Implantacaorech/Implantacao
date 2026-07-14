@@ -12,6 +12,7 @@ import { DesignacoesService } from '../cronograma/designacoes.service';
 import { LevantamentoRespostaService } from '../levantamento/levantamento-resposta.service';
 import { DocConteudoService } from '../levantamento/doc-conteudo.service';
 import { DocumentosService } from '../documentos/documentos.service';
+import { NotificacaoService } from '../email/notificacao.service';
 
 export interface Paginado<T> {
   data: T[];
@@ -32,6 +33,7 @@ export class ProjetosService {
     private readonly levantamentoResposta: LevantamentoRespostaService,
     private readonly docConteudo: DocConteudoService,
     private readonly documentos: DocumentosService,
+    private readonly notificacao: NotificacaoService,
   ) {}
 
   /** Equivalente a _so_meus() do Flask: ADM/Coordenador/Administrativo veem tudo; GCI só onde
@@ -85,8 +87,15 @@ export class ProjetosService {
 
   async atualizar(id: number, dto: UpdateProjetoDto): Promise<Projeto> {
     const projeto = await this.buscarPorId(id);
+    const situacaoAnterior = projeto.situacao;
     Object.assign(projeto, dto);
-    return this.repo.save(projeto);
+    const salvo = await this.repo.save(projeto);
+    // Notifica a Coordenação quando a situação MUDA para "Concluído" (não a cada save
+    // com a situação já concluída) — mesmo gatilho de webapp/app.py:projeto_ficha (POST).
+    if (dto.situacao === 'Concluído' && situacaoAnterior !== 'Concluído') {
+      await this.notificacao.notificarEvento(id, 'encerrado', salvo);
+    }
+    return salvo;
   }
 
   /** Exclui o projeto e limpa toda tabela `projeto_id` de outros módulos primeiro (nenhuma

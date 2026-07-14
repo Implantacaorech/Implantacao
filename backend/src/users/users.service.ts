@@ -17,6 +17,11 @@ export class UsersService {
     return this.repo.findOne({ where: { login: login.trim(), ativo: true } });
   }
 
+  /** Espelha webapp/db.py:usuarios_por_perfil — usuários ativos de um perfil. */
+  async porPerfil(perfil: Perfil): Promise<Usuario[]> {
+    return this.repo.find({ where: { perfil, ativo: true } });
+  }
+
   async contarAtivos(): Promise<number> {
     return this.repo.count({ where: { ativo: true } });
   }

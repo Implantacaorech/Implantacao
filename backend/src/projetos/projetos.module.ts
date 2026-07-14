@@ -4,11 +4,18 @@ import { Projeto } from '../database/entities/projeto.entity';
 import { CronogramaModule } from '../cronograma/cronograma.module';
 import { LevantamentoModule } from '../levantamento/levantamento.module';
 import { DocumentosModule } from '../documentos/documentos.module';
+import { EmailModule } from '../email/email.module';
 import { ProjetosController } from './projetos.controller';
 import { ProjetosService } from './projetos.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Projeto]), CronogramaModule, LevantamentoModule, DocumentosModule],
+  imports: [
+    TypeOrmModule.forFeature([Projeto]),
+    CronogramaModule,
+    LevantamentoModule,
+    DocumentosModule,
+    EmailModule,
+  ],
   controllers: [ProjetosController],
   providers: [ProjetosService],
   exports: [ProjetosService],

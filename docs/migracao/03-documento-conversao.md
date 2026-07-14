@@ -4,11 +4,12 @@
 em produção não foi tocado). Status: autenticação, Projetos, o **Agendador de Visitas**
 (o módulo mais complexo do sistema), **Cadastros** (pré-requisito da geração de
 documentos), a **geração de documentos completa** (serviço Python híbrido — cronograma
-de visitas + Levantamento/Projeto/Termo fiéis, com anexo Documento/Evento) e os
+de visitas + Levantamento/Projeto/Termo fiéis, com anexo Documento/Evento), os
 **Protocolos de Treinamento** (vídeo -> transcrição local via faster-whisper -> análise
-IA -> revisão/aprovação, incluindo o robô de varredura de pasta e a tela Config → IA)
-convertidos ponta a ponta, com o padrão replicável documentado para o restante. Ver
-honestidade de escopo em
+IA -> revisão/aprovação, incluindo o robô de varredura de pasta e a tela Config → IA) e
+**E-mail/IMAP/Gmail** (SMTP + Gmail API + modelos de e-mail + o robô da caixa de entrada
+que cria projetos a partir do e-mail de fechamento do Comercial) convertidos ponta a
+ponta, com o padrão replicável documentado para o restante. Ver honestidade de escopo em
 [02-decisao-arquitetura.md](02-decisao-arquitetura.md#escopo-desta-fase-da-migração-honestidade-de-escopo).
 
 ## 1. Tecnologia anterior → nova
@@ -114,6 +115,65 @@ Python mantido só para geração de documentos e transcrição) em
   `webapp/routes_protocolos.py` + `webapp/transcritor.py` + a fatia de `tools/ia.py` que
   este módulo usa (chave/modelo — o resto de `tools/ia.py`, a correção verbal opcional
   dos documentos gerados, não foi portado, ver §8).
+- **E-mail/IMAP/Gmail** (`backend/src/email/*`, `backend/src/fluxo/*`) — bindings Node
+  diretos, sem depender do docservice (nenhuma destas bibliotecas é Python-only):
+  `nodemailer` (SMTP), `imapflow`+`mailparser` (IMAP), `google-auth-library` (OAuth2 do
+  Gmail). Equivalente a `webapp/mailer.py` + `webapp/imap_intake.py` +
+  `webapp/gmail_api.py` + `webapp/fluxo.py` + a parte de `webapp/db.py` de `ModeloEmail` +
+  os gatilhos `_notificar*`/`_EVT_MSG`/`_EVT_DOC` de `webapp/app.py`.
+  - `MailerService`: SMTP (config em `dados/smtp.json`, env `MIGRACAO_SMTP_*` tem
+    prioridade) + `GmailService` como transporte alternativo (tentado primeiro quando
+    autorizado, mesma prioridade do Flask original). Anexos via `nodemailer`
+    `MailComposer` (usado também para montar o `raw` RFC822 do envio pela API do Gmail —
+    um único ponto de montagem de mensagem para os dois transportes).
+  - `GmailService`: **única mudança arquitetural deliberada desta fatia** (decidida com o
+    usuário) — o Flask original usa o fluxo OAuth "Desktop app"
+    (`InstalledAppFlow.run_local_server`, abre navegador + servidor HTTP local efêmero NA
+    MÁQUINA do painel); aqui é "Web application" com uma rota de callback real
+    (`GET /config/gmail/callback`, **pública de propósito** — é o navegador do Google
+    navegando direto até ela após o consentimento, sem cabeçalho `Authorization`; a
+    proteção é um `state` de uso único gerado em `urlAutorizacao()` e conferido em
+    `trocarCodigoPorToken()`). Exige criar uma credencial OAuth tipo **"Aplicativo da
+    Web"** no Google Cloud Console (não "Desktop"), com essa URL cadastrada como redirect
+    URI autorizado — ver `MIGRACAO_GMAIL_REDIRECT_URI` em `.env.example`.
+  - `ModeloEmailService`: CRUD + os 7 modelos padrão semeados no boot (idempotente por
+    slug, mesmo padrão de `ChecklistModeloService`) + `renderizar()` (substituição
+    literal de `{{VAR}}`, incluindo `_consultorA`/`_consultorB` derivados do campo
+    `consultor`) — migrado 1:1 de `webapp/db.py` (`_MODELOS_PADRAO`, `VAR_CAMPO`,
+    `renderizar_modelo`).
+  - `NotificacaoService`: `notificar`/`notificarEvento`/`emailsCoordenacao` — mesma tabela
+    de eventos (`fechamento`, `levantamento_ok`, `projeto_ok`, `cronograma_ok`,
+    `checklist_ok`, `termo_ok`, `encerrado`) do `_EVT_MSG` original. Diferença deliberada:
+    o Flask dispara `_notificar_sync` numa thread daemon para não bloquear a requisição
+    (SMTP pode travar); em Node isso é desnecessário (I/O já é assíncrono/não-bloqueante)
+    — fora de teste, `notificar()` simplesmente não é `await`ado pelo chamador (mesmo
+    efeito, sem precisar de thread). **Já ligado** aos pontos onde o evento correspondente
+    já existe no schema novo: `ProjetosService.atualizar()` (evento `encerrado`, quando
+    `situacao` MUDA para `"Concluído"` — não a cada save já concluído),
+    `CronogramaController.gerar()` (`cronograma_ok`),
+    `DocumentosController.gerarLayout()` (`levantamento_ok`/`projeto_ok`/`termo_ok`, por
+    slug). `checklist_ok` fica pendente — a geração de checklist ainda não foi convertida
+    (não é o mesmo `ChecklistModelo` do catálogo, que já existe; é o gerador do
+    documento). Os gatilhos de `webapp/routes_designacao.py` (GCI/consultor designado)
+    também ficam pendentes — essa tela em si ainda não foi convertida (ver §8).
+  - `ImapIntakeService`/`FluxoService`/`RoboCaixaService`: robô de varredura da caixa de
+    entrada (mesmo padrão `SchedulerRegistry` de `RoboProtocolosService`) que detecta
+    e-mails de fechamento não lidos (marcador `"IMPLANTA"`, substring case-insensitive no
+    assunto), extrai os campos (parser de linhas `"Rótulo: valor"`, mesma tabela de
+    rótulos de `webapp/fluxo.py:_LABELS`) e cria o Projeto, com dedup por CNPJ/nome (mesma
+    lógica de `webapp/db.py:projeto_existe`). Endpoints: `GET /fluxo` (status),
+    `POST /fluxo/parse` (cola texto cru), `POST /fluxo/inbox` (busca via IMAP, não marca
+    como lido), `POST /fluxo/criar` (cria a partir dos campos confirmados/editados).
+    **Escopo reduzido desta fatia**: `fluxo_criar` original também deixa o usuário
+    escolher GCI/técnicos e gera automaticamente o pacote de documentos + e-mail-resumo
+    com anexos aos responsáveis — essa parte não foi portada (cria só o projeto + notifica
+    `fechamento`); pode ser adicionada depois compondo `GeracaoLayoutService` +
+    `MailerService`, que já existem.
+  - Circularidade evitada de propósito: `NotificacaoService` injeta o repositório
+    `Evento` diretamente (não `DocumentosService`) — `EmailModule` não importa
+    `DocumentosModule` porque `DocumentosModule` agora importa `EmailModule` (para o
+    `DocumentosController` disparar `levantamento_ok`/`projeto_ok`/`termo_ok`); um import
+    circular entre os dois quebraria o boot do Nest. Ver §6 item 13.
 
 ## 3. Funcionalidades preservadas (nesta fatia)
 
@@ -300,6 +360,50 @@ porque são o tipo de erro fácil de reintroduzir ao converter os módulos que f
     novo falha logo de cara, reler o comportamento ORIGINAL linha a linha antes de assumir
     que é bug na porta — às vezes o teste é que está testando um comportamento que nunca
     existiu.**
+13. **Import circular entre `EmailModule` e `DocumentosModule`**: o desenho natural era
+    `EmailModule` importar `DocumentosModule` (para `NotificacaoService` gravar o evento
+    "Notificou.../Notificação pendente" via `DocumentosService.registrarEvento`) — mas
+    `DocumentosController` também precisa de `NotificacaoService` (para disparar
+    `levantamento_ok`/`projeto_ok`/`termo_ok` depois de gerar um documento), o que exigiria
+    `DocumentosModule` importar `EmailModule` de volta. NestJS não resolve um `imports`
+    circular direto entre dois módulos sem `forwardRef()` nos dois lados. Em vez de
+    `forwardRef` (mais frágil, mais fácil de esquecer ao mexer de novo nesses módulos),
+    **quebrado na raiz**: `NotificacaoService` passou a injetar o repositório `Evento`
+    diretamente (`@InjectRepository(Evento)`, registrado também em `EmailModule` via
+    `TypeOrmModule.forFeature`) em vez de depender do `DocumentosService` inteiro — só
+    precisava de uma linha (`eventos.save(...)`), não do serviço completo (que também
+    arrasta `CatalogosModule`/`LevantamentoModule`/`GeracaoModule`, irrelevantes para
+    e-mail). Com isso, `EmailModule` não depende mais de `DocumentosModule`, e
+    `DocumentosModule` pôde importar `EmailModule` livremente (sentido único). **Lição:
+    antes de reimportar um módulo "grande" só por um método pequeno, checar se dá pra
+    injetar a entidade/repositório diretamente — evita tanto o import circular quanto o
+    acoplamento desnecessário ao resto daquele módulo.**
+14. **Registrar o provider mas esquecer de importar o módulo**: ao adicionar
+    `NotificacaoService` ao construtor de `CronogramaController`, o `CronogramaModule` não
+    foi atualizado para importar `EmailModule` — só apareceu ao rodar a suíte e2e completa
+    (`Nest can't resolve dependencies of the CronogramaController (..., ?)`), não no
+    `npm run build` (TypeScript não valida grafo de DI em runtime) nem nos testes
+    unitários (que mockam todas as dependências manualmente, sem passar pelo módulo real).
+    **Lição, reforçando uma já registrada nesta sessão: só a suíte e2e completa
+    (`Test.createTestingModule({imports:[AppModule]})`) valida o grafo de módulos de
+    verdade — build limpo e testes unitários passando não bastam depois de adicionar uma
+    dependência nova a um controller/service existente.**
+15. **Teste e2e dependente de uma conexão de rede real e instável**: a suíte nova
+    (`email-fluxo.e2e-spec.ts`) salva uma config SMTP fictícia e, mais adiante, um outro
+    teste muda a situação de um projeto para "Concluído" — o que dispara
+    `NotificacaoService.notificarEvento`, que tenta mandar e-mail de verdade se
+    `mailer.configurado()` for true. Usar um host como `smtp.exemplo.com` arriscava DNS
+    lento/instável (ou um `connectionTimeout` de 20s) dependendo da rede do ambiente onde
+    os testes rodam. Corrigido em duas camadas: (1) o host de teste virou `smtp.invalid`
+    — TLD reservado pela RFC 2606, garantidamente nunca resolve em DNS, então a falha é
+    rápida e determinística em qualquer ambiente (com ou sem acesso à internet); (2) o
+    teste de notificação de encerramento foi reordenado para rodar ANTES de qualquer
+    teste que configure SMTP/Gmail no mesmo arquivo, exercitando de propósito o caminho
+    mais rápido ("e-mail não configurado", sem nenhuma tentativa de rede). **Lição: em
+    teste de integração que pode acionar I/O de rede de verdade, nunca usar um domínio
+    "que parece de teste" (`.exemplo.com`, `.test.com`) — só os TLDs reservados
+    (`.invalid`, `.example`, `.test`, `.localhost`, RFC 2606) garantem a falha rápida e
+    sem depender de conectividade do ambiente.**
 
 ## 7. Vulnerabilidades / débitos de segurança do sistema atual, tratados na conversão
 
@@ -346,17 +450,30 @@ service → controller → tela Angular → testes):
    proposital: a correção verbal/ortográfica opcional dos documentos GERADOS (a outra
    metade de `tools/ia.py` — `revisar`/`revisar_lote`, usada por `gl_*.py` no Flask) não
    foi portada — só a chave/config (`IaService.obterChave`/`modelo`) é compartilhada.
-5. **E-mail/IMAP/Gmail** (`mailer.py`, `imap_intake.py`, `gmail_api.py`) — bindings Node
-   diretos (`nodemailer`, `imapflow`, `googleapis`), não convertidos ainda.
+5. ~~E-mail/IMAP/Gmail~~ — **convertido**: SMTP (`nodemailer`) + Gmail API (bypass de SMTP
+   bloqueado, `google-auth-library`, OAuth "Web application" com callback real — mudança
+   deliberada em relação ao "Desktop app" do Flask, decidida com o usuário) + IMAP
+   (`imapflow`+`mailparser`, robô da caixa que cria projetos a partir do e-mail de
+   fechamento) + `ModeloEmail` (7 modelos padrão + CRUD) + `NotificacaoService` (ligado
+   aos eventos `encerrado`/`cronograma_ok`/`levantamento_ok`/`projeto_ok`/`termo_ok`). Ver
+   §2. Lacunas propositais: `checklist_ok` (a geração do documento de checklist em si
+   ainda não foi convertida) e os gatilhos de `routes_designacao.py` (GCI/consultor
+   designado — essa tela do fluxo de Designação ainda não existe no NestJS, item 8 desta
+   lista é só o CRUD de usuários, não essa tela); `fluxo_criar` não gera automaticamente o
+   pacote de documentos + e-mail-resumo com anexos (só cria o projeto e notifica).
 6. **Disponibilidade externa/Consultas BD/Dashboards** (conexão Oracle configurável,
    `oracledb` tem binding Node oficial) — não convertido; destrava a lacuna do item 1.
 7. **Matriz de Conhecimento** e **telas executivas** (`routes_painel.py`) — não convertidos.
-8. **Usuários** (`/usuarios`, CRUD completo) e **auto-cadastro com código por e-mail** —
-   `UsersService` já tem a base (`criar`), falta o controller/tela e a integração com
-   e-mail (item 5).
+8. **Usuários** (`/usuarios`, CRUD completo), **auto-cadastro com código por e-mail** e a
+   tela de **Designação** (GCI/consultor por projeto, `routes_designacao.py`) —
+   `UsersService` já tem a base (`criar`, `porPerfil`) e o e-mail já está pronto (item 5);
+   falta o controller/tela de Usuários e a tela de Designação em si (essa tela vai
+   precisar de um lookup usuário-por-nome equivalente a `webapp/db.py:email_do_usuario`,
+   ainda não portado — não há chamador para ele nesta fatia).
 9. **Jobs agendados** (digest diário, robô de caixa) — usar `@nestjs/schedule` (já
-   instalado e registrado em `AppModule`; o robô de protocolos já foi implementado como
-   parte do item 4, ver `RoboProtocolosService` — os outros dois jobs continuam pendentes).
+   instalado e registrado em `AppModule`; os robôs de protocolos e da caixa de entrada já
+   foram implementados como parte dos itens 4 e 5, ver `RoboProtocolosService`/
+   `RoboCaixaService` — só o digest diário continua pendente).
 
 ## 9. Incompatibilidades / decisões de portabilidade
 
@@ -435,19 +552,24 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
 
 ## 12. Como validar esta entrega
 
-1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo, 93/93
-   testes passando (47 unitários + 46 e2e), incluindo as suítes dedicadas do Agendador de
-   Visitas (`test/cronograma.e2e-spec.ts`, com o teste do endpoint `/agenda/gerar` usando um
-   fake do serviço Python), de Cadastros (`test/cadastros.e2e-spec.ts`), de Geração de
-   documentos fiéis (`test/geracao-layout.e2e-spec.ts`, endpoint
-   `/projetos/:id/gerar-layout/:slug`), de Protocolos de Treinamento
-   (`test/protocolos.e2e-spec.ts` — upload multipart real, pipeline completo com
-   `TranscricaoService`/`ProtocoloIaService` mockados por `overrideProvider`, edição,
-   controle de acesso ADM/Coordenador em aprovar/reprovar, streaming do vídeo) e o teste
-   unitário de `ProjetosService.excluir()` que garante a limpeza dos 5 módulos com dado
-   por-projeto (Cronograma, Designações, Levantamento-resposta, DocConteudo,
-   Documentos/Eventos — ver §6 item 9). Suíte e2e validada estável em 5 execuções
-   consecutivas.
+1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo,
+   169/169 testes passando (109 unitários + 60 e2e), incluindo as suítes dedicadas do
+   Agendador de Visitas (`test/cronograma.e2e-spec.ts`, com o teste do endpoint
+   `/agenda/gerar` usando um fake do serviço Python), de Cadastros
+   (`test/cadastros.e2e-spec.ts`), de Geração de documentos fiéis
+   (`test/geracao-layout.e2e-spec.ts`, endpoint `/projetos/:id/gerar-layout/:slug`), de
+   Protocolos de Treinamento (`test/protocolos.e2e-spec.ts` — upload multipart real,
+   pipeline completo com `TranscricaoService`/`ProtocoloIaService` mockados por
+   `overrideProvider`, edição, controle de acesso ADM/Coordenador em aprovar/reprovar,
+   streaming do vídeo), de E-mail/Fluxo (`test/email-fluxo.e2e-spec.ts` — Config→E-mail/
+   IMAP/Gmail com controle de acesso ADM-only, upload de credencial OAuth, callback
+   público do Gmail, CRUD dos 7 modelos padrão, fluxo completo parse→criar com dedup por
+   CNPJ, e a notificação automática de `encerrado` ao mudar a situação do projeto) e o
+   teste unitário de `ProjetosService.excluir()` que garante a limpeza dos 5 módulos com
+   dado por-projeto (Cronograma, Designações, Levantamento-resposta, DocConteudo,
+   Documentos/Eventos — ver §6 item 9). Suíte e2e validada estável em múltiplas execuções
+   consecutivas (inclusive repetindo cada spec novo isoladamente, para pegar corridas de
+   estado entre execuções — ver §6 itens 10 e 15).
 2. `cd frontend && npm run build && npm test` — build limpo, 6/6 testes passando.
 3. `cd docservice && set PYTHONUTF8=1 && .venv\Scripts\python -m pytest tests/ -v` — 14/14
    testes passando: os 4 do cronograma de visitas (checagem estrita de caractere, não só
@@ -476,4 +598,16 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
    por IA (`ProtocoloIaService`/`@anthropic-ai/sdk`) não foi exercitada contra a API real
    da Anthropic — só mockada. **Recomenda-se um teste manual ponta a ponta com um vídeo
    curto real e uma chave de API válida antes de considerar este módulo pronto para
-   produção.**
+   produção.** **E-mail/IMAP/Gmail: nenhum dos três transportes foi exercitado contra um
+   servidor real nesta sessão** (SMTP/IMAP reais exigiriam credenciais de uma caixa de
+   e-mail de verdade; o fluxo OAuth do Gmail exige um credencial "Aplicativo da Web"
+   cadastrado no Google Cloud Console com o redirect URI de produção, e um consentimento
+   humano no navegador — não automatizável em CI). Os testes cobrem toda a orquestração
+   (config salva/lida corretamente, dispatcher Gmail-antes-de-SMTP, tradução de erro
+   amigável, parsing/dedup do fechamento, CSRF do OAuth) com o transporte de rede real
+   substituído por um host `.invalid` (SMTP/IMAP, para forçar uma falha rápida e
+   determinística sem depender de conectividade) ou mockado (Gmail). **Antes de usar em
+   produção**: validar manualmente o envio SMTP com uma conta real (Gmail/Outlook exigem
+   senha de app), a leitura IMAP com um e-mail de fechamento de teste, e o fluxo OAuth do
+   Gmail ponta a ponta (upload do client "Aplicativo da Web", autorizar, callback,
+   enviar).

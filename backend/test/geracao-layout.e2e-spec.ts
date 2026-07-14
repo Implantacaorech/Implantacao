@@ -151,11 +151,20 @@ describe('Geração de documentos fiéis — Levantamento/Projeto/Termo (e2e)', 
     expect(docs.body.data).toHaveLength(1);
     expect(docs.body.data[0].tipo).toBe('termo');
 
+    // Além do evento "documento", a geração agora também dispara a notificação padrão
+    // do evento termo_ok à Coordenação (ver NotificacaoService/§2 do documento de
+    // conversão) — sem SMTP configurado neste teste, ela fica registrada como
+    // "Notificação pendente" (não bloqueia nem falha a geração).
     const eventos = await auth(
       request(server()).get(`/api/projetos/${pid}/eventos`),
     );
-    expect(eventos.body.data).toHaveLength(1);
-    expect(eventos.body.data[0].descricao).toContain('termo_teste.docx');
+    expect(eventos.body.data).toHaveLength(2);
+    expect(
+      eventos.body.data.some((e: { descricao: string }) => e.descricao.includes('termo_teste.docx')),
+    ).toBe(true);
+    expect(
+      eventos.body.data.some((e: { tipo: string }) => e.tipo === 'email'),
+    ).toBe(true);
   });
 
   it('modo=modelo é repassado ao docservice (guia de preenchimento manual do Projeto)', async () => {

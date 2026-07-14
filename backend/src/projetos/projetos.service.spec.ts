@@ -9,6 +9,7 @@ import { DesignacoesService } from '../cronograma/designacoes.service';
 import { LevantamentoRespostaService } from '../levantamento/levantamento-resposta.service';
 import { DocConteudoService } from '../levantamento/doc-conteudo.service';
 import { DocumentosService } from '../documentos/documentos.service';
+import { NotificacaoService } from '../email/notificacao.service';
 
 describe('ProjetosService', () => {
   let service: ProjetosService;
@@ -37,6 +38,7 @@ describe('ProjetosService', () => {
   const levantamentoResposta = { limparProjeto: jest.fn() };
   const docConteudo = { limparProjeto: jest.fn() };
   const documentos = { limparProjeto: jest.fn() };
+  const notificacao = { notificarEvento: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -49,6 +51,7 @@ describe('ProjetosService', () => {
         { provide: LevantamentoRespostaService, useValue: levantamentoResposta },
         { provide: DocConteudoService, useValue: docConteudo },
         { provide: DocumentosService, useValue: documentos },
+        { provide: NotificacaoService, useValue: notificacao },
       ],
     }).compile();
     service = module.get(ProjetosService);
@@ -120,6 +123,31 @@ describe('ProjetosService', () => {
       cliente: 'Antigo',
       situacao: 'Em risco',
     });
+    expect(notificacao.notificarEvento).not.toHaveBeenCalled();
+  });
+
+  it('atualizar notifica "encerrado" quando a situação MUDA para Concluído', async () => {
+    repo.findOne.mockResolvedValue({
+      id: 2,
+      cliente: 'Cliente Y',
+      situacao: 'Em andamento',
+    });
+    await service.atualizar(2, { situacao: 'Concluído' });
+    expect(notificacao.notificarEvento).toHaveBeenCalledWith(
+      2,
+      'encerrado',
+      expect.objectContaining({ situacao: 'Concluído' }),
+    );
+  });
+
+  it('atualizar NÃO notifica de novo se já estava Concluído (evita spam a cada save)', async () => {
+    repo.findOne.mockResolvedValue({
+      id: 3,
+      cliente: 'Cliente Z',
+      situacao: 'Concluído',
+    });
+    await service.atualizar(3, { situacao: 'Concluído', observacoes: 'ajuste' });
+    expect(notificacao.notificarEvento).not.toHaveBeenCalled();
   });
 
   it('excluir limpa os dados de todos os módulos antes de remover o projeto (sem FK cascade no schema)', async () => {
