@@ -8,11 +8,15 @@ de visitas + Levantamento/Projeto/Termo fiéis, com anexo Documento/Evento), os
 **Protocolos de Treinamento** (vídeo -> transcrição local via faster-whisper -> análise
 IA -> revisão/aprovação, incluindo o robô de varredura de pasta e a tela Config → IA) e
 **E-mail/IMAP/Gmail** (SMTP + Gmail API + modelos de e-mail + o robô da caixa de entrada
-que cria projetos a partir do e-mail de fechamento do Comercial) e **Disponibilidade
+que cria projetos a partir do e-mail de fechamento do Comercial), **Disponibilidade
 externa/Consultas BD/Dashboards** (conexão Oracle/SICLA, motor de dashboard genérico e a
 checagem de disponibilidade externa agora ligada à distribuição automática do Agendador —
-fecha a última lacuna documentada do item 1) convertidos ponta a ponta, com o padrão
-replicável documentado para o restante. Ver honestidade de escopo em
+fecha a última lacuna documentada do item 1) e a **Matriz de Conhecimento + telas
+executivas** (skill matrix técnico×competência com importador de planilha, motor de
+métricas/gates/alertas novo — pré-requisito descoberto nesta fatia, não só das telas —, e
+os painéis de Capacidade da equipe/Coordenação/Atividade/Home; **Monitoramento
+Operacional ficou de fora**, ver §8) convertidos ponta a ponta, com o padrão replicável
+documentado para o restante. Ver honestidade de escopo em
 [02-decisao-arquitetura.md](02-decisao-arquitetura.md#escopo-desta-fase-da-migração-honestidade-de-escopo).
 
 ## 1. Tecnologia anterior → nova
@@ -215,6 +219,59 @@ Python mantido só para geração de documentos e transcrição) em
     `_slot_indisponivel`) e o indicador visual de células bloqueadas no calendário
     (`projeto_agenda`'s `bloqueados`) não foram portados nesta fatia (a tela do Agendador
     em si já roda sem eles; ver §8).
+- **Matriz de Conhecimento + telas executivas** (`backend/src/matriz/*`,
+  `backend/src/metricas/*`, `backend/src/painel/*`) — equivalente a `webapp/matriz.py` +
+  `webapp/routes_matriz.py` + `webapp/capacidade.py` + `webapp/routes_painel.py` (exceto
+  `monitoramento`, ver §8) + a fatia de `webapp/db.py` de `MatrizCompetencia`/
+  `MatrizTecnico`/`metricas`/`alertas`/`gate_status`/`campos_faltantes`/`cabecalho`/
+  `metricas_uso`/`funil_macro`.
+  - **Matriz de Conhecimento** (`MatrizService`): skill matrix técnico×competência (notas
+    0-10, JSON `{sigla: nota}` por técnico — mesmo formato não-normalizado do original).
+    Importador de planilha (`docs/Matriz de Conhecimento.xlsx`, local/não versionada)
+    reescrito com `exceljs`, **aditivo** (nunca sobrescreve técnico já cadastrado, só
+    cria o que falta) — validado estruturalmente contra a planilha real do time nesta
+    sessão (só metadados/contagens, nenhum dado de nota individual foi lido/exibido, por
+    ser dado de RH). Permissões (pedido de 2026-07-07, preservado): ADM vê/edita tudo +
+    importa; Administrativo/Coordenador veem tudo, só consulta; Consultor/GCI veem/editam
+    só a própria linha (casada por Código SICLA ou nome). Endpoints: `GET /matriz`,
+    `GET /matriz/:id`, `POST /matriz/:id/salvar`, `POST /matriz/importar` (ADM).
+  - **`MetricasService` — motor de métricas/gates/alertas, NOVO nesta sessão**: ao portar
+    as telas executivas, veio à tona que `webapp/db.py:metricas/alertas/gate_status/
+    campos_faltantes/cabecalho/metricas_uso/funil_macro` (o motor de estágio/gate que
+    calcula "o que falta pra avançar de etapa", KPIs da carteira e alertas proativos)
+    **nunca tinha sido portado em nenhum item anterior** — nem para a ficha do projeto.
+    Portado como serviço só-leitura (`MetricasService`), fiel função a função. **Decisão
+    de escopo**: a ENFORCEMENT de `pode_avancar` (bloquear a troca de etapa no
+    `ProjetosService.atualizar()` quando falta campo/documento/ação) não foi ligada nesta
+    fatia — mudaria o comportamento do fluxo de Projeto já publicado nos itens 1-6, o que
+    está fora do pedido original ("Matriz + telas executivas"); ver pendência em §8.
+  - **Capacidade da equipe** (`CapacidadeService`, delega a `MatrizService` +
+    `DisponibilidadeService` + `UsersService`): cruza conhecimento (Matriz) × agenda
+    (Painel + SICLA, quando configurada) × carga (nº clientes ativos) × próxima liberação
+    (go-live) num score 0-100 explicável (45/35/20) por Consultor/GCI ativo, para
+    responder "dá pra receber esse cliente, e a partir de quando". `GET
+    /painel/coordenacao/capacidade?modulos=&semanas=`.
+  - **Painel de Coordenação** (`CoordenacaoService`): KPIs da carteira + funil por etapa +
+    distribuição por situação + atrasados + carga por consultor + alertas — via
+    `MetricasService.metricas`/`alertas`. `GET /painel/coordenacao`. O envio do resumo por
+    e-mail ("digest") do Flask fica a cargo do job agendado (item de Jobs agendados, ainda
+    não convertido — ver §8).
+  - **Atividade da operação** (`AtividadeService`): uso dos últimos 30 dias + funil
+    macro + feed cronológico (últimos 60 eventos, com nome do cliente resolvido). `GET
+    /painel/atividade`.
+  - **Home** (`HomeService`): KPIs resumidos + fila de "próximas ações" por projeto ativo
+    (documento/ação pendente, ou "Avançar para X" quando o gate já está ok), ordenada por
+    urgência (atraso desc) + projeto em foco (o ativo atualizado mais recentemente). Único
+    endpoint do módulo Painel sem gate de perfil (`@Roles()` vazio sobrepõe o
+    `@Roles(...PERFIS_GESTAO)` da classe) — todo perfil autenticado acessa, igual ao Flask
+    original (`home()` não chama `pode_ver`). `GET /painel/home`. Os `url_for`/`cta` do
+    Flask (que geravam links HTML) foram substituídos por um campo `tipo` estável — o
+    frontend Angular resolve rota e rótulo do botão a partir dele.
+  - **Monitoramento Operacional NÃO foi convertido nesta fatia** — decisão tomada com o
+    usuário ao descobrir, durante o port, que essa tela depende de `CronogramaItem`/
+    `ChecklistItem`/`Modificacao` (as linhas EDITÁVEIS do documento Cronograma/Check List,
+    com status por linha — um subsistema inteiro, diferente do Agendador de Visitas do
+    item 1) que nunca foi portado. Ver pendência detalhada em §8.
 
 ## 3. Funcionalidades preservadas (nesta fatia)
 
@@ -485,6 +542,21 @@ porque são o tipo de erro fácil de reintroduzir ao converter os módulos que f
     esta fatia contra o SICLA de verdade: a normalização de case dos nomes de coluna
     pode precisar de ajuste depois do primeiro teste manual contra um Oracle real — não
     foi (nem podia ser) validada nesta sessão.**
+19. **`exceljs`: `actualRowCount`/`actualColumnCount` são uma CONTAGEM de linhas/colunas
+    com valor, não o maior índice usado** — o parser da Matriz de Conhecimento
+    (`matriz-import.util.ts`) inicialmente usava `ws.actualRowCount || ws.rowCount` para
+    limitar a varredura. Como a planilha real tem as linhas 1-6 vazias (o conteúdo só
+    começa na linha 7), `actualRowCount` (contagem de linhas NÃO-vazias) ficava MENOR que
+    o índice da última linha de dado, truncando a varredura antes de chegar nos técnicos
+    (linha 9+) — um teste sintético com esse mesmo formato (linhas vazias antes do
+    conteúdo) pegou o bug antes de chegar em produção; confirmado depois contra a
+    planilha real (`rowCount: 1007` vs. `actualRowCount: 114`, `columnCount: 224` vs.
+    `actualColumnCount: 159`). Corrigido usando `ws.rowCount`/`ws.columnCount` (maior
+    índice já tocado) em vez das variantes `actual*`. **Lição: ao portar um parser de
+    planilha com cabeçalho deslocado (linhas/colunas iniciais vazias) para `exceljs`,
+    usar sempre `rowCount`/`columnCount` para limites de varredura — as variantes
+    `actual*` só servem para contar densidade de preenchimento, não para dimensionar um
+    loop.**
 
 ## 7. Vulnerabilidades / débitos de segurança do sistema atual, tratados na conversão
 
@@ -554,7 +626,19 @@ service → controller → tela Angular → testes):
    acima); e os outros dialetos que o Flask suportava genericamente (postgresql/mysql/
    sqlserver via SQLAlchemy) não têm equivalente Node implementado — só Oracle, o único
    realmente usado neste sistema (SICLA).
-7. **Matriz de Conhecimento** e **telas executivas** (`routes_painel.py`) — não convertidos.
+7. ~~Matriz de Conhecimento~~ e ~~telas executivas~~ (`routes_painel.py`, exceto
+   `monitoramento` — ver item 10) — **convertidos**: skill matrix com importador de
+   planilha aditivo, `MetricasService` (motor de gates/campos obrigatórios/alertas/
+   cabeçalho, novo nesta sessão — não existia em NENHUM item anterior, nem para a ficha do
+   projeto), Capacidade da equipe, Painel de Coordenação, Atividade da operação e Home.
+   Ver §2. **Pendência descoberta durante este item**: a ENFORCEMENT de `pode_avancar`
+   (bloquear a troca de etapa em `ProjetosService.atualizar()`/`criar()` quando falta
+   campo obrigatório/documento do gate/ação de entrada) não foi ligada — `MetricasService`
+   só expõe a versão LEITURA (para as telas mostrarem o que falta), o caminho de escrita
+   do Projeto continua sem validação de estágio, exatamente como estava nos itens 1-6.
+   Fechar isso é uma mudança de comportamento do fluxo já publicado, então foi
+   deliberadamente deixada fora desta fatia (decidido com o usuário) — avaliar como item
+   próprio, não como parte de uma tela executiva.
 8. **Usuários** (`/usuarios`, CRUD completo), **auto-cadastro com código por e-mail** e a
    tela de **Designação** (GCI/consultor por projeto, `routes_designacao.py`) —
    `UsersService` já tem a base (`criar`, `porPerfil`) e o e-mail já está pronto (item 5);
@@ -564,7 +648,28 @@ service → controller → tela Angular → testes):
 9. **Jobs agendados** (digest diário, robô de caixa) — usar `@nestjs/schedule` (já
    instalado e registrado em `AppModule`; os robôs de protocolos e da caixa de entrada já
    foram implementados como parte dos itens 4 e 5, ver `RoboProtocolosService`/
-   `RoboCaixaService` — só o digest diário continua pendente).
+   `RoboCaixaService` — só o digest diário continua pendente). O digest também é o
+   candidato natural para expor manualmente o botão "enviar agora" do Painel de
+   Coordenação (query `?digest=` no Flask original) — ver item 7.
+10. **Monitoramento Operacional** (`webapp/routes_painel.py:monitoramento`) — **não
+    convertido; descoberto e escopado durante o item 7, decidido com o usuário adiar em
+    vez de expandir aquela fatia**. Bloqueio real: a tela infere 8 "setores" (Comercial/
+    Administrativo/Coordenação/GCI/Consultoria/Implantação/Suporte/Desenvolvimento), um
+    score de saúde 0-100 e a carga por colaborador a partir de `CronogramaItem`/
+    `ChecklistItem`/`Modificacao` — as linhas EDITÁVEIS (com status Previsto/Concluído/
+    Cancelado por linha) dos documentos Cronograma e Check List, geradas depois que esses
+    documentos são criados e editadas durante a implantação. **Esse é um subsistema
+    inteiro (tabelas + CRUD + regras) que nunca foi portado**, diferente e não confundir
+    com o Agendador de Visitas (item 1, já convertido — aquele é `AtividadeCronograma`/
+    `SlotCronograma`, o motor de AGENDAMENTO de visitas técnicas; `CronogramaItem`/
+    `ChecklistItem` são as linhas do DOCUMENTO gerado, com acompanhamento manual de
+    status). Pré-requisitos para converter esta tela, nesta ordem: (a) portar
+    `CronogramaItem`/`ChecklistItem`/`Modificacao` (entidades + CRUD + histórico de
+    edição linha-a-linha) — provavelmente maior que o resto do item 7 somado; (b) só então
+    portar `_monitoramento_operacional` (a função mais complexa de `routes_painel.py`:
+    infere estado de cada setor a partir de contagens/keywords, calcula `saude`,
+    `carga_colab`, `entregas`, `mapa` de progresso). Reaproveita `MetricasService`
+    (`metricas`/`alertas`/`gate_status`) e `soMeus`, já prontos.
 
 ## 9. Incompatibilidades / decisões de portabilidade
 
@@ -644,7 +749,7 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
 ## 12. Como validar esta entrega
 
 1. `cd backend && npm run build && npm run test && npm run test:e2e` — build limpo,
-   224/224 testes passando (151 unitários + 73 e2e), incluindo as suítes dedicadas do
+   297/297 testes passando (202 unitários + 95 e2e), incluindo as suítes dedicadas do
    Agendador de Visitas (`test/cronograma.e2e-spec.ts`, com o teste do endpoint
    `/agenda/gerar` usando um fake do serviço Python), de Cadastros
    (`test/cadastros.e2e-spec.ts`), de Geração de documentos fiéis
@@ -659,10 +764,18 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
    Disponibilidade/Consultas BD/Dashboards (`test/disponibilidade-dashboards.e2e-spec.ts`
    — Oracle mockado na fronteira de rede (`jest.mock('oracledb', ...)`), controle de
    acesso ADM-only/gestão, CRUD de consultas nomeadas, motor de dashboard genérico rodando
-   de ponta a ponta) e testes unitários dedicados de `DistribuicaoService` para a nova
-   checagem de disponibilidade externa (modo conjunta/individual, fail-open em falha de
-   conexão) e o teste unitário de `ProjetosService.excluir()` que garante a limpeza dos 5
-   módulos com dado por-projeto (Cronograma, Designações, Levantamento-resposta,
+   de ponta a ponta), de Matriz de Conhecimento (`test/matriz.e2e-spec.ts` — permissões
+   ADM/Administrativo-Coordenador/Consultor-GCI, importação da planilha com resultado
+   tolerante à ausência do arquivo local) e de Painel (`test/painel.e2e-spec.ts` — gate
+   único de gestão em `/painel/coordenacao`/`/coordenacao/capacidade`/`/atividade`, Home
+   sem gate, filtro de visibilidade `_so_meus` refletido nos KPIs) e testes unitários
+   dedicados de `DistribuicaoService` para a nova checagem de disponibilidade externa
+   (modo conjunta/individual, fail-open em falha de conexão), de `MetricasService` (motor
+   de gates/campos obrigatórios/alertas/cabeçalho, novo nesta sessão — ver §2 item 7), de
+   `CapacidadeService`/`CoordenacaoService`/`AtividadeService`/`HomeService`, do parser da
+   planilha da Matriz (`matriz-import.util.spec.ts`, com um caso de forward-fill de área e
+   clamp de nota) e o teste unitário de `ProjetosService.excluir()` que garante a limpeza
+   dos 5 módulos com dado por-projeto (Cronograma, Designações, Levantamento-resposta,
    DocConteudo, Documentos/Eventos — ver §6 item 9). Suíte e2e validada estável em
    múltiplas execuções consecutivas (inclusive repetindo cada spec novo isoladamente, para
    pegar corridas de estado entre execuções — ver §6 itens 10 e 15).
@@ -717,4 +830,13 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
    comentário em `DisponibilidadeService.mensagemErro`) não puderam ser confirmados.**
    Antes de usar em produção: rodar `testar()` (Config → Disponibilidade) contra o SICLA
    de verdade e ajustar `mensagemErro`/`normalizarLinha` conforme o comportamento real
-   observado.
+   observado. **Matriz de Conhecimento: o importador (`exceljs`) foi validado
+   estruturalmente contra a planilha real do time** (`docs/Matriz de Conhecimento.xlsx`,
+   local/não versionada) — confirmando o layout esperado (linha 7 = áreas, linha 8 =
+   cabeçalhos, linha 9+ = técnicos) e revelando, ainda nesta sessão, o bug de
+   `actualRowCount`/`actualColumnCount` descrito no §6 antes que chegasse a produção;
+   **nenhum dado de nota individual foi lido ou exibido** neste processo (só
+   contagens/metadados de estrutura), por ser dado de avaliação de pessoas. Nenhuma
+   importação real foi persistida em um banco de produção nesta sessão — só contra SQLite
+   de teste. **Monitoramento Operacional não foi convertido** (ver §8) — não se aplica
+   validação aqui.

@@ -18,6 +18,8 @@ import { Evento } from './evento.entity';
 import { Protocolo } from './protocolo.entity';
 import { ModeloEmail } from './modelo-email.entity';
 import { ConsultaBD } from './consulta-bd.entity';
+import { MatrizCompetencia } from './matriz-competencia.entity';
+import { MatrizTecnico } from './matriz-tecnico.entity';
 
 export * from './usuario.entity';
 export * from './projeto.entity';
@@ -39,6 +41,8 @@ export * from './evento.entity';
 export * from './protocolo.entity';
 export * from './modelo-email.entity';
 export * from './consulta-bd.entity';
+export * from './matriz-competencia.entity';
+export * from './matriz-tecnico.entity';
 
 // Lista única usada por DatabaseModule (runtime) e AppDataSource (CLI de migrations) —
 // evita as duas listas divergirem conforme novas entidades são adicionadas.
@@ -63,4 +67,6 @@ export const ENTITIES = [
   Protocolo,
   ModeloEmail,
   ConsultaBD,
+  MatrizCompetencia,
+  MatrizTecnico,
 ];

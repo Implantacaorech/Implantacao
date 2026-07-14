@@ -15,6 +15,8 @@ import { ProtocolosModule } from './protocolos/protocolos.module';
 import { EmailModule } from './email/email.module';
 import { FluxoModule } from './fluxo/fluxo.module';
 import { DisponibilidadeModule } from './disponibilidade/disponibilidade.module';
+import { MatrizModule } from './matriz/matriz.module';
+import { PainelModule } from './painel/painel.module';
 
 @Module({
   imports: [
@@ -33,6 +35,8 @@ import { DisponibilidadeModule } from './disponibilidade/disponibilidade.module'
     EmailModule,
     FluxoModule,
     DisponibilidadeModule,
+    MatrizModule,
+    PainelModule,
   ],
 })
 export class AppModule {}
