@@ -8,10 +8,12 @@
       @if (u.perfil === 'ADM' || u.perfil === 'Coordenador' || u.perfil === 'Administrativo' || u.perfil === 'GCI') {
         <a routerLink="/coordenacao">Coordenação</a>
         <a routerLink="/monitoramento">Monitoramento</a>
+        <a routerLink="/dashboards">Dashboards</a>
       }
     }
     @if (auth.usuario()?.perfil === 'ADM') {
       <a routerLink="/usuarios">Usuários</a>
+      <a routerLink="/config/disponibilidade">Config</a>
     }
   </nav>
   <span class="usuario">

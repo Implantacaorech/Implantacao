@@ -112,6 +112,44 @@ export const routes: Routes = [
           import('./features/matriz/matriz-ficha.component').then((m) => m.MatrizFichaComponent),
       },
       {
+        path: 'config/disponibilidade',
+        canActivate: [perfilGuard('ADM')],
+        loadComponent: () =>
+          import('./features/config/config-disponibilidade.component').then(
+            (m) => m.ConfigDisponibilidadeComponent,
+          ),
+      },
+      {
+        path: 'config/consultas-bd',
+        canActivate: [perfilGuard('ADM')],
+        loadComponent: () =>
+          import('./features/config/consultas-bd-lista.component').then((m) => m.ConsultasBdListaComponent),
+      },
+      {
+        path: 'config/consultas-bd/novo',
+        canActivate: [perfilGuard('ADM')],
+        loadComponent: () =>
+          import('./features/config/consulta-bd-form.component').then((m) => m.ConsultaBdFormComponent),
+      },
+      {
+        path: 'config/consultas-bd/:slug',
+        canActivate: [perfilGuard('ADM')],
+        loadComponent: () =>
+          import('./features/config/consulta-bd-form.component').then((m) => m.ConsultaBdFormComponent),
+      },
+      {
+        path: 'dashboards',
+        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'GCI')],
+        loadComponent: () =>
+          import('./features/dashboards/dashboards-lista.component').then((m) => m.DashboardsListaComponent),
+      },
+      {
+        path: 'dashboards/:slug',
+        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'GCI')],
+        loadComponent: () =>
+          import('./features/dashboards/dashboard.component').then((m) => m.DashboardComponent),
+      },
+      {
         path: 'usuarios',
         canActivate: [perfilGuard('ADM')],
         loadComponent: () =>

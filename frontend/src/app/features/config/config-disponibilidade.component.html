@@ -1,0 +1,113 @@
+<div class="cabecalho">
+  <h1>Config → Disponibilidade</h1>
+  <a routerLink="/config/consultas-bd" class="botao-link">Consultas BD</a>
+</div>
+
+@if (erro()) {
+  <p class="erro">{{ erro() }}</p>
+}
+@if (aviso()) {
+  <p class="aviso">{{ aviso() }}</p>
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <p class="status">
+    Status:
+    <span class="badge" [class.badge-ok]="configurado()" [class.badge-off]="!configurado()">
+      {{ configurado() ? 'Configurado e ativo' : 'Não configurado' }}
+    </span>
+  </p>
+
+  <form class="form-config" [formGroup]="form" (ngSubmit)="salvar()">
+    <label>
+      Tipo
+      <input type="text" formControlName="tipo" />
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" formControlName="ativo" />
+      Ativo
+    </label>
+
+    <label>
+      Host
+      <input type="text" formControlName="host" />
+    </label>
+    <label>
+      Porta
+      <input type="text" formControlName="porta" />
+    </label>
+    <label>
+      Banco
+      <input type="text" formControlName="banco" />
+    </label>
+    <label>
+      Usuário
+      <input type="text" formControlName="usuario" />
+    </label>
+    <label>
+      Senha
+      <input type="password" formControlName="senha" placeholder="(em branco mantém a atual)" />
+    </label>
+    <label class="col-2">
+      URL completa (alternativa aos campos acima)
+      <input type="text" formControlName="url" placeholder="oracle+oracledb://usuario:senha@host:porta/banco" />
+    </label>
+
+    <label class="col-2">
+      SELECT de ocupação
+      <textarea formControlName="select" rows="4"></textarea>
+    </label>
+    <label class="col-2">
+      SELECT de técnicos
+      <textarea formControlName="selectTecnicos" rows="2"></textarea>
+    </label>
+
+    <label>
+      Pasta do Oracle Instant Client
+      <input type="text" formControlName="oracleLibDir" />
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" formControlName="oracleThick" />
+      Modo thick (client Oracle)
+    </label>
+
+    <div class="acoes col-2">
+      <button type="button" class="secundario" [disabled]="testando()" (click)="testar()">
+        {{ testando() ? 'Testando…' : 'Testar conexão' }}
+      </button>
+      <button type="submit" [disabled]="salvando()">
+        {{ salvando() ? 'Salvando…' : 'Salvar' }}
+      </button>
+    </div>
+  </form>
+
+  @if (amostra(); as a) {
+    <section class="cartao">
+      <h2>Amostra (30 dias)</h2>
+      @if (a.length === 0) {
+        <p class="vazio">Nenhum compromisso no período de teste.</p>
+      } @else {
+        <table class="tabela-simples">
+          <thead>
+            <tr>
+              <th>Técnico</th>
+              <th>Data</th>
+              <th>Turno</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (l of a; track $index) {
+              <tr>
+                <td>{{ l.tecnico }}</td>
+                <td>{{ l.data }}</td>
+                <td>{{ l.turno || '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </section>
+  }
+}

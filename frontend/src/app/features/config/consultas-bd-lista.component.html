@@ -1,0 +1,42 @@
+<div class="cabecalho">
+  <h1>Config → Consultas BD</h1>
+  <span class="acoes-cabecalho">
+    <a routerLink="/config/disponibilidade" class="botao-link">Disponibilidade</a>
+    <a routerLink="/config/consultas-bd/novo" class="botao">+ Nova consulta</a>
+  </span>
+</div>
+
+@if (erro()) {
+  <p class="erro">{{ erro() }}</p>
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <table class="tabela">
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Slug</th>
+        <th>Dashboard?</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (c of itens(); track c.slug) {
+        <tr>
+          <td><a [routerLink]="['/config/consultas-bd', c.slug]">{{ c.nome || '(sem nome)' }}</a></td>
+          <td>{{ c.slug }}</td>
+          <td>{{ c.mostrarGrafico && c.colunaData ? 'Sim' : 'Não' }}</td>
+          <td>
+            <button type="button" class="excluir" (click)="excluir(c.slug)">Excluir</button>
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="4" class="vazio">Nenhuma consulta cadastrada.</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}
