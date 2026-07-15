@@ -41,11 +41,11 @@ def cronograma_horas(horarios, turno):
     return horarios.get(turno, TURNO_PADRAO.get(turno, ("", "")))
 
 
-# --- Não usadas por gerar_agenda_xlsx (item 3 desta fatia só converteu o cronograma de
-# visitas do Agendador) — os geradores de Levantamento/Projeto/Termo (.docx) ainda
-# dependem destas e ficam para a próxima fatia (ver docs/migracao/03-documento-conversao.md).
 def cronograma_do_projeto(_pid: Optional[int]) -> List[dict]:
-    return []
+    """Linhas do Cronograma EDITÁVEL (CronogramaItem) — usadas por
+    _preencher_cronograma_xlsx (gl_xlsx.py) para preencher o layout fiel. `definir_contexto`
+    recebe a lista já pronta em `cronograma_itens` (a NestJS é quem lê o schema novo)."""
+    return _contexto.get().get("cronograma_itens", [])
 
 
 def doc_conteudo(_pid: Optional[int], _doc: str) -> dict:

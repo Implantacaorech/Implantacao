@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Testes do endpoint /gerar/documento-fiel (Levantamento, Projeto, Termo — .docx) —
+"""Testes do endpoint /gerar/documento-fiel (Levantamento, Projeto, Cronograma, Termo) —
 espelha webapp/test_painel.py:test_gerar_layout_* usando os templates reais de
 tools/templates/layouts/ (os mesmos que o Cadastro de Modelos semeia em produção)."""
 import base64
@@ -9,6 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import openpyxl
 from docx import Document
 from fastapi.testclient import TestClient
 
@@ -105,6 +106,69 @@ def test_gera_projeto_modo_modelo_preenche_cliente():
     texto = _texto_completo(doc)
     assert "Nome do Cliente: Cliente Teste LTDA" in texto
     assert "CNPJ: 00.000.000/0001-00" in texto
+
+
+def test_gera_cronograma_preenche_cliente_consultor_horas_e_linhas():
+    payload = {
+        "slug": "cronograma",
+        "modeloBase64": _template_base64("cronograma.xlsx"),
+        "projeto": {
+            "id": 1,
+            "cliente": "Cliente Teste LTDA",
+            "consultor": "Ana Consultora",
+            "horasCobradas": "40",
+            "horasBonificadas": "8",
+        },
+        "cronogramaItens": [
+            {
+                "etapa": "Abertura",
+                "topicos": "Parametrização",
+                "horas": "4",
+                "data": "2026-08-10",
+                "modalidade": "Remoto",
+                "status": "Previsto",
+            },
+            {
+                "etapa": "Treinamento — Faturamento",
+                "topicos": "Cadastros e rotinas",
+                "horas": "8",
+                "data": "2026-08-17",
+                "modalidade": "Presencial",
+                "status": "Previsto",
+            },
+        ],
+    }
+    r = client.post("/gerar/documento-fiel", json=payload)
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+    wb = openpyxl.load_workbook(io.BytesIO(r.content))
+    ws = wb["Cronograma de visitas"]
+    assert ws["C6"].value == "Cliente Teste LTDA"
+    assert ws["C3"].value == "Ana Consultora"
+    assert ws["J3"].value == "40"
+    assert ws["L4"].value == "8"
+    assert ws["B9"].value == "2026-08-10"
+    assert ws["N9"].value == "Abertura — Parametrização"
+    assert ws["B10"].value == "2026-08-17"
+    assert ws["N10"].value == "Treinamento — Faturamento — Cadastros e rotinas"
+
+
+def test_gera_cronograma_sem_itens_ainda_preenche_cabecalho():
+    payload = {
+        "slug": "cronograma",
+        "modeloBase64": _template_base64("cronograma.xlsx"),
+        "projeto": {"id": 1, "cliente": "Cliente Sem Itens", "consultor": "Beto"},
+    }
+    r = client.post("/gerar/documento-fiel", json=payload)
+    assert r.status_code == 200
+    wb = openpyxl.load_workbook(io.BytesIO(r.content))
+    ws = wb["Cronograma de visitas"]
+    assert ws["C6"].value == "Cliente Sem Itens"
+    assert ws["C3"].value == "Beto"
+    assert ws["B9"].value is None
 
 
 def test_slug_invalido_devolve_422():

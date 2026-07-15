@@ -38,7 +38,7 @@ if not sys.flags.utf8_mode:
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "gerador"))
 import db as db_shim  # noqa: E402
 from gl_xlsx import gerar_agenda_xlsx  # noqa: E402
-from gerar_fiel import gerar_docx  # noqa: E402
+from gerar_fiel import gerar_docx, gerar_xlsx  # noqa: E402
 
 # transcricao/ usa o mesmo estilo de import "achatado" (`import transcritor`) — mesmo
 # motivo do gerador/ acima.
@@ -184,27 +184,46 @@ class LevantamentoRespostaDto(BaseModel):
     resposta: str = ""
 
 
+class CronogramaItemDto(BaseModel):
+    etapa: str = ""
+    topicos: str = ""
+    horas: str = ""
+    data: str = ""
+    modalidade: str = ""
+    status: str = ""
+
+
 class GerarDocumentoFielRequest(BaseModel):
-    slug: str            # "levantamento" | "projeto" | "termo"
+    slug: str            # "levantamento" | "projeto" | "cronograma" | "termo"
     modo: str = "auto"    # "modelo" só se aplica ao Projeto (guia de preenchimento manual)
-    modeloBase64: str     # bytes do template (.docx) vigente, já lido pelo NestJS
+    modeloBase64: str     # bytes do template (.docx/.xlsx) vigente, já lido pelo NestJS
     projeto: ProjetoDocxDto
     docConteudo: Dict[str, str] = {}
     indiceModulos: List[IndiceModuloDto] = []
     indiceTopicos: List[IndiceTopicoDto] = []
     levantamentoRespostas: List[LevantamentoRespostaDto] = []
+    cronogramaItens: List[CronogramaItemDto] = []
 
 
 _SLUGS_DOCX = ("levantamento", "projeto", "termo")
+_SLUGS_XLSX = ("cronograma",)
+_TIPO_CONTEUDO = {
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
 
 
 @app.post("/gerar/documento-fiel")
 def gerar_documento_fiel(req: GerarDocumentoFielRequest):
-    """Gera o Levantamento, Projeto ou Termo (.docx) pelo layout fiel vigente — equivalente
-    a webapp/routes_geracao.py:projeto_gerar_layout / gerar_layout.gerar(). Devolve o
-    arquivo binário."""
-    if req.slug not in _SLUGS_DOCX:
-        raise HTTPException(status_code=422, detail="slug inválido — use levantamento, projeto ou termo.")
+    """Gera o Levantamento, Projeto, Cronograma ou Termo pelo layout fiel vigente —
+    equivalente a webapp/routes_geracao.py:projeto_gerar_layout / gerar_layout.gerar().
+    Levantamento/Projeto/Termo saem em .docx; Cronograma sai em .xlsx (preenchido a partir
+    das linhas editáveis de CronogramaItem). Devolve o arquivo binário."""
+    if req.slug not in _SLUGS_DOCX and req.slug not in _SLUGS_XLSX:
+        raise HTTPException(
+            status_code=422,
+            detail="slug inválido — use levantamento, projeto, cronograma ou termo.",
+        )
     try:
         base_bytes = base64.b64decode(req.modeloBase64)
     except Exception as e:
@@ -237,18 +256,23 @@ def gerar_documento_fiel(req: GerarDocumentoFielRequest):
                 {"modulo_sigla": r.moduloSigla, "topico": r.topico, "resposta": r.resposta}
                 for r in req.levantamentoRespostas
             ],
+            "cronograma_itens": [i.model_dump() for i in req.cronogramaItens],
         }
     )
 
+    tipo = "xlsx" if req.slug in _SLUGS_XLSX else "docx"
     try:
-        conteudo = gerar_docx(req.slug, projeto, base_bytes, modo=req.modo)
+        if tipo == "xlsx":
+            conteudo = gerar_xlsx(projeto, base_bytes)
+        else:
+            conteudo = gerar_docx(req.slug, projeto, base_bytes, modo=req.modo)
     except Exception as e:  # nunca vaza detalhe interno — só loga no servidor
         raise HTTPException(status_code=500, detail="Falha ao gerar o documento.") from e
 
     return Response(
         content=conteudo,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": 'attachment; filename="%s.docx"' % req.slug},
+        media_type=_TIPO_CONTEUDO[tipo],
+        headers={"Content-Disposition": 'attachment; filename="%s.%s"' % (req.slug, tipo)},
     )
 
 

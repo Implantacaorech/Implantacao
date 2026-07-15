@@ -62,6 +62,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'projetos/:id/documentos',
+        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'GCI')],
+        loadComponent: () =>
+          import('./features/documentos/documentos-projeto.component').then(
+            (m) => m.DocumentosProjetoComponent,
+          ),
+      },
+      {
         path: 'projetos/:id/cronograma',
         canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'Consultor')],
         loadComponent: () =>

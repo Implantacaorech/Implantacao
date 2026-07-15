@@ -11,8 +11,9 @@ import { ModeloDocumentoService } from '../catalogos/modelo-documento.service';
 import { IndiceTopicoService } from '../catalogos/indice-topico.service';
 import { DocConteudoService } from '../levantamento/doc-conteudo.service';
 import { LevantamentoRespostaService } from '../levantamento/levantamento-resposta.service';
+import { CronogramaItensService } from '../plano-cronograma/cronograma-itens.service';
 
-export type SlugDocumentoFiel = 'levantamento' | 'projeto' | 'termo';
+export type SlugDocumentoFiel = 'levantamento' | 'projeto' | 'cronograma' | 'termo';
 
 /** Orquestra a geração fiel de Levantamento/Projeto/Termo (.docx): monta o payload a partir
  * do schema novo (projeto + catálogos + conteúdo estruturado) e chama o docservice — mesmo
@@ -26,6 +27,7 @@ export class GeracaoLayoutService {
     private readonly indice: IndiceTopicoService,
     private readonly docConteudo: DocConteudoService,
     private readonly levantamentoResposta: LevantamentoRespostaService,
+    private readonly cronogramaItens: CronogramaItensService,
   ) {}
 
   async gerar(
@@ -47,8 +49,12 @@ export class GeracaoLayoutService {
     const modulos = await this.indice.modulos();
     const { linhas: topicos } = await this.indice.listar();
     const docConteudoDoc =
-      slug === 'termo' ? {} : await this.docConteudo.valores(projetoId, slug);
+      slug === 'levantamento' || slug === 'projeto'
+        ? await this.docConteudo.valores(projetoId, slug)
+        : {};
     const respostas = await this.levantamentoResposta.listar(projetoId);
+    const cronogramaLinhas =
+      slug === 'cronograma' ? await this.cronogramaItens.doProjeto(projetoId) : [];
 
     const corpo = {
       slug,
@@ -80,6 +86,14 @@ export class GeracaoLayoutService {
         moduloSigla: r.moduloSigla,
         topico: r.topico,
         resposta: r.resposta,
+      })),
+      cronogramaItens: cronogramaLinhas.map((i) => ({
+        etapa: i.etapa,
+        topicos: i.topicos,
+        horas: i.horas,
+        data: i.data,
+        modalidade: i.modalidade,
+        status: i.status,
       })),
     };
 

@@ -1,0 +1,89 @@
+<div class="cabecalho">
+  <h1>Documentos oficiais</h1>
+  <a [routerLink]="['/projetos', projetoId]" class="voltar">← Voltar ao projeto</a>
+</div>
+
+@if (erro()) {
+  <p class="erro">{{ erro() }}</p>
+}
+@if (aviso()) {
+  <p class="aviso">{{ aviso() }}</p>
+}
+
+<section class="cartao">
+  <h2>Gerar pelo layout oficial</h2>
+  <p class="dica">Gera o documento a partir do layout fiel vigente (Cadastro → Modelos de Documentos) com os dados atuais do projeto, anexa à ficha e registra na timeline.</p>
+  <div class="botoes-gerar">
+    @for (item of slugs; track item.slug) {
+      <div class="botao-gerar">
+        <button type="button" [disabled]="gerando() !== null" (click)="gerar(item.slug)">
+          {{ gerando() === item.slug ? 'Gerando…' : 'Gerar ' + item.label }}
+        </button>
+        @if (item.slug === 'projeto') {
+          <button
+            type="button"
+            class="secundario"
+            [disabled]="gerando() !== null"
+            (click)="gerar(item.slug, 'modelo')"
+            title="Gera um modelo preenchido pelas perguntas do Índice, para preenchimento manual"
+          >
+            Gerar modelo p/ preenchimento manual
+          </button>
+        }
+      </div>
+    }
+  </div>
+</section>
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <div class="colunas-2">
+    <section class="cartao">
+      <h2>Documentos anexados</h2>
+      @if (documentos().length === 0) {
+        <p class="vazio">Nenhum documento gerado/anexado ainda.</p>
+      } @else {
+        <table class="tabela-simples">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Arquivo</th>
+              <th>Origem</th>
+              <th>Quando</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (d of documentos(); track d.id) {
+              <tr>
+                <td>{{ d.tipo }}</td>
+                <td class="arquivo">{{ d.arquivo }}</td>
+                <td>{{ d.origem }}</td>
+                <td>{{ d.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</td>
+                <td><button type="button" class="link" (click)="baixarExistente(d)">Baixar</button></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </section>
+
+    <section class="cartao">
+      <h2>Timeline</h2>
+      @if (eventos().length === 0) {
+        <p class="vazio">Nenhum evento registrado ainda.</p>
+      } @else {
+        <ul class="timeline">
+          @for (e of eventos(); track e.id) {
+            <li>
+              <span class="tipo-tag">{{ e.tipo }}</span>
+              {{ e.descricao }}
+              <span class="rodape">{{ e.autor }} · {{ e.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </div>
+}

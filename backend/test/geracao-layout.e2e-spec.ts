@@ -9,6 +9,7 @@ import { AppModule } from '../src/app.module';
 import { Usuario } from '../src/database/entities/usuario.entity';
 import { Projeto } from '../src/database/entities/projeto.entity';
 import { IndiceTopico } from '../src/database/entities/indice-topico.entity';
+import { CronogramaItem } from '../src/database/entities/cronograma-item.entity';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
 import { ModeloDocumentoService } from '../src/catalogos/modelo-documento.service';
@@ -38,6 +39,7 @@ describe('Geração de documentos fiéis — Levantamento/Projeto/Termo (e2e)', 
   let usuarios: Repository<Usuario>;
   let projetos: Repository<Projeto>;
   let indiceRepo: Repository<IndiceTopico>;
+  let cronogramaRepo: Repository<CronogramaItem>;
   let fake: GeracaoDocumentosServiceFake;
   let tokenAdm: string;
 
@@ -69,6 +71,7 @@ describe('Geração de documentos fiéis — Levantamento/Projeto/Termo (e2e)', 
     usuarios = moduleFixture.get(getRepositoryToken(Usuario));
     projetos = moduleFixture.get(getRepositoryToken(Projeto));
     indiceRepo = moduleFixture.get(getRepositoryToken(IndiceTopico));
+    cronogramaRepo = moduleFixture.get(getRepositoryToken(CronogramaItem));
     fake = moduleFixture.get<GeracaoDocumentosServiceFake>(
       GeracaoDocumentosService,
     );
@@ -174,5 +177,44 @@ describe('Geração de documentos fiéis — Levantamento/Projeto/Termo (e2e)', 
     );
     expect(fake.ultimoCorpo.slug).toBe('projeto');
     expect(fake.ultimoCorpo.modo).toBe('modelo');
+  });
+
+  it('gera o Cronograma a partir das linhas editáveis (CronogramaItem) e dispara cronograma_ok', async () => {
+    const pid = await criarProjeto();
+    await cronogramaRepo.save(
+      cronogramaRepo.create({
+        projetoId: pid,
+        ordem: 0,
+        etapa: 'Abertura',
+        topicos: 'Parametrização inicial',
+        horas: '4',
+        data: '10/08/2026',
+        modalidade: 'Remoto',
+        status: 'Previsto',
+      }),
+    );
+
+    const res = await auth(
+      request(server()).post(`/api/projetos/${pid}/gerar-layout/cronograma`),
+    );
+    expect(res.status).toBe(200);
+    expect(fake.ultimoCorpo.slug).toBe('cronograma');
+    expect(fake.ultimoCorpo.cronogramaItens).toEqual([
+      {
+        etapa: 'Abertura',
+        topicos: 'Parametrização inicial',
+        horas: '4',
+        data: '10/08/2026',
+        modalidade: 'Remoto',
+        status: 'Previsto',
+      },
+    ]);
+
+    const eventos = await auth(
+      request(server()).get(`/api/projetos/${pid}/eventos`),
+    );
+    expect(
+      eventos.body.data.some((e: { descricao: string }) => e.descricao.includes('pelo layout oficial (cronograma)')),
+    ).toBe(true);
   });
 });

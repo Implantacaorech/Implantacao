@@ -21,12 +21,13 @@ import { DocumentosService } from './documentos.service';
 import { GeracaoLayoutService, SlugDocumentoFiel } from './geracao-layout.service';
 import { NotificacaoService, EventoNotificacao } from '../email/notificacao.service';
 
-const _SLUGS_DOCX: readonly SlugDocumentoFiel[] = ['levantamento', 'projeto', 'termo'];
+const _SLUGS_DOCX: readonly SlugDocumentoFiel[] = ['levantamento', 'projeto', 'cronograma', 'termo'];
 
 // Espelha webapp/app.py:_EVT_DOC — slug do documento gerado -> evento de notificação.
 const _EVT_DOC: Record<SlugDocumentoFiel, EventoNotificacao> = {
   levantamento: 'levantamento_ok',
   projeto: 'projeto_ok',
+  cronograma: 'cronograma_ok',
   termo: 'termo_ok',
 };
 
@@ -65,7 +66,7 @@ export class DocumentosController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
-      'Gera o Levantamento, Projeto ou Termo (.docx) pelo layout fiel vigente e anexa ao projeto',
+      'Gera o Levantamento, Projeto, Cronograma (.xlsx) ou Termo (.docx) pelo layout fiel vigente e anexa ao projeto',
   })
   async gerarLayout(
     @Param('projetoId', ParseIntPipe) projetoId: number,
@@ -76,7 +77,7 @@ export class DocumentosController {
   ) {
     if (!_SLUGS_DOCX.includes(slug as SlugDocumentoFiel)) {
       throw new BadRequestException(
-        'slug inválido — use levantamento, projeto ou termo.',
+        'slug inválido — use levantamento, projeto, cronograma ou termo.',
       );
     }
     const arquivo = await this.geracaoLayout.gerar(

@@ -2,6 +2,7 @@
   <h1>{{ projetoId() ? 'Editar projeto' : 'Novo projeto' }}</h1>
   <span class="acoes-cabecalho">
     @if (projetoId()) {
+      <a [routerLink]="['/projetos', projetoId(), 'documentos']" class="voltar">Documentos</a>
       <a [routerLink]="['/projetos', projetoId(), 'designacao', 'definir-gci']" class="voltar">Definir GCI</a>
       <a [routerLink]="['/projetos', projetoId(), 'designacao', 'agendar']" class="voltar">Agendar Levantamento</a>
       <a [routerLink]="['/projetos', projetoId(), 'designacao', 'consultores']" class="voltar">Designar Consultores</a>
