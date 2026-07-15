@@ -78,6 +78,18 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'coordenacao',
+        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'GCI')],
+        loadComponent: () =>
+          import('./features/coordenacao/coordenacao.component').then((m) => m.CoordenacaoComponent),
+      },
+      {
+        path: 'coordenacao/capacidade',
+        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'GCI')],
+        loadComponent: () =>
+          import('./features/coordenacao/capacidade.component').then((m) => m.CapacidadeComponent),
+      },
+      {
         path: 'matriz',
         loadComponent: () =>
           import('./features/matriz/matriz-lista.component').then((m) => m.MatrizListaComponent),

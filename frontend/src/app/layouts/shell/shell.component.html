@@ -4,6 +4,11 @@
     <a routerLink="/home">Início</a>
     <a routerLink="/projetos">Projetos</a>
     <a routerLink="/matriz">Matriz de Conhecimento</a>
+    @if (auth.usuario(); as u) {
+      @if (u.perfil === 'ADM' || u.perfil === 'Coordenador' || u.perfil === 'Administrativo' || u.perfil === 'GCI') {
+        <a routerLink="/coordenacao">Coordenação</a>
+      }
+    }
     @if (auth.usuario()?.perfil === 'ADM') {
       <a routerLink="/usuarios">Usuários</a>
     }

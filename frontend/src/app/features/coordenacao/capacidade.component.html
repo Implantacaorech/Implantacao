@@ -1,0 +1,66 @@
+<div class="cabecalho">
+  <h1>Capacidade da equipe</h1>
+  <a routerLink="/coordenacao" class="voltar">← Voltar ao Painel de Coordenação</a>
+</div>
+
+<form class="filtro" (ngSubmit)="carregar()">
+  <label>
+    Módulos do cliente novo
+    <input type="text" name="modulos" [(ngModel)]="modulos" placeholder="ex.: FAT,CTB" />
+  </label>
+  <label>
+    Semanas
+    <input type="number" name="semanas" [(ngModel)]="semanas" min="2" max="12" />
+  </label>
+  <button type="submit">Filtrar</button>
+</form>
+
+@if (erro()) {
+  <p class="erro">{{ erro() }}</p>
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else if (resultado(); as r) {
+  <div class="tabela-scroll">
+    <table class="tabela">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Perfil</th>
+          <th>Score</th>
+          <th>Veredito</th>
+          <th>Média nos módulos</th>
+          <th>Clientes ativos</th>
+          <th>Libera em</th>
+          <th>Janela</th>
+          <th>Livres/semana</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (l of r.equipe; track l.sicla + l.nome) {
+          <tr>
+            <td>{{ l.nome }}</td>
+            <td>{{ l.perfil }}</td>
+            <td class="numero">{{ l.score }}</td>
+            <td>
+              <span class="veredito veredito-{{ l.veredito === 'Pronto' ? 'ok' : l.veredito === 'Parcial' ? 'parcial' : 'ruim' }}">
+                {{ l.veredito }}
+              </span>
+            </td>
+            <td class="numero">{{ l.temMatriz ? l.media : '—' }}</td>
+            <td class="numero">{{ l.clientes }}</td>
+            <td>{{ l.liberaEm || '—' }}</td>
+            <td>{{ l.janela || '—' }}</td>
+            <td>{{ l.livresSemana.join(' / ') }}</td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="9" class="vazio">Nenhum Consultor/GCI ativo cadastrado.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <p class="legenda">Semanas: {{ r.semanas.join(', ') }} · Turnos/semana: {{ r.turnosSemana }}</p>
+}

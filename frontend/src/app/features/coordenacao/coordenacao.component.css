@@ -1,0 +1,161 @@
+.cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: #0f2f52;
+}
+
+h2 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  color: #0f2f52;
+}
+
+.acoes-cabecalho {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.botao-link {
+  color: #0f2f52;
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  background: #0f2f52;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.erro {
+  color: #d33;
+  margin: 0 0 12px;
+}
+
+.aviso {
+  color: #1a7a3c;
+  margin: 0 0 12px;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.kpi {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.kpi .valor {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #0f2f52;
+}
+
+.kpi .rotulo {
+  font-size: 0.78rem;
+  color: #666;
+}
+
+.kpi-alerta .valor {
+  color: #d33;
+}
+
+.colunas-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.cartao {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.tabela-simples {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabela-simples th,
+.tabela-simples td {
+  text-align: left;
+  padding: 6px 4px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.85rem;
+}
+
+.tabela-simples a {
+  color: #0f2f52;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.numero {
+  text-align: right;
+}
+
+.vazio {
+  color: #888;
+  font-size: 0.85rem;
+}
+
+.alertas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.alertas a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.alertas li {
+  font-size: 0.85rem;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #f7f7f7;
+}
+
+.alerta-alto {
+  background: #fbe4e4;
+  color: #7a1f1f;
+}
+
+.alerta-medio {
+  background: #fdf2df;
+  color: #7a5a1f;
+}

@@ -1,0 +1,186 @@
+<div class="cabecalho">
+  <h1>Painel de Coordenação</h1>
+  <span class="acoes-cabecalho">
+    <a routerLink="/coordenacao/capacidade" class="botao-link">Capacidade da equipe</a>
+    <button type="button" [disabled]="enviando()" (click)="enviarDigest()">
+      {{ enviando() ? 'Enviando…' : 'Enviar resumo agora' }}
+    </button>
+  </span>
+</div>
+
+@if (erro()) {
+  <p class="erro">{{ erro() }}</p>
+}
+@if (aviso()) {
+  <p class="aviso">{{ aviso() }}</p>
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else if (dados(); as d) {
+  <div class="kpis">
+    <div class="kpi">
+      <span class="valor">{{ d.m.total }}</span>
+      <span class="rotulo">Total</span>
+    </div>
+    <div class="kpi">
+      <span class="valor">{{ d.m.ativos }}</span>
+      <span class="rotulo">Ativos</span>
+    </div>
+    <div class="kpi">
+      <span class="valor">{{ d.m.noPrazo }}</span>
+      <span class="rotulo">No prazo</span>
+    </div>
+    <div class="kpi kpi-alerta">
+      <span class="valor">{{ d.m.nAtrasados }}</span>
+      <span class="rotulo">Atrasados</span>
+    </div>
+    <div class="kpi kpi-alerta">
+      <span class="valor">{{ d.m.nRisco }}</span>
+      <span class="rotulo">Em risco</span>
+    </div>
+    <div class="kpi">
+      <span class="valor">{{ d.m.gatePendente }}</span>
+      <span class="rotulo">Docs pendentes</span>
+    </div>
+    <div class="kpi">
+      <span class="valor">{{ d.m.concluidos }}</span>
+      <span class="rotulo">Concluídos</span>
+    </div>
+    <div class="kpi">
+      <span class="valor">{{ d.m.horasTotal }}</span>
+      <span class="rotulo">Horas (total)</span>
+    </div>
+    <div class="kpi">
+      <span class="valor">{{ d.m.ttvMedio ?? '—' }}</span>
+      <span class="rotulo">TTV médio (dias)</span>
+    </div>
+  </div>
+
+  <div class="colunas-2">
+    <section class="cartao">
+      <h2>Funil por etapa</h2>
+      <table class="tabela-simples">
+        <tbody>
+          @for (etapa of d.etapas; track etapa) {
+            <tr>
+              <td>{{ etapa }}</td>
+              <td class="numero">{{ d.m.porEtapa[etapa] ?? 0 }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+
+    <section class="cartao">
+      <h2>Distribuição por situação</h2>
+      <table class="tabela-simples">
+        <tbody>
+          @for (situacao of d.situacoes; track situacao) {
+            <tr>
+              <td>{{ situacao }}</td>
+              <td class="numero">{{ d.m.porSituacao[situacao] ?? 0 }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+  <div class="colunas-2">
+    <section class="cartao">
+      <h2>Atrasados ({{ d.m.nAtrasados }})</h2>
+      @if (d.m.atrasados.length === 0) {
+        <p class="vazio">Nenhum projeto atrasado.</p>
+      } @else {
+        <table class="tabela-simples">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Etapa</th>
+              <th>Consultor</th>
+              <th>Dias</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of d.m.atrasados; track p.id) {
+              <tr>
+                <td><a [routerLink]="['/projetos', p.id]">{{ p.cliente }}</a></td>
+                <td>{{ p.etapa }}</td>
+                <td>{{ p.consultor }}</td>
+                <td class="numero">{{ p.dias }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </section>
+
+    <section class="cartao">
+      <h2>Em risco ({{ d.m.nRisco }})</h2>
+      @if (d.m.emRisco.length === 0) {
+        <p class="vazio">Nenhum projeto em risco.</p>
+      } @else {
+        <table class="tabela-simples">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Etapa</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of d.m.emRisco; track p.id) {
+              <tr>
+                <td><a [routerLink]="['/projetos', p.id]">{{ p.cliente }}</a></td>
+                <td>{{ p.etapa }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </section>
+  </div>
+
+  <div class="colunas-2">
+    <section class="cartao">
+      <h2>Carga por consultor</h2>
+      @if (d.m.consultores.length === 0) {
+        <p class="vazio">Sem dados de carga.</p>
+      } @else {
+        <table class="tabela-simples">
+          <thead>
+            <tr>
+              <th>Consultor</th>
+              <th>Projetos</th>
+              <th>Horas</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of d.m.consultores; track c.consultor) {
+              <tr>
+                <td>{{ c.consultor }}</td>
+                <td class="numero">{{ c.projetos }}</td>
+                <td class="numero">{{ c.horas }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </section>
+
+    <section class="cartao">
+      <h2>Alertas</h2>
+      @if (d.alertas.length === 0) {
+        <p class="vazio">Sem alertas no momento.</p>
+      } @else {
+        <ul class="alertas">
+          @for (a of d.alertas; track $index) {
+            <li class="alerta-{{ a.nivel }}">
+              <a [routerLink]="['/projetos', a.projetoId]"><strong>{{ a.cliente }}</strong> — {{ a.msg }}</a>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </div>
+}
