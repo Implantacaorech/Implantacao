@@ -1,0 +1,83 @@
+<div class="cabecalho">
+  <h1>Atividade da operação</h1>
+  <a routerLink="/monitoramento" class="botao-link">Monitoramento Operacional</a>
+</div>
+
+@if (erro()) {
+  <p class="erro">{{ erro() }}</p>
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else if (dados(); as d) {
+  <div class="kpis">
+    <div class="kpi">
+      <span class="valor">{{ d.uso.projetosNovos }}</span>
+      <span class="rotulo">Projetos novos ({{ d.uso.dias }}d)</span>
+    </div>
+    <div class="kpi">
+      <span class="valor">{{ d.uso.documentos }}</span>
+      <span class="rotulo">Documentos gerados</span>
+    </div>
+    <div class="kpi">
+      <span class="valor">{{ d.uso.emails }}</span>
+      <span class="rotulo">E-mails enviados</span>
+    </div>
+    <div class="kpi">
+      <span class="valor">{{ d.uso.notas }}</span>
+      <span class="rotulo">Notas registradas</span>
+    </div>
+    <div class="kpi">
+      <span class="valor">{{ d.uso.transicoes }}</span>
+      <span class="rotulo">Transições de etapa</span>
+    </div>
+    <div class="kpi">
+      <span class="valor">{{ d.uso.totalEventos }}</span>
+      <span class="rotulo">Eventos (total)</span>
+    </div>
+  </div>
+
+  <div class="colunas-2">
+    <section class="cartao">
+      <h2>Funil por macro-fase</h2>
+      <table class="tabela-simples">
+        <thead>
+          <tr>
+            <th>Fase</th>
+            <th>Nº</th>
+            <th>Idade média</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (f of d.funil; track f.fase) {
+            <tr>
+              <td>{{ f.fase }}</td>
+              <td class="numero">{{ f.n }}</td>
+              <td class="numero">{{ f.idadeMedia !== null ? (f.idadeMedia + 'd') : '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+
+    <section class="cartao">
+      <h2>Feed de eventos</h2>
+      @if (d.feed.length === 0) {
+        <p class="vazio">Sem eventos registrados.</p>
+      } @else {
+        <ul class="feed">
+          @for (e of d.feed; track e.id) {
+            <li>
+              <a [routerLink]="['/projetos', e.projetoId]">
+                <strong>{{ e.cliente }}</strong>
+                <span class="tipo-tag">{{ e.tipo }}</span>
+                <p>{{ e.descricao }}</p>
+                <span class="rodape">{{ e.autor }} · {{ e.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</span>
+              </a>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </div>
+}

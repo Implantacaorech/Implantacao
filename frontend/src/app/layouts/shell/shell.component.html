@@ -7,6 +7,7 @@
     @if (auth.usuario(); as u) {
       @if (u.perfil === 'ADM' || u.perfil === 'Coordenador' || u.perfil === 'Administrativo' || u.perfil === 'GCI') {
         <a routerLink="/coordenacao">Coordenação</a>
+        <a routerLink="/monitoramento">Monitoramento</a>
       }
     }
     @if (auth.usuario()?.perfil === 'ADM') {

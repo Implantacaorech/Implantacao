@@ -90,6 +90,18 @@ export const routes: Routes = [
           import('./features/coordenacao/capacidade.component').then((m) => m.CapacidadeComponent),
       },
       {
+        path: 'atividade',
+        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'GCI')],
+        loadComponent: () =>
+          import('./features/atividade/atividade.component').then((m) => m.AtividadeComponent),
+      },
+      {
+        path: 'monitoramento',
+        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'GCI')],
+        loadComponent: () =>
+          import('./features/monitoramento/monitoramento.component').then((m) => m.MonitoramentoComponent),
+      },
+      {
         path: 'matriz',
         loadComponent: () =>
           import('./features/matriz/matriz-lista.component').then((m) => m.MatrizListaComponent),

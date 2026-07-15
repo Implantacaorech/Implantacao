@@ -1,0 +1,214 @@
+<div class="cabecalho">
+  <h1>Centro de Monitoramento Operacional</h1>
+  <a routerLink="/atividade" class="botao-link">Atividade da operação</a>
+</div>
+
+@if (erro()) {
+  <p class="erro">{{ erro() }}</p>
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else if (dados(); as d) {
+  <div class="resumo-saude">
+    <div class="saude saude-{{ d.saude >= 80 ? 'boa' : d.saude >= 50 ? 'media' : 'ruim' }}">
+      <span class="valor">{{ d.saude }}</span>
+      <span class="rotulo">Saúde da operação</span>
+    </div>
+    <p class="atualizado">Atualizado em {{ d.atualizadoEm }}</p>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi">
+      <span class="valor">{{ d.m.total }}</span>
+      <span class="rotulo">Total</span>
+    </div>
+    <div class="kpi">
+      <span class="valor">{{ d.m.ativos }}</span>
+      <span class="rotulo">Ativos</span>
+    </div>
+    <div class="kpi kpi-alerta">
+      <span class="valor">{{ d.m.nAtrasados }}</span>
+      <span class="rotulo">Atrasados</span>
+    </div>
+    <div class="kpi kpi-alerta">
+      <span class="valor">{{ d.m.nRisco }}</span>
+      <span class="rotulo">Em risco</span>
+    </div>
+    <div class="kpi">
+      <span class="valor">{{ d.m.gatePendente }}</span>
+      <span class="rotulo">Docs pendentes</span>
+    </div>
+    <div class="kpi">
+      <span class="valor">{{ d.m.concluidos }}</span>
+      <span class="rotulo">Concluídos</span>
+    </div>
+  </div>
+
+  <section class="cartao">
+    <h2>Setores</h2>
+    <div class="grade-setores">
+      @for (s of d.setores; track s.nome) {
+        <div class="setor setor-{{ s.estado }}">
+          <div class="setor-cabecalho">
+            <strong>{{ s.nome }}</strong>
+            <span class="badge">{{ s.estadoLabel }}</span>
+          </div>
+          <div class="setor-numeros">
+            <span>Andamento: {{ s.andamento }}</span>
+            <span>Concluídas: {{ s.concluidas }}</span>
+            <span>Pendentes: {{ s.pendentes }}</span>
+            <span>Atrasadas: {{ s.atrasadas }}</span>
+            @if (s.aprovacao) {
+              <span>Aguard. aprovação: {{ s.aprovacao }}</span>
+            }
+            @if (s.tempoMedio !== null) {
+              <span>Tempo médio: {{ s.tempoMedio }}d</span>
+            }
+          </div>
+          @if (s.responsaveis.length > 0) {
+            <p class="setor-responsaveis">{{ s.responsaveis.join(', ') }}</p>
+          }
+          @if (s.alertas.length > 0) {
+            <ul class="setor-alertas">
+              @for (a of s.alertas; track $index) {
+                <li>{{ a }}</li>
+              }
+            </ul>
+          }
+        </div>
+      }
+    </div>
+  </section>
+
+  <div class="colunas-2">
+    <section class="cartao">
+      <h2>Fluxo por etapa</h2>
+      <table class="tabela-simples">
+        <tbody>
+          @for (f of d.fluxo; track f.nome) {
+            <tr>
+              <td>{{ f.nome }}</td>
+              <td class="numero">{{ f.n }}</td>
+              <td class="numero">{{ f.pct }}%</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+
+    <section class="cartao">
+      <h2>Carga por colaborador</h2>
+      @if (d.carga.length === 0) {
+        <p class="vazio">Sem dados de carga.</p>
+      } @else {
+        <table class="tabela-simples">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Projetos</th>
+              <th>Horas</th>
+              <th>Alertas</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of d.carga; track c.nome) {
+              <tr>
+                <td>{{ c.nome }}</td>
+                <td class="numero">{{ c.projetos }}</td>
+                <td class="numero">{{ c.horas }}</td>
+                <td class="numero">{{ c.alertas }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </section>
+  </div>
+
+  <div class="colunas-2">
+    <section class="cartao">
+      <h2>Próximas entregas</h2>
+      @if (d.entregas.length === 0) {
+        <p class="vazio">Nenhuma entrega prevista.</p>
+      } @else {
+        <table class="tabela-simples">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Tipo</th>
+              <th>Data</th>
+              <th>Dias</th>
+              <th>Setor</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (e of d.entregas; track e.projetoId + e.tipo) {
+              <tr [class.atrasado]="e.dias < 0">
+                <td><a [routerLink]="['/projetos', e.projetoId]">{{ e.cliente }}</a></td>
+                <td>{{ e.tipo }}</td>
+                <td>{{ e.data | date: 'dd/MM/yyyy' }}</td>
+                <td class="numero">{{ e.dias }}</td>
+                <td>{{ e.setor }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </section>
+
+    <section class="cartao">
+      <h2>Alertas</h2>
+      @if (d.alertas.length === 0) {
+        <p class="vazio">Sem alertas no momento.</p>
+      } @else {
+        <ul class="alertas">
+          @for (a of d.alertas; track $index) {
+            <li class="alerta-{{ a.nivel }}">
+              <a [routerLink]="['/projetos', a.projetoId]"><strong>{{ a.cliente }}</strong> — {{ a.msg }}</a>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </div>
+
+  <section class="cartao">
+    <h2>Mapa de progresso</h2>
+    <div class="tabela-scroll">
+      <table class="tabela-simples">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Etapa</th>
+            <th>Situação</th>
+            <th>Progresso</th>
+            <th>Responsável</th>
+            <th>Alertas</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of d.mapa; track p.id) {
+            <tr [class.risco]="p.risco" [class.atrasado]="p.atrasado">
+              <td><a [routerLink]="['/projetos', p.id]">{{ p.cliente }}</a></td>
+              <td>{{ p.etapa }}</td>
+              <td>{{ p.situacao }}</td>
+              <td>
+                <div class="barra-progresso">
+                  <div class="barra-preenchida" [style.width.%]="p.progresso"></div>
+                </div>
+                <span class="progresso-texto">{{ p.progresso }}%</span>
+              </td>
+              <td>{{ p.consultor }}</td>
+              <td class="numero">{{ p.alertas }}</td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="vazio">Nenhum projeto ativo.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}
