@@ -1,0 +1,108 @@
+<div class="cabecalho">
+  <h1>Cronograma</h1>
+  <a [routerLink]="['/projetos', projetoId]" class="voltar">← Voltar ao projeto</a>
+</div>
+
+@if (erro()) {
+  <p class="erro">{{ erro() }}</p>
+}
+@if (aviso()) {
+  <p class="aviso">{{ aviso() }}</p>
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <div class="barra-acoes">
+    <button type="button" class="secundario" [disabled]="semeando()" (click)="carregarPlanoAutomatico()">
+      {{ semeando() ? 'Carregando…' : 'Carregar plano automático' }}
+    </button>
+    <button type="button" class="secundario" (click)="adicionarLinha()">+ Nova linha</button>
+    <button type="button" class="secundario" (click)="mostrarHistorico.set(!mostrarHistorico())">
+      {{ mostrarHistorico() ? 'Ocultar histórico' : 'Ver histórico' }}
+    </button>
+  </div>
+
+  <div class="tabela-scroll">
+    <table class="tabela">
+      <thead>
+        <tr>
+          <th>Etapa</th>
+          <th>Tópicos</th>
+          <th>Horas</th>
+          <th>Data</th>
+          <th>Modalidade</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (linha of linhas(); track $index) {
+          <tr>
+            <td><input type="text" [ngModel]="linha.etapa" (ngModelChange)="atualizarCampo($index, 'etapa', $event)" /></td>
+            <td><textarea rows="2" [ngModel]="linha.topicos" (ngModelChange)="atualizarCampo($index, 'topicos', $event)"></textarea></td>
+            <td><input type="text" class="curto" [ngModel]="linha.horas" (ngModelChange)="atualizarCampo($index, 'horas', $event)" /></td>
+            <td><input type="text" class="curto" placeholder="DD/MM/AAAA" [ngModel]="linha.data" (ngModelChange)="atualizarCampo($index, 'data', $event)" /></td>
+            <td><input type="text" [ngModel]="linha.modalidade" (ngModelChange)="atualizarCampo($index, 'modalidade', $event)" /></td>
+            <td>
+              <select [ngModel]="linha.status" (ngModelChange)="atualizarCampo($index, 'status', $event)">
+                @for (s of statusOpcoes; track s) {
+                  <option [value]="s">{{ s }}</option>
+                }
+              </select>
+            </td>
+            <td class="acoes-linha">
+              <button type="button" class="icone" [disabled]="$index === 0" (click)="moverLinha($index, -1)" title="Mover para cima">↑</button>
+              <button type="button" class="icone" [disabled]="$index === linhas().length - 1" (click)="moverLinha($index, 1)" title="Mover para baixo">↓</button>
+              <button type="button" class="icone remover" (click)="removerLinha($index)" title="Remover linha">✕</button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="7" class="vazio">Nenhuma linha cadastrada. Use "Carregar plano automático" ou "+ Nova linha".</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="acoes-rodape">
+    <button type="button" [disabled]="salvando()" (click)="salvar()">
+      {{ salvando() ? 'Salvando…' : 'Salvar cronograma' }}
+    </button>
+  </div>
+
+  @if (mostrarHistorico()) {
+    <div class="historico">
+      <h2>Histórico de edições</h2>
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Quando</th>
+            <th>Ref.</th>
+            <th>Campo</th>
+            <th>De</th>
+            <th>Para</th>
+            <th>Autor</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (h of historico(); track h.id) {
+            <tr>
+              <td>{{ h.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</td>
+              <td>{{ h.ref }}</td>
+              <td>{{ h.campo }}</td>
+              <td>{{ h.de }}</td>
+              <td>{{ h.para }}</td>
+              <td>{{ h.autor }}</td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="vazio">Sem edições registradas.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+}

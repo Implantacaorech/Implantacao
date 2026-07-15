@@ -62,6 +62,22 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'projetos/:id/cronograma',
+        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'Consultor')],
+        loadComponent: () =>
+          import('./features/plano-cronograma/cronograma-plano.component').then(
+            (m) => m.CronogramaPlanoComponent,
+          ),
+      },
+      {
+        path: 'projetos/:id/checklist',
+        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'Consultor')],
+        loadComponent: () =>
+          import('./features/plano-cronograma/checklist-plano.component').then(
+            (m) => m.ChecklistPlanoComponent,
+          ),
+      },
+      {
         path: 'usuarios',
         canActivate: [perfilGuard('ADM')],
         loadComponent: () =>
