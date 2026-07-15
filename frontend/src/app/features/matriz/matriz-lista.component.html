@@ -1,0 +1,48 @@
+<div class="cabecalho">
+  <h1>Matriz de Conhecimento</h1>
+  @if (podeAdmin()) {
+    <button type="button" [disabled]="importando()" (click)="importar()">
+      {{ importando() ? 'Importando…' : 'Reimportar planilha' }}
+    </button>
+  }
+</div>
+
+@if (erro()) {
+  <p class="erro">{{ erro() }}</p>
+}
+@if (aviso()) {
+  <p class="aviso">{{ aviso() }}</p>
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else if (restrito()) {
+  <p class="vazio">Você ainda não tem uma ficha na Matriz de Conhecimento.</p>
+} @else {
+  <table class="tabela">
+    <thead>
+      <tr>
+        <th>Técnico</th>
+        <th>Setor</th>
+        <th>Dias</th>
+        <th>Notas preenchidas</th>
+        <th>Atualizado em</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (t of itens(); track t.id) {
+        <tr>
+          <td><a [routerLink]="['/matriz', t.id]">{{ t.nome }}</a></td>
+          <td>{{ t.setor }}</td>
+          <td>{{ t.dias }}</td>
+          <td>{{ t.qtdNotas }}</td>
+          <td>{{ t.atualizadoEm ? (t.atualizadoEm | date: 'dd/MM/yyyy') : '—' }}</td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="5" class="vazio">Nenhum técnico cadastrado na Matriz.</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

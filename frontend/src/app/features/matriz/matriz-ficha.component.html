@@ -1,0 +1,61 @@
+<div class="cabecalho">
+  <h1>{{ tecnico()?.nome || 'Ficha' }}</h1>
+  @if (volta()) {
+    <a routerLink="/matriz" class="voltar">← Voltar à Matriz</a>
+  }
+</div>
+
+@if (erro()) {
+  <p class="erro">{{ erro() }}</p>
+}
+@if (aviso()) {
+  <p class="aviso">{{ aviso() }}</p>
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <div class="cartao dados-gerais">
+    <label>
+      Setor
+      <input type="text" [ngModel]="setor()" (ngModelChange)="setor.set($event)" [disabled]="!editavel()" />
+    </label>
+    <label>
+      Dias
+      <input type="text" [ngModel]="dias()" (ngModelChange)="dias.set($event)" [disabled]="!editavel()" />
+    </label>
+  </div>
+
+  @for (area of areas(); track area[0]) {
+    <div class="cartao area">
+      <h2>{{ area[0] }}</h2>
+      <table class="tabela">
+        <tbody>
+          @for (comp of area[1]; track comp.id) {
+            <tr>
+              <td class="rotulo">{{ comp.sigla }}</td>
+              <td class="nota">
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  placeholder="0-10"
+                  [ngModel]="nota(comp.sigla)"
+                  (ngModelChange)="atualizarNota(comp.sigla, $event)"
+                  [disabled]="!editavel()"
+                />
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (editavel()) {
+    <div class="acoes-rodape">
+      <button type="button" [disabled]="salvando()" (click)="salvar()">
+        {{ salvando() ? 'Salvando…' : 'Salvar ficha' }}
+      </button>
+    </div>
+  }
+}

@@ -78,6 +78,16 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'matriz',
+        loadComponent: () =>
+          import('./features/matriz/matriz-lista.component').then((m) => m.MatrizListaComponent),
+      },
+      {
+        path: 'matriz/:id',
+        loadComponent: () =>
+          import('./features/matriz/matriz-ficha.component').then((m) => m.MatrizFichaComponent),
+      },
+      {
         path: 'usuarios',
         canActivate: [perfilGuard('ADM')],
         loadComponent: () =>
