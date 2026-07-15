@@ -2,14 +2,21 @@
 
 **Branch:** `feature/migracao-angular-backend-moderno` (não mesclada em `main`; o Flask
 em produção não foi tocado). **Status: o backlog original de conversão do backend está
-INTEIRO convertido** — autenticação, Projetos, Agendador de Visitas, Cadastros, geração
-de documentos (Levantamento/Projeto/Termo + cronograma de visitas), Protocolos de
-Treinamento, E-mail/IMAP/Gmail, Disponibilidade externa/Consultas BD/Dashboards, Matriz
-de Conhecimento + telas executivas (Capacidade/Coordenação/Atividade/Home/
-Monitoramento Operacional), Usuários (CRUD) + auto-cadastro + Designação, Jobs agendados
-(digest diário) e as linhas editáveis do Cronograma/Check List. Ver a lista detalhada de
-cada item em §2 e a única pendência real que ficou de fora — geração dos documentos
-Cronograma/Check List a partir das linhas editáveis — em §8. Ver honestidade de escopo em
+INTEIRO convertido, incluindo a última pendência (geração do documento Cronograma)** —
+autenticação, Projetos, Agendador de Visitas, Cadastros, geração de documentos
+(Levantamento/Projeto/Cronograma/Termo, os 4 slugs do "layout fiel" + cronograma de
+visitas), Protocolos de Treinamento, E-mail/IMAP/Gmail, Disponibilidade externa/Consultas
+BD/Dashboards, Matriz de Conhecimento + telas executivas (Capacidade/Coordenação/
+Atividade/Home/Monitoramento Operacional), Usuários (CRUD) + auto-cadastro + Designação,
+Jobs agendados (digest diário) e as linhas editáveis do Cronograma/Check List. Ver a
+lista detalhada de cada item em §2 e o fechamento da última pendência (geração do
+Cronograma, com a decisão de escopo sobre o Check List) em §8 item 11. **Frontend
+Angular**: as 11 telas do backlog de UI (Home, Usuários, auto-cadastro, Designação,
+Cronograma/Check List editáveis, Matriz de Conhecimento, Coordenação/Capacidade,
+Atividade/Monitoramento, Config→Disponibilidade/Consultas BD/Dashboards) e a tela de
+Documentos oficiais (geração pelo layout fiel) estão construídas — ver §8 item 11 para o
+que ainda falta fora deste backlog (migração de dados de produção, merge/virada). Ver
+honestidade de escopo em
 [02-decisao-arquitetura.md](02-decisao-arquitetura.md#escopo-desta-fase-da-migração-honestidade-de-escopo).
 
 ## 1. Tecnologia anterior → nova
@@ -830,13 +837,32 @@ service → controller → tela Angular → testes):
 10. ~~Monitoramento Operacional~~ — **convertido** (`backend/src/painel/
     monitoramento.service.ts`, ver §2). Fecha o backlog original inteiro de conversão do
     backend.
-11. **Geração dos documentos Cronograma/Check List** (`.docx`/`.xlsx`, a partir das linhas
-    de `CronogramaItem`/`ChecklistItem` ou do catálogo) — **única pendência real restante**
-    do backlog conhecido. Cortado de propósito do escopo do item das linhas editáveis (ver
-    §2): o Flask original tem 3 caminhos de geração concorrentes para o Cronograma e a
-    geração do Check List não lê `ChecklistItem` de jeito nenhum (usa só o catálogo
-    estático) — um emaranhado que merece sua própria decisão de escopo antes de portar,
-    não um efeito colateral de desbloquear o Monitoramento.
+11. ~~Geração do documento Cronograma~~ — **convertido**. Pesquisa revelou que o Cronograma
+    já era o 4º slug do sistema de "layout fiel" existente (`_LAYOUT_SLUGS = ("levantamento",
+    "projeto", "cronograma", "termo")` em `webapp/routes_geracao.py`), com o modelo `.xlsx`
+    já seedado no catálogo (`ModeloDocumentoService`, slug `cronograma`, tipo `xlsx`) e a
+    função de preenchimento (`_preencher_cronograma_xlsx`) já copiada para
+    `docservice/gerador/gl_xlsx.py` — só nunca tinha sido ligada (o shim
+    `db.cronograma_do_projeto` era um stub `return []`, com comentário explícito "fica para
+    a próxima fatia"). Portado: `docservice/gerador/gerar_fiel.py:gerar_xlsx()` (branch
+    `else: xlsx (cronograma)` de `webapp/gerar_layout.py:gerar()`) + `db.py` shim passa a
+    devolver `cronograma_itens` do contexto da requisição; `GeracaoLayoutService`/
+    `DocumentosController` (NestJS) ganham o 4º slug, injetando `CronogramaItensService` e
+    reaproveitando 100% da infraestrutura já existente de Levantamento/Projeto/Termo
+    (`POST /projetos/:id/gerar-layout/cronograma`, mesmo evento `cronograma_ok` que o Flask
+    original já dispara tanto daqui quanto do cronograma de visitas do Agendador — não é
+    uma duplicação nova, é fidelidade ao `_EVT_DOC` original). Validado byte-a-byte contra
+    o template real (`tools/templates/layouts/cronograma.xlsx`) em testes pytest novos
+    (célula por célula: cliente, consultor, horas cobradas/bonificadas, linhas da tabela)
+    e um teste e2e NestJS novo (payload + evento). **Decisão de escopo (Check List não
+    portado)**: diferente do Cronograma, o Check List NUNCA teve um botão de geração
+    per-projeto no Flask original ligado a `ChecklistItem` — `routes_cronograma.py` só
+    registra `GET/POST checklist` e `checklist/seed`, sem nenhuma rota `/checklist/gerar`;
+    a única geração de Check List existente (`gerar_checklist_consultor`, via
+    `runner.gerar_do_projeto`/`gerar_checklist_form`) sempre leu o catálogo estático de
+    módulos contratados, nunca as linhas editadas. Não havia, portanto, um comportamento
+    real do Flask a portar aqui — inventar um novo botão de geração do Check List seria uma
+    funcionalidade nova, não uma conversão fiel, e ficou fora desta fatia.
 
 ## 9. Incompatibilidades / decisões de portabilidade
 
@@ -1049,3 +1075,41 @@ porta fora do host — é um serviço interno, chamado só pelo backend NestJS
    2` para "sobrecarregado") vieram direto do Flask original sem ajuste; recomenda-se
    observar se fazem sentido na prática antes de divulgar o score de saúde como métrica
    oficial para a Coordenação.
+
+## 13. Frontend Angular — as 11 telas do backlog + Documentos oficiais
+
+Sessão seguinte à conversão do backend (§§1-12 acima): construção de TODAS as telas
+Angular que ainda não existiam para as features já portadas ao NestJS, "1 a 1" (um commit
+por tela/grupo de telas, com build + suíte + smoke test ao vivo contra o backend real
+antes de cada commit) — Home, guard de perfil (`perfilGuard`, novo — não existia
+equivalente client-side antes), Usuários (CRUD), auto-cadastro público, Designação
+(definir-gci/agendar/consultores), Cronograma/Check List editáveis (tabela com
+adicionar/remover/reordenar linha + seed + histórico), Matriz de Conhecimento (lista +
+ficha + importar planilha), Painel de Coordenação + Capacidade da equipe, Atividade da
+operação + Centro de Monitoramento Operacional (a tela mais densa), e Config →
+Disponibilidade/Consultas BD/Dashboards (5 componentes). Cada tela foi validada por
+componente-spec (Vitest/TestBed, mockando o service injetado) **e** por chamada `curl`
+real contra um backend rodando de verdade (login real, dados reais criados via API),
+comparando byte a byte a resposta JSON com o modelo TypeScript do frontend — sem
+ferramenta de navegador disponível neste ambiente, essa combinação (build limpo + specs +
+contrato validado ao vivo) foi o teste mais forte possível; **nenhuma tela foi vista
+rodando visualmente num navegador real** (mesma limitação já registrada no §12 desta
+sessão anterior — recomenda-se abrir `http://localhost:4200` manualmente antes de
+considerar qualquer tela pronta do ponto de vista de UX/interação).
+
+Na sequência, fechada a última pendência real do backend (§8 item 11 — geração do
+Cronograma) e construída a primeira tela de geração de documentos
+(`DocumentosProjetoComponent`, `/projetos/:id/documentos`) — que faltava para TODOS os 4
+slugs (Levantamento/Projeto/Cronograma/Termo), não só o novo. Ver §8 item 11 para o
+detalhe técnico da geração do Cronograma.
+
+**Pendências reais que sobram fora deste documento** (não fazem parte do backlog de
+conversão de funcionalidade, são passos de entrega separados):
+
+- **Script de migração de dados** do Postgres de produção do Flask (hash de senha
+  incompatível — `werkzeug.security` vs. `bcrypt`, usuários precisarão resetar senha; ver
+  §9) — ainda não existe.
+- **Merge para `main` / virada de produção** — decisão de negócio de alto risco (sistema
+  real em uso pelo time de implantação), não deve ser feita sem confirmação explícita e
+  fora do escopo de uma sessão de codificação autônoma; ver §10 (procedimento de
+  rollback — nada em produção foi tocado até aqui).
