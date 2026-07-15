@@ -1,0 +1,48 @@
+<div class="cabecalho">
+  <h1>Designar Consultores por Módulo</h1>
+  <a [routerLink]="['/projetos', projetoId]" class="voltar">← Voltar ao projeto</a>
+</div>
+
+@if (erro()) {
+  <p class="erro">{{ erro() }}</p>
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <div class="cartao">
+    <table class="tabela">
+      <thead>
+        <tr>
+          <th>Módulo</th>
+          <th>Consultor</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (modulo of modulos(); track modulo) {
+          <tr>
+            <td>{{ modulo }}</td>
+            <td>
+              <select [ngModel]="escolhido(modulo)" (ngModelChange)="escolher(modulo, $event)">
+                <option value="">(sem consultor)</option>
+                @for (nome of consultores(); track nome) {
+                  <option [value]="nome">{{ nome }}</option>
+                }
+              </select>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="2" class="vazio">Este projeto não tem módulos cadastrados.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    <div class="acoes">
+      <button type="button" [disabled]="salvando() || modulos().length === 0" (click)="salvar()">
+        {{ salvando() ? 'Salvando…' : 'Salvar designações' }}
+      </button>
+    </div>
+  </div>
+}

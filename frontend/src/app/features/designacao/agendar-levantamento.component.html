@@ -1,0 +1,27 @@
+<div class="cabecalho">
+  <h1>Agendar Levantamento</h1>
+  <a [routerLink]="['/projetos', projetoId]" class="voltar">← Voltar ao projeto</a>
+</div>
+
+@if (erro()) {
+  <p class="erro">{{ erro() }}</p>
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <form class="cartao" [formGroup]="form" (ngSubmit)="salvar()">
+    <p class="dica">GCI responsável: <strong>{{ gci() || '(não definido)' }}</strong></p>
+
+    <label>
+      Data do Levantamento
+      <input type="date" formControlName="dataLevantamento" [min]="hojeIso()" />
+    </label>
+
+    <div class="acoes">
+      <button type="submit" [disabled]="form.invalid || salvando()">
+        {{ salvando() ? 'Salvando…' : 'Confirmar agendamento' }}
+      </button>
+    </div>
+  </form>
+}

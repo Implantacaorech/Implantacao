@@ -1,0 +1,38 @@
+<div class="cabecalho">
+  <h1>Definir GCI Responsável</h1>
+  <a [routerLink]="['/projetos', projetoId]" class="voltar">← Voltar ao projeto</a>
+</div>
+
+@if (erro()) {
+  <p class="erro">{{ erro() }}</p>
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <div class="cartao">
+    <p class="dica">Selecione um ou mais GCIs responsáveis pela implantação.</p>
+    <ul class="lista-checkbox">
+      @for (nome of gcis(); track nome) {
+        <li>
+          <label>
+            <input
+              type="checkbox"
+              [checked]="marcado(nome)"
+              (change)="alternar(nome, $any($event.target).checked)"
+            />
+            {{ nome }}
+          </label>
+        </li>
+      } @empty {
+        <li class="vazio">Nenhum usuário com perfil GCI cadastrado.</li>
+      }
+    </ul>
+
+    <div class="acoes">
+      <button type="button" [disabled]="selecionados().length === 0 || salvando()" (click)="salvar()">
+        {{ salvando() ? 'Salvando…' : 'Salvar' }}
+      </button>
+    </div>
+  </div>
+}

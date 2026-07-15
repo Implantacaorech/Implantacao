@@ -40,6 +40,28 @@ export const routes: Routes = [
         loadComponent: () => import('./features/agenda/agenda.component').then((m) => m.AgendaComponent),
       },
       {
+        path: 'projetos/:id/designacao/definir-gci',
+        canActivate: [perfilGuard('ADM', 'Administrativo')],
+        loadComponent: () =>
+          import('./features/designacao/definir-gci.component').then((m) => m.DefinirGciComponent),
+      },
+      {
+        path: 'projetos/:id/designacao/agendar',
+        canActivate: [perfilGuard('ADM', 'Administrativo')],
+        loadComponent: () =>
+          import('./features/designacao/agendar-levantamento.component').then(
+            (m) => m.AgendarLevantamentoComponent,
+          ),
+      },
+      {
+        path: 'projetos/:id/designacao/consultores',
+        canActivate: [perfilGuard('ADM', 'GCI')],
+        loadComponent: () =>
+          import('./features/designacao/designar-consultores.component').then(
+            (m) => m.DesignarConsultoresComponent,
+          ),
+      },
+      {
         path: 'usuarios',
         canActivate: [perfilGuard('ADM')],
         loadComponent: () =>
