@@ -1106,9 +1106,17 @@ detalhe técnico da geração do Cronograma.
 **Pendências reais que sobram fora deste documento** (não fazem parte do backlog de
 conversão de funcionalidade, são passos de entrega separados):
 
-- **Script de migração de dados** do Postgres de produção do Flask (hash de senha
-  incompatível — `werkzeug.security` vs. `bcrypt`, usuários precisarão resetar senha; ver
-  §9) — ainda não existe.
+- ~~Script de migração de dados~~ — **pronto**: `backend/src/database/seeds/
+  migrar-legado.ts` (`npm run migrar:legado`), as 25 tabelas do Postgres de produção do
+  Flask → schema novo, com reset de senha obrigatório (hash incompatível —
+  `werkzeug.security` vs. `bcrypt`, ver §9), dry-run por padrão, idempotente (upsert por
+  id/slug conforme a tabela) e nunca escreve na origem. Testado ponta a ponta contra dois
+  Postgres descartáveis em Docker (nunca contra produção) — inclusive um bug real de
+  duplicação em reruns, encontrado e corrigido nessa própria bateria de testes. Runbook
+  operacional completo (o que migra, o que fica de fora, como rodar, como tratar arquivos
+  físicos e senhas temporárias) em
+  [04-procedimento-migracao-dados.md](04-procedimento-migracao-dados.md) — **ainda não
+  rodado contra a base real de produção**, só validado com dados sintéticos.
 - **Merge para `main` / virada de produção** — decisão de negócio de alto risco (sistema
   real em uso pelo time de implantação), não deve ser feita sem confirmação explícita e
   fora do escopo de uma sessão de codificação autônoma; ver §10 (procedimento de

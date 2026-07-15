@@ -22,7 +22,8 @@
     "migration:generate": "npm run typeorm -- migration:generate",
     "migration:run": "npm run typeorm -- migration:run",
     "migration:revert": "npm run typeorm -- migration:revert",
-    "seed:admin": "ts-node -r tsconfig-paths/register src/database/seeds/seed-admin.ts"
+    "seed:admin": "ts-node -r tsconfig-paths/register src/database/seeds/seed-admin.ts",
+    "migrar:legado": "ts-node -r tsconfig-paths/register src/database/seeds/migrar-legado.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
@@ -72,6 +73,7 @@
     "@types/nodemailer": "^8.0.1",
     "@types/oracledb": "^7.0.1",
     "@types/passport-jwt": "^4.0.1",
+    "@types/pg": "^8.20.0",
     "@types/supertest": "^7.0.0",
     "better-sqlite3": "^12.11.1",
     "dotenv": "^17.4.2",
