@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { perfilGuard } from './core/guards/perfil.guard';
 import { LoginComponent } from './features/login/login.component';
 import { ShellComponent } from './layouts/shell/shell.component';
 
@@ -33,6 +34,24 @@ export const routes: Routes = [
       {
         path: 'projetos/:id/agenda',
         loadComponent: () => import('./features/agenda/agenda.component').then((m) => m.AgendaComponent),
+      },
+      {
+        path: 'usuarios',
+        canActivate: [perfilGuard('ADM')],
+        loadComponent: () =>
+          import('./features/usuarios/usuarios-lista.component').then((m) => m.UsuariosListaComponent),
+      },
+      {
+        path: 'usuarios/novo',
+        canActivate: [perfilGuard('ADM')],
+        loadComponent: () =>
+          import('./features/usuarios/usuario-form.component').then((m) => m.UsuarioFormComponent),
+      },
+      {
+        path: 'usuarios/:id',
+        canActivate: [perfilGuard('ADM')],
+        loadComponent: () =>
+          import('./features/usuarios/usuario-form.component').then((m) => m.UsuarioFormComponent),
       },
     ],
   },

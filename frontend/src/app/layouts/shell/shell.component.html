@@ -3,6 +3,9 @@
   <nav>
     <a routerLink="/home">Início</a>
     <a routerLink="/projetos">Projetos</a>
+    @if (auth.usuario()?.perfil === 'ADM') {
+      <a routerLink="/usuarios">Usuários</a>
+    }
   </nav>
   <span class="usuario">
     @if (auth.usuario(); as u) {
