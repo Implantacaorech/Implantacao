@@ -20,5 +20,7 @@
     <button type="submit" [disabled]="form.invalid || enviando()">
       {{ enviando() ? 'Entrando…' : 'Entrar' }}
     </button>
+
+    <a routerLink="/cadastro" class="cadastre-se">Ainda não tem acesso? Cadastre-se</a>
   </form>
 </div>

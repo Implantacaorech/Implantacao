@@ -7,6 +7,10 @@ import { ShellComponent } from './layouts/shell/shell.component';
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
   {
+    path: 'cadastro',
+    loadComponent: () => import('./features/cadastro/cadastro.component').then((m) => m.CadastroComponent),
+  },
+  {
     path: '',
     component: ShellComponent,
     canActivate: [authGuard],

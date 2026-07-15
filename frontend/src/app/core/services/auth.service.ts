@@ -38,6 +38,11 @@ export class AuthService {
     this.salvarSessao(res.data);
   }
 
+  /** Abre sessão a partir de tokens já emitidos (ex.: login imediato após confirmar o auto-cadastro). */
+  entrarComSessao(dados: LoginResponse): void {
+    this.salvarSessao(dados);
+  }
+
   async renovarToken(): Promise<string> {
     const refreshToken = this.refreshToken;
     if (!refreshToken) throw new Error('Sem refresh token');

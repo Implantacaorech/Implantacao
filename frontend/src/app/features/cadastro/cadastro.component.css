@@ -1,4 +1,4 @@
-.tela-login {
+.tela-cadastro {
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -7,7 +7,7 @@
   padding: 16px;
 }
 
-.cartao-login {
+.cartao-cadastro {
   background: #fff;
   border-radius: 10px;
   padding: 32px;
@@ -31,6 +31,12 @@ h1 {
   font-size: 0.85rem;
 }
 
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 label {
   display: flex;
   flex-direction: column;
@@ -47,7 +53,6 @@ input {
 }
 
 button {
-  margin-top: 8px;
   padding: 10px;
   border: none;
   border-radius: 6px;
@@ -62,13 +67,33 @@ button:disabled {
   cursor: default;
 }
 
+.acoes-secundarias {
+  display: flex;
+  justify-content: space-between;
+}
+
+button.link {
+  background: none;
+  color: #0f2f52;
+  font-weight: 400;
+  padding: 0;
+  font-size: 0.8rem;
+  text-decoration: underline;
+}
+
 .erro {
   color: #d33;
   font-size: 0.85rem;
   margin: 0;
 }
 
-.cadastre-se {
+.aviso {
+  color: #1a7a3c;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.voltar-login {
   color: #0f2f52;
   text-decoration: none;
   font-size: 0.8rem;
