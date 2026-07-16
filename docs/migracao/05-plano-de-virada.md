@@ -21,7 +21,12 @@ de volta claro se algo der errado nas primeiras horas.
 Estas são lacunas reais, não cosméticas — sem elas a virada não deveria ser marcada. Status
 em 2026-07-15: os itens de código estão **concluídos e testados** (build/typecheck/suítes
 automatizadas); os itens que exigem uma pessoa (navegador real, credenciais reais, agendar
-tarefa no Windows) continuam em aberto — ver observação em cada um.
+tarefa no Windows) continuam em aberto — ver observação em cada um. **Atualização
+2026-07-16**: fechadas as 10 lacunas de tela que restavam + a pré-visualização de
+documento (ver [03-documento-conversao.md §14](03-documento-conversao.md)), e as três
+variáveis de ambiente foram definidas e o backend novo validado contra o Postgres real
+com login de verdade (ver item abaixo) — o navegador real (Fase 1) e as Tarefas Agendadas
+continuam em aberto.
 
 - [x] **Infraestrutura de produção do stack novo.** Decisão: o NestJS agora serve o build de
   produção do Angular direto (`@nestjs/serve-static`, `frontendDistPath` em
@@ -36,11 +41,18 @@ tarefa no Windows) continuam em aberto — ver observação em cada um.
   (backup do `painel-db-novo`, retenção 14 dias — testado ponta a ponta, mecânica confirmada
   contra um Postgres descartável) e `tools/Verificar_Integridade_Novo.ps1` (site no ar +
   backup recente + suíte de testes do backend — testado, roda e detecta falha corretamente).
-  **Falta** (ação humana, não código): agendar `Guardiao_Painel_Novo.vbs` e
+  ~~**Falta** (ação humana, não código): definir as três variáveis de usuário
+  (`MIGRACAO_DB_URL`/`MIGRACAO_JWT_SECRET`/`MIGRACAO_JWT_REFRESH_SECRET`) no Windows antes
+  do primeiro `Iniciar_Painel_Novo.bat` real~~ — **feito em 2026-07-16**: as três
+  definidas como variável de **usuário** do Windows na máquina `I7M1700-01-EVE`, backend
+  reiniciado apontando para `painel-db-novo` (Postgres, dados reais migrados) e validado
+  com login real (`/api/health` → `"db":"postgres"`, `POST /auth/login` → token JWT
+  válido). **Atenção**: são variáveis de **usuário**, não de máquina/serviço — se o
+  processo for subido por uma Tarefa Agendada rodando como outro usuário (ex.: `SYSTEM`),
+  ele não vai enxergá-las; confirmar isso ao registrar as Tarefas Agendadas abaixo.
+  **Ainda falta** (ação humana): agendar `Guardiao_Painel_Novo.vbs` e
   `Verificar_Integridade_Novo.ps1` como Tarefas do Windows na máquina real (não registrado
-  automaticamente — é automação persistente em produção, decisão do time), e definir as três
-  variáveis de usuário (`MIGRACAO_DB_URL`/`MIGRACAO_JWT_SECRET`/`MIGRACAO_JWT_REFRESH_SECRET`)
-  no Windows antes do primeiro `Iniciar_Painel_Novo.bat` real.
+  automaticamente — é automação persistente em produção, decisão do time).
 - [ ] **Nenhuma tela foi vista rodando num navegador real** (registrado em
   [03-documento-conversao.md §13](03-documento-conversao.md)). Toda validação até aqui foi
   build limpo + testes automatizados (115 specs frontend, 310 testes backend) + chamadas
@@ -105,9 +117,16 @@ novo de ponta a ponta, com dados reais já migrados, antes de qualquer decisão 
   falta trocar a senha em produção — `docs/runbooks-operacao.md` §9). Não bloqueia
   tecnicamente a virada, mas é o momento natural de fechar, já que a atenção da equipe já
   está voltada para a infraestrutura.
-- [ ] Confirmar que a senha do Postgres novo (`painel-db-novo`, gerada como segredo Docker)
-  está guardada em local seguro (gestor de senhas da equipe) — hoje só está no arquivo
-  temporário de scratchpad da sessão que a criou.
+- [ ] Confirmar que a senha do Postgres novo (`painel-db-novo`) está guardada em local
+  seguro (gestor de senhas da equipe) — **rotacionada em 2026-07-16** (a original vivia só
+  num Docker secret ilegível de fora do container; a nova foi gerada e gravada apenas na
+  variável de usuário `MIGRACAO_DB_URL` do Windows, nunca em arquivo). Ainda não está em
+  nenhum gestor de senhas da equipe — só na variável de ambiente da máquina
+  `I7M1700-01-EVE`.
+- [ ] **Novo em 2026-07-16**: a senha da conta `ADM` (`implantacao.rechsistemas@gmail.com`)
+  também foi resetada (login travado, credenciais anteriores não funcionavam) — trocar
+  pela definitiva no primeiro acesso (autoatendimento "Trocar senha") e não deixar a
+  temporária registrada em histórico de conversa/chat.
 - [ ] Depois de distribuídas (Fase 4), **apagar** `dados/migracao-senhas-temporarias.csv`.
 
 ---
@@ -206,8 +225,10 @@ explicitamente deixado de fora; revisar se algum vira bloqueio antes de assinar 
   portada.
 - `checklist_ok` (e-mail) e geração do documento de Check List em si não existiam no
   Flask original tampouco — não é regressão.
-- `fluxo_criar` (auto-cadastro por e-mail de fechamento) não dispara automaticamente o
-  pacote de documentos + e-mail-resumo — só cria o projeto e notifica.
+- ~~`fluxo_criar` não dispara automaticamente o pacote de documentos + e-mail-resumo~~ —
+  **fechado em 2026-07-16** (`FluxoService.criarComPacote`, ver
+  [03-documento-conversao.md §14](03-documento-conversao.md)). Fica de fora só o Check
+  List do pacote inicial (gerador legado, não ligado).
 - **`pode_avancar` sem enforcement na escrita** — `MetricasService` mostra o que falta nas
   telas, mas `ProjetosService.atualizar()`/`criar()` não bloqueia a troca de etapa faltando
   campo/documento obrigatório (mesmo comportamento permissivo que o Flask já tinha —

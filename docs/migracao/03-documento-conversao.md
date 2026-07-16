@@ -11,12 +11,18 @@ Atividade/Home/Monitoramento Operacional), Usuários (CRUD) + auto-cadastro + De
 Jobs agendados (digest diário) e as linhas editáveis do Cronograma/Check List. Ver a
 lista detalhada de cada item em §2 e o fechamento da última pendência (geração do
 Cronograma, com a decisão de escopo sobre o Check List) em §8 item 11. **Frontend
-Angular**: as 11 telas do backlog de UI (Home, Usuários, auto-cadastro, Designação,
-Cronograma/Check List editáveis, Matriz de Conhecimento, Coordenação/Capacidade,
-Atividade/Monitoramento, Config→Disponibilidade/Consultas BD/Dashboards) e a tela de
-Documentos oficiais (geração pelo layout fiel) estão construídas — ver §8 item 11 para o
-que ainda falta fora deste backlog (migração de dados de produção, merge/virada). Ver
-honestidade de escopo em
+Angular: as 51 telas reais do Flask (`webapp/templates/`, exceto partials) têm
+equivalente Angular** — o backlog original de 11 telas (§13: Home, Usuários,
+auto-cadastro, Designação, Cronograma/Check List editáveis, Matriz de Conhecimento,
+Coordenação/Capacidade, Atividade/Monitoramento, Config→Disponibilidade/Consultas
+BD/Dashboards) foi seguido, numa sessão posterior, do fechamento de todas as lacunas de
+tela restantes — Levantamento, Doc editar, Protocolos, Config→Modelos de E-mail, Agenda→
+Acompanhamento, Projeto origem, Fluxo completo (+ pacote inicial/e-mail-resumo no
+backend), Projeto e-mail (endpoint novo), o assistente administrativo legado (ponte de
+subprocesso isolada do docservice) e a pré-visualização de documento (`.docx`/`.xlsx` via
+Word COM no docservice) — ver §14. O que falta é só o que fica **fora** deste backlog de
+funcionalidade: migração de dados de produção e o checklist operacional de virada, ver
+[05-plano-de-virada.md](05-plano-de-virada.md). Ver honestidade de escopo em
 [02-decisao-arquitetura.md](02-decisao-arquitetura.md#escopo-desta-fase-da-migração-honestidade-de-escopo).
 
 ## 1. Tecnologia anterior → nova
@@ -171,11 +177,14 @@ Python mantido só para geração de documentos e transcrição) em
     lógica de `webapp/db.py:projeto_existe`). Endpoints: `GET /fluxo` (status),
     `POST /fluxo/parse` (cola texto cru), `POST /fluxo/inbox` (busca via IMAP, não marca
     como lido), `POST /fluxo/criar` (cria a partir dos campos confirmados/editados).
-    **Escopo reduzido desta fatia**: `fluxo_criar` original também deixa o usuário
-    escolher GCI/técnicos e gera automaticamente o pacote de documentos + e-mail-resumo
-    com anexos aos responsáveis — essa parte não foi portada (cria só o projeto + notifica
-    `fechamento`); pode ser adicionada depois compondo `GeracaoLayoutService` +
-    `MailerService`, que já existem.
+    ~~Escopo reduzido desta fatia~~ — **fechado na sessão de 2026-07-16** (ver §14):
+    `FluxoService.criarComPacote` agora deixa o usuário escolher GCI/técnicos e gera
+    automaticamente o pacote de documentos (Mapeamento + Cronograma, via
+    `GeracaoLayoutService`) + o e-mail-resumo com anexos aos responsáveis (via
+    `MailerService`), preservando `criarDeCampos`/`criarDeFechamento` (usados pelo robô da
+    caixa) intactos — método novo, não alteração dos existentes. Único item que ficou de
+    fora: o gerador legado de Check List (`runner.py`/`tools/gerar_checklist_consultor.py`)
+    não foi ligado ao pacote inicial (ver §14).
   - Circularidade evitada de propósito: `NotificacaoService` injeta o repositório
     `Evento` diretamente (não `DocumentosService`) — `EmailModule` não importa
     `DocumentosModule` porque `DocumentosModule` agora importa `EmailModule` (para o
@@ -795,8 +804,9 @@ service → controller → tela Angular → testes):
    §2. Lacunas propositais: `checklist_ok` (a geração do documento de checklist em si
    ainda não foi convertida) e os gatilhos de `routes_designacao.py` (GCI/consultor
    designado — essa tela do fluxo de Designação ainda não existe no NestJS, item 8 desta
-   lista é só o CRUD de usuários, não essa tela); `fluxo_criar` não gera automaticamente o
-   pacote de documentos + e-mail-resumo com anexos (só cria o projeto e notifica).
+   lista é só o CRUD de usuários, não essa tela). ~~`fluxo_criar` não gera
+   automaticamente o pacote de documentos + e-mail-resumo~~ — **fechado em 2026-07-16**,
+   ver §14.
 6. ~~Disponibilidade externa/Consultas BD/Dashboards~~ — **convertido**: conexão Oracle
    (`oracledb`, modo thin) + Consultas BD (CRUD + seed) + Dashboards (**motor genérico**,
    decisão tomada com o usuário — ver §2) + a checagem de disponibilidade externa ligada
@@ -1098,10 +1108,15 @@ sessão anterior — recomenda-se abrir `http://localhost:4200` manualmente ante
 considerar qualquer tela pronta do ponto de vista de UX/interação).
 
 Na sequência, fechada a última pendência real do backend (§8 item 11 — geração do
-Cronograma) e construída a primeira tela de geração de documentos
+Cronograma) e construída uma primeira tela de geração de documentos
 (`DocumentosProjetoComponent`, `/projetos/:id/documentos`) — que faltava para TODOS os 4
 slugs (Levantamento/Projeto/Cronograma/Termo), não só o novo. Ver §8 item 11 para o
-detalhe técnico da geração do Cronograma.
+detalhe técnico da geração do Cronograma. **Componente depois excluído** (sessão de
+2026-07-16, ver §14): não existia página equivalente no Flask (`projeto_ficha.html` gera
+cada documento inline, por botão, dentro da própria ficha, não numa tela à parte) — ao
+espelhar a ficha com fidelidade 1:1 nessa sessão seguinte, os botões de geração migraram
+para dentro de `ProjetoFormComponent` (mesmo lugar do Flask) e a tela avulsa deixou de ter
+propósito.
 
 **Pendências reais que sobram fora deste documento** (não fazem parte do backlog de
 conversão de funcionalidade, são passos de entrega separados):
@@ -1130,3 +1145,72 @@ conversão de funcionalidade, são passos de entrega separados):
   real em uso pelo time de implantação), não deve ser feita sem confirmação explícita e
   fora do escopo de uma sessão de codificação autônoma; ver §10 (procedimento de
   rollback — nada em produção foi tocado até aqui).
+
+## 14. Sessão seguinte — fecha as lacunas de tela que restavam (2026-07-16)
+
+Depois de §13, um levantamento tela-a-tela contra os 51 templates reais de
+`webapp/templates/` (excluindo `base.html`/`_ctx_projeto.html`, que são partials)
+encontrou 10 telas sem nenhum equivalente Angular e uma pré-visualização de documento
+(`doc_view.html`) que dependia de uma capacidade ainda não portada. Todas fechadas nesta
+sessão — **as 51 telas do Flask agora têm equivalente Angular**. Resumo:
+
+- **Perfil, Mapa mental do setor, Config → Modelos de E-mail (lista+form), Agenda →
+  Acompanhamento, Levantamento (respostas do Índice de Tópicos), Doc editar
+  (`doc-conteudo`), Protocolos de Treinamento (lista+ficha), Projeto origem (seleção de
+  fonte da geração)** — só frontend, contra endpoints NestJS que já existiam. Mapa mental
+  é dado 100% estático (sem tabela no banco, igual ao Flask); "Projeto origem" expõe as
+  fontes "tela" e "modelo em branco" (já suportadas) e sinaliza "levantamento importado"/
+  "importar .docx agora" como indisponíveis (sem backend equivalente, decisão de escopo,
+  não bug).
+- **Fluxo / Novo Projeto** (`fluxo.html`+`fluxo_confirmar.html`) — frontend novo +
+  `FluxoService.criarComPacote` (backend, método novo — `criarDeCampos`/
+  `criarDeFechamento`, usados pelo robô da caixa, não foram alterados): gera o pacote
+  inicial (Mapeamento + Cronograma, via `GeracaoLayoutService`) e envia o e-mail-resumo
+  com anexos (via `MailerService`), fechando a lacuna do §8 item 5/§2. O "Check List" do
+  pacote inicial do Flask usa o gerador legado (`tools/gerar_checklist_consultor.py`, via
+  `runner.py`) — não ligado (ver o próximo item, é o mesmo motivo).
+- **Projeto e-mail** (`projeto_email.html`, `/projetos/:id/email`) — endpoint novo:
+  `ProjetoEmailController`/`ProjetoEmailService` (em `backend/src/fluxo/`, mesmo módulo
+  fonte do Flask original — `routes_fluxo.py` já agrupava fluxo de fechamento + e-mail
+  avulso por projeto no mesmo arquivo), reaproveitando `ModeloEmailService.renderizar()` +
+  `MailerService.enviar()`, sem gate de perfil (igual ao Flask — qualquer autenticado
+  envia).
+- **Assistente administrativo legado** (`cliente.html`, `role.html`,
+  `selecao_modulos.html`, `criar_templates.html`, `verbal.html`, `saude.html`,
+  `action.html`) — ferramenta interna de QA/suporte para testar os geradores Office
+  originais (`tools/gerar_*.py`, `catalogo.py`, `conversor_verbal.py`,
+  `importar_mapeamento.py`), sem link nenhum no `base.html` do Flask (só alcançável
+  digitando a URL — por isso ganhou um índice novo em `/legado` para ficar navegável).
+  **Decisão de arquitetura importante**: em vez de estender o `docservice` (cujo escopo
+  documentado em [02-decisao-arquitetura.md](02-decisao-arquitetura.md) é só geração fiel
+  e transcrição), foi criada uma ponte de SUBPROCESSO isolada —
+  `backend/src/legado/legado-cli.service.ts` chama `webapp/legado_cli.py` (novo, só
+  encaixe de entrada/saída em JSON) via `child_process.spawn`, que por sua vez importa
+  `webapp/runner.py`/`roles.py`/`forms.py` **tal como são**, sem reescrever nenhuma lógica
+  de geração. `LegadoDownloadRegistry` (token opaco → caminho de arquivo, em memória)
+  evita expor caminho de disco ao cliente. Catálogo de papéis (`roles.py`, estático)
+  hardcoded em `frontend/.../legado.model.ts`, mesmo padrão do Mapa mental. 7 componentes
+  Angular novos (`features/legado/`).
+- **Pré-visualização de documento** (`doc_view.html`) — fechava a única lacuna real
+  restante. `webapp/docview.py` copiado (não importado, mesma convenção do `gl_*.py`) para
+  `docservice/docview.py`: `.docx` tenta conversão fiel para PDF via Word COM (`pywin32`,
+  instalado no venv do docservice), com fallback em HTML; `.xlsx` sempre HTML. Endpoint
+  novo `POST /preview` no docservice; `GeracaoDocumentosService.preview()` +
+  `GET /documentos/:id/preview` no NestJS (devolve o PDF binário direto ou
+  `{tipo:'html', html}`); `DocPreviewComponent` no Angular busca o PDF como blob
+  autenticado (mesmo padrão do player de vídeo de Protocolos) e mostra num iframe, ou
+  renderiza o HTML numa "folha A4" (`.folha`, movida para `styles.css` global — CSS
+  aplicado via `[innerHTML]` não recebe o atributo de encapsulamento do Angular, então
+  precisa ser global, não scoped ao componente).
+
+**Validação**: build+typecheck limpos e suíte completa passando nos três stacks a cada
+tela (docservice: pytest; backend: Jest; frontend: Vitest) — mesma disciplina das sessões
+anteriores. Continua valendo a limitação de §13: **nenhuma tela nova foi vista rodando
+num navegador real**: essa validação, e o restante do checklist operacional (Fases 1-6),
+seguem em [05-plano-de-virada.md](05-plano-de-virada.md).
+
+**Limitações propositais que ficam**: o gerador legado de Check List (mencionado acima,
+no pacote inicial do Fluxo) e a lacuna já conhecida de "importar levantamento .docx"/
+"importar .docx agora" em Projeto origem — ambas dependem do mesmo `tools/gerar_*.py`
+legado; a ponte de subprocesso criada para o assistente administrativo poderia ser
+reaproveitada para fechá-las, mas isso não foi pedido nesta sessão.
