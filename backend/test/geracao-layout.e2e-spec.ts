@@ -42,6 +42,8 @@ describe('Geração de documentos fiéis — Levantamento/Projeto/Termo (e2e)', 
   let cronogramaRepo: Repository<CronogramaItem>;
   let fake: GeracaoDocumentosServiceFake;
   let tokenAdm: string;
+  let tokenConsultor: string;
+  let tokenGci: string;
 
   const server = () => app.getHttpServer();
 
@@ -91,6 +93,36 @@ describe('Geração de documentos fiéis — Levantamento/Projeto/Termo (e2e)', 
       .send({ login: 'admin', senha: 'senha-adm-123' });
     tokenAdm = loginAdm.body.data.accessToken;
 
+    await usuarios.save(
+      usuarios.create({
+        login: 'consultor',
+        nome: 'Consultora',
+        email: 'consultor@teste.com',
+        senhaHash: await bcrypt.hash('senha-consultor-123', 4),
+        perfil: 'Consultor',
+        ativo: true,
+      }),
+    );
+    const loginConsultor = await request(server())
+      .post('/api/auth/login')
+      .send({ login: 'consultor', senha: 'senha-consultor-123' });
+    tokenConsultor = loginConsultor.body.data.accessToken;
+
+    await usuarios.save(
+      usuarios.create({
+        login: 'gci',
+        nome: 'Gerente de Contas',
+        email: 'gci@teste.com',
+        senhaHash: await bcrypt.hash('senha-gci-123', 4),
+        perfil: 'GCI',
+        ativo: true,
+      }),
+    );
+    const loginGci = await request(server())
+      .post('/api/auth/login')
+      .send({ login: 'gci', senha: 'senha-gci-123' });
+    tokenGci = loginGci.body.data.accessToken;
+
     await indiceRepo.save(
       [{ moduloSigla: 'FAT', modulo: 'Faturamento', adicional: '', topico: 'Emissão de NF' }].map(
         (l, i) => indiceRepo.create({ ordem: i, ...l }),
@@ -130,6 +162,24 @@ describe('Geração de documentos fiéis — Levantamento/Projeto/Termo (e2e)', 
       request(server()).post(`/api/projetos/${pid}/gerar-layout/checklist`),
     );
     expect(res.status).toBe(400);
+  });
+
+  it('gate por tipo de documento: Consultor não gera levantamento/projeto (espelha webapp/app.py:_GERA)', async () => {
+    const pid = await criarProjeto();
+    const res = await auth(
+      request(server()).post(`/api/projetos/${pid}/gerar-layout/levantamento`),
+      tokenConsultor,
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it('gate por tipo de documento: GCI não gera cronograma/termo (espelha webapp/app.py:_GERA)', async () => {
+    const pid = await criarProjeto();
+    const res = await auth(
+      request(server()).post(`/api/projetos/${pid}/gerar-layout/termo`),
+      tokenGci,
+    );
+    expect(res.status).toBe(403);
   });
 
   it('gera o Termo, monta o payload corretamente e anexa Documento + Evento ao projeto', async () => {

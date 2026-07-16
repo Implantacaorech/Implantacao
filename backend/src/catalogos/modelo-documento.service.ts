@@ -62,12 +62,72 @@ export interface ModeloDocumentoListado extends ModeloDocumento {
   nVersoes: number;
 }
 
+/** (seção, placeholder, rótulo, origem, obrigatório, observação) — espelha
+ * webapp/db.py:_MODELOS_DOC_CAMPOS 1:1. */
+type CampoDefault = [string, string, string, string, boolean, string];
+
+// Espelha webapp/db.py:_MODELOS_DOC_CAMPOS — mapa de preenchimento por modelo, só
+// informativo (a geração em si não lê esta tabela, a lógica já está em código nos gl_*).
+const CAMPOS_DEFAULT: Record<string, CampoDefault[]> = {
+  levantamento: [
+    ['Identificação', '<Nome Cliente>', 'Razão Social', 'projeto.cliente', true, ''],
+    ['Identificação', 'Data: <xx/xx/xxxx>', 'Data do Levantamento', 'projeto.data_levantamento', false, ''],
+    ['Identificação', 'Responsáveis: <...>', 'Responsáveis (GCI/Consultor)', 'projeto.gci + designações', false, ''],
+    ['Identificação da Empresa', 'Ramo Atividade:', 'Ramo de Atividade', 'projeto.ramo', false, ''],
+    ['Identificação da Empresa', 'Produto:', 'Produto', 'manual', false, 'Produto principal do cliente'],
+    ['Identificação da Empresa', 'Fornecedor Atual Software:', 'Software atual', 'manual', false, ''],
+    ['Identificação da Empresa', '<Localização / Filiais:>', 'Localização / Filiais', 'manual', false, ''],
+    ['Identificação da Empresa', 'Observações / Objetivos:', 'Objetivos', 'projeto.observacoes', false, ''],
+    ['Identificação da Empresa', '<Quantidade usuários e identificação:>', 'Qtd. de usuários', 'manual', false, ''],
+    ['Usuários (tabela)', 'Nome / E-mail / Atribuições', 'Usuários-chave', 'designações / usuarios', false, ''],
+    ['Módulos e Adicionais (A)', 'Previstos antes do Levantamento', 'Módulos contratados', 'projeto.modulos', true, ''],
+    ['Módulos e Adicionais (B)', 'Identificados no Levantamento', 'Módulos adicionais', 'manual', false, ''],
+    ['Implantação/Treinamento', 'Quantidade de horas Cobradas', 'Horas cobradas', 'projeto.horas_cobradas', false, ''],
+    ['Implantação/Treinamento', 'Quantidade de horas Bonificadas', 'Horas bonificadas', 'projeto.horas_bonificadas', false, ''],
+    ['Conversões', 'CONVERSÕES <(xxxx horas)>', 'Conversões', 'manual', false, ''],
+    ['Mapeamento por área', '<Colar aqui o quadro com as perguntas>', 'Tópicos por módulo', 'Cadastro: Índice de Tópicos', false, 'Usar o cadastro Índice de Tópicos por módulo'],
+  ],
+  projeto: [
+    ['Cabeçalho', 'Nome do Cliente: <RAZÃO SOCIAL>', 'Razão Social', 'projeto.cliente', true, ''],
+    ['Escopo', 'CNPJ: <(preencher)>', 'CNPJ', 'projeto.cnpj', true, ''],
+    ['Objetivos', '<(preencher)>', 'Objetivos', 'projeto.observacoes', false, ''],
+    ['Conversões (tabela)', 'Conversão (Sim/Não) / Dados / Obs', 'Conversões por módulo', 'manual', false, ''],
+    ['Detalhamento das Rotinas', '- Módulos Previstos <XX>', 'Módulos previstos por área', 'projeto.modulos', true, ''],
+    ['Detalhamento das Rotinas', 'Detalhamento das rotinas <XX>', 'Rotinas atendidas', 'Cadastro: Índice de Tópicos / manual', false, ''],
+    ['Equipes (Rech)', 'Gerente de Contas do Projeto', 'GCI', 'projeto.gci', false, ''],
+    ['Equipes (Rech)', 'Redator do Projeto', 'Redator', 'manual', false, ''],
+    ['Equipes (Rech)', 'Consultor/Implantador', 'Consultor', 'projeto.consultor / designações', false, ''],
+    ['Equipes (Cliente)', 'Encarregado pelo Projeto', 'Encarregado (cliente)', 'projeto.contato_nome', false, ''],
+    ['Tabela de Usuários', 'Nome / E-mail / Área / Assina Protocolo', 'Usuários do cliente', 'designações / usuarios', false, ''],
+    ['Cronograma Macro (tabela)', 'Período previsto <XX>', 'Datas das etapas', 'cronograma_itens / datas', false, ''],
+    ['Tempo Estimado', '<XX horas bonificadas>', 'Horas bonificadas', 'projeto.horas_bonificadas', false, ''],
+    ['Tempo Estimado', '<XX horas cobradas>', 'Horas cobradas', 'projeto.horas_cobradas', false, ''],
+    ['Rodapé', 'Novo Hamburgo, <_> de <_> de 202<X>', 'Data de emissão', 'data atual', false, ''],
+  ],
+  cronograma: [
+    ['Cabeçalho', 'Consultor:', 'Consultor', 'projeto.consultor / designações', false, ''],
+    ['Cabeçalho', 'Cliente: XXXX - RAZÃO SOCIAL', 'Razão Social', 'projeto.cliente', true, ''],
+    ['Cabeçalho', 'Usuário chave:', 'Usuário chave', 'designações', false, ''],
+    ['Cabeçalho', 'Horas do Planejamento', 'Horas planejamento', 'projeto.horas_cobradas', false, ''],
+    ['Cabeçalho', 'Hrs previstas bonificadas', 'Horas bonificadas', 'projeto.horas_bonificadas', false, ''],
+    ['Aba: Cronograma de visitas', 'Data / Local / Turno / Horário / Técnico / Módulo(s) / O que será abordado / Ações', 'Linhas de visita', 'cronograma_itens', false, ''],
+    ['Aba: Tarefas_usuários', 'Tipo / Tarefa / Status / Responsável / Datas', 'Tarefas do usuário', 'checklist_itens / manual', false, ''],
+    ['Aba: Pendências_Consultores', 'Tipo / Tarefa / Prazo / Status / Dias de atraso', 'Pendências', 'manual', false, ''],
+  ],
+  termo: [
+    ['Cabeçalho', 'Cliente: <Razão Social Longa>', 'Razão Social', 'projeto.cliente', true, ''],
+    ['Resumo Geral (tabela)', 'Módulo / Adicional / Processo / Status de Uso / Obs.', 'Módulos e status de uso', 'projeto.modulos / designações', false, ''],
+    ['Alterações fora do escopo', '<Detalhamento das alterações>', 'Alterações / incrementos', 'manual', false, ''],
+    ['Pendências', '<Pendência 01> / <Técnico responsável> / <Detalhamento>', 'Pendências sequenciadas', 'manual', false, ''],
+    ['Rodapé', 'Novo Hamburgo, _ de _ de 202X', 'Data de encerramento', 'projeto.data_encerramento', false, ''],
+  ],
+};
+
 /** Registro + versionamento dos 4 layouts fiéis (Levantamento, Projeto, Cronograma, Termo).
  * O arquivo-base fiel vem de `tools/templates/layouts/` (compartilhado com o Flask,
  * somente leitura); as versões enviadas ficam no store gravável `backend/dados/modelos_documento/`.
  * `ModeloDocumentoCampo` (mapa de preenchimento, só informativo — a geração em si não lê essa
- * tabela) foi propositalmente deixado fora do seed nesta fatia: não bloqueia a geração de
- * documentos, só a documentação exibida na tela de Cadastros. Espelha webapp/db.py
+ * tabela) agora se semeia junto dos 4 modelos. Espelha webapp/db.py
  * (modelos_documento_*, ModeloDocumento/Versao/Campo). */
 @Injectable()
 export class ModeloDocumentoService implements OnModuleInit {
@@ -160,6 +220,22 @@ export class ModeloDocumentoService implements OnModuleInit {
           vigente: true,
         }),
       );
+      const campos = CAMPOS_DEFAULT[m.slug] ?? [];
+      for (let j = 0; j < campos.length; j++) {
+        const [secao, placeholder, rotulo, origem, obrigatorio, observacao] = campos[j];
+        await this.camposRepo.save(
+          this.camposRepo.create({
+            modeloId: modelo.id,
+            ordem: j,
+            secao,
+            placeholder,
+            rotulo,
+            origem,
+            obrigatorio,
+            observacao,
+          }),
+        );
+      }
     }
     return MODELOS_DEFAULT.length;
   }

@@ -40,6 +40,8 @@ import { StatusDto } from './dto/status.dto';
 import { PostergarDto, PostergarVisitaDto } from './dto/postergar.dto';
 import { ReorganizarModuloDto } from './dto/reorganizar-modulo.dto';
 import { AcompanhamentoQueryDto } from './dto/acompanhamento-query.dto';
+import { BloqueiosQueryDto } from './dto/bloqueios-query.dto';
+import { addDays, diaUtil, parseIso, toIso } from './datas.util';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { GeracaoDocumentosService } from '../geracao/geracao-documentos.service';
 import { DocumentosService } from '../documentos/documentos.service';
@@ -207,6 +209,28 @@ export class CronogramaController {
   })
   prontidao(@Param('projetoId', ParseIntPipe) projetoId: number) {
     return this.distribuicao.prontidao(projetoId);
+  }
+
+  @Get('bloqueios')
+  @ApiOperation({
+    summary:
+      'Indicador visual do calendário: dia×turno em que a alocação manual encontraria ' +
+      'conflito (ocupação externa SICLA ou período sem agenda) — cosmético, quem bloqueia ' +
+      'de verdade é o guard em alocar/alocar-visita',
+  })
+  async bloqueios(
+    @Param('projetoId', ParseIntPipe) projetoId: number,
+    @Query() query: BloqueiosQueryDto,
+  ) {
+    const dias: string[] = [];
+    for (
+      let d = parseIso(query.inicio);
+      d <= parseIso(query.fim) && dias.length < 31;
+      d = addDays(d, 1)
+    ) {
+      if (diaUtil(d)) dias.push(toIso(d));
+    }
+    return this.cronograma.bloqueiosCalendario(projetoId, dias);
   }
 
   @Post('alocar/:atividadeId')

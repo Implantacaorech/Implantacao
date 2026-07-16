@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -45,6 +46,11 @@ import {
   NotificacaoService,
   EventoNotificacao,
 } from '../email/notificacao.service';
+import {
+  Perfil,
+  PERFIS_GERA_CRONOGRAMA,
+  PERFIS_GERA_LEVANTAMENTO,
+} from '../common/constants/perfis';
 
 const _SLUGS_DOCX: readonly SlugDocumentoFiel[] = [
   'levantamento',
@@ -59,6 +65,15 @@ const _EVT_DOC: Record<SlugDocumentoFiel, EventoNotificacao> = {
   projeto: 'projeto_ok',
   cronograma: 'cronograma_ok',
   termo: 'termo_ok',
+};
+
+// Espelha webapp/app.py:_GERA — quem pode gerar cada slug (checado no handler, não em
+// @Roles estático, porque o gate depende do :slug do path, não é fixo por rota).
+const _PERFIS_GERA: Record<SlugDocumentoFiel, Perfil[]> = {
+  levantamento: PERFIS_GERA_LEVANTAMENTO,
+  projeto: PERFIS_GERA_LEVANTAMENTO,
+  cronograma: PERFIS_GERA_CRONOGRAMA,
+  termo: PERFIS_GERA_CRONOGRAMA,
 };
 
 @ApiTags('documentos')
@@ -225,6 +240,11 @@ export class DocumentosController {
     @CurrentUser() user: AuthUser,
     @Res() res: Response,
   ) {
+    if (!_PERFIS_GERA.projeto.includes(user.perfil)) {
+      throw new ForbiddenException(
+        'Seu perfil não pode gerar o Projeto de Implantação.',
+      );
+    }
     let caminhoDocx: string;
     if (arquivo) {
       if (!arquivo.originalname.toLowerCase().endsWith('.docx')) {
@@ -294,6 +314,9 @@ export class DocumentosController {
       throw new BadRequestException(
         'slug inválido — use levantamento, projeto, cronograma ou termo.',
       );
+    }
+    if (!_PERFIS_GERA[slug as SlugDocumentoFiel].includes(user.perfil)) {
+      throw new ForbiddenException('Seu perfil não pode gerar este documento.');
     }
     const arquivo = await this.geracaoLayout.gerar(
       projetoId,

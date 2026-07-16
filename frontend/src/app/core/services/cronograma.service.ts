@@ -82,6 +82,15 @@ export class CronogramaService {
     await firstValueFrom(this.http.delete(`${this.base(projetoId)}/periodos/${periodoId}`));
   }
 
+  async bloqueios(projetoId: number, inicio: string, fim: string): Promise<Record<string, string>> {
+    const r = await firstValueFrom(
+      this.http.get<ApiEnvelope<Record<string, string>>>(`${this.base(projetoId)}/bloqueios`, {
+        params: { inicio, fim },
+      }),
+    );
+    return r.data;
+  }
+
   async prontidao(projetoId: number): Promise<Prontidao> {
     const r = await firstValueFrom(this.http.get<ApiEnvelope<Prontidao>>(`${this.base(projetoId)}/prontidao`));
     return r.data;

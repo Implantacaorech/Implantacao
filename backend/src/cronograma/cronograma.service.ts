@@ -14,6 +14,9 @@ import {
 import { CronogramaPeriodoBloqueado } from '../database/entities/cronograma-periodo-bloqueado.entity';
 import { Projeto } from '../database/entities/projeto.entity';
 import { ChecklistModeloService } from '../catalogos/checklist-modelo.service';
+import { UsersService } from '../users/users.service';
+import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
+import { DesignacoesService } from './designacoes.service';
 
 export interface VisitaAgrupada {
   modulo: string;
@@ -90,6 +93,9 @@ export class CronogramaService {
     private readonly periodos: Repository<CronogramaPeriodoBloqueado>,
     @InjectRepository(Projeto) private readonly projetos: Repository<Projeto>,
     private readonly checklist: ChecklistModeloService,
+    private readonly users: UsersService,
+    private readonly disponibilidade: DisponibilidadeService,
+    private readonly designacoes: DesignacoesService,
   ) {}
 
   /** Garante que as atividades do projeto já foram semeadas a partir do Check List dos
@@ -528,10 +534,13 @@ export class CronogramaService {
     );
   }
 
-  /** Motivo (string) que impede alocar neste dia/turno, ou null se liberado. A checagem de
-   * disponibilidade externa (SICLA) ainda não foi convertida — pendência do item 5 da
-   * migração (ver docs/migracao/03-documento-conversao.md); por ora só data passada e
-   * período sem agenda do projeto são checados aqui. */
+  /** Motivo (string) que impede alocar neste dia/turno, ou null se liberado. Checa (1) data
+   * passada, (2) período sem agenda do projeto e (3) disponibilidade externa (SICLA) do
+   * técnico — espelha webapp/routes_agenda.py:_slot_indisponivel. A consulta ao SICLA usa a
+   * versão SEM cache (`ocupacaoPorSlot`, não `...Cache`) porque isto é a validação final de
+   * uma escrita, não a tela de leitura — mesma distinção documentada em
+   * disponibilidade.service.ts:ocupacaoPorSlotCache. Fail-open: qualquer falha na consulta
+   * externa apenas loga e libera o slot, mesmo critério do resto do Agendador. */
   async slotIndisponivel(
     data: string,
     turno: string,
@@ -553,6 +562,21 @@ export class CronogramaService {
         return `Período sem agenda de ${ini} a ${fim}${quem}${motivo}.`;
       }
     }
+    if (turno !== 'manha' && turno !== 'tarde') return null;
+    const tec = (tecnico || '').trim();
+    if (!tec) return null;
+    try {
+      if (!this.disponibilidade.configurado()) return null;
+      const cods = await this.users.codigosSiclaPorNome([tec]);
+      const cod = (cods[tec.toLowerCase()] || '').trim();
+      if (!cod) return null;
+      const ocup = await this.disponibilidade.ocupacaoPorSlot(d, d, [cod]);
+      if (ocup[`${cod.toLowerCase()}|${d}|${turno}`]) {
+        return `${tec} está ocupado nesse dia/turno (agenda do SICLA).`;
+      }
+    } catch {
+      // Fail-open: disponibilidade externa nunca bloqueia a alocação por falha própria.
+    }
     return null;
   }
 
@@ -569,5 +593,75 @@ export class CronogramaService {
       if (tecs.length === 0 || (tec && tecs.includes(tec))) return p;
     }
     return null;
+  }
+
+  /** Indicador visual do calendário: para cada dia×turno da janela pedida, o motivo (se
+   * houver) que deixaria a alocação manual bloqueada ali — ocupação externa (SICLA) de
+   * qualquer técnico envolvido no projeto + período sem agenda. Espelha o dict `bloqueados`
+   * de webapp/routes_agenda.py:projeto_agenda, sempre no modo "conjunta" (bloqueia se
+   * QUALQUER envolvido estiver ocupado) — o alternador de visão "individual" (`tec_sel`) do
+   * Flask não tem equivalente na tela Angular, que não expõe esse seletor. Só cosmético:
+   * quem decide de verdade se um slot pode ser usado é `slotIndisponivel`, chamado na
+   * escrita com o técnico real da atividade. */
+  async bloqueiosCalendario(
+    projetoId: number,
+    diasIso: string[],
+  ): Promise<Record<string, string>> {
+    const bloqueados: Record<string, string> = {};
+    if (diasIso.length === 0) return bloqueados;
+
+    const designacoes = await this.designacoes.doProjeto(projetoId);
+    const envolvidos = [
+      ...new Set(designacoes.map((d) => d.consultor.trim()).filter(Boolean)),
+    ].sort();
+
+    if (envolvidos.length > 0 && this.disponibilidade.configurado()) {
+      try {
+        const cods = await this.users.codigosSiclaPorNome(envolvidos);
+        const codigos = envolvidos
+          .map((e) => (cods[e.toLowerCase()] || '').trim())
+          .filter(Boolean);
+        if (codigos.length > 0) {
+          const ocup = await this.disponibilidade.ocupacaoPorSlotCache(
+            diasIso[0],
+            diasIso[diasIso.length - 1],
+            codigos,
+          );
+          for (const iso of diasIso) {
+            for (const turno of ['manha', 'tarde'] as const) {
+              const ocupados = envolvidos.filter((e) => {
+                const cod = (cods[e.toLowerCase()] || '').toLowerCase();
+                return cod && ocup[`${cod}|${iso}|${turno}`];
+              });
+              if (ocupados.length > 0) {
+                bloqueados[`${iso}|${turno}`] = ocupados.join(', ');
+              }
+            }
+          }
+        }
+      } catch {
+        // Fail-open, mesmo critério do resto do Agendador.
+      }
+    }
+
+    const periodos = await this.periodosBloqueados(projetoId);
+    for (const iso of diasIso) {
+      for (const per of periodos) {
+        if (!(per.dataIni <= iso && iso <= per.dataFim)) continue;
+        const tecs = CronogramaService.tecnicosDoPeriodo(per);
+        if (tecs.length > 0 && !tecs.some((t) => envolvidos.includes(t))) continue;
+        const texto =
+          (per.motivo || 'Período sem agenda') +
+          (tecs.length > 0 ? ` (${tecs.join(', ')})` : '');
+        for (const turno of ['manha', 'tarde'] as const) {
+          const chave = `${iso}|${turno}`;
+          bloqueados[chave] = bloqueados[chave]
+            ? `${bloqueados[chave]} · ${texto}`
+            : texto;
+        }
+        break;
+      }
+    }
+    return bloqueados;
   }
 }

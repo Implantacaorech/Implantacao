@@ -30,18 +30,43 @@ export interface AppConfig {
 // paralelo durante a migração e podem compartilhar o mesmo shell/ambiente; ler uma variável
 // PAINEL_* aqui por engano já causou uma conexão acidental ao Postgres de produção durante o
 // desenvolvimento (ver docs/migracao/03-documento-conversao.md).
+// Em produção, um segredo de JWT previsível (o fallback de desenvolvimento, visível a
+// qualquer um com acesso ao repositório no GitHub) permitiria forjar um token válido —
+// inclusive de perfil ADM. Falha o boot em vez de subir silenciosamente inseguro (mesma
+// lição de segurança já aplicada ao Flask legado, ver commit 778f324 "remove senha padrao
+// do Postgres e fallback fraco de secret_key"). Fora de produção, mantém o fallback fixo
+// (conveniência de desenvolvimento/teste — refresh tokens emitidos localmente não
+// precisam sobreviver a um segredo trocado a cada boot).
+function exigirEmProducao(env: string, valor: string | undefined, nomeVar: string, fallback: string): string {
+  if (valor) return valor;
+  if (env === 'production') {
+    throw new Error(
+      `${nomeVar} não está definida — obrigatória em produção (NODE_ENV=production). ` +
+        'Defina a variável de ambiente antes de subir o backend.',
+    );
+  }
+  return fallback;
+}
+
 export default (): AppConfig => {
   const env = process.env.NODE_ENV ?? 'development';
   const dbUrl = process.env.MIGRACAO_DB_URL;
   return {
     env,
     port: Number(process.env.MIGRACAO_PORT ?? 3000),
-    jwtSecret:
-      process.env.MIGRACAO_JWT_SECRET ?? 'dev-only-secret-troque-em-producao',
+    jwtSecret: exigirEmProducao(
+      env,
+      process.env.MIGRACAO_JWT_SECRET,
+      'MIGRACAO_JWT_SECRET',
+      'dev-only-secret-troque-em-producao',
+    ),
     jwtExpiresIn: process.env.MIGRACAO_JWT_EXPIRES_IN ?? '15m',
-    jwtRefreshSecret:
-      process.env.MIGRACAO_JWT_REFRESH_SECRET ??
+    jwtRefreshSecret: exigirEmProducao(
+      env,
+      process.env.MIGRACAO_JWT_REFRESH_SECRET,
+      'MIGRACAO_JWT_REFRESH_SECRET',
       'dev-only-refresh-secret-troque-em-producao',
+    ),
     jwtRefreshExpiresIn: process.env.MIGRACAO_JWT_REFRESH_EXPIRES_IN ?? '7d',
     db: dbUrl
       ? { type: 'postgres', url: dbUrl }

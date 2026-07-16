@@ -92,6 +92,7 @@ export class AgendaComponent {
   readonly visitas = signal<VisitaAgrupada[]>([]);
   readonly designacoes = signal<Designacao[]>([]);
   readonly periodos = signal<PeriodoBloqueado[]>([]);
+  readonly bloqueios = signal<Record<string, string>>({});
   readonly prontidao = signal<Prontidao>({ faltantes: [], jaOcorreu: false });
   readonly horarios = signal<HorariosPorTurno>({ manha: { inicio: '08:00', fim: '12:00' }, tarde: { inicio: '13:00', fim: '17:00' } });
   readonly config = signal<CronogramaConfigDto>({
@@ -194,11 +195,28 @@ export class AgendaComponent {
       this.prontidao.set(prontidao);
       this.horarios.set(horarios);
       this.config.set(config);
+      await this.carregarBloqueios();
     } catch {
       this.erro.set('Não foi possível carregar o agendador de visitas.');
     } finally {
       this.carregando.set(false);
     }
+  }
+
+  /** Indicador visual (cosmético) de conflito SICLA/período sem agenda na semana exibida —
+   * quem bloqueia de verdade a escrita é o backend, em `alocar`/`alocarVisita`. */
+  private async carregarBloqueios(): Promise<void> {
+    const dias = this.semana();
+    if (dias.length === 0) return;
+    try {
+      this.bloqueios.set(await this.service.bloqueios(this.projetoId, dias[0].iso, dias[dias.length - 1].iso));
+    } catch {
+      this.bloqueios.set({});
+    }
+  }
+
+  motivoBloqueio(iso: string, turno: string): string | null {
+    return this.bloqueios()[`${iso}|${turno}`] ?? null;
   }
 
   celula(iso: string, turno: string): VisitaAgrupada[] {
@@ -238,14 +256,17 @@ export class AgendaComponent {
 
   semanaAnterior(): void {
     this.referencia.set(new Date(this.referencia().getTime() - 7 * 86_400_000));
+    void this.carregarBloqueios();
   }
 
   semanaSeguinte(): void {
     this.referencia.set(new Date(this.referencia().getTime() + 7 * 86_400_000));
+    void this.carregarBloqueios();
   }
 
   irParaHoje(): void {
     this.referencia.set(this.segundaFeiraDe(new Date()));
+    void this.carregarBloqueios();
   }
 
   private async comFeedback(rotina: () => Promise<void>): Promise<void> {

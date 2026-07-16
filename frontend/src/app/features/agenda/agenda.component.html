@@ -202,7 +202,9 @@
           <div class="ag-day">
             <div class="ag-day-h">{{ d.label }}</div>
             @for (turno of ['manha', 'tarde']; track turno) {
-              <div class="ag-slot ag-drop" [class.ag-passado]="d.iso < hojeIso" [class.over]="zonaSobreArraste() === d.iso + '|' + turno"
+              <div class="ag-slot ag-drop" [class.ag-passado]="d.iso < hojeIso"
+                   [class.ag-conflito]="!(d.iso < hojeIso) && motivoBloqueio(d.iso, turno)"
+                   [class.over]="zonaSobreArraste() === d.iso + '|' + turno"
                    (dragover)="permitirSolta($event, d.iso + '|' + turno)" (dragleave)="saiuDaZona()" (drop)="soltarEm($event, d.iso, turno)">
                 <div class="ag-slot-h">
                   <span class="ag-turno">{{ turno === 'manha' ? 'Manhã' : 'Tarde' }} <small>{{ horarioDe(turno).inicio }}–{{ horarioDe(turno).fim }}</small></span>
@@ -212,6 +214,8 @@
                 </div>
                 @if (d.iso < hojeIso) {
                   <div class="ag-bloq-l">🚫 Data passada</div>
+                } @else if (motivoBloqueio(d.iso, turno); as motivo) {
+                  <div class="ag-bloq-l" [title]="motivo">⚠ {{ motivo }}</div>
                 }
                 @for (g of celula(d.iso, turno); track chave(g)) {
                   <details class="ag-slot-visita" open>

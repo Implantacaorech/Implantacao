@@ -761,20 +761,18 @@ porque são o tipo de erro fácil de reintroduzir ao converter os módulos que f
 Ordem sugerida para dar sequência (cada um segue o mesmo padrão: entidade TypeORM →
 service → controller → tela Angular → testes):
 
-1. ~~Agendador de Visitas~~ — **convertido** (ver §2). A lacuna de **disponibilidade
-   externa (SICLA/Oracle) na distribuição automática foi fechada no item 6** (ver abaixo)
-   — `DistribuicaoService` agora consulta o SICLA. Duas lacunas propositais menores
-   continuam:
-   - **Guard manual + indicador visual do calendário**: a distribuição AUTOMÁTICA já
-     respeita o SICLA; falta portar `_slot_indisponivel` (bloqueia arrastar manualmente
-     para um slot ocupado no SICLA) e o cálculo de `bloqueados` do `projeto_agenda`
-     (células cinza no calendário) — puramente cosméticos/de guarda adicional, a tela já
-     funciona sem eles (o pior caso é o usuário alocar manualmente por cima de um
-     compromisso externo, sem aviso).
-   - **Sem arrastar-e-soltar** na tela Angular — a interação foi simplificada para
-     formulários de data/turno por visita (mesma capacidade funcional: alocar, mover,
-     desalocar), mais simples de implementar corretamente sob prazo e mais acessível por
-     teclado; drag-and-drop pode ser adicionado depois como polimento de UX.
+1. ~~Agendador de Visitas~~ — **convertido** (ver §2), inclusive as duas lacunas propositais
+   menores que ainda constavam aqui — ver §16:
+   - ~~Guard manual + indicador visual do calendário~~ — **fechado em 2026-07-16**:
+     `CronogramaService.slotIndisponivel` agora também checa o SICLA (não só data
+     passada/período sem agenda) na escrita (`alocar`/`alocar-visita`), e
+     `GET agenda/bloqueios` alimenta um indicador visual (célula com hachura + motivo) no
+     calendário — ver §16.
+   - ~~Sem arrastar-e-soltar~~ — **não era uma lacuna real**: revisitando o código nesta
+     sessão, `AgendaComponent` já implementa arrastar-e-soltar completo (cartão e bloco de
+     visita, com zona de soltar e indicador de posicionamento) desde a conversão original —
+     este documento afirmava o contrário por desatualização, não por um corte de escopo que
+     de fato existiu. Corrigido aqui e em `05-plano-de-virada.md`.
 2. ~~Cadastros~~ — **convertido** (backend completo: `ChecklistModelo` CRUD, `IndiceTopico`
    com seed, `ModeloDocumento`+`ModeloDocumentoVersao` com upload/download de versão,
    `LevantamentoResposta` e `DocConteudo`). Lacuna proposital: `ModeloDocumentoCampo` (mapa
@@ -1249,3 +1247,58 @@ motivo arquitetural).
 separadores, placeholder `<...>` do modelo em branco, não sobrescreve resposta já
 preenchida) + suíte completa (docservice/backend/frontend) passando. Nenhuma lacuna de
 código conhecida ficou registrada no fim desta sessão.
+
+## 16. Sessão seguinte — revisão de segurança + lacunas propositais menores (2026-07-16)
+
+Fechamento das duas "lacunas propositais menores" que ainda restavam no item 1 do §8, mais
+a revisão de segurança pedida pela Fase 2 do plano de virada (ver
+[05-plano-de-virada.md](05-plano-de-virada.md)) e os dois achados reais que ela revelou.
+
+- **Seed de `ModeloDocumentoCampo`**: `ModeloDocumentoService.seedDefaults` agora também
+  semeia o mapa de preenchimento dos 4 modelos (levantamento/projeto/cronograma/termo),
+  portado 1:1 de `webapp/db.py:_MODELOS_DOC_CAMPOS`. Puramente informativo (a geração em si
+  não lê essa tabela) — fecha a única lacuna que restava no item 2 do §8.
+- **Guard manual + indicador visual de conflito SICLA no Agendador** (item 1 do §8):
+  `CronogramaService.slotIndisponivel` porta a 3ª checagem que faltava de
+  `webapp/routes_agenda.py:_slot_indisponivel` — ocupação externa (SICLA), além de data
+  passada e período sem agenda já existentes — usando a consulta SEM cache
+  (`DisponibilidadeService.ocupacaoPorSlot`), porque é validação de escrita, não tela de
+  leitura (distinção já documentada no próprio serviço). Novo método
+  `CronogramaService.bloqueiosCalendario` + endpoint `GET agenda/bloqueios?inicio=&fim=`
+  alimentam um indicador visual no calendário Angular (célula hachurada + motivo no
+  título) — sempre no modo "conjunta" (bloqueia se qualquer técnico envolvido no projeto
+  estiver ocupado); o alternador de visão "individual" (`tec_sel`) do Flask não foi
+  portado, porque a tela Angular não tem esse seletor. Puramente cosmético: quem bloqueia
+  de verdade a escrita continua sendo `slotIndisponivel`, chamado com o técnico real da
+  atividade.
+- **Correção de documentação**: o "sem arrastar-e-soltar" que constava como lacuna
+  proposital do Agendador nunca foi verdade depois da conversão original —
+  `AgendaComponent` já tinha `draggable`/`dragstart`/`drop` completos. Corrigido aqui e em
+  `05-plano-de-virada.md`.
+- **Revisão de segurança** (agente `seguranca-permissoes`, read-only): confirmou CORS
+  restrito, isolamento do `docservice`, rotas públicas limitadas às 4 esperadas, JWT
+  access/refresh corretos, e nenhuma senha nunca serializada. Dois achados reais,
+  corrigidos nesta mesma sessão:
+  - **ALTO — fallback fraco de `MIGRACAO_JWT_SECRET`/`MIGRACAO_JWT_REFRESH_SECRET`**:
+    `configuration.ts` caía num valor fixo (visível a qualquer um com acesso ao
+    repositório) se a env var não estivesse definida — mesma classe de bug já corrigida no
+    Flask legado (commit `778f324`). Corrigido: `exigirEmProducao()` falha o boot
+    (`throw`) quando `NODE_ENV=production` e a variável não está definida; fora de
+    produção mantém o fallback (conveniência de dev/teste). Teste novo em
+    `config/configuration.spec.ts`.
+  - **MÉDIO — geração de documento sem gate por tipo**: `POST
+    /projetos/:projetoId/gerar-layout/:slug` e `POST
+    /projetos/:projetoId/projeto/importar-levantamento` não replicavam
+    `webapp/app.py:_GERA`/`pode_gerar(tipo)` (ex.: Consultor gerando Levantamento/Projeto,
+    ou GCI gerando Cronograma/Termo — nenhum dos dois pode no Flask original). Corrigido
+    com um mapa `_PERFIS_GERA` (reaproveita as constantes `PERFIS_GERA_LEVANTAMENTO`/
+    `PERFIS_GERA_CRONOGRAMA` já existentes) checado dentro do handler — não dá para usar
+    `@Roles()` estático porque o gate depende do `:slug` do path. Dois testes e2e novos
+    (Consultor barrado em `levantamento`, GCI barrado em `termo`) em
+    `geracao-layout.e2e-spec.ts`.
+  - Achado BAIXO/informativo (acesso a projeto/documento por ID sem checar posse):
+    confirmado como comportamento idêntico ao Flask legado, não uma regressão da migração
+    — registrado aqui, não corrigido nesta fatia.
+
+**Validação**: suíte completa do backend (358 testes unitários + e2e) e typecheck
+passando; smoke manual do endpoint `bloqueios` via os testes e2e de `cronograma.e2e-spec.ts`.

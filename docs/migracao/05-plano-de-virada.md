@@ -109,9 +109,17 @@ novo de ponta a ponta, com dados reais já migrados, antes de qualquer decisão 
 
 ## Fase 2 — Segurança
 
-- [ ] Revisão final de permissões do stack novo (agente `seguranca-permissoes`): guards por
-  perfil, expiração/rotação do JWT, CORS, exposição do `docservice` (deve continuar
-  **nunca** público).
+- [x] **Revisão final de permissões do stack novo** (agente `seguranca-permissoes`,
+  2026-07-16): guards por perfil, expiração/rotação do JWT, CORS e exposição do
+  `docservice` conferidos — confirmado OK (CORS restrito, `docservice` nunca público,
+  rotas públicas limitadas às 4 esperadas, JWT access/refresh corretos, senha nunca
+  serializada). Dois achados reais, já corrigidos (ver
+  [03-documento-conversao.md §16](03-documento-conversao.md)): fallback fraco de
+  `MIGRACAO_JWT_SECRET`/`MIGRACAO_JWT_REFRESH_SECRET` em produção (agora falha o boot sem
+  a env var) e gate por tipo de documento ausente em `gerar-layout`/`importar-levantamento`
+  (agora replica `_GERA` do Flask). Achado baixo (acesso a projeto/documento por ID sem
+  checar posse) confirmado como comportamento idêntico ao Flask legado, não regressão —
+  registrado, não corrigido.
 - [ ] **Pendência P0 não relacionada, mas correr atrás antes/durante a virada**: rotacionar a
   senha real do Postgres do Flask (achado da auditoria de 2026-07-10, código já corrigido,
   falta trocar a senha em produção — `docs/runbooks-operacao.md` §9). Não bloqueia
@@ -217,18 +225,26 @@ Lacunas propositais já registradas durante a conversão (ver
 [03-documento-conversao.md §8](03-documento-conversao.md)) — não são bugs, são escopo
 explicitamente deixado de fora; revisar se algum vira bloqueio antes de assinar a Fase 0:
 
-- Sem arrastar-e-soltar no Agendador (interação por formulário, mesma capacidade).
-- Guard manual + indicador visual de conflito SICLA no calendário (só a distribuição
-  automática já respeita o SICLA; alocação manual não avisa).
-- `ModeloDocumentoCampo` sem seed (só informativo, não afeta geração).
+- ~~Sem arrastar-e-soltar no Agendador~~ — **nunca foi uma lacuna real**: o documento
+  afirmava isso por desatualização; `AgendaComponent` já tinha o drag-and-drop completo.
+  Corrigido em 2026-07-16 (ver
+  [03-documento-conversao.md §16](03-documento-conversao.md)).
+- ~~Guard manual + indicador visual de conflito SICLA no calendário~~ — **fechado em
+  2026-07-16** (ver [03-documento-conversao.md §16](03-documento-conversao.md)).
+- ~~`ModeloDocumentoCampo` sem seed~~ — **fechado em 2026-07-16** (ver
+  [03-documento-conversao.md §16](03-documento-conversao.md)).
 - Correção verbal/ortográfica opcional por IA (a outra metade de `tools/ia.py`) não
   portada.
 - `checklist_ok` (e-mail) e geração do documento de Check List em si não existiam no
   Flask original tampouco — não é regressão.
 - ~~`fluxo_criar` não dispara automaticamente o pacote de documentos + e-mail-resumo~~ —
   **fechado em 2026-07-16** (`FluxoService.criarComPacote`, ver
-  [03-documento-conversao.md §14](03-documento-conversao.md)). Fica de fora só o Check
-  List do pacote inicial (gerador legado, não ligado).
+  [03-documento-conversao.md §14](03-documento-conversao.md)), incluindo o Check List do
+  pacote inicial (gerador legado ligado via bridge — ver
+  [03-documento-conversao.md §15](03-documento-conversao.md)).
+- ~~Projeto origem: "usar Levantamento importado"/"importar Levantamento (.docx)" sem
+  efeito~~ — **fechado em 2026-07-16** (ver
+  [03-documento-conversao.md §15](03-documento-conversao.md)).
 - **`pode_avancar` sem enforcement na escrita** — `MetricasService` mostra o que falta nas
   telas, mas `ProjetosService.atualizar()`/`criar()` não bloqueia a troca de etapa faltando
   campo/documento obrigatório (mesmo comportamento permissivo que o Flask já tinha —
