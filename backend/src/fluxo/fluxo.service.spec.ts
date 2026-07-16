@@ -4,8 +4,17 @@ import { FluxoService } from './fluxo.service';
 import { Projeto } from '../database/entities/projeto.entity';
 import { DocumentosService } from '../documentos/documentos.service';
 import { GeracaoLayoutService } from '../documentos/geracao-layout.service';
+import { LegadoCliService } from '../legado/legado-cli.service';
 import { MailerService } from '../email/mailer.service';
 import { NotificacaoService } from '../email/notificacao.service';
+
+// checklist (gerador legado) lê o arquivo do disco (readFileSync) — mockado aqui pra não
+// depender de um arquivo real existir no ambiente de teste. jest.requireActual preserva o
+// resto do módulo real (o TypeORM depende de outras partes de 'fs' para carregar entities).
+jest.mock('fs', () => ({
+  ...jest.requireActual('fs'),
+  readFileSync: jest.fn(() => Buffer.from('conteudo-xlsx-fake')),
+}));
 
 describe('FluxoService', () => {
   let service: FluxoService;
@@ -17,6 +26,7 @@ describe('FluxoService', () => {
   };
   const notificacao = { notificarEvento: jest.fn() };
   const geracaoLayout = { gerar: jest.fn() };
+  const legadoCli = { executar: jest.fn() };
   const mailer = { configurado: jest.fn(() => false), enviar: jest.fn() };
 
   beforeEach(async () => {
@@ -28,6 +38,7 @@ describe('FluxoService', () => {
         { provide: DocumentosService, useValue: documentos },
         { provide: NotificacaoService, useValue: notificacao },
         { provide: GeracaoLayoutService, useValue: geracaoLayout },
+        { provide: LegadoCliService, useValue: legadoCli },
         { provide: MailerService, useValue: mailer },
       ],
     }).compile();
@@ -198,10 +209,11 @@ Produto / Observações: Cliente estratégico`;
       );
     });
 
-    it('gera só os tipos suportados pela layout fiel (ignora "checklist")', async () => {
+    it('gera "checklist" pelo gerador legado (LegadoCliService), os outros pela layout fiel', async () => {
       projetos.find.mockResolvedValue([]);
-      projetos.save.mockResolvedValue({ id: 44, cliente: 'X' });
+      projetos.save.mockResolvedValue({ id: 44, cliente: 'X', modulos: 'FAT, EST' });
       geracaoLayout.gerar.mockResolvedValue({ filename: 'lev.docx', buffer: Buffer.from('x') });
+      legadoCli.executar.mockResolvedValue({ arquivo: 'C:\\exemplos\\CheckList_X.xlsx', log: 'ok' });
       documentos.salvarArquivoGerado.mockReturnValue({ arquivo: 'lev.docx', caminho: '/tmp/lev.docx' });
       const r = await service.criarComPacote(
         { cliente: 'X', gerar: ['levantamento', 'checklist', 'cronograma'] },
@@ -210,7 +222,24 @@ Produto / Observações: Cliente estratégico`;
       expect(geracaoLayout.gerar).toHaveBeenCalledTimes(2);
       expect(geracaoLayout.gerar).toHaveBeenCalledWith(44, 'levantamento', 'auto');
       expect(geracaoLayout.gerar).toHaveBeenCalledWith(44, 'cronograma', 'auto');
-      expect(r.documentosGerados).toEqual(['Mapeamento de Processos', 'Cronograma']);
+      expect(legadoCli.executar).toHaveBeenCalledWith('gerar_do_projeto', {
+        projeto: { cliente: 'X', modulos: 'FAT, EST' },
+        tipo: 'checklist',
+      });
+      expect(r.documentosGerados).toEqual([
+        'Mapeamento de Processos',
+        'Check List do Consultor',
+        'Cronograma',
+      ]);
+    });
+
+    it('ignora um tipo pedido que não é reconhecido (nem "checklist" nem layout fiel)', async () => {
+      projetos.find.mockResolvedValue([]);
+      projetos.save.mockResolvedValue({ id: 45, cliente: 'X' });
+      const r = await service.criarComPacote({ cliente: 'X', gerar: ['termo'] }, 'ana');
+      expect(geracaoLayout.gerar).not.toHaveBeenCalled();
+      expect(legadoCli.executar).not.toHaveBeenCalled();
+      expect(r.documentosGerados).toEqual([]);
     });
 
     it('envia o e-mail-resumo com os documentos gerados como anexo quando há destinos e SMTP configurado', async () => {

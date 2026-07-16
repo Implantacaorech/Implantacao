@@ -9,6 +9,7 @@ import { GeracaoModule } from '../geracao/geracao.module';
 import { EmailModule } from '../email/email.module';
 import { PlanoCronogramaModule } from '../plano-cronograma/plano-cronograma.module';
 import { MetricasModule } from '../metricas/metricas.module';
+import { LegadoModule } from '../legado/legado.module';
 import { DocumentosService } from './documentos.service';
 import { GeracaoLayoutService } from './geracao-layout.service';
 import { DocumentosController } from './documentos.controller';
@@ -22,6 +23,7 @@ import { DocumentosController } from './documentos.controller';
     EmailModule,
     PlanoCronogramaModule,
     MetricasModule,
+    LegadoModule,
   ],
   controllers: [DocumentosController],
   providers: [DocumentosService, GeracaoLayoutService],

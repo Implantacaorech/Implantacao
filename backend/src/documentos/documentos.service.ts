@@ -229,6 +229,16 @@ export class DocumentosService {
     return this.documentos.findOne({ where: { id } });
   }
 
+  /** Levantamento (.docx) importado mais recente do projeto, se houver — equivalente a
+   * webapp/db.py:levantamento_importado. Usado por "Projeto origem" (fonte "importado":
+   * reusar o último Levantamento já enviado, sem pedir upload de novo). */
+  async ultimoLevantamentoImportado(projetoId: number): Promise<Documento | null> {
+    return this.documentos.findOne({
+      where: { projetoId, tipo: 'levantamento', origem: 'importado' },
+      order: { id: 'DESC' },
+    });
+  }
+
   /** Chamado por `ProjetosService.excluir` — sem isso, excluir um projeto deixaria
    * Documento/Evento órfãos (mesma categoria de bug já encontrada e corrigida no Flask
    * original, e reproduzida aqui até esta correção — ver §6 da documentação da migração). */

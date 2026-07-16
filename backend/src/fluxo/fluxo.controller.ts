@@ -13,8 +13,8 @@ import { MODELO_FECHAMENTO } from './fluxo.constants';
 /** Onboarding a partir do e-mail de fechamento do Comercial (/fluxo/*) — qualquer
  * usuário autenticado (mesmo padrão de acesso do Flask original, sem `pode_ver`
  * adicional além do login). Espelha webapp/routes_fluxo.py. `criar` gera o pacote
- * inicial (Mapeamento + Cronograma pela "layout fiel" nova) e envia o e-mail-resumo
- * com anexos — só o Check List fica de fora (gerador legado runner.py, não portado). */
+ * inicial completo (Mapeamento + Cronograma pela "layout fiel" nova, Check List pelo
+ * gerador legado via LegadoCliService) e envia o e-mail-resumo com anexos. */
 @ApiTags('fluxo')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)

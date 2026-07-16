@@ -13,6 +13,11 @@
       <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
     </div>
   }
+  @if (aviso()) {
+    <div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+    </div>
+  }
 
   <div class="painel" style="display:flex;gap:22px;flex-wrap:wrap;align-items:center">
     <div style="display:flex;align-items:center;gap:8px">
@@ -20,8 +25,8 @@
       <span>Levantamento em tela: <strong>{{ telaResp() }}</strong> / {{ total() }} respondidas</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
-      <svg class="svgi svgi-md" style="color:var(--muted)" aria-hidden="true"><use href="#ic-file"/></svg>
-      <span>Levantamento importado: <strong>Não</strong></span>
+      <svg class="svgi svgi-md" [style.color]="importado() ? 'var(--ok)' : 'var(--muted)'" aria-hidden="true"><use href="#ic-file"/></svg>
+      <span>Levantamento importado: <strong>{{ importado() ? 'Sim' : 'Não' }}</strong>@if (importado(); as imp) { ({{ imp.arquivo }}) }</span>
     </div>
   </div>
 
@@ -38,14 +43,25 @@
       </div>
     }
 
-    <div class="painel" style="opacity:.6">
+    @if (importado(); as imp) {
+      <div class="painel" style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+        <div>
+          <div style="font-weight:700;color:var(--navy)">Usar o Levantamento importado</div>
+          <div class="dica" style="margin:2px 0 0">Lê o arquivo <em>{{ imp.arquivo }}</em>, importa as respostas e gera o Projeto fiel.</div>
+        </div>
+        <button class="btn" [class.primario]="!telaResp()" type="button" [disabled]="gerando() !== null" (click)="usarImportado()">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> {{ gerando() === 'importado' ? 'Gerando…' : 'Usar importado' }}
+        </button>
+      </div>
+    }
+
+    <div class="painel">
       <div style="font-weight:700;color:var(--navy)">Importar um Levantamento (.docx)</div>
-      <div class="dica" style="margin:2px 0 8px">Envie o Mapeamento preenchido — as respostas são importadas para o painel e o Projeto é gerado fiel.
-        <strong>Não disponível nesta versão</strong> — use "Responder levantamento" ou "Editar dados do Levantamento" na ficha.</div>
+      <div class="dica" style="margin:2px 0 8px">Envie o Mapeamento preenchido — as respostas são importadas para o painel e o Projeto é gerado fiel.</div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <input type="file" accept=".docx" disabled style="flex:1;min-width:220px" />
-        <button class="btn" type="button" disabled>
-          <svg class="svgi" aria-hidden="true"><use href="#ic-upload"/></svg> Importar e gerar
+        <input #arquivoInput type="file" accept=".docx" [disabled]="gerando() !== null" style="flex:1;min-width:220px" />
+        <button class="btn" [class.primario]="!telaResp() && !importado()" type="button" [disabled]="gerando() !== null" (click)="importarArquivo(arquivoInput)">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-upload"/></svg> {{ gerando() === 'importar' ? 'Importando…' : 'Importar e gerar' }}
         </button>
       </div>
     </div>
@@ -55,7 +71,7 @@
         <div style="font-weight:700;color:var(--navy)">Gerar modelo do Projeto para preenchimento manual</div>
         <div class="dica" style="margin:2px 0 0">Sem respostas no painel: gera o Projeto preenchido com tudo que dá pelos <strong>cadastros</strong> e <strong>Índice de Tópicos</strong> (módulos por área + perguntas como guia) para preencher à mão.</div>
       </div>
-      <button class="btn" [class.primario]="!telaResp()" type="button" [disabled]="gerando() !== null" (click)="gerar('modelo')">
+      <button class="btn" type="button" [disabled]="gerando() !== null" (click)="gerar('modelo')">
         <svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> {{ gerando() === 'modelo' ? 'Gerando…' : 'Gerar modelo manual' }}
       </button>
     </div>

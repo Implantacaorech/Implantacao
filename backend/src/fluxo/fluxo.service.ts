@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { readFileSync } from 'fs';
+import { basename } from 'path';
 import { Projeto } from '../database/entities/projeto.entity';
 import { DocumentosService } from '../documentos/documentos.service';
 import {
@@ -9,12 +11,17 @@ import {
 } from '../documentos/geracao-layout.service';
 import { MailerService } from '../email/mailer.service';
 import { NotificacaoService } from '../email/notificacao.service';
+import { LegadoCliService } from '../legado/legado-cli.service';
 import { LABELS } from './fluxo.constants';
 
-// Pacote inicial do fluxo (fluxo_confirmar.html oferece só estes dois pela "layout fiel"
-// nova — a 3ª opção do Flask original ("checklist") usa o gerador legado runner.py, ainda
-// não portado; 'termo' não faz parte do pacote inicial em nenhuma das duas versões).
-const TIPOS_GERAVEIS_PACOTE: readonly SlugDocumentoFiel[] = ['levantamento', 'cronograma'];
+// Pacote inicial do fluxo — mesmo default de webapp/routes_fluxo.py:fluxo_criar
+// (`gerar = f.getlist("gerar") or ["levantamento", "checklist", "cronograma"]`).
+// 'levantamento'/'cronograma' vão pela "layout fiel" nova (GeracaoLayoutService);
+// 'checklist' usa o gerador legado (runner.gerar_do_projeto, via LegadoCliService — mesma
+// ponte de subprocesso do assistente administrativo legado, ver LegadoModule). 'termo' não
+// faz parte do pacote inicial em nenhuma das duas versões.
+const TIPOS_LAYOUT_FIEL_PACOTE: readonly SlugDocumentoFiel[] = ['levantamento', 'cronograma'];
+const TIPOS_PACOTE_PADRAO = ['levantamento', 'checklist', 'cronograma'];
 
 const NOMES_DOC: Record<SlugDocumentoFiel, string> = {
   levantamento: 'Mapeamento de Processos',
@@ -22,6 +29,7 @@ const NOMES_DOC: Record<SlugDocumentoFiel, string> = {
   cronograma: 'Cronograma',
   termo: 'Termo de Encerramento',
 };
+const NOME_CHECKLIST = 'Check List do Consultor';
 
 export interface CriarFluxoManualDto extends Partial<Projeto> {
   consultor?: string;
@@ -92,6 +100,7 @@ export class FluxoService {
     private readonly documentos: DocumentosService,
     private readonly notificacao: NotificacaoService,
     private readonly geracaoLayout: GeracaoLayoutService,
+    private readonly legadoCli: LegadoCliService,
     private readonly mailer: MailerService,
   ) {}
 
@@ -269,24 +278,41 @@ export class FluxoService {
     }
     await this.notificacao.notificarEvento(projeto.id, 'fechamento', projeto);
 
-    const tiposPedidos = (dto.gerar && dto.gerar.length > 0 ? dto.gerar : ['levantamento', 'cronograma']).filter(
-      (t): t is SlugDocumentoFiel => TIPOS_GERAVEIS_PACOTE.includes(t as SlugDocumentoFiel),
-    );
+    const tiposPedidos = dto.gerar && dto.gerar.length > 0 ? dto.gerar : TIPOS_PACOTE_PADRAO;
     const caminhos: string[] = [];
     const nomes: string[] = [];
     for (const tipo of tiposPedidos) {
       try {
-        const arquivo = await this.geracaoLayout.gerar(projeto.id, tipo, 'auto');
+        if (tipo === 'checklist') {
+          const r = await this.legadoCli.executar<{ arquivo: string | null; log: string }>('gerar_do_projeto', {
+            projeto: { cliente: projeto.cliente, modulos: projeto.modulos },
+            tipo: 'checklist',
+          });
+          if (!r.arquivo) continue;
+          const salvo = this.documentos.salvarArquivoGerado(
+            projeto.id,
+            basename(r.arquivo),
+            readFileSync(r.arquivo),
+          );
+          await this.documentos.registrarDocumento(projeto.id, 'checklist', salvo.arquivo, salvo.caminho, 'gerado');
+          await this.documentos.registrarEvento(projeto.id, 'documento', `Gerou ${salvo.arquivo} (checklist)`, autor);
+          caminhos.push(salvo.caminho);
+          nomes.push(NOME_CHECKLIST);
+          continue;
+        }
+        if (!TIPOS_LAYOUT_FIEL_PACOTE.includes(tipo as SlugDocumentoFiel)) continue;
+        const slug = tipo as SlugDocumentoFiel;
+        const arquivo = await this.geracaoLayout.gerar(projeto.id, slug, 'auto');
         const salvo = this.documentos.salvarArquivoGerado(projeto.id, arquivo.filename, arquivo.buffer);
-        await this.documentos.registrarDocumento(projeto.id, tipo, salvo.arquivo, salvo.caminho, 'gerado');
+        await this.documentos.registrarDocumento(projeto.id, slug, salvo.arquivo, salvo.caminho, 'gerado');
         await this.documentos.registrarEvento(
           projeto.id,
           'documento',
-          `Gerou ${salvo.arquivo} (${tipo})`,
+          `Gerou ${salvo.arquivo} (${slug})`,
           autor,
         );
         caminhos.push(salvo.caminho);
-        nomes.push(NOMES_DOC[tipo]);
+        nomes.push(NOMES_DOC[slug]);
       } catch (e) {
         this.logger.warn(`Falha ao gerar ${tipo} no pacote inicial do fluxo: ${(e as Error).message}`);
       }

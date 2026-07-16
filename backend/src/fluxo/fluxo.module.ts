@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Projeto } from '../database/entities/projeto.entity';
 import { DocumentosModule } from '../documentos/documentos.module';
 import { EmailModule } from '../email/email.module';
+import { LegadoModule } from '../legado/legado.module';
 import { ImapIntakeService } from './imap-intake.service';
 import { FluxoService } from './fluxo.service';
 import { RoboCaixaService } from './robo-caixa.service';
@@ -12,7 +13,7 @@ import { ProjetoEmailService } from './projeto-email.service';
 import { ProjetoEmailController } from './projeto-email.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Projeto]), DocumentosModule, EmailModule],
+  imports: [TypeOrmModule.forFeature([Projeto]), DocumentosModule, EmailModule, LegadoModule],
   controllers: [ConfigImapController, FluxoController, ProjetoEmailController],
   providers: [ImapIntakeService, FluxoService, RoboCaixaService, ProjetoEmailService],
   exports: [ImapIntakeService, FluxoService],

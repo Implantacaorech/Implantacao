@@ -91,10 +91,10 @@
         <svg class="svgi svgi-md" style="color:var(--brand)" aria-hidden="true"><use href="#ic-file"/></svg>
         Mapeamento de Processos
       </label>
-      <label class="fx-check" title="Não disponível nesta versão — gerador legado (runner.py) ainda não portado.">
-        <input type="checkbox" disabled />
-        <svg class="svgi svgi-md" style="color:var(--muted)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
-        Check List <small>(indisponível)</small>
+      <label class="fx-check">
+        <input type="checkbox" [(ngModel)]="gerarChecklist" name="gerarChecklist" />
+        <svg class="svgi svgi-md" style="color:var(--brand)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+        Check List
       </label>
       <label class="fx-check">
         <input type="checkbox" [(ngModel)]="gerarCronograma" name="gerarCronograma" />

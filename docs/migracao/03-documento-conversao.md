@@ -1158,17 +1158,15 @@ sessão — **as 51 telas do Flask agora têm equivalente Angular**. Resumo:
   Acompanhamento, Levantamento (respostas do Índice de Tópicos), Doc editar
   (`doc-conteudo`), Protocolos de Treinamento (lista+ficha), Projeto origem (seleção de
   fonte da geração)** — só frontend, contra endpoints NestJS que já existiam. Mapa mental
-  é dado 100% estático (sem tabela no banco, igual ao Flask); "Projeto origem" expõe as
-  fontes "tela" e "modelo em branco" (já suportadas) e sinaliza "levantamento importado"/
-  "importar .docx agora" como indisponíveis (sem backend equivalente, decisão de escopo,
-  não bug).
+  é dado 100% estático (sem tabela no banco, igual ao Flask); "Projeto origem" nasceu
+  expondo só as fontes "tela" e "modelo em branco" — "levantamento importado"/"importar
+  .docx agora" foram fechadas depois, ver §15.
 - **Fluxo / Novo Projeto** (`fluxo.html`+`fluxo_confirmar.html`) — frontend novo +
   `FluxoService.criarComPacote` (backend, método novo — `criarDeCampos`/
   `criarDeFechamento`, usados pelo robô da caixa, não foram alterados): gera o pacote
   inicial (Mapeamento + Cronograma, via `GeracaoLayoutService`) e envia o e-mail-resumo
   com anexos (via `MailerService`), fechando a lacuna do §8 item 5/§2. O "Check List" do
-  pacote inicial do Flask usa o gerador legado (`tools/gerar_checklist_consultor.py`, via
-  `runner.py`) — não ligado (ver o próximo item, é o mesmo motivo).
+  pacote inicial nasceu sem o gerador legado ligado — fechado depois, ver §15.
 - **Projeto e-mail** (`projeto_email.html`, `/projetos/:id/email`) — endpoint novo:
   `ProjetoEmailController`/`ProjetoEmailService` (em `backend/src/fluxo/`, mesmo módulo
   fonte do Flask original — `routes_fluxo.py` já agrupava fluxo de fechamento + e-mail
@@ -1209,8 +1207,45 @@ anteriores. Continua valendo a limitação de §13: **nenhuma tela nova foi vist
 num navegador real**: essa validação, e o restante do checklist operacional (Fases 1-6),
 seguem em [05-plano-de-virada.md](05-plano-de-virada.md).
 
-**Limitações propositais que ficam**: o gerador legado de Check List (mencionado acima,
-no pacote inicial do Fluxo) e a lacuna já conhecida de "importar levantamento .docx"/
-"importar .docx agora" em Projeto origem — ambas dependem do mesmo `tools/gerar_*.py`
-legado; a ponte de subprocesso criada para o assistente administrativo poderia ser
-reaproveitada para fechá-las, mas isso não foi pedido nesta sessão.
+**Limitações propositais registradas no fim desta sessão** (o gerador legado de Check
+List no pacote do Fluxo, e "importar levantamento .docx"/"importar .docx agora" em
+Projeto origem) — **fechadas na sessão seguinte, mesmo dia**, ver §15.
+
+## 15. Sessão seguinte — as 2 lacunas de código que restavam do §14 (2026-07-16)
+
+Reaproveitando a mesma ponte de subprocesso do assistente administrativo legado
+(`LegadoCliService`/`webapp/legado_cli.py`, ver §14), sem estender o `docservice` (mesmo
+motivo arquitetural).
+
+- **Check List no pacote inicial do Fluxo**: nova ação `gerar_do_projeto` no
+  `legado_cli.py` (porta `runner.gerar_do_projeto(proj, tipo)` — usa só `cliente` +
+  `modulos`, mais simples que `gerar_checklist_form`, que é a função usada pelo
+  assistente administrativo para outro fluxo). `FluxoService.criarComPacote` passou a
+  injetar `LegadoCliService` (via `FluxoModule` importando `LegadoModule`, que agora
+  exporta `LegadoCliService`) e, quando `checklist` está entre os tipos pedidos, chama
+  `gerar_do_projeto` e lê o arquivo do disco (`readFileSync`) para anexar — os outros
+  tipos (`levantamento`/`cronograma`) continuam pela "layout fiel" nova, sem mudança.
+  Default do pacote agora é `['levantamento', 'checklist', 'cronograma']`, igual ao Flask
+  original.
+- **Importar Levantamento (.docx) em Projeto origem**: nova ação `docx_paragrafos` no
+  `legado_cli.py` — só EXTRAI o texto dos parágrafos do `.docx` (não toca em banco
+  nenhum, nem o antigo nem o novo). O casamento tópico→resposta
+  (`webapp/db.py:levantamento_importar_respostas`, a função `_depois`) foi reescrito em
+  TypeScript puro — `LevantamentoRespostaService.importarDeParagrafos()` — porque essa
+  parte só faz sentido operando nas linhas do `LevantamentoResposta` do schema NOVO
+  (deixar o Python tocar ali violaria a mesma regra de isolamento de banco que já vale
+  para o `docservice`). Endpoint novo em `DocumentosController` (não em
+  `LevantamentoController`, para não criar um import circular
+  `DocumentosModule`↔`LevantamentoModule` — mesma lição do §6 item 13):
+  `POST /projetos/:projetoId/projeto/importar-levantamento` (multipart, arquivo
+  opcional — com arquivo replica a fonte "importar" do Flask, sem arquivo reusa o último
+  Levantamento importado, replicando a fonte "importado"; 422 se nenhum dos dois existir)
+  e `GET /projetos/:projetoId/projeto/origem` (expõe se há um Levantamento importado, pro
+  Angular decidir se mostra o card "Usar o Levantamento importado"). Resposta: o `.docx`
+  do Projeto gerado direto (mesmo padrão de `gerar-layout`), com o número de respostas
+  importadas no header `X-Respostas-Importadas`.
+
+**Validação**: 8 testes novos para `importarDeParagrafos` (maiúsculas/minúsculas,
+separadores, placeholder `<...>` do modelo em branco, não sobrescreve resposta já
+preenchida) + suíte completa (docservice/backend/frontend) passando. Nenhuma lacuna de
+código conhecida ficou registrada no fim desta sessão.

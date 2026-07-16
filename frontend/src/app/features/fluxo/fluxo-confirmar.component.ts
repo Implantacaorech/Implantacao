@@ -41,6 +41,7 @@ export class FluxoConfirmarComponent {
   tecnicos = '';
   emailsResponsaveis = '';
   gerarLevantamento = true;
+  gerarChecklist = true;
   gerarCronograma = true;
 
   constructor() {
@@ -74,6 +75,7 @@ export class FluxoConfirmarComponent {
     try {
       const gerar: string[] = [];
       if (this.gerarLevantamento) gerar.push('levantamento');
+      if (this.gerarChecklist) gerar.push('checklist');
       if (this.gerarCronograma) gerar.push('cronograma');
       const r = await this.service.criar({
         cliente: this.cliente,
