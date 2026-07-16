@@ -1,0 +1,111 @@
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else if (erro() && !protocolo()) {
+  <div class="resultado erro" style="padding:10px 16px">{{ erro() }}</div>
+} @else if (protocolo(); as p) {
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+    <h1 style="margin:0">{{ ehAudio() ? '🎧' : '🎬' }} {{ p.titulo || p.videoNome }}</h1>
+    <span style="background:#eef2ff;color:#1f4e78;padding:3px 10px;border-radius:999px;font-size:.78rem;font-weight:700">{{ p.status }}</span>
+    <span style="flex:1"></span>
+    <a class="btn" routerLink="/protocolos">← Protocolos</a>
+  </div>
+
+  @if (salvo()) { <div class="resultado ok" style="padding:8px 14px">✅ Salvo.</div> }
+  @if (aviso()) { <div class="resultado" style="padding:8px 14px">ℹ️ {{ aviso() }}</div> }
+  @if (erro()) { <div class="resultado erro" style="padding:8px 14px">{{ erro() }}</div> }
+  @if (p.status === 'Erro' && p.logErro) {
+    <div class="resultado erro" style="padding:8px 14px">⚠️ <strong>Erro no processamento:</strong> {{ p.logErro }}</div>
+  }
+
+  <div class="painel">
+    <div class="pt-steps">
+      @for (e of etapas(); track e.nome; let last = $last) {
+        <div class="pt-step" [class]="e.classe">
+          <span class="pt-dot">{{ e.classe === 'feita' ? '✓' : (e.classe === 'ativa' ? '●' : e.numero) }}</span>
+          <span class="pt-rot">{{ e.nome }}</span>
+        </div>
+        @if (!last) { <div class="pt-linha" [class.feita]="e.linhaFeita"></div> }
+      }
+    </div>
+    <div class="dica" style="margin:10px 0 0;text-align:center">{{ detalheEtapa() }}</div>
+    @if (mostrarBarra()) {
+      <div style="max-width:520px;margin:8px auto 0">
+        <div style="background:#e2e8f0;border-radius:999px;height:10px;overflow:hidden">
+          <div style="background:var(--brand,#2563eb);height:100%;transition:width .8s" [style.width.%]="pct()"></div>
+        </div>
+        <div class="dica" style="text-align:center;margin:4px 0 0">{{ barraTexto() }}</div>
+      </div>
+    }
+  </div>
+
+  <div class="painel">
+    <p class="dica" style="margin:0">
+      <strong>Arquivo:</strong> {{ p.videoNome }} · <strong>Origem:</strong> {{ p.videoOrigem === 'sharepoint' ? 'SharePoint' : 'Upload manual' }}
+      · <strong>Registrado:</strong> {{ formatarDataHora(p.criadoEm) || '—' }}
+      @if (p.processadoEm) { · <strong>Processado:</strong> {{ formatarDataHora(p.processadoEm) }} }
+      @if (p.duracaoSeg) { · <strong>Duração:</strong> {{ formatarDuracao(p.duracaoSeg) }} }
+      @if (p.aprovadoEm) { · <strong>Aprovado:</strong> {{ formatarData(p.aprovadoEm) }} por {{ p.aprovador }} }
+    </p>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button class="btn" type="button" [disabled]="processando()" (click)="processar()">
+        🔁 {{ p.status === 'Pendente' || p.status === 'Erro' ? 'Processar agora' : 'Reprocessar' }}
+      </button>
+      @if (podeAprovar() && p.status === 'Em revisão') {
+        <button class="btn primario" type="button" [disabled]="decidindo()" (click)="aprovar()">✅ Aprovar e publicar</button>
+        <button class="btn perigo" type="button" [disabled]="decidindo()" (click)="reprovar()">✖ Reprovar / Ajustar</button>
+      }
+    </div>
+  </div>
+
+  <div class="painel">
+    <h3 style="color:var(--navy);margin-top:0">{{ ehAudio() ? 'Áudio original' : 'Vídeo original' }}</h3>
+    @if (ehAudio()) {
+      <audio controls preload="metadata" style="width:100%" [src]="videoUrl()"></audio>
+    } @else {
+      <video controls preload="metadata" style="width:100%;max-height:420px;background:#000;border-radius:6px" [src]="videoUrl()"></video>
+    }
+  </div>
+
+  @if (p.pendencias) {
+    <div class="painel" style="border-left:3px solid var(--warn,#c77a11)">
+      <h3 style="color:var(--navy);margin-top:0">⚠ Pendências de validação</h3>
+      <pre style="white-space:pre-wrap;font-family:inherit;margin:0">{{ p.pendencias }}</pre>
+    </div>
+  }
+
+  <form class="painel" (ngSubmit)="salvar()">
+    <h3 style="color:var(--navy);margin-top:0">Registro do protocolo (edite antes de aprovar)</h3>
+    <div class="grade2">
+      <label class="campo"><span>Título</span>
+        <input [ngModel]="campo('titulo')" name="titulo" (ngModelChange)="onCampoChange('titulo', $event)" />
+      </label>
+      <label class="campo"><span>Assunto principal</span>
+        <input [ngModel]="campo('assunto')" name="assunto" (ngModelChange)="onCampoChange('assunto', $event)" />
+      </label>
+      <label class="campo"><span>Módulo</span>
+        <select [ngModel]="campo('modulo')" name="modulo" (ngModelChange)="onCampoChange('modulo', $event)">
+          @for (m of modulos; track m) { <option [value]="m">{{ m }}</option> }
+        </select>
+      </label>
+      <label class="campo"><span>Menu</span>
+        <input [ngModel]="campo('menu')" name="menu" (ngModelChange)="onCampoChange('menu', $event)" />
+      </label>
+    </div>
+    @for (c of camposEdicao; track c.chave) {
+      <label class="campo"><span>{{ c.rotulo }}</span>
+        <textarea [rows]="c.linhas" [ngModel]="campo(c.chave)" [name]="c.chave" (ngModelChange)="onCampoChange(c.chave, $event)"></textarea>
+      </label>
+    }
+    <button class="btn primario" type="submit">💾 Salvar edição</button>
+  </form>
+
+  <details class="painel">
+    <summary style="cursor:pointer;font-weight:700;color:var(--navy)">Transcrição completa (com tempos)</summary>
+    <pre style="white-space:pre-wrap;font-family:inherit;max-height:420px;overflow:auto;margin:8px 0 0">{{ p.transcricao || '(ainda não transcrito)' }}</pre>
+  </details>
+
+  <details class="painel">
+    <summary style="cursor:pointer;font-weight:700;color:var(--navy)">Histórico</summary>
+    <pre style="white-space:pre-wrap;font-family:inherit;margin:8px 0 0">{{ p.historico }}</pre>
+  </details>
+}

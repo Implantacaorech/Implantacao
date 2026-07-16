@@ -1,0 +1,69 @@
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <h1 style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+    <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-compass"/></svg>
+    Levantamento — {{ cliente() }}
+  </h1>
+  <p class="sub">Responda as perguntas do <strong>Índice de Tópicos</strong> dos módulos contratados.
+    Estas respostas alimentam a geração do <strong>Projeto de Implantação</strong>.</p>
+
+  @if (erro()) {
+    <div class="resultado erro" style="padding:10px 16px;margin-bottom:10px">{{ erro() }}</div>
+  }
+
+  @if (salvo()) {
+    <div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
+      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Respostas salvas.
+    </div>
+  }
+
+  @if (grupos().length === 0) {
+    <div class="resultado erro" style="padding:10px 16px;display:flex;align-items:center;gap:8px">
+      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg>
+      Nenhuma pergunta — confira os <strong>Módulos Contratados</strong> na ficha (devem ser siglas do Índice de Tópicos, ex.: FAT, EST).
+    </div>
+  } @else {
+    <div style="display:flex;align-items:center;gap:10px;margin:10px 0 16px">
+      <div style="flex:1;max-width:340px;height:10px;background:var(--line);border-radius:6px;overflow:hidden">
+        <div style="height:100%;width:{{ progresso() }}%;background:var(--ok)"></div>
+      </div>
+      <span class="dica" style="margin:0"><strong>{{ resumo().respondidas }}</strong> / {{ resumo().total }} respondidas</span>
+    </div>
+
+    <form (ngSubmit)="salvar()">
+      @for (g of grupos(); track g.area) {
+        <details class="lev-mod">
+          <summary>
+            <svg class="svgi svgi-md" style="color:var(--brand)" aria-hidden="true"><use href="#ic-layers"/></svg>
+            <span class="lev-mod-nome">{{ g.area }}</span>
+            <span class="lev-mod-cont" [class.ok]="g.resp === g.itens.length && g.itens.length > 0">{{ g.resp }}/{{ g.itens.length }}</span>
+          </summary>
+          <div class="lev-body">
+            @for (r of g.itens; track r.id) {
+              @if (r.mostrarModulo) {
+                <div style="font-weight:700;color:var(--brand);margin:10px 0 2px">{{ r.moduloSigla }} — {{ r.modulo }}</div>
+              }
+              @if (r.mostrarAdicional) {
+                <div class="dica" style="font-weight:700;color:var(--muted);margin:8px 0 2px">{{ r.adicional }}</div>
+              }
+              <label class="campo" style="margin-bottom:8px">
+                <span>{{ r.topico }}</span>
+                <textarea rows="2" placeholder="Resposta / observações…"
+                          [ngModel]="r.resposta" name="resposta_{{ r.id }}"
+                          (ngModelChange)="onRespostaChange(r.id, $event)"></textarea>
+              </label>
+            }
+          </div>
+        </details>
+      }
+
+      <div style="position:sticky;bottom:0;background:#fff;padding:10px 0;border-top:1px solid var(--line);display:flex;gap:8px;margin-top:10px;z-index:2">
+        <button class="btn primario" type="submit" [disabled]="salvando()">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvar respostas
+        </button>
+        <a class="btn" [routerLink]="['/projetos', projetoId]">Voltar à ficha</a>
+      </div>
+    </form>
+  }
+}

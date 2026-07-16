@@ -137,6 +137,27 @@ mão, simulando o primeiro boot da aplicação). Confirmado nesta bateria:
   `modelos_documento_versoes`/`modelos_documento_campos` inicialmente não preservavam o
   `id` de origem e duplicavam a cada rodada; corrigido para preservar o id (mesma
   estratégia das demais tabelas por-projeto) antes de considerar o script pronto.
+- **Bug crítico de preservação de `id` (achado só na migração real, não nos testes
+  sintéticos) — corrigido.** Todas as tabelas marcadas "id preservado" nesta seção
+  usavam `repository.create({id, ...}) + repository.save(...)`, confiando no TypeORM para
+  fazer upsert pelo `id` explícito. Isso NUNCA funcionou: para colunas
+  `@PrimaryGeneratedColumn()`, o TypeORM omite a coluna `id` da lista de colunas do
+  `INSERT` mesmo com o valor setado no objeto, deixando o Postgres gerar um id novo por
+  sequence — sem erro, sem aviso. Nos testes com dados sintéticos isso ficou invisível
+  porque os ids de origem usados (1, 2) coincidiam, por acaso, com os que a sequence do
+  destino vazio geraria de qualquer forma. Só apareceu ao migrar o projeto real (id 174):
+  cada rodada criava uma linha nova com id auto-gerado (nunca 174), deixando toda tabela
+  filha (`designacoes`, `eventos`, `cronograma_atividades`, `levantamento_respostas` etc.,
+  que gravam o `projeto_id` da ORIGEM) órfã — sem constraint de FK no banco, a corrupção
+  foi silenciosa. Corrigido trocando todo ponto de escrita "id preservado" por um helper
+  único (`upsertComId`, em `migrar-legado.ts`) que faz `INSERT ... ON CONFLICT (id) DO
+  UPDATE` via SQL bruto, resolvendo os nomes de coluna pelos metadados do próprio
+  TypeORM. Revalidado com o mesmo ciclo Docker, desta vez com um projeto de id não
+  sequencial (174) de propósito, para não repetir o mesmo ponto cego. O `painel-db-novo`
+  já tinha sido corrompido por essa forma antes da correção (projeto duplicado, ~1150
+  linhas filhas órfãs) — foi zerado e remigrado do zero com o script corrigido; a
+  migração real completa (25 tabelas, ids conferidos sem órfãos) rodou com sucesso em
+  2026-07-15.
 - A sequence do Postgres fica sincronizada depois da migração — um `INSERT` novo (sem id
   explícito) simulando o uso normal da aplicação depois da migração pega o próximo id
   livre, sem colidir com nenhum id migrado.

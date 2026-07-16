@@ -1,0 +1,26 @@
+<h1>👤 Dados do Cliente</h1>
+<p class="sub">Preencha uma vez. Estes dados alimentam todos os documentos de escritório
+  (KPIs, RAID, Dossiê, Kit de Mudança, Roteiros, Reconciliação, Hypercare, Fit/Gap).</p>
+@if (atual(); as c) {
+  <div class="resultado ok"><strong>Cliente atual:</strong> {{ c.nome }}</div>
+}
+@if (erro()) {
+  <div class="resultado erro" style="padding:10px 16px">{{ erro() }}</div>
+}
+
+<form class="painel" (ngSubmit)="salvar()">
+  @for (c of campos; track c.campo) {
+    <label class="campo">
+      <span>{{ c.rotulo }}@if (c.obrigatorio) { * }</span>
+      @if (c.tipo === 'textarea') {
+        <textarea [name]="c.campo" rows="4" [placeholder]="c.dica" [(ngModel)]="valores[c.campo]"></textarea>
+      } @else {
+        <input [type]="c.tipo" [name]="c.campo" [placeholder]="c.dica" [(ngModel)]="valores[c.campo]" [required]="c.obrigatorio" />
+      }
+    </label>
+  }
+  <button class="btn primario" type="submit" [disabled]="salvando()">
+    {{ salvando() ? 'Salvando…' : 'Salvar e usar este cliente' }}
+  </button>
+</form>
+<a class="voltar" routerLink="/home">← Início</a>

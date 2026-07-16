@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -31,7 +36,11 @@ export class UsersService {
   /** Existe um usuário (ativo ou não) com esse login OU esse e-mail? Espelha
    * webapp/db.py:existe_usuario — usado no auto-cadastro para rejeitar duplicidade antes
    * de gerar o código de verificação. `ignorarId` exclui o próprio registro (edição). */
-  async existeUsuario(login: string, email: string, ignorarId?: number): Promise<boolean> {
+  async existeUsuario(
+    login: string,
+    email: string,
+    ignorarId?: number,
+  ): Promise<boolean> {
     const l = (login || '').trim().toLowerCase();
     const e = (email || '').trim().toLowerCase();
     if (!l && !e) return false;
@@ -100,7 +109,9 @@ export class UsersService {
   }): Promise<Usuario> {
     const login = (dados.login || '').trim() || dados.email.trim(); // login em branco usa o e-mail
     if (await this.existeUsuario(login, dados.email)) {
-      throw new ConflictException('Já existe um usuário com este login ou e-mail.');
+      throw new ConflictException(
+        'Já existe um usuário com este login ou e-mail.',
+      );
     }
     const senhaHash = await bcrypt.hash(dados.senha, SALT_ROUNDS);
     const usuario = this.repo.create({
@@ -131,22 +142,46 @@ export class UsersService {
     },
   ): Promise<Usuario> {
     const usuario = await this.buscarPorId(id);
-    const loginNovo = dados.login !== undefined ? dados.login.trim() || (dados.email ?? usuario.email).trim() : usuario.login;
+    const loginNovo =
+      dados.login !== undefined
+        ? dados.login.trim() || (dados.email ?? usuario.email).trim()
+        : usuario.login;
     const emailNovo = dados.email !== undefined ? dados.email : usuario.email;
     if (await this.existeUsuario(loginNovo, emailNovo, id)) {
-      throw new ConflictException('Já existe um usuário com este login ou e-mail.');
+      throw new ConflictException(
+        'Já existe um usuário com este login ou e-mail.',
+      );
     }
     usuario.login = loginNovo;
     if (dados.nome !== undefined) usuario.nome = dados.nome;
     usuario.email = emailNovo;
     if (dados.perfil !== undefined) usuario.perfil = dados.perfil;
-    if (dados.codigoSicla !== undefined) usuario.codigoSicla = dados.codigoSicla;
+    if (dados.codigoSicla !== undefined)
+      usuario.codigoSicla = dados.codigoSicla;
     if (dados.ativo !== undefined) usuario.ativo = dados.ativo;
-    if (dados.senha) usuario.senhaHash = await bcrypt.hash(dados.senha, SALT_ROUNDS);
+    if (dados.senha)
+      usuario.senhaHash = await bcrypt.hash(dados.senha, SALT_ROUNDS);
     return this.repo.save(usuario);
   }
 
   async validarSenha(usuario: Usuario, senha: string): Promise<boolean> {
     return bcrypt.compare(senha, usuario.senhaHash);
+  }
+
+  /** Autoatendimento (`POST /auth/trocar-senha`) — diferente de `atualizar()` (ADM edita
+   * qualquer usuário sem confirmar a senha atual), aqui é o próprio usuário logado trocando
+   * a sua, por isso exige a senha atual. Cobre também o caso da migração de dados: senha
+   * temporária aleatória (ver migrar-legado.ts) → o usuário troca por uma de sua escolha. */
+  async trocarSenha(
+    id: number,
+    senhaAtual: string,
+    senhaNova: string,
+  ): Promise<void> {
+    const usuario = await this.buscarPorId(id);
+    if (!(await this.validarSenha(usuario, senhaAtual))) {
+      throw new UnauthorizedException('Senha atual incorreta.');
+    }
+    usuario.senhaHash = await bcrypt.hash(senhaNova, SALT_ROUNDS);
+    await this.repo.save(usuario);
   }
 }

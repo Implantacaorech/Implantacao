@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 /saida/
 .pytest_cache/
+/_cache_preview/

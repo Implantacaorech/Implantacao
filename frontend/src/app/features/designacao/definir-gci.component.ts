@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { DesignacaoService } from '../../core/services/designacao.service';
+import { ProjetosService } from '../../core/services/projetos.service';
 
 @Component({
   selector: 'app-definir-gci',
@@ -13,6 +14,7 @@ import { DesignacaoService } from '../../core/services/designacao.service';
 })
 export class DefinirGciComponent {
   private readonly service = inject(DesignacaoService);
+  private readonly projetos = inject(ProjetosService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -23,6 +25,8 @@ export class DefinirGciComponent {
   readonly erro = signal<string | null>(null);
   readonly gcis = signal<string[]>([]);
   readonly selecionados = signal<string[]>([]);
+  readonly cliente = signal('');
+  readonly gciJaDefinido = signal(false);
 
   constructor() {
     void this.carregar();
@@ -32,8 +36,13 @@ export class DefinirGciComponent {
     this.carregando.set(true);
     this.erro.set(null);
     try {
-      const view = await this.service.obterDefinirGci(this.projetoId);
+      const [view, projeto] = await Promise.all([
+        this.service.obterDefinirGci(this.projetoId),
+        this.projetos.buscar(this.projetoId),
+      ]);
       this.gcis.set(view.gcis);
+      this.cliente.set(projeto.cliente);
+      this.gciJaDefinido.set(!!view.gciAtual);
       this.selecionados.set(
         view.gciAtual
           .split(',')
@@ -64,7 +73,11 @@ export class DefinirGciComponent {
     this.erro.set(null);
     try {
       await this.service.definirGci(this.projetoId, this.selecionados());
-      await this.router.navigate(['/projetos', this.projetoId]);
+      // Espelha o fluxo real do Flask: depois de definir o(s) GCI(s), segue direto para
+      // definir a data do Levantamento — não volta para a ficha do projeto.
+      await this.router.navigate(['/projetos', this.projetoId, 'designacao', 'agendar'], {
+        queryParams: { salvo: '1' },
+      });
     } catch (e) {
       const msg =
         e instanceof HttpErrorResponse && typeof e.error?.message === 'string'

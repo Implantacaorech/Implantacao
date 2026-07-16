@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@n
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ApiEnvelope } from '../common/dto/api-envelope';
+import { CurrentUser, type AuthUser } from '../common/decorators/current-user.decorator';
 import { ImapIntakeService } from './imap-intake.service';
 import { FluxoService } from './fluxo.service';
 import { MailerService } from '../email/mailer.service';
@@ -11,10 +12,9 @@ import { MODELO_FECHAMENTO } from './fluxo.constants';
 
 /** Onboarding a partir do e-mail de fechamento do Comercial (/fluxo/*) — qualquer
  * usuário autenticado (mesmo padrão de acesso do Flask original, sem `pode_ver`
- * adicional além do login). Espelha webapp/routes_fluxo.py. Escopo desta fatia:
- * cria o projeto e notifica a Coordenação — a geração automática de documentos +
- * e-mail do pacote-resumo com anexos (fluxo_criar original) NÃO foi portada (ver
- * docs/migracao/03-documento-conversao.md). */
+ * adicional além do login). Espelha webapp/routes_fluxo.py. `criar` gera o pacote
+ * inicial (Mapeamento + Cronograma pela "layout fiel" nova) e envia o e-mail-resumo
+ * com anexos — só o Check List fica de fora (gerador legado runner.py, não portado). */
 @ApiTags('fluxo')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
@@ -58,9 +58,12 @@ export class FluxoController {
 
   @Post('criar')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Cria o projeto a partir dos campos confirmados/editados' })
-  async criar(@Body() dto: CriarFechamentoDto) {
-    const projetoId = await this.fluxo.criarDeCampos(dto);
-    return new ApiEnvelope({ projetoId });
+  @ApiOperation({
+    summary:
+      'Cria o projeto a partir dos campos confirmados/editados, gera o pacote inicial e envia o e-mail-resumo aos responsáveis',
+  })
+  async criar(@Body() dto: CriarFechamentoDto, @CurrentUser() user: AuthUser) {
+    const resultado = await this.fluxo.criarComPacote(dto, user.nome);
+    return new ApiEnvelope(resultado);
   }
 }

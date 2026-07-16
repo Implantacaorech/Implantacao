@@ -1,13 +1,25 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { PlanoCronogramaService } from '../../core/services/plano-cronograma.service';
+import { DocumentosService } from '../../core/services/documentos.service';
+import { AuthService } from '../../core/services/auth.service';
+import { podeGerar } from '../../core/constants/perfis';
 import { CRONO_STATUS, LinhaCronograma, Modificacao } from '../../core/models/plano-cronograma.model';
 
 function linhaVazia(): LinhaCronograma {
   return { etapa: '', topicos: '', horas: '', data: '', modalidade: '', status: 'Previsto' };
+}
+
+function baixarBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 @Component({
@@ -19,6 +31,8 @@ function linhaVazia(): LinhaCronograma {
 })
 export class CronogramaPlanoComponent {
   private readonly service = inject(PlanoCronogramaService);
+  private readonly documentosService = inject(DocumentosService);
+  private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
 
   readonly projetoId = Number(this.route.snapshot.paramMap.get('id'));
@@ -27,11 +41,14 @@ export class CronogramaPlanoComponent {
   readonly carregando = signal(true);
   readonly salvando = signal(false);
   readonly semeando = signal(false);
+  readonly gerando = signal(false);
   readonly erro = signal<string | null>(null);
   readonly aviso = signal<string | null>(null);
   readonly linhas = signal<LinhaCronograma[]>([]);
   readonly historico = signal<Modificacao[]>([]);
   readonly mostrarHistorico = signal(false);
+
+  readonly podeGerarDocumento = computed(() => podeGerar('cronograma', this.auth.usuario()?.perfil));
 
   constructor() {
     void this.carregar();
@@ -112,6 +129,22 @@ export class CronogramaPlanoComponent {
       this.erro.set(this.mensagemErro(e, 'Não foi possível carregar o plano automático.'));
     } finally {
       this.semeando.set(false);
+    }
+  }
+
+  async gerarDocumento(): Promise<void> {
+    if (this.gerando()) return;
+    this.gerando.set(true);
+    this.erro.set(null);
+    this.aviso.set(null);
+    try {
+      const arquivo = await this.documentosService.gerarLayout(this.projetoId, 'cronograma');
+      baixarBlob(arquivo.blob, arquivo.filename);
+      this.aviso.set(`${arquivo.filename} gerado e anexado à ficha.`);
+    } catch (e) {
+      this.erro.set(this.mensagemErro(e, 'Não foi possível gerar o documento.'));
+    } finally {
+      this.gerando.set(false);
     }
   }
 

@@ -1,0 +1,15 @@
+<h1>🧰 Assistente de Geradores (legado)</h1>
+<p class="sub">Ferramenta interna de suporte/QA para os geradores Office originais — teste modelos,
+  converta tempo verbal e rode o verificador de saúde. Distinta do fluxo de implantação do cliente.</p>
+
+<div class="grade">
+  @for (r of roles; track r.id) {
+    <a class="card" [routerLink]="['/legado', r.id]">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span class="icone">{{ r.icone }}</span>
+        <h3 style="margin:0">{{ r.nome }}</h3>
+      </div>
+      <p>{{ r.desc }}</p>
+    </a>
+  }
+</div>

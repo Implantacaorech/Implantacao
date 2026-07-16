@@ -1,5 +1,11 @@
-<div class="cabecalho">
-  <h1>Painel</h1>
+<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:4px">
+  <div>
+    <h1 style="margin-bottom:4px">Visão Geral</h1>
+    <p class="sub" style="margin:0">Carteira de implantação — o que precisa de atenção agora.</p>
+  </div>
+  <a class="btn primario" routerLink="/fluxo" style="align-self:center">
+    <svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg> Novo projeto
+  </a>
 </div>
 
 @if (erro()) {
@@ -9,85 +15,180 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else if (dados(); as d) {
-  <div class="kpis">
+  <div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-top:16px">
     <div class="kpi">
-      <span class="valor">{{ d.dados.ativos }}</span>
-      <span class="rotulo">Ativos</span>
+      <div class="n">{{ d.dados.ativos }}</div>
+      <div class="l">Projetos ativos</div>
     </div>
-    <div class="kpi">
-      <span class="valor">{{ d.dados.noPrazo }}</span>
-      <span class="rotulo">No prazo</span>
+    <div class="kpi bom">
+      <div class="n">{{ d.dados.noPrazo }}</div>
+      <div class="l">No prazo</div>
     </div>
-    <div class="kpi kpi-alerta">
-      <span class="valor">{{ d.dados.atrasados }}</span>
-      <span class="rotulo">Atrasados</span>
+    <div class="kpi" [class.alerta]="d.dados.atrasados">
+      <div class="n">{{ d.dados.atrasados }}</div>
+      <div class="l">Atrasados</div>
     </div>
-    <div class="kpi kpi-alerta">
-      <span class="valor">{{ d.dados.risco }}</span>
-      <span class="rotulo">Em risco</span>
-    </div>
-    <div class="kpi">
-      <span class="valor">{{ d.dados.gatePendente }}</span>
-      <span class="rotulo">Docs pendentes</span>
-    </div>
-    <div class="kpi">
-      <span class="valor">{{ d.dados.concluidos }}</span>
-      <span class="rotulo">Concluídos</span>
+    <div class="kpi" [class.alerta]="d.dados.alertas">
+      <div class="n">{{ d.dados.alertas }}</div>
+      <div class="l">Alertas ativos</div>
     </div>
   </div>
 
   @if (d.foco; as f) {
-    <section class="foco">
-      <h2>Em foco: {{ f.projeto.cliente }}</h2>
-      <div class="stepper">
+    <div class="painel" style="margin-top:16px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <svg class="svgi" style="color:var(--accent-700)" aria-hidden="true"><use href="#ic-pin"/></svg>
+        <span class="dica" style="margin:0;font-weight:600;color:var(--muted)">Projeto em foco</span>
+        <a [routerLink]="['/projetos', f.projeto.id]" style="font-weight:700;color:var(--navy);font-size:1.05rem">{{ f.projeto.cliente }}</a>
+        <span class="badge-sit" [attr.data-s]="f.projeto.situacao">{{ f.projeto.situacao }}</span>
+      </div>
+      <div class="stepper" [style.grid-template-columns]="'repeat(' + f.cabecalho.stepper.length + ',1fr)'">
         @for (etapa of f.cabecalho.stepper; track etapa.nome) {
-          <span class="passo passo-{{ etapa.estado }}">{{ etapa.nome }}</span>
+          <div>
+            <div class="seg" [class.done]="etapa.estado === 'done'" [class.atual]="etapa.estado === 'atual'"></div>
+            <div class="lbl" [class.atual]="etapa.estado === 'atual'">{{ etapa.nome }}</div>
+          </div>
         }
       </div>
-      @if (f.cabecalho.atraso !== null) {
-        <p class="atraso">Atrasado há {{ f.cabecalho.atraso }} dia(s)</p>
-      }
       @if (f.cabecalho.proxima; as proxima) {
-        <p class="proxima-acao">Próxima ação: {{ proxima.label }}</p>
+        <div class="proxima" style="margin-bottom:0">
+          <svg class="svgi" style="width:18px;height:18px;color:var(--warn);flex:none" aria-hidden="true"><use href="#ic-bell"/></svg>
+          <div class="txt">
+            <div class="titulo">Próxima ação: {{ proxima.label }}</div>
+            <p class="dica" style="margin:2px 0 0">Acesse a ficha para executar.</p>
+          </div>
+          <a class="btn primario" [routerLink]="['/projetos', f.projeto.id]">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Abrir ficha
+          </a>
+        </div>
+      } @else if (f.cabecalho.proxEtapa) {
+        <div class="proxima ok" style="margin-bottom:0">
+          <svg class="svgi" style="width:18px;height:18px;color:var(--ok);flex:none" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+          <div class="txt">
+            <div class="titulo">Fase liberada — pronto para avançar para {{ f.cabecalho.proxEtapa }}.</div>
+          </div>
+          <a class="btn primario" [routerLink]="['/projetos', f.projeto.id]">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Abrir ficha
+          </a>
+        </div>
+      } @else {
+        <div class="proxima ok" style="margin-bottom:0">
+          <svg class="svgi" style="width:18px;height:18px;color:var(--ok);flex:none" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+          <div class="txt"><div class="titulo">Projeto na fase final de encerramento.</div></div>
+          <a class="btn" [routerLink]="['/projetos', f.projeto.id]">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Abrir ficha
+          </a>
+        </div>
       }
-      <a [routerLink]="['/projetos', f.projeto.id]" class="botao">Ver ficha</a>
-    </section>
+    </div>
   }
 
-  <div class="colunas">
-    <section class="pendencias">
-      <h2>Próximas ações</h2>
-      @if (d.pendencias.length === 0) {
-        <p class="vazio">Nenhuma pendência.</p>
-      } @else {
-        <ul>
+  <div class="vg-cols">
+    <div class="painel" style="margin:0">
+      <h3 style="margin-top:0;display:flex;align-items:center;gap:7px">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Minhas próximas ações
+      </h3>
+      @if (d.pendencias.length > 0) {
+        <ul class="lista-acoes">
           @for (item of d.pendencias; track item.id + item.tipo) {
             <li>
-              <a [routerLink]="rotaAcao(item)">
-                <strong>{{ item.cliente }}</strong> — {{ item.acao }}
-                @if (item.atraso !== null) {
-                  <span class="atraso-tag">{{ item.atraso }}d atraso</span>
-                }
+              <a [routerLink]="rotaAcao(item)" [title]="item.acao">
+                <span class="ac-cli">{{ item.cliente }}
+                  @if (item.atraso !== null) {
+                    <span style="color:var(--err);font-size:.7rem;font-weight:700;white-space:nowrap">• {{ item.atraso }}d atraso</span>
+                  }
+                </span>
+                <span class="ac-do"><span class="dica" style="margin:0">{{ item.fase }}</span> · {{ item.acao }}</span>
+                <span class="ac-go" style="display:inline-flex;align-items:center;gap:4px;font-weight:700;color:var(--brand);white-space:nowrap">
+                  Abrir <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+                </span>
               </a>
             </li>
           }
         </ul>
-      }
-    </section>
-
-    <section class="alertas">
-      <h2>Alertas</h2>
-      @if (d.alertas.length === 0) {
-        <p class="vazio">Sem alertas no momento.</p>
+        <a class="dica" routerLink="/projetos" style="display:inline-block;margin-top:8px">Ver carteira completa →</a>
       } @else {
-        <ul>
+        <p class="dica" style="display:flex;align-items:center;gap:6px">
+          <svg class="svgi" style="width:12px;height:12px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+          Nenhuma ação pendente. Tudo encaminhado.
+        </p>
+      }
+    </div>
+    <div class="painel" style="margin:0">
+      <h3 style="margin-top:0;display:flex;align-items:center;gap:7px">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-bell"/></svg> Alertas
+      </h3>
+      @if (d.alertas.length > 0) {
+        <ul class="alertas">
           @for (a of d.alertas; track $index) {
-            <li class="alerta-{{ a.nivel }}">
-              <strong>{{ a.cliente }}</strong> — {{ a.msg }}
+            <li [class.al-alto]="a.nivel === 'alto'" [class.al-medio]="a.nivel === 'medio'">
+              <a [routerLink]="['/projetos', a.projetoId]" style="color:inherit;display:block">
+                <strong>{{ a.cliente }}</strong> — {{ a.msg }}
+              </a>
             </li>
           }
         </ul>
+        <a class="dica" routerLink="/coordenacao" style="display:inline-block;margin-top:8px">Ver tudo no Painel de Coordenação →</a>
+      } @else {
+        <p class="dica" style="display:flex;align-items:center;gap:6px">
+          <svg class="svgi" style="width:12px;height:12px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+          Sem alertas — carteira no prazo.
+        </p>
       }
-    </section>
+    </div>
   </div>
+
+  <h2 class="sec">
+    <svg class="svgi hi" aria-hidden="true"><use href="#ic-compass"/></svg> Como o fluxo funciona
+  </h2>
+  <div class="hero-fluxo">
+    <a class="passo" routerLink="/fluxo">
+      <span class="num">1</span>
+      <div>
+        <h3>Iniciar pelo fechamento</h3>
+        <p>E-mail do Comercial → extrai os dados, cria o projeto e gera o pacote inicial automaticamente.</p>
+      </div>
+    </a>
+    <span class="seta">→</span>
+    <a class="passo" routerLink="/projetos">
+      <span class="num">2</span>
+      <div>
+        <h3>Conduzir os projetos</h3>
+        <p>Workspace por fase: documentos obrigatórios, designações, comunicação e histórico em um só lugar.</p>
+      </div>
+    </a>
+    <span class="seta">→</span>
+    <a class="passo" routerLink="/coordenacao">
+      <span class="num">3</span>
+      <div>
+        <h3>Acompanhar a carteira</h3>
+        <p>KPIs, funil por etapa, atrasados, alertas proativos e ocupação por consultor.</p>
+      </div>
+    </a>
+  </div>
+
+  @if (veSistema()) {
+    <h2 class="sec" id="ferramentas">
+      <svg class="svgi hi" aria-hidden="true"><use href="#ic-settings"/></svg> Configurações e saúde
+    </h2>
+    <p class="sub" style="margin-bottom:12px">Integrações e utilitários — para usar fora do fluxo principal.</p>
+    <div class="tools">
+      <a class="tool" routerLink="/config/email">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-send"/></svg>
+        <div><strong>E-mail (SMTP)</strong><small>Conta de envio</small></div>
+      </a>
+      <a class="tool" routerLink="/config/imap">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-inbox"/></svg>
+        <div><strong>Caixa de entrada (IMAP)</strong><small>Detecta o e-mail de fechamento</small></div>
+      </a>
+      <a class="tool" routerLink="/config/gmail">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-send"/></svg>
+        <div><strong>Gmail API (envio)</strong><small>Envio por HTTPS (contorna SMTP)</small></div>
+      </a>
+      <a class="tool" routerLink="/config/ia">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-cpu"/></svg>
+        <div><strong>Modo IA</strong><small>Chave da revisão por IA</small></div>
+      </a>
+    </div>
+  }
 }

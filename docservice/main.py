@@ -45,6 +45,8 @@ from gerar_fiel import gerar_docx, gerar_xlsx  # noqa: E402
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "transcricao"))
 import servico as transcricao_servico  # noqa: E402
 
+import docview  # noqa: E402
+
 app = FastAPI(
     title="Painel de Implantação — Serviço de Geração de Documentos",
     description="Serviço interno (não público) chamado pela API NestJS.",
@@ -305,3 +307,23 @@ def status_transcricao(protocolo_id: int):
     if job is None:
         raise HTTPException(status_code=404, detail="Nenhuma transcrição iniciada para este protocolo.")
     return job
+
+
+class PreviewRequest(BaseModel):
+    caminho: str
+
+
+@app.post("/preview")
+def preview(req: PreviewRequest):
+    """Pré-visualização WYSIWYG de um documento gerado/anexado — equivalente a
+    webapp/routes_fluxo.py:projeto_doc_ver. .docx tenta PDF fiel via Word COM (com cache);
+    sem Word ou para .xlsx, cai no HTML. A validação de que `caminho` está numa pasta
+    permitida é responsabilidade do NestJS (docservice nunca é exposto publicamente)."""
+    if not os.path.exists(req.caminho):
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
+    pdf = docview.to_pdf(req.caminho)
+    if pdf:
+        with open(pdf, "rb") as f:
+            conteudo = f.read()
+        return {"tipo": "pdf", "conteudoBase64": base64.b64encode(conteudo).decode("ascii")}
+    return {"tipo": "html", "html": docview.to_html(req.caminho)}

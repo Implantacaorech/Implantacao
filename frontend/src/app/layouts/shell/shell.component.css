@@ -1,50 +1,9 @@
-.topo {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  background: #0f2f52;
-  color: #fff;
-  padding: 10px 20px;
-}
-
-.marca {
-  font-weight: 700;
-}
-
-nav {
-  display: flex;
-  gap: 14px;
-  flex: 1;
-}
-
-nav a {
-  color: #cfe0f0;
-  text-decoration: none;
-  font-size: 0.9rem;
-}
-
-nav a:hover {
-  color: #fff;
-}
-
-.usuario {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.85rem;
-}
-
-.usuario button {
-  background: transparent;
-  border: 1px solid #cfe0f0;
-  color: #fff;
-  border-radius: 5px;
-  padding: 4px 10px;
+/* A maior parte do visual vem de src/styles.css (sistema de design global, portado de
+   webapp/static/style.css) — aqui só o necessário para o <button> do "Sair" herdar o
+   mesmo estilo do link .topbar-ico (browsers aplicam estilo padrão de botão por cima). */
+button.topbar-ico {
+  background: none;
+  border: none;
+  font: inherit;
   cursor: pointer;
-}
-
-.conteudo {
-  padding: 20px;
-  max-width: 1100px;
-  margin: 0 auto;
 }

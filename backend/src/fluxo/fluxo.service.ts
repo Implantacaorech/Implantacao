@@ -3,8 +3,40 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Projeto } from '../database/entities/projeto.entity';
 import { DocumentosService } from '../documentos/documentos.service';
+import {
+  GeracaoLayoutService,
+  SlugDocumentoFiel,
+} from '../documentos/geracao-layout.service';
+import { MailerService } from '../email/mailer.service';
 import { NotificacaoService } from '../email/notificacao.service';
 import { LABELS } from './fluxo.constants';
+
+// Pacote inicial do fluxo (fluxo_confirmar.html oferece só estes dois pela "layout fiel"
+// nova — a 3ª opção do Flask original ("checklist") usa o gerador legado runner.py, ainda
+// não portado; 'termo' não faz parte do pacote inicial em nenhuma das duas versões).
+const TIPOS_GERAVEIS_PACOTE: readonly SlugDocumentoFiel[] = ['levantamento', 'cronograma'];
+
+const NOMES_DOC: Record<SlugDocumentoFiel, string> = {
+  levantamento: 'Mapeamento de Processos',
+  projeto: 'Projeto de Implantação',
+  cronograma: 'Cronograma',
+  termo: 'Termo de Encerramento',
+};
+
+export interface CriarFluxoManualDto extends Partial<Projeto> {
+  consultor?: string;
+  tecnicos?: string;
+  gerar?: string[];
+  emailsResponsaveis?: string;
+}
+
+export interface ResultadoCriarFluxo {
+  projetoId: number;
+  duplicado: boolean;
+  documentosGerados: string[];
+  emailEnviado: boolean;
+  avisoEmail?: string;
+}
 
 // Marcas diacríticas combinantes (U+0300-U+036F) — mesma técnica de
 // protocolos.constants.ts:slug(), para não depender da codificação do arquivo-fonte.
@@ -59,6 +91,8 @@ export class FluxoService {
     @InjectRepository(Projeto) private readonly projetos: Repository<Projeto>,
     private readonly documentos: DocumentosService,
     private readonly notificacao: NotificacaoService,
+    private readonly geracaoLayout: GeracaoLayoutService,
+    private readonly mailer: MailerService,
   ) {}
 
   /** Extrai os campos do corpo do e-mail (linhas "Rótulo: valor"). */
@@ -147,5 +181,148 @@ export class FluxoService {
     );
     await this.notificacao.notificarEvento(projeto.id, 'fechamento', projeto);
     return projeto.id;
+  }
+
+  /** Texto-resumo do projeto para o e-mail final aos responsáveis. Espelha
+   * webapp/fluxo.py:resumo_projeto. */
+  private resumoProjeto(proj: Projeto, docs: string[], gci: string, tecnicos: string): string {
+    const contato =
+      [proj.contatoNome, proj.contatoEmail, proj.contatoTel].filter(Boolean).join(' · ') ||
+      proj.contatos ||
+      '';
+    const linhas = ['Resumo do projeto de implantação', '='.repeat(34), ''];
+    const campos: [string, string | undefined][] = [
+      ['Cliente', proj.cliente],
+      ['CNPJ', proj.cnpj],
+      ['Ramo', proj.ramo],
+      ['Nº do projeto', proj.numeroProjeto],
+      ['Módulos', proj.modulos],
+      ['Horas', `${proj.horasCobradas || '0'} cobradas + ${proj.horasBonificadas || '0'} bonificadas`],
+      ['Contato', contato],
+      ['GCI (Levantamento)', gci],
+      ['Técnico(s)', tecnicos],
+    ];
+    for (const [rot, val] of campos) {
+      if (val) linhas.push(`• ${rot}: ${val}`);
+    }
+    if (docs.length > 0) {
+      linhas.push('', 'Documentos em anexo:');
+      linhas.push(...docs.map((d) => `  - ${d}`));
+    }
+    linhas.push(
+      '',
+      'Próximo passo: o GCI realiza o Levantamento de Processos e segue o fluxo no Painel.',
+      '',
+      '— Painel de Implantação · Rech Sistemas de Gestão',
+    );
+    return linhas.join('\n');
+  }
+
+  /** Cria o fluxo completo a partir da tela de confirmação manual (fluxo_confirmar.html):
+   * cria a ficha, gera o pacote inicial de documentos e envia o e-mail-resumo com anexos
+   * aos responsáveis. Espelha webapp/routes_fluxo.py:fluxo_criar — distinto de
+   * `criarDeCampos`, usado pelo robô automático da caixa (texto de evento e efeitos
+   * colaterais diferentes). */
+  async criarComPacote(dto: CriarFluxoManualDto, autor = ''): Promise<ResultadoCriarFluxo> {
+    const gci = (dto.consultor || '').trim();
+    const tecnicos = (dto.tecnicos || '').trim();
+    let observacoes = (dto.observacoes || '').trim();
+    if (tecnicos) observacoes = `${observacoes}${observacoes ? ' · ' : ''}Técnicos: ${tecnicos}`;
+
+    const ja = await this.existeSimilar(dto.cliente, dto.cnpj);
+    if (ja) {
+      return { projetoId: ja, duplicado: true, documentosGerados: [], emailEnviado: false };
+    }
+
+    const hoje = new Date().toISOString().slice(0, 10);
+    const { consultor: _consultor, tecnicos: _tecnicos, gerar: _gerar, emailsResponsaveis: _er, ...pf } = dto;
+    const projeto = await this.projetos.save(
+      this.projetos.create({
+        ...pf,
+        observacoes,
+        consultor: gci,
+        cliente: dto.cliente || 'Cliente',
+        dataInicio: hoje,
+      }),
+    );
+    await this.documentos.registrarEvento(
+      projeto.id,
+      'etapa',
+      'Fluxo iniciado pelo e-mail de fechamento (Comercial).',
+      autor,
+    );
+    if (gci) {
+      await this.documentos.registrarEvento(
+        projeto.id,
+        'nota',
+        `GCI designado p/ Levantamento: ${gci}`,
+        autor,
+      );
+    }
+    if (tecnicos) {
+      await this.documentos.registrarEvento(
+        projeto.id,
+        'nota',
+        `Técnico(s) da implantação: ${tecnicos}`,
+        autor,
+      );
+    }
+    await this.notificacao.notificarEvento(projeto.id, 'fechamento', projeto);
+
+    const tiposPedidos = (dto.gerar && dto.gerar.length > 0 ? dto.gerar : ['levantamento', 'cronograma']).filter(
+      (t): t is SlugDocumentoFiel => TIPOS_GERAVEIS_PACOTE.includes(t as SlugDocumentoFiel),
+    );
+    const caminhos: string[] = [];
+    const nomes: string[] = [];
+    for (const tipo of tiposPedidos) {
+      try {
+        const arquivo = await this.geracaoLayout.gerar(projeto.id, tipo, 'auto');
+        const salvo = this.documentos.salvarArquivoGerado(projeto.id, arquivo.filename, arquivo.buffer);
+        await this.documentos.registrarDocumento(projeto.id, tipo, salvo.arquivo, salvo.caminho, 'gerado');
+        await this.documentos.registrarEvento(
+          projeto.id,
+          'documento',
+          `Gerou ${salvo.arquivo} (${tipo})`,
+          autor,
+        );
+        caminhos.push(salvo.caminho);
+        nomes.push(NOMES_DOC[tipo]);
+      } catch (e) {
+        this.logger.warn(`Falha ao gerar ${tipo} no pacote inicial do fluxo: ${(e as Error).message}`);
+      }
+    }
+
+    const destinos = (dto.emailsResponsaveis || '')
+      .split(/[;,]/)
+      .map((e) => e.trim())
+      .filter(Boolean);
+    let emailEnviado = false;
+    let avisoEmail: string | undefined;
+    if (destinos.length > 0 && this.mailer.configurado()) {
+      const resumo = this.resumoProjeto(projeto, nomes, gci, tecnicos);
+      const anexos = caminhos.map((caminho) => ({ caminho }));
+      const resultado = await this.mailer.enviar(
+        destinos,
+        `Implantação iniciada — ${projeto.cliente}`,
+        resumo,
+        anexos,
+      );
+      emailEnviado = resultado.ok;
+      await this.documentos.registrarEvento(
+        projeto.id,
+        'email',
+        resultado.ok
+          ? `Pacote inicial enviado a ${destinos.join(', ')}`
+          : `Falha ao enviar o pacote: ${resultado.erro}`,
+        autor,
+      );
+      if (!resultado.ok) avisoEmail = `Fluxo criado, mas o e-mail não saiu: ${resultado.erro}`;
+    } else if (destinos.length === 0) {
+      avisoEmail = 'Fluxo criado. Nenhum destinatário informado — pacote não enviado por e-mail.';
+    } else {
+      avisoEmail = 'Fluxo criado, mas o e-mail não saiu: configure o SMTP.';
+    }
+
+    return { projetoId: projeto.id, duplicado: false, documentosGerados: nomes, emailEnviado, avisoEmail };
   }
 }

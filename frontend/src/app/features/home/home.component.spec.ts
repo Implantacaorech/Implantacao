@@ -1,8 +1,11 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { HomeComponent } from './home.component';
 import { PainelService } from '../../core/services/painel.service';
+import { AuthService } from '../../core/services/auth.service';
 import { PainelHome } from '../../core/models/painel.model';
+import { AuthUser } from '../../core/models/auth-user.model';
 
 function painelVazio(): PainelHome {
   return {
@@ -13,11 +16,22 @@ function painelVazio(): PainelHome {
   };
 }
 
+function usuario(perfil: AuthUser['perfil'] = 'Consultor'): AuthUser {
+  return { sub: 1, login: 'x', nome: 'Fulano', perfil, codigoSicla: '' };
+}
+
 describe('HomeComponent', () => {
-  function montar(painelService: Partial<PainelService>) {
+  function montar(
+    painelService: Partial<PainelService>,
+    auth: Partial<AuthService> = { usuario: signal(usuario()) },
+  ) {
     TestBed.configureTestingModule({
       imports: [HomeComponent],
-      providers: [provideRouter([]), { provide: PainelService, useValue: painelService }],
+      providers: [
+        provideRouter([]),
+        { provide: PainelService, useValue: painelService },
+        { provide: AuthService, useValue: auth },
+      ],
     });
     const fixture = TestBed.createComponent(HomeComponent);
     return fixture;
@@ -51,12 +65,12 @@ describe('HomeComponent', () => {
     expect(texto).not.toContain('Carregando');
   });
 
-  it('sem foco, não renderiza a seção "Em foco"', async () => {
+  it('sem foco, não renderiza a seção "Projeto em foco"', async () => {
     const fixture = montar({ home: () => Promise.resolve(painelVazio()) });
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.foco')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Projeto em foco');
   });
 
   it('lista as pendências com o rótulo da ação', async () => {
@@ -86,5 +100,24 @@ describe('HomeComponent', () => {
       '/projetos',
       3,
     ]);
+  });
+
+  it('só mostra "Configurações e saúde" para o perfil ADM', async () => {
+    const fixture = montar(
+      { home: () => Promise.resolve(painelVazio()) },
+      { usuario: signal(usuario('Consultor')) },
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Configurações e saúde');
+  });
+
+  it('mostra "Configurações e saúde" para o perfil ADM', async () => {
+    const fixture = montar({ home: () => Promise.resolve(painelVazio()) }, { usuario: signal(usuario('ADM')) });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Configurações e saúde');
   });
 });

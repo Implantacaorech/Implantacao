@@ -1,5 +1,6 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatrizService } from '../../core/services/matriz.service';
@@ -8,7 +9,7 @@ import { MatrizTecnicoComContagem } from '../../core/models/matriz.model';
 @Component({
   selector: 'app-matriz-lista',
   standalone: true,
-  imports: [RouterLink, DatePipe],
+  imports: [RouterLink, DatePipe, FormsModule],
   templateUrl: './matriz-lista.component.html',
   styleUrl: './matriz-lista.component.css',
 })
@@ -23,6 +24,13 @@ export class MatrizListaComponent {
   readonly itens = signal<MatrizTecnicoComContagem[]>([]);
   readonly restrito = signal(false);
   readonly podeAdmin = signal(false);
+  readonly filtro = signal('');
+
+  readonly itensFiltrados = computed(() => {
+    const f = this.filtro().trim().toLowerCase();
+    if (!f) return this.itens();
+    return this.itens().filter((t) => `${t.nome} ${t.setor}`.toLowerCase().includes(f));
+  });
 
   constructor() {
     void this.carregar();

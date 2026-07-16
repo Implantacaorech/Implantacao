@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { DesignacaoService } from '../../core/services/designacao.service';
+import { ProjetosService } from '../../core/services/projetos.service';
 
 @Component({
   selector: 'app-designar-consultores',
@@ -13,6 +14,7 @@ import { DesignacaoService } from '../../core/services/designacao.service';
 })
 export class DesignarConsultoresComponent {
   private readonly service = inject(DesignacaoService);
+  private readonly projetos = inject(ProjetosService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -24,6 +26,8 @@ export class DesignarConsultoresComponent {
   readonly modulos = signal<string[]>([]);
   readonly consultores = signal<string[]>([]);
   readonly escolhas = signal<Record<string, string>>({});
+  readonly cliente = signal('');
+  readonly aplicarATodos = signal('');
 
   constructor() {
     void this.carregar();
@@ -33,10 +37,14 @@ export class DesignarConsultoresComponent {
     this.carregando.set(true);
     this.erro.set(null);
     try {
-      const view = await this.service.obterConsultores(this.projetoId);
+      const [view, projeto] = await Promise.all([
+        this.service.obterConsultores(this.projetoId),
+        this.projetos.buscar(this.projetoId),
+      ]);
       this.modulos.set(view.modulos);
       this.consultores.set(view.consultores);
       this.escolhas.set({ ...view.atuais });
+      this.cliente.set(projeto.cliente);
     } catch {
       this.erro.set('Não foi possível carregar os módulos/consultores.');
     } finally {
@@ -50,6 +58,18 @@ export class DesignarConsultoresComponent {
 
   escolher(modulo: string, consultor: string): void {
     this.escolhas.set({ ...this.escolhas(), [modulo]: consultor });
+  }
+
+  aplicarTodos(): void {
+    const nome = this.aplicarATodos();
+    const novo: Record<string, string> = {};
+    for (const m of this.modulos()) novo[m] = nome;
+    this.escolhas.set(novo);
+  }
+
+  limparTodos(): void {
+    this.aplicarATodos.set('');
+    this.escolhas.set({});
   }
 
   async salvar(): Promise<void> {

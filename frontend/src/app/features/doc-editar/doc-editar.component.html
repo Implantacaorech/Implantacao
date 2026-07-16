@@ -1,0 +1,82 @@
+@if (!docValido) {
+  <div class="resultado erro" style="padding:10px 16px">Documento inválido.</div>
+} @else if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <h1 style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+    <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-file"/></svg>
+    {{ titulo }} — {{ projeto()?.cliente }}
+  </h1>
+  <p class="sub">As seções abaixo espelham o <strong>layout do documento</strong> que será gerado para o cliente.
+    Edite aqui e a geração fiel usa estes dados.
+    @if (doc === 'levantamento') {
+      As <strong>perguntas por módulo</strong> ficam em
+      <a [routerLink]="['/projetos', projetoId, 'levantamento']">Responder levantamento</a>.
+    }
+  </p>
+
+  @if (erro()) {
+    <div class="resultado erro" style="padding:10px 16px;margin-bottom:10px">{{ erro() }}</div>
+  }
+  @if (salvo()) {
+    <div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
+      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvo.
+    </div>
+  }
+
+  <form (ngSubmit)="salvar()">
+    @for (sec of secoes(); track sec.titulo) {
+      <div class="painel">
+        <h3 style="color:var(--navy);margin-top:0">{{ sec.titulo }}</h3>
+        @if (sec.tipo === 'tabela') {
+          <div style="overflow-x:auto">
+            <table class="form-tab">
+              <thead>
+                <tr>
+                  @for (col of sec.colunas; track col[0]) { <th>{{ col[1] }}</th> }
+                </tr>
+              </thead>
+              <tbody>
+                @for (i of linhasTabela(sec); track i) {
+                  <tr>
+                    @for (col of sec.colunas; track col[0]) {
+                      <td>
+                        <input [ngModel]="campo(chaveTabela(sec, i, col[0]))" name="{{ chaveTabela(sec, i, col[0]) }}"
+                               (ngModelChange)="onCampoChange(chaveTabela(sec, i, col[0]), $event)" />
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <div class="grade2">
+            @for (c of sec.campos; track c.chave) {
+              <label class="campo" [class.campo-larga]="c.tipo === 'textarea'">
+                <span>{{ c.label }}
+                  @if (c.tipo === 'ro') { <small style="color:var(--muted);font-weight:400">(do fechamento)</small> }
+                </span>
+                @if (c.tipo === 'textarea') {
+                  <textarea rows="2" [ngModel]="campo(c.chave)" name="{{ c.chave }}"
+                            (ngModelChange)="onCampoChange(c.chave, $event)"></textarea>
+                } @else if (c.tipo === 'ro') {
+                  <input [value]="campo(c.chave)" readonly style="background:var(--surface-2,#f3f6fb);color:var(--muted)" />
+                } @else {
+                  <input [ngModel]="campo(c.chave)" name="{{ c.chave }}" (ngModelChange)="onCampoChange(c.chave, $event)" />
+                }
+              </label>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button class="btn primario" type="submit" [disabled]="salvando()">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvar
+      </button>
+      <a class="btn" [routerLink]="['/projetos', projetoId]">Voltar à ficha</a>
+    </div>
+  </form>
+}

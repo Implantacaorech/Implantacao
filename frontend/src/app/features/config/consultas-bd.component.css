@@ -1,0 +1,50 @@
+.cbd-abas {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.cbd-aba {
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+  border: none;
+  background: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+.cbd-aba.on {
+  color: var(--brand);
+  border-bottom-color: var(--brand);
+}
+.cbd-aba-nova {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.cbd-resultado {
+  overflow-x: auto;
+  margin-top: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.cbd-tab {
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.cbd-tab th,
+.cbd-tab td {
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  text-align: left;
+}
+.cbd-tab th {
+  background: var(--surface-2, #f3f6fb);
+  position: sticky;
+  top: 0;
+}

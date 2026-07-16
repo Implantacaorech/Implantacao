@@ -1,4 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -8,7 +9,7 @@ import { MatrizArea, MatrizTecnico } from '../../core/models/matriz.model';
 @Component({
   selector: 'app-matriz-ficha',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, DatePipe],
   templateUrl: './matriz-ficha.component.html',
   styleUrl: './matriz-ficha.component.css',
 })
@@ -26,8 +27,6 @@ export class MatrizFichaComponent {
   readonly areas = signal<MatrizArea[]>([]);
   readonly editavel = signal(false);
   readonly volta = signal(false);
-  readonly setor = signal('');
-  readonly dias = signal('');
   readonly notas = signal<Record<string, string>>({});
 
   constructor() {
@@ -43,8 +42,6 @@ export class MatrizFichaComponent {
       this.areas.set(view.areas);
       this.editavel.set(view.editavel);
       this.volta.set(view.volta);
-      this.setor.set(view.tecnico.setor);
-      this.dias.set(view.tecnico.dias);
       this.notas.set(
         Object.fromEntries(Object.entries(view.notas).map(([sigla, nota]) => [sigla, String(nota)])),
       );
@@ -59,6 +56,12 @@ export class MatrizFichaComponent {
     return this.notas()[sigla] ?? '';
   }
 
+  notaNum(sigla: string): number | null {
+    const v = this.notas()[sigla];
+    const n = Number(v);
+    return v && Number.isFinite(n) ? n : null;
+  }
+
   atualizarNota(sigla: string, valor: string): void {
     this.notas.set({ ...this.notas(), [sigla]: valor });
   }
@@ -69,12 +72,8 @@ export class MatrizFichaComponent {
     this.erro.set(null);
     this.aviso.set(null);
     try {
-      await this.service.salvar(this.tecnicoId, {
-        setor: this.setor(),
-        dias: this.dias(),
-        notas: this.notas(),
-      });
-      this.aviso.set('Ficha salva.');
+      await this.service.salvar(this.tecnicoId, { notas: this.notas() });
+      this.aviso.set('Notas salvas.');
       await this.carregar();
     } catch (e) {
       this.erro.set(

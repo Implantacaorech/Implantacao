@@ -1,0 +1,13 @@
+.card-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tag-form_modulos {
+  background: #e8eef8;
+  color: var(--brand);
+}
+.tag-criar_templates {
+  background: #e8eef8;
+  color: var(--brand);
+}

@@ -1,48 +1,69 @@
-<div class="cabecalho">
-  <h1>Designar Consultores por Módulo</h1>
-  <a [routerLink]="['/projetos', projetoId]" class="voltar">← Voltar ao projeto</a>
-</div>
+<h1 style="display:flex;align-items:center;gap:8px">
+  <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-users"/></svg>
+  Designar Consultores @if (cliente()) { — {{ cliente() }} }
+</h1>
+<p class="sub">Atribua os Consultores aos módulos. Para <strong>um único técnico em tudo</strong>, use o atalho abaixo;
+  para <strong>dividir</strong>, ajuste módulo a módulo. Cada consultor recebe e-mail com os módulos sob sua responsabilidade.</p>
 
 @if (erro()) {
-  <p class="erro">{{ erro() }}</p>
+  <div class="resultado erro" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
+  </div>
 }
 
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <div class="cartao">
-    <table class="tabela">
-      <thead>
-        <tr>
-          <th>Módulo</th>
-          <th>Consultor</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (modulo of modulos(); track modulo) {
-          <tr>
-            <td>{{ modulo }}</td>
-            <td>
-              <select [ngModel]="escolhido(modulo)" (ngModelChange)="escolher(modulo, $event)">
-                <option value="">(sem consultor)</option>
-                @for (nome of consultores(); track nome) {
-                  <option [value]="nome">{{ nome }}</option>
-                }
-              </select>
-            </td>
-          </tr>
-        } @empty {
-          <tr>
-            <td colspan="2" class="vazio">Este projeto não tem módulos cadastrados.</td>
-          </tr>
-        }
-      </tbody>
-    </table>
+  @if (consultores().length === 0) {
+    <p class="dica">Nenhum usuário com perfil Consultor cadastrado. <a routerLink="/usuarios">Cadastrar</a>.</p>
+  }
 
-    <div class="acoes">
-      <button type="button" [disabled]="salvando() || modulos().length === 0" (click)="salvar()">
-        {{ salvando() ? 'Salvando…' : 'Salvar designações' }}
+  @if (modulos().length > 0) {
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;padding:10px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;margin-bottom:12px">
+      <label class="campo" style="min-width:230px;margin:0">
+        <span>Atribuir todos os módulos a</span>
+        <select [(ngModel)]="aplicarATodos">
+          <option value="">— escolher técnico —</option>
+          @for (nome of consultores(); track nome) {
+            <option [value]="nome">{{ nome }}</option>
+          }
+        </select>
+      </label>
+      <button class="btn primario" type="button" (click)="aplicarTodos()">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Aplicar a todos
       </button>
+      <button class="btn" type="button" (click)="limparTodos()">Limpar</button>
     </div>
+
+    <div style="overflow-x:auto">
+      <table class="form-tab">
+        <thead><tr><th>Módulo</th><th>Consultor responsável</th></tr></thead>
+        <tbody>
+          @for (modulo of modulos(); track modulo) {
+            <tr>
+              <td><strong>{{ modulo }}</strong></td>
+              <td>
+                <select [ngModel]="escolhido(modulo)" (ngModelChange)="escolher(modulo, $event)">
+                  <option value="">— não designado —</option>
+                  @for (nome of consultores(); track nome) {
+                    <option [value]="nome">{{ nome }}</option>
+                  }
+                </select>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <p class="dica">O projeto não tem módulos definidos — preencha o campo "Módulos" na ficha.</p>
+  }
+
+  <div style="display:flex;gap:8px;margin-top:12px">
+    <button class="btn primario" type="button" [disabled]="salvando() || modulos().length === 0" (click)="salvar()">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+      {{ salvando() ? 'Salvando…' : 'Designar e avisar os consultores' }}
+    </button>
+    <a class="btn" [routerLink]="['/projetos', projetoId]">Cancelar</a>
   </div>
 }

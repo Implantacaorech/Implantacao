@@ -1,0 +1,49 @@
+details.lev-mod {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+details.lev-mod > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-weight: 700;
+  color: var(--navy);
+  background: var(--surface-2, #f3f6fb);
+}
+details.lev-mod > summary::-webkit-details-marker {
+  display: none;
+}
+details.lev-mod > summary::before {
+  content: '▸';
+  color: var(--brand);
+  font-size: 0.9rem;
+  transition: transform 0.15s;
+}
+details.lev-mod[open] > summary::before {
+  transform: rotate(90deg);
+}
+.lev-mod-nome {
+  flex: 1;
+}
+.lev-mod-cont {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1px 9px;
+}
+.lev-mod-cont.ok {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+.lev-body {
+  padding: 8px 14px 12px;
+}

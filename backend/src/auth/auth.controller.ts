@@ -11,15 +11,20 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
+import { TrocarSenhaDto } from './dto/trocar-senha.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { ApiEnvelope } from '../common/dto/api-envelope';
+import { UsersService } from '../users/users.service';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly users: UsersService,
+  ) {}
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -57,5 +62,20 @@ export class AuthController {
   })
   me(@CurrentUser() user: AuthUser) {
     return user;
+  }
+
+  @Post('trocar-senha')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Autoatendimento: o próprio usuário logado troca a senha, exige a senha atual (diferente de PUT /usuarios/:id, exclusivo do ADM)',
+  })
+  async trocarSenha(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: TrocarSenhaDto,
+  ) {
+    await this.users.trocarSenha(user.sub, dto.senhaAtual, dto.senhaNova);
+    return new ApiEnvelope(null, 'Senha alterada.');
   }
 }

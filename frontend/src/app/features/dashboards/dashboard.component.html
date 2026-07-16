@@ -1,108 +1,109 @@
-<div class="cabecalho">
-  <h1>{{ resultado()?.nome || slug }}</h1>
-  <a routerLink="/dashboards" class="voltar">← Voltar aos Dashboards</a>
-</div>
-
-@if (erro()) {
-  <p class="erro">{{ erro() }}</p>
-}
-
 @if (carregando()) {
   <p>Carregando…</p>
-} @else if (resultado(); as r) {
-  <form class="filtro" (ngSubmit)="carregar()">
-    <label>
-      Direção
-      <select name="direcao" [(ngModel)]="direcao">
-        <option value="avancar">Avançar (a partir da referência)</option>
-        <option value="recuar">Recuar (até a referência)</option>
-      </select>
-    </label>
-    <label>
-      Meses
-      <input type="number" name="n" [(ngModel)]="n" min="1" max="60" />
-    </label>
-    <button type="submit">Filtrar</button>
-  </form>
+} @else {
+  <h1 style="display:flex;align-items:center;gap:8px">
+    <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-dashboard"/></svg>
+    Dashboards
+  </h1>
 
-  @if (r.situacoesDisponiveis.length > 0) {
-    <div class="filtro-situacao">
-      <span class="rotulo-filtro">Situação:</span>
-      @for (s of r.situacoesDisponiveis; track s) {
-        <label class="chip">
-          <input
-            type="checkbox"
-            [checked]="situacoesSelecionadas.has(s)"
-            (change)="alternarSituacao(s, $any($event.target).checked); carregar()"
-          />
-          {{ s }}
-        </label>
-      }
-    </div>
-  }
-
-  <div class="meses-atalho">
-    @for (m of r.meses; track m.ano + '-' + m.mes) {
-      <button
-        type="button"
-        class="mes-botao"
-        [class.mes-ativo]="mesSel === m.mes && anoSel === m.ano"
-        (click)="filtrarMes(m.mes, m.ano)"
-      >
-        {{ m.nome }}/{{ m.ano }}
-      </button>
-    }
-    @if (mesSel !== null) {
-      <button type="button" class="mes-limpar" (click)="limparFiltroMes()">Limpar mês</button>
+  <div class="dsh-abas">
+    @for (d of dashboards(); track d.slug) {
+      <button type="button" class="dsh-aba" [class.on]="d.slug === slugAtivo()" (click)="trocarAba(d.slug)">{{ d.nome }}</button>
     }
   </div>
 
-  @if (r.erro) {
-    <p class="erro">{{ r.erro }}</p>
-  } @else {
-    <p class="total">Total no período: <strong>{{ r.totalPeriodo }}</strong> ({{ r.periodo.inicio }} a {{ r.periodo.fim }})</p>
+  @if (erro()) {
+    <div class="resultado erro" style="padding:10px 14px;margin-bottom:10px">{{ erro() }}</div>
+  }
 
-    @if (r.grafico; as g) {
-      <section class="cartao">
-        <h2>Por mês</h2>
-        <div class="grafico">
-          @for (label of g.labels; track $index) {
-            <div class="barra-item">
-              <div class="barra" [style.height.px]="8 + (g.valores[$index] / (maxValor(g.valores) || 1)) * 120"></div>
-              <span class="barra-valor">{{ g.valores[$index] }}</span>
-              <span class="barra-label">{{ label }}</span>
-            </div>
-          }
-        </div>
-      </section>
+  @if (resultado(); as r) {
+    @if (r.erro) {
+      <div class="resultado erro" style="padding:10px 14px;margin-bottom:10px">
+        <strong>Não foi possível carregar:</strong> {{ r.erro }}
+        @if (ehAdm()) {
+          <div style="margin-top:4px"><a routerLink="/config/consultas-bd">Ajustar em Consultas BD</a></div>
+        }
+      </div>
     }
 
-    <section class="cartao">
-      <h2>Linhas ({{ r.linhasTabela.length }})</h2>
-      @if (r.linhasTabela.length === 0) {
-        <p class="vazio">Nenhuma linha no período/filtro selecionado.</p>
-      } @else {
-        <div class="tabela-scroll">
-          <table class="tabela-simples">
-            <thead>
-              <tr>
-                @for (col of colunas(); track col) {
-                  <th>{{ col }}</th>
-                }
-              </tr>
-            </thead>
+    <div class="dsh-filtros">
+      <div class="dsh-filtro-grupo">
+        <span class="dsh-filtro-l">Situação do Projeto</span>
+        <div class="dsh-situacoes">
+          @for (s of r.situacoesDisponiveis; track s) {
+            <label>
+              <input type="checkbox" [checked]="situacoesSelecionadas.has(s)" (change)="alternarSituacao(s, $any($event.target).checked)" /> {{ s }}
+            </label>
+          } @empty {
+            <span class="dica" style="margin:0">— sem dados no período —</span>
+          }
+        </div>
+      </div>
+      <div class="dsh-filtro-grupo">
+        <span class="dsh-filtro-l">Período</span>
+        <select [(ngModel)]="direcao" (ngModelChange)="carregar()">
+          <option value="avancar">Avançar</option>
+          <option value="recuar">Recuar</option>
+        </select>
+        <input type="number" [(ngModel)]="n" (change)="carregar()" min="1" max="60" style="width:56px" />
+        <select disabled><option>Meses (Calendário)</option></select>
+        <span class="dica" style="margin:0">a partir de</span>
+        <input type="month" [(ngModel)]="ref" (change)="carregar()" />
+        <span class="dsh-periodo-txt">{{ r.periodo.inicio.slice(8,10) }}/{{ r.periodo.inicio.slice(5,7) }}/{{ r.periodo.inicio.slice(0,4) }}
+          – {{ r.periodo.fim.slice(8,10) }}/{{ r.periodo.fim.slice(5,7) }}/{{ r.periodo.fim.slice(0,4) }}</span>
+      </div>
+      <div class="dsh-meses">
+        @for (mes of [1,2,3,4,5,6,7,8,9,10,11,12]; track mes) {
+          @if (atalhoAno(mes) !== null) {
+            <button type="button" class="dsh-mes-btn" [class.on]="mesSel === mes && anoSel === atalhoAno(mes)" (click)="selecionarMes(mes, atalhoAno(mes)!)">{{ nomesMes[mes] }}</button>
+          } @else {
+            <span class="dsh-mes-btn dsh-mes-off">{{ nomesMes[mes] }}</span>
+          }
+        }
+        @if (mesSel !== null) {
+          <button type="button" class="btn" style="margin-left:8px" (click)="limparFiltroMes()">Limpar mês</button>
+        }
+      </div>
+    </div>
+
+    <div class="dsh-card">
+      <div class="dsh-card-tit">Previsão de Início Oficial</div>
+      <div style="padding:14px;height:300px"><canvas [appChart]="grafico()"></canvas></div>
+    </div>
+
+    <div class="dsh-card">
+      <div class="dsh-card-tit">Projetos de Implantação <span class="dica" style="margin:0 0 0 8px">{{ r.linhasTabela.length }} de {{ r.totalPeriodo }} no período</span></div>
+      <div class="dsh-tab-wrap">
+        @if (linhasPrevisaoInicio(); as linhas) {
+          <table class="dsh-tab">
+            <thead><tr><th>RNS Implantação</th><th>Dt. Contratação</th><th>Previsão Início Oficial</th><th>Situação</th><th>Responsável</th></tr></thead>
             <tbody>
-              @for (linha of r.linhasTabela; track $index) {
+              @for (l of linhas; track $index) {
                 <tr>
-                  @for (col of colunas(); track col) {
-                    <td>{{ linha[col] }}</td>
-                  }
+                  <td>{{ l.rns }}</td>
+                  <td>{{ l.dataContratacao }}</td>
+                  <td>{{ l.previsaoInicioOficial }}</td>
+                  <td><span class="dsh-dot"></span> {{ l.situacao }}</td>
+                  <td>{{ l.responsavel }}</td>
                 </tr>
+              } @empty {
+                <tr><td colspan="5" class="dica" style="text-align:center;padding:16px">Nenhum projeto no período/filtro selecionado.</td></tr>
               }
             </tbody>
           </table>
-        </div>
-      }
-    </section>
+        } @else {
+          <table class="dsh-tab">
+            <thead><tr>@for (col of colunas(); track col) { <th>{{ col }}</th> }</tr></thead>
+            <tbody>
+              @for (linha of r.linhasTabela; track $index) {
+                <tr>@for (col of colunas(); track col) { <td>{{ linha[col] }}</td> }</tr>
+              } @empty {
+                <tr><td [attr.colspan]="colunas().length || 1" class="dica" style="text-align:center;padding:16px">Nenhum projeto no período/filtro selecionado.</td></tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+    </div>
   }
 }

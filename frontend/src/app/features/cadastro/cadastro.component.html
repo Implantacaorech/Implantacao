@@ -1,66 +1,49 @@
-<div class="tela-cadastro">
-  <div class="cartao-cadastro">
-    <h1>Painel de Implantação</h1>
-
-    @if (etapa() === 'dados') {
-      <p class="subtitulo">Crie seu acesso</p>
-      <form [formGroup]="formDados" (ngSubmit)="enviarDados()">
-        <label>
-          Nome
-          <input type="text" formControlName="nome" autocomplete="name" />
-        </label>
-
-        <label>
-          E-mail
-          <input type="email" formControlName="email" autocomplete="email" />
-        </label>
-
-        <label>
-          Senha
-          <input type="password" formControlName="senha" autocomplete="new-password" />
-        </label>
-
-        <label>
-          Código SICLA
-          <input type="text" formControlName="codigoSicla" />
-        </label>
-
-        @if (erro()) {
-          <p class="erro">{{ erro() }}</p>
-        }
-
-        <button type="submit" [disabled]="formDados.invalid || enviando()">
-          {{ enviando() ? 'Enviando…' : 'Continuar' }}
-        </button>
-      </form>
-    } @else {
-      <p class="subtitulo">Digite o código enviado para {{ formDados.getRawValue().email }}</p>
-      <form [formGroup]="formCodigo" (ngSubmit)="confirmarCodigo()">
-        <label>
-          Código de verificação
-          <input type="text" formControlName="codigo" maxlength="6" inputmode="numeric" autocomplete="one-time-code" />
-        </label>
-
-        @if (erro()) {
-          <p class="erro">{{ erro() }}</p>
-        }
-        @if (aviso()) {
-          <p class="aviso">{{ aviso() }}</p>
-        }
-
-        <button type="submit" [disabled]="formCodigo.invalid || enviando()">
-          {{ enviando() ? 'Confirmando…' : 'Confirmar' }}
-        </button>
-
-        <div class="acoes-secundarias">
-          <button type="button" class="link" (click)="voltarParaDados()">← Corrigir dados</button>
-          <button type="button" class="link" [disabled]="reenviando()" (click)="reenviarCodigo()">
-            {{ reenviando() ? 'Reenviando…' : 'Reenviar código' }}
-          </button>
-        </div>
-      </form>
-    }
-
-    <a routerLink="/login" class="voltar-login">Já tem acesso? Entrar</a>
+<div style="max-width:420px;margin:8vh auto;padding:0 20px">
+  <div style="text-align:center;margin-bottom:8px">
+    <span style="display:inline-flex;width:44px;height:44px;border-radius:12px;background:var(--brand);color:#fff;align-items:center;justify-content:center;font-weight:700;font-size:1.35rem">R</span>
   </div>
+
+  @if (etapa() === 'dados') {
+    <h1 style="text-align:center;margin:.1em 0">Criar conta</h1>
+    <p class="dica" style="text-align:center">Informe seus dados — enviaremos um código de validação ao seu e-mail.</p>
+    <form class="painel" [formGroup]="formDados" (ngSubmit)="enviarDados()">
+      @if (erro()) {
+        <div class="resultado erro" style="padding:8px 14px">⚠️ {{ erro() }}</div>
+      }
+      <label class="campo"><span>Nome completo</span><input formControlName="nome" autofocus /></label>
+      <label class="campo"><span>E-mail</span><input type="email" formControlName="email" /></label>
+      <label class="campo"><span>Código SICLA</span><input formControlName="codigoSicla" placeholder="seu código de técnico no SICLA" /></label>
+      <label class="campo"><span>Senha (mín. 6 caracteres)</span><input type="password" formControlName="senha" /></label>
+      <button class="btn primario" type="submit" style="width:100%" [disabled]="formDados.invalid || enviando()">
+        {{ enviando() ? 'Enviando…' : 'Receber código →' }}
+      </button>
+    </form>
+    <p class="dica" style="text-align:center">Já tem acesso? <a routerLink="/login">Entrar</a></p>
+    <p class="dica" style="text-align:center;margin-top:2px">Rech Sistemas de Gestão</p>
+  } @else {
+    <h1 style="text-align:center;margin:.1em 0">Confirmar e-mail</h1>
+    <p class="dica" style="text-align:center">Enviamos um código de 6 dígitos para <strong>{{ formDados.getRawValue().email }}</strong>. Informe-o abaixo para concluir.</p>
+    <form class="painel" style="margin-bottom:10px" [formGroup]="formCodigo" (ngSubmit)="confirmarCodigo()">
+      @if (erro()) {
+        <div class="resultado erro" style="padding:8px 14px">⚠️ {{ erro() }}</div>
+      }
+      @if (aviso()) {
+        <div class="resultado ok" style="padding:8px 14px">✅ {{ aviso() }}</div>
+      }
+      <label class="campo">
+        <span>Código de validação</span>
+        <input formControlName="codigo" inputmode="numeric" maxlength="6" autofocus
+               style="letter-spacing:.35em;text-align:center;font-size:1.3rem;font-weight:600" />
+      </label>
+      <button class="btn primario" type="submit" style="width:100%" [disabled]="formCodigo.invalid || enviando()">
+        {{ enviando() ? 'Confirmando…' : 'Validar e entrar' }}
+      </button>
+    </form>
+    <form style="margin:0" (ngSubmit)="reenviarCodigo()">
+      <button class="btn" type="submit" style="width:100%" [disabled]="reenviando()">
+        {{ reenviando() ? 'Reenviando…' : 'Reenviar código' }}
+      </button>
+    </form>
+    <p class="dica" style="text-align:center;margin-top:12px"><a href="javascript:void(0)" (click)="voltarParaDados()">← Recomeçar o cadastro</a></p>
+  }
 </div>

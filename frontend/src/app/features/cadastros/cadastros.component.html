@@ -1,0 +1,392 @@
+<!-- ==================== Check List ==================== -->
+@if (aba() === 'checklist') {
+  <h1 style="display:flex;align-items:center;gap:8px">
+    <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+    Cadastro de Checklist
+  </h1>
+  <p class="dica">Roteiro / Check-list por módulo (todas as colunas da planilha entregue). Total de
+    <strong>{{ clTotal() }}</strong> linha(s)@if (clFiltroModulo() || clFiltroBusca()) { no filtro atual }.</p>
+
+  @if (aviso()) {
+    <div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
+      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+    </div>
+  }
+  @if (erro()) {
+    <div class="resultado erro" style="padding:8px 14px;margin-bottom:8px">{{ erro() }}</div>
+  }
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+    <button class="btn primario" type="button" (click)="clNova()">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg> Novo item
+    </button>
+    <span style="flex:1"></span>
+    <button class="btn" type="button" [disabled]="clReimportando()" (click)="clReimportar()">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg> {{ clReimportando() ? 'Reimportando…' : 'Reimportar do modelo' }}
+    </button>
+  </div>
+
+  <form class="painel" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end" (ngSubmit)="clFiltrar()">
+    <label class="campo" style="min-width:180px">
+      <span>Módulo / Adicional</span>
+      <select [(ngModel)]="clFiltroModulo" name="mod">
+        <option value="">— Todos —</option>
+        @for (m of clModulos(); track m) { <option [value]="m">{{ m }}</option> }
+      </select>
+    </label>
+    <label class="campo" style="flex:1;min-width:200px">
+      <span>Buscar (item / ação / menu)</span>
+      <input type="text" [(ngModel)]="clFiltroBusca" name="q" placeholder="texto…" />
+    </label>
+    <button class="btn primario" type="submit">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg> Filtrar
+    </button>
+    <button class="btn" type="button" (click)="clLimparFiltro()">Limpar</button>
+  </form>
+
+  @if (clEmEdicao(); as linha) {
+    <div class="painel" id="form-edit">
+      <h3 style="color:var(--navy);margin-top:0">{{ linha.id ? 'Editar linha' : 'Novo item' }}</h3>
+      <div class="grade2">
+        <label class="campo"><span>Módulo</span><input type="text" [(ngModel)]="linha.modulo" /></label>
+        <label class="campo"><span>Adicional</span><input type="text" [(ngModel)]="linha.adicional" /></label>
+        <label class="campo"><span>Tipo</span><input type="text" [(ngModel)]="linha.tipo" /></label>
+        <label class="campo campo-larga"><span>Integrações</span><textarea rows="2" [(ngModel)]="linha.integracoes"></textarea></label>
+        <label class="campo"><span>Go-Live</span><input type="text" [(ngModel)]="linha.golive" /></label>
+        <label class="campo"><span>Menu</span><input type="text" [(ngModel)]="linha.menu" /></label>
+        <label class="campo campo-larga"><span>Item</span><textarea rows="2" [(ngModel)]="linha.item"></textarea></label>
+        <label class="campo campo-larga"><span>Ação / Observação</span><textarea rows="2" [(ngModel)]="linha.acao"></textarea></label>
+        <label class="campo"><span>Seq.</span><input type="text" [(ngModel)]="linha.seq" /></label>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button class="btn primario" type="button" [disabled]="clSalvando()" (click)="clSalvar()">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ clSalvando() ? 'Salvando…' : 'Salvar' }}
+        </button>
+        <button class="btn" type="button" (click)="clCancelar()">Cancelar</button>
+      </div>
+    </div>
+  }
+
+  @if (clCarregando()) {
+    <p>Carregando…</p>
+  } @else if (clLinhas().length > 0) {
+    <div style="overflow-x:auto">
+      <table class="form-tab" style="font-size:.82rem">
+        <thead>
+          <tr>
+            <th>Módulo</th><th>Adicional</th><th>Tipo</th><th>Integrações</th><th>Go-Live</th>
+            <th>Menu</th><th>Item</th><th>Ação / Observação</th><th>Seq.</th>
+            <th style="width:110px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of clLinhas(); track l.id) {
+            <tr>
+              <td>{{ l.modulo }}</td>
+              <td>{{ l.adicional }}</td>
+              <td>{{ l.tipo }}</td>
+              <td>{{ l.integracoes }}</td>
+              <td>{{ l.golive }}</td>
+              <td>{{ l.menu }}</td>
+              <td>{{ l.item }}</td>
+              <td>{{ l.acao }}</td>
+              <td>{{ l.seq }}</td>
+              <td style="white-space:nowrap">
+                <button class="btn" style="padding:3px 8px" type="button" title="Editar" (click)="clEditar(l)">
+                  <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-pencil"/></svg>
+                </button>
+                <button class="btn" style="padding:3px 8px;color:#b91c1c" type="button" title="Excluir" (click)="clExcluir(l.id)">
+                  <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-trash"/></svg>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (clTotalPaginas() > 1) {
+      <div style="display:flex;gap:6px;align-items:center;margin-top:12px;flex-wrap:wrap">
+        @if (clPagina() > 1) {
+          <button class="btn" type="button" (click)="clIrParaPagina(clPagina() - 1)">‹ Anterior</button>
+        }
+        <span class="dica" style="margin:0">Página {{ clPagina() }} de {{ clTotalPaginas() }}</span>
+        @if (clPagina() < clTotalPaginas()) {
+          <button class="btn" type="button" (click)="clIrParaPagina(clPagina() + 1)">Próxima ›</button>
+        }
+      </div>
+    }
+  } @else {
+    <p class="dica">Nenhuma linha encontrada@if (clFiltroModulo() || clFiltroBusca()) { para o filtro }.</p>
+  }
+}
+
+<!-- ==================== Índice de Tópicos ==================== -->
+@if (aba() === 'indice') {
+  <h1 style="display:flex;align-items:center;gap:8px">
+    <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-table"/></svg>
+    Índice de Tópicos para Mapeamento de Processos
+  </h1>
+  <p class="dica">Todas as colunas da planilha (Nº, Sigla, Módulos, Adicionais, Tópicos). Total de
+    <strong>{{ idTotal() }}</strong> tópico(s)@if (idFiltroModulo() || idFiltroBusca()) { no filtro atual }.</p>
+
+  @if (aviso()) {
+    <div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
+      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+    </div>
+  }
+  @if (erro()) {
+    <div class="resultado erro" style="padding:8px 14px;margin-bottom:8px">{{ erro() }}</div>
+  }
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+    <button class="btn primario" type="button" (click)="idNovo()">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg> Novo tópico
+    </button>
+    <span style="flex:1"></span>
+    <button class="btn" type="button" [disabled]="idReimportando()" (click)="idReimportar()">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg> {{ idReimportando() ? 'Reimportando…' : 'Reimportar da planilha' }}
+    </button>
+  </div>
+
+  <form class="painel" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end" (ngSubmit)="carregarIndice()">
+    <label class="campo" style="min-width:240px">
+      <span>Módulo</span>
+      <select [(ngModel)]="idFiltroModulo" name="mod">
+        <option value="">— Todos —</option>
+        @for (m of idModulos(); track m) { <option [value]="m">{{ m }}</option> }
+      </select>
+    </label>
+    <label class="campo" style="flex:1;min-width:200px">
+      <span>Buscar (tópico / adicional / módulo)</span>
+      <input type="text" [(ngModel)]="idFiltroBusca" name="q" placeholder="texto…" />
+    </label>
+    <button class="btn primario" type="submit">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg> Filtrar
+    </button>
+    <button class="btn" type="button" (click)="idLimparFiltro()">Limpar</button>
+  </form>
+
+  @if (idEmEdicao(); as linha) {
+    <div class="painel" id="form-edit">
+      <h3 style="color:var(--navy);margin-top:0">{{ linha.id ? 'Editar tópico' : 'Novo tópico' }}</h3>
+      <div class="grade2">
+        <label class="campo"><span>Nº Mód.</span><input type="text" [(ngModel)]="linha.moduloNum" /></label>
+        <label class="campo"><span>Sigla Mód.</span><input type="text" [(ngModel)]="linha.moduloSigla" /></label>
+        <label class="campo campo-larga"><span>Módulo</span><input type="text" [(ngModel)]="linha.modulo" /></label>
+        <label class="campo"><span>Nº Adic.</span><input type="text" [(ngModel)]="linha.adicionalNum" /></label>
+        <label class="campo"><span>Sigla Adic.</span><input type="text" [(ngModel)]="linha.adicionalSigla" /></label>
+        <label class="campo campo-larga"><span>Adicional <small style="color:var(--muted)">(em branco = tópico do módulo)</small></span><input type="text" [(ngModel)]="linha.adicional" /></label>
+        <label class="campo campo-larga"><span>Tópico</span><textarea rows="2" [(ngModel)]="linha.topico"></textarea></label>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button class="btn primario" type="button" [disabled]="idSalvando()" (click)="idSalvar()">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ idSalvando() ? 'Salvando…' : 'Salvar' }}
+        </button>
+        <button class="btn" type="button" (click)="idCancelar()">Cancelar</button>
+      </div>
+    </div>
+  }
+
+  @if (idCarregando()) {
+    <p>Carregando…</p>
+  } @else if (idLinhas().length > 0) {
+    <div style="overflow-x:auto">
+      <table class="form-tab" style="font-size:.82rem">
+        <thead>
+          <tr>
+            <th>Nº Mód.</th><th>Sigla Mód.</th><th>Módulo</th>
+            <th>Nº Adic.</th><th>Sigla Adic.</th><th>Adicional</th>
+            <th>Tópico</th><th style="width:90px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of idLinhas(); track l.id) {
+            <tr>
+              <td>{{ l.moduloNum }}</td><td><strong>{{ l.moduloSigla }}</strong></td><td>{{ l.modulo }}</td>
+              <td>{{ l.adicionalNum }}</td><td>{{ l.adicionalSigla }}</td><td>{{ l.adicional }}</td>
+              <td>{{ l.topico }}</td>
+              <td style="white-space:nowrap">
+                <button class="btn" style="padding:3px 8px" type="button" title="Editar" (click)="idEditar(l)">
+                  <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-pencil"/></svg>
+                </button>
+                <button class="btn" style="padding:3px 8px;color:#b91c1c" type="button" title="Excluir" (click)="idExcluir(l.id)">
+                  <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-trash"/></svg>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <p class="dica">Nenhum tópico encontrado@if (idFiltroModulo() || idFiltroBusca()) { para o filtro }.</p>
+  }
+}
+
+<!-- ==================== Modelos de Documentos ==================== -->
+@if (aba() === 'modelos') {
+  @if (!mdSelecionado()) {
+    <h1 style="display:flex;align-items:center;gap:8px">
+      <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-file"/></svg>
+      Modelos de Documentos
+    </h1>
+    <p class="dica">Os layouts fiéis usados na geração das documentações de cada fase. Cada modelo guarda o
+      <strong>arquivo vigente</strong>, o <strong>histórico de versões</strong> e o <strong>mapa de campos</strong>
+      (de onde cada informação vem no projeto).</p>
+
+    @if (erro()) {
+      <div class="resultado erro" style="padding:8px 14px;margin-bottom:8px">{{ erro() }}</div>
+    }
+
+    @if (mdCarregando()) {
+      <p>Carregando…</p>
+    } @else {
+      <div style="overflow-x:auto">
+        <table class="form-tab">
+          <thead><tr><th>Modelo</th><th>Fase</th><th>Tipo</th><th>Atualizado</th><th></th></tr></thead>
+          <tbody>
+            @for (m of mdLista(); track m.id) {
+              <tr>
+                <td><strong>{{ m.nome }}</strong><br /><small class="dica" style="margin:0">{{ m.descricao }}</small></td>
+                <td><span class="tag">{{ m.fase }}</span></td>
+                <td>.{{ m.tipo }}</td>
+                <td><small>{{ m.atualizadoEm | date: 'dd/MM/yyyy HH:mm' }}</small></td>
+                <td style="white-space:nowrap">
+                  <button class="btn" type="button" (click)="mdSelecionar(m)">
+                    <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-pencil"/></svg> Gerenciar
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  } @else {
+    @let modelo = mdSelecionado()!;
+    <h1 style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+      <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-file"/></svg>
+      {{ modelo.nome }}
+    </h1>
+    <p class="dica">Fase <strong>{{ modelo.fase }}</strong> · arquivo <strong>.{{ modelo.tipo }}</strong>. {{ modelo.descricao }}</p>
+    <button class="btn" type="button" style="margin-bottom:10px" (click)="mdVoltar()">← Modelos de Documentos</button>
+
+    @if (aviso()) {
+      <div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
+        <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+      </div>
+    }
+    @if (erro()) {
+      <div class="resultado erro" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
+        <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
+      </div>
+    }
+
+    <div class="painel">
+      <h3 style="color:var(--navy);margin-top:0;display:flex;align-items:center;gap:8px">
+        <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-layers"/></svg> Arquivo do layout (versões)
+      </h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+        <button class="btn primario" type="button" (click)="mdBaixar()">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> Baixar vigente (.{{ modelo.tipo }})
+        </button>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;border-top:1px solid var(--line);padding-top:10px">
+        <label class="campo" style="min-width:220px">
+          <span>Enviar nova versão (.{{ modelo.tipo }})</span>
+          <input type="file" [attr.accept]="'.' + modelo.tipo" [disabled]="mdEnviando()" (change)="mdEnviarVersao($event)" />
+        </label>
+        <label class="campo" style="flex:1;min-width:220px">
+          <span>Motivo da alteração</span>
+          <input type="text" [(ngModel)]="mdMotivoVersao" placeholder="ex.: ajuste de seção / novo placeholder" />
+        </label>
+      </div>
+
+      @if (mdVersoes().length > 0) {
+        <table class="form-tab" style="margin-top:12px;font-size:.84rem">
+          <thead><tr><th>Versão</th><th>Data</th><th>Autor</th><th>Motivo</th><th>Vigente</th><th></th></tr></thead>
+          <tbody>
+            @for (v of mdVersoes(); track v.id) {
+              <tr>
+                <td>v{{ v.versao }}</td>
+                <td><small>{{ v.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</small></td>
+                <td>{{ v.autor }}</td>
+                <td>{{ v.motivo }}</td>
+                <td>{{ v.vigente ? '✅' : '' }}</td>
+                <td>
+                  <button class="btn" style="padding:3px 8px" type="button" title="Baixar esta versão" (click)="mdBaixar(v.id)">
+                    <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-download"/></svg>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    <h3 style="color:var(--navy);display:flex;align-items:center;gap:8px">
+      <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-table"/></svg> Campos de preenchimento ({{ mdCampos().length }})
+    </h3>
+    <p class="dica" style="margin-top:0">Onde cada informação do layout é preenchida a partir do projeto. <code>manual</code> = digitado pelo consultor.</p>
+
+    <div style="margin:8px 0">
+      <button class="btn primario" type="button" (click)="mdCampoNovo()">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg> Novo campo
+      </button>
+    </div>
+
+    @if (mdCampoEmEdicao(); as campo) {
+      <div class="painel" id="form-campo">
+        <h3 style="color:var(--navy);margin-top:0">{{ campo.id ? 'Editar campo' : 'Novo campo' }}</h3>
+        <div class="grade2">
+          <label class="campo"><span>Seção</span><input type="text" [(ngModel)]="campo.secao" /></label>
+          <label class="campo"><span>Campo</span><input type="text" [(ngModel)]="campo.rotulo" /></label>
+          <label class="campo campo-larga"><span>Placeholder no layout</span><input type="text" [(ngModel)]="campo.placeholder" /></label>
+          <label class="campo"><span>Origem no projeto</span><input type="text" [(ngModel)]="campo.origem" placeholder="ex.: projeto.cliente / manual" /></label>
+          <label class="campo" style="align-self:center"><span><input type="checkbox" style="width:auto" [(ngModel)]="campo.obrigatorio" /> Obrigatório</span></label>
+          <label class="campo campo-larga"><span>Observação</span><textarea rows="2" [(ngModel)]="campo.observacao"></textarea></label>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <button class="btn primario" type="button" [disabled]="mdCampoSalvando()" (click)="mdCampoSalvar()">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ mdCampoSalvando() ? 'Salvando…' : 'Salvar' }}
+          </button>
+          <button class="btn" type="button" (click)="mdCampoCancelar()">Cancelar</button>
+        </div>
+      </div>
+    }
+
+    @if (mdCampos().length > 0) {
+      <div style="overflow-x:auto">
+        <table class="form-tab" style="font-size:.82rem">
+          <thead>
+            <tr>
+              <th>Seção</th><th>Campo</th><th>Placeholder no layout</th><th>Origem no projeto</th>
+              <th>Obrig.</th><th>Observação</th><th style="width:90px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of mdCampos(); track c.id) {
+              <tr>
+                <td>{{ c.secao }}</td><td><strong>{{ c.rotulo }}</strong></td>
+                <td><code>{{ c.placeholder }}</code></td><td>{{ c.origem }}</td>
+                <td>{{ c.obrigatorio ? '✔' : '' }}</td><td>{{ c.observacao }}</td>
+                <td style="white-space:nowrap">
+                  <button class="btn" style="padding:3px 8px" type="button" title="Editar" (click)="mdCampoEditar(c)">
+                    <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-pencil"/></svg>
+                  </button>
+                  <button class="btn" style="padding:3px 8px;color:#b91c1c" type="button" title="Excluir" (click)="mdCampoExcluir(c.id)">
+                    <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-trash"/></svg>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <p class="dica">Nenhum campo cadastrado ainda.</p>
+    }
+  }
+}

@@ -1,0 +1,15 @@
+<h1>🧑‍💼 Meu perfil</h1>
+<div class="painel">
+  <div class="resumo">
+    <div class="row"><span class="k">Nome</span><span class="v">{{ usuario()?.nome || '—' }}</span></div>
+    <div class="row"><span class="k">Perfil</span><span class="v">{{ usuario()?.perfil || '— (acesso livre)' }}</span></div>
+  </div>
+  <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+    @if (ehAdm()) {
+      <a class="btn primario" routerLink="/usuarios">👥 Gerenciar usuários</a>
+    }
+    <a class="btn" routerLink="/trocar-senha">🔑 Trocar senha</a>
+    <button class="btn" type="button" (click)="sair()">🚪 Sair</button>
+  </div>
+</div>
+<a class="btn" routerLink="/home">← Início</a>

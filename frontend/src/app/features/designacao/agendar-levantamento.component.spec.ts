@@ -2,16 +2,55 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { AgendarLevantamentoComponent } from './agendar-levantamento.component';
 import { DesignacaoService } from '../../core/services/designacao.service';
+import { ProjetosService } from '../../core/services/projetos.service';
 import { AgendarView } from '../../core/models/designacao.model';
+import { Projeto } from '../../core/models/projeto.model';
+
+function projeto(over: Partial<Projeto> = {}): Projeto {
+  return {
+    id: 5,
+    cliente: 'Cliente Teste',
+    cnpj: '',
+    numeroProjeto: '',
+    numeroProposta: '',
+    ramo: '',
+    responsavel: '',
+    consultor: '',
+    gci: '',
+    etapa: 'Agendamento',
+    situacao: 'Em andamento',
+    dataInicio: '',
+    dataLevantamento: '',
+    dataUsoOficial: '',
+    dataEncerramento: '',
+    horasCobradas: '',
+    horasBonificadas: '',
+    modulos: '',
+    contatoNome: '',
+    contatoEmail: '',
+    contatoTel: '',
+    contatos: '',
+    observacoes: '',
+    criadoEm: '',
+    atualizadoEm: '',
+    ...over,
+  };
+}
 
 describe('AgendarLevantamentoComponent', () => {
-  function montar(service: Partial<DesignacaoService>) {
+  function montar(service: Partial<DesignacaoService>, projetos: Partial<ProjetosService> = {}) {
     TestBed.configureTestingModule({
       imports: [AgendarLevantamentoComponent],
       providers: [
         provideRouter([]),
         { provide: DesignacaoService, useValue: service },
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: '5' }) } } },
+        { provide: ProjetosService, useValue: { buscar: () => Promise.resolve(projeto()), ...projetos } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: convertToParamMap({ id: '5' }), queryParamMap: convertToParamMap({}) },
+          },
+        },
       ],
     });
     return TestBed.createComponent(AgendarLevantamentoComponent);
@@ -25,6 +64,7 @@ describe('AgendarLevantamentoComponent', () => {
     const fixture = montar({ obterAgendar: () => Promise.resolve(view({ gci: 'Ana, Beto' })) });
     fixture.detectChanges();
     await fixture.whenStable();
+    await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Ana, Beto');
   });
@@ -32,6 +72,7 @@ describe('AgendarLevantamentoComponent', () => {
   it('pré-preenche a data já agendada, se houver', async () => {
     const fixture = montar({ obterAgendar: () => Promise.resolve(view({ dataLevantamento: '2026-08-10' })) });
     fixture.detectChanges();
+    await fixture.whenStable();
     await fixture.whenStable();
     expect(fixture.componentInstance.form.getRawValue().dataLevantamento).toBe('2026-08-10');
   });

@@ -1,6 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ConfigDisponibilidadeService } from '../../core/services/config-disponibilidade.service';
 import { LinhaOcupacao } from '../../core/models/config-disponibilidade.model';
@@ -8,13 +7,15 @@ import { LinhaOcupacao } from '../../core/models/config-disponibilidade.model';
 @Component({
   selector: 'app-config-disponibilidade',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule],
   templateUrl: './config-disponibilidade.component.html',
   styleUrl: './config-disponibilidade.component.css',
 })
 export class ConfigDisponibilidadeComponent {
   private readonly fb = inject(FormBuilder);
   private readonly service = inject(ConfigDisponibilidadeService);
+
+  readonly dialetos = ['mysql', 'oracle', 'postgresql', 'sqlserver'];
 
   readonly carregando = signal(true);
   readonly salvando = signal(false);

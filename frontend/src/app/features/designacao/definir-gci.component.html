@@ -1,38 +1,65 @@
-<div class="cabecalho">
-  <h1>Definir GCI Responsável</h1>
-  <a [routerLink]="['/projetos', projetoId]" class="voltar">← Voltar ao projeto</a>
+<h1 style="display:flex;align-items:center;gap:10px">
+  <svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-user"/></svg>
+  Definir GCI @if (cliente()) { — {{ cliente() }} }
+</h1>
+<p class="sub">
+  <strong>Etapa 1 de 2 — Agendamento.</strong>
+  Selecione um ou mais GCIs responsáveis pelo Levantamento. Os GCIs serão notificados por e-mail somente após a data do Levantamento ser confirmada.
+</p>
+
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:18px;font-size:.82rem">
+  <span style="background:var(--brand);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none">1</span>
+  <span style="font-weight:600;color:var(--brand)">Definir GCI</span>
+  <svg class="svgi svgi-xs" style="color:var(--muted)" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <span style="background:var(--surface);border:1px solid var(--line);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none;color:var(--muted)">2</span>
+  <span style="color:var(--muted)">Definir Data do Levantamento</span>
 </div>
 
 @if (erro()) {
-  <p class="erro">{{ erro() }}</p>
+  <div class="resultado erro" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
+  </div>
 }
 
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <div class="cartao">
-    <p class="dica">Selecione um ou mais GCIs responsáveis pela implantação.</p>
-    <ul class="lista-checkbox">
-      @for (nome of gcis(); track nome) {
-        <li>
-          <label>
+  @if (gciJaDefinido()) {
+    <div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+      GCI atual: <strong>{{ selecionados().join(', ') }}</strong>. Você pode alterar ou confirmar abaixo.
+    </div>
+  }
+
+  <div class="painel">
+    <div class="campo">
+      <span>GCI(s) responsável(eis) * <small style="color:var(--muted);font-weight:400">— pode marcar mais de um</small></span>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+        @for (nome of gcis(); track nome) {
+          <label style="display:flex;align-items:center;gap:10px;font-weight:500;cursor:pointer;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fff">
             <input
               type="checkbox"
               [checked]="marcado(nome)"
               (change)="alternar(nome, $any($event.target).checked)"
+              style="flex:none;margin:0;width:16px;height:16px"
             />
-            {{ nome }}
+            <span>{{ nome }}</span>
           </label>
-        </li>
-      } @empty {
-        <li class="vazio">Nenhum usuário com perfil GCI cadastrado.</li>
-      }
-    </ul>
-
-    <div class="acoes">
-      <button type="button" [disabled]="selecionados().length === 0 || salvando()" (click)="salvar()">
-        {{ salvando() ? 'Salvando…' : 'Salvar' }}
-      </button>
+        } @empty {
+          <small>Nenhum usuário com perfil GCI cadastrado. <a routerLink="/usuarios">Cadastrar</a>.</small>
+        }
+      </div>
     </div>
+    <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+      <button class="btn primario" type="button" [disabled]="selecionados().length === 0 || salvando()" (click)="salvar()">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+        {{ salvando() ? 'Salvando…' : 'Salvar GCI e continuar' }}
+      </button>
+      <a class="btn" [routerLink]="['/projetos', projetoId]">Cancelar</a>
+    </div>
+    <p style="font-size:.78rem;color:var(--muted);margin-top:8px">
+      <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-info"/></svg>
+      Após salvar, você será direcionado para definir a data do Levantamento.
+    </p>
   </div>
 }

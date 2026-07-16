@@ -1,0 +1,17 @@
+@if (!role) {
+  <div class="resultado erro" style="padding:10px 16px">Papel não encontrado.</div>
+} @else {
+  <h1>{{ role.icone }} {{ role.nome }}</h1>
+  <p class="sub">{{ role.desc }}</p>
+  <div class="grade">
+    @for (a of role.acoes; track a.id) {
+      <a class="card acao" [routerLink]="rota(a)">
+        <div class="card-corpo">
+          <h3>{{ a.nome }}</h3>
+          <p>{{ a.desc }}</p>
+          <span class="tag tag-{{ a.tipo }}">{{ a.tipo }}</span>
+        </div>
+      </a>
+    }
+  </div>
+}

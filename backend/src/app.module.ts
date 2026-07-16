@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
-import configuration from './config/configuration';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import configuration, { AppConfig } from './config/configuration';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -21,11 +22,26 @@ import { CadastroModule } from './cadastro/cadastro.module';
 import { DesignacaoModule } from './designacao/designacao.module';
 import { DigestModule } from './digest/digest.module';
 import { PlanoCronogramaModule } from './plano-cronograma/plano-cronograma.module';
+import { LegadoModule } from './legado/legado.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
     ScheduleModule.forRoot(),
+    // Serve o build de produção do Angular (`ng build`) direto pelo NestJS — um único
+    // processo/porta em produção (ver configuration.ts:frontendDistPath), evitando CORS/
+    // reverse proxy para uma ferramenta interna. `/api/*` fica de fora (API real); tudo
+    // que não bater em nenhuma rota do Nest cai no fallback de SPA (serve index.html),
+    // para o roteador do Angular funcionar em deep link (ex.: recarregar em /projetos/5).
+    ServeStaticModule.forRootAsync({
+      useFactory: (config: ConfigService<AppConfig, true>) => [
+        {
+          rootPath: config.get('frontendDistPath', { infer: true }),
+          exclude: ['/api/{*splat}'],
+        },
+      ],
+      inject: [ConfigService],
+    }),
     DatabaseModule,
     AuthModule,
     UsersModule,
@@ -45,6 +61,7 @@ import { PlanoCronogramaModule } from './plano-cronograma/plano-cronograma.modul
     DesignacaoModule,
     DigestModule,
     PlanoCronogramaModule,
+    LegadoModule,
   ],
 })
 export class AppModule {}

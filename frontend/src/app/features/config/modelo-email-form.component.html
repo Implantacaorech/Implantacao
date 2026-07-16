@@ -1,0 +1,79 @@
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <h1 style="display:flex;align-items:center;gap:10px">
+    <svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-mail"/></svg>
+    {{ modeloId() ? 'Editar Modelo' : 'Novo Modelo de E-mail' }}
+  </h1>
+  <p class="dica">
+    Use variáveis <code ngNonBindable>{{NOME_DA_VARIAVEL}}</code> no assunto e no corpo — elas serão substituídas automaticamente pelos dados do projeto ao enviar.
+    @if (modeloPadrao()) { <strong style="color:var(--warn)">Modelo padrão: pode ser editado, mas não excluído.</strong> }
+  </p>
+
+  @if (erro()) {
+    <div class="resultado erro" style="padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
+    </div>
+  }
+
+  <div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start">
+    <form class="painel" [formGroup]="form" (ngSubmit)="salvar()">
+      <label class="campo">
+        <span>Nome do modelo *</span>
+        <input formControlName="nome" placeholder="Ex.: Encaminhamento de Levantamento" />
+      </label>
+      <label class="campo">
+        <span>Etapa sugerida <small style="color:var(--muted)">(opcional — para filtro)</small></span>
+        <select formControlName="etapa">
+          <option value="">— qualquer etapa —</option>
+          @for (e of etapas; track e) { <option [value]="e">{{ e }}</option> }
+        </select>
+      </label>
+      <label class="campo">
+        <span>Assunto *</span>
+        <input formControlName="assunto" [placeholder]="placeholderAssunto" (focus)="focarCampo('assunto')" />
+      </label>
+      <label class="campo">
+        <span>Corpo do e-mail *</span>
+        <textarea formControlName="corpo" rows="16" [placeholder]="placeholderCorpo" (focus)="focarCampo('corpo')"></textarea>
+      </label>
+
+      <div style="border:1px solid var(--line);border-radius:var(--r-sm);padding:12px;background:var(--surface)">
+        <div style="font-size:.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
+          <svg class="svgi" style="width:11px;height:11px" aria-hidden="true"><use href="#ic-bulb"/></svg>
+          Preview (variáveis marcadas)
+        </div>
+        <div style="font-size:.85rem;font-weight:600;color:var(--text);margin-bottom:6px;word-break:break-word" [innerHTML]="previewAssunto()"></div>
+        <hr style="border:none;border-top:1px solid var(--line);margin:6px 0" />
+        <pre style="font-size:.82rem;color:var(--text);white-space:pre-wrap;word-break:break-word;margin:0;font-family:inherit" [innerHTML]="previewCorpo()"></pre>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn primario" type="submit" [disabled]="salvando()">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+          {{ salvando() ? 'Salvando…' : (modeloId() ? 'Salvar alterações' : 'Criar modelo') }}
+        </button>
+        <a class="btn" routerLink="/config/modelos-email">Cancelar</a>
+      </div>
+    </form>
+
+    <aside>
+      <div class="painel" style="padding:14px">
+        <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px">
+          <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-bulb"/></svg>
+          Variáveis disponíveis
+        </div>
+        <p style="font-size:.78rem;color:var(--muted);margin:0 0 10px">Clique em uma variável para inserir no campo ativo (Assunto ou Corpo).</p>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          @for (v of variaveis; track v.variavel) {
+            <button type="button" [title]="v.descricao" (click)="inserirVariavel(v.variavel)"
+                    style="text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 8px;cursor:pointer;font-size:.78rem;font-family:monospace;color:var(--brand)">
+              {{ v.variavel }}
+              <span style="font-family:sans-serif;font-size:.72rem;color:var(--muted);display:block;margin-top:1px">{{ v.descricao }}</span>
+            </button>
+          }
+        </div>
+      </div>
+    </aside>
+  </div>
+}

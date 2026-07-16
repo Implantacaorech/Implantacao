@@ -113,6 +113,47 @@ async function ajustarSequence(ds: DataSource, tabela: string): Promise<void> {
   );
 }
 
+/** Grava uma linha preservando o `id` original da origem via SQL bruto (INSERT ... ON
+ * CONFLICT DO UPDATE). NÃO existe alternativa via `repository.save()`/`create()` aqui: o
+ * TypeORM, para colunas `@PrimaryGeneratedColumn()`, SEMPRE omite a coluna `id` da lista de
+ * colunas do INSERT — mesmo com o valor setado explicitamente no objeto — e deixa o Postgres
+ * gerar um id novo por sequence. Isso ficou invisível nos testes com dados sintéticos (ids
+ * baixos como 1/2, que por coincidência são os mesmos que a sequence geraria de qualquer
+ * forma) e só apareceu ao migrar um projeto real com id 174: cada rodada criava uma linha
+ * NOVA com id auto-gerado (nunca 174), deixando toda tabela filha (designacoes, eventos,
+ * cronograma_atividades etc., que gravam o projeto_id da ORIGEM) órfã — sem o registro do
+ * Postgres, não haveria erro nenhum, só corrupção silenciosa. `dados` deve incluir `id` e
+ * usa nomes de PROPRIEDADE da entidade (camelCase) — a resolução para nome de coluna do
+ * banco usa os metadados do próprio TypeORM, então também funciona para colunas com `name`
+ * customizado (ex.: `projetoId` -> `projeto_id`). */
+async function upsertComId<Entidade extends { id: number }>(
+  ds: DataSource,
+  entidade: new () => Entidade,
+  dados: Record<string, unknown>,
+): Promise<void> {
+  const metadata = ds.getMetadata(entidade);
+  const colunas = Object.keys(dados).map((propriedade) => {
+    const coluna = metadata.findColumnWithPropertyName(propriedade);
+    if (!coluna) {
+      throw new Error(
+        `upsertComId: propriedade "${propriedade}" não existe em ${metadata.name}`,
+      );
+    }
+    return { db: coluna.databaseName, valor: dados[propriedade] };
+  });
+  const nomesColunas = colunas.map((c) => `"${c.db}"`).join(', ');
+  const placeholders = colunas.map((_, i) => `$${i + 1}`).join(', ');
+  const atualizacoes = colunas
+    .filter((c) => c.db !== 'id')
+    .map((c) => `"${c.db}" = EXCLUDED."${c.db}"`)
+    .join(', ');
+  await ds.query(
+    `INSERT INTO "${metadata.tableName}" (${nomesColunas}) VALUES (${placeholders})
+     ON CONFLICT ("id") DO UPDATE SET ${atualizacoes}`,
+    colunas.map((c) => c.valor),
+  );
+}
+
 /** Copia o arquivo de `caminhoOrigem` para `destinoDir/nomeDestino`, tentando primeiro o
  * caminho absoluto gravado na origem e, se não existir neste host, `MIGRACAO_ORIGEM_DADOS_DIR`
  * + nome do arquivo como fallback. Devolve o caminho novo (para gravar no registro
@@ -160,25 +201,62 @@ async function migrarUsuarios(
     ativo: number | boolean;
     criado_em: Date;
   }
-  const linhas = await origemQuery<Row>(
+  const todas = await origemQuery<Row>(
     origem,
     'SELECT id, login, nome, email, perfil, codigo_sicla, ativo, criado_em FROM usuarios ORDER BY id',
   );
+
+  // A origem NUNCA teve `login` único (schema antigo não declara essa constraint) — o
+  // destino sim (`Usuario.login` é @Index({unique:true})). Quando duas linhas da origem
+  // colidem no mesmo login, mantém só a "mais válida": ativa antes de inativa; entre
+  // ativas (não deveria acontecer, mas por segurança) ou entre inativas, a mais recente
+  // (`criado_em` maior). As demais são puladas — reportadas explicitamente, nunca
+  // silenciosamente descartadas.
+  const porLogin = new Map<string, Row[]>();
+  for (const r of todas) {
+    const chave = (r.login || '').trim().toLowerCase();
+    const grupo = porLogin.get(chave) ?? [];
+    grupo.push(r);
+    porLogin.set(chave, grupo);
+  }
+  const linhas: Row[] = [];
+  const duplicadasIgnoradas: string[] = [];
+  for (const [chave, grupo] of porLogin) {
+    if (grupo.length === 1 || !chave) {
+      linhas.push(...grupo);
+      continue;
+    }
+    const ordenado = [...grupo].sort((a, b) => {
+      const ativoA = a.ativo ? 1 : 0;
+      const ativoB = b.ativo ? 1 : 0;
+      if (ativoA !== ativoB) return ativoB - ativoA; // ativo primeiro
+      return new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime(); // mais recente primeiro
+    });
+    linhas.push(ordenado[0]);
+    for (const ignorada of ordenado.slice(1)) {
+      duplicadasIgnoradas.push(
+        `login "${ignorada.login}" (id ${ignorada.id} da origem, ativo=${Boolean(ignorada.ativo)}) — mantido só o id ${ordenado[0].id}`,
+      );
+    }
+  }
+
   const senhas: SenhaTemp[] = [];
   if (!aplicar) {
     relatorios.push({
       tabela: 'usuarios',
-      origem: linhas.length,
+      origem: todas.length,
       migrados: 0,
-      observacao: 'dry-run',
+      observacao:
+        duplicadasIgnoradas.length > 0
+          ? `dry-run — ${duplicadasIgnoradas.length} login(s) duplicado(s) na origem seriam ignorados: ${duplicadasIgnoradas.join('; ')}`
+          : 'dry-run',
     });
     return senhas;
   }
-  const repo = ds.getRepository(Usuario);
   for (const r of linhas) {
     const senha = randomBytes(9).toString('base64url');
     const senhaHash = await bcrypt.hash(senha, 12);
-    const u = repo.create({
+    await upsertComId(ds, Usuario, {
       id: r.id,
       login: r.login || '',
       nome: r.nome || '',
@@ -188,14 +266,17 @@ async function migrarUsuarios(
       codigoSicla: r.codigo_sicla || '',
       ativo: Boolean(r.ativo),
     });
-    await repo.save(u);
     senhas.push({ login: r.login, nome: r.nome, email: r.email, senha });
   }
   await ajustarSequence(ds, 'usuarios');
   relatorios.push({
     tabela: 'usuarios',
-    origem: linhas.length,
+    origem: todas.length,
     migrados: senhas.length,
+    observacao:
+      duplicadasIgnoradas.length > 0
+        ? `${duplicadasIgnoradas.length} login(s) duplicado(s) na origem, ignorados: ${duplicadasIgnoradas.join('; ')}`
+        : undefined,
   });
   return senhas;
 }
@@ -207,6 +288,9 @@ interface ColunaMapa {
   destino: string;
   /** Transforma o valor da origem antes de gravar (ex.: 0/1 -> boolean). */
   converter?: (v: unknown) => unknown;
+  /** Marca colunas de data/timestamp — nunca recebem o default de string vazia quando
+   * vêm nulas da origem (ausência de data é legítima, não é o mesmo caso de texto). */
+  ehData?: boolean;
 }
 
 async function migrarTabelaSimples<Entidade extends { id: number }>(
@@ -234,15 +318,21 @@ async function migrarTabelaSimples<Entidade extends { id: number }>(
     });
     return;
   }
-  const repo: Repository<Entidade> = ds.getRepository(opts.entidade);
   for (const linha of linhas) {
     const dados: Record<string, unknown> = { id: linha.id };
     for (const c of opts.colunas) {
       const bruto = linha[c.origem];
-      dados[c.destino] = c.converter ? c.converter(bruto) : bruto;
+      if (c.converter) {
+        dados[c.destino] = c.converter(bruto);
+      } else if (c.ehData) {
+        dados[c.destino] = bruto;
+      } else {
+        // O schema antigo permitia NULL em colunas de texto que o schema novo declara
+        // NOT NULL com default '' — achado real em produção (ex.: designacoes.analista).
+        dados[c.destino] = bruto ?? '';
+      }
     }
-    const entidade = repo.create(dados as unknown as DeepPartial<Entidade>);
-    await repo.save(entidade);
+    await upsertComId(ds, opts.entidade, dados);
   }
   await ajustarSequence(ds, opts.tabelaOrigem);
   relatorios.push({
@@ -280,7 +370,6 @@ async function migrarDocumentos(
     });
     return;
   }
-  const repo = ds.getRepository(Documento);
   const destinoDir = join(process.cwd(), 'dados', 'documentos_gerados');
   let semArquivo = 0;
   for (const r of linhas) {
@@ -290,7 +379,7 @@ async function migrarDocumentos(
       `${r.projeto_id}_legado_${r.arquivo}`,
     );
     if (!novoCaminho) semArquivo++;
-    const d = repo.create({
+    await upsertComId(ds, Documento, {
       id: r.id,
       projetoId: r.projeto_id,
       tipo: r.tipo || '',
@@ -299,7 +388,6 @@ async function migrarDocumentos(
       origem: (r.origem as Documento['origem']) || 'gerado',
       criadoEm: r.criado_em,
     });
-    await repo.save(d);
   }
   await ajustarSequence(ds, 'documentos');
   relatorios.push({
@@ -336,7 +424,6 @@ async function migrarProtocolos(
     });
     return;
   }
-  const repo = ds.getRepository(Protocolo);
   const destinoDir = join(process.cwd(), 'dados', 'protocolos_videos');
   let semVideo = 0;
   for (const r of linhas) {
@@ -347,8 +434,8 @@ async function migrarProtocolos(
       `${String(r.id)}_${String(r.video_nome)}`,
     );
     if (!novoCaminho) semVideo++;
-    const p = repo.create({
-      id: r.id as number,
+    await upsertComId(ds, Protocolo, {
+      id: r.id,
       titulo: (r.titulo as string) ?? '',
       modulo: (r.modulo as string) ?? '',
       menu: (r.menu as string) ?? '',
@@ -377,11 +464,10 @@ async function migrarProtocolos(
       historico: (r.historico as string) ?? '',
       responsavel: (r.responsavel as string) ?? '',
       aprovador: (r.aprovador as string) ?? '',
-      criadoEm: r.criado_em as Date,
-      processadoEm: r.processado_em as Date,
-      aprovadoEm: r.aprovado_em as Date,
+      criadoEm: r.criado_em,
+      processadoEm: r.processado_em,
+      aprovadoEm: r.aprovado_em,
     });
-    await repo.save(p);
   }
   await ajustarSequence(ds, 'protocolos');
   relatorios.push({
@@ -574,7 +660,6 @@ async function migrarModelosDocumentoVersoes(
     });
     return;
   }
-  const repo = ds.getRepository(ModeloDocumentoVersao);
   const destinoDir = join(process.cwd(), 'dados', 'modelos_documento');
   let semArquivo = 0;
   let semModelo = 0;
@@ -592,7 +677,7 @@ async function migrarModelosDocumentoVersoes(
       ? copiarArquivoSePossivel(caminhoOrigem, destinoDir, r.arquivo)
       : null;
     if (!novoCaminho) semArquivo++;
-    const v = repo.create({
+    await upsertComId(ds, ModeloDocumentoVersao, {
       id: r.id,
       modeloId: novoModeloId,
       versao: r.versao || 1,
@@ -602,7 +687,6 @@ async function migrarModelosDocumentoVersoes(
       vigente: Boolean(r.vigente),
       criadoEm: r.criado_em,
     });
-    await repo.save(v);
   }
   await ajustarSequence(ds, 'modelos_documento_versoes');
   relatorios.push({
@@ -648,7 +732,6 @@ async function migrarModelosDocumentoCampos(
     });
     return;
   }
-  const repo = ds.getRepository(ModeloDocumentoCampo);
   let semModelo = 0;
   for (const r of linhas) {
     const novoModeloId = remapaModelo.get(r.modelo_id);
@@ -656,7 +739,7 @@ async function migrarModelosDocumentoCampos(
       semModelo++;
       continue;
     }
-    const c = repo.create({
+    await upsertComId(ds, ModeloDocumentoCampo, {
       id: r.id,
       modeloId: novoModeloId,
       ordem: r.ordem || 0,
@@ -667,7 +750,6 @@ async function migrarModelosDocumentoCampos(
       obrigatorio: Boolean(r.obrigatorio),
       observacao: r.observacao || '',
     });
-    await repo.save(c);
   }
   await ajustarSequence(ds, 'modelos_documento_campos');
   relatorios.push({
@@ -708,18 +790,16 @@ async function migrarMatrizTecnicos(
     });
     return;
   }
-  const repo = ds.getRepository(MatrizTecnico);
   for (const r of linhas) {
-    const t = repo.create({
+    await upsertComId(ds, MatrizTecnico, {
       id: r.id,
       nome: r.nome || '',
       setor: r.setor || '',
       dias: r.dias || '',
       notas: r.notas || '{}',
-      atualizadoEm: r.atualizado_em as Date,
+      atualizadoEm: r.atualizado_em,
       atualizadoPor: r.atualizado_por || '',
     });
-    await repo.save(t);
   }
   await ajustarSequence(ds, 'matriz_tecnicos');
   relatorios.push({
@@ -834,7 +914,7 @@ async function main(): Promise<void> {
         { origem: 'contato_tel', destino: 'contatoTel' },
         { origem: 'contatos', destino: 'contatos' },
         { origem: 'observacoes', destino: 'observacoes' },
-        { origem: 'criado_em', destino: 'criadoEm' },
+        { origem: 'criado_em', destino: 'criadoEm', ehData: true },
       ],
     });
 
@@ -848,7 +928,7 @@ async function main(): Promise<void> {
         { origem: 'tipo', destino: 'tipo' },
         { origem: 'descricao', destino: 'descricao' },
         { origem: 'autor', destino: 'autor' },
-        { origem: 'criado_em', destino: 'criadoEm' },
+        { origem: 'criado_em', destino: 'criadoEm', ehData: true },
       ],
     });
 
@@ -909,7 +989,7 @@ async function main(): Promise<void> {
         { origem: 'de', destino: 'de' },
         { origem: 'para', destino: 'para' },
         { origem: 'autor', destino: 'autor' },
-        { origem: 'criado_em', destino: 'criadoEm' },
+        { origem: 'criado_em', destino: 'criadoEm', ehData: true },
       ],
     });
 

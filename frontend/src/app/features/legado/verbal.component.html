@@ -1,0 +1,60 @@
+@if (!role || !acao) {
+  <div class="resultado erro" style="padding:10px 16px">Ação não encontrada.</div>
+} @else {
+  <h1>{{ acao.nome }}</h1>
+  <p class="sub">Converte verbos do Presente para o Futuro (utiliza→utilizará, é→será) e aplica
+    correção ortográfica. Preserva termos técnicos (Formulação/Estrutura, SIGER, NF-e…).</p>
+
+  <div class="resultado" [class.ok]="iaAtiva()" style="padding:10px 16px">
+    @if (iaAtiva()) {
+      🟢 <strong>Reconferência por IA ativa</strong> (modelo <code>{{ iaModelo() }}</code>) — futuro do presente do indicativo.
+    } @else {
+      ⚪ Só corretor <strong>offline</strong>. <a routerLink="/config/ia">Ativar reconferência por IA</a> para uma 2ª revisão.
+    }
+  </div>
+
+  @if (erro()) {
+    <div class="resultado erro" style="padding:10px 16px">{{ erro() }}</div>
+  }
+
+  @if (arquivoCorrigido(); as arq) {
+    <div class="resultado ok">
+      <h3>✅ Documento corrigido</h3>
+      <button class="btn primario" type="button" (click)="baixar()">⬇️ Baixar .docx corrigido</button>
+    </div>
+  }
+
+  <h3 style="color:#1F4E78">Verificar um documento (.docx)</h3>
+  <div class="painel">
+    <label class="campo">
+      <span>Envie o documento</span>
+      <input #arquivoInput type="file" accept=".docx" [disabled]="convertendoDocx()" (change)="converterDocx(arquivoInput)" />
+      <small>Mantém o layout (logos, tabelas, formatação); só o texto é ajustado.</small>
+    </label>
+  </div>
+
+  <h3 style="color:#1F4E78">Ou cole um texto</h3>
+  <div class="painel">
+    <label class="campo">
+      <span>Texto</span>
+      <textarea rows="5" placeholder="Ex.: A empresa utiliza o módulo e possui controle de estoque." [(ngModel)]="texto" name="texto"></textarea>
+    </label>
+    <button class="btn primario" type="button" [disabled]="convertendoTexto() || !texto.trim()" (click)="converterTexto()">
+      {{ convertendoTexto() ? 'Convertendo…' : 'Converter texto' }}
+    </button>
+  </div>
+
+  @if (depois(); as texto2) {
+    <div class="resultado ok">
+      <h3>Resultado</h3>
+      <p class="bloco-texto">{{ texto2 }}</p>
+      @if (mudancas().length > 0) {
+        <p class="dica">{{ mudancas().length }} alteração(ões) verbais:
+          @for (m of mudancas(); track $index) { <span class="chip">{{ m[0] }} → {{ m[1] }}</span> }
+        </p>
+      }
+    </div>
+  }
+
+  <a class="voltar" [routerLink]="['/legado', rid]">← Voltar para {{ role.nome }}</a>
+}

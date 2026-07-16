@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -32,6 +32,8 @@ export class ChecklistPlanoComponent {
   readonly linhas = signal<LinhaChecklist[]>([]);
   readonly historico = signal<Modificacao[]>([]);
   readonly mostrarHistorico = signal(false);
+
+  readonly concluidos = computed(() => this.linhas().filter((l) => l.status === 'Concluído').length);
 
   constructor() {
     void this.carregar();

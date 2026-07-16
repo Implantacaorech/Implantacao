@@ -1,189 +1,281 @@
-<div class="cabecalho">
-  <h1>Agendador de Visitas</h1>
-  <a [routerLink]="['/projetos', projetoId]" class="voltar">← Voltar ao projeto</a>
-</div>
-
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  @if (erro()) {
-    <p class="msg erro">{{ erro() }}</p>
-  }
+  <h1 style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+    <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-calendar"/></svg>
+    Agenda de Visitas
+  </h1>
+  <p class="dica">Arraste cada atividade da <strong>Visita</strong> para um <strong>dia e turno</strong>. Os horários valem
+    para todas as visitas; o técnico pode ser definido por módulo (abaixo) ou por cartão.</p>
+
   @if (aviso()) {
-    <p class="msg aviso">{{ aviso() }}</p>
+    <div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+    </div>
   }
-  @if (processando()) {
-    <div class="progresso">
-      <span>{{ processando() }}</span>
-      <div class="barra"><div class="fill"></div></div>
+  @if (erro()) {
+    <div class="resultado erro" style="padding:8px 14px;display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
     </div>
   }
 
-  @if (prontidao().faltantes.length > 0) {
-    <p class="msg alerta">
-      Defina um técnico válido para: {{ prontidao().faltantes.join(', ') }} — a distribuição automática só roda com
-      todos os módulos designados.
-    </p>
-  }
-
-  <div class="acoes-topo">
-    <button type="button" (click)="distribuir()" [disabled]="!!processando() || prontidao().faltantes.length > 0">
-      Distribuir agenda
-    </button>
-    <button type="button" (click)="redistribuir()" [disabled]="!!processando() || prontidao().faltantes.length > 0">
-      Refazer distribuição
-    </button>
-    <button
-      type="button"
-      (click)="desfazerTudo()"
-      [disabled]="!!processando() || prontidao().jaOcorreu"
-      [title]="prontidao().jaOcorreu ? 'Há visita(s) já Realizada(s) — não é possível desfazer' : ''"
-    >
-      Desfazer todas as agendas
-    </button>
+  <div class="ag-cfg">
+    <span class="ag-cfg-l">Horários</span>
+    <span class="ag-hgrp">Manhã
+      <input type="time" [ngModel]="horarios().manha.inicio" (change)="salvarHorarioCampo('manha', 'inicio', $any($event.target).value)" />
+      – <input type="time" [ngModel]="horarios().manha.fim" (change)="salvarHorarioCampo('manha', 'fim', $any($event.target).value)" />
+    </span>
+    <span class="ag-hgrp">Tarde
+      <input type="time" [ngModel]="horarios().tarde.inicio" (change)="salvarHorarioCampo('tarde', 'inicio', $any($event.target).value)" />
+      – <input type="time" [ngModel]="horarios().tarde.fim" (change)="salvarHorarioCampo('tarde', 'fim', $any($event.target).value)" />
+    </span>
+    <span style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      @if (prontidao().faltantes.length > 0) {
+        <span class="dica" style="margin:0;color:var(--err,#d33)"
+              [title]="'Defina o técnico em \'Técnico por módulo\' para: ' + prontidao().faltantes.join(', ')">
+          Defina o técnico de {{ prontidao().faltantes.length }} módulo(s) para liberar a distribuição automática
+        </span>
+      } @else {
+        <button type="button" class="btn" [disabled]="!!processando()" (click)="distribuir()"
+                title="Distribuição de agendas conforme datas livres: aloca as visitas 100% pendentes no primeiro turno livre do técnico do módulo, respeitando a ordem de treinamento">Distribuir agenda</button>
+        <button type="button" class="btn" [disabled]="!!processando()" (click)="redistribuir()"
+                title="Refazer distribuição de agendas conforme datas livres">Refazer distribuição</button>
+      }
+      <button type="button" class="btn" [disabled]="!!processando() || prontidao().jaOcorreu" (click)="desfazerTudo()"
+              [title]="prontidao().jaOcorreu ? 'Há visita(s) já Realizada(s)/Não Realizada(s) — não é possível desfazer.' : 'Desfaz TODAS as agendas (automáticas e manuais) deste cronograma, voltando ao estágio inicial.'">Desfazer todas as agendas</button>
+      <button type="button" class="btn primario" [disabled]="gerandoXlsx()" (click)="gerarXlsx()">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> {{ gerandoXlsx() ? 'Gerando…' : 'Gerar (.xlsx)' }}
+      </button>
+      <a class="btn" [routerLink]="['/projetos', projetoId, 'agenda', 'acompanhamento']">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Acompanhamento
+      </a>
+    </span>
   </div>
 
-  <details class="caixa designacoes">
-    <summary>Técnico por módulo — ordem de treinamento</summary>
-    <table>
-      <thead>
-        <tr>
-          <th>Módulo</th>
-          <th>Técnico</th>
-          <th>Ordem</th>
-          <th>Não distribuir</th>
-          <th>Analista</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (par of modulosVisitas(); track par[0]) {
-          <tr>
-            <td>{{ par[0] }}</td>
-            <td>
-              <input
-                type="text"
-                [value]="designacaoDe(par[0]).consultor"
-                (change)="salvarDesignacao(par[0], { tecnico: $any($event.target).value })"
-              />
-            </td>
-            <td>
-              <input
-                type="number"
-                [value]="designacaoDe(par[0]).ordem"
-                (change)="salvarDesignacao(par[0], { ordem: +$any($event.target).value })"
-              />
-            </td>
-            <td>
-              <input
-                type="checkbox"
-                [checked]="designacaoDe(par[0]).naoDistribuir"
-                (change)="salvarDesignacao(par[0], { naoDistribuir: $any($event.target).checked })"
-              />
-            </td>
-            <td>
-              <input
-                type="text"
-                [value]="designacaoDe(par[0]).analista"
-                (change)="salvarDesignacao(par[0], { analista: $any($event.target).value })"
-              />
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
-  </details>
+  @if (processando()) {
+    <div class="ag-progresso">
+      <span class="ag-progresso-txt">{{ processando() }}</span>
+      <div class="ag-progresso-barra"><div class="ag-progresso-fill"></div></div>
+    </div>
+  }
 
-  <details class="caixa periodos">
-    <summary>Períodos sem agenda (recesso, férias coletivas etc.)</summary>
-    @if (periodos().length > 0) {
-      <ul class="lista-periodos">
-        @for (p of periodos(); track p.id) {
-          <li>
-            {{ p.dataIni }} a {{ p.dataFim }} @if (p.motivo) {— {{ p.motivo }}}
-            <strong>{{ p.tecnicos ? p.tecnicos.replace(',', ', ') : 'Todos os técnicos' }}</strong>
-            <button type="button" (click)="excluirPeriodo(p.id)" title="Excluir">🗑</button>
-          </li>
+  <details class="ag-modtec-box">
+    <summary>Técnico por módulo <small class="dica" style="margin:0">— ordem de treinamento e modo de disponibilidade usados pela distribuição automática</small></summary>
+    <div class="ag-modtec-modo">
+      <div class="ag-modtec-modo-form">
+        <span class="dica" style="margin:0">Modo de disponibilidade:</span>
+        <select [ngModel]="config().modoDisponibilidade" (ngModelChange)="salvarModoDistribuicao($event)">
+          <option value="conjunta">Em grupo (bloqueia o turno se qualquer técnico estiver ocupado)</option>
+          <option value="individual">Individual por técnico (cada um só vê a própria agenda)</option>
+        </select>
+        <span class="dica" style="margin:0">Distribuir a partir de:</span>
+        <input type="date" [ngModel]="config().dataInicio" [min]="hojeIso"
+               title="Data a partir da qual a distribuição automática busca turnos livres (vazio = hoje)"
+               (change)="salvarDataInicioDistribuicao($any($event.target).value)" />
+        <span class="dica" style="margin:0">Analista responsável (padrão do cliente):</span>
+        <input type="text" [ngModel]="config().analistaPadrao" class="ag-analista-padrao"
+               placeholder="Nome do analista" title="Analista responsável pelo cliente — cada módulo pode sobrepor abaixo"
+               (change)="salvarAnalistaPadrao($any($event.target).value)" />
+      </div>
+    </div>
+    <div class="ag-dias-turnos">
+      <span class="dica" style="margin:0 0 6px;display:block">Considerar dias da semana (distribuição automática) — desmarque o que o técnico não pode:</span>
+      <div class="ag-dt-grid">
+        @for (wd of diasSemanaIdx; track wd) {
+          <div class="ag-dt-dia">
+            <span class="ag-dt-dia-nome">{{ nomesDiaSemana[wd] }}</span>
+            <label><input type="checkbox" [checked]="diaTurnoIncluido(wd, 'manha')" (change)="alternarDiaTurno(wd, 'manha', $any($event.target).checked)" /> Manhã</label>
+            <label><input type="checkbox" [checked]="diaTurnoIncluido(wd, 'tarde')" (change)="alternarDiaTurno(wd, 'tarde', $any($event.target).checked)" /> Tarde</label>
+          </div>
         }
-      </ul>
-    }
-    <div class="novo-periodo">
-      <label>De: <input type="date" [(ngModel)]="novoPeriodo.dataIni" /></label>
-      <label>até: <input type="date" [(ngModel)]="novoPeriodo.dataFim" /></label>
-      <input type="text" placeholder="Motivo (opcional)" [(ngModel)]="novoPeriodo.motivo" class="motivo" />
-      <span class="tecnicos-periodo">
-        @for (t of tecnicosEnvolvidos(); track t) {
-          <label>
-            <input
-              type="checkbox"
-              [checked]="novoPeriodo.tecnicos.includes(t)"
-              (change)="alternarTecnicoNoPeriodo(t, $any($event.target).checked)"
-            />
-            {{ t }}
-          </label>
-        }
-      </span>
-      <button type="button" (click)="criarPeriodo()" [disabled]="!novoPeriodo.dataIni || !novoPeriodo.dataFim">
-        + Adicionar período
-      </button>
+      </div>
+    </div>
+    <div class="ag-periodos">
+      <span class="dica" style="margin:0 0 6px;display:block">Períodos sem agenda (recesso, férias coletivas etc.) — nenhuma visita entra nessas datas, nem manual nem automática:</span>
+      @if (periodos().length > 0) {
+        <div class="ag-per-lista">
+          @for (per of periodos(); track per.id) {
+            <div class="ag-per-item">
+              <span>{{ per.dataIni }} a {{ per.dataFim }}@if (per.motivo) { — {{ per.motivo }} }
+                <strong>{{ per.tecnicos ? per.tecnicos.replaceAll(',', ', ') : 'Todos os técnicos' }}</strong></span>
+              <button type="button" title="Excluir este período" (click)="excluirPeriodo(per.id)">🗑</button>
+            </div>
+          }
+        </div>
+      }
+      <div class="ag-per-novo">
+        <span class="dica" style="margin:0">De:</span>
+        <input type="date" [(ngModel)]="novoPeriodo.dataIni" required />
+        <span class="dica" style="margin:0">até:</span>
+        <input type="date" [(ngModel)]="novoPeriodo.dataFim" required />
+        <input type="text" [(ngModel)]="novoPeriodo.motivo" placeholder="Motivo (opcional) — ex.: Recesso de fim de ano" class="ag-per-motivo" />
+        <span class="dica" style="margin:0 0 0 8px">Técnicos (vazio = todos):</span>
+        <span class="ag-per-tecs">
+          @for (t of tecnicosEnvolvidos(); track t) {
+            <label><input type="checkbox" [checked]="novoPeriodo.tecnicos.includes(t)" (change)="alternarTecnicoNoPeriodo(t, $any($event.target).checked)" /> {{ t }}</label>
+          }
+        </span>
+        <button type="button" class="btn" [disabled]="!novoPeriodo.dataIni || !novoPeriodo.dataFim" (click)="criarPeriodo()">+ Adicionar período</button>
+      </div>
+    </div>
+    <div class="ag-modtec-grid">
+      @for (m of modulosAgrupados(); track m.modulo) {
+        <div class="ag-modtec">
+          <span class="ag-modtec-sig">{{ m.modulo }}</span>
+          <input type="number" class="ag-modtec-ordem" [ngModel]="designacaoDe(m.modulo).ordem" min="0" step="1"
+                 title="Ordem de treinamento do módulo (menor = treinado primeiro na distribuição automática)"
+                 (change)="salvarDesignacao(m.modulo, { ordem: +$any($event.target).value })" />
+          <select [ngModel]="designacaoDe(m.modulo).naoDistribuir ? '__nd__' : designacaoDe(m.modulo).consultor"
+                  (ngModelChange)="salvarDesignacao(m.modulo, $event === '__nd__' ? { naoDistribuir: true } : { tecnico: $event, naoDistribuir: false })">
+            <option value="">—</option>
+            @for (t of tecnicosEnvolvidos(); track t) { <option [value]="t">{{ t }}</option> }
+            <option value="__nd__">— Não distribuir —</option>
+          </select>
+          <input type="text" [ngModel]="designacaoDe(m.modulo).analista" class="ag-modtec-analista"
+                 [placeholder]="'Analista' + (config().analistaPadrao ? ' (' + config().analistaPadrao + ')' : '')"
+                 title="Analista responsável deste módulo — vazio usa o padrão do cliente"
+                 (change)="salvarDesignacao(m.modulo, { analista: $any($event.target).value })" />
+        </div>
+      }
     </div>
   </details>
 
-  <div class="corpo">
-    <aside class="pendentes">
-      <h2>Visitas pendentes</h2>
-      @for (v of pendentes(); track chave(v)) {
-        <div class="cartao-visita">
-          <strong>{{ v.modulo }} V{{ v.seq }}</strong>
-          <span class="qtd">{{ v.atividades.length }} assunto(s)</span>
-          <div class="mover">
-            <input type="date" [(ngModel)]="movimento(v).data" />
-            <select [(ngModel)]="movimento(v).turno">
-              <option value="manha">Manhã</option>
-              <option value="tarde">Tarde</option>
-            </select>
-            <button type="button" (click)="aplicarMovimento(v)" [disabled]="!movimento(v).data">Alocar</button>
-          </div>
-        </div>
-      } @empty {
-        <p class="vazio">Nenhuma visita pendente.</p>
-      }
-    </aside>
-
-    <section class="calendario">
-      <div class="nav-semana">
-        <button type="button" (click)="semanaAnterior()">« Semana anterior</button>
-        <button type="button" (click)="irParaHoje()">Hoje</button>
-        <button type="button" (click)="semanaSeguinte()">Próxima semana »</button>
+  <div class="ag-wrap">
+    <aside class="ag-side">
+      <div class="ag-side-h">
+        <svg class="svgi svgi-md" style="color:var(--brand)" aria-hidden="true"><use href="#ic-layers"/></svg>
+        Visitas a alocar <span class="ag-badge">{{ totalPendentes() }}</span>
       </div>
-      <div class="grade">
-        @for (dia of semana(); track dia.iso) {
-          <div class="coluna-dia">
-            <div class="cabecalho-dia">{{ dia.label }}</div>
-            @for (turno of ['manha', 'tarde']; track turno) {
-              <div class="celula-turno">
-                <div class="rotulo-turno">{{ turno === 'manha' ? 'Manhã' : 'Tarde' }}</div>
-                @for (v of celula(dia.iso, turno); track chave(v)) {
-                  <div class="cartao-alocado">
-                    <strong>{{ v.modulo }} V{{ v.seq }}</strong>
-                    <span class="tecnico">{{ v.atividades[0].tecnico || '—' }}</span>
-                    @for (a of v.atividades; track a.id) {
-                      <div class="assunto">
-                        <span>{{ a.descricao }}</span>
-                        <select [ngModel]="a.status" (ngModelChange)="mudarStatus(a.id, $event)">
-                          @for (s of statusOpcoes; track s) {
-                            <option [value]="s">{{ s }}</option>
-                          }
+      <p class="dica" style="margin:4px 0 8px">Arraste o <b>⠿</b> da visita para alocar o <b>bloco inteiro</b>; ou um cartão para um único assunto. Para desalocar, arraste de volta.</p>
+      <div class="ag-drop ag-pendzone" [class.over]="zonaSobreArraste() === 'pend'"
+           (dragover)="permitirSolta($event, 'pend')" (dragleave)="saiuDaZona()" (drop)="soltarEm($event, '', '')">
+        @for (m of modulosAgrupados(); track m.modulo) {
+          <details class="ag-mod" open>
+            <summary class="ag-mod-sum">{{ m.modulo }} <span class="ag-count">{{ m.pend }}/{{ m.n }}</span></summary>
+            @for (v of m.visitas; track chave(v)) {
+              @if (v.pendentes.length > 0) {
+                <details class="ag-visita-d" open>
+                  <summary class="ag-visita-sum">
+                    <span class="ag-grip" draggable="true" (dragstart)="iniciarArrasteGrupo($event, v.modulo, v.seq)" (dragend)="aoTerminarArraste()"
+                          (click)="$event.preventDefault(); $event.stopPropagation()" title="Arraste a visita inteira para um dia/turno">⠿</span>
+                    <span class="ag-visita-t">V{{ v.seq }}@if (designacaoDe(v.modulo).consultor) { · <span class="ag-tec-nome">{{ designacaoDe(v.modulo).consultor }}</span> }</span>
+                    <span class="ag-count">{{ v.pendentes.length }}</span>
+                  </summary>
+                  <div class="ag-visita-cards">
+                    @for (a of v.pendentes; track a.id) {
+                      <div class="ag-card {{ classeStatus(a.status) }}" draggable="true"
+                           (dragstart)="iniciarArrasteCard($event, a)" (dragend)="aoTerminarArraste()"
+                           [title]="a.descricao + ' — ' + a.status">
+                        <span class="ag-card-top">
+                          <span class="ag-card-mod">{{ a.modulo }} · V{{ a.seq }}</span>
+                        </span>
+                        <span class="ag-card-desc">{{ a.descricao }}</span>
+                        <select class="ag-tec" [ngModel]="a.tecnico" (ngModelChange)="salvarTecnicoCard(a.id, $event)" (mousedown)="$event.stopPropagation()" title="Técnico">
+                          <option value="">— técnico —</option>
+                          @for (t of tecnicosEnvolvidos(); track t) { <option [value]="t">{{ t }}</option> }
                         </select>
                       </div>
                     }
-                    <button type="button" class="btn-desalocar" (click)="desalocar(v)">Desalocar</button>
                   </div>
+                </details>
+              }
+            }
+          </details>
+        }
+      </div>
+    </aside>
+
+    <main class="ag-cal">
+      <div class="ag-cal-top">
+        <button class="btn" type="button" (click)="semanaAnterior()" title="Semana anterior">
+          <svg class="svgi" style="transform:rotate(180deg)" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+        </button>
+        <strong style="min-width:140px;text-align:center">{{ semana()[0].label }} – {{ semana()[4].label }}</strong>
+        <button class="btn" type="button" (click)="semanaSeguinte()" title="Próxima semana">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+        </button>
+        <button class="btn" type="button" (click)="irParaHoje()">Hoje</button>
+      </div>
+
+      <div class="ag-grid" [style.grid-template-columns]="'repeat(' + semana().length + ',minmax(0,1fr))'">
+        @for (d of semana(); track d.iso) {
+          <div class="ag-day">
+            <div class="ag-day-h">{{ d.label }}</div>
+            @for (turno of ['manha', 'tarde']; track turno) {
+              <div class="ag-slot ag-drop" [class.ag-passado]="d.iso < hojeIso" [class.over]="zonaSobreArraste() === d.iso + '|' + turno"
+                   (dragover)="permitirSolta($event, d.iso + '|' + turno)" (dragleave)="saiuDaZona()" (drop)="soltarEm($event, d.iso, turno)">
+                <div class="ag-slot-h">
+                  <span class="ag-turno">{{ turno === 'manha' ? 'Manhã' : 'Tarde' }} <small>{{ horarioDe(turno).inicio }}–{{ horarioDe(turno).fim }}</small></span>
+                  @if (celula(d.iso, turno).length > 0) {
+                    <button type="button" class="ag-post" title="Postergar todo o turno" (click)="abrirPostergarSlot(d.iso, turno)">⤵</button>
+                  }
+                </div>
+                @if (d.iso < hojeIso) {
+                  <div class="ag-bloq-l">🚫 Data passada</div>
+                }
+                @for (g of celula(d.iso, turno); track chave(g)) {
+                  <details class="ag-slot-visita" open>
+                    <summary class="ag-slot-visita-sum">
+                      <span class="ag-grip" draggable="true" (dragstart)="iniciarArrasteGrupo($event, g.modulo, g.seq)" (dragend)="aoTerminarArraste()"
+                            (click)="$event.preventDefault(); $event.stopPropagation()" title="Arraste o bloco inteiro para outro turno ou de volta para a lista">⠿</span>
+                      <span class="ag-visita-t">{{ g.modulo }} · V{{ g.seq }}</span>
+                      <span class="ag-count">{{ g.atividades.length }}</span>
+                      <button type="button" class="ag-post" (click)="$event.preventDefault(); abrirPostergarBloco(g.modulo, g.seq)"
+                              title="Postergar o bloco inteiro (todos os assuntos abertos desta visita)">⤵</button>
+                    </summary>
+                    <div class="ag-slot-visita-cards">
+                      @for (a of g.atividades; track a.id) {
+                        <div class="ag-card {{ classeStatus(a.status) }}" draggable="true"
+                             (dragstart)="iniciarArrasteCard($event, a)" (dragend)="aoTerminarArraste()"
+                             [title]="a.descricao + ' — ' + a.status">
+                          <span class="ag-card-top">
+                            <span class="ag-card-mod">{{ a.modulo }} · V{{ a.seq }}</span>
+                            @if (a.status !== 'Postergada') {
+                              <button type="button" class="ag-post" (click)="abrirPostergarCard(a)" title="Postergar este assunto">⤵</button>
+                            } @else if (ehAdm()) {
+                              <button type="button" class="ag-post" (click)="excluirAtividade(a)" title="Excluir esta visita postergada (histórico) — Administrador">🗑</button>
+                            }
+                          </span>
+                          <span class="ag-card-desc">{{ a.descricao }}</span>
+                          @if (a.status === 'Postergada' && a.novaData) {
+                            <span class="ag-card-dest">Postergada → {{ a.novaData.slice(8,10) }}/{{ a.novaData.slice(5,7) }} {{ a.novoTurno === 'manha' ? 'Manhã' : 'Tarde' }}</span>
+                          } @else if (!['Agendada','Solicitada',''].includes(a.status)) {
+                            <span class="ag-card-dest">{{ a.status }}</span>
+                          }
+                          <select class="ag-tec" [ngModel]="a.tecnico" (ngModelChange)="salvarTecnicoCard(a.id, $event)" (mousedown)="$event.stopPropagation()" title="Técnico">
+                            <option value="">— técnico —</option>
+                            @for (t of tecnicosEnvolvidos(); track t) { <option [value]="t">{{ t }}</option> }
+                          </select>
+                        </div>
+                      }
+                    </div>
+                  </details>
                 }
               </div>
             }
           </div>
         }
       </div>
-    </section>
+    </main>
   </div>
+
+  <div style="margin-top:14px"><a class="btn" [routerLink]="['/projetos', projetoId]">Voltar à ficha</a></div>
+
+  @if (modalPostergar(); as modal) {
+    <div class="ag-modal-backdrop" (click)="fecharModalPostergar()"></div>
+    <div class="ag-modal">
+      <h3 style="margin:0 0 8px">Postergar para…</h3>
+      <label class="campo"><span>Nova data</span>
+        <input type="date" [(ngModel)]="novaDataPostergar" required /></label>
+      <label class="campo"><span>Novo turno</span>
+        <select [(ngModel)]="novoTurnoPostergar">
+          <option value="manha">Manhã</option>
+          <option value="tarde">Tarde</option>
+        </select></label>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+        <button type="button" class="btn" (click)="fecharModalPostergar()">Cancelar</button>
+        <button type="button" class="btn primario" [disabled]="!novaDataPostergar" (click)="confirmarPostergar()">Postergar</button>
+      </div>
+    </div>
+  }
 }

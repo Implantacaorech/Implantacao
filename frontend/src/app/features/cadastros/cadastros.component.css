@@ -1,0 +1,12 @@
+.grade2 .campo-larga {
+  grid-column: 1 / -1;
+}
+.tag {
+  display: inline-block;
+  background: var(--brand-weak, #eef2ff);
+  color: var(--brand);
+  border-radius: 10px;
+  padding: 2px 9px;
+  font-size: 0.74rem;
+  font-weight: 600;
+}

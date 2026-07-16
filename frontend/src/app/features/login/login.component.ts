@@ -20,7 +20,7 @@ export class LoginComponent {
   readonly erro = signal<string | null>(null);
 
   readonly form = this.fb.nonNullable.group({
-    login: ['', Validators.required],
+    login: [''],
     senha: ['', Validators.required],
   });
 

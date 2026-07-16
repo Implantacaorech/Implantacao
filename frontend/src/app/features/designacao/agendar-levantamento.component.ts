@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { DesignacaoService } from '../../core/services/designacao.service';
+import { ProjetosService } from '../../core/services/projetos.service';
 
 @Component({
   selector: 'app-agendar-levantamento',
@@ -14,16 +15,19 @@ import { DesignacaoService } from '../../core/services/designacao.service';
 export class AgendarLevantamentoComponent {
   private readonly fb = inject(FormBuilder);
   private readonly service = inject(DesignacaoService);
+  private readonly projetos = inject(ProjetosService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
   readonly projetoId = Number(this.route.snapshot.paramMap.get('id'));
+  readonly gciSalvo = this.route.snapshot.queryParamMap.get('salvo') === '1';
 
   readonly carregando = signal(true);
   readonly salvando = signal(false);
   readonly erro = signal<string | null>(null);
   readonly gci = signal('');
   readonly hojeIso = signal('');
+  readonly cliente = signal('');
 
   readonly form = this.fb.nonNullable.group({
     dataLevantamento: ['', Validators.required],
@@ -37,9 +41,13 @@ export class AgendarLevantamentoComponent {
     this.carregando.set(true);
     this.erro.set(null);
     try {
-      const view = await this.service.obterAgendar(this.projetoId);
+      const [view, projeto] = await Promise.all([
+        this.service.obterAgendar(this.projetoId),
+        this.projetos.buscar(this.projetoId),
+      ]);
       this.gci.set(view.gci);
       this.hojeIso.set(view.hojeIso);
+      this.cliente.set(projeto.cliente);
       if (view.dataLevantamento) this.form.patchValue({ dataLevantamento: view.dataLevantamento });
     } catch {
       this.erro.set('Não foi possível carregar os dados do agendamento.');

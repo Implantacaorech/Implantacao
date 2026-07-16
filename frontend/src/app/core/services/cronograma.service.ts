@@ -168,4 +168,12 @@ export class CronogramaService {
   async atividadeExcluir(projetoId: number, atividadeId: number): Promise<void> {
     await firstValueFrom(this.http.delete(`${this.base(projetoId)}/atividades/${atividadeId}`));
   }
+
+  async gerarXlsx(projetoId: number): Promise<{ blob: Blob; filename: string }> {
+    const res = await firstValueFrom(
+      this.http.post(`${this.base(projetoId)}/gerar`, null, { responseType: 'blob', observe: 'response' }),
+    );
+    const m = /filename="?([^";]+)"?/.exec(res.headers.get('content-disposition') ?? '');
+    return { blob: res.body as Blob, filename: m?.[1] ?? 'cronograma.xlsx' };
+  }
 }

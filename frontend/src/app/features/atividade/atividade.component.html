@@ -1,83 +1,53 @@
-<div class="cabecalho">
-  <h1>Atividade da operação</h1>
-  <a routerLink="/monitoramento" class="botao-link">Monitoramento Operacional</a>
-</div>
-
 @if (erro()) {
-  <p class="erro">{{ erro() }}</p>
+  <div class="resultado erro" style="padding:10px 16px;margin:10px 0">{{ erro() }}</div>
 }
 
 @if (carregando()) {
   <p>Carregando…</p>
 } @else if (dados(); as d) {
+  <h1 style="display:flex;align-items:center;gap:10px">
+    <svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-activity"/></svg> Atividade da operação
+  </h1>
+  <p class="dica">Tudo o que está acontecendo na implantação — últimos {{ d.uso.dias }} dias.</p>
+
   <div class="kpis">
-    <div class="kpi">
-      <span class="valor">{{ d.uso.projetosNovos }}</span>
-      <span class="rotulo">Projetos novos ({{ d.uso.dias }}d)</span>
-    </div>
-    <div class="kpi">
-      <span class="valor">{{ d.uso.documentos }}</span>
-      <span class="rotulo">Documentos gerados</span>
-    </div>
-    <div class="kpi">
-      <span class="valor">{{ d.uso.emails }}</span>
-      <span class="rotulo">E-mails enviados</span>
-    </div>
-    <div class="kpi">
-      <span class="valor">{{ d.uso.notas }}</span>
-      <span class="rotulo">Notas registradas</span>
-    </div>
-    <div class="kpi">
-      <span class="valor">{{ d.uso.transicoes }}</span>
-      <span class="rotulo">Transições de etapa</span>
-    </div>
-    <div class="kpi">
-      <span class="valor">{{ d.uso.totalEventos }}</span>
-      <span class="rotulo">Eventos (total)</span>
-    </div>
+    <div class="kpi"><div class="n">{{ d.uso.projetosNovos }}</div><div class="l">Projetos novos</div></div>
+    <div class="kpi"><div class="n">{{ d.uso.documentos }}</div><div class="l">Documentos gerados</div></div>
+    <div class="kpi"><div class="n">{{ d.uso.emails }}</div><div class="l">E-mails enviados</div></div>
+    <div class="kpi"><div class="n">{{ d.uso.transicoes }}</div><div class="l">Mudanças de fase</div></div>
+    <div class="kpi"><div class="n">{{ d.uso.totalEventos }}</div><div class="l">Eventos no total</div></div>
   </div>
 
-  <div class="colunas-2">
-    <section class="cartao">
-      <h2>Funil por macro-fase</h2>
-      <table class="tabela-simples">
-        <thead>
-          <tr>
-            <th>Fase</th>
-            <th>Nº</th>
-            <th>Idade média</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (f of d.funil; track f.fase) {
-            <tr>
-              <td>{{ f.fase }}</td>
-              <td class="numero">{{ f.n }}</td>
-              <td class="numero">{{ f.idadeMedia !== null ? (f.idadeMedia + 'd') : '—' }}</td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </section>
-
-    <section class="cartao">
-      <h2>Feed de eventos</h2>
-      @if (d.feed.length === 0) {
-        <p class="vazio">Sem eventos registrados.</p>
-      } @else {
-        <ul class="feed">
-          @for (e of d.feed; track e.id) {
-            <li>
-              <a [routerLink]="['/projetos', e.projetoId]">
-                <strong>{{ e.cliente }}</strong>
-                <span class="tipo-tag">{{ e.tipo }}</span>
-                <p>{{ e.descricao }}</p>
-                <span class="rodape">{{ e.autor }} · {{ e.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</span>
-              </a>
-            </li>
-          }
-        </ul>
+  <div class="painel">
+    <h3 style="color:var(--navy);margin-top:0">Funil por fase</h3>
+    <div class="barlist">
+      @for (f of d.funil; track f.fase) {
+        <div class="barrow">
+          <span>{{ f.fase }}</span>
+          <div class="barra"><span [style.width.%]="(100 * f.n) / maxFunil()"></span></div>
+          <em>{{ f.n }}@if (f.idadeMedia !== null) { · {{ f.idadeMedia }}d }</em>
+        </div>
       }
-    </section>
+    </div>
+    <p class="dica" style="margin:6px 0 0">Barra = nº de projetos · "Nd" = idade média na carteira.</p>
+  </div>
+
+  <div class="painel">
+    <h3 style="color:var(--navy);margin-top:0">Feed de atividade</h3>
+    @if (d.feed.length > 0) {
+      <ul class="timeline">
+        @for (ev of d.feed; track ev.id) {
+          <li>
+            <span class="tl-ico"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use [attr.href]="iconeEvento[ev.tipo] ?? '#ic-pencil'"/></svg></span>
+            <div>
+              <div><a [routerLink]="['/projetos', ev.projetoId]"><strong>{{ ev.cliente }}</strong></a> — {{ ev.descricao }}</div>
+              <small class="dica" style="margin:0">{{ ev.criadoEm | date: 'dd/MM/yyyy HH:mm' }}@if (ev.autor) { · {{ ev.autor }} }</small>
+            </div>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="dica">Sem atividade registrada ainda.</p>
+    }
   </div>
 }

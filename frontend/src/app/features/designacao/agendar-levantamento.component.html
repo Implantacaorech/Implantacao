@@ -1,27 +1,57 @@
-<div class="cabecalho">
-  <h1>Agendar Levantamento</h1>
-  <a [routerLink]="['/projetos', projetoId]" class="voltar">← Voltar ao projeto</a>
+<h1 style="display:flex;align-items:center;gap:10px">
+  <svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-clock"/></svg>
+  Data do Levantamento @if (cliente()) { — {{ cliente() }} }
+</h1>
+<p class="sub">
+  <strong>Etapa 2 de 2 — Agendamento.</strong>
+  Defina a data do Levantamento. Ao confirmar, o GCI <strong>{{ gci() }}</strong> será notificado por e-mail e o projeto avançará para a fase Levantamento.
+</p>
+
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:18px;font-size:.82rem">
+  <span style="background:var(--ok);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none">
+    <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+  </span>
+  <span style="color:var(--ok);font-weight:600">GCI definido: {{ gci() }}</span>
+  <svg class="svgi svgi-xs" style="color:var(--muted)" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+  <span style="background:var(--brand);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none">2</span>
+  <span style="font-weight:600;color:var(--brand)">Definir Data do Levantamento</span>
 </div>
 
+@if (gciSalvo) {
+  <div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px;margin-bottom:12px">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+    GCI salvo com sucesso. Agora defina a data do Levantamento.
+  </div>
+}
+
 @if (erro()) {
-  <p class="erro">{{ erro() }}</p>
+  <div class="resultado erro" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
+    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
+  </div>
 }
 
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <form class="cartao" [formGroup]="form" (ngSubmit)="salvar()">
-    <p class="dica">GCI responsável: <strong>{{ gci() || '(não definido)' }}</strong></p>
-
-    <label>
-      Data do Levantamento
+  <form class="painel" [formGroup]="form" (ngSubmit)="salvar()">
+    <label class="campo">
+      <span>Data do Levantamento *</span>
       <input type="date" formControlName="dataLevantamento" [min]="hojeIso()" />
+      <small>A data não pode ser anterior a hoje.</small>
     </label>
-
-    <div class="acoes">
-      <button type="submit" [disabled]="form.invalid || salvando()">
-        {{ salvando() ? 'Salvando…' : 'Confirmar agendamento' }}
+    <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+      <button class="btn primario" type="submit" [disabled]="form.invalid || salvando()">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+        {{ salvando() ? 'Salvando…' : 'Confirmar e avisar o GCI' }}
       </button>
+      <a class="btn" [routerLink]="['/projetos', projetoId, 'designacao', 'definir-gci']">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Voltar (alterar GCI)
+      </a>
+      <a class="btn" [routerLink]="['/projetos', projetoId]">Cancelar</a>
     </div>
+    <p style="font-size:.78rem;color:var(--muted);margin-top:8px">
+      <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-info"/></svg>
+      Ao confirmar, o GCI <strong>{{ gci() }}</strong> receberá um e-mail de notificação com a data agendada.
+    </p>
   </form>
 }

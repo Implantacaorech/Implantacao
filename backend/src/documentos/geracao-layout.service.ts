@@ -13,7 +13,8 @@ import { DocConteudoService } from '../levantamento/doc-conteudo.service';
 import { LevantamentoRespostaService } from '../levantamento/levantamento-resposta.service';
 import { CronogramaItensService } from '../plano-cronograma/cronograma-itens.service';
 
-export type SlugDocumentoFiel = 'levantamento' | 'projeto' | 'cronograma' | 'termo';
+export type SlugDocumentoFiel =
+  'levantamento' | 'projeto' | 'cronograma' | 'termo';
 
 /** Orquestra a geração fiel de Levantamento/Projeto/Termo (.docx): monta o payload a partir
  * do schema novo (projeto + catálogos + conteúdo estruturado) e chama o docservice — mesmo
@@ -40,10 +41,14 @@ export class GeracaoLayoutService {
 
     const modelo = await this.modelos.porSlug(slug);
     if (!modelo)
-      throw new NotFoundException(`Modelo de documento '${slug}' não cadastrado.`);
+      throw new NotFoundException(
+        `Modelo de documento '${slug}' não cadastrado.`,
+      );
     const caminho = await this.modelos.arquivoPath(modelo.id);
     if (!caminho)
-      throw new NotFoundException(`Arquivo do modelo '${slug}' não encontrado.`);
+      throw new NotFoundException(
+        `Arquivo do modelo '${slug}' não encontrado.`,
+      );
     const modeloBase64 = readFileSync(caminho).toString('base64');
 
     const modulos = await this.indice.modulos();
@@ -54,7 +59,9 @@ export class GeracaoLayoutService {
         : {};
     const respostas = await this.levantamentoResposta.listar(projetoId);
     const cronogramaLinhas =
-      slug === 'cronograma' ? await this.cronogramaItens.doProjeto(projetoId) : [];
+      slug === 'cronograma'
+        ? await this.cronogramaItens.doProjeto(projetoId)
+        : [];
 
     const corpo = {
       slug,

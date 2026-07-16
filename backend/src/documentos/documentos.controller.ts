@@ -1,6 +1,8 @@
 import {
   BadRequestException,
+  Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -10,18 +12,44 @@ import {
   Post,
   Query,
   Res,
+  UnprocessableEntityException,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Response } from 'express';
 import { existsSync } from 'fs';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { CurrentUser, type AuthUser } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type AuthUser,
+} from '../common/decorators/current-user.decorator';
+import { ApiEnvelope } from '../common/dto/api-envelope';
+import { AdicionarNotaDto } from './dto/adicionar-nota.dto';
 import { DocumentosService } from './documentos.service';
-import { GeracaoLayoutService, SlugDocumentoFiel } from './geracao-layout.service';
-import { NotificacaoService, EventoNotificacao } from '../email/notificacao.service';
+import {
+  GeracaoLayoutService,
+  SlugDocumentoFiel,
+} from './geracao-layout.service';
+import { GeracaoDocumentosService } from '../geracao/geracao-documentos.service';
+import {
+  NotificacaoService,
+  EventoNotificacao,
+} from '../email/notificacao.service';
 
-const _SLUGS_DOCX: readonly SlugDocumentoFiel[] = ['levantamento', 'projeto', 'cronograma', 'termo'];
+const _SLUGS_DOCX: readonly SlugDocumentoFiel[] = [
+  'levantamento',
+  'projeto',
+  'cronograma',
+  'termo',
+];
 
 // Espelha webapp/app.py:_EVT_DOC — slug do documento gerado -> evento de notificação.
 const _EVT_DOC: Record<SlugDocumentoFiel, EventoNotificacao> = {
@@ -40,6 +68,7 @@ export class DocumentosController {
     private readonly documentos: DocumentosService,
     private readonly geracaoLayout: GeracaoLayoutService,
     private readonly notificacao: NotificacaoService,
+    private readonly geracaoDocumentos: GeracaoDocumentosService,
   ) {}
 
   @Get('projetos/:projetoId/documentos')
@@ -54,12 +83,115 @@ export class DocumentosController {
     return this.documentos.listarEventos(projetoId);
   }
 
+  @Get('projetos/:projetoId/cabecalho')
+  @ApiOperation({
+    summary:
+      'Stepper, gates, próxima ação e KPIs da ficha do projeto (qualquer projeto, não só o "em foco" da Home)',
+  })
+  async cabecalho(@Param('projetoId', ParseIntPipe) projetoId: number) {
+    return new ApiEnvelope(await this.documentos.cabecalho(projetoId));
+  }
+
+  @Post('projetos/:projetoId/avancar')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Avança a etapa do projeto (exige que o gate da etapa atual esteja OK)',
+  })
+  async avancar(
+    @Param('projetoId', ParseIntPipe) projetoId: number,
+    @CurrentUser() user: AuthUser,
+  ) {
+    const projeto = await this.documentos.avancarEtapa(projetoId, user.nome);
+    return new ApiEnvelope(projeto, 'Etapa avançada.');
+  }
+
+  @Post('projetos/:projetoId/nota')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Adiciona uma anotação manual na timeline do projeto',
+  })
+  async adicionarNota(
+    @Param('projetoId', ParseIntPipe) projetoId: number,
+    @Body() dto: AdicionarNotaDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    const evento = await this.documentos.adicionarNota(
+      projetoId,
+      dto.nota,
+      user.nome,
+    );
+    return new ApiEnvelope(evento, 'Nota registrada.');
+  }
+
+  @Post('projetos/:projetoId/anexar')
+  @UseInterceptors(FileInterceptor('arquivo'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Anexa um documento manualmente à ficha do projeto',
+  })
+  async anexar(
+    @Param('projetoId', ParseIntPipe) projetoId: number,
+    @Body('tipo') tipo: string | undefined,
+    @UploadedFile() arquivo: Express.Multer.File | undefined,
+  ) {
+    if (!arquivo)
+      throw new UnprocessableEntityException(
+        'Selecione um arquivo para anexar.',
+      );
+    const doc = await this.documentos.anexarDocumento(
+      projetoId,
+      tipo ?? 'outro',
+      arquivo.originalname,
+      arquivo.buffer,
+    );
+    return new ApiEnvelope(doc, 'Documento anexado.');
+  }
+
+  @Delete('documentos/:id')
+  @ApiOperation({
+    summary:
+      'Exclui um documento (só se nada posterior no fluxo depender dele)',
+  })
+  async excluirDocumento(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser,
+  ) {
+    await this.documentos.excluirDocumento(id, user.nome);
+    return new ApiEnvelope(null, 'Documento excluído.');
+  }
+
   @Get('documentos/:id/baixar')
   @ApiOperation({ summary: 'Baixa um documento gerado/anexado' })
   async baixar(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     const doc = await this.documentos.buscarDocumento(id);
-    if (!doc || !existsSync(doc.caminho)) throw new NotFoundException('Documento não encontrado.');
+    if (!doc || !existsSync(doc.caminho))
+      throw new NotFoundException('Documento não encontrado.');
     res.download(doc.caminho, doc.arquivo);
+  }
+
+  @Get('documentos/:id/preview')
+  @ApiOperation({
+    summary:
+      'Pré-visualização WYSIWYG: PDF fiel (application/pdf) quando o Word converte o .docx, ' +
+      'senão JSON { tipo: "html", html } — equivalente a webapp/routes_fluxo.py:projeto_doc_ver',
+  })
+  async preview(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    const doc = await this.documentos.buscarDocumento(id);
+    if (!doc || !existsSync(doc.caminho))
+      throw new NotFoundException('Documento não encontrado.');
+    const cabecalhos = {
+      'X-Documento-Arquivo': encodeURIComponent(doc.arquivo),
+      'X-Documento-Tipo': encodeURIComponent(doc.tipo),
+    };
+    const resultado = await this.geracaoDocumentos.preview(doc.caminho);
+    if (resultado.tipo === 'pdf') {
+      res.set({ ...cabecalhos, 'Content-Type': 'application/pdf' });
+      res.send(resultado.buffer);
+      return;
+    }
+    res.set(cabecalhos);
+    res.json({ tipo: 'html', html: resultado.html });
   }
 
   @Post('projetos/:projetoId/gerar-layout/:slug')
@@ -103,9 +235,17 @@ export class DocumentosController {
     const rotulo =
       `Gerou ${arquivo.filename} pelo layout oficial (${slug})` +
       (modo === 'modelo' ? ' — modelo p/ preenchimento manual' : '');
-    await this.documentos.registrarEvento(projetoId, 'documento', rotulo, user.nome);
+    await this.documentos.registrarEvento(
+      projetoId,
+      'documento',
+      rotulo,
+      user.nome,
+    );
     // Notifica a Coordenação — mesmo gatilho de webapp/app.py:_EVT_DOC.
-    await this.notificacao.notificarEvento(projetoId, _EVT_DOC[slug as SlugDocumentoFiel]);
+    await this.notificacao.notificarEvento(
+      projetoId,
+      _EVT_DOC[slug as SlugDocumentoFiel],
+    );
 
     res.set({
       'Content-Type': arquivo.contentType,

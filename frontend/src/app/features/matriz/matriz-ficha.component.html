@@ -1,61 +1,68 @@
-<div class="cabecalho">
-  <h1>{{ tecnico()?.nome || 'Ficha' }}</h1>
-  @if (volta()) {
-    <a routerLink="/matriz" class="voltar">← Voltar à Matriz</a>
-  }
-</div>
-
-@if (erro()) {
-  <p class="erro">{{ erro() }}</p>
-}
-@if (aviso()) {
-  <p class="aviso">{{ aviso() }}</p>
-}
-
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <div class="cartao dados-gerais">
-    <label>
-      Setor
-      <input type="text" [ngModel]="setor()" (ngModelChange)="setor.set($event)" [disabled]="!editavel()" />
-    </label>
-    <label>
-      Dias
-      <input type="text" [ngModel]="dias()" (ngModelChange)="dias.set($event)" [disabled]="!editavel()" />
-    </label>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+    <h1 style="margin:0">📊 {{ tecnico()?.nome }}</h1>
+    @if (tecnico()?.setor) {
+      <span style="background:#eef2ff;color:#1f4e78;padding:3px 10px;border-radius:999px;font-size:.78rem;font-weight:700">{{ tecnico()?.setor }}</span>
+    }
+    @if (!editavel()) {
+      <span style="background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:999px;font-size:.78rem;font-weight:700">Somente consulta</span>
+    }
+    <span style="flex:1"></span>
+    @if (volta()) {
+      <a class="btn" routerLink="/matriz">← Matriz</a>
+    }
   </div>
 
-  @for (area of areas(); track area[0]) {
-    <div class="cartao area">
-      <h2>{{ area[0] }}</h2>
-      <table class="tabela">
-        <tbody>
-          @for (comp of area[1]; track comp.id) {
-            <tr>
-              <td class="rotulo">{{ comp.sigla }}</td>
-              <td class="nota">
-                <input
-                  type="text"
-                  inputmode="decimal"
-                  placeholder="0-10"
-                  [ngModel]="nota(comp.sigla)"
-                  (ngModelChange)="atualizarNota(comp.sigla, $event)"
-                  [disabled]="!editavel()"
-                />
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+  @if (aviso()) {
+    <div class="resultado ok" style="padding:8px 14px">✅ {{ aviso() }}</div>
+  }
+  @if (erro()) {
+    <div class="resultado erro" style="padding:8px 14px">{{ erro() }}</div>
+  }
+
+  <p class="dica" style="margin-top:0">
+    Notas de 1 a 10 — <strong>1</strong> não conhece ·
+    <strong>2–5</strong> conhece partes · <strong>6–8</strong> conhece grande parte ·
+    <strong>9–10</strong> domina / referência. Vazio = sem avaliação.
+    @if (tecnico()?.atualizadoEm) {
+      <br />Última atualização: {{ tecnico()!.atualizadoEm | date: 'dd/MM/yyyy HH:mm' }}@if (tecnico()?.atualizadoPor) { por {{ tecnico()?.atualizadoPor }} }
+    }
+  </p>
+
+  @for (area of areas(); track area[0]; let i = $index) {
+    <details class="painel" [open]="i < 2">
+      <summary style="cursor:pointer;font-weight:700;color:var(--navy)">
+        {{ area[0] }} <span class="dica" style="font-weight:400">({{ area[1].length }} competências)</span>
+      </summary>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:10px">
+        @for (comp of area[1]; track comp.id) {
+          <label class="campo" style="margin:0">
+            <span [title]="comp.sigla">{{ comp.sigla }}</span>
+            <input
+              type="number"
+              min="0"
+              max="10"
+              step="1"
+              [ngModel]="nota(comp.sigla)"
+              (ngModelChange)="atualizarNota(comp.sigla, $event)"
+              [disabled]="!editavel()"
+              [style.background]="notaNum(comp.sigla) === null ? '' : (notaNum(comp.sigla)! >= 9 ? '#dcfce7' : (notaNum(comp.sigla)! >= 6 ? '#fef9c3' : '#fee2e2'))"
+              style="text-align:center"
+            />
+          </label>
+        }
+      </div>
+    </details>
   }
 
   @if (editavel()) {
-    <div class="acoes-rodape">
-      <button type="button" [disabled]="salvando()" (click)="salvar()">
-        {{ salvando() ? 'Salvando…' : 'Salvar ficha' }}
+    <div class="painel" style="position:sticky;bottom:0;display:flex;gap:8px;align-items:center">
+      <button class="btn primario" type="button" [disabled]="salvando()" (click)="salvar()">
+        💾 {{ salvando() ? 'Salvando…' : 'Salvar notas' }}
       </button>
+      <span class="dica">Somente os campos alterados são gravados; vazio remove a nota.</span>
     </div>
   }
 }

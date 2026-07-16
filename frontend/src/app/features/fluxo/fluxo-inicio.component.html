@@ -1,0 +1,65 @@
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <h1 style="display:flex;align-items:center;gap:10px">
+    <svg class="svgi" style="width:24px;height:24px;color:var(--brand)" aria-hidden="true"><use href="#ic-flow"/></svg>
+    Fluxo automático — Onboarding da Implantação
+  </h1>
+  <p class="sub">Começa pelo e-mail de fechamento do Comercial: extrai os dados e cria o fluxo completo (ficha + pacote de documentos + e-mail aos responsáveis).</p>
+
+  @if (erro()) {
+    <div class="resultado erro" style="padding:10px 16px;display:flex;align-items:center;gap:8px">
+      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-alert"/></svg>
+      {{ erro() }}
+    </div>
+  }
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--r-sm);font-size:.83rem;font-weight:600"
+         [style.background]="imapOk() ? 'var(--ok-bg)' : 'var(--err-bg)'"
+         [style.color]="imapOk() ? 'var(--ok)' : 'var(--err)'"
+         [style.border]="'1px solid ' + (imapOk() ? 'var(--ok-border)' : 'var(--err-border)')">
+      <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use [attr.href]="imapOk() ? '#ic-check-circle' : '#ic-bell'"/></svg>
+      IMAP {{ imapOk() ? 'configurado' : 'não configurado' }}
+      <a routerLink="/config/imap" style="font-weight:400;margin-left:4px;color:inherit;text-decoration:underline">configurar</a>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--r-sm);font-size:.83rem;font-weight:600"
+         [style.background]="smtpOk() ? 'var(--ok-bg)' : 'var(--err-bg)'"
+         [style.color]="smtpOk() ? 'var(--ok)' : 'var(--err)'"
+         [style.border]="'1px solid ' + (smtpOk() ? 'var(--ok-border)' : 'var(--err-border)')">
+      <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use [attr.href]="smtpOk() ? '#ic-check-circle' : '#ic-bell'"/></svg>
+      SMTP {{ smtpOk() ? 'pronto' : 'pendente' }}
+      <a routerLink="/config/email" style="font-weight:400;margin-left:4px;color:inherit;text-decoration:underline">configurar</a>
+    </div>
+  </div>
+
+  <div class="painel">
+    <h3 style="color:var(--navy);margin-top:0;display:flex;align-items:center;gap:7px">
+      <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-file"/></svg>
+      1) Modelo para o Comercial usar
+    </h3>
+    <p class="dica" style="margin-top:0">Peça ao Comercial que envie o e-mail de fechamento neste formato (assunto com <code>[IMPLANTAÇÃO]</code>) — assim a extração é automática.</p>
+    <textarea rows="14" style="width:100%;font-family:Consolas,monospace;font-size:.85rem" [value]="modelo()" readonly></textarea>
+    <button class="btn" type="button" (click)="copiarModelo()">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg> Copiar modelo
+    </button>
+  </div>
+
+  <div class="painel">
+    <h3 style="color:var(--navy);margin-top:0;display:flex;align-items:center;gap:7px">
+      <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-inbox"/></svg>
+      2) Trazer o e-mail de fechamento
+    </h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+      <button class="btn primario" type="button" [disabled]="!imapOk() || checando()" (click)="checarCaixa()">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-inbox"/></svg> {{ checando() ? 'Checando…' : 'Checar caixa de entrada' }}
+      </button>
+    </div>
+    <label class="campo"><span>…ou cole o corpo do e-mail de fechamento aqui</span>
+      <textarea rows="10" placeholder="Cole o e-mail…" [(ngModel)]="texto" name="texto"></textarea>
+    </label>
+    <button class="btn primario" type="button" [disabled]="extraindo() || !texto.trim()" (click)="extrairTexto()">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> {{ extraindo() ? 'Extraindo…' : 'Extrair e continuar' }}
+    </button>
+  </div>
+}

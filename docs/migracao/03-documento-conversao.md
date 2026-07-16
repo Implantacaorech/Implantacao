@@ -1106,17 +1106,26 @@ detalhe técnico da geração do Cronograma.
 **Pendências reais que sobram fora deste documento** (não fazem parte do backlog de
 conversão de funcionalidade, são passos de entrega separados):
 
-- ~~Script de migração de dados~~ — **pronto**: `backend/src/database/seeds/
-  migrar-legado.ts` (`npm run migrar:legado`), as 25 tabelas do Postgres de produção do
-  Flask → schema novo, com reset de senha obrigatório (hash incompatível —
-  `werkzeug.security` vs. `bcrypt`, ver §9), dry-run por padrão, idempotente (upsert por
-  id/slug conforme a tabela) e nunca escreve na origem. Testado ponta a ponta contra dois
-  Postgres descartáveis em Docker (nunca contra produção) — inclusive um bug real de
-  duplicação em reruns, encontrado e corrigido nessa própria bateria de testes. Runbook
-  operacional completo (o que migra, o que fica de fora, como rodar, como tratar arquivos
-  físicos e senhas temporárias) em
-  [04-procedimento-migracao-dados.md](04-procedimento-migracao-dados.md) — **ainda não
-  rodado contra a base real de produção**, só validado com dados sintéticos.
+- ~~Script de migração de dados~~ — **pronto e já rodado com sucesso contra a produção
+  real (2026-07-15)**: `backend/src/database/seeds/migrar-legado.ts`
+  (`npm run migrar:legado`), as 25 tabelas do Postgres de produção do Flask → schema
+  novo, com reset de senha obrigatório (hash incompatível — `werkzeug.security` vs.
+  `bcrypt`, ver §9), dry-run por padrão, idempotente (upsert por id/slug conforme a
+  tabela) e nunca escreve na origem. Testado ponta a ponta contra dois Postgres
+  descartáveis em Docker antes de tocar produção — dois bugs reais encontrados e
+  corrigidos nessa bateria: duplicação em reruns (`modelos_documento_versoes`/`campos`
+  sem `id` preservado) e, mais grave, um bug de preservação de `id` que o TypeORM
+  esconde silenciosamente para QUALQUER coluna `@PrimaryGeneratedColumn()` (`repository
+  .save()` nunca escreve o `id` explícito no INSERT, mesmo setado no objeto) — só
+  apareceu com o projeto real de produção (id 174, não sequencial) e corrompeu
+  ~1150 linhas filhas órfãs no primeiro destino; corrigido com um helper de upsert por
+  SQL bruto e revalidado antes de remigrar. Runbook operacional completo (o que migra, o
+  que fica de fora, como rodar, como tratar arquivos físicos e senhas temporárias, e o
+  writeup completo dos dois bugs) em
+  [04-procedimento-migracao-dados.md](04-procedimento-migracao-dados.md). **Falta**:
+  distribuir com segurança e apagar `dados/migracao-senhas-temporarias.csv`; e, no dia
+  da virada, rodar de novo (`--continuar`) para capturar o que mudou na produção desde
+  2026-07-15 — ver [05-plano-de-virada.md](05-plano-de-virada.md).
 - **Merge para `main` / virada de produção** — decisão de negócio de alto risco (sistema
   real em uso pelo time de implantação), não deve ser feita sem confirmação explícita e
   fora do escopo de uma sessão de codificação autônoma; ver §10 (procedimento de

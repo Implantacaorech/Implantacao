@@ -1,26 +1,22 @@
-<div class="tela-login">
-  <form class="cartao-login" [formGroup]="form" (ngSubmit)="enviar()">
-    <h1>Painel de Implantação</h1>
-    <p class="subtitulo">Entre com seu usuário e senha</p>
-
-    <label>
-      Login
-      <input type="text" formControlName="login" autocomplete="username" />
-    </label>
-
-    <label>
-      Senha
-      <input type="password" formControlName="senha" autocomplete="current-password" />
-    </label>
-
+<div style="max-width:380px;margin:11vh auto;padding:0 20px">
+  <h1 style="text-align:center;color:var(--navy)">⚙️ Painel de Implantação</h1>
+  <form class="painel" [formGroup]="form" (ngSubmit)="enviar()">
     @if (erro()) {
-      <p class="erro">{{ erro() }}</p>
+      <div class="resultado erro" style="padding:8px 14px">⚠️ {{ erro() }}</div>
     }
-
-    <button type="submit" [disabled]="form.invalid || enviando()">
+    <label class="campo">
+      <span>Login (e-mail)</span>
+      <input formControlName="login" autofocus autocomplete="username" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px" />
+    </label>
+    <label class="campo">
+      <span>Senha</span>
+      <input type="password" formControlName="senha" autocomplete="current-password" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px" />
+    </label>
+    <button class="btn primario" type="submit" style="width:100%" [disabled]="form.invalid || enviando()">
       {{ enviando() ? 'Entrando…' : 'Entrar' }}
     </button>
-
-    <a routerLink="/cadastro" class="cadastre-se">Ainda não tem acesso? Cadastre-se</a>
+    <p class="dica" style="text-align:center;margin-top:10px">Primeiro acesso: deixe o login em branco e use a <strong>senha mestra</strong> para entrar como Administrador e cadastrar os usuários.</p>
   </form>
+  <p class="dica" style="text-align:center">Não tem acesso? <a routerLink="/cadastro">Criar conta</a></p>
+  <p class="dica" style="text-align:center;margin-top:2px">Rech Sistemas de Gestão</p>
 </div>

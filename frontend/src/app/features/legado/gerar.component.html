@@ -1,0 +1,47 @@
+@if (!role || !acao) {
+  <div class="resultado erro" style="padding:10px 16px">Ação não encontrada.</div>
+} @else {
+  <h1>{{ acao.nome }}</h1>
+  <p class="sub">{{ acao.desc }}</p>
+
+  @if (precisaCliente) {
+    <div class="resultado" [class.ok]="clienteAtual()" style="padding:12px 18px">
+      @if (clienteAtual(); as c) {
+        Usará os dados de <strong>{{ c.nome }}</strong>.
+        <a [routerLink]="['/legado', 'cliente']" [queryParams]="{ next: '/legado/' + rid + '/gerar/' + aid }">trocar cliente</a>
+      } @else {
+        Nenhum cliente definido — vai gerar com <strong>dados de exemplo</strong>.
+        <a class="btn" [routerLink]="['/legado', 'cliente']" [queryParams]="{ next: '/legado/' + rid + '/gerar/' + aid }">👤 Definir dados do cliente</a>
+      }
+    </div>
+  }
+
+  <div class="painel">
+    <label class="campo">
+      <span>Opcional: enviar seus dados (.yaml)</span>
+      <input #yamlInput type="file" accept=".yaml,.yml" (change)="onYamlSelecionado(yamlInput)" />
+      <small>Sem arquivo, gera com os <strong>dados de exemplo</strong> (para conferência).</small>
+    </label>
+    <button class="btn primario" type="button" [disabled]="gerando()" (click)="gerar()">
+      {{ gerando() ? 'Gerando…' : 'Gerar documento' }}
+    </button>
+  </div>
+
+  @if (erro()) {
+    <div class="resultado erro" style="padding:10px 16px">{{ erro() }}</div>
+  }
+
+  @if (resultado(); as r) {
+    @if (r.ok && r.arquivo; as arq) {
+      <div class="resultado ok">
+        <h3>✅ Documento gerado</h3>
+        <p>{{ arq.nome }}</p>
+        <button class="btn primario" type="button" (click)="baixar(arq)">⬇️ Baixar arquivo</button>
+      </div>
+    } @else {
+      <div class="resultado erro"><h3>⚠️ Não deu certo</h3><p>{{ r.erro }}</p></div>
+    }
+  }
+
+  <a class="voltar" [routerLink]="['/legado', rid]">← Voltar para {{ role.nome }}</a>
+}

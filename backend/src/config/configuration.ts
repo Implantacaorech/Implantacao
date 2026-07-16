@@ -1,3 +1,5 @@
+import { join } from 'path';
+
 export interface AppConfig {
   env: string;
   port: number;
@@ -18,6 +20,9 @@ export interface AppConfig {
   imapPollMin: number;
   digestHora: number;
   digestPara: string;
+  frontendDistPath: string;
+  legadoPythonExe: string;
+  legadoWebappDir: string;
 }
 
 // Todas as variáveis deste backend novo usam o prefixo MIGRACAO_ — nunca o prefixo PAINEL_
@@ -73,5 +78,20 @@ export default (): AppConfig => {
     // `digest_para.txt` do Flask não foi portado (sem UI que o gerencie; só o env var).
     digestHora: Number(process.env.MIGRACAO_DIGEST_HORA ?? 8),
     digestPara: process.env.MIGRACAO_DIGEST_PARA ?? '',
+    // Onde fica o build de produção do Angular (`ng build`, saída em
+    // frontend/dist/frontend/browser) — o NestJS serve esses arquivos estáticos direto
+    // (ver main.ts/ServeStaticModule), um único processo/porta em produção, mesmo padrão
+    // de origem única do Painel Flask (evita CORS/reverse proxy para uma ferramenta
+    // interna). process.cwd() é a pasta `backend/` quando rodado via `node dist/main.js`
+    // a partir dela (mesmo padrão dos outros .bat do repositório).
+    frontendDistPath:
+      process.env.MIGRACAO_FRONTEND_DIST ??
+      join(process.cwd(), '..', 'frontend', 'dist', 'frontend', 'browser'),
+    // Ponte de subprocesso para o assistente administrativo legado (webapp/legado_cli.py)
+    // — deliberadamente FORA do docservice (ver docs/migracao/02-decisao-arquitetura.md,
+    // cujo escopo documentado é só geração fiel + transcrição). process.cwd() é `backend/`.
+    legadoPythonExe: process.env.MIGRACAO_LEGADO_PYTHON ?? 'python',
+    legadoWebappDir:
+      process.env.MIGRACAO_LEGADO_WEBAPP_DIR ?? join(process.cwd(), '..', 'webapp'),
   };
 };

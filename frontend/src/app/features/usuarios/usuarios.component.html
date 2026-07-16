@@ -1,0 +1,57 @@
+<h1>👥 Usuários e perfis</h1>
+<p class="dica">Cadastre os responsáveis. A hierarquia define o que cada um vê e pode fazer: <strong>ADM</strong>
+  (tudo, inclusive Sistema) · <strong>Coordenador</strong> / <strong>Administrativo</strong> (designam e veem tudo —
+  Operação + Gestão, sem Sistema) · <strong>GCI</strong> (Levantamento/Projeto dos seus) ·
+  <strong>Consultor</strong> (Cronograma/Check-list/Termo dos seus).</p>
+
+@if (aviso()) {
+  <div class="resultado ok" style="padding:8px 14px">✅ {{ aviso() }}</div>
+}
+@if (erro()) {
+  <div class="resultado" style="padding:8px 14px;background:#fdecea;color:#a3261b;border:1px solid #f3c6c0">⚠️ {{ erro() }}</div>
+}
+
+<div class="painel">
+  <h3 style="color:var(--navy);margin-top:0">Novo / editar usuário</h3>
+  <form [formGroup]="form" (ngSubmit)="salvar()">
+    <div class="grade2">
+      <label class="campo"><span>Nome</span><input formControlName="nome" /></label>
+      <label class="campo"><span>E-mail</span><input type="email" formControlName="email" /></label>
+      <label class="campo"><span>Login</span><input formControlName="login" placeholder="(em branco usa o e-mail)" /></label>
+      <label class="campo"><span>Código SICLA *</span><input formControlName="codigoSicla" placeholder="código do técnico no SICLA" /></label>
+      <label class="campo">
+        <span>Hierarquia (perfil)</span>
+        <select formControlName="perfil">
+          @for (p of perfis; track p) { <option [value]="p">{{ p }}</option> }
+        </select>
+      </label>
+      <label class="campo"><span>Senha</span><input type="password" formControlName="senha" placeholder="(em branco mantém a atual)" /></label>
+      <label class="campo" style="align-self:center"><span><input type="checkbox" style="width:auto" formControlName="ativo" /> Ativo</span></label>
+    </div>
+    <button class="btn primario" type="submit" [disabled]="form.invalid || salvando()">💾 {{ salvando() ? 'Salvando…' : 'Salvar' }}</button>
+    <button class="btn" type="button" (click)="limpar()">Limpar</button>
+  </form>
+</div>
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else if (usuarios().length > 0) {
+  <table class="form-tab">
+    <thead><tr><th>Nome</th><th>E-mail</th><th>Login</th><th>Cód. SICLA</th><th>Hierarquia</th><th>Ativo</th><th></th></tr></thead>
+    <tbody>
+      @for (u of usuarios(); track u.id) {
+        <tr>
+          <td>{{ u.nome }}</td>
+          <td>{{ u.email }}</td>
+          <td>{{ u.login }}</td>
+          <td>{{ u.codigoSicla }}</td>
+          <td>{{ u.perfil }}</td>
+          <td>{{ u.ativo ? '🟢' : '⚪' }}</td>
+          <td><button class="btn" type="button" (click)="editar(u)">✏️ Editar</button></td>
+        </tr>
+      }
+    </tbody>
+  </table>
+} @else {
+  <p class="dica">Nenhum usuário ainda — cadastre o primeiro acima (use seu e-mail e perfil ADM).</p>
+}

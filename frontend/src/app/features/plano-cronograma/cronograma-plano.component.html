@@ -1,108 +1,104 @@
-<div class="cabecalho">
-  <h1>Cronograma</h1>
-  <a [routerLink]="['/projetos', projetoId]" class="voltar">← Voltar ao projeto</a>
-</div>
-
-@if (erro()) {
-  <p class="erro">{{ erro() }}</p>
-}
-@if (aviso()) {
-  <p class="aviso">{{ aviso() }}</p>
-}
-
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <div class="barra-acoes">
-    <button type="button" class="secundario" [disabled]="semeando()" (click)="carregarPlanoAutomatico()">
-      {{ semeando() ? 'Carregando…' : 'Carregar plano automático' }}
+  <h1 style="margin-bottom:2px">Cronograma</h1>
+  <p class="dica">Edite as agendas durante a implantação. Cada alteração fica registrada no histórico.</p>
+
+  @if (aviso()) {
+    <div class="resultado ok" style="padding:10px 16px;display:flex;align-items:center;gap:8px">
+      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+    </div>
+  }
+  @if (erro()) {
+    <div class="resultado erro" style="padding:10px 16px;display:flex;align-items:center;gap:8px">
+      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
+    </div>
+  }
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+    <button type="button" class="btn" [disabled]="semeando()" (click)="carregarPlanoAutomatico()">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg>
+      {{ semeando() ? 'Carregando…' : 'Gerar plano automático' }}
     </button>
-    <button type="button" class="secundario" (click)="adicionarLinha()">+ Nova linha</button>
-    <button type="button" class="secundario" (click)="mostrarHistorico.set(!mostrarHistorico())">
-      {{ mostrarHistorico() ? 'Ocultar histórico' : 'Ver histórico' }}
-    </button>
+    @if (podeGerarDocumento()) {
+      <button type="button" class="btn primario" [disabled]="gerando()" (click)="gerarDocumento()">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>
+        {{ gerando() ? 'Gerando…' : 'Gerar documento (.docx)' }}
+      </button>
+    }
+    <span style="flex:1"></span>
+    <a class="btn" [routerLink]="['/projetos', projetoId]">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Voltar à ficha
+    </a>
   </div>
 
-  <div class="tabela-scroll">
-    <table class="tabela">
+  <div style="overflow-x:auto">
+    <table class="editavel">
       <thead>
         <tr>
+          <th style="width:28px">#</th>
           <th>Etapa</th>
           <th>Tópicos</th>
           <th>Horas</th>
           <th>Data</th>
           <th>Modalidade</th>
           <th>Status</th>
-          <th></th>
+          <th style="width:32px"></th>
         </tr>
       </thead>
       <tbody>
         @for (linha of linhas(); track $index) {
           <tr>
-            <td><input type="text" [ngModel]="linha.etapa" (ngModelChange)="atualizarCampo($index, 'etapa', $event)" /></td>
+            <td class="num">{{ $index + 1 }}</td>
+            <td><textarea rows="2" [ngModel]="linha.etapa" (ngModelChange)="atualizarCampo($index, 'etapa', $event)"></textarea></td>
             <td><textarea rows="2" [ngModel]="linha.topicos" (ngModelChange)="atualizarCampo($index, 'topicos', $event)"></textarea></td>
-            <td><input type="text" class="curto" [ngModel]="linha.horas" (ngModelChange)="atualizarCampo($index, 'horas', $event)" /></td>
-            <td><input type="text" class="curto" placeholder="DD/MM/AAAA" [ngModel]="linha.data" (ngModelChange)="atualizarCampo($index, 'data', $event)" /></td>
-            <td><input type="text" [ngModel]="linha.modalidade" (ngModelChange)="atualizarCampo($index, 'modalidade', $event)" /></td>
+            <td><input type="text" style="width:54px" [ngModel]="linha.horas" (ngModelChange)="atualizarCampo($index, 'horas', $event)" /></td>
+            <td><input type="text" style="width:94px" placeholder="DD/MM/AAAA" [ngModel]="linha.data" (ngModelChange)="atualizarCampo($index, 'data', $event)" /></td>
+            <td><input type="text" style="width:118px" [ngModel]="linha.modalidade" (ngModelChange)="atualizarCampo($index, 'modalidade', $event)" /></td>
             <td>
               <select [ngModel]="linha.status" (ngModelChange)="atualizarCampo($index, 'status', $event)">
-                @for (s of statusOpcoes; track s) {
-                  <option [value]="s">{{ s }}</option>
-                }
+                @for (s of statusOpcoes; track s) { <option [value]="s">{{ s }}</option> }
               </select>
             </td>
-            <td class="acoes-linha">
-              <button type="button" class="icone" [disabled]="$index === 0" (click)="moverLinha($index, -1)" title="Mover para cima">↑</button>
-              <button type="button" class="icone" [disabled]="$index === linhas().length - 1" (click)="moverLinha($index, 1)" title="Mover para baixo">↓</button>
-              <button type="button" class="icone remover" (click)="removerLinha($index)" title="Remover linha">✕</button>
-            </td>
+            <td><button class="btn-x" type="button" (click)="removerLinha($index)" title="Remover">✕</button></td>
           </tr>
         } @empty {
           <tr>
-            <td colspan="7" class="vazio">Nenhuma linha cadastrada. Use "Carregar plano automático" ou "+ Nova linha".</td>
+            <td colspan="8" class="dica" style="text-align:center;padding:14px">Nenhuma linha cadastrada. Use "Gerar plano automático" ou "Adicionar linha".</td>
           </tr>
         }
       </tbody>
     </table>
   </div>
 
-  <div class="acoes-rodape">
-    <button type="button" [disabled]="salvando()" (click)="salvar()">
+  <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn" type="button" (click)="adicionarLinha()">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg>
+      Adicionar linha
+    </button>
+    <button class="btn primario" type="button" [disabled]="salvando()" (click)="salvar()">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
       {{ salvando() ? 'Salvando…' : 'Salvar cronograma' }}
     </button>
   </div>
 
-  @if (mostrarHistorico()) {
-    <div class="historico">
-      <h2>Histórico de edições</h2>
-      <table class="tabela">
-        <thead>
-          <tr>
-            <th>Quando</th>
-            <th>Ref.</th>
-            <th>Campo</th>
-            <th>De</th>
-            <th>Para</th>
-            <th>Autor</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (h of historico(); track h.id) {
-            <tr>
-              <td>{{ h.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</td>
-              <td>{{ h.ref }}</td>
-              <td>{{ h.campo }}</td>
-              <td>{{ h.de }}</td>
-              <td>{{ h.para }}</td>
-              <td>{{ h.autor }}</td>
-            </tr>
-          } @empty {
-            <tr>
-              <td colspan="6" class="vazio">Sem edições registradas.</td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+  @if (historico().length > 0) {
+    <details style="margin-top:18px">
+      <summary style="cursor:pointer;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:6px">
+        <svg class="svgi svgi-md" style="color:var(--muted)" aria-hidden="true"><use href="#ic-activity"/></svg>
+        Histórico de modificações ({{ historico().length }})
+      </summary>
+      <ul class="timeline" style="margin-top:10px">
+        @for (h of historico(); track h.id) {
+          <li>
+            <span class="tl-ico"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-pencil"/></svg></span>
+            <div>
+              <div><strong>{{ h.ref }}</strong> — {{ h.campo }}: {{ h.de }} → {{ h.para }}</div>
+              <small class="dica" style="margin:0">{{ h.criadoEm | date: 'dd/MM/yyyy HH:mm' }}@if (h.autor) { · {{ h.autor }} }</small>
+            </div>
+          </li>
+        }
+      </ul>
+    </details>
   }
 }

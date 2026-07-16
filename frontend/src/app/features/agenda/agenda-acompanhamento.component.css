@@ -1,0 +1,69 @@
+.ac-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+.ac-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  font-size: 0.8rem;
+  color: var(--navy);
+  background: #fff;
+  cursor: pointer;
+  font-family: inherit;
+}
+.ac-chip b {
+  font-weight: 800;
+}
+.ac-chip.on {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+}
+.ac-chip.ac-postergada {
+  border-color: #f5a623;
+}
+.ac-chip.ac-cancelada {
+  border-color: var(--err, #d33);
+}
+.ac-chip.ac-realizada {
+  border-color: var(--ok, #2e7d32);
+}
+.ac-chip.ac-naorealizada {
+  border-color: #e8830c;
+}
+.ac-tab {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.ac-tab th {
+  text-align: left;
+  background: var(--brand);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+.ac-tab td {
+  padding: 6px 10px;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.ac-tab .ac-ativ {
+  white-space: normal;
+  width: 100%;
+}
+.ac-tab tr:hover td {
+  background: var(--surface-2);
+}
+.ac-tab select {
+  min-width: 150px;
+}

@@ -1,139 +1,43 @@
-.cabecalho {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-h1 {
-  margin: 0;
-  font-size: 1.4rem;
-  color: #0f2f52;
-}
-
-h2 {
-  margin: 24px 0 8px;
-  font-size: 1.1rem;
-  color: #0f2f52;
-}
-
-.voltar {
-  color: #0f2f52;
-  text-decoration: none;
-  font-size: 0.85rem;
-}
-
-.barra-acoes {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.tabela-scroll {
-  overflow-x: auto;
-  background: #fff;
-  border-radius: 8px;
-}
-
-.tabela {
+table.editavel {
   width: 100%;
   border-collapse: collapse;
-  min-width: 900px;
+  font-size: 0.85rem;
 }
-
-.tabela th,
-.tabela td {
+table.editavel th {
+  background: var(--brand);
+  color: #fff;
+  padding: 6px 8px;
   text-align: left;
-  padding: 6px 8px;
-  border-bottom: 1px solid #eee;
-  font-size: 0.85rem;
-  vertical-align: top;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
 }
-
-input,
-select,
-textarea {
+table.editavel td {
+  border: 1px solid var(--line);
+  padding: 4px;
+}
+table.editavel textarea,
+table.editavel input,
+table.editavel select {
   width: 100%;
-  padding: 6px 8px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--line-2);
   border-radius: 6px;
-  font-size: 0.85rem;
-  font-family: inherit;
+  padding: 5px;
+  font: inherit;
   box-sizing: border-box;
-}
-
-textarea {
   resize: vertical;
 }
-
-.acoes-linha {
-  display: flex;
-  gap: 4px;
-  white-space: nowrap;
-}
-
-button.icone {
-  padding: 4px 8px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  background: #fff;
-  cursor: pointer;
-}
-
-button.icone.remover {
-  color: #d33;
-  border-color: #d33;
-}
-
-button.icone:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.vazio {
-  color: #999;
+td.num {
   text-align: center;
+  color: var(--muted);
+  font-weight: 700;
 }
-
-.acoes-rodape {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
-}
-
-button {
-  padding: 9px 18px;
+.btn-x {
   border: none;
+  background: #fee2e2;
+  color: #b91c1c;
   border-radius: 6px;
-  background: #0f2f52;
-  color: #fff;
-  font-weight: 600;
+  width: 26px;
+  height: 26px;
   cursor: pointer;
-}
-
-button.secundario {
-  background: #fff;
-  color: #0f2f52;
-  border: 1px solid #0f2f52;
-  padding: 8px 14px;
-  font-weight: 500;
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.erro {
-  color: #d33;
-  margin: 0 0 12px;
-}
-
-.aviso {
-  color: #1a7a3c;
-  margin: 0 0 12px;
-}
-
-.historico {
-  margin-top: 8px;
+  font-weight: 700;
 }

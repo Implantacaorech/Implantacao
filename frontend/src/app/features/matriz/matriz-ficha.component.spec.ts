@@ -28,13 +28,12 @@ describe('MatrizFichaComponent', () => {
     return TestBed.createComponent(MatrizFichaComponent);
   }
 
-  it('pré-preenche setor/dias/notas a partir da ficha', async () => {
+  it('pré-preenche as notas a partir da ficha', async () => {
     const fixture = montar({ ficha: () => Promise.resolve(view({ notas: { 'FAT-01': 7 } })) });
     fixture.detectChanges();
     await fixture.whenStable();
     const comp = fixture.componentInstance;
-    expect(comp.setor()).toBe('FAT');
-    expect(comp.dias()).toBe('5');
+    expect(comp.tecnico()?.setor).toBe('FAT');
     expect(comp.nota('FAT-01')).toBe('7');
   });
 
@@ -43,7 +42,7 @@ describe('MatrizFichaComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).not.toContain('Salvar ficha');
+    expect(fixture.nativeElement.textContent).not.toContain('Salvar notas');
   });
 
   it('não mostra o link de voltar quando volta é false', async () => {
@@ -51,19 +50,18 @@ describe('MatrizFichaComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).not.toContain('Voltar à Matriz');
+    expect(fixture.nativeElement.textContent).not.toContain('← Matriz');
   });
 
-  it('salva setor/dias/notas editados', async () => {
+  it('salva as notas editadas', async () => {
     const salvar = vi.fn().mockResolvedValue(undefined);
     const fixture = montar({ ficha: () => Promise.resolve(view()), salvar });
     fixture.detectChanges();
     await fixture.whenStable();
     const comp = fixture.componentInstance;
-    comp.setor.set('CTB');
     comp.atualizarNota('FAT-01', '8');
     await comp.salvar();
-    expect(salvar).toHaveBeenCalledWith(9, { setor: 'CTB', dias: '5', notas: { 'FAT-01': '8' } });
-    expect(comp.aviso()).toBe('Ficha salva.');
+    expect(salvar).toHaveBeenCalledWith(9, { notas: { 'FAT-01': '8' } });
+    expect(comp.aviso()).toBe('Notas salvas.');
   });
 });

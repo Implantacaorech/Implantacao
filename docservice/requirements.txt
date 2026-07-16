@@ -11,3 +11,4 @@ openpyxl>=3.1
 Pillow>=10.0
 python-multipart>=0.0.12
 faster-whisper>=1.0   # transcricao local de videos (Protocolos de Treinamento) — CPU int8
+pywin32>=306   # Word COM (Windows) — pré-visualização .docx->PDF fiel (ver docview.py)

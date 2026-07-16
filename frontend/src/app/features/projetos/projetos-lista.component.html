@@ -1,22 +1,21 @@
-<div class="cabecalho">
-  <h1>Projetos</h1>
-  <a routerLink="/projetos/novo" class="botao">+ Novo projeto</a>
-</div>
-
-<div class="filtros">
-  <input
-    type="text"
-    placeholder="Buscar por cliente…"
-    [(ngModel)]="filtroCliente"
-    (keyup.enter)="buscar()"
-  />
-  <select [(ngModel)]="filtroEtapa" (change)="buscar()">
-    <option value="">Todas as etapas</option>
-    @for (etapa of etapas; track etapa) {
-      <option [value]="etapa">{{ etapa }}</option>
-    }
-  </select>
-  <button type="button" (click)="buscar()">Filtrar</button>
+<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:4px">
+  <div>
+    <h1 style="margin-bottom:4px">Carteira de Projetos</h1>
+    <p class="sub" style="margin:0">
+      {{ filtrados().length }} projeto(s) na carteira
+      @if (perfilNomeConsultor(); as nome) {
+        · mostrando apenas os seus ({{ nome }})
+      }
+    </p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-self:center">
+    <a class="btn primario" routerLink="/fluxo">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg> Novo projeto
+    </a>
+    <a class="btn" routerLink="/coordenacao">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-chart"/></svg> Coordenação
+    </a>
+  </div>
 </div>
 
 @if (erro()) {
@@ -25,45 +24,115 @@
 
 @if (carregando()) {
   <p>Carregando…</p>
-} @else {
-  <table class="tabela">
-    <thead>
-      <tr>
-        <th>Cliente</th>
-        <th>Etapa</th>
-        <th>Situação</th>
-        <th>GCI</th>
-        <th>Consultor</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (p of projetos(); track p.id) {
-        <tr>
-          <td><a [routerLink]="['/projetos', p.id]">{{ p.cliente }}</a></td>
-          <td>{{ p.etapa }}</td>
-          <td>{{ p.situacao }}</td>
-          <td>{{ p.gci }}</td>
-          <td>{{ p.consultor }}</td>
-          <td class="acoes">
-            <button type="button" (click)="excluir(p)" title="Excluir">🗑</button>
-          </td>
-        </tr>
-      } @empty {
-        <tr>
-          <td colspan="6" class="vazio">Nenhum projeto encontrado.</td>
-        </tr>
+} @else if (todos().length > 0) {
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center;padding:12px 16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-1)">
+    <div style="display:flex;align-items:center;gap:7px;flex:1;min-width:180px;background:var(--surface-2);border:1.5px solid var(--line);border-radius:22px;padding:6px 14px">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>
+      <input placeholder="Buscar cliente…" [(ngModel)]="busca" style="border:none;background:none;padding:2px 0;font:inherit;font-size:.9rem;width:100%" />
+    </div>
+    <select [(ngModel)]="fstatus" style="padding:8px 12px;border:1.5px solid var(--line-2);border-radius:var(--r-sm);font:inherit;font-size:.88rem;width:auto">
+      <option value="">Todos os status</option>
+      @for (s of situacoes; track s) {
+        <option [value]="s">{{ s }}</option>
       }
-    </tbody>
-  </table>
-
-  @if (paginacao(); as pg) {
-    <div class="paginacao">
-      <button type="button" [disabled]="pg.page <= 1" (click)="irParaPagina(pg.page - 1)">« Anterior</button>
-      <span>Página {{ pg.page }} de {{ pg.totalPages }} ({{ pg.totalItems }} projetos)</span>
-      <button type="button" [disabled]="pg.page >= pg.totalPages" (click)="irParaPagina(pg.page + 1)">
-        Próxima »
+    </select>
+    <select [(ngModel)]="fetapa" style="padding:8px 12px;border:1.5px solid var(--line-2);border-radius:var(--r-sm);font:inherit;font-size:.88rem;width:auto">
+      <option value="">Todas as fases</option>
+      @for (e of etapas; track e) {
+        <option [value]="e">{{ e }}</option>
+      }
+    </select>
+    <div class="vista-toggle">
+      <button class="btn" [class.primario]="vista() === 'kanban'" type="button" (click)="setVista('kanban')">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg> Kanban
+      </button>
+      <button class="btn" [class.primario]="vista() === 'tabela'" type="button" (click)="setVista('tabela')">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg> Tabela
       </button>
     </div>
+  </div>
+
+  @if (vista() === 'kanban') {
+    <div class="kanban">
+      @for (e of etapas; track e) {
+        <div class="kan-col">
+          <div class="kan-head">
+            <span style="display:flex;align-items:center;gap:6px">
+              <span [style.background]="'var(--' + (faseCls[e] ?? 'accent') + ')'" style="width:8px;height:8px;border-radius:50%;flex:none"></span>
+              {{ e }}
+            </span>
+            <span class="cnt">{{ (porEtapa().get(e) ?? []).length }}</span>
+          </div>
+          @for (p of porEtapa().get(e); track p.id) {
+            <a class="kan-card" [routerLink]="['/projetos', p.id]">
+              <div class="cli">
+                <span>{{ p.cliente }} @if (p.numeroProjeto) { <span class="num">({{ p.numeroProjeto }})</span> }</span>
+                <span class="badge-sit" [attr.data-s]="p.situacao">{{ p.situacao }}</span>
+              </div>
+              <div class="meta">
+                <span>{{ p.consultor || '— sem consultor —' }}</span>
+                <span>
+                  @if (p.dataUsoOficial) {
+                    <svg class="svgi" style="width:11px;height:11px;color:var(--muted)" aria-hidden="true"><use href="#ic-clock"/></svg> {{ p.dataUsoOficial }}
+                  }
+                </span>
+              </div>
+            </a>
+          }
+          @if (!(porEtapa().get(e) ?? []).length) {
+            <div class="kan-vazio">— sem projetos —</div>
+          }
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="painel" style="padding:0;overflow:hidden">
+      <table class="form-tab" style="margin:0">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Fase</th>
+            <th>Status</th>
+            <th>Consultor / GCI</th>
+            <th>Go-live</th>
+            <th>Atualizado</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of filtrados(); track p.id) {
+            <tr class="linha-proj" [routerLink]="['/projetos', p.id]">
+              <td>
+                <strong>{{ p.cliente }}</strong>
+                @if (p.numeroProjeto) { <small style="color:var(--muted)"> ({{ p.numeroProjeto }})</small> }
+              </td>
+              <td><span style="font-size:.8rem;font-weight:600;color:var(--muted)">{{ p.etapa }}</span></td>
+              <td><span class="badge-sit" [attr.data-s]="p.situacao">{{ p.situacao }}</span></td>
+              <td>
+                <span style="font-size:.88rem">{{ p.consultor || '—' }}</span>
+                @if (p.gci && p.gci !== p.consultor) { <br /><small style="color:var(--muted)">GCI: {{ p.gci }}</small> }
+              </td>
+              <td>
+                @if (p.dataUsoOficial) {
+                  <span style="font-size:.85rem;font-variant-numeric:tabular-nums">{{ p.dataUsoOficial }}</span>
+                } @else { — }
+              </td>
+              <td><small style="color:var(--muted)">{{ p.atualizadoEm | date: 'dd/MM/yyyy' }}</small></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="dica" style="text-align:center;padding:20px">Nenhum projeto corresponde ao filtro.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
   }
+} @else {
+  <div class="painel" style="text-align:center;padding:40px 24px;margin-top:20px">
+    <div style="margin-bottom:12px"><svg class="svgi" style="width:24px;height:24px;color:var(--faint)" aria-hidden="true"><use href="#ic-layers"/></svg></div>
+    <h3 style="color:var(--navy);margin:0 0 8px">Nenhum projeto ainda</h3>
+    <p class="dica" style="margin:0 0 20px">Comece criando o primeiro projeto de implantação.</p>
+    <a class="btn primario" routerLink="/fluxo">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg> Criar primeiro projeto
+    </a>
+    <a class="btn" routerLink="/projetos/novo" style="margin-left:8px">Cadastro manual</a>
+  </div>
 }

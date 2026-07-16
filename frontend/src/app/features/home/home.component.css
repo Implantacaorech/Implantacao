@@ -1,169 +1,79 @@
-.cabecalho {
-  margin-bottom: 16px;
-}
-
-h1 {
-  margin: 0;
-  font-size: 1.4rem;
-  color: #0f2f52;
-}
-
-h2 {
-  margin: 0 0 10px;
-  font-size: 1.05rem;
-  color: #0f2f52;
-}
-
-.erro {
-  color: #d33;
-}
-
-.kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.kpi {
-  background: #fff;
-  border: 1px solid #eee;
-  border-radius: 8px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.kpi .valor {
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: #0f2f52;
-}
-
-.kpi .rotulo {
-  font-size: 0.78rem;
-  color: #666;
-}
-
-.kpi-alerta .valor {
-  color: #d33;
-}
-
-.foco {
-  background: #fff;
-  border: 1px solid #eee;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 20px;
-}
-
-.stepper {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.passo {
-  font-size: 0.75rem;
-  padding: 4px 10px;
-  border-radius: 12px;
-  background: #eee;
-  color: #888;
-}
-
-.passo-done {
-  background: #dcebe0;
-  color: #1e7a3d;
-}
-
-.passo-atual {
-  background: #0f2f52;
-  color: #fff;
-}
-
-.atraso {
-  color: #d33;
-  font-weight: 600;
-  margin: 6px 0;
-}
-
-.proxima-acao {
-  margin: 6px 0;
-}
-
-.botao {
-  display: inline-block;
-  background: #0f2f52;
-  color: #fff;
-  padding: 7px 14px;
-  border-radius: 6px;
-  text-decoration: none;
-  font-size: 0.85rem;
-  margin-top: 8px;
-}
-
-.colunas {
+/* Portado do bloco <style> inline de webapp/templates/home.html — o resto do visual
+   (kpis, painel, stepper, proxima, hero-fluxo, tools etc.) vem do sistema de design
+   global (src/styles.css, portado de webapp/static/style.css). */
+.vg-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 14px;
+  margin-top: 14px;
 }
 
-.pendencias,
-.alertas {
-  background: #fff;
-  border: 1px solid #eee;
-  border-radius: 8px;
-  padding: 16px;
-}
-
-.pendencias ul,
-.alertas ul {
+.lista-acoes {
   list-style: none;
-  margin: 0;
   padding: 0;
+  margin: 6px 0 0;
+}
+
+.lista-acoes li {
+  border-bottom: 1px solid var(--line);
+}
+
+.lista-acoes li:last-child {
+  border-bottom: none;
+}
+
+.lista-acoes a {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 2px;
+  color: var(--ink);
+  transition: 0.12s;
 }
 
-.pendencias a {
-  color: #222;
+.lista-acoes a:hover {
   text-decoration: none;
-  font-size: 0.88rem;
-  display: block;
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+  padding-left: 8px;
 }
 
-.pendencias a:hover {
-  text-decoration: underline;
+.lista-acoes a:hover .ac-cli {
+  color: var(--accent-700);
 }
 
-.atraso-tag {
-  color: #d33;
-  font-size: 0.78rem;
-  margin-left: 6px;
+.ac-cli {
+  font-weight: 600;
+  flex: 0 0 42%;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.9rem;
 }
 
-.alertas li {
-  font-size: 0.88rem;
-  padding: 6px 8px;
-  border-radius: 6px;
-  background: #f7f7f7;
+.ac-do {
+  color: var(--muted);
+  font-size: 0.85rem;
+  flex: 1;
 }
 
-.alerta-alto {
-  background: #fbe4e4;
-  color: #7a1f1f;
+.ac-go {
+  flex: none;
+  white-space: nowrap;
+  color: var(--brand);
+  font-weight: 700;
 }
 
-.alerta-medio {
-  background: #fdf2df;
-  color: #7a5a1f;
+h2.sec .svgi.hi {
+  width: 17px;
+  height: 17px;
+  vertical-align: -3px;
+  color: var(--accent-700);
 }
 
-.vazio {
-  color: #888;
-  font-size: 0.88rem;
+@media (max-width: 760px) {
+  .vg-cols {
+    grid-template-columns: 1fr;
+  }
 }

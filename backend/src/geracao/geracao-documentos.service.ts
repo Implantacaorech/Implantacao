@@ -13,12 +13,37 @@ export interface ArquivoGerado {
   contentType: string;
 }
 
+export type PreviewDocumento = { tipo: 'pdf'; buffer: Buffer } | { tipo: 'html'; html: string };
+
 /** Cliente HTTP do serviço interno de geração de documentos (docservice/, FastAPI) — nunca
  * exposto publicamente, chamado só por este backend. Ver
  * docs/migracao/02-decisao-arquitetura.md, "Arquitetura híbrida". */
 @Injectable()
 export class GeracaoDocumentosService {
   constructor(private readonly http: HttpService) {}
+
+  /** Pré-visualização WYSIWYG (.docx -> PDF fiel via Word COM, com fallback em HTML; .xlsx
+   * sempre em HTML) — equivalente a webapp/routes_fluxo.py:projeto_doc_ver. `caminho` já
+   * deve ter sido validado pelo chamador (mesma confiança de `Documento.caminho` usada em
+   * `baixar()`). */
+  async preview(caminho: string): Promise<PreviewDocumento> {
+    try {
+      const res = await firstValueFrom(this.http.post('/preview', { caminho }));
+      const data = res.data as { tipo: 'pdf' | 'html'; conteudoBase64?: string; html?: string };
+      if (data.tipo === 'pdf') {
+        return { tipo: 'pdf', buffer: Buffer.from(data.conteudoBase64 ?? '', 'base64') };
+      }
+      return { tipo: 'html', html: data.html ?? '' };
+    } catch (e) {
+      const axiosErr = e as AxiosError<{ detail?: string }>;
+      if (axiosErr.response?.status === 404) {
+        throw new UnprocessableEntityException('Arquivo não encontrado para pré-visualização.');
+      }
+      throw new InternalServerErrorException(
+        `Serviço de geração de documentos indisponível: ${axiosErr.message ?? 'erro desconhecido'}`,
+      );
+    }
+  }
 
   async postParaArquivo(
     caminho: string,

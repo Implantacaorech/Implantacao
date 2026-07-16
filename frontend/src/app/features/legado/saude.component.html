@@ -1,0 +1,17 @@
+@if (carregando()) {
+  <p>Rodando o verificador…</p>
+} @else {
+  <h1>🩺 Saúde do Sistema</h1>
+  <p class="sub">Resultado do verificador (ambiente, templates, 12 geradores, conversor, importador,
+    agentes e skills).</p>
+
+  @if (erro()) {
+    <div class="resultado erro" style="padding:10px 16px">{{ erro() }}</div>
+  } @else {
+    <div class="resultado" [class.ok]="ok()" [class.erro]="!ok()">
+      <h3>{{ ok() ? 'Tudo funcionando ✅' : 'Há falhas ⚠️' }}</h3>
+    </div>
+    <pre class="relatorio">{{ relatorio() }}</pre>
+  }
+  <a class="voltar" routerLink="/home">← Início</a>
+}

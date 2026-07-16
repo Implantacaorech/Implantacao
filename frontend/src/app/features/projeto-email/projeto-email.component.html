@@ -1,0 +1,68 @@
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else if (dados(); as d) {
+  <h1 style="display:flex;align-items:center;gap:10px">
+    <svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-mail"/></svg>
+    Enviar E-mail — {{ d.cliente }}
+  </h1>
+
+  @if (!d.configurado) {
+    <div class="resultado erro" style="padding:10px 16px;display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg>
+      SMTP não configurado. <a routerLink="/config/email" style="margin-left:4px">Configurar agora</a>.
+    </div>
+  }
+
+  @if (erro()) {
+    <div class="resultado erro" style="padding:10px 16px;display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg>
+      {{ erro() }}
+    </div>
+  }
+
+  <form class="painel" (ngSubmit)="enviar()">
+    <label class="campo">
+      <span>Destinatário *</span>
+      <input name="destino" [(ngModel)]="destino" placeholder="email@cliente.com.br" required />
+      <small>Separe múltiplos endereços por vírgula.</small>
+    </label>
+
+    @if (objectKeys(d.tpls).length > 0) {
+      <label class="campo">
+        <span>Modelo de e-mail</span>
+        <select [(ngModel)]="modeloEscolhido" name="tpl" (ngModelChange)="aplicarModelo()">
+          <option value="">— escolher um modelo —</option>
+          @for (k of objectKeys(d.tpls); track k) {
+            <option [value]="k">{{ d.tpls[k].nome }}</option>
+          }
+        </select>
+        <small>
+          As variáveis (ex.: <code ngNonBindable>{{CLIENTE}}</code>) já foram substituídas pelos dados do projeto.
+          @if (ehAdm()) { <a routerLink="/config/modelos-email" style="font-size:.78rem">Gerenciar modelos</a> }
+        </small>
+      </label>
+    } @else {
+      <div class="resultado" style="padding:8px 14px;font-size:.85rem;color:var(--muted)">
+        Nenhum modelo ativo cadastrado.
+        @if (ehAdm()) { <a routerLink="/config/modelos-email">Cadastrar modelos</a> }
+      </div>
+    }
+
+    <label class="campo">
+      <span>Assunto *</span>
+      <input name="assunto" [(ngModel)]="assunto" required />
+    </label>
+
+    <label class="campo">
+      <span>Mensagem *</span>
+      <textarea name="corpo" rows="14" [(ngModel)]="corpo" required></textarea>
+    </label>
+
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn primario" type="submit" [disabled]="!d.configurado || enviando()">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-send"/></svg> {{ enviando() ? 'Enviando…' : 'Enviar e-mail' }}
+      </button>
+      <a class="btn" [routerLink]="['/projetos', projetoId]">Cancelar</a>
+    </div>
+  </form>
+}

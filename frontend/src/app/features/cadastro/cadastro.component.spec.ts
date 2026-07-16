@@ -30,7 +30,7 @@ describe('CadastroComponent', () => {
     const fixture = montar({});
     fixture.detectChanges();
     expect(fixture.componentInstance.etapa()).toBe('dados');
-    expect(fixture.nativeElement.textContent).toContain('Crie seu acesso');
+    expect(fixture.nativeElement.textContent).toContain('Criar conta');
   });
 
   it('avança para a etapa "código" quando o cadastro é iniciado com sucesso', async () => {

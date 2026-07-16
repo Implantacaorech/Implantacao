@@ -57,6 +57,15 @@ export class AuthService {
     return res.data.accessToken;
   }
 
+  async trocarSenha(senhaAtual: string, senhaNova: string): Promise<void> {
+    await firstValueFrom(
+      this.http.post<ApiEnvelope<null>>(`${environment.apiUrl}/auth/trocar-senha`, {
+        senhaAtual,
+        senhaNova,
+      }),
+    );
+  }
+
   async logout(): Promise<void> {
     const refreshToken = this.refreshToken;
     try {

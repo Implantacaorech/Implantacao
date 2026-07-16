@@ -1,0 +1,27 @@
+.fx-secao {
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 14px 0 12px;
+  font-weight: 700;
+}
+.fx-secao:first-child {
+  margin-top: 0;
+}
+.fx-pacote {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 12px 16px;
+}
+.fx-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}

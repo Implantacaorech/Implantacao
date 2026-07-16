@@ -1,0 +1,205 @@
+@if (!role) {
+  <div class="resultado erro" style="padding:10px 16px">Papel não encontrado.</div>
+} @else {
+  <h1>Criação dos Templates</h1>
+
+  @if (resultado(); as r) {
+    @if (r.ok) {
+      <div class="resultado ok">
+        <h3 style="display:flex;align-items:center;gap:8px"><svg class="svgi" style="width:16px;height:16px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg> Documentos gerados</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          @for (a of r.arquivos; track a.token) {
+            <button class="btn primario" type="button" (click)="baixar(a)"><svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> {{ a.rotulo }}</button>
+          }
+        </div>
+      </div>
+    } @else {
+      <div class="resultado erro"><h3 style="display:flex;align-items:center;gap:8px"><svg class="svgi" style="width:16px;height:16px" aria-hidden="true"><use href="#ic-bell"/></svg> Não deu certo</h3><p>{{ r.erro }}</p></div>
+    }
+  }
+  @if (erro()) {
+    <div class="resultado erro" style="padding:10px 16px">{{ erro() }}</div>
+  }
+
+  <form class="painel" (ngSubmit)="gerar()">
+    <div class="docs-gerar">
+      <strong>Documentos a gerar:</strong>
+      <label><input type="checkbox" [(ngModel)]="genTermo" name="genTermo" /> Termo de Encerramento</label>
+      <label><input type="checkbox" [(ngModel)]="genMapa" name="genMapa" /> Mapeamento de Processos</label>
+    </div>
+
+    <div class="abas">
+      <button type="button" class="aba" [class.ativa]="abaAtiva() === 'comuns'" (click)="aba('comuns')">Dados comuns</button>
+      <button type="button" class="aba" [class.ativa]="abaAtiva() === 'termo'" (click)="aba('termo')">Termo de Encerramento</button>
+      <button type="button" class="aba" [class.ativa]="abaAtiva() === 'mapa'" (click)="aba('mapa')">Mapeamento de Processos</button>
+    </div>
+
+    <section class="painel-aba" [class.ativa]="abaAtiva() === 'comuns'">
+      <div class="grade2">
+        <label class="campo"><span>Razão Social (Cliente) *</span><input [(ngModel)]="cliente" name="cliente" required /></label>
+        <label class="campo"><span>Número do projeto</span><input [(ngModel)]="numeroProjeto" name="numeroProjeto" /></label>
+      </div>
+      <p class="dica">O Cliente é usado nos dois documentos. A Data do documento fica no rodapé (abaixo).</p>
+    </section>
+
+    <section class="painel-aba" [class.ativa]="abaAtiva() === 'termo'">
+      <label class="campo"><span>Data de validação/assinatura do projeto</span><input [(ngModel)]="dataValidacao" name="dataValidacao" placeholder="ex.: 10/03/2026" /></label>
+
+      <h3>Alterações fora do escopo original</h3>
+      <table class="form-tab"><thead><tr><th>Módulo</th><th>Rotina</th><th>Descrição</th><th></th></tr></thead>
+        <tbody>
+          @for (l of alteracoes; track $index) {
+            <tr>
+              <td><input [(ngModel)]="l.modulo" [name]="'alt_modulo_' + $index" /></td>
+              <td><input [(ngModel)]="l.rotina" [name]="'alt_rotina_' + $index" /></td>
+              <td><input [(ngModel)]="l.desc" [name]="'alt_desc_' + $index" /></td>
+              <td><button type="button" (click)="remover(alteracoes, $index)">✕</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <button type="button" class="btn" (click)="adicionar(alteracoes, { modulo: '', rotina: '', desc: '' })">+ Adicionar alteração</button>
+
+      <h3>Resumo geral da implantação</h3>
+      <table class="form-tab"><thead><tr><th>Módulo</th><th>Adicional</th><th>Processo</th><th>Status de Uso</th><th>Obs.</th><th></th></tr></thead>
+        <tbody>
+          @for (l of resumoModulos; track $index) {
+            <tr>
+              <td><input [(ngModel)]="l.modulo" [name]="'tr_modulo_' + $index" /></td>
+              <td><input [(ngModel)]="l.adicional" [name]="'tr_adic_' + $index" /></td>
+              <td><input [(ngModel)]="l.processo" [name]="'tr_proc_' + $index" placeholder="Implantado" /></td>
+              <td><input [(ngModel)]="l.status" [name]="'tr_status_' + $index" placeholder="Sim" /></td>
+              <td><input [(ngModel)]="l.obs" [name]="'tr_obs_' + $index" /></td>
+              <td><button type="button" (click)="remover(resumoModulos, $index)">✕</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <button type="button" class="btn" (click)="adicionar(resumoModulos, { modulo: '', adicional: '', processo: '', status: '', obs: '' })">+ Adicionar módulo</button>
+
+      <label class="campo" style="margin-top:14px"><span>Observações (uma por linha)</span><textarea rows="3" [(ngModel)]="termoObs" name="termoObs"></textarea></label>
+
+      <h3>Pendências sequenciadas após o encerramento</h3>
+      <table class="form-tab"><thead><tr><th>Pendência</th><th>Técnico responsável</th><th>Detalhamento</th><th></th></tr></thead>
+        <tbody>
+          @for (l of pendencias; track $index) {
+            <tr>
+              <td><input [(ngModel)]="l.pendencia" [name]="'pend_p_' + $index" /></td>
+              <td><input [(ngModel)]="l.tecnico" [name]="'pend_t_' + $index" /></td>
+              <td><input [(ngModel)]="l.detalhamento" [name]="'pend_d_' + $index" /></td>
+              <td><button type="button" (click)="remover(pendencias, $index)">✕</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <button type="button" class="btn" (click)="adicionar(pendencias, { pendencia: '', tecnico: '', detalhamento: '' })">+ Adicionar pendência</button>
+    </section>
+
+    <section class="painel-aba" [class.ativa]="abaAtiva() === 'mapa'">
+      <p class="dica">O Cliente vem de "Dados comuns" e a Data do rodapé. As tabelas têm botão para adicionar linhas.</p>
+      <div class="grade2">
+        <label class="campo"><span>Responsáveis</span><input [(ngModel)]="responsaveis" name="responsaveis" /></label>
+        <label class="campo"><span>Localização / Filiais</span><input [(ngModel)]="localizacao" name="localizacao" /></label>
+        <label class="campo"><span>Ramo de atividade</span><input [(ngModel)]="ramo" name="ramo" /></label>
+        <label class="campo"><span>Produto</span><input [(ngModel)]="produto" name="produto" /></label>
+        <label class="campo"><span>Fornecedor atual (software)</span><input [(ngModel)]="fornecedorAtual" name="fornecedorAtual" /></label>
+        <label class="campo"><span>Observações / Objetivos</span><input [(ngModel)]="observacoes" name="observacoes" /></label>
+      </div>
+
+      <h3>Usuários <small style="font-weight:400">— Total: <input [(ngModel)]="totalUsuarios" name="totalUsuarios" style="width:60px" /> usuários</small></h3>
+      <table class="form-tab"><thead><tr><th>Nome</th><th>E-mail</th><th>Atribuições</th><th></th></tr></thead>
+        <tbody>
+          @for (l of usuarios; track $index) {
+            <tr>
+              <td><input [(ngModel)]="l.nome" [name]="'u_nome_' + $index" /></td>
+              <td><input [(ngModel)]="l.email" [name]="'u_email_' + $index" /></td>
+              <td><input [(ngModel)]="l.atrib" [name]="'u_atrib_' + $index" /></td>
+              <td><button type="button" (click)="remover(usuarios, $index)">✕</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <button type="button" class="btn" (click)="adicionar(usuarios, { nome: '', email: '', atrib: '' })">+ Adicionar usuário</button>
+
+      <h3>Módulos/Adicionais (A) — Previstos antes do Levantamento</h3>
+      <p class="dica">Marque os módulos contratados. O Resumo (A) e os "Módulos Previstos" por área saem automáticos do catálogo.</p>
+      <input type="text" placeholder="Pesquisar módulo (sigla ou descrição)…"
+             style="width:100%;padding:9px;margin:4px 0;border:1px solid #e2e8f0;border-radius:8px;font:inherit;box-sizing:border-box"
+             [ngModel]="busca()" (ngModelChange)="busca.set($event)" name="busca" />
+      <p class="dica" style="margin-top:2px">@if (busca()) { {{ totalFiltrado() }} módulo(s) encontrado(s) }</p>
+      @if (carregandoCatalogo()) {
+        <p>Carregando catálogo…</p>
+      } @else {
+        @for (g of gruposFiltrados(); track g.area) {
+          <fieldset class="area-box">
+            <legend>{{ g.area }} <span class="badge">{{ g.modulos.length }}</span></legend>
+            <div class="mods">
+              @for (m of g.modulos; track m.abrev) {
+                <label class="mod">
+                  <input type="checkbox" [checked]="modulosSelecionados.has(m.abrev)" (change)="alternarModulo(m.abrev, $any($event.target).checked)" />
+                  <span><strong>{{ m.abrev }}</strong> — {{ m.descricao || '(sem descrição)' }}</span>
+                </label>
+              }
+            </div>
+          </fieldset>
+        }
+      }
+
+      <h3>Módulos/Adicionais (B) — Identificados no Levantamento</h3>
+      <table class="form-tab"><thead><tr><th>Módulo/Adicional</th><th>Necessidade</th><th>Observações</th><th></th></tr></thead>
+        <tbody>
+          @for (l of modulosIdentificados; track $index) {
+            <tr>
+              <td><input [(ngModel)]="l.modulo" [name]="'mb_mod_' + $index" /></td>
+              <td>
+                <select [(ngModel)]="l.necessidade" [name]="'mb_nec_' + $index">
+                  <option>Sim</option><option>Não</option>
+                </select>
+              </td>
+              <td><input [(ngModel)]="l.obs" [name]="'mb_obs_' + $index" /></td>
+              <td><button type="button" (click)="remover(modulosIdentificados, $index)">✕</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <button type="button" class="btn" (click)="adicionar(modulosIdentificados, { modulo: '', necessidade: 'Sim', obs: '' })">+ Adicionar módulo</button>
+
+      <h3>Conversões (horas)</h3>
+      <p class="dica">Informe apenas os números — a palavra "horas" é incluída automaticamente nos documentos.</p>
+      <div class="conv-list">
+        <label class="conv-row"><span>Total de horas</span><input [(ngModel)]="cvTotal" name="cvTotal" /><em>horas</em></label>
+        <label class="conv-row"><span>Imp. Cad. Cliente e Fornecedor — Estimativa</span><input [(ngModel)]="cvCli" name="cvCli" /><em>horas</em></label>
+        <label class="conv-row"><span>Imp. Cad. Produtos — Estimativa</span><input [(ngModel)]="cvProd" name="cvProd" /><em>horas</em></label>
+        <label class="conv-row"><span>Imp. Mov. Financeiro (doc. em aberto) — Estimativa</span><input [(ngModel)]="cvFin" name="cvFin" /><em>horas</em></label>
+        <label class="conv-row"><span>Imp. Notas Fiscais já emitidas — Estimativa</span><input [(ngModel)]="cvNf" name="cvNf" /><em>horas</em></label>
+        <label class="conv-row"><span>Importação movimentos da Folha de Pagamento — Estimativa</span><input [(ngModel)]="cvFolha" name="cvFolha" /><em>horas</em></label>
+      </div>
+
+      <h3>Horas do projeto</h3>
+      <div class="grade2">
+        <label class="campo"><span>Cobradas</span><input [(ngModel)]="hCob" name="hCob" /></label>
+        <label class="campo"><span>Bonificadas</span><input [(ngModel)]="hBon" name="hBon" /></label>
+        <label class="campo"><span>Total previstas</span><input [(ngModel)]="hTot" name="hTot" /></label>
+      </div>
+    </section>
+
+    <div class="rodape-form">
+      <strong>Data do documento:</strong>
+      <select [(ngModel)]="dataDia" name="dataDia">
+        @for (d of dias; track d) { <option [value]="pad2(d)">{{ pad2(d) }}</option> }
+      </select>
+      <select [(ngModel)]="dataMes" name="dataMes">
+        @for (m of meses; track m; let i = $index) { <option [value]="pad2(i + 1)">{{ m }}</option> }
+      </select>
+      <select [(ngModel)]="dataAno" name="dataAno">
+        @for (a of anos; track a) { <option [value]="a">{{ a }}</option> }
+      </select>
+    </div>
+
+    <button class="btn primario" type="submit" style="margin-top:14px" [disabled]="gerando()">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg> {{ gerando() ? 'Gerando…' : 'Gerar documentos' }}
+    </button>
+  </form>
+
+  <a class="voltar" [routerLink]="['/legado', rid]">← Voltar para {{ role.nome }}</a>
+}

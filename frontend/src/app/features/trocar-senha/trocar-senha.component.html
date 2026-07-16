@@ -1,0 +1,32 @@
+<div class="cabecalho">
+  <h1>Trocar minha senha</h1>
+</div>
+
+@if (erro()) {
+  <p class="erro">{{ erro() }}</p>
+}
+@if (sucesso()) {
+  <p class="aviso">Senha alterada com sucesso.</p>
+}
+
+<form class="form-config" [formGroup]="form" (ngSubmit)="salvar()">
+  <label class="col-2">
+    Senha atual
+    <input type="password" formControlName="senhaAtual" />
+  </label>
+  <label>
+    Senha nova
+    <input type="password" formControlName="senhaNova" />
+  </label>
+  <label>
+    Confirmar senha nova
+    <input type="password" formControlName="confirmarSenhaNova" />
+  </label>
+  <p class="dica col-2">Mínimo de 8 caracteres.</p>
+
+  <div class="acoes col-2">
+    <button type="submit" [disabled]="form.invalid || salvando()">
+      {{ salvando() ? 'Salvando…' : 'Trocar senha' }}
+    </button>
+  </div>
+</form>

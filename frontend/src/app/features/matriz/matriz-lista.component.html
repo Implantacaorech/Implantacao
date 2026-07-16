@@ -1,48 +1,55 @@
-<div class="cabecalho">
-  <h1>Matriz de Conhecimento</h1>
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+  <h1 style="margin:0">📊 Matriz de Conhecimento</h1>
+  <span style="flex:1"></span>
   @if (podeAdmin()) {
-    <button type="button" [disabled]="importando()" (click)="importar()">
-      {{ importando() ? 'Importando…' : 'Reimportar planilha' }}
+    <button class="btn" type="button" [disabled]="importando()" (click)="importar()">
+      📥 {{ importando() ? 'Importando…' : 'Importar planilha' }}
     </button>
   }
 </div>
+<p class="dica">Notas de 1 a 10 por competência. <strong>1</strong> não conhece ·
+  <strong>2–5</strong> conhece partes · <strong>6–8</strong> conhece grande parte ·
+  <strong>9–10</strong> domina / referência.</p>
 
-@if (erro()) {
-  <p class="erro">{{ erro() }}</p>
-}
 @if (aviso()) {
-  <p class="aviso">{{ aviso() }}</p>
+  <div class="resultado ok" style="padding:8px 14px">ℹ️ {{ aviso() }}</div>
+}
+@if (erro()) {
+  <div class="resultado erro" style="padding:8px 14px">{{ erro() }}</div>
 }
 
 @if (carregando()) {
   <p>Carregando…</p>
 } @else if (restrito()) {
-  <p class="vazio">Você ainda não tem uma ficha na Matriz de Conhecimento.</p>
+  <div class="painel">
+    <p class="dica" style="margin:0">Seu usuário ainda não tem linha na matriz — o nome/Código SICLA
+      do seu cadastro não casou com nenhum técnico. Peça ao Administrador para incluir sua linha
+      (ou ajustar o Código SICLA no seu cadastro de usuário).</p>
+  </div>
 } @else {
-  <table class="tabela">
+  <div class="painel" style="padding:10px 16px">
+    <input placeholder="Filtrar por nome ou setor…" style="width:100%;max-width:360px" [(ngModel)]="filtro" />
+  </div>
+  <table class="form-tab">
     <thead>
-      <tr>
-        <th>Técnico</th>
-        <th>Setor</th>
-        <th>Dias</th>
-        <th>Notas preenchidas</th>
-        <th>Atualizado em</th>
-      </tr>
+      <tr><th>Técnico</th><th>Setor</th><th>Notas lançadas</th><th>Última atualização</th><th></th></tr>
     </thead>
     <tbody>
-      @for (t of itens(); track t.id) {
+      @for (t of itensFiltrados(); track t.id) {
         <tr>
-          <td><a [routerLink]="['/matriz', t.id]">{{ t.nome }}</a></td>
+          <td><strong>{{ t.nome }}</strong></td>
           <td>{{ t.setor }}</td>
-          <td>{{ t.dias }}</td>
           <td>{{ t.qtdNotas }}</td>
-          <td>{{ t.atualizadoEm ? (t.atualizadoEm | date: 'dd/MM/yyyy') : '—' }}</td>
-        </tr>
-      } @empty {
-        <tr>
-          <td colspan="5" class="vazio">Nenhum técnico cadastrado na Matriz.</td>
+          <td>
+            {{ t.atualizadoEm ? (t.atualizadoEm | date: 'dd/MM/yyyy HH:mm') : '—' }}
+            @if (t.atualizadoPor) { <span class="dica">por {{ t.atualizadoPor }}</span> }
+          </td>
+          <td><a class="btn" [routerLink]="['/matriz', t.id]">Abrir</a></td>
         </tr>
       }
     </tbody>
   </table>
+  @if (itens().length === 0) {
+    <p class="dica">Nenhum técnico ainda — use "Importar planilha".</p>
+  }
 }

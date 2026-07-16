@@ -3,13 +3,21 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { FluxoService } from './fluxo.service';
 import { Projeto } from '../database/entities/projeto.entity';
 import { DocumentosService } from '../documentos/documentos.service';
+import { GeracaoLayoutService } from '../documentos/geracao-layout.service';
+import { MailerService } from '../email/mailer.service';
 import { NotificacaoService } from '../email/notificacao.service';
 
 describe('FluxoService', () => {
   let service: FluxoService;
   const projetos = { find: jest.fn(), save: jest.fn(), create: jest.fn((dto) => dto) };
-  const documentos = { registrarEvento: jest.fn() };
+  const documentos = {
+    registrarEvento: jest.fn(),
+    salvarArquivoGerado: jest.fn(),
+    registrarDocumento: jest.fn(),
+  };
   const notificacao = { notificarEvento: jest.fn() };
+  const geracaoLayout = { gerar: jest.fn() };
+  const mailer = { configurado: jest.fn(() => false), enviar: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -19,6 +27,8 @@ describe('FluxoService', () => {
         { provide: getRepositoryToken(Projeto), useValue: projetos },
         { provide: DocumentosService, useValue: documentos },
         { provide: NotificacaoService, useValue: notificacao },
+        { provide: GeracaoLayoutService, useValue: geracaoLayout },
+        { provide: MailerService, useValue: mailer },
       ],
     }).compile();
     service = module.get(FluxoService);
@@ -139,6 +149,97 @@ Produto / Observações: Cliente estratégico`;
       expect(projetos.create).toHaveBeenCalledWith(
         expect.objectContaining({ cliente: 'Cliente' }),
       );
+    });
+  });
+
+  describe('criarComPacote', () => {
+    it('dedup: devolve o existente sem criar, gerar documentos ou enviar e-mail', async () => {
+      projetos.find.mockResolvedValue([{ id: 7, cnpj: '12345678000190', cliente: 'Já existe' }]);
+      const r = await service.criarComPacote({ cliente: 'X', cnpj: '12.345.678/0001-90' }, 'ana');
+      expect(r).toEqual({ projetoId: 7, duplicado: true, documentosGerados: [], emailEnviado: false });
+      expect(projetos.save).not.toHaveBeenCalled();
+      expect(geracaoLayout.gerar).not.toHaveBeenCalled();
+      expect(mailer.enviar).not.toHaveBeenCalled();
+    });
+
+    it('cria o projeto com o texto de evento do fluxo manual (distinto do robô da caixa)', async () => {
+      projetos.find.mockResolvedValue([]);
+      projetos.save.mockResolvedValue({ id: 42, cliente: 'Cliente Teste LTDA' });
+      await service.criarComPacote({ cliente: 'Cliente Teste LTDA', gerar: [] }, 'ana');
+      expect(documentos.registrarEvento).toHaveBeenCalledWith(
+        42,
+        'etapa',
+        'Fluxo iniciado pelo e-mail de fechamento (Comercial).',
+        'ana',
+      );
+    });
+
+    it('registra notas de GCI e técnicos e acrescenta "Técnicos" às observações', async () => {
+      projetos.find.mockResolvedValue([]);
+      projetos.save.mockResolvedValue({ id: 43, cliente: 'X' });
+      await service.criarComPacote(
+        { cliente: 'X', consultor: 'Fulano', tecnicos: 'Ciclano, Beltrano', gerar: [] },
+        'ana',
+      );
+      expect(projetos.create).toHaveBeenCalledWith(
+        expect.objectContaining({ consultor: 'Fulano', observacoes: 'Técnicos: Ciclano, Beltrano' }),
+      );
+      expect(documentos.registrarEvento).toHaveBeenCalledWith(
+        43,
+        'nota',
+        'GCI designado p/ Levantamento: Fulano',
+        'ana',
+      );
+      expect(documentos.registrarEvento).toHaveBeenCalledWith(
+        43,
+        'nota',
+        'Técnico(s) da implantação: Ciclano, Beltrano',
+        'ana',
+      );
+    });
+
+    it('gera só os tipos suportados pela layout fiel (ignora "checklist")', async () => {
+      projetos.find.mockResolvedValue([]);
+      projetos.save.mockResolvedValue({ id: 44, cliente: 'X' });
+      geracaoLayout.gerar.mockResolvedValue({ filename: 'lev.docx', buffer: Buffer.from('x') });
+      documentos.salvarArquivoGerado.mockReturnValue({ arquivo: 'lev.docx', caminho: '/tmp/lev.docx' });
+      const r = await service.criarComPacote(
+        { cliente: 'X', gerar: ['levantamento', 'checklist', 'cronograma'] },
+        'ana',
+      );
+      expect(geracaoLayout.gerar).toHaveBeenCalledTimes(2);
+      expect(geracaoLayout.gerar).toHaveBeenCalledWith(44, 'levantamento', 'auto');
+      expect(geracaoLayout.gerar).toHaveBeenCalledWith(44, 'cronograma', 'auto');
+      expect(r.documentosGerados).toEqual(['Mapeamento de Processos', 'Cronograma']);
+    });
+
+    it('envia o e-mail-resumo com os documentos gerados como anexo quando há destinos e SMTP configurado', async () => {
+      projetos.find.mockResolvedValue([]);
+      projetos.save.mockResolvedValue({ id: 45, cliente: 'X', horasCobradas: '40', horasBonificadas: '8' });
+      geracaoLayout.gerar.mockResolvedValue({ filename: 'lev.docx', buffer: Buffer.from('x') });
+      documentos.salvarArquivoGerado.mockReturnValue({ arquivo: 'lev.docx', caminho: '/tmp/lev.docx' });
+      mailer.configurado.mockReturnValue(true);
+      mailer.enviar.mockResolvedValue({ ok: true });
+      const r = await service.criarComPacote(
+        { cliente: 'X', gerar: ['levantamento'], emailsResponsaveis: 'a@x.com, b@x.com' },
+        'ana',
+      );
+      expect(mailer.enviar).toHaveBeenCalledWith(
+        ['a@x.com', 'b@x.com'],
+        'Implantação iniciada — X',
+        expect.stringContaining('Resumo do projeto de implantação'),
+        [{ caminho: '/tmp/lev.docx' }],
+      );
+      expect(r.emailEnviado).toBe(true);
+      expect(r.avisoEmail).toBeUndefined();
+    });
+
+    it('sem destinatários: cria o fluxo mas avisa que não enviou e-mail', async () => {
+      projetos.find.mockResolvedValue([]);
+      projetos.save.mockResolvedValue({ id: 46, cliente: 'X' });
+      const r = await service.criarComPacote({ cliente: 'X', gerar: [] }, 'ana');
+      expect(mailer.enviar).not.toHaveBeenCalled();
+      expect(r.avisoEmail).toBe('Fluxo criado. Nenhum destinatário informado — pacote não enviado por e-mail.');
     });
   });
 });

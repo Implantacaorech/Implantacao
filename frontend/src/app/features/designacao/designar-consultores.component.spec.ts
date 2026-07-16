@@ -2,15 +2,49 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { DesignarConsultoresComponent } from './designar-consultores.component';
 import { DesignacaoService } from '../../core/services/designacao.service';
+import { ProjetosService } from '../../core/services/projetos.service';
 import { ConsultoresView } from '../../core/models/designacao.model';
+import { Projeto } from '../../core/models/projeto.model';
+
+function projeto(over: Partial<Projeto> = {}): Projeto {
+  return {
+    id: 5,
+    cliente: 'Cliente Teste',
+    cnpj: '',
+    numeroProjeto: '',
+    numeroProposta: '',
+    ramo: '',
+    responsavel: '',
+    consultor: '',
+    gci: '',
+    etapa: 'Agendamento',
+    situacao: 'Em andamento',
+    dataInicio: '',
+    dataLevantamento: '',
+    dataUsoOficial: '',
+    dataEncerramento: '',
+    horasCobradas: '',
+    horasBonificadas: '',
+    modulos: '',
+    contatoNome: '',
+    contatoEmail: '',
+    contatoTel: '',
+    contatos: '',
+    observacoes: '',
+    criadoEm: '',
+    atualizadoEm: '',
+    ...over,
+  };
+}
 
 describe('DesignarConsultoresComponent', () => {
-  function montar(service: Partial<DesignacaoService>) {
+  function montar(service: Partial<DesignacaoService>, projetos: Partial<ProjetosService> = {}) {
     TestBed.configureTestingModule({
       imports: [DesignarConsultoresComponent],
       providers: [
         provideRouter([]),
         { provide: DesignacaoService, useValue: service },
+        { provide: ProjetosService, useValue: { buscar: () => Promise.resolve(projeto()), ...projetos } },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: '5' }) } } },
       ],
     });
@@ -24,6 +58,7 @@ describe('DesignarConsultoresComponent', () => {
   it('pré-preenche as designações atuais por módulo', async () => {
     const fixture = montar({ obterConsultores: () => Promise.resolve(view({ atuais: { FAT: 'Ana' } })) });
     fixture.detectChanges();
+    await fixture.whenStable();
     await fixture.whenStable();
     const comp = fixture.componentInstance;
     expect(comp.escolhido('FAT')).toBe('Ana');

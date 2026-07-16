@@ -1,0 +1,84 @@
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <h1 style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+    <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+    Acompanhamento das Visitas
+  </h1>
+  <p class="dica">Acompanhe e atualize o <strong>status</strong> de cada visita. Clique num cartão de status para filtrar.</p>
+
+  @if (erro()) {
+    <div class="resultado erro" style="padding:10px 16px;margin-bottom:10px">{{ erro() }}</div>
+  }
+
+  <div class="ac-chips">
+    <button type="button" class="ac-chip" [class.on]="!fStatus" (click)="filtrarPorStatus('')">Todas <b>{{ totalTodas() }}</b></button>
+    @for (st of statusOpcoes; track st) {
+      <button type="button" class="ac-chip ac-{{ classeChip(st) }}" [class.on]="fStatus === st" (click)="filtrarPorStatus(st)">
+        {{ st }} <b>{{ contagem().get(st) ?? 0 }}</b>
+      </button>
+    }
+  </div>
+
+  <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:10px 0 12px">
+    <label class="campo" style="margin:0;width:170px">
+      <span>Data</span>
+      <select [(ngModel)]="fData">
+        <option value="">Todas</option>
+        @for (d of datas(); track d) { <option [value]="d">{{ formatarData(d) }}</option> }
+      </select>
+    </label>
+    <label class="campo" style="margin:0;width:200px">
+      <span>Técnico</span>
+      <select [(ngModel)]="fTecnico">
+        <option value="">Todos</option>
+        @for (t of tecnicos(); track t) { <option [value]="t">{{ t }}</option> }
+      </select>
+    </label>
+    @if (fData || fTecnico || fStatus) {
+      <button class="btn" type="button" (click)="limparFiltros()">Limpar</button>
+    }
+  </div>
+
+  @if (atividadesFiltradas().length > 0) {
+    <div style="overflow-x:auto">
+      <table class="ac-tab">
+        <thead>
+          <tr>
+            <th>Data</th><th>Horário</th><th>Turno</th>
+            <th>Módulo</th><th>Visita</th>
+            <th class="ac-ativ">Atividade</th><th>Técnico</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (a of atividadesFiltradas(); track a.id) {
+            <tr>
+              <td>{{ formatarData(a.data) }}</td>
+              <td>{{ horarioDe(a.turno) }}</td>
+              <td>{{ a.turno === 'manha' ? 'Manhã' : (a.turno === 'tarde' ? 'Tarde' : a.turno) }}</td>
+              <td><strong>{{ a.modulo }}</strong></td>
+              <td>V{{ a.seq }}</td>
+              <td class="ac-ativ">{{ a.descricao }}</td>
+              <td>{{ a.tecnico }}</td>
+              <td>
+                <select #sel style="font-size:.78rem;padding:2px 4px;border:1px solid var(--line);border-radius:5px"
+                        [ngModel]="a.status" (ngModelChange)="mudarStatus(a, $event, sel)">
+                  @for (st of statusOpcoes; track st) { <option [value]="st">{{ st }}</option> }
+                </select>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <div class="resultado" style="padding:10px 16px">Nenhuma atividade alocada ainda. Use a
+      <a [routerLink]="['/projetos', projetoId, 'agenda']">Agenda de Visitas</a> para alocar.</div>
+  }
+
+  <div style="margin-top:14px;display:flex;gap:8px">
+    <a class="btn" [routerLink]="['/projetos', projetoId, 'agenda']">Voltar à agenda</a>
+    <a class="btn" [routerLink]="['/projetos', projetoId]">Ficha do projeto</a>
+  </div>
+}

@@ -1,0 +1,119 @@
+@if (semOrigem()) {
+  <div class="resultado erro" style="padding:10px 16px">
+    Nenhum dado extraído ainda. <a routerLink="/fluxo">Volte ao início do fluxo</a> e traga o e-mail de fechamento.
+  </div>
+} @else if (resultado(); as r) {
+  <h1 style="display:flex;align-items:center;gap:10px">
+    <svg class="svgi" style="width:24px;height:24px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+    {{ r.duplicado ? 'Projeto já existia' : 'Fluxo criado' }}
+  </h1>
+  <div class="painel">
+    @if (r.duplicado) {
+      <p>Já existe um projeto para este cliente/CNPJ — abri o existente em vez de duplicar.</p>
+    } @else {
+      <p class="dica" style="margin-top:0">Ficha criada, evento registrado e Coordenação notificada.</p>
+      @if (r.documentosGerados.length > 0) {
+        <p><strong>Documentos gerados e anexados:</strong> {{ r.documentosGerados.join(', ') }}</p>
+      }
+      <p>
+        <strong>E-mail aos responsáveis:</strong>
+        {{ r.emailEnviado ? 'enviado com o resumo do projeto + anexos.' : (r.avisoEmail || 'não enviado.') }}
+      </p>
+    }
+    <button class="btn primario" type="button" (click)="irParaFicha()">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Ir para a ficha do projeto
+    </button>
+  </div>
+} @else {
+  <h1 style="display:flex;align-items:center;gap:10px">
+    <svg class="svgi" style="width:24px;height:24px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+    Confirmar e criar o fluxo
+  </h1>
+  <p class="sub">Extraído de: <strong>{{ fonte() }}</strong>@if (assunto()) { — "{{ assunto() }}" }. Confira os dados, designe os responsáveis e crie.</p>
+
+  @if (erro()) {
+    <div class="resultado erro" style="padding:10px 16px;margin-bottom:10px">{{ erro() }}</div>
+  }
+
+  <form class="painel" (ngSubmit)="criar()">
+    <h4 class="fx-secao">Identificação do cliente</h4>
+    <div class="grade2">
+      <label class="campo campo-obrig"><span>Razão Social</span><input [(ngModel)]="cliente" name="cliente" required placeholder="Nome completo da empresa" /></label>
+      <label class="campo"><span>CNPJ</span><input [(ngModel)]="cnpj" name="cnpj" placeholder="00.000.000/0001-00" /></label>
+      <label class="campo"><span>Ramo de Atividade</span><input [(ngModel)]="ramo" name="ramo" placeholder="Ex.: Indústria, Comércio…" /></label>
+      <label class="campo"><span>Nº do Projeto</span><input [(ngModel)]="numeroProjeto" name="numeroProjeto" placeholder="Ex.: 2025-0042" /></label>
+      <label class="campo"><span>Nº da Proposta</span><input [(ngModel)]="numeroProposta" name="numeroProposta" placeholder="Referência comercial" /></label>
+    </div>
+
+    <h4 class="fx-secao">Contato principal do cliente</h4>
+    <div class="grade2">
+      <label class="campo"><span>Nome do Contato</span><input [(ngModel)]="contatoNome" name="contatoNome" placeholder="Nome completo" /></label>
+      <label class="campo"><span>E-mail do Contato</span><input type="email" [(ngModel)]="contatoEmail" name="contatoEmail" placeholder="email@empresa.com.br" /></label>
+      <label class="campo"><span>Telefone do Contato</span><input [(ngModel)]="contatoTel" name="contatoTel" placeholder="(00) 00000-0000" /></label>
+    </div>
+    <label class="campo"><span>Outros Contatos / Stakeholders</span>
+      <input [(ngModel)]="contatos" name="contatos" placeholder="Demais contatos relevantes do projeto" />
+    </label>
+
+    <h4 class="fx-secao">Dados da implantação</h4>
+    <div class="grade2">
+      <label class="campo campo-obrig"><span>Módulos Contratados (siglas)</span><input [(ngModel)]="modulos" name="modulos" required placeholder="FAT, CTB, FIN, RH…" /></label>
+      <label class="campo campo-obrig"><span>Horas Cobradas</span><input [(ngModel)]="horasCobradas" name="horasCobradas" required placeholder="Ex.: 120" /></label>
+      <label class="campo"><span>Horas Bonificadas</span><input [(ngModel)]="horasBonificadas" name="horasBonificadas" placeholder="Ex.: 20" /></label>
+      <label class="campo"><span>Data do Levantamento</span><input type="date" [(ngModel)]="dataLevantamento" name="dataLevantamento" /></label>
+      <label class="campo"><span>Go-live Previsto</span><input type="date" [(ngModel)]="dataUsoOficial" name="dataUsoOficial" /></label>
+    </div>
+    <label class="campo"><span>Observações</span><textarea rows="2" [(ngModel)]="observacoes" name="observacoes" placeholder="Informações adicionais, restrições, acordos especiais…"></textarea></label>
+
+    <h4 class="fx-secao">Responsáveis internos</h4>
+    <div class="grade2">
+      <label class="campo campo-obrig">
+        <span>GCI do Levantamento</span>
+        <input [(ngModel)]="consultor" name="consultor" placeholder="Nome do GCI responsável" required />
+        <small>Responsável pelo levantamento de processos</small>
+      </label>
+      <label class="campo">
+        <span>Técnico(s) da Implantação</span>
+        <input [(ngModel)]="tecnicos" name="tecnicos" placeholder="Nomes separados por vírgula" />
+        <small>Consultores que executarão a implantação</small>
+      </label>
+    </div>
+    <label class="campo">
+      <span>E-mails dos responsáveis</span>
+      <input [(ngModel)]="emailsResponsaveis" name="emailsResponsaveis" placeholder="gci@rech.com.br, tecnico@rech.com.br" />
+      <small>Receberão o pacote de documentos + resumo do projeto por e-mail</small>
+    </label>
+
+    <h4 class="fx-secao">Pacote inicial a gerar</h4>
+    <div class="fx-pacote">
+      <label class="fx-check">
+        <input type="checkbox" [(ngModel)]="gerarLevantamento" name="gerarLevantamento" />
+        <svg class="svgi svgi-md" style="color:var(--brand)" aria-hidden="true"><use href="#ic-file"/></svg>
+        Mapeamento de Processos
+      </label>
+      <label class="fx-check" title="Não disponível nesta versão — gerador legado (runner.py) ainda não portado.">
+        <input type="checkbox" disabled />
+        <svg class="svgi svgi-md" style="color:var(--muted)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+        Check List <small>(indisponível)</small>
+      </label>
+      <label class="fx-check">
+        <input type="checkbox" [(ngModel)]="gerarCronograma" name="gerarCronograma" />
+        <svg class="svgi svgi-md" style="color:var(--brand)" aria-hidden="true"><use href="#ic-clock"/></svg>
+        Cronograma
+      </label>
+    </div>
+    <p class="dica" style="margin-top:8px">
+      <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-bulb"/></svg>
+      Ao criar: cria a ficha, gera o pacote, registra tudo na timeline e envia o e-mail aos responsáveis com os anexos + resumo do projeto.
+    </p>
+
+    <div style="display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
+      <button class="btn primario" type="submit" [disabled]="enviando()">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> {{ enviando() ? 'Criando…' : 'Criar fluxo e enviar pacote' }}
+      </button>
+      <a class="btn" routerLink="/fluxo">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-x"/></svg> Cancelar
+      </a>
+    </div>
+  </form>
+}

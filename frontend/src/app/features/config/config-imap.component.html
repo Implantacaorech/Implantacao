@@ -1,0 +1,40 @@
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <h1 style="display:flex;align-items:center;gap:10px">
+    <svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-mail"/></svg> Caixa de entrada (IMAP)
+  </h1>
+  <p class="dica">Conta onde chega o e-mail de fechamento. A senha fica salva só nesta máquina (não é versionada).</p>
+
+  @if (aviso()) {
+    <div class="resultado ok" style="padding:10px 16px;display:flex;align-items:center;gap:8px">
+      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+    </div>
+  }
+  @if (erro()) {
+    <div class="resultado erro" style="padding:10px 16px;margin-bottom:10px">{{ erro() }}</div>
+  }
+
+  <form class="painel" [formGroup]="form" (ngSubmit)="salvar()">
+    <div class="grade2">
+      <label class="campo"><span>Servidor IMAP (host)</span><input formControlName="host" placeholder="imap.rech.com.br" /></label>
+      <label class="campo"><span>Porta</span><input formControlName="port" placeholder="993 (SSL)" /></label>
+      <label class="campo"><span>Usuário</span><input formControlName="user" placeholder="implantacao@rech.com.br" /></label>
+      <label class="campo"><span>Senha</span><input type="password" formControlName="senha" placeholder="(em branco mantém a atual)" /></label>
+      <label class="campo"><span>Pasta</span><input formControlName="pasta" /></label>
+    </div>
+    <button class="btn primario" type="submit" [disabled]="salvando()">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ salvando() ? 'Salvando…' : 'Salvar' }}
+    </button>
+  </form>
+
+  <p class="dica" style="display:flex;align-items:center;gap:6px">
+    @if (configurado()) {
+      <svg class="svgi" style="width:12px;height:12px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg> Configurado.
+    } @else {
+      <svg class="svgi" style="width:12px;height:12px;color:var(--err)" aria-hidden="true"><use href="#ic-bell"/></svg> Incompleto (informe host e usuário).
+    }
+    Busca e-mails <strong>não lidos</strong> com "[IMPLANTAÇÃO]" no assunto, sem marcá-los como lidos.
+  </p>
+  <a class="btn" routerLink="/home">← Voltar ao Fluxo</a>
+}

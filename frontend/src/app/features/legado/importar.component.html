@@ -1,0 +1,39 @@
+@if (!role || !acao) {
+  <div class="resultado erro" style="padding:10px 16px">Ação não encontrada.</div>
+} @else {
+  <h1>{{ acao.nome }}</h1>
+  <p class="sub">{{ acao.desc }}</p>
+
+  <div class="painel">
+    <label class="campo">
+      <span>Arquivo do Levantamento (.docx)</span>
+      <input #arquivoInput type="file" accept=".docx" [disabled]="enviando()" (change)="importar(arquivoInput)" />
+    </label>
+    <p class="dica">Gera em sequência o <strong>Projeto</strong>, o <strong>Check List do Consultor</strong>
+      e o <strong>Termo</strong>, aplicando <strong>tempo verbal + ortografia</strong> antes. Não precisa abrir outra aba.</p>
+    @if (enviando()) { <p>Importando…</p> }
+  </div>
+
+  @if (erro()) {
+    <div class="resultado erro" style="padding:10px 16px">{{ erro() }}</div>
+  }
+
+  @if (resultado(); as r) {
+    @if (r.ok) {
+      <div class="resultado ok">
+        <h3>✅ Gerado em sequência</h3>
+        <p><strong>Cliente:</strong> {{ r.cliente }} · {{ r.modulos }} módulo(s) detectado(s).
+          Texto passado por <strong>tempo verbal + ortografia</strong>.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          @for (a of r.arquivos; track a.token) {
+            <button class="btn primario" type="button" (click)="baixar(a)">⬇️ {{ a.rotulo }}</button>
+          }
+        </div>
+      </div>
+    } @else {
+      <div class="resultado erro"><h3>⚠️ Não deu certo</h3><p>{{ r.erro }}</p></div>
+    }
+  }
+
+  <a class="voltar" [routerLink]="['/legado', rid]">← Voltar para {{ role.nome }}</a>
+}

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { UsersService } from './users.service';
 import { Usuario } from '../database/entities/usuario.entity';
 
@@ -147,6 +148,27 @@ describe('UsersService', () => {
       await expect(service.atualizar(1, { email: 'ocupado@teste.com' })).rejects.toThrow(
         ConflictException,
       );
+    });
+  });
+
+  describe('trocarSenha', () => {
+    it('troca a senha (hasheada) quando a senha atual confere', async () => {
+      const senhaHash = await bcrypt.hash('senha-atual-123', 12);
+      const existente = { id: 1, senhaHash };
+      repo.findOne.mockResolvedValue(existente);
+      await service.trocarSenha(1, 'senha-atual-123', 'senha-nova-456');
+      expect(existente.senhaHash).not.toBe(senhaHash);
+      expect(await bcrypt.compare('senha-nova-456', existente.senhaHash)).toBe(true);
+    });
+
+    it('rejeita quando a senha atual está incorreta, sem alterar o hash', async () => {
+      const senhaHash = await bcrypt.hash('senha-atual-123', 12);
+      const existente = { id: 1, senhaHash };
+      repo.findOne.mockResolvedValue(existente);
+      await expect(service.trocarSenha(1, 'senha-errada', 'senha-nova-456')).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(existente.senhaHash).toBe(senhaHash);
     });
   });
 });

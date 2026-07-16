@@ -31,7 +31,7 @@ describe('MatrizListaComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('não tem uma ficha');
+    expect(fixture.nativeElement.textContent).toContain('não tem linha na matriz');
   });
 
   it('lista os técnicos quando o usuário vê tudo', async () => {
@@ -56,6 +56,6 @@ describe('MatrizListaComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Reimportar planilha');
+    expect(fixture.nativeElement.textContent).toContain('Importar planilha');
   });
 });

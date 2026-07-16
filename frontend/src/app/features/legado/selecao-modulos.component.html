@@ -1,0 +1,63 @@
+@if (!role || !acao) {
+  <div class="resultado erro" style="padding:10px 16px">Ação não encontrada.</div>
+} @else {
+  <h1>{{ acao.nome }}</h1>
+  <p class="sub">{{ acao.desc }}</p>
+
+  @if (resultado(); as r) {
+    @if (r.ok && r.arquivo; as arq) {
+      <div class="resultado ok">
+        <h3>✅ Gerado com sucesso</h3>
+        <button class="btn primario" type="button" (click)="baixar(arq)">⬇️ {{ arq.rotulo }}</button>
+      </div>
+    } @else {
+      <div class="resultado erro"><h3>⚠️ Não deu certo</h3><p>{{ r.erro }}</p></div>
+    }
+  }
+  @if (erro()) {
+    <div class="resultado erro" style="padding:10px 16px">{{ erro() }}</div>
+  }
+
+  <form class="painel" (ngSubmit)="gerar()">
+    <div class="grade2">
+      <label class="campo"><span>Razão Social do cliente *</span>
+        <input type="text" name="cliente" [(ngModel)]="cliente" required />
+      </label>
+      <label class="campo"><span>Data</span><input type="date" name="data" [(ngModel)]="data" /></label>
+      <label class="campo"><span>Responsáveis</span><input type="text" name="responsaveis" [(ngModel)]="responsaveis" /></label>
+      <label class="campo"><span>Ramo de atividade</span><input type="text" name="ramo" [(ngModel)]="ramo" /></label>
+      <label class="campo"><span>Localização / Filiais</span><input type="text" name="localizacao" [(ngModel)]="localizacao" /></label>
+      <label class="campo"><span>Observações / Objetivos</span><input type="text" name="observacoes" [(ngModel)]="observacoes" /></label>
+    </div>
+
+    <h3 style="color:#1F4E78">Módulos e adicionais</h3>
+    <p class="dica">Marque os módulos. As áreas seguem o catálogo (editável em <code>catalogo_modulos.yaml</code>).</p>
+    <input type="text" placeholder="🔎 Pesquisar módulo (sigla ou descrição)…"
+           style="width:100%;padding:10px;margin:6px 0 4px;border:1px solid #e2e8f0;border-radius:8px;font:inherit"
+           [ngModel]="busca()" (ngModelChange)="busca.set($event)" name="busca" />
+    <p class="dica" style="margin-top:2px">@if (busca()) { {{ totalFiltrado() }} módulo(s) encontrado(s) }</p>
+
+    @if (carregando()) {
+      <p>Carregando catálogo…</p>
+    } @else {
+      @for (g of gruposFiltrados(); track g.area) {
+        <fieldset class="area-box">
+          <legend>{{ g.area }} <span class="badge">{{ g.modulos.length }}</span></legend>
+          <div class="mods">
+            @for (m of g.modulos; track m.abrev) {
+              <label class="mod">
+                <input type="checkbox" [checked]="modulosSelecionados.has(m.abrev)" (change)="alternar(m.abrev, $any($event.target).checked)" />
+                <span><strong>{{ m.abrev }}</strong> — {{ m.descricao || '(sem descrição)' }}</span>
+              </label>
+            }
+          </div>
+        </fieldset>
+      }
+    }
+
+    <button class="btn primario" type="submit" style="margin-top:16px" [disabled]="gerando()">
+      {{ gerando() ? 'Gerando…' : 'Gerar' }}
+    </button>
+  </form>
+  <a class="voltar" [routerLink]="['/legado', rid]">← Voltar para {{ role.nome }}</a>
+}
