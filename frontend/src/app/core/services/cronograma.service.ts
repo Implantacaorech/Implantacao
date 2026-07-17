@@ -82,11 +82,11 @@ export class CronogramaService {
     await firstValueFrom(this.http.delete(`${this.base(projetoId)}/periodos/${periodoId}`));
   }
 
-  async bloqueios(projetoId: number, inicio: string, fim: string): Promise<Record<string, string>> {
+  async bloqueios(projetoId: number, inicio: string, fim: string, tecnico?: string): Promise<Record<string, string>> {
+    const params: Record<string, string> = { inicio, fim };
+    if (tecnico) params['tecnico'] = tecnico;
     const r = await firstValueFrom(
-      this.http.get<ApiEnvelope<Record<string, string>>>(`${this.base(projetoId)}/bloqueios`, {
-        params: { inicio, fim },
-      }),
+      this.http.get<ApiEnvelope<Record<string, string>>>(`${this.base(projetoId)}/bloqueios`, { params }),
     );
     return r.data;
   }

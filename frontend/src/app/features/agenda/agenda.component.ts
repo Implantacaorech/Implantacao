@@ -93,6 +93,13 @@ export class AgendaComponent {
   readonly designacoes = signal<Designacao[]>([]);
   readonly periodos = signal<PeriodoBloqueado[]>([]);
   readonly bloqueios = signal<Record<string, string>>({});
+  /** Visão do indicador de disponibilidade no calendário — "em grupo" (bloqueia se
+   * qualquer técnico envolvido estiver ocupado) ou "individual" (só a agenda de um
+   * técnico escolhido). Só afeta o indicador visual, não a alocação em si (o guard real
+   * na escrita sempre olha o técnico verdadeiro da atividade). Espelha modo/tec_sel de
+   * webapp/routes_agenda.py:projeto_agenda — transitório, não é salvo. */
+  readonly visaoModo = signal<'conjunta' | 'individual'>('conjunta');
+  readonly visaoTecnico = signal('');
   readonly prontidao = signal<Prontidao>({ faltantes: [], jaOcorreu: false });
   readonly horarios = signal<HorariosPorTurno>({ manha: { inicio: '08:00', fim: '12:00' }, tarde: { inicio: '13:00', fim: '17:00' } });
   readonly config = signal<CronogramaConfigDto>({
@@ -177,6 +184,8 @@ export class AgendaComponent {
     return e instanceof HttpErrorResponse && typeof e.error?.message === 'string' ? e.error.message : padrao;
   }
 
+  private visaoModoInicializada = false;
+
   async carregar(): Promise<void> {
     this.carregando.set(true);
     this.erro.set(null);
@@ -195,6 +204,15 @@ export class AgendaComponent {
       this.prontidao.set(prontidao);
       this.horarios.set(horarios);
       this.config.set(config);
+      // Visão inicial do indicador segue o modo salvo da distribuição automática (mesmo
+      // padrão do Flask) — só na primeira carga, depois o usuário controla livremente.
+      if (!this.visaoModoInicializada) {
+        this.visaoModo.set(config.modoDisponibilidade);
+        this.visaoModoInicializada = true;
+      }
+      if (!this.visaoTecnico() || !this.tecnicosEnvolvidos().includes(this.visaoTecnico())) {
+        this.visaoTecnico.set(this.tecnicosEnvolvidos()[0] ?? '');
+      }
       await this.carregarBloqueios();
     } catch {
       this.erro.set('Não foi possível carregar o agendador de visitas.');
@@ -208,11 +226,25 @@ export class AgendaComponent {
   private async carregarBloqueios(): Promise<void> {
     const dias = this.semana();
     if (dias.length === 0) return;
+    const tecnico = this.visaoModo() === 'individual' ? this.visaoTecnico() : undefined;
     try {
-      this.bloqueios.set(await this.service.bloqueios(this.projetoId, dias[0].iso, dias[dias.length - 1].iso));
+      this.bloqueios.set(await this.service.bloqueios(this.projetoId, dias[0].iso, dias[dias.length - 1].iso, tecnico));
     } catch {
       this.bloqueios.set({});
     }
+  }
+
+  async alterarVisaoModo(modo: 'conjunta' | 'individual'): Promise<void> {
+    this.visaoModo.set(modo);
+    if (modo === 'individual' && !this.visaoTecnico()) {
+      this.visaoTecnico.set(this.tecnicosEnvolvidos()[0] ?? '');
+    }
+    await this.carregarBloqueios();
+  }
+
+  async alterarVisaoTecnico(nome: string): Promise<void> {
+    this.visaoTecnico.set(nome);
+    await this.carregarBloqueios();
   }
 
   motivoBloqueio(iso: string, turno: string): string | null {

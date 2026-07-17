@@ -1340,5 +1340,45 @@ sintoma se repetia. Diagnóstico em duas etapas:
 **Validação**: teste novo em `imap-intake.service.spec.ts` reproduz o cenário (EventEmitter
 falso emitindo `'error'`/`ETIMEOUT`) — prova que a chamada resolve em vez de derrubar o
 processo. Build + reinício em produção confirmados (`/api/health` respondendo, sem
-`Strict-Transport-Security` no header); monitoramento pós-fix em andamento para confirmar
-estabilidade além da janela de ~20 min observada antes da correção.
+`Strict-Transport-Security` no header). **Confirmado estável**: zero quedas no log do
+guardião por 41 min contínuos após o deploy da correção (contra o padrão anterior de queda
+a cada 15-20 min, inclusive de madrugada sem uso) — ver
+`C:\PainelBackups\guardiao_novo.log`/`painel_novo_stdout.log` na máquina de produção.
+
+## 18. Sessão seguinte — 2ª causa da tela branca (CSP) + Carteira vazia + visão individual do Agendador (2026-07-17)
+
+- **Tela branca, causa real (a correção de HSTS do §17 resolveu só parte)**: o Helmet
+  também inclui por padrão a diretiva CSP `upgrade-insecure-requests`, que instrui o
+  **navegador** a reescrever todo carregamento de sub-recurso (`<script>`/`<link
+  stylesheet>`/imagem) de `http://` para `https://` antes de tentar — mecanismo vive no
+  próprio cabeçalho da resposta, não em estado do navegador (por isso persistia em aba
+  anônima e em navegadores diferentes). Como o servidor só tem HTTP, a reescrita falhava
+  (`ERR_BLOCKED_BY_ORB`), enquanto a navegação direta ao mesmo arquivo funcionava (a
+  diretiva só afeta sub-recurso, não navegação de topo — pista que fechou o diagnóstico).
+  Corrigido removendo a diretiva (`contentSecurityPolicy.directives['upgrade-insecure-
+  requests'] = null`) e desativando `crossOriginOpenerPolicy`/`originAgentCluster` (o
+  Chrome já os ignorava com aviso, exigem HTTPS, sem efeito real aqui). Confirmado pelo
+  usuário: acesso funcionando pela rede depois desta correção.
+- **Carteira (`/projetos`) sempre vazia**: achado via F12 → Network — `GET
+  /api/projetos?page=1&limit=1000` devolvia 400. `ProjetosListaComponent` busca tudo de
+  uma vez (`limit: 1000`, agrupa em Kanban/filtra no próprio navegador, sem paginação
+  server-side de verdade — mesmo espírito do Flask original, que não paginava essa
+  listagem), mas `ListarProjetosDto.limit` tinha `@Max(100)` — um limite novo, introduzido
+  na conversão, sem equivalente no Flask, que rejeitava o pedido inteiro. Corrigido
+  subindo o teto para 1000 (mesmo valor que a tela realmente usa). Teste e2e novo em
+  `auth-projetos.e2e-spec.ts`.
+- **Visão "individual" de disponibilidade no Agendador** (pedido do usuário, fecha a
+  lacuna do §16 sobre o alternador `tec_sel` do Flask): `CronogramaService
+  .bloqueiosCalendario` ganhou um parâmetro opcional `tecnicoIndividual` — sem ele, modo
+  "conjunta" (comportamento anterior, bloqueia se qualquer envolvido estiver ocupado); com
+  ele, olha só a agenda desse técnico (SICLA + período sem agenda). Endpoint `GET
+  agenda/bloqueios` ganhou `?tecnico=`. Frontend: seletor "Ver disponibilidade" ao lado da
+  navegação de semana do Agendador (`AgendaComponent.visaoModo`/`visaoTecnico`) — só afeta
+  o indicador visual; o guard real na escrita (`slotIndisponivel`) sempre usou o técnico
+  verdadeiro da atividade, não muda. Teste e2e novo em `cronograma.e2e-spec.ts` (conjunta
+  reflete o período de qualquer técnico envolvido; individual só reflete se for o técnico
+  certo).
+
+**Validação**: suíte completa (359 testes unitários + e2e backend, 111 frontend) e
+typecheck passando. Build + reinício em produção confirmados; usuário validou a Carteira e
+o CSP diretamente no ar.

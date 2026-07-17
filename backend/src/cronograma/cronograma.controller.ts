@@ -230,7 +230,7 @@ export class CronogramaController {
     ) {
       if (diaUtil(d)) dias.push(toIso(d));
     }
-    return this.cronograma.bloqueiosCalendario(projetoId, dias);
+    return this.cronograma.bloqueiosCalendario(projetoId, dias, query.tecnico);
   }
 
   @Post('alocar/:atividadeId')

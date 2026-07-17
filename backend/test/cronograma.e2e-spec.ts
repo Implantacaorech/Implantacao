@@ -292,6 +292,46 @@ describe('Agendador de Visitas (e2e)', () => {
     });
   });
 
+  describe('Indicador visual (bloqueios) — modo conjunta x individual', () => {
+    it('conjunta (sem ?tecnico) reflete o período mesmo pra quem não é o técnico dele; individual só reflete se for o técnico certo', async () => {
+      const pid = await novoProjeto('Cliente Bloqueios LTDA', 'FAT,EST');
+      await auth(request(server()).get(`/api/projetos/${pid}/agenda/visitas`));
+      await auth(
+        request(server()).put(`/api/projetos/${pid}/agenda/designacoes`),
+      ).send({ modulo: 'FAT', tecnico: 'Ana' });
+      await auth(
+        request(server()).put(`/api/projetos/${pid}/agenda/designacoes`),
+      ).send({ modulo: 'EST', tecnico: 'Beto' });
+
+      const hoje = new Date().toISOString().slice(0, 10);
+      await auth(
+        request(server()).post(`/api/projetos/${pid}/agenda/periodos`),
+      ).send({ dataIni: hoje, dataFim: hoje, motivo: 'Ana de folga', tecnicos: ['Ana'] });
+
+      const conjunta = await auth(
+        request(server()).get(`/api/projetos/${pid}/agenda/bloqueios`).query({ inicio: hoje, fim: hoje }),
+      );
+      expect(conjunta.status).toBe(200);
+      expect(Object.keys(conjunta.body.data).length).toBeGreaterThan(0);
+
+      const individualBeto = await auth(
+        request(server())
+          .get(`/api/projetos/${pid}/agenda/bloqueios`)
+          .query({ inicio: hoje, fim: hoje, tecnico: 'Beto' }),
+      );
+      expect(individualBeto.status).toBe(200);
+      expect(Object.keys(individualBeto.body.data)).toHaveLength(0);
+
+      const individualAna = await auth(
+        request(server())
+          .get(`/api/projetos/${pid}/agenda/bloqueios`)
+          .query({ inicio: hoje, fim: hoje, tecnico: 'Ana' }),
+      );
+      expect(individualAna.status).toBe(200);
+      expect(Object.keys(individualAna.body.data).length).toBeGreaterThan(0);
+    });
+  });
+
   it('desfazer tudo é bloqueado se alguma visita já foi Realizada', async () => {
     const pid = await novoProjeto('Cliente Realizada LTDA', 'EST');
     const visitas = (

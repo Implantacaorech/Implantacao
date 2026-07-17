@@ -186,6 +186,18 @@ describe('Auth + Projetos (e2e)', () => {
       ).toBe(true);
     });
 
+    it('aceita limit=1000 (achado real: a tela Carteira busca tudo de uma vez assim, e o antigo @Max(100) rejeitava com 400, deixando a lista sempre vazia)', async () => {
+      const res = await request(server())
+        .get('/api/projetos')
+        .query({ page: 1, limit: 1000 })
+        .set('Authorization', `Bearer ${tokenAdm}`);
+      expect(res.status).toBe(200);
+      expect(res.body.pagination.limit).toBe(1000);
+      expect(
+        res.body.data.some((p: { id: number }) => p.id === projetoId),
+      ).toBe(true);
+    });
+
     it('Consultor só vê projetos onde está designado (_so_meus)', async () => {
       const res = await request(server())
         .get('/api/projetos')

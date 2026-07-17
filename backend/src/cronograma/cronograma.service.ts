@@ -596,16 +596,17 @@ export class CronogramaService {
   }
 
   /** Indicador visual do calendário: para cada dia×turno da janela pedida, o motivo (se
-   * houver) que deixaria a alocação manual bloqueada ali — ocupação externa (SICLA) de
-   * qualquer técnico envolvido no projeto + período sem agenda. Espelha o dict `bloqueados`
-   * de webapp/routes_agenda.py:projeto_agenda, sempre no modo "conjunta" (bloqueia se
-   * QUALQUER envolvido estiver ocupado) — o alternador de visão "individual" (`tec_sel`) do
-   * Flask não tem equivalente na tela Angular, que não expõe esse seletor. Só cosmético:
-   * quem decide de verdade se um slot pode ser usado é `slotIndisponivel`, chamado na
-   * escrita com o técnico real da atividade. */
+   * houver) que deixaria a alocação manual bloqueada ali — ocupação externa (SICLA) +
+   * período sem agenda. Espelha o dict `bloqueados` de webapp/routes_agenda.py:
+   * projeto_agenda, incluindo o alternador de visão: sem `tecnicoIndividual`, modo
+   * "conjunta" (bloqueia se QUALQUER envolvido estiver ocupado); com `tecnicoIndividual`,
+   * olha só a agenda desse técnico (mesmo critério de `tec_sel`/`alvos` do Flask original).
+   * Só cosmético: quem decide de verdade se um slot pode ser usado é `slotIndisponivel`,
+   * chamado na escrita com o técnico real da atividade. */
   async bloqueiosCalendario(
     projetoId: number,
     diasIso: string[],
+    tecnicoIndividual?: string,
   ): Promise<Record<string, string>> {
     const bloqueados: Record<string, string> = {};
     if (diasIso.length === 0) return bloqueados;
@@ -614,11 +615,14 @@ export class CronogramaService {
     const envolvidos = [
       ...new Set(designacoes.map((d) => d.consultor.trim()).filter(Boolean)),
     ].sort();
+    const tecIndiv = (tecnicoIndividual || '').trim();
+    const alvos =
+      tecIndiv && envolvidos.includes(tecIndiv) ? [tecIndiv] : envolvidos;
 
-    if (envolvidos.length > 0 && this.disponibilidade.configurado()) {
+    if (alvos.length > 0 && this.disponibilidade.configurado()) {
       try {
-        const cods = await this.users.codigosSiclaPorNome(envolvidos);
-        const codigos = envolvidos
+        const cods = await this.users.codigosSiclaPorNome(alvos);
+        const codigos = alvos
           .map((e) => (cods[e.toLowerCase()] || '').trim())
           .filter(Boolean);
         if (codigos.length > 0) {
@@ -629,7 +633,7 @@ export class CronogramaService {
           );
           for (const iso of diasIso) {
             for (const turno of ['manha', 'tarde'] as const) {
-              const ocupados = envolvidos.filter((e) => {
+              const ocupados = alvos.filter((e) => {
                 const cod = (cods[e.toLowerCase()] || '').toLowerCase();
                 return cod && ocup[`${cod}|${iso}|${turno}`];
               });
@@ -649,7 +653,7 @@ export class CronogramaService {
       for (const per of periodos) {
         if (!(per.dataIni <= iso && iso <= per.dataFim)) continue;
         const tecs = CronogramaService.tecnicosDoPeriodo(per);
-        if (tecs.length > 0 && !tecs.some((t) => envolvidos.includes(t))) continue;
+        if (tecs.length > 0 && !tecs.some((t) => alvos.includes(t))) continue;
         const texto =
           (per.motivo || 'Período sem agenda') +
           (tecs.length > 0 ? ` (${tecs.join(', ')})` : '');

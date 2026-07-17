@@ -195,6 +195,19 @@
           <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
         </button>
         <button class="btn" type="button" (click)="irParaHoje()">Hoje</button>
+
+        <span class="ag-visao">
+          <span class="dica" style="margin:0">Ver disponibilidade:</span>
+          <select [ngModel]="visaoModo()" (ngModelChange)="alterarVisaoModo($any($event))">
+            <option value="conjunta">Em grupo (qualquer técnico envolvido)</option>
+            <option value="individual">Individual</option>
+          </select>
+          @if (visaoModo() === 'individual') {
+            <select [ngModel]="visaoTecnico()" (ngModelChange)="alterarVisaoTecnico($any($event))">
+              @for (t of tecnicosEnvolvidos(); track t) { <option [value]="t">{{ t }}</option> }
+            </select>
+          }
+        </span>
       </div>
 
       <div class="ag-grid" [style.grid-template-columns]="'repeat(' + semana().length + ',minmax(0,1fr))'">
