@@ -247,8 +247,11 @@ explicitamente deixado de fora; revisar se algum vira bloqueio antes de assinar 
   2026-07-16** (ver [03-documento-conversao.md §16](03-documento-conversao.md)).
 - ~~`ModeloDocumentoCampo` sem seed~~ — **fechado em 2026-07-16** (ver
   [03-documento-conversao.md §16](03-documento-conversao.md)).
-- Correção verbal/ortográfica opcional por IA (a outra metade de `tools/ia.py`) não
-  portada.
+- ~~Correção verbal/ortográfica opcional por IA (a outra metade de `tools/ia.py`) não
+  portada~~ — nota desatualizada: já estava portada desde o §14 (tela `/legado/:rid/
+  verbal`); corrigido em 2026-07-17 (ver
+  [03-documento-conversao.md §18](03-documento-conversao.md)), com testes de unidade
+  novos (não tinha cobertura nenhuma até então).
 - `checklist_ok` (e-mail) e geração do documento de Check List em si não existiam no
   Flask original tampouco — não é regressão.
 - ~~`fluxo_criar` não dispara automaticamente o pacote de documentos + e-mail-resumo~~ —

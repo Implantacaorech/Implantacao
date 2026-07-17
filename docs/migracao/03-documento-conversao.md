@@ -126,8 +126,11 @@ Python mantido só para geração de documentos e transcrição) em
   /protocolos/:id/{status,video}` (o último com suporte a `Range`, para o player).
   Equivalente a `webapp/protocolos.py` + `webapp/protocolo_ia.py` +
   `webapp/routes_protocolos.py` + `webapp/transcritor.py` + a fatia de `tools/ia.py` que
-  este módulo usa (chave/modelo — o resto de `tools/ia.py`, a correção verbal opcional
-  dos documentos gerados, não foi portado, ver §8).
+  este módulo usa (chave/modelo). ~~O resto de `tools/ia.py`, a correção verbal opcional
+  dos documentos, não foi portado~~ — **já estava portado** desde o item "assistente
+  administrativo legado" do §14 (`converter_verbal_texto`/`converter_verbal_docx` em
+  `legado_cli.py` → `LegadoService` → tela `/legado/:rid/verbal`); esta nota aqui ficou
+  desatualizada por engano — corrigida em 2026-07-17, ver §18.
 - **E-mail/IMAP/Gmail** (`backend/src/email/*`, `backend/src/fluxo/*`) — bindings Node
   diretos, sem depender do docservice (nenhuma destas bibliotecas é Python-only):
   `nodemailer` (SMTP), `imapflow`+`mailparser` (IMAP), `google-auth-library` (OAuth2 do
@@ -789,10 +792,14 @@ service → controller → tela Angular → testes):
 4. ~~Protocolos de Treinamento~~ — **convertido**: pipeline completo vídeo -> transcrição
    local (faster-whisper, no docservice) -> análise IA (Claude, direto no NestJS via
    `@anthropic-ai/sdk`) -> revisão/aprovação, com robô de varredura de pasta
-   (`RoboProtocolosService`) e a nova tela Config → IA (`IaModule`). Ver §2. Lacuna
-   proposital: a correção verbal/ortográfica opcional dos documentos GERADOS (a outra
-   metade de `tools/ia.py` — `revisar`/`revisar_lote`, usada por `gl_*.py` no Flask) não
-   foi portada — só a chave/config (`IaService.obterChave`/`modelo`) é compartilhada.
+   (`RoboProtocolosService`) e a nova tela Config → IA (`IaModule`). Ver §2. ~~Lacuna
+   proposital: a correção verbal/ortográfica opcional dos documentos gerados não foi
+   portada~~ — nota desatualizada: na verdade **já estava portada**, como parte do
+   assistente administrativo legado do §14 (`converter_verbal_texto`/
+   `converter_verbal_docx`, tela `/legado/:rid/verbal`) — usa `tools/ia.py` inteiro
+   (`revisar`/`revisar_lote` incluído), não só chave/modelo. Corrigido em 2026-07-17
+   (ver §18), com testes novos de unidade adicionados (não tinha cobertura nenhuma até
+   então, apesar de já funcionar).
 5. ~~E-mail/IMAP/Gmail~~ — **convertido**: SMTP (`nodemailer`) + Gmail API (bypass de SMTP
    bloqueado, `google-auth-library`, OAuth "Web application" com callback real — mudança
    deliberada em relação ao "Desktop app" do Flask, decidida com o usuário) + IMAP
@@ -1382,3 +1389,31 @@ a cada 15-20 min, inclusive de madrugada sem uso) — ver
 **Validação**: suíte completa (359 testes unitários + e2e backend, 111 frontend) e
 typecheck passando. Build + reinício em produção confirmados; usuário validou a Carteira e
 o CSP diretamente no ar.
+
+## 19. Correção de documentação — correção verbal/ortográfica por IA já estava portada (2026-07-17)
+
+Ao revisitar a lista de pendências, três lugares neste documento (e um no plano de
+virada) ainda afirmavam que "a correção verbal/ortográfica opcional por IA (a outra
+metade de `tools/ia.py`) não foi portada". Investigando para implementar, achei que isso
+**já estava feito** desde o item "assistente administrativo legado" do §14 —
+`legado_cli.py` já tinha `_acao_converter_verbal_texto`/`_acao_converter_verbal_docx`,
+`LegadoService.converterVerbalTexto`/`converterVerbalDocx` já existiam, e a tela Angular
+`/legado/:rid/verbal` já estava funcional. A afirmação de "não portado" nunca foi
+atualizada depois que o §14 fechou esse item — mesma classe de erro documental já
+corrigida antes com o drag-and-drop do Agendador (§16).
+
+Confirmado funcionando ponta a ponta: smoke manual via `legado_cli.py` (`"O consultor
+utiliza..." → "O consultor utilizará..."`) e end-to-end já coberto pelo bridge existente.
+O que realmente faltava era **cobertura de teste** — `converterVerbalTexto`/
+`converterVerbalDocx` não tinham nenhum teste, unitário ou e2e, apesar de já estarem em
+produção. Adicionados 4 testes de unidade em `legado.service.spec.ts` (texto revisado
+repassado corretamente, arquivo temporário gravado e passado ao CLI, registro do arquivo
+corrigido para download, erro quando o CLI não devolve arquivo).
+
+**Lição**: ao fechar um item de escopo maior (como o §14, que teve várias frentes), as
+notas de "não portado" espalhadas em seções anteriores do documento (§2, §8) descrevendo
+partes desse mesmo escopo precisam ser revisitadas e corrigidas — não é suficiente
+atualizar só a seção nova.
+
+**Validação**: 4 testes novos passando (`legado.service.spec.ts`), suíte completa do
+backend (362 testes unitários) sem regressão.

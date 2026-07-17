@@ -77,6 +77,43 @@ describe('LegadoService', () => {
     });
   });
 
+  describe('converterVerbalTexto', () => {
+    it('repassa o texto ao CLI e devolve depois/mudanças tal como vieram', async () => {
+      cli.executar.mockResolvedValue({
+        depois: 'O sistema utilizará o cadastro.',
+        mudancas: [['utiliza', 'utilizará']],
+      });
+      const r = await service.converterVerbalTexto('O sistema utiliza o cadastro.');
+      expect(cli.executar).toHaveBeenCalledWith('converter_verbal_texto', {
+        texto: 'O sistema utiliza o cadastro.',
+      });
+      expect(r.depois).toBe('O sistema utilizará o cadastro.');
+      expect(r.mudancas).toEqual([['utiliza', 'utilizará']]);
+    });
+  });
+
+  describe('converterVerbalDocx', () => {
+    it('grava o buffer num arquivo temporário, chama o CLI com o caminho e registra o resultado', async () => {
+      cli.executar.mockResolvedValue({ arquivo: '/tmp/xyz/documento_corrigido.docx' });
+      const r = await service.converterVerbalDocx(Buffer.from('conteudo-docx-fake'), 'documento.docx');
+      expect(cli.executar).toHaveBeenCalledWith(
+        'converter_verbal_docx',
+        expect.objectContaining({ nomeOriginal: 'documento.docx' }),
+      );
+      const [, args] = cli.executar.mock.calls[0] as [string, { caminho: string }];
+      expect(args.caminho).toContain('documento.docx');
+      expect(r.rotulo).toBe('Documento corrigido (.docx)');
+      expect(r.token).toBeTruthy();
+    });
+
+    it('sem arquivo devolvido pelo CLI: lança NotFoundException', async () => {
+      cli.executar.mockResolvedValue({ arquivo: null });
+      await expect(
+        service.converterVerbalDocx(Buffer.from('x'), 'documento.docx'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('formModulos', () => {
     it('checklist: chama gerar_checklist_form e rotula como Excel', async () => {
       cli.executar.mockResolvedValue({ arquivo: '/exemplos/chk.xlsx', log: '' });
