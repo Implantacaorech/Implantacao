@@ -12,13 +12,33 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService<AppConfig, true>);
 
-  // `hsts: false` — este servidor roda em HTTP puro na rede interna, sem TLS/reverse proxy
-  // (ver docs/migracao/05-plano-de-virada.md, acesso por http://I7M1700-01-EVE:5100). O
-  // header Strict-Transport-Security do Helmet vem ligado por padrão mesmo sobre HTTP; uma
-  // vez que o navegador o recebe, ele passa a forçar HTTPS nesse host/porta (cache de HSTS),
-  // e como não existe HTTPS aqui, toda visita seguinte quebra com CORS/403 numa URL https://
-  // inexistente — tela em branco. Mantém as demais proteções do Helmet.
-  app.use(helmet({ hsts: false }));
+  // Este servidor roda em HTTP puro na rede interna, sem TLS/reverse proxy (ver
+  // docs/migracao/05-plano-de-virada.md, acesso por http://I7M1700-01-EVE:5100). Vários
+  // cabeçalhos padrão do Helmet só fazem sentido — ou só funcionam — sobre HTTPS:
+  // - `hsts` (Strict-Transport-Security): uma vez recebido, o navegador passa a forçar
+  //   HTTPS nesse host/porta dali em diante (cache de HSTS) — como não existe HTTPS aqui,
+  //   toda visita seguinte quebra.
+  // - CSP `upgrade-insecure-requests` (default do Helmet): instrui o navegador a
+  //   reescrever TODO carregamento de sub-recurso (script/CSS/imagem) de http:// para
+  //   https:// antes mesmo de tentar — achado real: quebrava o carregamento de
+  //   main.js/styles.css em produção (ERR_BLOCKED_BY_ORB), mesmo a navegação direta ao
+  //   arquivo funcionando normalmente (só sub-recurso é afetado, não navegação de topo).
+  // - `crossOriginOpenerPolicy`/`originAgentCluster`: o próprio Chrome ignora e avisa no
+  //   console ("origin was untrustworthy... use HTTPS") — não bloqueiam nada, mas são
+  //   ruído sem efeito real aqui.
+  // Mantém as demais proteções do Helmet (CSP continua ativo, só sem a diretiva que
+  // pressupõe HTTPS).
+  app.use(
+    helmet({
+      hsts: false,
+      crossOriginOpenerPolicy: false,
+      originAgentCluster: false,
+      contentSecurityPolicy: {
+        useDefaults: true,
+        directives: { 'upgrade-insecure-requests': null },
+      },
+    }),
+  );
   app.enableCors({
     origin: config.get('corsOrigins', { infer: true }),
     credentials: true,
