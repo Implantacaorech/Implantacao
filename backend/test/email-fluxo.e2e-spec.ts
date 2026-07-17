@@ -261,9 +261,13 @@ Horas cobradas: 20`;
       const projetoId = criar.body.data.projetoId;
 
       const eventos = await auth(request(server()).get(`/api/projetos/${projetoId}/eventos`));
+      // '/api/fluxo/criar' chama criarComPacote (confirmação manual da tela), que registra
+      // esta mensagem — 'Fechamento recebido automaticamente' é do OUTRO caminho
+      // (criarDeCampos/criarDeFechamento, usado pelo robô da caixa). Achado real: este
+      // teste checava a mensagem antiga, de antes de criarComPacote existir (§14).
       expect(
         eventos.body.data.some((e: { descricao: string }) =>
-          e.descricao.includes('Fechamento recebido automaticamente'),
+          e.descricao.includes('Fluxo iniciado pelo e-mail de fechamento'),
         ),
       ).toBe(true);
 

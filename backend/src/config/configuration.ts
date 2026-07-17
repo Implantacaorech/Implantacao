@@ -8,7 +8,7 @@ export interface AppConfig {
   jwtRefreshSecret: string;
   jwtRefreshExpiresIn: string;
   db: {
-    type: 'postgres' | 'better-sqlite3';
+    type: 'postgres' | 'mariadb' | 'better-sqlite3';
     url?: string;
     sqlitePath?: string;
   };
@@ -68,8 +68,12 @@ export default (): AppConfig => {
       'dev-only-refresh-secret-troque-em-producao',
     ),
     jwtRefreshExpiresIn: process.env.MIGRACAO_JWT_REFRESH_EXPIRES_IN ?? '7d',
+    // Dialeto detectado pelo prefixo da própria MIGRACAO_DB_URL — em migração de
+    // postgres->mariadb (2026-07), sem precisar de uma env var nova/separada.
     db: dbUrl
-      ? { type: 'postgres', url: dbUrl }
+      ? /^(mysql|mariadb):\/\//i.test(dbUrl)
+        ? { type: 'mariadb', url: dbUrl }
+        : { type: 'postgres', url: dbUrl }
       : {
           type: 'better-sqlite3',
           sqlitePath: process.env.MIGRACAO_DB_SQLITE ?? 'dados/painel.sqlite',
