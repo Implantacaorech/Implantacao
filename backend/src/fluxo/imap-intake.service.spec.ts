@@ -1,7 +1,28 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { EventEmitter } from 'events';
 import { rmSync } from 'fs';
 import { join } from 'path';
 import { ImapIntakeService } from './imap-intake.service';
+
+// Simula o cliente real do imapflow (EventEmitter) para provar que um evento 'error'
+// assíncrono no socket (achado real: ETIMEOUT derrubando o processo Node inteiro em
+// produção, ver imap-intake.service.ts:conectar) não escapa como exceção não tratada.
+class ImapFlowFalsoComErro extends EventEmitter {
+  async connect(): Promise<void> {
+    setImmediate(() => this.emit('error', Object.assign(new Error('Socket timeout'), { code: 'ETIMEOUT' })));
+  }
+  async getMailboxLock(): Promise<{ release: () => void }> {
+    return { release: () => {} };
+  }
+  async search(): Promise<number[]> {
+    return [];
+  }
+  async logout(): Promise<void> {}
+}
+
+jest.mock('imapflow', () => ({
+  ImapFlow: jest.fn().mockImplementation(() => new ImapFlowFalsoComErro()),
+}));
 
 describe('ImapIntakeService', () => {
   let service: ImapIntakeService;
@@ -67,6 +88,16 @@ describe('ImapIntakeService', () => {
       const r = await service.buscarFechamento();
       expect(r.corpo).toBeNull();
       expect(r.erro).toContain('IMAP não configurado');
+    });
+  });
+
+  describe('erro assíncrono de socket (ImapFlow EventEmitter)', () => {
+    it('um evento "error" emitido pelo cliente IMAP não derruba a chamada (crash real corrigido)', async () => {
+      service.salvarConfig({ host: 'imap.exemplo.com', user: 'u', senha: 's' });
+      // Antes da correção, o 'error' emitido por ImapFlowFalsoComErro (sem listener)
+      // vira uma exceção não tratada do processo Node — o teste falharia com o processo
+      // inteiro abortando, não com uma rejeição de promise comum.
+      await expect(service.buscarFechamento()).resolves.toBeDefined();
     });
   });
 });

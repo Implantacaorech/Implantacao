@@ -65,6 +65,12 @@ if errorlevel 1 (
 )
 
 REM --- Backend (serve tambem o Angular ja compilado) ------------------
+REM     Saida (stdout+stderr) gravada em log -- o guardiao roda isto
+REM     oculto (sem janela visivel), entao sem isso nao ha como ver
+REM     o motivo de uma queda/crash depois.
 cd /d "%~dp0backend"
-node dist\main.js
-pause
+if not exist "C:\PainelBackups" mkdir "C:\PainelBackups"
+echo. >> "C:\PainelBackups\painel_novo_stdout.log"
+echo ===== %date% %time% - iniciando ===== >> "C:\PainelBackups\painel_novo_stdout.log"
+node dist\main.js >> "C:\PainelBackups\painel_novo_stdout.log" 2>&1
+echo ===== %date% %time% - processo encerrou (errorlevel %errorlevel%) ===== >> "C:\PainelBackups\painel_novo_stdout.log"

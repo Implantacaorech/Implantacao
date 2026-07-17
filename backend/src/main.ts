@@ -12,7 +12,13 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService<AppConfig, true>);
 
-  app.use(helmet());
+  // `hsts: false` — este servidor roda em HTTP puro na rede interna, sem TLS/reverse proxy
+  // (ver docs/migracao/05-plano-de-virada.md, acesso por http://I7M1700-01-EVE:5100). O
+  // header Strict-Transport-Security do Helmet vem ligado por padrão mesmo sobre HTTP; uma
+  // vez que o navegador o recebe, ele passa a forçar HTTPS nesse host/porta (cache de HSTS),
+  // e como não existe HTTPS aqui, toda visita seguinte quebra com CORS/403 numa URL https://
+  // inexistente — tela em branco. Mantém as demais proteções do Helmet.
+  app.use(helmet({ hsts: false }));
   app.enableCors({
     origin: config.get('corsOrigins', { infer: true }),
     credentials: true,

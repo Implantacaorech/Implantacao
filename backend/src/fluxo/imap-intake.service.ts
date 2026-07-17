@@ -88,6 +88,19 @@ export class ImapIntakeService {
       auth: { user: cfg.user, pass: cfg.senha },
       logger: false,
     });
+    // ImapFlow é um EventEmitter; sem um listener de 'error', um problema assíncrono no
+    // socket (ex.: timeout de conexão) vira uma exceção não tratada que derruba o
+    // processo Node INTEIRO — não é pego pelo try/catch de processarFechamentos()/
+    // buscarFechamento() porque o evento pode disparar fora da promise que eles esperam
+    // (achado real: crash a cada poll do robô da caixa, ETIMEOUT em imap-flow.js, log em
+    // C:\PainelBackups\painel_novo_stdout.log). Logar aqui converte isso numa falha
+    // tratada (a operação em curso já tem seu próprio catch) em vez de fatal.
+    client.on('error', (e: unknown) => {
+      this.logger.warn(
+        'Erro assíncrono na conexão IMAP (socket) — ignorado para não derrubar o processo',
+        e instanceof Error ? e.message : String(e),
+      );
+    });
     await client.connect();
     return client;
   }
