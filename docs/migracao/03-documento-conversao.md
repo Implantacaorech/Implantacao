@@ -1456,3 +1456,75 @@ typecheck passando. Build + reinício em produção confirmados.
 e toda lacuna registrada nas sessões seguintes (§14-§20) foi fechada. O que resta é
 inteiramente humano: Fase 1 (UAT formal), o restante da Fase 2 (credenciais) e as Fases
 3-6 (a virada em si) — ver [05-plano-de-virada.md](05-plano-de-virada.md).
+
+## 21. Troca de banco: Postgres → MariaDB (2026-07-17)
+
+Pedido do usuário, fora do escopo original da migração Flask→Angular/NestJS — trocar o
+motor de banco do stack novo. Decisão explícita do usuário de ir direto para produção
+(sem uma fase intermediária de "preparar e validar sem tocar no Postgres"), mas toda
+validação técnica ainda foi feita antes de tocar em dado real.
+
+**Preparação técnica** (`backend/src/config/configuration.ts`,
+`backend/src/database/{database.module,data-source}.ts`):
+
+- Dialeto detectado pelo prefixo da própria `MIGRACAO_DB_URL` (`mysql://`/`mariadb://`) —
+  sem variável de ambiente nova. Postgres e SQLite continuam funcionando exatamente como
+  antes (só branches novos, nada alterado nos caminhos existentes).
+- Migration inicial consolidada em `migrations-mariadb/` — as 10 migrations existentes em
+  `migrations/` são específicas de Postgres (DDL não é portável 1:1 entre dialetos); como
+  é um banco novo sem histórico a preservar, gerada do zero contra o MariaDB em vez de
+  tentar traduzir as incrementais uma a uma.
+- `charset: 'utf8mb4'` explícito na conexão — **achado real**: sem isso, o driver `mysql2`
+  negocia `utf8mb3` (legado, 3 bytes) na conexão mesmo com o servidor/tabelas
+  corretamente em `utf8mb4`, corrompendo silenciosamente qualquer acentuação
+  (`"ção"` virava `"��o"`). Só apareceu num teste funcional de verdade via API — não seria
+  pego só olhando o schema.
+- Script de migração de dados (`backend/_scratch/migrar-postgres-para-mariadb.ts`,
+  fora do build via `tsconfig.build.json` — pasta `_scratch/` dedicada a scripts
+  temporários, criada nesta sessão depois de um script solto na raiz de `backend/` ter
+  quebrado a estrutura do `dist/` por engano): genérico, percorre `ENTITIES`, copia
+  tabela a tabela preservando o `id` original (sem isso as referências numéricas entre
+  tabelas — `projetoId`, `modeloId` etc. — que não são FK de verdade quebrariam) e ajusta
+  o `AUTO_INCREMENT` de cada tabela depois de copiar.
+
+**Validação em duas rodadas antes de tocar em produção**:
+
+1. MariaDB 11 → trocado para 10.11 depois de um erro de negociação de autenticação
+   (`auth_gssapi_client`) que na verdade era **um serviço MySQL nativo do Windows já
+   ocupando a porta 3306** nesta máquina, sem relação com o container — resolvido usando
+   a porta 3307.
+2. Schema + boot + CRUD real via API (login, criar projeto, listar, editar, reler) —
+   limpo.
+3. Um "corrompimento de acentuação" que apareceu no teste manual era, na verdade, o
+   PowerShell (`Invoke-RestMethod`) não mandando o corpo da requisição em UTF-8 de
+   verdade — descartado comparando com bytes UTF-8 explícitos; o `charset: 'utf8mb4'`
+   citado acima é um achado real e distinto disso.
+4. **Ensaio completo com dado realista**: Postgres descartável (Docker) semeado com
+   usuários/projetos/eventos com acentuação, boolean, e referência entre tabelas → script
+   de migração → conferido linha a linha no MariaDB (acentos intactos, `ativo` convertido
+   corretamente para `tinyint`, `projetoId` batendo) → nova escrita via API confirma que o
+   `AUTO_INCREMENT` continua do ponto certo (não colide com id migrado).
+
+**Migração real**: janela de congelamento (guardião desativado + processo de produção
+parado) — o usuário rodou o script (usando a própria `MIGRACAO_DB_URL` já configurada
+como origem, sem o agente tocar na credencial real do Postgres em nenhum momento) e
+depois atualizou a variável de usuário do Windows para o MariaDB. **3.169 linhas
+copiadas em 25 tabelas com dado real** (usuarios: 20, projetos: 1, checklist_modelo:
+1146, cronograma_atividades: 858, indice_topicos: 351, levantamento_respostas: 282,
+matriz_tecnicos: 106, matriz_competencias: 153, eventos: 38, e mais). Guardião reativado,
+produção confirmada no ar (`/api/health` → `"db":"mariadb"`), zero quedas desde o
+restart.
+
+**Postgres de produção (`painel-db-novo`, Docker) mantido no ar, intocado** — é o caminho
+de rollback caso apareça algum problema real de uso; não apagar por um bom tempo (mesmo
+princípio da Fase 6 do plano de virada Flask→Postgres).
+
+**Pendências que ficam desta troca** (não fechadas nesta sessão):
+
+- `tools/Painel_Novo_Backup.ps1` foi escrito para Postgres (`pg_dump`) — precisa de uma
+  versão para MariaDB (`mysqldump`) antes de confiar em backup automático do banco novo.
+- `backend/dados/mariadb-teste.env` guarda a credencial real do MariaDB agora (não é mais
+  só "teste") — nome do arquivo ficou desatualizado, renomear (conteúdo/segurança não
+  mudam, já está fora do git).
+- UAT real (Fase 1) precisa ser refeita/estendida cobrindo o banco novo, não só o schema
+  antigo em Postgres.

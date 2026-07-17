@@ -5,3 +5,4 @@
 *.sqlite
 .env
 npm-debug.log*
+/_scratch
