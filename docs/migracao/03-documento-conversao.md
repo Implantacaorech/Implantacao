@@ -1521,10 +1521,38 @@ princípio da Fase 6 do plano de virada Flask→Postgres).
 
 **Pendências que ficam desta troca** (não fechadas nesta sessão):
 
-- `tools/Painel_Novo_Backup.ps1` foi escrito para Postgres (`pg_dump`) — precisa de uma
-  versão para MariaDB (`mysqldump`) antes de confiar em backup automático do banco novo.
-- `backend/dados/mariadb-teste.env` guarda a credencial real do MariaDB agora (não é mais
-  só "teste") — nome do arquivo ficou desatualizado, renomear (conteúdo/segurança não
-  mudam, já está fora do git).
+- ~~`tools/Painel_Novo_Backup.ps1` foi escrito para Postgres (`pg_dump`) — precisa de uma
+  versão para MariaDB (`mysqldump`)~~ — **fechado em 2026-07-17**, ver §22.
+- ~~`backend/dados/mariadb-teste.env` guarda a credencial real do MariaDB agora — nome do
+  arquivo ficou desatualizado~~ — **já estava renomeado** para `mariadb.env` antes mesmo
+  desta nota ser escrita (feito durante a própria migração, §21); a nota citando o nome
+  antigo ficou desatualizada assim que foi escrita — corrigida aqui.
 - UAT real (Fase 1) precisa ser refeita/estendida cobrindo o banco novo, não só o schema
-  antigo em Postgres.
+  antigo em Postgres — **ação humana, não fechável pelo agente** (precisa de alguém
+  navegando o sistema de verdade); ver §22.
+
+## 22. Fechamento das pendências da troca de banco (2026-07-17)
+
+Das 3 pendências registradas no §21, 2 foram fechadas nesta sessão e 1 continua
+explicitamente fora do alcance do agente:
+
+- **Backup do MariaDB** — `tools/Painel_Novo_Backup_MariaDB.ps1` (mesmo padrão do backup
+  do Postgres: `mysqldump --single-transaction`, comprime, retenção 14 dias, log em
+  `C:\PainelBackups\backup_novo_mariadb.log`). Testado de ponta a ponta contra o banco
+  real (dump de 178KB, 50 declarações `CREATE TABLE`/`INSERT` — as 25 tabelas completas).
+  Tarefa Agendada `"Painel Novo - Backup MariaDB"` registrada, diária às 22h (mesmo
+  horário do backup do Flask antigo — não havia uma tarefa agendada equivalente para o
+  Postgres do painel novo para espelhar; o script existia mas nunca tinha sido agendado).
+  Depende de `PAINEL_NOVO_MARIADB_SENHA` como variável de usuário permanente do Windows
+  (mesmo princípio de `PAINEL_NOVO_DB_SENHA` do backup do Postgres) — só foi definida
+  temporariamente durante o teste; o usuário precisa defini-la permanentemente antes do
+  primeiro disparo real das 22h, ou o backup falha (o script detecta e loga isso,
+  não falha silenciosamente).
+- **Nome do arquivo de credencial** — já estava correto (`mariadb.env`), a pendência era
+  só a nota desatualizada no §21, corrigida.
+- **UAT cobrindo o banco novo** — **continua em aberto, de propósito**. É a mesma
+  categoria de ação (navegar o sistema de verdade, com julgamento humano) que já estava
+  fora do alcance do agente antes da troca de banco (Fase 1 do plano de virada nunca foi
+  feita) — a troca de motor de banco não cria uma pendência nova aqui, só reforça que essa
+  validação, quando acontecer, precisa cobrir o comportamento sob MariaDB, não só o que já
+  rodou sob Postgres.
