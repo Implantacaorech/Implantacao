@@ -702,7 +702,8 @@
     <label class="campo"><span>Consultor(es)</span><input formControlName="consultor" placeholder="Nomes separados por vírgula" /></label>
     <label class="campo">
       <span>Fase da Implantação</span>
-      <select formControlName="etapa">@for (e of etapas; track e) { <option [value]="e">{{ e }}</option> }</select>
+      <span style="display:inline-flex;width:fit-content;padding:6px 12px;border-radius:8px;background:var(--surface-2,#eef2f7);color:var(--navy);font-weight:700;font-size:.85rem">{{ form.getRawValue().etapa }}</span>
+      <small class="dica" style="margin:2px 0 0">Use o botão "Avançar" na ficha para mudar de fase (valida documentos/campos obrigatórios).</small>
     </label>
     <label class="campo">
       <span>Status</span>

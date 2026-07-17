@@ -3,7 +3,7 @@ import { FormBuilder, ReactiveFormsModule, FormsModule, Validators } from '@angu
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { CriarProjetoPayload, ETAPAS, Etapa, SITUACOES, Situacao } from '../../core/models/projeto.model';
+import { CriarProjetoPayload, Etapa, SITUACOES, Situacao } from '../../core/models/projeto.model';
 import { ProjetosService } from '../../core/services/projetos.service';
 import { DocumentosService } from '../../core/services/documentos.service';
 import { DesignacaoService } from '../../core/services/designacao.service';
@@ -47,7 +47,6 @@ export class ProjetoFormComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
-  readonly etapas = ETAPAS;
   readonly situacoes = SITUACOES;
   readonly docTipos = DOC_TIPOS;
   readonly iconeEvento = ICONE_EVENTO;

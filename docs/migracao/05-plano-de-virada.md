@@ -262,7 +262,9 @@ explicitamente deixado de fora; revisar se algum vira bloqueio antes de assinar 
 - ~~Projeto origem: "usar Levantamento importado"/"importar Levantamento (.docx)" sem
   efeito~~ — **fechado em 2026-07-16** (ver
   [03-documento-conversao.md §15](03-documento-conversao.md)).
-- **`pode_avancar` sem enforcement na escrita** — `MetricasService` mostra o que falta nas
-  telas, mas `ProjetosService.atualizar()`/`criar()` não bloqueia a troca de etapa faltando
-  campo/documento obrigatório (mesmo comportamento permissivo que o Flask já tinha —
-  não é regressão, mas vale registrar como candidato a fechar logo após a virada).
+- ~~`pode_avancar` sem enforcement na escrita~~ — **ativado em 2026-07-17, por decisão do
+  usuário** (ver [03-documento-conversao.md §20](03-documento-conversao.md)). O gate real
+  (documentos + ação de entrada) já estava certo no botão "Avançar"; o gap era um seletor
+  de etapa livre na aba Dados do formulário que pulava esse gate — removido, e
+  `ProjetosService.atualizar()` agora rejeita qualquer troca de etapa fora do botão
+  dedicado. **Backlog de código da migração fechado por completo.**

@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ProjetosService } from './projetos.service';
 import { Projeto } from '../database/entities/projeto.entity';
 import { AuthUser } from '../common/decorators/current-user.decorator';
@@ -148,6 +148,31 @@ describe('ProjetosService', () => {
     });
     await service.atualizar(3, { situacao: 'Concluído', observacoes: 'ajuste' });
     expect(notificacao.notificarEvento).not.toHaveBeenCalled();
+  });
+
+  it('atualizar rejeita mudar a etapa pelo formulário genérico (só o botão Avançar pode)', async () => {
+    repo.findOne.mockResolvedValue({
+      id: 4,
+      cliente: 'Cliente W',
+      etapa: 'Levantamento',
+    });
+    await expect(
+      service.atualizar(4, { etapa: 'Projeto' }),
+    ).rejects.toThrow(BadRequestException);
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('atualizar aceita reenviar a MESMA etapa (idempotente — não é uma troca de verdade)', async () => {
+    repo.findOne.mockResolvedValue({
+      id: 5,
+      cliente: 'Cliente V',
+      etapa: 'Levantamento',
+    });
+    const atualizado = await service.atualizar(5, {
+      etapa: 'Levantamento',
+      observacoes: 'ajuste',
+    });
+    expect(atualizado).toMatchObject({ etapa: 'Levantamento', observacoes: 'ajuste' });
   });
 
   it('excluir limpa os dados de todos os módulos antes de remover o projeto (sem FK cascade no schema)', async () => {

@@ -1417,3 +1417,42 @@ atualizar só a seção nova.
 
 **Validação**: 4 testes novos passando (`legado.service.spec.ts`), suíte completa do
 backend (362 testes unitários) sem regressão.
+
+## 20. Enforcement de `pode_avancar` ativado, por decisão do usuário (2026-07-17)
+
+Última pendência de código do backlog: ativar o bloqueio de troca de etapa quando falta
+campo/documento/ação obrigatória — decisão explícita do usuário (antes deliberadamente
+deixada de fora, ver §8 item 7).
+
+Investigando para implementar, achei que o botão dedicado **"Avançar"**
+(`DocumentosService.avancarEtapa` → `POST /projetos/:id/avancar`) **já validava tudo
+corretamente** via `MetricasService.cabecalho().avancarOk`/`bloqueios` — mesma lógica de
+`webapp/db.py:pode_avancar` (gate de documentos da próxima etapa + ação de entrada). O
+gap real, mais específico do que a nota original sugeria, era outro: a aba "Dados" da
+ficha (Angular) tinha um **seletor livre `<select formControlName="etapa">`** ("Fase da
+Implantação") que salvava pelo formulário genérico (`PUT /projetos/:id` →
+`ProjetosService.atualizar()`), pulando qualquer etapa para qualquer outra sem checar
+nada. O Flask original **nunca teve esse campo no formulário de edição** — lá, etapa só
+muda pelo botão dedicado (`projeto_avancar`), que sempre validou. Ou seja: o gap não era
+"falta lógica de gate", era "existe um caminho de escrita que pula a lógica de gate que
+já existe".
+
+Corrigido:
+
+- `ProjetosService.atualizar()` rejeita (`400`) qualquer tentativa de mudar `etapa` por
+  esse caminho — reenviar a mesma etapa (idempotente) continua ok, só uma mudança de
+  verdade é bloqueada. Mensagem aponta para o botão "Avançar".
+- Removido o `<select>` de etapa da aba Dados do formulário Angular — vira uma exibição
+  somente leitura (mesmo valor, sem editar), com uma nota indicando o botão "Avançar".
+  Campo `etapas`/import `ETAPAS`, agora não usados nesse componente, removidos.
+
+Testes novos em `projetos.service.spec.ts` (rejeita mudança de etapa; aceita reenvio da
+mesma etapa sem erro).
+
+**Validação**: suíte completa (364 testes unitários + e2e backend, 111 frontend) e
+typecheck passando. Build + reinício em produção confirmados.
+
+**Fecha o backlog de código da migração por completo** — todo item de §8 está `convertido`
+e toda lacuna registrada nas sessões seguintes (§14-§20) foi fechada. O que resta é
+inteiramente humano: Fase 1 (UAT formal), o restante da Fase 2 (credenciais) e as Fases
+3-6 (a virada em si) — ver [05-plano-de-virada.md](05-plano-de-virada.md).

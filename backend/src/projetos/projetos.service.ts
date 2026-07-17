@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Projeto } from '../database/entities/projeto.entity';
@@ -85,8 +89,20 @@ export class ProjetosService {
     return this.repo.save(projeto);
   }
 
+  /** `etapa` nunca é editável pelo formulário genérico — no Flask original esse campo
+   * nem existe em `projeto_form.html`; a única forma legítima de mudar de etapa é o botão
+   * "Avançar" (`DocumentosService.avancarEtapa`), que já valida o gate (documentos +
+   * campos obrigatórios + ação de entrada) via `MetricasService`. Sem esta checagem, o
+   * seletor "Fase da Implantação" que a tela Angular tinha na aba Dados pulava etapa
+   * sem checar nada — achado real ao fechar a pendência de enforcement de `pode_avancar`
+   * (2026-07-17). */
   async atualizar(id: number, dto: UpdateProjetoDto): Promise<Projeto> {
     const projeto = await this.buscarPorId(id);
+    if (dto.etapa !== undefined && dto.etapa !== projeto.etapa) {
+      throw new BadRequestException(
+        'A fase da implantação não pode ser alterada por aqui — use o botão "Avançar" na ficha do projeto.',
+      );
+    }
     const situacaoAnterior = projeto.situacao;
     Object.assign(projeto, dto);
     const salvo = await this.repo.save(projeto);
