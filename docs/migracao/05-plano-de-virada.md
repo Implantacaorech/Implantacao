@@ -25,8 +25,14 @@ tarefa no Windows) continuam em aberto — ver observação em cada um. **Atuali
 2026-07-16**: fechadas as 10 lacunas de tela que restavam + a pré-visualização de
 documento (ver [03-documento-conversao.md §14](03-documento-conversao.md)), e as três
 variáveis de ambiente foram definidas e o backend novo validado contra o Postgres real
-com login de verdade (ver item abaixo) — o navegador real (Fase 1) e as Tarefas Agendadas
-continuam em aberto.
+com login de verdade (ver item abaixo) — o navegador real (Fase 1) continua em aberto.
+**Atualização 2026-07-16 (2ª rodada)**: as duas Tarefas Agendadas (`"Painel Novo -
+Guardiao"` e `"Painel Novo - Verificacao de Integridade"`) foram registradas — todo item de
+Fase 0 que dependia só de infraestrutura/automação está fechado. O acesso pela rede
+também foi liberado (porta 5100 no Firewall, link `http://I7M1700-01-EVE:5100`) e já está
+sendo usado informalmente pela equipe **antes** da validação formal da Fase 1 (ver item
+abaixo, ainda `[ ]`) — decisão do responsável do projeto, registrada aqui por
+transparência, não decidida de forma autônoma pela IA.
 
 - [x] **Infraestrutura de produção do stack novo.** Decisão: o NestJS agora serve o build de
   produção do Angular direto (`@nestjs/serve-static`, `frontendDistPath` em
@@ -50,9 +56,17 @@ continuam em aberto.
   válido). **Atenção**: são variáveis de **usuário**, não de máquina/serviço — se o
   processo for subido por uma Tarefa Agendada rodando como outro usuário (ex.: `SYSTEM`),
   ele não vai enxergá-las; confirmar isso ao registrar as Tarefas Agendadas abaixo.
-  **Ainda falta** (ação humana): agendar `Guardiao_Painel_Novo.vbs` e
-  `Verificar_Integridade_Novo.ps1` como Tarefas do Windows na máquina real (não registrado
-  automaticamente — é automação persistente em produção, decisão do time).
+  ~~**Ainda falta** (ação humana): agendar `Guardiao_Painel_Novo.vbs`~~ — **feito em
+  2026-07-16**: Tarefa Agendada `"Painel Novo - Guardiao"` registrada (mesmo padrão da
+  tarefa `"Painel - Guardiao"` do Flask — logon do usuário `RECHINFO\everton` + repetição a
+  cada 5 min, sem duração/fim), testada ao vivo (derrubou o processo por um crash do
+  Oracle thick mode e o guardião reergueu sozinho em ~15s, log em
+  `C:\PainelBackups\guardiao_novo.log`). ~~**Ainda falta**: agendar
+  `Verificar_Integridade_Novo.ps1`~~ — **feito em 2026-07-16**: Tarefa Agendada
+  `"Painel Novo - Verificacao de Integridade"` registrada (mesmo padrão/horário — diária às
+  07:30 — da tarefa `"Painel - Verificacao de Integridade"` do Flask), log em
+  `C:\PainelBackups\integridade_novo.log`. As duas automações persistentes da Fase 0 estão
+  no ar.
 - [ ] **Nenhuma tela foi vista rodando num navegador real** (registrado em
   [03-documento-conversao.md §13](03-documento-conversao.md)). Toda validação até aqui foi
   build limpo + testes automatizados (115 specs frontend, 310 testes backend) + chamadas
