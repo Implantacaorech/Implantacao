@@ -1,5 +1,5 @@
 # Dependências dos geradores Office + painel web
-python-docx>=1.1
+python-docx>=1.2.0
 openpyxl>=3.1
 Pillow>=10.0     # embutir a logo Rech no cabeçalho do cronograma de visitas (.xlsx)
 PyYAML>=6.0
