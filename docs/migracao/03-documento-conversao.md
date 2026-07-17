@@ -1302,3 +1302,43 @@ a revisão de segurança pedida pela Fase 2 do plano de virada (ver
 
 **Validação**: suíte completa do backend (358 testes unitários + e2e) e typecheck
 passando; smoke manual do endpoint `bloqueios` via os testes e2e de `cronograma.e2e-spec.ts`.
+
+## 17. Sessão seguinte — incidente real em produção: crash recorrente do backend novo (2026-07-17)
+
+Depois do acesso pela rede ser liberado (porta 5100 + Firewall, ver §16), o backend novo
+passou a cair sozinho a cada ~15-20 min, inclusive de madrugada sem nenhum uso — o
+guardião (`Guardiao_Painel_Novo.vbs`/Tarefa Agendada) reerguia a cada vez, mas o
+sintoma se repetia. Diagnóstico em duas etapas:
+
+- **Falso suspeito descartado**: um crash ao clicar em "Salvar e testar conexão" (Config →
+  Disponibilidade) sugeriu o modo Oracle *thick* (`oracledb.initOracleClient`, nativo, pode
+  crashar o processo fora do alcance de `try/catch`) — desligado por precaução, mas os
+  crashes continuaram no mesmo padrão a noite inteira, provando que não era a causa
+  (só um crash real a mais, coincidente).
+- **Causa raiz real**: `Iniciar_Painel_Novo.bat` rodava `node dist\main.js` sem redirecionar
+  stdout/stderr, e o guardião sobe tudo oculto (sem janela) — o motivo de cada crash se
+  perdia. Corrigido para gravar em `C:\PainelBackups\painel_novo_stdout.log`; o próximo
+  crash revelou: `RoboCaixaService` (robô da caixa de e-mail, roda sozinho em background a
+  cada `imapPollMin`, independente de qualquer uso) tentava conectar via `ImapFlow`
+  (`imapflow`, um `EventEmitter`) — um timeout de socket (`ETIMEOUT`) disparava o evento
+  `'error'` do `EventEmitter` **sem nenhum listener registrado**, que o Node.js trata como
+  exceção fatal não capturável por `try/catch` comum (o evento dispara fora da promise
+  aguardada em `processarFechamentos`/`buscarFechamento`, apesar de ambos já terem
+  try/catch). Corrigido registrando `client.on('error', ...)` em
+  `ImapIntakeService.conectar()` — converte em log de aviso, não mais fatal.
+- **Lição**: qualquer biblioteca baseada em `EventEmitter` com socket próprio (IMAP, e
+  potencialmente outras integrações de rede) precisa de um listener de `'error'` explícito
+  no cliente — envolver a chamada em `try/catch` no código que a criou **não é suficiente**
+  quando a biblioteca emite erros de forma assíncrona pelo próprio emissor. Vale auditoria
+  rápida nas outras integrações de socket/rede do projeto.
+- Também corrigido no caminho: Helmet manda `Strict-Transport-Security` por padrão mesmo
+  em HTTP puro (este servidor não tem TLS — uso interno, por decisão de arquitetura); uma
+  vez que o navegador recebe o header, ele força HTTPS nesse host:porta daí em diante,
+  quebrando todo acesso seguinte (tela em branco, CORS numa URL `https://` inexistente).
+  Corrigido com `helmet({ hsts: false })` em `main.ts`.
+
+**Validação**: teste novo em `imap-intake.service.spec.ts` reproduz o cenário (EventEmitter
+falso emitindo `'error'`/`ETIMEOUT`) — prova que a chamada resolve em vez de derrubar o
+processo. Build + reinício em produção confirmados (`/api/health` respondendo, sem
+`Strict-Transport-Security` no header); monitoramento pós-fix em andamento para confirmar
+estabilidade além da janela de ~20 min observada antes da correção.
