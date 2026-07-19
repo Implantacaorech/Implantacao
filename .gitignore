@@ -53,6 +53,9 @@ tools/data/digest_para.txt
 # Banco do Hub "Projetos por Cliente" — dados de cliente, NUNCA versionar
 *.db
 
+# Índice de embeddings da busca semântica do Vault (gerado, reproduzível via --indexar)
+tools/data/vault_embeddings.json
+
 # Templates .docx reais da Rech (letterhead/logo) — manter local, não publicar
 tools/templates/*.docx
 
