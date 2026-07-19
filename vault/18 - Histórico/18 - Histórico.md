@@ -32,6 +32,10 @@ relacionados:
 - **2026-07-19** — CI ampliado: `backend-test` (Jest, 364 testes) e `frontend-test`
   (Vitest, 111 testes) plugados em `.github/workflows/ci.yml`, fechando o gap citado no
   PR #8 (antes só o painel Flask legado rodava no CI). Ver [[11 - Testes]] e [[12 - DevOps]].
+- **2026-07-19** — Auditoria de arquitetura do código real (não um refactor): backend segue
+  padrão NestJS idiomático por feature (25 módulos), sem Repository Pattern formal nem
+  camadas DDD; frontend é 100% standalone components + Signals, sem NgModule legado.
+  Detalhe em [[02 - Arquitetura]], [[03 - Backend]] e [[04 - Frontend]].
 
 ## Relacionados no Vault
 
