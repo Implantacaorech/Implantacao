@@ -33,14 +33,31 @@ Antes de 2026-07-19, `backend/` e `frontend/` tinham `npm test` funcionando loca
 **não rodavam no CI** — gap identificado ao redigir o PR #8 e fechado no mesmo dia
 (ver [[12 - DevOps]] e [[18 - Histórico]]).
 
+## Lint (adicionado 2026-07-19, best-effort — não bloqueia)
+
+Rodei `npx eslint "{src,apps,libs,test}/**/*.ts"` no `backend/` antes de plugar no CI:
+**1212 achados (1196 erros, 16 warnings)**, dos quais **1134 são auto-corrigíveis** (quase
+todos formatação Prettier — vírgula final, quebra de linha), e uns poucos reais
+(`@typescript-eslint/require-await` em 2 métodos `async` sem `await`).
+
+**Decisão tomada:** não rodei `--fix` em massa — isso tocaria centenas de arquivos só por
+formatação, um diff enorme e fora do que foi pedido nesta rodada. O job `backend-test`
+agora roda o lint com `continue-on-error: true` (visível no CI, não bloqueia merge) até
+alguém decidir rodar o `--fix` de propósito (ou aceitar a dívida como está).
+
+`frontend/` **não tem ESLint configurado** (nem `eslint.config.*` nem a dependência no
+`package.json`, nem `architect.lint` no `angular.json`) — diferente do backend, isso não é
+"plugar no CI", é instalar e configurar do zero (`ng add @angular-eslint/schematics`).
+Não fiz nesta rodada — registrado como pendência em [[19 - Roadmap]].
+
 ## O que ainda falta (não fechado nesta rodada)
 
 - Testes E2E (frontend) — existe script `test:e2e` no `backend/package.json`, mas não há
   E2E de frontend configurado nem rodando.
 - Cobertura mínima obrigatória (threshold) — nenhum dos jobs novos falha se a cobertura cair;
   só falha se algum teste quebrar.
-- Lint (`eslint`) e checagem de tipos do TypeScript não estão no pipeline de CI, só
-  disponíveis localmente via `npm run lint`.
+- ESLint no frontend (do zero) — ver acima.
+- Checagem de tipos do TypeScript (`tsc --noEmit`) não está no pipeline de CI.
 
 ## Relacionados no Vault
 
