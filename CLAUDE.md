@@ -21,6 +21,17 @@ Tudo em **português do Brasil (pt-BR)**, em qualquer arquivo novo.
 - Processo: [docs/processo-implantacao.md](docs/processo-implantacao.md)
 - Papéis: [docs/papeis-responsabilidades.md](docs/papeis-responsabilidades.md) · Glossário: [docs/glossario.md](docs/glossario.md)
 - Caminhos/recursos: [docs/recursos-e-caminhos.md](docs/recursos-e-caminhos.md) · Backlog: [docs/pendencias.md](docs/pendencias.md)
+- **Arquitetura/stack/ADRs (Documentation as Code):** [vault/00 - Dashboard/](<vault/00 - Dashboard/00 - Dashboard.md>) —
+  este arquivo continua sendo a fonte das regras de **negócio** acima; o Vault é a fonte da
+  **arquitetura e do código**. Decisão registrada em
+  [ADR-0001](<vault/17 - ADR/ADR-0001 - Adocao do ecossistema Vault + IA.md>).
+
+## Stack oficial do novo backend/frontend (em migração)
+
+Backend **NestJS + TypeScript + TypeORM** (`backend/`) · Frontend **Angular + TypeScript**
+(`frontend/`) · Banco **MariaDB**. Convive com o `webapp/` Flask legado enquanto a migração
+não termina — detalhe em [vault/03 - Backend/](<vault/03 - Backend/03 - Backend.md>) e
+[vault/04 - Frontend/](<vault/04 - Frontend/04 - Frontend.md>).
 
 ## Papéis (agentes) — detalhe no guia operacional
 `coordenador-implantacao` · `setor-adm` · `consultor-implantacao` (GCI) · `gerente-projeto` ·
