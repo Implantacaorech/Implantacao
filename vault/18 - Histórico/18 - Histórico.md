@@ -36,6 +36,10 @@ relacionados:
   padrão NestJS idiomático por feature (25 módulos), sem Repository Pattern formal nem
   camadas DDD; frontend é 100% standalone components + Signals, sem NgModule legado.
   Detalhe em [[02 - Arquitetura]], [[03 - Backend]] e [[04 - Frontend]].
+- **2026-07-19** — DER + dicionário de dados completos (26 entidades), 3 diagramas Mermaid
+  reais, lint no CI (best-effort), Casos de Uso + FAQ reais, busca semântica (RAG-lite)
+  testada ponta a ponta, e backlog consolidado. Ver [[19 - Roadmap]] para o que ficou de
+  fora e por quê.
 
 ## Relacionados no Vault
 
