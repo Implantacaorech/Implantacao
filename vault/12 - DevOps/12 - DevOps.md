@@ -21,10 +21,19 @@ relacionados:
 
 ## CI existente
 
-`.github/workflows/ci.yml` já roda em push/PR para `main` com dois jobs:
-`test` (compileall + smoke + pytest com cobertura do painel Flask) e `test-postgres`
-(smoke do schema contra Postgres real). Esses dois nomes de job são os `contexts` a exigir
-quando a branch protection abaixo for aplicada.
+`.github/workflows/ci.yml` roda em push/PR para `main` com quatro jobs, validados
+localmente antes de subir (2026-07-19):
+
+- `test` — compileall + smoke + pytest com cobertura do painel Flask legado (`webapp/`).
+- `test-postgres` — smoke do schema contra Postgres real.
+- `backend-test` — **novo**: `npm ci` + `npm test -- --ci` (Jest) em `backend/`. Rodado
+  localmente antes de plugar no CI: 44 suítes, 364 testes, todos passando (~47s).
+- `frontend-test` — **novo**: `npm ci` + `npm test` (Vitest, via `@angular/build:unit-test`
+  — não precisa de browser real, roda em Node puro) em `frontend/`. Rodado localmente: 27
+  arquivos de teste, 111 testes, todos passando (~23s).
+
+Esses quatro nomes de job são os `contexts` a exigir quando a branch protection abaixo for
+aplicada (atualiza a lista de `contexts` no exemplo de `PUT` mais abaixo).
 
 ## Processo-alvo: PR obrigatório + CI + revisão antes de merge
 
@@ -50,7 +59,7 @@ endpoints de branch protection (`GET/PUT /repos/Implantacaorech/Implantacao/bran
 ```http
 PUT /repos/Implantacaorech/Implantacao/branches/main/protection
 {
-  "required_status_checks": {"strict": false, "contexts": ["test", "test-postgres"]},
+  "required_status_checks": {"strict": false, "contexts": ["test", "test-postgres", "backend-test", "frontend-test"]},
   "enforce_admins": true,
   "required_pull_request_reviews": {"required_approving_review_count": 1},
   "restrictions": null

@@ -29,6 +29,9 @@ relacionados:
   <https://github.com/Implantacaorech/Implantacao/pull/8> — reúne os 41 commits da migração
   do Painel (Flask → Angular/NestJS/MariaDB) mais o Vault. Ainda não mergeado; branch
   protection em `main` segue pendente (ver [[12 - DevOps]] e [[22 - Troubleshooting]]).
+- **2026-07-19** — CI ampliado: `backend-test` (Jest, 364 testes) e `frontend-test`
+  (Vitest, 111 testes) plugados em `.github/workflows/ci.yml`, fechando o gap citado no
+  PR #8 (antes só o painel Flask legado rodava no CI). Ver [[11 - Testes]] e [[12 - DevOps]].
 
 ## Relacionados no Vault
 

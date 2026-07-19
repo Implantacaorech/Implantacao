@@ -1,7 +1,7 @@
 ---
 titulo: "Testes"
 tipo: indice
-status: esqueleto
+status: em-andamento
 criado: 2026-07-19
 atualizado: 2026-07-19
 responsavel: "Arquiteto Principal (IA)"
@@ -17,15 +17,45 @@ relacionados:
 # Testes
 
 > [!info] Sobre esta seção
-> Estratégia de testes: unitários, integração e E2E no backend/frontend novos, além da suíte pytest do painel Flask legado.
+> Estratégia de testes: unitários, integração e E2E no backend/frontend novos, além da
+> suíte pytest do painel Flask legado.
+
+## Cobertura atual por stack (validado 2026-07-19)
+
+| Stack | Ferramenta | Onde roda | Resultado local |
+| --- | --- | --- | --- |
+| `webapp/` (Flask legado) | pytest | CI (`test`) | 128 testes, cobertura no relatório do CI |
+| Schema vs. Postgres real | script próprio | CI (`test-postgres`) | smoke dedicado |
+| `backend/` (NestJS) | Jest | CI (`backend-test`, novo) | 44 suítes / 364 testes |
+| `frontend/` (Angular) | Vitest (`@angular/build:unit-test`) | CI (`frontend-test`, novo) | 27 arquivos / 111 testes |
+
+Antes de 2026-07-19, `backend/` e `frontend/` tinham `npm test` funcionando localmente mas
+**não rodavam no CI** — gap identificado ao redigir o PR #8 e fechado no mesmo dia
+(ver [[12 - DevOps]] e [[18 - Histórico]]).
+
+## O que ainda falta (não fechado nesta rodada)
+
+- Testes E2E (frontend) — existe script `test:e2e` no `backend/package.json`, mas não há
+  E2E de frontend configurado nem rodando.
+- Cobertura mínima obrigatória (threshold) — nenhum dos jobs novos falha se a cobertura cair;
+  só falha se algum teste quebrar.
+- Lint (`eslint`) e checagem de tipos do TypeScript não estão no pipeline de CI, só
+  disponíveis localmente via `npm run lint`.
 
 ## Relacionados no Vault
+
 - [[03 - Backend]]
 - [[04 - Frontend]]
 - [[22 - Troubleshooting]]
+- [[12 - DevOps]]
 
 ## Aponta para (conteúdo real do repositório)
+
 - `../webapp/test_painel.py`
+- `../backend/` (specs `*.spec.ts` via Jest)
+- `../frontend/` (specs `*.spec.ts` via Vitest)
+- `../.github/workflows/ci.yml`
 
 ## Status
-Esqueleto criado em 2026-07-19 — conteúdo será enriquecido incrementalmente. Ver [[00 - Dashboard]].
+
+Cobertura de CI ampliada em 2026-07-19 (backend + frontend plugados). Ver [[00 - Dashboard]].

@@ -54,3 +54,39 @@ jobs:
         env:
           PAINEL_DB_URL: postgresql+psycopg2://painel:postgres_ci@localhost:5432/painel
         run: python tools/ci_postgres_smoke.py
+
+  backend-test:
+    # Stack novo (NestJS/TypeORM) — cobertura separada do painel Flask legado acima.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Instalar dependências
+        run: npm ci
+      - name: Testes (Jest)
+        run: npm test -- --ci
+
+  frontend-test:
+    # Stack novo (Angular) — Vitest via @angular/build:unit-test, roda em Node sem browser real.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Instalar dependências
+        run: npm ci
+      - name: Testes (Vitest)
+        run: npm test
