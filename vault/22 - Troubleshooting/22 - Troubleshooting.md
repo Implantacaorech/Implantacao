@@ -76,6 +76,41 @@ agora é uma ação pontual de configuração do lado do usuário no GitHub/Goog
   Assim que isso for feito, o mesmo token em `.env` já é suficiente — não precisa colar de
   novo.
 
+### 3. Criar PR via API — token também sem "Pull requests: write"
+
+- **Testado:** `POST /repos/Implantacaorech/Implantacao/pulls` com o mesmo PAT retornou
+  `403 "Resource not accessible by personal access token"` — mesma causa-raiz do item 2
+  (fine-grained PAT sem a permissão específica, dessa vez **"Pull requests: Read and
+  write"**, não "Administration").
+- **Como resolver:** editar o token em <https://github.com/settings/tokens> e adicionar
+  **Pull requests → Read and write** (pode marcar junto com Administration do item 2, no
+  mesmo token).
+- **Contorno usado:** o usuário abriu o PR manualmente pela UI do GitHub (PR #8,
+  <https://github.com/Implantacaorech/Implantacao/pull/8>) com o título/descrição
+  preparados nesta sessão. Funcionou normalmente — a limitação é só de escrita via API.
+
+### 4. Job `test` (Python/webapp) falha no CI real — pré-existente, não é regressão de hoje
+
+- **Contexto:** `feature/migracao-angular-backend-moderno` nunca tinha sido *pushada* pro
+  GitHub antes de 2026-07-19 (41 commits existiam só localmente) — ou seja, essa foi a
+  **primeira vez que o CI real rodou** nesse conteúdo.
+- **Testado:** o job `test` (pytest do painel Flask legado) falhou no Actions
+  (`FileNotFoundError: Arquivo do modelo 'levantamento'/'projeto'/'termo'/'cronograma' não
+  encontrado`) — os testes dependem de `.docx` em `tools/data/modelos_documento/` e
+  `tools/templates/`, que são **propositalmente gitignorados** (letterhead real da Rech,
+  mantido só local, nunca versionado).
+- **Não é causado pelas mudanças desta sessão:** confirmado consultando o histórico de runs
+  do Actions — o mesmo job `test` **já falha em pushes recentes na própria `main`**
+  (ex.: commits `bfd21dea`, `3f4ede9c`), então é uma lacuna pré-existente do repositório,
+  só nunca tinha aparecido nesta branch por falta de CI rodando nela.
+- **Os jobs novos (`backend-test`, `frontend-test`) passaram normalmente** no Actions real
+  (Linux), confirmando que a adição ao pipeline funcionou.
+- **Como resolver (não feito ainda, decisão de escopo, não técnica):** ou os testes que
+  dependem desses `.docx` passam a pular graciosamente quando o arquivo não existe (comum
+  em CI de código aberto com fixtures proprietárias), ou os `.docx` de teste (não os reais
+  da Rech) passam a ser versionados como fixture. Requer decisão do dono do `painel-core`/
+  `qualidade`, não uma correção unilateral.
+
 ## Relacionados no Vault
 
 - [[21 - Conhecimento]]
