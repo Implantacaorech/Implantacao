@@ -10,10 +10,27 @@ export type CategoriaSecao =
   | 'palavras-chave'
   | 'geral';
 
+/** Trecho de texto inline com marcação leve (negrito / código). */
+export interface Segmento {
+  texto: string;
+  forte?: boolean;
+  codigo?: boolean;
+}
+
+/** Bloco estruturado do corpo de uma seção — para a tela renderizar de forma legível
+ * (tabela como tabela, lista como lista, etc.), não markdown "cru". */
+export type Bloco =
+  | { tipo: 'subtitulo'; segmentos: Segmento[] }
+  | { tipo: 'paragrafo'; segmentos: Segmento[] }
+  | { tipo: 'lista'; itens: Segmento[][] }
+  | { tipo: 'tabela'; cabecalho: Segmento[][]; linhas: Segmento[][][] }
+  | { tipo: 'codigo'; texto: string };
+
 export interface SecaoDocumento {
   titulo: string;
   corpo: string;
   categoria: CategoriaSecao;
+  blocos: Bloco[];
 }
 
 export interface DocumentoParseado {
@@ -99,6 +116,7 @@ export function parseDocumentoMarkdown(markdown: string): DocumentoParseado {
         titulo: secaoAtual.titulo,
         corpo,
         categoria: classificarSecao(normalizar(secaoAtual.titulo)),
+        blocos: parseBlocos(corpo),
       });
     }
   };
@@ -148,4 +166,132 @@ export function parseDocumentoMarkdown(markdown: string): DocumentoParseado {
     .digest('hex');
 
   return { titulo, sigla, resumo, secoes, palavrasChave, hashConteudo };
+}
+
+/** Quebra um texto inline em segmentos com marcação leve: **negrito** e `código`. Puro TS,
+ * sem regex de HTML — o frontend renderiza cada segmento com <strong>/<code>, sem innerHTML. */
+export function segmentarInline(texto: string): Segmento[] {
+  const segmentos: Segmento[] = [];
+  // Divide preservando os delimitadores **...** e `...`.
+  const partes = texto
+    .split(/(\*\*[^*]+\*\*|`[^`]+`)/g)
+    .filter((p) => p !== '');
+  for (const parte of partes) {
+    if (parte.startsWith('**') && parte.endsWith('**') && parte.length > 4) {
+      segmentos.push({ texto: parte.slice(2, -2), forte: true });
+    } else if (
+      parte.startsWith('`') &&
+      parte.endsWith('`') &&
+      parte.length > 2
+    ) {
+      segmentos.push({ texto: parte.slice(1, -1), codigo: true });
+    } else {
+      segmentos.push({ texto: parte });
+    }
+  }
+  return segmentos.length > 0 ? segmentos : [{ texto }];
+}
+
+function celulasDaLinhaTabela(linha: string): string[] {
+  // "| a | b |" -> ["a", "b"] (remove as bordas e espaços).
+  return linha
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((c) => c.trim());
+}
+
+function ehSeparadorTabela(linha: string): boolean {
+  // Linha "|---|:--:|---|" logo abaixo do cabeçalho.
+  return /^\|?[\s:|-]+\|?$/.test(linha.trim()) && linha.includes('-');
+}
+
+/** Converte o markdown de uma seção em blocos estruturados (subtítulo, parágrafo, lista,
+ * tabela, código). Cobre o que a documentação do SIGER usa; o que não casar vira parágrafo. */
+export function parseBlocos(markdown: string): Bloco[] {
+  const linhas = markdown.split(/\r?\n/);
+  const blocos: Bloco[] = [];
+  let i = 0;
+
+  let paragrafo: string[] = [];
+  const fecharParagrafo = () => {
+    const texto = paragrafo.join(' ').trim();
+    if (texto)
+      blocos.push({ tipo: 'paragrafo', segmentos: segmentarInline(texto) });
+    paragrafo = [];
+  };
+
+  while (i < linhas.length) {
+    const linha = linhas[i];
+    const trim = linha.trim();
+
+    // Bloco de código cercado por ```
+    if (trim.startsWith('```')) {
+      fecharParagrafo();
+      const codigo: string[] = [];
+      i += 1;
+      while (i < linhas.length && !linhas[i].trim().startsWith('```')) {
+        codigo.push(linhas[i]);
+        i += 1;
+      }
+      i += 1; // fecha o ```
+      blocos.push({ tipo: 'codigo', texto: codigo.join('\n') });
+      continue;
+    }
+
+    // Subtítulo (###, ####…)
+    const sub = /^#{3,6}\s+(.+)$/.exec(trim);
+    if (sub) {
+      fecharParagrafo();
+      blocos.push({
+        tipo: 'subtitulo',
+        segmentos: segmentarInline(sub[1].trim()),
+      });
+      i += 1;
+      continue;
+    }
+
+    // Tabela: linha começa com "|" e a próxima é o separador |---|
+    if (
+      trim.startsWith('|') &&
+      i + 1 < linhas.length &&
+      ehSeparadorTabela(linhas[i + 1])
+    ) {
+      fecharParagrafo();
+      const cabecalho = celulasDaLinhaTabela(trim).map(segmentarInline);
+      i += 2; // pula cabeçalho + separador
+      const linhasTab: Segmento[][][] = [];
+      while (i < linhas.length && linhas[i].trim().startsWith('|')) {
+        linhasTab.push(celulasDaLinhaTabela(linhas[i]).map(segmentarInline));
+        i += 1;
+      }
+      blocos.push({ tipo: 'tabela', cabecalho, linhas: linhasTab });
+      continue;
+    }
+
+    // Lista (- ou *)
+    if (/^[-*]\s+/.test(trim)) {
+      fecharParagrafo();
+      const itens: Segmento[][] = [];
+      while (i < linhas.length && /^[-*]\s+/.test(linhas[i].trim())) {
+        itens.push(segmentarInline(linhas[i].trim().replace(/^[-*]\s+/, '')));
+        i += 1;
+      }
+      blocos.push({ tipo: 'lista', itens });
+      continue;
+    }
+
+    // Linha em branco fecha o parágrafo corrente
+    if (trim === '') {
+      fecharParagrafo();
+      i += 1;
+      continue;
+    }
+
+    paragrafo.push(trim);
+    i += 1;
+  }
+  fecharParagrafo();
+  return blocos;
 }

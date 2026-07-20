@@ -20,10 +20,24 @@ export interface ResultadoPesquisaDicionario {
   urlOrigem: string;
 }
 
+export interface Segmento {
+  texto: string;
+  forte?: boolean;
+  codigo?: boolean;
+}
+
+export type Bloco =
+  | { tipo: 'subtitulo'; segmentos: Segmento[] }
+  | { tipo: 'paragrafo'; segmentos: Segmento[] }
+  | { tipo: 'lista'; itens: Segmento[][] }
+  | { tipo: 'tabela'; cabecalho: Segmento[][]; linhas: Segmento[][][] }
+  | { tipo: 'codigo'; texto: string };
+
 export interface SecaoDocumento {
   titulo: string;
   corpo: string;
   categoria: CategoriaSecao;
+  blocos: Bloco[];
 }
 
 export interface DocumentoDetalhe {
