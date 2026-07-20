@@ -1,0 +1,29 @@
+/* estilos globais cobrem .painel, .resultado, .dica */
+
+.doc-head { display:flex; align-items:center; gap:10px; margin-top:8px; }
+.doc-head h1 { margin:0; }
+.doc-resumo { font-size:1.02rem; line-height:1.55; margin:10px 0 18px; }
+
+.b { font-size:12px; padding:3px 10px; border-radius:999px; background:var(--panel2, #f0f3f6);
+  border:1px solid var(--borda, #E2E8F0); color:var(--muted, #64748B); font-weight:700; }
+.b.mod { background:#2563EB; color:#fff; border:none; }
+
+.doc-sec { margin-bottom:14px; }
+.doc-sec-h { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+.doc-sec-h h3 { margin:0; font-size:1.05rem; }
+.doc-cat { font-size:11px; font-weight:700; text-transform:uppercase; padding:2px 8px; border-radius:6px;
+  background:var(--panel2, #f0f3f6); color:var(--muted, #64748B); }
+.doc-cat[data-cat="configuracao"] { background:#FEF3C7; color:#92400E; }
+.doc-cat[data-cat="suporte"] { background:#FEE2E2; color:#991B1B; }
+.doc-cat[data-cat="rotina"] { background:#DBEAFE; color:#1E40AF; }
+.doc-cat[data-cat="dependencia"] { background:#E0E7FF; color:#3730A3; }
+.doc-cat[data-cat="checklist"] { background:#D1FAE5; color:#065F46; }
+
+.doc-corpo { white-space:pre-wrap; word-break:break-word; font-family:inherit; font-size:.92rem;
+  line-height:1.5; margin:0; overflow-x:auto; }
+
+.doc-tags { display:flex; flex-wrap:wrap; gap:6px; }
+.doc-tag { background:var(--panel2, #f0f3f6); border:1px solid var(--borda, #E2E8F0);
+  padding:3px 9px; border-radius:6px; font-size:12px; }
+.doc-fonte { margin-top:16px; }
+.doc-fonte code { font-size:.82rem; }

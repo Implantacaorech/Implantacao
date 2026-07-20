@@ -1,0 +1,107 @@
+<div class="dic-head">
+  <div>
+    <h1>Dicionário Inteligente <small>SIGER®</small></h1>
+    <p class="dica">Consulta técnica de módulos e adicionais — busque um assunto ou pergunte em linguagem natural.</p>
+  </div>
+  @if (status(); as s) {
+    <div class="dic-stat">
+      <strong>{{ s.totalDocumentos | number: '1.0-0' }}</strong> documentos ·
+      {{ s.totalModulos }} módulos · {{ s.totalAdicionais }} adicionais
+      @if (s.ultimaIngestaoEm) { <span class="dica"> · atualizado {{ s.ultimaIngestaoEm | date: 'dd/MM/yyyy' }}</span> }
+    </div>
+  }
+</div>
+
+<div class="dic-abas">
+  <button class="dic-aba" [class.on]="aba() === 'buscar'" (click)="trocarAba('buscar')">🔍 Buscar</button>
+  <button class="dic-aba" [class.on]="aba() === 'perguntar'" (click)="trocarAba('perguntar')">💬 Perguntar</button>
+</div>
+
+@if (erro()) {
+  <div class="resultado erro" style="padding:10px 16px;margin:10px 0">{{ erro() }}</div>
+}
+
+@if (aba() === 'buscar') {
+  <div class="dic-filtros">
+    <label class="campo" style="flex:2;min-width:240px">
+      <span>Pesquisar</span>
+      <input [ngModel]="termo()" (ngModelChange)="onTermoAlterado($event)" name="termo"
+             placeholder="assunto, programa (CTB106), menu (1.6-T), tabela, erro..." autocomplete="off" />
+    </label>
+    <label class="campo" style="min-width:150px">
+      <span>Tipo</span>
+      <select [ngModel]="filtroTipo()" (ngModelChange)="onFiltroTipo($event)" name="tipo">
+        <option value="">(todos)</option>
+        <option value="modulo">Módulos</option>
+        <option value="adicional">Adicionais</option>
+      </select>
+    </label>
+    <label class="campo" style="min-width:180px">
+      <span>Módulo/Adicional</span>
+      <select [ngModel]="filtroSigla()" (ngModelChange)="onFiltroSigla($event)" name="sigla">
+        <option value="">(todos)</option>
+        @for (s of siglas(); track s.sigla + s.tipo) {
+          <option [value]="s.sigla">{{ s.sigla }} — {{ s.titulo }}</option>
+        }
+      </select>
+    </label>
+  </div>
+
+  @if (buscando()) {
+    <p>Pesquisando…</p>
+  } @else if (jaBuscou() && resultados().length === 0) {
+    <p class="dica">Nada encontrado para os filtros atuais.</p>
+  } @else if (resultados().length > 0) {
+    <div class="count">{{ resultados().length }} resultado(s)</div>
+    @for (r of resultados(); track r.slug) {
+      <a class="dic-card" [routerLink]="['/dicionario', r.slug]">
+        <div class="dic-card-h">
+          <span class="b" [class.mod]="r.tipo === 'modulo'">{{ r.sigla }}</span>
+          <strong>{{ r.titulo }}</strong>
+          <span class="dica">{{ r.tipo === 'modulo' ? 'Módulo' : 'Adicional' }}</span>
+        </div>
+        <div class="dic-card-resumo">{{ r.resumo }}</div>
+        @if (r.trecho) { <div class="dic-card-trecho">…{{ r.trecho }}</div> }
+      </a>
+    }
+  } @else {
+    <p class="dica">Digite um termo ou escolha um filtro para começar.</p>
+  }
+}
+
+@if (aba() === 'perguntar') {
+  <div class="dic-perguntar">
+    <label class="campo" style="flex:1">
+      <span>Sua pergunta</span>
+      <textarea [ngModel]="pergunta()" (ngModelChange)="pergunta.set($event)" name="pergunta" rows="2"
+                placeholder="Ex.: Como configurar comissão por representante? Qual menu cadastra forma de pagamento?"></textarea>
+    </label>
+    <button class="btn" type="button" [disabled]="perguntando() || pergunta().trim().length < 3" (click)="perguntar()">
+      {{ perguntando() ? 'Consultando…' : 'Perguntar' }}
+    </button>
+  </div>
+
+  @if (resposta(); as r) {
+    @if (!r.iaDisponivel) {
+      <div class="resultado erro" style="padding:10px 16px;margin:10px 0">
+        A síntese por IA não está configurada (Config → IA). Mostrando os documentos relacionados abaixo.
+      </div>
+    }
+    <div class="painel dic-resposta">
+      <div class="dic-resposta-txt">{{ r.resposta }}</div>
+      @if (r.iaDisponivel && r.temFundamento) {
+        <button class="btn ghost" type="button" (click)="copiarResposta()">Copiar resposta</button>
+      }
+    </div>
+    @if (r.fontes.length > 0) {
+      <h4 class="dic-fontes-tit">Fontes consultadas</h4>
+      @for (f of r.fontes; track f.slug) {
+        <a class="dic-card" [routerLink]="['/dicionario', f.slug]">
+          <div class="dic-card-h"><span class="b">[{{ f.indice }}]</span><strong>{{ f.titulo }}</strong></div>
+        </a>
+      }
+    }
+  } @else if (!perguntando()) {
+    <p class="dica">A resposta é sempre fundamentada nos documentos — se não houver base, o sistema informa em vez de supor.</p>
+  }
+}

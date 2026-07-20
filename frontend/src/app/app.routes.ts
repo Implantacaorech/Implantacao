@@ -160,10 +160,16 @@ export const routes: Routes = [
         loadComponent: () => import('./features/protocolos/protocolos.component').then((m) => m.ProtocolosComponent),
       },
       {
-        path: 'base-siger',
-        data: { titulo: 'Base SIGER' },
+        path: 'dicionario',
+        data: { titulo: 'Dicionário Inteligente' },
         loadComponent: () =>
-          import('./features/base-conhecimento/base-conhecimento.component').then((m) => m.BaseConhecimentoComponent),
+          import('./features/dicionario/dicionario.component').then((m) => m.DicionarioComponent),
+      },
+      {
+        path: 'dicionario/:slug',
+        data: { titulo: 'Documento — Dicionário Inteligente' },
+        loadComponent: () =>
+          import('./features/dicionario/dicionario-documento.component').then((m) => m.DicionarioDocumentoComponent),
       },
       {
         path: 'protocolos/:id',

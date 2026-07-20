@@ -1,0 +1,40 @@
+<a class="dica" routerLink="/dicionario">← Voltar ao Dicionário</a>
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else if (erro()) {
+  <div class="resultado erro" style="padding:10px 16px;margin:10px 0">{{ erro() }}</div>
+} @else if (doc(); as d) {
+  <div class="doc-head">
+    <span class="b" [class.mod]="d.tipo === 'modulo'">{{ d.sigla }}</span>
+    <h1>{{ d.titulo }}</h1>
+  </div>
+  <p class="dica">
+    {{ d.tipo === 'modulo' ? 'Módulo' : 'Adicional' }} ·
+    atualizado {{ d.atualizadoEm | date: 'dd/MM/yyyy' }} ·
+    <a [href]="d.urlOrigem" target="_blank" rel="noopener">abrir documento original ↗</a>
+  </p>
+
+  @if (d.resumo) { <p class="doc-resumo">{{ d.resumo }}</p> }
+
+  @for (s of secoesVisiveis(); track s.titulo) {
+    <section class="painel doc-sec">
+      <div class="doc-sec-h">
+        <span class="doc-cat" [attr.data-cat]="s.categoria">{{ rotulo(s.categoria) }}</span>
+        <h3>{{ s.titulo }}</h3>
+      </div>
+      <pre class="doc-corpo">{{ s.corpo }}</pre>
+    </section>
+  }
+
+  @if (d.palavrasChave.length > 0) {
+    <section class="painel doc-sec">
+      <h3>Palavras-chave</h3>
+      <div class="doc-tags">
+        @for (p of d.palavrasChave; track p) { <span class="doc-tag">{{ p }}</span> }
+      </div>
+    </section>
+  }
+
+  <p class="dica doc-fonte">Fonte: <code>{{ d.caminhoOrigem }}</code></p>
+}
