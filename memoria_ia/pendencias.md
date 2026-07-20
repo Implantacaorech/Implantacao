@@ -11,10 +11,11 @@ Backlog operacional do processo (não-IA) fica em [`docs/pendencias.md`](../docs
   virada — estava fora do ar há ~2 dias sem ninguém notar). Runbook §9 idem, mantido só
   como histórico. Ver `vault/22 - Troubleshooting/` e
   `docs/migracao/05-plano-de-virada.md` §"Registro real da virada".
-- [ ] **Definições dos agentes de software desatualizadas** (novo, 2026-07-19) —
-  `.claude/agents/painel-core.md` e afins ainda descrevem os caminhos do Flask
-  (`app.py`/`routes_*`/`webapp/gl_*`) que migraram para `projeto_old/` ou `backend/src/*`.
-  Precisam ser reescritos apontando para o código real. Ver `vault/19 - Roadmap/`.
+- [x] ~~Definições dos agentes de software desatualizadas~~ — **RESOLVIDO em 2026-07-19**:
+  os 6 agentes de software (`painel-core`/`qualidade`/`documentos-geracao`/
+  `integracoes-operacao`/`documentacao-contexto`/`seguranca-permissoes`) reescritos
+  apontando pro código real (`backend/src/*`, `docservice/`, ponte `legado_cli`).
+  `docs/agentes-software.md` (mapa pré-virada) não foi reescrito, mantido só como histórico.
 - [x] **Integridade do avanço:** RESOLVIDO por decisão (2026-06-24) — `_auto_avancar` é **permissivo de propósito** (checa só gate de documentos + ação de entrada). A versão estrita travava Agendamento/Designação. `consultor` saiu de `CAMPOS_OBRIGATORIOS["Projeto"]` (definido na Designação). Ver `decisoes.md`.
 
 ## P1 — importante

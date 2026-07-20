@@ -49,7 +49,7 @@ ainda depende de decisão/trabalho maior.
 | Automação contínua (toda mudança de código atualiza doc/diagrama sozinha) | ❌ Não iniciado | Exigiria hook de CI que gera/valida Vault a cada PR — próximo passo natural depois deste backlog |
 | Auditoria contínua (código×doc, banco×entidade, API×Swagger) gerando tarefa sozinha | ❌ Não iniciado | Depende da automação contínua acima existir primeiro |
 | **Virada para produção (Flask → stack novo)** | ✅ Feito, com ressalva | 2026-07-19 — ver [[18 - Histórico]]. Fases 3/4 formais do plano puladas (Postgres do Flask já estava inacessível há 2 dias); risco de dado não reconciliado aceito pelo responsável do projeto, não mitigado |
-| **Definições dos agentes de software desatualizadas** | ❌ Não iniciado | `painel-core`/`documentos-geracao`/etc. em `.claude/agents/` ainda apontam pros caminhos do Flask (`app.py`, `routes_*`, `webapp/gl_*`) que migraram pra `projeto_old/` ou `backend/src/*` — precisa reescrever apontando pro código real |
+| **Definições dos agentes de software desatualizadas** | ✅ Feito | 2026-07-19 — os 6 agentes reescritos apontando pro código real (`backend/src/*`, `docservice/`, ponte `legado_cli`). `docs/agentes-software.md` (mapa pré-virada) não reescrito, só histórico |
 
 ### Por que os itens ❌ não foram "só feitos"
 

@@ -77,12 +77,10 @@ histórico/rollback de emergência; ver `docs/migracao/05-plano-de-virada.md` Fa
 
 Para manter/evoluir o Painel, use os **agentes de software** em `.claude/agents/` (distintos
 dos agentes de NEGÓCIO acima): **painel-core** · **qualidade** · **documentos-geracao** ·
-**integracoes-operacao** · **documentacao-contexto** · **seguranca-permissoes**. As
-definições desses agentes ainda descrevem os caminhos antigos do Flask (`app.py`,
-`routes_*`, `webapp/db.py`, `webapp/gl_*`) — **desatualizado, pendência aberta** (ver
-[vault/19 - Roadmap/](<vault/19 - Roadmap/19 - Roadmap.md>)); até serem revisados, mapeie
-mentalmente para o equivalente em `backend/src/*`. Mapa original (pré-virada):
-[docs/agentes-software.md](docs/agentes-software.md).
+**integracoes-operacao** · **documentacao-contexto** · **seguranca-permissoes**. Definições
+atualizadas em 2026-07-19 pro stack novo (`backend/src/*`, `docservice/`, ponte
+`legado_cli`) — mapa original pré-virada, só como histórico:
+[docs/agentes-software.md](docs/agentes-software.md) (desatualizado, não reescrito).
 
 **`webapp/legado_cli.py`/`runner.py`/`roles.py`/`forms.py` e `tools/`** continuam vivos —
 são a ponte de subprocesso do backend novo (`LegadoCliService`) para o assistente
