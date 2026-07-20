@@ -1,0 +1,161 @@
+.ag-card {
+  margin-top: 14px;
+}
+
+.ag-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ag-live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ag-dot-off {
+  background: var(--faint);
+  box-shadow: none;
+}
+
+.ag-erro {
+  color: var(--err);
+}
+
+.ag-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(240px, 0.9fr);
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .ag-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ag-svg {
+  width: 100%;
+  height: auto;
+  max-height: 420px;
+}
+
+.ag-edge {
+  stroke: var(--line-2);
+  stroke-width: 1;
+}
+
+.ag-ponto {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.ag-node-negocio .ag-ponto {
+  fill: var(--brand);
+}
+
+.ag-node-ativo .ag-ponto {
+  fill: var(--ok);
+}
+
+.ag-rotulo {
+  font-size: 8.5px;
+  fill: var(--muted);
+  font-family: var(--font);
+}
+
+.ag-pulso {
+  fill: var(--ok);
+  opacity: 0.35;
+  animation: ag-pulsar 1.6s ease-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+@keyframes ag-pulsar {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+
+.ag-feed-title {
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.ag-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.ag-item {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 8px 10px;
+  background: var(--surface-2);
+}
+
+.ag-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ag-item-tarefa {
+  font-size: 0.85rem;
+  color: var(--ink);
+  margin-top: 2px;
+}
+
+.ag-item-meta {
+  font-size: 0.75rem;
+  color: var(--faint);
+  margin-top: 4px;
+}
+
+.ag-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.ag-badge-em_execucao {
+  color: var(--ok);
+  background: var(--ok-bg);
+  border: 1px solid var(--ok-border);
+}
+
+.ag-badge-concluido {
+  color: var(--info);
+  background: var(--info-bg);
+  border: 1px solid var(--info-border);
+}
+
+.ag-badge-falhou {
+  color: var(--err);
+  background: var(--err-bg);
+  border: 1px solid var(--err-border);
+}

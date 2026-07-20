@@ -136,6 +136,23 @@ agora é uma ação pontual de configuração do lado do usuário no GitHub/Goog
 - **Risco aceito, não mitigado:** dado gravado no Flask entre 15/07 (corte da migração) e
   17/07 à noite (queda), se existir e não estiver no stack novo, não foi reconciliado.
 
+### 6. Deploy do módulo `agentes` derrubou a produção por ~1-2 min — porta errada
+
+- **Contexto:** ao colocar o `AgentesModule` no ar (telemetria de execução de agentes),
+  reiniciei o backend novo manualmente com `node dist/main.js` direto, em vez de passar por
+  `Iniciar_Painel_Novo.bat`.
+- **Erro:** o `.bat` faz `set "MIGRACAO_PORT=5100"` **só como fallback** se a variável não
+  estiver definida — não é uma env var persistente do Windows. Chamando `node dist/main.js`
+  direto, sem esse fallback, o backend caiu no default do Nest (`configuration.ts`:
+  `Number(process.env.MIGRACAO_PORT ?? 3000)`) — porta **3000**, já ocupada por outro
+  processo nesta máquina (`EADDRINUSE`) — e o processo crashou, deixando a porta 5100 vazia.
+- **Correção:** subi de novo com `MIGRACAO_PORT=5100` explícito na chamada. No ar em
+  segundos; janela real de indisponibilidade ficou entre matar o processo antigo e o
+  restart correto, poucos minutos.
+- **Lição:** reiniciar o backend novo em produção **sempre** via `Iniciar_Painel_Novo.bat`
+  (ou setando `MIGRACAO_PORT` explicitamente), nunca `node dist/main.js` cru — ver
+  [[integracoes-operacao]] (`.claude/agents/integracoes-operacao.md`).
+
 ## Relacionados no Vault
 
 - [[21 - Conhecimento]]

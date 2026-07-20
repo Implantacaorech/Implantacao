@@ -50,6 +50,8 @@ ainda depende de decisão/trabalho maior.
 | Auditoria contínua (código×doc, banco×entidade, API×Swagger) gerando tarefa sozinha | ❌ Não iniciado | Depende da automação contínua acima existir primeiro |
 | **Virada para produção (Flask → stack novo)** | ✅ Feito, com ressalva | 2026-07-19 — ver [[18 - Histórico]]. Fases 3/4 formais do plano puladas (Postgres do Flask já estava inacessível há 2 dias); risco de dado não reconciliado aceito pelo responsável do projeto, não mitigado |
 | **Definições dos agentes de software desatualizadas** | ✅ Feito | 2026-07-19 — os 6 agentes reescritos apontando pro código real (`backend/src/*`, `docservice/`, ponte `legado_cli`). `docs/agentes-software.md` (mapa pré-virada) não reescrito, só histórico |
+| **Telemetria real de execução de agentes ("rede neural")** | ✅ Feito, com dado real | 2026-07-19 — entity+migration+API+frontend+testes, provado com 4 execuções reais em produção. Ver [[14 - IA]]. Não é WebSocket (polling 4s) — decisão consciente, não limitação |
+| **Agentes reportando via API de testes (Jest/Vitest)** | ✅ Feito | 4 testes e2e reais (`backend/test/agentes.e2e-spec.ts`) provam o pipeline; 6 unitários (`agentes.service.spec.ts`) cobrem a lógica; 4 testes Vitest cobrem o componente do grafo |
 
 ### Por que os itens ❌ não foram "só feitos"
 

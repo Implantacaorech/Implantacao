@@ -1,0 +1,63 @@
+<div class="painel ops-card ag-card">
+  <div class="ops-card-title ag-title">
+    <span>
+      <svg class="svgi" aria-hidden="true"><use href="#ic-flow" /></svg>
+      Agentes de IA — grafo e execuções
+    </span>
+    <span class="ag-live">
+      <span class="dot-live" [class.ag-dot-off]="totalAtivos() === 0"></span>
+      {{ totalAtivos() }} ativo(s) agora
+    </span>
+  </div>
+
+  @if (erro()) {
+    <p class="dica ag-erro">{{ erro() }}</p>
+  } @else if (carregando()) {
+    <p class="dica">Carregando…</p>
+  } @else {
+    <div class="ag-layout">
+      <svg class="ag-svg" viewBox="0 0 400 400" role="img" aria-label="Grafo de agentes">
+        @for (a of arestasPosicionadas(); track a.de + a.para) {
+          <line [attr.x1]="a.x1" [attr.y1]="a.y1" [attr.x2]="a.x2" [attr.y2]="a.y2" class="ag-edge">
+            <title>{{ a.de }} → {{ a.para }}: {{ a.relacao }}</title>
+          </line>
+        }
+        @for (n of nosPosicionados(); track n.id) {
+          <g class="ag-node" [class.ag-node-ativo]="n.ativo" [class.ag-node-negocio]="n.categoria === 'negocio'">
+            @if (n.ativo) {
+              <circle [attr.cx]="n.x" [attr.cy]="n.y" r="16" class="ag-pulso" />
+            }
+            <circle [attr.cx]="n.x" [attr.cy]="n.y" r="9" class="ag-ponto">
+              <title>{{ n.rotulo }} — {{ n.execucoes24h }} execução(ões) nas últimas 24h</title>
+            </circle>
+            <text [attr.x]="n.x" [attr.y]="n.y + 22" class="ag-rotulo" text-anchor="middle">{{ n.rotulo }}</text>
+          </g>
+        }
+      </svg>
+
+      <div class="ag-feed">
+        <div class="ag-feed-title">Execuções recentes</div>
+        @if (execucoes().length === 0) {
+          <p class="dica">Nenhuma execução registrada ainda — os agentes reportam aqui via
+            <code>POST /api/agentes/execucoes</code> quando de fato rodam.</p>
+        } @else {
+          <ul class="ag-lista">
+            @for (e of execucoes(); track e.id) {
+              <li class="ag-item ag-{{ e.status }}">
+                <div class="ag-item-top">
+                  <strong>{{ e.agente }}</strong>
+                  <span class="ag-badge ag-badge-{{ e.status }}">{{ e.status }}</span>
+                </div>
+                <div class="ag-item-tarefa">{{ e.tarefa || '(sem descrição)' }}</div>
+                <div class="ag-item-meta">
+                  {{ e.iniciadoEm | date: 'dd/MM HH:mm:ss' }}
+                  @if (e.concluidoEm) { → {{ e.concluidoEm | date: 'HH:mm:ss' }} }
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+  }
+</div>

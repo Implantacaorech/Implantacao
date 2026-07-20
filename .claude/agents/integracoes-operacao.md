@@ -53,6 +53,12 @@ aproveite para atualizar a parte que tocar). Smoke geral de produção:
   Postgres do Flask ficou 2 dias fora do ar e o guardião correspondente ficou tentando
   reiniciar sem nunca logar sucesso, porque só registra falha — checar `guardiao*.log` não
   basta pra saber "está tudo bem", só serve pra achar "quando começou a falhar".
+- **Nunca reinicie o backend novo com `node dist/main.js` cru.** `Iniciar_Painel_Novo.bat`
+  faz `set "MIGRACAO_PORT=5100"` só como *fallback* (não é env var persistente) — pular o
+  `.bat` faz o Nest cair no default `configuration.ts` (porta 3000), que nesta máquina
+  colide com outro processo (`EADDRINUSE`) e derruba produção. Achado real em 2026-07-19
+  (deploy do `AgentesModule`), ~1-2min de indisponibilidade até perceber e corrigir com
+  `MIGRACAO_PORT=5100` explícito. Ver [[22 - Troubleshooting]] item 6.
 
 ## Segurança operacional
 - **Nunca** coloque credenciais/strings de conexão em chat, código versionado ou commit.

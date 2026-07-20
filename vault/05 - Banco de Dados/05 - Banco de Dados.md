@@ -410,6 +410,23 @@ perfil `Consultor` na confirmação).
 | tentativas | int | |
 | criado_em | timestamp | |
 
+### Telemetria de agentes (novo, 2026-07-19)
+
+**`agente_execucoes`** — registro real de execução de agente/subagente (ver [[14 - IA]]).
+Migration `1784513666449-AgenteExecucao` (`migrations-mariadb/`, gerada via
+`migration:generate` contra o banco real, não escrita à mão).
+
+| Coluna | Tipo | Observação |
+| --- | --- | --- |
+| id | int PK auto_increment | |
+| agente | varchar(60), indexado | nome do agente (`.claude/agents/`) |
+| agente_pai_id | int, indexado, nullable | hierarquia — quem acionou este agente |
+| tarefa | varchar(255) | |
+| status | varchar(20) | `em_execucao`\|`concluido`\|`falhou` |
+| resultado | text, nullable | resumo ao concluir |
+| iniciado_em | datetime(6) | |
+| concluido_em | datetime, nullable | |
+
 ## Relacionados no Vault
 
 - [[03 - Backend]]

@@ -22,10 +22,11 @@ relacionados:
 
 ## Estrutura real (levantada em 2026-07-19)
 
-**25 módulos de feature** em `src/`: `auth`, `cadastro`, `catalogos`, `config`,
+**26 módulos de feature** em `src/`: `auth`, `cadastro`, `catalogos`, `config`,
 `cronograma`, `database`, `designacao`, `digest`, `disponibilidade`, `documentos`, `email`,
 `fluxo`, `geracao`, `health`, `ia`, `legado`, `levantamento`, `matriz`, `metricas`,
-`painel`, `plano-cronograma`, `projetos`, `protocolos`, `transcricao`, `users`.
+`painel`, `plano-cronograma`, `projetos`, `protocolos`, `transcricao`, `users`,
+**`agentes`** (novo, 2026-07-19 — telemetria real de execução de agentes, ver [[14 - IA]]).
 
 Cada módulo segue o padrão `Controller` + `Service` + `Module` + `DTO`, com validação via
 `class-validator` e documentação via decorators `@ApiProperty` (Swagger) — confirmado lendo

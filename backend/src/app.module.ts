@@ -23,6 +23,7 @@ import { DesignacaoModule } from './designacao/designacao.module';
 import { DigestModule } from './digest/digest.module';
 import { PlanoCronogramaModule } from './plano-cronograma/plano-cronograma.module';
 import { LegadoModule } from './legado/legado.module';
+import { AgentesModule } from './agentes/agentes.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { LegadoModule } from './legado/legado.module';
     DigestModule,
     PlanoCronogramaModule,
     LegadoModule,
+    AgentesModule,
   ],
 })
 export class AppModule {}

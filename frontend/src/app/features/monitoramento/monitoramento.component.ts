@@ -5,11 +5,12 @@ import { ChartConfiguration } from 'chart.js/auto';
 import { ChartDirective } from '../../core/directives/chart.directive';
 import { AtividadeService } from '../../core/services/atividade.service';
 import { ResultadoMonitoramento } from '../../core/models/monitoramento.model';
+import { AgentesGrafoComponent } from './agentes-grafo/agentes-grafo.component';
 
 @Component({
   selector: 'app-monitoramento',
   standalone: true,
-  imports: [RouterLink, DatePipe, DecimalPipe, ChartDirective],
+  imports: [RouterLink, DatePipe, DecimalPipe, ChartDirective, AgentesGrafoComponent],
   templateUrl: './monitoramento.component.html',
   styleUrl: './monitoramento.component.css',
 })

@@ -50,6 +50,13 @@ relacionados:
   todo `tools/`, dependências vivas do backend novo). CI atualizado (`tools-smoke`
   substitui os jobs do Flask). Registro completo em
   `docs/migracao/05-plano-de-virada.md` §"Registro real da virada".
+- **2026-07-19 (mesma noite)** — Telemetria real de execução de agentes: módulo
+  `backend/src/agentes/` (entity + migration aplicada em produção + API + testes e2e) e
+  painel "Agentes de IA" (grafo SVG + feed) dentro do Centro de Monitoramento Operacional.
+  Provado com dado real (4 execuções genuínas desta sessão, não simulação) via conta de
+  serviço `sistema-agentes`. No caminho, um incidente breve (~1-2min de indisponibilidade
+  por restart com porta errada) foi causado, percebido e corrigido na hora — registrado em
+  [[22 - Troubleshooting]] item 6, não escondido. Ver [[14 - IA]].
 
 ## Relacionados no Vault
 
