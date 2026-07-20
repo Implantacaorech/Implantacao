@@ -1,4 +1,12 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -7,9 +15,11 @@ import { PERFIS_SISTEMA } from '../common/constants/perfis';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { IaService } from './ia.service';
 import { SalvarChaveIaDto } from './dto/salvar-chave-ia.dto';
+import { PROVEDORES_IA } from './ia.constants';
 
-/** Tela Config → IA — exclusivo do Administrador (`pode_ver("sistema")` no Flask).
- * Espelha webapp/routes_config.py:config(). */
+/** Tela Config → IA (Ferramentas → Modo IA) — exclusivo do Administrador. Configura as chaves
+ * de IA POR FINALIDADE (Protocolos, Dicionário…), cada uma com provedor próprio
+ * (Anthropic ou OpenRouter) e modelo. Espelha webapp/routes_config.py:config(). */
 @ApiTags('config-ia')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -19,24 +29,31 @@ export class IaController {
   constructor(private readonly ia: IaService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Status da chave de IA (Anthropic) configurada' })
+  @ApiOperation({
+    summary: 'Status das chaves de IA por finalidade + provedores suportados',
+  })
   status() {
     return new ApiEnvelope({
-      ativa: this.ia.disponivel(),
-      modelo: this.ia.modelo,
-      viaEnv: this.ia.viaEnv(),
+      provedores: PROVEDORES_IA,
+      finalidades: this.ia.statusTodas(),
     });
   }
 
   @Post()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Salva (ou remove, se vazia) a chave de IA (Anthropic)' })
+  @ApiOperation({
+    summary:
+      'Salva (ou remove, se a chave vier vazia) a configuração de uma finalidade',
+  })
   salvar(@Body() dto: SalvarChaveIaDto) {
-    this.ia.salvarChave(dto.apiKey);
+    this.ia.salvar(dto.finalidade, {
+      provider: dto.provider,
+      apiKey: dto.apiKey,
+      modelo: dto.modelo,
+    });
     return new ApiEnvelope({
-      ativa: this.ia.disponivel(),
-      modelo: this.ia.modelo,
-      viaEnv: this.ia.viaEnv(),
+      provedores: PROVEDORES_IA,
+      finalidades: this.ia.statusTodas(),
     });
   }
 }

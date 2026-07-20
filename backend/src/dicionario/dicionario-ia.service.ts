@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import Anthropic from '@anthropic-ai/sdk';
 import { IaService } from '../ia/ia.service';
 import { DicionarioService } from './dicionario.service';
 
@@ -60,13 +59,13 @@ export class DicionarioIaService {
           'responder com segurança.',
         fontes: [],
         temFundamento: false,
-        iaDisponivel: this.ia.disponivel(),
+        iaDisponivel: this.ia.disponivel('dicionario'),
       };
     }
 
     // Sem chave de IA configurada: devolve os documentos relevantes (busca-guiada) em vez de
     // falhar — a tela mostra as fontes e o usuário abre os documentos manualmente.
-    if (!this.ia.disponivel()) {
+    if (!this.ia.disponivel('dicionario')) {
       return {
         resposta:
           'A síntese por IA não está configurada (Config → IA). Foram encontrados documentos ' +
@@ -84,26 +83,20 @@ export class DicionarioIaService {
       })
       .join('\n\n---\n\n');
 
-    const client = new Anthropic({ apiKey: this.ia.obterChave() });
-    const resp = await client.messages.create({
-      model: this.ia.modelo,
-      max_tokens: 2000,
-      system: SISTEMA,
-      messages: [
-        {
-          role: 'user',
-          content:
-            `PERGUNTA: ${pergunta}\n\n` +
-            `TRECHOS DE DOCUMENTAÇÃO (fontes numeradas):\n\n${contexto}`,
-        },
-      ],
-    });
-
-    const texto = resp.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map((b) => b.text)
-      .join('')
-      .trim();
+    const texto = (
+      await this.ia.completar('dicionario', {
+        system: SISTEMA,
+        messages: [
+          {
+            role: 'user',
+            content:
+              `PERGUNTA: ${pergunta}\n\n` +
+              `TRECHOS DE DOCUMENTAÇÃO (fontes numeradas):\n\n${contexto}`,
+          },
+        ],
+        maxTokens: 2000,
+      })
+    ).trim();
 
     const semFundamento = texto.startsWith(
       'Não foram encontradas informações suficientes',
