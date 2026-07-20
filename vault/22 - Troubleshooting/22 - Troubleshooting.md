@@ -110,6 +110,31 @@ agora é uma ação pontual de configuração do lado do usuário no GitHub/Goog
   em CI de código aberto com fixtures proprietárias), ou os `.docx` de teste (não os reais
   da Rech) passam a ser versionados como fixture. Requer decisão do dono do `painel-core`/
   `qualidade`, não uma correção unilateral.
+- **Status em 2026-07-19 (mais tarde):** ficou sem objeto — o painel Flask (e
+  `webapp/test_painel.py` com ele) foi desligado e movido para `projeto_old/` na virada
+  para produção (ver item 5). O job `test` foi removido do CI, substituído por
+  `tools-smoke` (só testa o que continua vivo: `tools/` + a ponte `legado_cli`).
+
+### 5. Painel Flask fora do ar havia 2 dias — achado durante a Fase 2 de segurança da virada
+
+- **Contexto:** o usuário pediu para executar a Fase 2 do plano de virada (rotacionar senha
+  do Postgres do Flask). Antes de tocar em qualquer senha, investiguei o container
+  (`docker exec -it painel-db ...`, do runbook) e ele **não existe**.
+- **Achado real:** `http://localhost:5000/health` respondia erro; `guardiao.log` mostrou
+  **288 tentativas de reinício falhas em 18/07 (24h inteiras)** e mais 269 em 19/07,
+  contínuo — zero entradas em 17/07 (dia saudável, bate com o último backup bom,
+  `painel_20260717_220001.sql.gz`). Ou seja: o Postgres do Flask sumiu na janela da
+  migração de banco do stack novo (17/07 à tarde) e ninguém percebeu por 2 dias — o
+  guardião só loga falha, nunca sucesso, então o problema ficou silencioso.
+- **Não consegui checar** se sobrou volume/container recuperável no Docker do WSL desta
+  máquina — `sudo docker ps` pediu senha que eu não tenho.
+- **Decisão do usuário (2026-07-19):** não investigar recuperação; seguir direto para
+  produção só com o stack novo. Flask desligado (processo + as duas Tarefas Agendadas
+  `Painel - Guardiao`/`Painel - Verificacao de Integridade`), arquivos só-Flask movidos
+  para `projeto_old/`. Detalhe completo, incluindo o que NÃO foi movido (dependências
+  vivas), em `docs/migracao/05-plano-de-virada.md` §"Registro real da virada".
+- **Risco aceito, não mitigado:** dado gravado no Flask entre 15/07 (corte da migração) e
+  17/07 à noite (queda), se existir e não estiver no stack novo, não foi reconciliado.
 
 ## Relacionados no Vault
 

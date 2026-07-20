@@ -40,6 +40,16 @@ relacionados:
   reais, lint no CI (best-effort), Casos de Uso + FAQ reais, busca semântica (RAG-lite)
   testada ponta a ponta, e backlog consolidado. Ver [[19 - Roadmap]] para o que ficou de
   fora e por quê.
+- **2026-07-19 (virada para produção)** — Fase 1 do plano de virada validada manualmente
+  pelo responsável do projeto. Na Fase 2, achado que o Flask estava fora do ar desde
+  18/07 (Postgres desaparecido durante a janela de migração de banco do stack novo,
+  2 dias sem ninguém notar — ver [[22 - Troubleshooting]] item 5). Decisão do responsável
+  do projeto: seguir direto para produção só com o stack novo. Flask desligado (processo +
+  Tarefas Agendadas do guardião/integridade) e arquivos exclusivos dele movidos para
+  `projeto_old/` (preservando `webapp/legado_cli.py`+`runner.py`+`roles.py`+`forms.py` e
+  todo `tools/`, dependências vivas do backend novo). CI atualizado (`tools-smoke`
+  substitui os jobs do Flask). Registro completo em
+  `docs/migracao/05-plano-de-virada.md` §"Registro real da virada".
 
 ## Relacionados no Vault
 

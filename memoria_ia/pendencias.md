@@ -4,12 +4,17 @@ Priorizadas: **P0** = crítico/bloqueia · **P1** = importante · **P2** = desej
 Backlog operacional do processo (não-IA) fica em [`docs/pendencias.md`](../docs/pendencias.md).
 
 ## P0 — crítico
-- [ ] **Rotacionar a senha real do Postgres no servidor** — achado F-01 da auditoria técnica de
-  2026-07-10. O lado de **código** já foi corrigido (2026-07-10): `docker-compose.yml` não tem
-  mais senha padrão (exige `PAINEL_DB_SENHA`, falha ao subir sem ela) e `tools/painel-backup.sh`
-  não tem mais `PGPASSWORD` hardcoded (lê de `/usr/local/etc/painel-db.env`, fora do repo).
-  **Falta:** trocar a senha real no container em produção e criar o `painel-db.env` no
-  servidor — passo a passo em `docs/runbooks-operacao.md` §9.
+- [x] ~~Rotacionar a senha real do Postgres no servidor~~ — **sem objeto desde 2026-07-19**:
+  o Flask (e o Postgres dele, container `painel-db`) foi desligado e arquivado em
+  `projeto_old/` na virada para o stack novo (NestJS/Angular/MariaDB). O container já não
+  existia mais quando fomos checar (achado durante a própria checagem de segurança pré-
+  virada — estava fora do ar há ~2 dias sem ninguém notar). Runbook §9 idem, mantido só
+  como histórico. Ver `vault/22 - Troubleshooting/` e
+  `docs/migracao/05-plano-de-virada.md` §"Registro real da virada".
+- [ ] **Definições dos agentes de software desatualizadas** (novo, 2026-07-19) —
+  `.claude/agents/painel-core.md` e afins ainda descrevem os caminhos do Flask
+  (`app.py`/`routes_*`/`webapp/gl_*`) que migraram para `projeto_old/` ou `backend/src/*`.
+  Precisam ser reescritos apontando para o código real. Ver `vault/19 - Roadmap/`.
 - [x] **Integridade do avanço:** RESOLVIDO por decisão (2026-06-24) — `_auto_avancar` é **permissivo de propósito** (checa só gate de documentos + ação de entrada). A versão estrita travava Agendamento/Designação. `consultor` saiu de `CAMPOS_OBRIGATORIOS["Projeto"]` (definido na Designação). Ver `decisoes.md`.
 
 ## P1 — importante

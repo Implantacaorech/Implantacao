@@ -1,8 +1,9 @@
 # Implantação Rech — SIGER® · guia curto
 
 Repositório do **time de implantação** da Rech: **agentes** (papéis), **skills** (etapas),
-**documentação** e o **painel Flask** (`webapp/`). Este arquivo é curto de propósito — o
-detalhamento operacional está em **[docs/guia-operacional-ia.md](docs/guia-operacional-ia.md)**.
+**documentação** e o **Painel** (`backend/` NestJS + `frontend/` Angular, em produção desde
+2026-07-19 — porta 5100, `http://I7M1700-01-EVE:5100`). Este arquivo é curto de propósito —
+o detalhamento operacional está em **[docs/guia-operacional-ia.md](docs/guia-operacional-ia.md)**.
 
 ## Idioma
 Tudo em **português do Brasil (pt-BR)**, em qualquer arquivo novo.
@@ -26,12 +27,22 @@ Tudo em **português do Brasil (pt-BR)**, em qualquer arquivo novo.
   **arquitetura e do código**. Decisão registrada em
   [ADR-0001](<vault/17 - ADR/ADR-0001 - Adocao do ecossistema Vault + IA.md>).
 
-## Stack oficial do novo backend/frontend (em migração)
+## Stack oficial (em produção desde 2026-07-19)
 
 Backend **NestJS + TypeScript + TypeORM** (`backend/`) · Frontend **Angular + TypeScript**
-(`frontend/`) · Banco **MariaDB**. Convive com o `webapp/` Flask legado enquanto a migração
-não termina — detalhe em [vault/03 - Backend/](<vault/03 - Backend/03 - Backend.md>) e
+(`frontend/`) · Banco **MariaDB** (`painel-db-mariadb`, db `painel_novo`) · **docservice/**
+(Python, geração fiel + transcrição, nunca exposto publicamente). Detalhe em
+[vault/03 - Backend/](<vault/03 - Backend/03 - Backend.md>) e
 [vault/04 - Frontend/](<vault/04 - Frontend/04 - Frontend.md>).
+
+O **painel Flask legado foi desligado e arquivado em `projeto_old/`** (virada executada em
+2026-07-19 — ver `docs/migracao/05-plano-de-virada.md` e
+[vault/18 - Histórico/](<vault/18 - Histórico/18 - Histórico.md>)). **`webapp/` continua
+existindo, só que reduzido** a `legado_cli.py`/`runner.py`/`roles.py`/`forms.py` — uma
+ponte de subprocesso chamada pelo backend novo (`LegadoCliService`) para o assistente
+administrativo legado (roles/cliente/criar-templates/verbal/saúde). **`tools/` continua
+vivo por completo** — é dependência real dessa ponte e do `docservice/`. Nada em `webapp/`
+ou `tools/` que sobrou é código morto; não mover/apagar sem checar `import` primeiro.
 
 ## Papéis (agentes) — detalhe no guia operacional
 `coordenador-implantacao` · `setor-adm` · `consultor-implantacao` (GCI) · `gerente-projeto` ·
@@ -51,24 +62,33 @@ não termina — detalhe em [vault/03 - Backend/](<vault/03 - Backend/03 - Backe
 - **Sigla da empresa:** 3 caracteres + CNPJ + código do cliente no SICLA.
 - Apontar horas na RNS correta; registrar no SICLA com o tipo certo; **faltou dado → pergunte**.
 
-## Painel Flask — não gerar `.exe`
-Roda da **fonte** via `Iniciar_Servidor.bat` em `http://127.0.0.1:5000` (Postgres via `PAINEL_DB_URL`).
-**Não** reconstruir o `.exe` (legado) salvo pedido explícito. Entrega = código no GitHub (commit + push).
-Geradores Office e runtime detalhados em [docs/guia-operacional-ia.md](docs/guia-operacional-ia.md) e [tools/README.md](tools/README.md).
+## Painel — como roda em produção
 
-## Painel Flask — agentes de software e fronteiras
-Para manter/evoluir o `webapp/`, use os **agentes de software** em `.claude/agents/` (distintos
-dos agentes de NEGÓCIO acima): **painel-core** (backend/rotas/`db.py`/regras) · **qualidade**
-(pytest + revisão + endpoints) · **documentos-geracao** (`gl_*`/modelos) · **integracoes-operacao**
-(e-mail/Oracle/infra) · **documentacao-contexto** · **seguranca-permissoes**. Mapa e ordem de
-implantação: [docs/agentes-software.md](docs/agentes-software.md).
+NestJS serve o build do Angular direto (`@nestjs/serve-static`) — um único processo/porta
+(**5100**, máquina `I7M1700-01-EVE`). Sobe via `Iniciar_Painel_Novo.bat` (valida
+`MIGRACAO_DB_URL`/`MIGRACAO_JWT_SECRET`/`MIGRACAO_JWT_REFRESH_SECRET` antes); guardião
+(`Guardiao_Painel_Novo.vbs`) e verificação de integridade rodam como Tarefas Agendadas.
+Entrega = código no GitHub (commit + push). `docs/runbooks-operacao.md` e
+[vault/12 - DevOps/](<vault/12 - DevOps/12 - DevOps.md>) têm o detalhe operacional.
+**`projeto_old/`** guarda o painel Flask desligado (não é runtime, é arquivo morto —
+histórico/rollback de emergência; ver `docs/migracao/05-plano-de-virada.md` Fase 6).
 
-**Regra de ouro — fronteira por módulo (não sobrepor):**
-`app.py`/`routes_*`/`db.py` → painel-core · `gerar_layout`/`gl_*`/`tools/gerar_*`/modelos →
-documentos-geracao · `mailer`/`imap_intake`/`gmail_api`/`disponibilidade`/infra →
-integracoes-operacao · `docs/`+`memoria_ia/` → documentacao-contexto.
-**`templates/` + CSS são do MANUS IA — nenhum agente de software escreve lá.**
+## Painel — agentes de software e fronteiras
 
-**Antes de todo push** (e após cada pull que traga mudança do MANUS): rode o smoke
-`python webapp/verificar_app.py` (segundos) e a suíte `pytest webapp/test_painel.py -q` (≈4 min).
-Rotas vivem nos `routes_*` com `register(app, **deps)` — nunca `from app import …` num módulo de rota.
+Para manter/evoluir o Painel, use os **agentes de software** em `.claude/agents/` (distintos
+dos agentes de NEGÓCIO acima): **painel-core** · **qualidade** · **documentos-geracao** ·
+**integracoes-operacao** · **documentacao-contexto** · **seguranca-permissoes**. As
+definições desses agentes ainda descrevem os caminhos antigos do Flask (`app.py`,
+`routes_*`, `webapp/db.py`, `webapp/gl_*`) — **desatualizado, pendência aberta** (ver
+[vault/19 - Roadmap/](<vault/19 - Roadmap/19 - Roadmap.md>)); até serem revisados, mapeie
+mentalmente para o equivalente em `backend/src/*`. Mapa original (pré-virada):
+[docs/agentes-software.md](docs/agentes-software.md).
+
+**`webapp/legado_cli.py`/`runner.py`/`roles.py`/`forms.py` e `tools/`** continuam vivos —
+são a ponte de subprocesso do backend novo (`LegadoCliService`) para o assistente
+administrativo legado. Não mover/apagar sem checar quem importa o quê primeiro.
+**`templates/` + CSS do Angular são do MANUS IA — nenhum agente de software escreve lá.**
+
+**Antes de todo push:** `cd backend && npm test` e `cd frontend && npm test` (specs reais,
+~40s+~23s). `python tools/verificar.py` (smoke dos geradores, best-effort) se mexer em
+`tools/`. CI roda os três em `.github/workflows/ci.yml`.

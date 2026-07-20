@@ -48,11 +48,13 @@ ainda depende de decisão/trabalho maior.
 | RAG "de verdade" (banco vetorial, Knowledge Graph, indexação incremental automática) | ❌ Não iniciado além do RAG-lite | RAG-lite em [[14 - IA]] prova o conceito; produção exigiria decidir hospedagem/custo recorrente da API de embeddings |
 | Automação contínua (toda mudança de código atualiza doc/diagrama sozinha) | ❌ Não iniciado | Exigiria hook de CI que gera/valida Vault a cada PR — próximo passo natural depois deste backlog |
 | Auditoria contínua (código×doc, banco×entidade, API×Swagger) gerando tarefa sozinha | ❌ Não iniciado | Depende da automação contínua acima existir primeiro |
+| **Virada para produção (Flask → stack novo)** | ✅ Feito, com ressalva | 2026-07-19 — ver [[18 - Histórico]]. Fases 3/4 formais do plano puladas (Postgres do Flask já estava inacessível há 2 dias); risco de dado não reconciliado aceito pelo responsável do projeto, não mitigado |
+| **Definições dos agentes de software desatualizadas** | ❌ Não iniciado | `painel-core`/`documentos-geracao`/etc. em `.claude/agents/` ainda apontam pros caminhos do Flask (`app.py`, `routes_*`, `webapp/gl_*`) que migraram pra `projeto_old/` ou `backend/src/*` — precisa reescrever apontando pro código real |
 
 ### Por que os itens ❌ não foram "só feitos"
 
-- **Dashboards:** exigem decidir uma plataforma (adicionar ao painel Flask? Grafana?
-  página estática no próprio Vault?) — decisão de produto, não implementação.
+- **Dashboards:** exigem decidir uma plataforma (tela dentro do próprio Angular? Grafana?
+  página estática no Vault?) — decisão de produto, não implementação.
 - **RAG de produção / Knowledge Graph:** envolve custo recorrente de API (embeddings a
   cada mudança de doc) e escolha de onde persistir — não dá pra introduzir num sistema de
   produção sem alguém decidir isso conscientemente.

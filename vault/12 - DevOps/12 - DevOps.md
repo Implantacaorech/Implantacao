@@ -21,19 +21,22 @@ relacionados:
 
 ## CI existente
 
-`.github/workflows/ci.yml` roda em push/PR para `main` com quatro jobs, validados
-localmente antes de subir (2026-07-19):
+`.github/workflows/ci.yml` roda em push/PR para `main` com três jobs (atualizado em
+2026-07-19, depois da virada para produção — ver [[18 - Histórico]]):
 
-- `test` — compileall + smoke + pytest com cobertura do painel Flask legado (`webapp/`).
-- `test-postgres` — smoke do schema contra Postgres real.
-- `backend-test` — **novo**: `npm ci` + `npm test -- --ci` (Jest) em `backend/`. Rodado
-  localmente antes de plugar no CI: 44 suítes, 364 testes, todos passando (~47s).
-- `frontend-test` — **novo**: `npm ci` + `npm test` (Vitest, via `@angular/build:unit-test`
-  — não precisa de browser real, roda em Node puro) em `frontend/`. Rodado localmente: 27
-  arquivos de teste, 111 testes, todos passando (~23s).
+- `tools-smoke` — compileall + smoke dos geradores (`tools/verificar.py`, best-effort).
+  Substituiu o antigo `test`/`test-postgres` (pytest do painel Flask), que ficaram sem
+  objeto quando `webapp/test_painel.py` e o resto do Flask foram movidos para
+  `projeto_old/`. `tools/` continua vivo (dependência da ponte `legado_cli`), por isso
+  ainda tem smoke.
+- `backend-test` — `npm ci` + `npm test -- --ci` (Jest) em `backend/`, mais lint
+  best-effort. 44 suítes, 364 testes (validado no Actions real).
+- `frontend-test` — `npm ci` + `npm test` (Vitest, via `@angular/build:unit-test` — não
+  precisa de browser real) em `frontend/`. 27 arquivos, 111 testes (validado no Actions
+  real).
 
-Esses quatro nomes de job são os `contexts` a exigir quando a branch protection abaixo for
-aplicada (atualiza a lista de `contexts` no exemplo de `PUT` mais abaixo).
+Esses três nomes de job são os `contexts` a exigir quando a branch protection abaixo for
+aplicada (a lista de `contexts` no exemplo de `PUT` abaixo já está atualizada).
 
 ## Processo-alvo: PR obrigatório + CI + revisão antes de merge
 
@@ -59,7 +62,7 @@ endpoints de branch protection (`GET/PUT /repos/Implantacaorech/Implantacao/bran
 ```http
 PUT /repos/Implantacaorech/Implantacao/branches/main/protection
 {
-  "required_status_checks": {"strict": false, "contexts": ["test", "test-postgres", "backend-test", "frontend-test"]},
+  "required_status_checks": {"strict": false, "contexts": ["tools-smoke", "backend-test", "frontend-test"]},
   "enforce_admins": true,
   "required_pull_request_reviews": {"required_approving_review_count": 1},
   "restrictions": null
@@ -85,10 +88,10 @@ protection rule para `main`, marcando as mesmas opções acima pela UI.
 ## Aponta para (conteúdo real do repositório)
 
 - `../docker-compose.yml`
-- `../Iniciar_Servidor.bat`
+- `../Iniciar_Painel_Novo.bat` (produção — `../projeto_old/Iniciar_Servidor.bat` é o Flask arquivado)
 - `../.github/workflows/ci.yml`
 
 ## Status
 
-Esqueleto criado em 2026-07-19, diagnóstico de branch protection refeito no mesmo dia com
-credencial real. Ver [[00 - Dashboard]].
+CI atualizado para refletir a virada (2026-07-19) — jobs do Flask legado removidos,
+branch protection segue pendente. Ver [[00 - Dashboard]].

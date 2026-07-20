@@ -233,6 +233,59 @@ trabalho do time.
 
 ---
 
+## Registro real da virada (executada em 2026-07-19 — divergências do plano acima)
+
+A virada aconteceu, mas **não seguiu a sequência ideal Fase 2→3→4→5→6** — as circunstâncias
+mudaram o plano no meio do caminho. Registro por transparência (mesmo espírito das outras
+atualizações deste documento):
+
+- **Fase 1 validada** pelo responsável do projeto, no navegador real, em `http://I7M1700-01-EVE:5100`.
+- **Achado durante a Fase 2** (não estava no plano): o Flask estava **fora do ar desde
+  18/07 00:04** (site inteiro, 2 dias), o guardião falhando a cada 5 min sem conseguir
+  reerguer — causa raiz aparente: o Postgres do Flask (container `painel-db`) desapareceu
+  durante a janela da migração de banco do stack novo (17/07 à tarde). Como o Flask esteve
+  **inacessível o tempo todo** desde então, não havia como ele ter recebido escrita nova
+  nesse período — o risco de perda de dado da Fase 3 ("congelar e sincronizar") ficou
+  **sem objeto**: não tinha o que sincronizar de um sistema que não aceitava requisição
+  nenhuma. Detalhe da investigação em [[vault/22 - Troubleshooting]].
+- **Decisão do responsável do projeto** (2026-07-19, registrada aqui por transparência, não
+  tomada de forma autônoma pela IA): pular a tentativa de recuperar o Postgres do Flask e
+  ir direto para produção só com o stack novo — Fases 3/4 formais (congelar+ressincronizar,
+  comunicação formal aos 20 usuários) não foram executadas como descrito acima; o que
+  substituiu a Fase 4 foi o próprio uso já informal que a equipe fazia do sistema novo.
+- **Executado (Fase 5/6 comprimidas):**
+  - Guardião (`Painel - Guardiao`) e Verificação de Integridade (`Painel - Verificacao de
+    Integridade`) do Flask **desabilitados** (Tarefas Agendadas).
+  - Processo Flask **finalizado**.
+  - Arquivos **só do Flask** movidos para `projeto_old/` (`git mv`, histórico preservado):
+    `webapp/app.py`+`routes_*`+`db.py`+`gl_*`+demais módulos, `webapp/templates/`,
+    `webapp/static/`, `Iniciar_Servidor.bat`, `Guardiao_Painel.vbs`,
+    `Iniciar_Banco_Docker.bat`, `Abrir_Banco.bat`, `Iniciar_Painel.bat`,
+    `Verificar_Integridade.bat`, `build_painel_exe.py`,
+    `tools/migrar_sqlite_para_pg.py`, `tools/ci_postgres_smoke.py`.
+  - **Não movidos** (dependência viva do stack novo, confirmada rastreando imports antes de
+    mover): `webapp/legado_cli.py`, `runner.py`, `roles.py`, `forms.py` (ponte de
+    subprocesso usada por `LegadoCliService`) e **todo `tools/`** (usado por essa ponte e
+    indiretamente pelo `docservice/`, que tem cópia própria dos geradores — não importa de
+    `webapp/`).
+  - Validado depois da mudança: `npm test` do backend (363/364 — a 1 falha é um teste de
+    data sensível a virada de meia-noite, não relacionado) e `legado_cli.py` respondendo
+    `{"acao":"saude"}` com 30/30 OK.
+  - `.github/workflows/ci.yml` atualizado: jobs `test`/`test-postgres` (Flask) substituídos
+    por `tools-smoke` (só o que continua vivo); `backend-test`/`frontend-test` inalterados.
+- **Não recuperado**: se havia dado real gravado no Flask entre 15/07 (corte da migração
+  original) e a queda (17/07 à noite) e esse dado não está no stack novo, ele **não foi
+  reconciliado** — decisão aceita pelo responsável do projeto diante da indisponibilidade
+  do Postgres de origem, não uma garantia de "zero perda" cumprida à risca.
+- **Rollback deixou de ser trivial**: diferente do desenho original (Fase 6: religar o
+  Flask), o Flask não tem mais Postgres nem processo rodando, e boa parte do seu código
+  saiu do lugar padrão. Rollback de emergência agora significa: restaurar os arquivos de
+  `projeto_old/` para o lugar original (`git mv` reverso) **e** reconstruir o Postgres a
+  partir do backup mais recente (`C:\PainelBackups\painel_20260717_220001.sql.gz`) — não é
+  mais "ligar de novo", é um procedimento de restauração.
+
+---
+
 ## Limitações conhecidas aceitas nesta primeira virada
 
 Lacunas propositais já registradas durante a conversão (ver
