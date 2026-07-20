@@ -21,3 +21,8 @@ export interface SalvarChaveIa {
   apiKey: string;
   modelo: string;
 }
+
+export interface ModeloOpenRouter {
+  id: string;
+  nome: string;
+}

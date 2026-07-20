@@ -3,7 +3,7 @@ import { FormArray, FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ConfigIaService } from '../../core/services/config-ia.service';
-import { ProvedorIa, StatusFinalidadeIa } from '../../core/models/config-ia.model';
+import { ModeloOpenRouter, ProvedorIa, StatusFinalidadeIa } from '../../core/models/config-ia.model';
 
 /** Ferramentas → Modo IA: configura a chave de IA POR FINALIDADE (Protocolos, Dicionário…),
  * cada uma com provedor próprio (Anthropic ou OpenRouter) e modelo. Campos separados por
@@ -25,6 +25,7 @@ export class ConfigIaComponent {
   readonly aviso = signal<string | null>(null);
   readonly provedores = signal<ProvedorIa[]>(['anthropic', 'openrouter']);
   readonly finalidades = signal<StatusFinalidadeIa[]>([]);
+  readonly modelosOr = signal<ModeloOpenRouter[]>([]);
 
   readonly form = this.fb.nonNullable.group({
     itens: this.fb.array<
@@ -63,10 +64,30 @@ export class ConfigIaComponent {
     } finally {
       this.carregando.set(false);
     }
+    // Catálogo do OpenRouter para o combo — best-effort, não bloqueia a tela.
+    try {
+      this.modelosOr.set(await this.service.modelosOpenRouter());
+    } catch {
+      this.modelosOr.set([]);
+    }
+  }
+
+  ehOpenRouter(i: number): boolean {
+    return (this.itens.at(i).get('provider')?.value as ProvedorIa) === 'openrouter';
   }
 
   rotuloProvedor(p: ProvedorIa): string {
     return p === 'openrouter' ? 'OpenRouter' : 'Anthropic';
+  }
+
+  /** Alerta preventivo: no OpenRouter o modelo precisa do prefixo do provedor
+   * (ex.: anthropic/claude-sonnet-4). Um id "puro" da Anthropic (claude-opus-4-8) é rejeitado
+   * com 400 "not a valid model ID". */
+  modeloSuspeito(i: number): boolean {
+    const grupo = this.itens.at(i);
+    const provider = grupo.get('provider')?.value as ProvedorIa;
+    const modelo = ((grupo.get('modelo')?.value as string) ?? '').trim();
+    return provider === 'openrouter' && modelo.length > 0 && !modelo.includes('/');
   }
 
   async salvar(idx: number): Promise<void> {

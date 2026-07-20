@@ -53,18 +53,36 @@
               </label>
               <label class="campo" style="flex:1;min-width:200px">
                 <span>Modelo</span>
-                <input type="text" formControlName="modelo" placeholder="claude-opus-4-8 / anthropic/claude-sonnet-4" autocomplete="off" />
+                <input type="text" formControlName="modelo"
+                       [attr.list]="ehOpenRouter(i) ? 'modelos-openrouter' : null"
+                       placeholder="claude-opus-4-8 / anthropic/claude-sonnet-4" autocomplete="off" />
+                @if (ehOpenRouter(i)) {
+                  <small class="dica">Digite para filtrar e escolha um modelo do catálogo do OpenRouter.</small>
+                }
               </label>
               <button class="btn primario" type="button" [disabled]="salvandoIdx() !== null" (click)="salvar(i)">
                 {{ salvandoIdx() === i ? 'Salvando…' : 'Salvar' }}
               </button>
             </div>
+            @if (modeloSuspeito(i)) {
+              <small class="resultado erro" style="display:block;padding:6px 10px;margin-top:6px">
+                No OpenRouter o modelo precisa do prefixo do provedor, ex.: <code>anthropic/claude-sonnet-4</code>.
+                Um id "puro" da Anthropic (<code>claude-opus-4-8</code>) é recusado. Veja o catálogo em
+                <a href="https://openrouter.ai/models" target="_blank" rel="noopener">openrouter.ai/models</a>.
+              </small>
+            }
             <small class="dica">Fica salva em arquivo local (fora do Git). Deixe a chave em branco e salve para remover.</small>
           }
         </div>
       }
     </div>
   </form>
+
+  <datalist id="modelos-openrouter">
+    @for (m of modelosOr(); track m.id) {
+      <option [value]="m.id">{{ m.nome }}</option>
+    }
+  </datalist>
 
   <a class="btn" routerLink="/home">← Início</a>
 }
