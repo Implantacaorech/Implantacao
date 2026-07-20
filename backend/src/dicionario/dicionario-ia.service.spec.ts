@@ -28,8 +28,7 @@ describe('DicionarioIaService', () => {
   const dicionario = { recuperarParaPergunta: jest.fn() };
   const ia = {
     disponivel: jest.fn(),
-    obterChave: jest.fn(),
-    modelo: 'claude-opus-4-8',
+    completar: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -64,5 +63,20 @@ describe('DicionarioIaService', () => {
     expect(r.fontes).toHaveLength(1);
     expect(r.fontes[0].slug).toBe('01-ctb-contabilidade');
     expect(r.resposta).toContain('não está configurada');
+  });
+
+  it('com documentos e IA disponível: sintetiza via completar("dicionario") e cita as fontes', async () => {
+    dicionario.recuperarParaPergunta.mockResolvedValue([doc()]);
+    ia.disponivel.mockReturnValue(true);
+    ia.completar.mockResolvedValue('Resposta direta: use o menu 1.6-T [1].');
+    const r = await service.perguntar('como configurar CTB101');
+    expect(ia.completar).toHaveBeenCalledWith(
+      'dicionario',
+      expect.objectContaining({ maxTokens: 2000 }),
+    );
+    expect(r.iaDisponivel).toBe(true);
+    expect(r.temFundamento).toBe(true);
+    expect(r.resposta).toContain('menu 1.6-T');
+    expect(r.fontes[0].slug).toBe('01-ctb-contabilidade');
   });
 });

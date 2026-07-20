@@ -1,10 +1,12 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <h1>Modo IA — reconferência (Claude)</h1>
-  <p class="dica">Com uma chave de API, o texto passa por uma 2ª revisão pela Claude (tempo verbal
-    no <strong>futuro do presente do indicativo</strong> + ortografia), além da correção offline.
-    Sem chave, tudo funciona normalmente só com o corretor offline.</p>
+  <h1>Modo IA — chaves por finalidade</h1>
+  <p class="dica">Cada finalidade tem a sua própria chave, provedor e modelo. Provedores aceitos:
+    <strong>Anthropic</strong> (chave <code>sk-ant-…</code>) e
+    <strong>OpenRouter</strong> (<a href="https://openrouter.ai/" target="_blank" rel="noopener">openrouter.ai</a>,
+    chave <code>sk-or-…</code>, modelo no formato <code>anthropic/claude-sonnet-4</code>).
+    Sem chave, a finalidade funciona no modo básico (sem IA).</p>
 
   @if (aviso()) {
     <div class="resultado ok" style="padding:10px 16px;display:flex;align-items:center;gap:8px">
@@ -15,35 +17,54 @@
     <div class="resultado erro" style="padding:10px 16px;margin-bottom:10px">{{ erro() }}</div>
   }
 
-  <div class="resultado {{ ativa() ? 'ok' : '' }}" style="padding:12px 18px;display:flex;align-items:center;gap:8px">
-    @if (ativa()) {
-      <svg class="svgi" style="width:14px;height:14px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
-      <strong>IA ativa</strong> — modelo <code>{{ modelo() }}</code>@if (viaEnv()) { (chave via variável de ambiente) }
-    } @else {
-      <svg class="svgi" style="width:14px;height:14px;color:var(--muted)" aria-hidden="true"><use href="#ic-clock"/></svg>
-      <strong>IA inativa</strong> — usando apenas o corretor offline.
-    }
-  </div>
+  <form [formGroup]="form">
+    <div formArrayName="itens">
+      @for (f of finalidades(); track f.finalidade; let i = $index) {
+        <div class="painel" [formGroupName]="i" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <h3 style="margin:0">{{ f.rotulo }}</h3>
+            @if (f.ativa) {
+              <span class="resultado ok" style="padding:2px 10px;font-size:12px;display:inline-flex;align-items:center;gap:6px">
+                <svg class="svgi" style="width:12px;height:12px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+                ativa — {{ rotuloProvedor(f.provider) }}@if (f.modelo) { · <code>{{ f.modelo }}</code> }@if (f.viaEnv) { · via variável de ambiente }
+              </span>
+            } @else {
+              <span class="dica" style="font-size:12px">inativa (modo básico)</span>
+            }
+          </div>
+          <p class="dica" style="margin-top:0">{{ f.descricao }}</p>
 
-  <form class="painel" [formGroup]="form" (ngSubmit)="salvar()">
-    <label class="campo">
-      <span>Chave de API da Anthropic</span>
-      <input type="password" formControlName="apiKey" placeholder="sk-ant-..." autocomplete="off" />
-      <small>
-        @if (viaEnv()) {
-          A chave já vem da variável de ambiente <code>MIGRACAO_ANTHROPIC_API_KEY</code>.
-        } @else {
-          Fica salva no banco (fora do Git). Deixe em branco e salve para remover.
-        }
-      </small>
-    </label>
-    @if (!viaEnv()) {
-      <button class="btn primario" type="submit" [disabled]="salvando()">{{ salvando() ? 'Salvando…' : 'Salvar chave' }}</button>
-    }
+          @if (f.viaEnv) {
+            <p class="dica">A chave vem da variável de ambiente <code>MIGRACAO_ANTHROPIC_API_KEY</code> — para
+              trocar aqui, remova a variável do ambiente e reinicie o servidor.</p>
+          } @else {
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+              <label class="campo" style="min-width:150px">
+                <span>Provedor</span>
+                <select formControlName="provider">
+                  @for (p of provedores(); track p) {
+                    <option [value]="p">{{ rotuloProvedor(p) }}</option>
+                  }
+                </select>
+              </label>
+              <label class="campo" style="flex:2;min-width:220px">
+                <span>Chave de API</span>
+                <input type="password" formControlName="apiKey" placeholder="sk-ant-… ou sk-or-…" autocomplete="off" />
+              </label>
+              <label class="campo" style="flex:1;min-width:200px">
+                <span>Modelo</span>
+                <input type="text" formControlName="modelo" placeholder="claude-opus-4-8 / anthropic/claude-sonnet-4" autocomplete="off" />
+              </label>
+              <button class="btn primario" type="button" [disabled]="salvandoIdx() !== null" (click)="salvar(i)">
+                {{ salvandoIdx() === i ? 'Salvando…' : 'Salvar' }}
+              </button>
+            </div>
+            <small class="dica">Fica salva em arquivo local (fora do Git). Deixe a chave em branco e salve para remover.</small>
+          }
+        </div>
+      }
+    </div>
   </form>
 
-  <p class="dica">Modelo padrão: <code>claude-opus-4-8</code>. Para reduzir custo, defina a variável
-    <code>MIGRACAO_ANTHROPIC_MODELO</code> (ex.: <code>claude-sonnet-5</code> ou
-    <code>claude-haiku-4-5</code>) antes de iniciar o servidor.</p>
   <a class="btn" routerLink="/home">← Início</a>
 }

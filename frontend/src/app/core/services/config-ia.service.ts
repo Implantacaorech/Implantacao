@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiEnvelope } from '../models/api-envelope.model';
-import { StatusConfigIa } from '../models/config-ia.model';
+import { SalvarChaveIa, StatusConfigIa } from '../models/config-ia.model';
 
 @Injectable({ providedIn: 'root' })
 export class ConfigIaService {
@@ -15,8 +15,8 @@ export class ConfigIaService {
     return res.data;
   }
 
-  async salvar(apiKey: string): Promise<StatusConfigIa> {
-    const res = await firstValueFrom(this.http.post<ApiEnvelope<StatusConfigIa>>(this.base, { apiKey }));
+  async salvar(dados: SalvarChaveIa): Promise<StatusConfigIa> {
+    const res = await firstValueFrom(this.http.post<ApiEnvelope<StatusConfigIa>>(this.base, dados));
     return res.data;
   }
 }

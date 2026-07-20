@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import Anthropic from '@anthropic-ai/sdk';
 import { IaService } from '../ia/ia.service';
 import { PROTO_CAMPOS_TEXTO, PROTO_MODULOS } from './protocolos.constants';
 
@@ -21,7 +20,7 @@ const SISTEMA =
   "7. 'passo_a_passo' numerado (1., 2., ...), prático, na ordem executada no vídeo.\n" +
   '8. Quando útil, referencie o tempo do vídeo entre colchetes, ex.: [12:35].\n' +
   '9. Listas (pre_requisitos, configuracoes, dependencias, regras_negocio, ' +
-  "pontos_atencao, exemplos, assuntos_removidos, pendencias): um item por linha, " +
+  'pontos_atencao, exemplos, assuntos_removidos, pendencias): um item por linha, ' +
   "prefixado com '- '.\n\n" +
   'Responda APENAS com um objeto JSON (sem texto antes/depois) com EXATAMENTE estas ' +
   'chaves, todas strings: titulo, modulo, menu, assunto, resumo, objetivo, ' +
@@ -78,26 +77,19 @@ export class ProtocoloIaService {
   constructor(private readonly ia: IaService) {}
 
   disponivel(): boolean {
-    return this.ia.disponivel();
+    return this.ia.disponivel('protocolos');
   }
 
-  async analisar(transcricao: string, videoNome = ''): Promise<ResultadoAnaliseIa> {
-    const key = this.ia.obterChave();
-    if (!key) {
-      throw new Error('Chave de IA não configurada (Config → IA).');
-    }
-    const client = new Anthropic({ apiKey: key });
+  async analisar(
+    transcricao: string,
+    videoNome = '',
+  ): Promise<ResultadoAnaliseIa> {
     const user = `Vídeo: ${videoNome}\n\nTRANSCRIÇÃO (com timestamps):\n${transcricao}`;
-    const resp = await client.messages.create({
-      model: this.ia.modelo,
-      max_tokens: 8000,
+    const bruto = await this.ia.completar('protocolos', {
       system: SISTEMA,
       messages: [{ role: 'user', content: user }],
+      maxTokens: 8000,
     });
-    const bruto = resp.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map((b) => b.text)
-      .join('');
     const data = extraiJson(bruto);
     if (typeof data !== 'object' || data === null || Array.isArray(data)) {
       throw new Error('A IA não devolveu o JSON esperado.');
@@ -109,7 +101,9 @@ export class ProtocoloIaService {
       const valor = bruto_data[chave];
       campos[campo] = (typeof valor === 'string' ? valor : '').trim();
     }
-    if (!PROTO_MODULOS.includes(campos.modulo as (typeof PROTO_MODULOS)[number])) {
+    if (
+      !PROTO_MODULOS.includes(campos.modulo as (typeof PROTO_MODULOS)[number])
+    ) {
       campos.modulo = 'Módulo a validar';
     }
     if (!campos.menu) {
