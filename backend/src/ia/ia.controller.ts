@@ -39,6 +39,14 @@ export class IaController {
     });
   }
 
+  @Get('modelos-openrouter')
+  @ApiOperation({
+    summary: 'Catálogo de modelos do OpenRouter (para o combo de seleção)',
+  })
+  async modelosOpenRouter() {
+    return new ApiEnvelope(await this.ia.listarModelosOpenRouter());
+  }
+
   @Post()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

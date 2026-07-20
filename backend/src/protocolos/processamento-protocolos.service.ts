@@ -78,7 +78,10 @@ export class ProcessamentoProtocolosService {
         );
         if (novo) novos.push(id);
       } catch (e) {
-        this.logger.error(`Falha ao registrar vídeo ${nome}`, e instanceof Error ? e.stack : String(e));
+        this.logger.error(
+          `Falha ao registrar vídeo ${nome}`,
+          e instanceof Error ? e.stack : String(e),
+        );
       }
     }
     return novos;
@@ -120,15 +123,28 @@ export class ProcessamentoProtocolosService {
     }
   }
 
-  /** Traduz erros comuns da API/pipeline para uma mensagem clara ao usuário. */
+  /** Traduz erros comuns da API/pipeline para uma mensagem clara ao usuário. Provedor-agnóstico
+   * (Anthropic ou OpenRouter — ver Config → IA), já que a chave pode ser de qualquer um. */
   private erroAmigavel(e: unknown): string {
-    const txt = e instanceof Error ? `${e.constructor.name}: ${e.message}` : String(e);
+    const txt =
+      e instanceof Error ? `${e.constructor.name}: ${e.message}` : String(e);
     const low = txt.toLowerCase();
-    if (low.includes('credit balance is too low')) {
+    if (low.includes('not a valid model') || low.includes('model not found')) {
       return (
-        'Créditos da API de IA esgotados — recarregue em console.anthropic.com ' +
-        '(Plans & Billing) e clique em Processar agora. A transcrição já feita ' +
-        'será aproveitada (não transcreve de novo).'
+        'Modelo de IA inválido para o provedor escolhido — confira em Config → IA. ' +
+        'No OpenRouter o modelo precisa do prefixo do provedor (ex.: anthropic/claude-sonnet-4), ' +
+        'não o id "puro" da Anthropic. Depois clique em Processar agora (a transcrição já feita será aproveitada).'
+      );
+    }
+    if (
+      low.includes('credit balance is too low') ||
+      low.includes('insufficient credits') ||
+      low.includes('402')
+    ) {
+      return (
+        'Créditos da API de IA esgotados no provedor configurado (Config → IA) — recarregue ' +
+        'na conta do provedor (Anthropic: console.anthropic.com · OpenRouter: openrouter.ai) e ' +
+        'clique em Processar agora. A transcrição já feita será aproveitada (não transcreve de novo).'
       );
     }
     if (
@@ -168,7 +184,10 @@ export class ProcessamentoProtocolosService {
    * transcrição JÁ existe (ex.: reprocessando após falha da IA ou edição), ela é
    * APROVEITADA — vai direto para a análise. Em falha, marca Erro e move o vídeo p/
    * 'Videos Com Erro'. Devolve (ok, msg). */
-  async processar(id: number, autor = 'robô'): Promise<{ ok: boolean; msg: string }> {
+  async processar(
+    id: number,
+    autor = 'robô',
+  ): Promise<{ ok: boolean; msg: string }> {
     const p = await this.protocolos.buscar(id);
     if (!p) return { ok: false, msg: 'Protocolo não encontrado.' };
 
@@ -186,7 +205,12 @@ export class ProcessamentoProtocolosService {
     try {
       if (!texto) {
         // só transcreve se ainda não há transcrição
-        await this.protocolos.atualizarStatus(id, 'Transcrevendo', undefined, autor);
+        await this.protocolos.atualizarStatus(
+          id,
+          'Transcrevendo',
+          undefined,
+          autor,
+        );
         await this.transcricao.iniciar(id, p.videoCaminho);
         const t = await this.aguardarTranscricao(id);
         await this.protocolos.atualizar(id, {
@@ -200,24 +224,46 @@ export class ProcessamentoProtocolosService {
       }
 
       await this.protocolos.atualizarStatus(id, 'Analisando', undefined, autor);
-      const { campos, bruto } = await this.ia.analisar(texto, p.videoNome || '');
+      const { campos, bruto } = await this.ia.analisar(
+        texto,
+        p.videoNome || '',
+      );
       await this.protocolos.atualizar(id, { ...campos, textoIa: bruto });
 
       await this.protocolos.atualizarStatus(id, 'Em revisão', undefined, autor);
       if (p.videoOrigem === 'sharepoint') {
-        const novoCaminho = this.moverVideo(p.videoCaminho, 'Videos Processados');
-        if (novoCaminho) await this.protocolos.atualizar(id, { videoCaminho: novoCaminho });
+        const novoCaminho = this.moverVideo(
+          p.videoCaminho,
+          'Videos Processados',
+        );
+        if (novoCaminho)
+          await this.protocolos.atualizar(id, { videoCaminho: novoCaminho });
       }
       return { ok: true, msg: 'Protocolo pronto para revisão.' };
     } catch (e) {
-      this.logger.error(`Pipeline do protocolo ${id} falhou`, e instanceof Error ? e.stack : String(e));
-      await this.protocolos.atualizarStatus(id, 'Erro', this.erroAmigavel(e), autor);
+      this.logger.error(
+        `Pipeline do protocolo ${id} falhou`,
+        e instanceof Error ? e.stack : String(e),
+      );
+      await this.protocolos.atualizarStatus(
+        id,
+        'Erro',
+        this.erroAmigavel(e),
+        autor,
+      );
       if (p.videoOrigem === 'sharepoint') {
         const atual = await this.protocolos.buscar(id);
-        const novoCaminho = this.moverVideo(atual?.videoCaminho ?? p.videoCaminho, 'Videos Com Erro');
-        if (novoCaminho) await this.protocolos.atualizar(id, { videoCaminho: novoCaminho });
+        const novoCaminho = this.moverVideo(
+          atual?.videoCaminho ?? p.videoCaminho,
+          'Videos Com Erro',
+        );
+        if (novoCaminho)
+          await this.protocolos.atualizar(id, { videoCaminho: novoCaminho });
       }
-      return { ok: false, msg: `Falha no processamento: ${e instanceof Error ? e.constructor.name : 'Error'}` };
+      return {
+        ok: false,
+        msg: `Falha no processamento: ${e instanceof Error ? e.constructor.name : 'Error'}`,
+      };
     }
   }
 
@@ -225,7 +271,10 @@ export class ProcessamentoProtocolosService {
    * não aguarda a conclusão (equivalente a webapp/protocolos.py:processar_async). */
   processarAsync(id: number, autor = ''): void {
     this.processar(id, autor || 'manual').catch((e) => {
-      this.logger.error(`processarAsync falhou para o protocolo ${id}`, e instanceof Error ? e.stack : String(e));
+      this.logger.error(
+        `processarAsync falhou para o protocolo ${id}`,
+        e instanceof Error ? e.stack : String(e),
+      );
     });
   }
 
@@ -235,7 +284,9 @@ export class ProcessamentoProtocolosService {
     await this.varrerPasta(autor);
     const pendentes = await this.protocolos.listar({ status: 'Pendente' });
     let ok = 0;
-    for (const p of pendentes.sort((a, b) => a.criadoEm.getTime() - b.criadoEm.getTime())) {
+    for (const p of pendentes.sort(
+      (a, b) => a.criadoEm.getTime() - b.criadoEm.getTime(),
+    )) {
       const r = await this.processar(p.id, autor);
       if (r.ok) ok += 1;
     }

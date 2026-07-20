@@ -30,9 +30,13 @@ function status(over: Partial<StatusConfigIa> = {}): StatusConfigIa {
 
 describe('ConfigIaComponent', () => {
   function montar(service: Partial<ConfigIaService>) {
+    const base: Partial<ConfigIaService> = {
+      modelosOpenRouter: () => Promise.resolve([{ id: 'anthropic/claude-sonnet-4', nome: 'Claude Sonnet 4' }]),
+      ...service,
+    };
     TestBed.configureTestingModule({
       imports: [ConfigIaComponent],
-      providers: [provideRouter([]), { provide: ConfigIaService, useValue: service }],
+      providers: [provideRouter([]), { provide: ConfigIaService, useValue: base }],
     });
     return TestBed.createComponent(ConfigIaComponent);
   }
@@ -73,6 +77,21 @@ describe('ConfigIaComponent', () => {
       modelo: 'anthropic/claude-sonnet-4',
     });
     expect(fixture.componentInstance.finalidades()[0].ativa).toBe(true);
+  });
+
+  it('carrega o catálogo do OpenRouter para o combo de modelos', async () => {
+    const fixture = montar({ status: () => Promise.resolve(status()) });
+    fixture.detectChanges();
+    // O catálogo é carregado num await extra após o status — aguarda até popular.
+    const limite = Date.now() + 2000;
+    while (Date.now() < limite && fixture.componentInstance.modelosOr().length === 0) {
+      await new Promise((r) => setTimeout(r, 10));
+      fixture.detectChanges();
+    }
+    expect(fixture.componentInstance.modelosOr().length).toBe(1);
+    expect(fixture.nativeElement.querySelector('#modelos-openrouter option')?.getAttribute('value')).toBe(
+      'anthropic/claude-sonnet-4',
+    );
   });
 
   it('não salva quando a finalidade usa chave via variável de ambiente', async () => {

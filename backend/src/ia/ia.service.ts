@@ -185,6 +185,23 @@ export class IaService {
     this.gravarArquivo(config);
   }
 
+  /** Catálogo público de modelos do OpenRouter (não exige chave) — alimenta o combo de
+   * seleção de modelo na tela Modo IA. Falha graciosamente (lista vazia) se a rede cair. */
+  async listarModelosOpenRouter(): Promise<{ id: string; nome: string }[]> {
+    try {
+      const resp = await fetch(`${OPENROUTER_BASE_URL}/models`);
+      if (!resp.ok) return [];
+      const dados = (await resp.json()) as {
+        data?: { id: string; name?: string }[];
+      };
+      return (dados.data ?? [])
+        .map((m) => ({ id: m.id, nome: m.name ?? m.id }))
+        .sort((a, b) => a.id.localeCompare(b.id));
+    } catch {
+      return [];
+    }
+  }
+
   /** Executa uma completude de chat para a finalidade, no provedor configurado. */
   async completar(
     finalidade: FinalidadeIa,

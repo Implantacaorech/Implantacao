@@ -176,4 +176,31 @@ describe('IaService', () => {
       }),
     ).rejects.toThrow('Modelo do OpenRouter não informado');
   });
+
+  it('listarModelosOpenRouter devolve o catálogo ordenado por id', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          data: [
+            { id: 'openai/gpt-4o', name: 'GPT-4o' },
+            { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4' },
+          ],
+        }),
+    } as Response);
+    const modelos = await service.listarModelosOpenRouter();
+    expect(modelos.map((m) => m.id)).toEqual([
+      'anthropic/claude-sonnet-4',
+      'openai/gpt-4o',
+    ]);
+    fetchMock.mockRestore();
+  });
+
+  it('listarModelosOpenRouter falha graciosamente (lista vazia) se a rede cair', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockRejectedValue(new Error('rede caiu'));
+    expect(await service.listarModelosOpenRouter()).toEqual([]);
+    fetchMock.mockRestore();
+  });
 });
