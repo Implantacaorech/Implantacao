@@ -1,4 +1,9 @@
-import { parseDocumentoMarkdown, extrairTermosCodigo } from './markdown-parser';
+import {
+  parseDocumentoMarkdown,
+  extrairTermosCodigo,
+  parseBlocos,
+  segmentarInline,
+} from './markdown-parser';
 
 const DOC = `# CTB - Contabilidade
 
@@ -66,5 +71,59 @@ describe('parseDocumentoMarkdown', () => {
     );
     expect(termos).toContain('CTB106');
     expect(termos).not.toContain('F:\\Fontes\\CTB005.CBL:2');
+  });
+
+  it('cada seção vem com blocos estruturados', () => {
+    const r = parseDocumentoMarkdown(DOC);
+    const conf = r.secoes.find((s) => s.categoria === 'configuracao');
+    expect(conf?.blocos.length).toBeGreaterThan(0);
+  });
+});
+
+describe('segmentarInline', () => {
+  it('separa negrito e código do texto normal', () => {
+    const segs = segmentarInline('use o menu **1.6-T** com `CTB106` aqui');
+    expect(segs).toEqual([
+      { texto: 'use o menu ' },
+      { texto: '1.6-T', forte: true },
+      { texto: ' com ' },
+      { texto: 'CTB106', codigo: true },
+      { texto: ' aqui' },
+    ]);
+  });
+
+  it('texto sem marcação vira um único segmento', () => {
+    expect(segmentarInline('texto simples')).toEqual([
+      { texto: 'texto simples' },
+    ]);
+  });
+});
+
+describe('parseBlocos', () => {
+  it('reconhece uma tabela markdown', () => {
+    const md =
+      '| Caminho | Programa |\n| --- | --- |\n| 1.6 | CTB106 |\n| 2.1 | CTB201 |';
+    const blocos = parseBlocos(md);
+    expect(blocos).toHaveLength(1);
+    const tab = blocos[0];
+    expect(tab.tipo).toBe('tabela');
+    if (tab.tipo === 'tabela') {
+      expect(tab.cabecalho[0][0].texto).toBe('Caminho');
+      expect(tab.linhas).toHaveLength(2);
+      expect(tab.linhas[0][1][0].texto).toBe('CTB106');
+    }
+  });
+
+  it('reconhece lista, subtítulo, parágrafo e bloco de código', () => {
+    const md =
+      '### Sub\n\nUm parágrafo com **negrito**.\n\n- item um\n- item dois\n\n```\ncodigo aqui\n```';
+    const tipos = parseBlocos(md).map((b) => b.tipo);
+    expect(tipos).toEqual(['subtitulo', 'paragrafo', 'lista', 'codigo']);
+  });
+
+  it('agrupa linhas soltas em parágrafo', () => {
+    const blocos = parseBlocos('linha um\nlinha dois');
+    expect(blocos).toHaveLength(1);
+    expect(blocos[0].tipo).toBe('paragrafo');
   });
 });

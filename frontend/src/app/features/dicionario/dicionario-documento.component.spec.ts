@@ -14,8 +14,27 @@ function detalhe(): DocumentoDetalhe {
     resumo: 'Centraliza a contabilidade do SIGER.',
     conteudo: '# CTB',
     secoes: [
-      { titulo: '8. Configuracoes', corpo: 'A configuracao CTB101 define parametros.', categoria: 'configuracao' },
-      { titulo: 'Seção vazia', corpo: '   ', categoria: 'geral' },
+      {
+        titulo: '8. Configuracoes',
+        corpo: 'A configuracao CTB101 define parametros.',
+        categoria: 'configuracao',
+        blocos: [
+          {
+            tipo: 'paragrafo',
+            segmentos: [
+              { texto: 'A configuracao ' },
+              { texto: 'CTB101', codigo: true },
+              { texto: ' define parametros.' },
+            ],
+          },
+          {
+            tipo: 'tabela',
+            cabecalho: [[{ texto: 'Caminho' }], [{ texto: 'Programa' }]],
+            linhas: [[[{ texto: '1.6' }], [{ texto: 'CTB106' }]]],
+          },
+        ],
+      },
+      { titulo: 'Seção vazia', corpo: '   ', categoria: 'geral', blocos: [] },
     ],
     palavrasChave: ['CTB005', 'CTB101'],
     caminhoOrigem: 'c:/docs/modulos/01-ctb-contabilidade.md',
@@ -57,12 +76,18 @@ describe('DicionarioDocumentoComponent', () => {
     throw new Error(`Texto "${trecho}" não apareceu. Atual: ${fixture.nativeElement.textContent}`);
   }
 
-  it('renderiza o documento com título, seção não-vazia e fonte', async () => {
+  it('renderiza o documento com título, parágrafo, tabela e fonte', async () => {
     const fixture = montar({ documento: () => Promise.resolve(detalhe()) });
     await esperarTexto(fixture, 'CTB - Contabilidade');
-    const texto = fixture.nativeElement.textContent as string;
+    // Espaço colapsado (o navegador junta o whitespace entre os segmentos inline).
+    const texto = (fixture.nativeElement.textContent as string).replace(/\s+/g, ' ');
     expect(texto).toContain('CTB101 define parametros');
     expect(texto).toContain('01-ctb-contabilidade.md');
+    // A tabela do bloco é renderizada como <table> de verdade (não markdown cru).
+    const tabela = fixture.nativeElement.querySelector('table.doc-tab');
+    expect(tabela).toBeTruthy();
+    expect(tabela.querySelectorAll('th')).toHaveLength(2);
+    expect(tabela.textContent).toContain('CTB106');
   });
 
   it('omite seções sem conteúdo', async () => {

@@ -23,7 +23,80 @@
         <span class="doc-cat" [attr.data-cat]="s.categoria">{{ rotulo(s.categoria) }}</span>
         <h3>{{ s.titulo }}</h3>
       </div>
-      <pre class="doc-corpo">{{ s.corpo }}</pre>
+      <div class="doc-corpo">
+        @for (b of s.blocos; track $index) {
+          @switch (b.tipo) {
+            @case ('subtitulo') {
+              <h4 class="doc-sub">
+                @for (seg of b.segmentos; track $index) {
+                  @if (seg.codigo) { <code>{{ seg.texto }}</code> }
+                  @else if (seg.forte) { <strong>{{ seg.texto }}</strong> }
+                  @else { {{ seg.texto }} }
+                }
+              </h4>
+            }
+            @case ('paragrafo') {
+              <p>
+                @for (seg of b.segmentos; track $index) {
+                  @if (seg.codigo) { <code>{{ seg.texto }}</code> }
+                  @else if (seg.forte) { <strong>{{ seg.texto }}</strong> }
+                  @else { {{ seg.texto }} }
+                }
+              </p>
+            }
+            @case ('lista') {
+              <ul>
+                @for (item of b.itens; track $index) {
+                  <li>
+                    @for (seg of item; track $index) {
+                      @if (seg.codigo) { <code>{{ seg.texto }}</code> }
+                      @else if (seg.forte) { <strong>{{ seg.texto }}</strong> }
+                      @else { {{ seg.texto }} }
+                    }
+                  </li>
+                }
+              </ul>
+            }
+            @case ('tabela') {
+              <div class="doc-tab-wrap">
+                <table class="doc-tab">
+                  <thead>
+                    <tr>
+                      @for (cel of b.cabecalho; track $index) {
+                        <th>
+                          @for (seg of cel; track $index) {
+                            @if (seg.codigo) { <code>{{ seg.texto }}</code> }
+                            @else if (seg.forte) { <strong>{{ seg.texto }}</strong> }
+                            @else { {{ seg.texto }} }
+                          }
+                        </th>
+                      }
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (linha of b.linhas; track $index) {
+                      <tr>
+                        @for (cel of linha; track $index) {
+                          <td>
+                            @for (seg of cel; track $index) {
+                              @if (seg.codigo) { <code>{{ seg.texto }}</code> }
+                              @else if (seg.forte) { <strong>{{ seg.texto }}</strong> }
+                              @else { {{ seg.texto }} }
+                            }
+                          </td>
+                        }
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+            @case ('codigo') {
+              <pre class="doc-code">{{ b.texto }}</pre>
+            }
+          }
+        }
+      </div>
     </section>
   }
 
