@@ -160,6 +160,12 @@ export const routes: Routes = [
         loadComponent: () => import('./features/protocolos/protocolos.component').then((m) => m.ProtocolosComponent),
       },
       {
+        path: 'base-siger',
+        data: { titulo: 'Base SIGER' },
+        loadComponent: () =>
+          import('./features/base-conhecimento/base-conhecimento.component').then((m) => m.BaseConhecimentoComponent),
+      },
+      {
         path: 'protocolos/:id',
         data: { titulo: 'Protocolo' },
         loadComponent: () =>

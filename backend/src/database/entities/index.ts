@@ -25,6 +25,7 @@ import { CronogramaItem } from './cronograma-item.entity';
 import { ChecklistItem } from './checklist-item.entity';
 import { Modificacao } from './modificacao.entity';
 import { AgenteExecucao } from './agente-execucao.entity';
+import { SigerFonte } from './siger-fonte.entity';
 
 export * from './usuario.entity';
 export * from './projeto.entity';
@@ -53,6 +54,7 @@ export * from './cronograma-item.entity';
 export * from './checklist-item.entity';
 export * from './modificacao.entity';
 export * from './agente-execucao.entity';
+export * from './siger-fonte.entity';
 
 // Lista única usada por DatabaseModule (runtime) e AppDataSource (CLI de migrations) —
 // evita as duas listas divergirem conforme novas entidades são adicionadas.
@@ -84,4 +86,5 @@ export const ENTITIES = [
   ChecklistItem,
   Modificacao,
   AgenteExecucao,
+  SigerFonte,
 ];
