@@ -99,10 +99,13 @@ export function definirLarguras(ws: Worksheet, larguras: number[]): void {
   });
 }
 
+/** Valor de célula que os geradores escrevem: texto ou número (ex.: esforço em horas). */
+export type ValorCelula = string | number;
+
 /** Escreve as linhas de dados a partir da linha 2 — `_common.write_rows()`. */
 export function escreverLinhas(
   ws: Worksheet,
-  linhas: string[][],
+  linhas: ValorCelula[][],
   inicio = 2,
 ): void {
   linhas.forEach((linha, r) => {

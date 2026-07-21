@@ -15,11 +15,20 @@ export interface SnapshotXlsx {
   abas: Record<string, string[][]>;
 }
 
-const RE_DATA = /\b\d{2}\/\d{2}\/\d{4}\b/g;
+/** Data de hoje em dd/mm/aaaa — a única que é mascarada. */
+function dataDeHoje(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
 
-/** Mesma máscara do harness Python: a data de hoje não entra no contrato. */
+const HOJE = dataDeHoje();
+
+/** Mesma máscara do harness Python: só a data de GERAÇÃO sai do contrato. As datas de
+ * negócio (virada, prazos, dias do hypercare) permanecem — é nelas que um erro de
+ * aritmética de datas apareceria, e mascará-las cegaria o teste justamente ali. */
 function mascarar(valor: string): string {
-  return valor.replace(RE_DATA, '<DATA>');
+  return valor.split(HOJE).join('<HOJE>');
 }
 
 /** Texto de uma célula com a MESMA semântica do openpyxl usado no harness Python. */

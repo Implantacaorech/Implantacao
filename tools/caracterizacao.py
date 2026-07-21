@@ -29,7 +29,7 @@ import importlib
 import io
 import json
 import os
-import re
+import datetime
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -61,13 +61,16 @@ GERADORES = [
 
 # Vários geradores carimbam a data de hoje ("gerado em 21/07/2026"). Sem mascarar, o
 # snapshot quebraria sozinho no dia seguinte e o teste viraria ruído que todo mundo ignora.
-# O que interessa ao porte é que exista uma data ali, não qual é.
-_RE_DATA = re.compile(r"\b\d{2}/\d{2}/\d{4}\b")
+#
+# Mascaramos APENAS a data de hoje — não qualquer data. Mascarar todas apagaria as datas de
+# NEGÓCIO (data da virada, dias do hypercare, prazos), que vêm dos YAMLs e são estáveis; sem
+# elas no contrato, um porte com aritmética de datas errada passaria despercebido.
+_HOJE = datetime.date.today().strftime("%d/%m/%Y")
 
 
 def _mascarar(valor):
-    """Substitui datas dd/mm/aaaa por <DATA>, para o snapshot ser determinístico."""
-    return _RE_DATA.sub("<DATA>", valor) if isinstance(valor, str) else valor
+    """Substitui a data de HOJE por <HOJE>, mantendo as demais datas no contrato."""
+    return valor.replace(_HOJE, "<HOJE>") if isinstance(valor, str) else valor
 
 
 def extrair_docx(caminho):
