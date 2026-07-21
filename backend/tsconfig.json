@@ -17,6 +17,13 @@
     "incremental": true,
     "skipLibCheck": true,
     "strict": true,
+    // Único sub-flag do `strict` desligado, de propósito: DTOs (class-validator) e entities
+    // (TypeORM) declaram propriedades que são preenchidas pelo framework via decorator, não
+    // no construtor — com ele ligado, o build acusa TS2564 em 323 propriedades legítimas.
+    // Ligá-lo exigiria `!` em cada uma, sem ganho real de segurança. Os demais flags do
+    // `strict` (strictNullChecks, noImplicitAny, strictFunctionTypes…) seguem ativos, que é
+    // o que a §4.8.2 dos Padrões da Rech busca.
+    "strictPropertyInitialization": false,
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": true,
