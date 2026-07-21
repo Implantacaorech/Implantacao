@@ -1,4 +1,16 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "test", "dist", "_scratch", "scripts", "**/*spec.ts"]
+  // `comparacao*.ts` é infraestrutura de teste (extrai o conteúdo observável de .xlsx/.docx
+  // para comparar com os snapshots de caracterização). Só os *.spec.ts a importam, e ela usa
+  // devDependencies (jszip, fast-xml-parser) que não existem em produção — por isso fica
+  // fora do build, junto com os specs.
+  "exclude": [
+    "node_modules",
+    "test",
+    "dist",
+    "_scratch",
+    "scripts",
+    "**/*spec.ts",
+    "src/geradores/comparacao*.ts"
+  ]
 }
