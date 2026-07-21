@@ -25,16 +25,22 @@ Geradas pela skill `codigo-para-regra` a partir do código vivo — regenere qua
 não edite regra a regra à mão.
 
 - [[RN - Modo IA (Config IA)]] — como o Painel configura IA por finalidade (provedor/chave/modelo), só ADM.
+- [[RN - Dicionário Inteligente]] — busca/pergunta sobre a documentação do SIGER®; RAG que nunca inventa; qualquer autenticado.
+- [[RN - Fluxo de Projetos (Onboarding)]] — cria o projeto a partir do e-mail de fechamento (parse, dedup, pacote inicial, e-mail-resumo).
+- [[RN - Protocolos de Treinamento]] — vídeo → transcrição → IA → revisão → publicação; aprovar/reprovar só ADM/Coordenador.
 
 ## Relacionados no Vault
+
 - [[01 - Projeto]]
 - [[09 - Casos de Uso]]
 - [[15 - Agentes]]
 
 ## Aponta para (conteúdo real do repositório)
+
 - `../docs/processo-implantacao.md`
 - `../docs/glossario.md`
 - `../CLAUDE.md#regras-críticas-não-pular`
 
 ## Status
-Esqueleto criado em 2026-07-19 — conteúdo será enriquecido incrementalmente. Ver [[00 - Dashboard]].
+
+Esqueleto criado em 2026-07-19; regras por tela do Painel adicionadas a partir de 2026-07-21. Ver [[00 - Dashboard]].
