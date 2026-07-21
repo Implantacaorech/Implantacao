@@ -1,0 +1,122 @@
+{
+  "abas": {
+    "Capa": [
+      [
+        "Log de Fit/Gap — Aderência ao SIGER®"
+      ],
+      [
+        "Indústria Alfa Ltda · gerado em 21/07/2026"
+      ],
+      [],
+      [
+        "Cliente",
+        "Indústria Alfa Ltda"
+      ],
+      [
+        "Código SICLA",
+        "4521"
+      ],
+      [],
+      [
+        "Governança de customização"
+      ],
+      [
+        "Preferir sempre o padrão do SIGER®. Gap só vira Desenvolvimento com aprovação do Gerente do Projeto e RNS ORC aprovada. Customização aumenta custo e risco da implantação.\n"
+      ]
+    ],
+    "Log Fit-Gap": [
+      [
+        "ID",
+        "Processo",
+        "Área",
+        "Aderência",
+        "Decisão",
+        "RNS vinculada",
+        "Esforço (h)",
+        "Prioridade",
+        "Status"
+      ],
+      [
+        "FG-01",
+        "Apuração de impostos do período",
+        "Fiscal/Contábil",
+        "Standard",
+        "Usar padrão",
+        "",
+        "0",
+        "—",
+        "Em aberto"
+      ],
+      [
+        "FG-02",
+        "Remessa bancária CNAB 240",
+        "Financeiro",
+        "Standard (configuração)",
+        "Configuração",
+        "",
+        "4",
+        "Média",
+        "Em aberto"
+      ],
+      [
+        "FG-03",
+        "Emissão de NF com comissão escalonada por faixa",
+        "Faturamento",
+        "Gap",
+        "Desenvolvimento",
+        "ORC 444444",
+        "16",
+        "Alta",
+        "Em aberto"
+      ],
+      [
+        "FG-04",
+        "Relatório gerencial específico do cliente",
+        "Controladoria",
+        "Gap",
+        "Fora de escopo",
+        "",
+        "0",
+        "Baixa",
+        "Em aberto"
+      ]
+    ],
+    "Resumo": [
+      [
+        "Resumo do Fit/Gap"
+      ],
+      [],
+      [],
+      [
+        "Usar padrão",
+        "=COUNTIF('Log Fit-Gap'!E:E,\"Usar padrão\")"
+      ],
+      [
+        "Configuração",
+        "=COUNTIF('Log Fit-Gap'!E:E,\"Configuração\")"
+      ],
+      [
+        "Desenvolvimento",
+        "=COUNTIF('Log Fit-Gap'!E:E,\"Desenvolvimento\")"
+      ],
+      [
+        "Fora de escopo",
+        "=COUNTIF('Log Fit-Gap'!E:E,\"Fora de escopo\")"
+      ],
+      [
+        "Esforço dev (h)",
+        "=SUMIF('Log Fit-Gap'!E:E,\"Desenvolvimento\",'Log Fit-Gap'!G:G)"
+      ],
+      [],
+      [
+        "Quanto menos desenvolvimento, menor o custo e o risco. Reavaliar todo Gap antes de aprovar customização."
+      ]
+    ]
+  },
+  "abas_ordem": [
+    "Capa",
+    "Log Fit-Gap",
+    "Resumo"
+  ],
+  "tipo": "xlsx"
+}

@@ -1,0 +1,117 @@
+{
+  "paragrafos": [
+    "Cronograma de Implantação do SIGER®",
+    "Cliente: RenderCheck LTDA",
+    "Horas: 0 contratadas + 0 bonificadas = 0",
+    "Este cronograma organiza a distribuição das agendas (horas contratadas + bonificadas), com os macro tópicos de cada visita/treinamento. As datas são previstas e podem ser ajustadas em comum acordo; o limite de 5 dias úteis após a liberação do levantamento é balizador. As agendas serão incluídas no SICLA (no nome do cliente) e compartilhadas com o usuário líder.",
+    "",
+    "Observações",
+    "Datas previstas, sujeitas a ajuste conforme a disponibilidade das partes.",
+    "Agendas registradas no SICLA no nome do cliente; treinamento/parametrização interna como tipo 84.",
+    "Cronograma compartilhado via Google Drive (link enviado ao usuário líder).",
+    "Cliente de menor porte: cronograma simplificado, deixando claro o que será e o que não será atendido.",
+    "",
+    "Novo Hamburgo, 19 de junho de 2026."
+  ],
+  "tabelas": [
+    [
+      [
+        "#",
+        "Data prevista",
+        "Etapa / Treinamento",
+        "Macro tópicos",
+        "Horas",
+        "Modalidade"
+      ],
+      [
+        "1",
+        "19/06/2026",
+        "Abertura + Parametrização inicial",
+        "Criação de empresas e siglas; parâmetros gerais (1.1.P) e por empresa (1.2.A); compartilhamento de cadastros (1.2.M); tabelas genéricas.",
+        "4 h",
+        "A combinar"
+      ],
+      [
+        "2",
+        "26/06/2026",
+        "Treinamento — Vendas e Faturamento",
+        "Tabelas e cadastros do módulo; importações via layout do SIGER®; rotinas do processo; relatórios.",
+        "4 h",
+        "A combinar"
+      ],
+      [
+        "3",
+        "03/07/2026",
+        "Treinamento — Controle de Estoques",
+        "Tabelas e cadastros do módulo; importações via layout do SIGER®; rotinas do processo; relatórios.",
+        "4 h",
+        "A combinar"
+      ],
+      [
+        "4",
+        "10/07/2026",
+        "Simulação de microprocessos",
+        "Teste das rotinas treinadas por processo; ajustes finos.",
+        "3 h",
+        "A combinar"
+      ],
+      [
+        "5",
+        "17/07/2026",
+        "Simulação do macroprocesso",
+        "Ensaio do processo completo (cenário real); validação ponta a ponta.",
+        "3 h",
+        "A combinar"
+      ],
+      [
+        "6",
+        "24/07/2026",
+        "Conversão — prévia",
+        "Carga de teste; reconciliação origem × destino; validação de amostras.",
+        "2 h",
+        "A combinar"
+      ],
+      [
+        "7",
+        "31/07/2026",
+        "Conversão — oficial / ponto de corte",
+        "Conversão oficial; conferência de saldos; definição do ponto de corte.",
+        "2 h",
+        "A combinar"
+      ],
+      [
+        "8",
+        "07/08/2026",
+        "Virada oficial (go-live)",
+        "Início do uso em produção; acompanhamento full time; primeiros lançamentos.",
+        "3 h",
+        "A combinar"
+      ],
+      [
+        "9",
+        "14/08/2026",
+        "Acompanhamento / Hypercare",
+        "Estabilização; micro ajustes; primeiros fechamentos.",
+        "2 h",
+        "A combinar"
+      ],
+      [
+        "10",
+        "21/08/2026",
+        "Encerramento",
+        "Revisão de pendências; Termo de Encerramento; transição ao Suporte.",
+        "1 h",
+        "A combinar"
+      ],
+      [
+        "",
+        "",
+        "",
+        "Total",
+        "28 h",
+        ""
+      ]
+    ]
+  ],
+  "tipo": "docx"
+}

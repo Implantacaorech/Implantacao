@@ -1,0 +1,107 @@
+{
+  "paragrafos": [
+    "TERMO DE ACEITE DE TESTES (SIT / UAT)",
+    "Indústria Alfa Ltda — Projeto nº 123456",
+    "",
+    "Este termo registra a conclusão e o aceite dos testes do sistema SIGER® para o cliente Indústria Alfa Ltda, abrangendo o Teste Integrado (SIT) e o Aceite do Usuário (UAT) dos módulos no escopo. O aceite formaliza que os processos foram validados e autoriza a preparação da virada oficial.",
+    "Identificação",
+    "Resultado por módulo",
+    "Preencher Aprovados/Reprovados/Pendentes a partir da planilha de roteiros (aba “Resumo e Sign-off”).",
+    "Critério de liberação (gate da virada)",
+    "≥ 95% dos casos UAT com status Aprovado.",
+    "Zero defeitos de severidade Crítica em aberto.",
+    "Defeitos de severidade Alta com plano de ação acordado.",
+    "Remessas bancárias e integrações com terceiros homologadas (quando aplicável).",
+    "Assinaturas",
+    "",
+    "__________________________________________",
+    "Consultor de Implantação — Rech",
+    "",
+    "__________________________________________",
+    "Usuário Líder — Indústria Alfa Ltda",
+    "",
+    "__________________________________________",
+    "Gerente do Projeto — Rech",
+    ""
+  ],
+  "tabelas": [
+    [
+      [
+        "Cliente",
+        "Indústria Alfa Ltda"
+      ],
+      [
+        "Código SICLA",
+        "4521"
+      ],
+      [
+        "RNS de Implantação",
+        "654321"
+      ],
+      [
+        "Consultor responsável",
+        "Sandri"
+      ],
+      [
+        "Virada prevista",
+        "2026-08-01"
+      ],
+      [
+        "Data do aceite",
+        "21/07/2026"
+      ]
+    ],
+    [
+      [
+        "Módulo",
+        "Casos",
+        "Aprovados",
+        "Reprovados",
+        "Pendentes"
+      ],
+      [
+        "Macroprocesso (Integração)",
+        "2",
+        "",
+        "",
+        ""
+      ],
+      [
+        "Faturamento/Emissão",
+        "3",
+        "",
+        "",
+        ""
+      ],
+      [
+        "Estoque/Compras",
+        "2",
+        "",
+        "",
+        ""
+      ],
+      [
+        "Financeiro",
+        "2",
+        "",
+        "",
+        ""
+      ],
+      [
+        "Fiscal/Contábil",
+        "2",
+        "",
+        "",
+        ""
+      ],
+      [
+        "Produção",
+        "1",
+        "",
+        "",
+        ""
+      ]
+    ]
+  ],
+  "tipo": "docx"
+}

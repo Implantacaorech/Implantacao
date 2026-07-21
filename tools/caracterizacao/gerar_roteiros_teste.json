@@ -1,0 +1,342 @@
+{
+  "abas": {
+    "Capa": [
+      [
+        "Roteiros de Teste — SIT / UAT"
+      ],
+      [
+        "Indústria Alfa Ltda · gerado em 21/07/2026"
+      ],
+      [],
+      [
+        "Cliente",
+        "Indústria Alfa Ltda"
+      ],
+      [
+        "Código SICLA",
+        "4521"
+      ],
+      [
+        "RNS de Implantação",
+        "654321"
+      ],
+      [
+        "Virada prevista",
+        "2026-08-01"
+      ],
+      [
+        "Módulos no escopo",
+        "Macroprocesso (Integração), Faturamento/Emissão, Estoque/Compras, Financeiro, Fiscal/Contábil, Produção"
+      ],
+      [],
+      [
+        "SIT",
+        "Teste Integrado — executado pelo consultor (integração entre módulos)"
+      ],
+      [
+        "UAT",
+        "Aceite do Usuário — executado pelo cliente (valida o processo real)"
+      ],
+      [
+        "Legenda Status",
+        "Não testado · Aprovado · Reprovado · Bloqueado"
+      ],
+      [
+        "Gate da virada",
+        "≥ 95% dos casos UAT Aprovados e 0 defeitos de severidade Crítica"
+      ]
+    ],
+    "Estoque-Compras": [
+      [
+        "ID",
+        "Tipo",
+        "Criticidade",
+        "Cenário",
+        "Pré-requisitos",
+        "Passos",
+        "Resultado esperado",
+        "Status",
+        "Resultado obtido",
+        "Defeito",
+        "Testado por",
+        "Data"
+      ],
+      [
+        "EST-01",
+        "UAT",
+        "Alta",
+        "Entrada de NF de compra com conversão de unidade",
+        "Produto com fator de conversão configurado",
+        "1. Lançar entrada de NF com unidade de compra diferente da de estoque\n2. Conferir quantidade convertida e custo unitário",
+        "Estoque atualizado na unidade correta; custo médio recalculado",
+        "Não testado"
+      ],
+      [
+        "EST-02",
+        "UAT",
+        "Média",
+        "Encerramento de estoque do período",
+        "Movimentações do período lançadas",
+        "1. Executar rotina de encerramento de estoque\n2. Conferir saldos e custos",
+        "Saldos consistentes; custos apurados; período encerrado",
+        "Não testado"
+      ]
+    ],
+    "Faturamento-Emissão": [
+      [
+        "ID",
+        "Tipo",
+        "Criticidade",
+        "Cenário",
+        "Pré-requisitos",
+        "Passos",
+        "Resultado esperado",
+        "Status",
+        "Resultado obtido",
+        "Defeito",
+        "Testado por",
+        "Data"
+      ],
+      [
+        "FAT-01",
+        "UAT",
+        "Alta",
+        "Emissão de NF-e de venda com tributação",
+        "Pedido liberado; tributação configurada",
+        "1. Faturar pedido de venda\n2. Transmitir NF-e\n3. Conferir impostos calculados (ICMS/IPI/PIS/COFINS)",
+        "NF-e autorizada pela SEFAZ; impostos corretos; DANFE gerada",
+        "Não testado"
+      ],
+      [
+        "FAT-02",
+        "UAT",
+        "Média",
+        "Emissão com cálculo de comissão de representante",
+        "Representante e regra de comissão cadastrados",
+        "1. Emitir NF com representante vinculado\n2. Conferir valor de comissão gerado",
+        "Comissão calculada conforme regra e registrada para o representante",
+        "Não testado"
+      ],
+      [
+        "FAT-03",
+        "UAT",
+        "Alta",
+        "Devolução/cancelamento de NF e reflexos",
+        "NF emitida no caso FAT-01",
+        "1. Cancelar/dar entrada de devolução\n2. Conferir estorno de estoque e financeiro",
+        "Estoque retornado; título estornado; situação fiscal correta",
+        "Não testado"
+      ]
+    ],
+    "Financeiro": [
+      [
+        "ID",
+        "Tipo",
+        "Criticidade",
+        "Cenário",
+        "Pré-requisitos",
+        "Passos",
+        "Resultado esperado",
+        "Status",
+        "Resultado obtido",
+        "Defeito",
+        "Testado por",
+        "Data"
+      ],
+      [
+        "FIN-01",
+        "UAT",
+        "Alta",
+        "Geração e homologação de remessa bancária",
+        "Local de cobrança configurado para remessa; convênio bancário",
+        "1. Selecionar títulos a receber\n2. Gerar arquivo de remessa (CNAB)\n3. Validar com o banco / homologar",
+        "Arquivo de remessa aceito pelo banco; retorno processável",
+        "Não testado"
+      ],
+      [
+        "FIN-02",
+        "UAT",
+        "Alta",
+        "Baixa de título por retorno bancário",
+        "Arquivo de retorno disponível",
+        "1. Importar retorno bancário\n2. Conferir baixa automática dos títulos",
+        "Títulos baixados; juros/descontos aplicados; conciliação correta",
+        "Não testado"
+      ]
+    ],
+    "Fiscal-Contábil": [
+      [
+        "ID",
+        "Tipo",
+        "Criticidade",
+        "Cenário",
+        "Pré-requisitos",
+        "Passos",
+        "Resultado esperado",
+        "Status",
+        "Resultado obtido",
+        "Defeito",
+        "Testado por",
+        "Data"
+      ],
+      [
+        "FIS-01",
+        "UAT",
+        "Alta",
+        "Apuração de impostos do período",
+        "Notas de entrada e saída lançadas no período",
+        "1. Executar apuração de ICMS/IPI\n2. Conferir valores a recolher/creditar",
+        "Apuração consistente com os movimentos; livros gerados",
+        "Não testado"
+      ],
+      [
+        "FIS-02",
+        "SIT",
+        "Média",
+        "Geração de obrigação acessória (SPED) de teste",
+        "Parâmetros fiscais e contábeis configurados",
+        "1. Gerar arquivo SPED do período de teste\n2. Validar no PVA",
+        "Arquivo gerado sem erros de validação no PVA",
+        "Não testado"
+      ]
+    ],
+    "Macroprocesso (Integração)": [
+      [
+        "ID",
+        "Tipo",
+        "Criticidade",
+        "Cenário",
+        "Pré-requisitos",
+        "Passos",
+        "Resultado esperado",
+        "Status",
+        "Resultado obtido",
+        "Defeito",
+        "Testado por",
+        "Data"
+      ],
+      [
+        "INT-01",
+        "SIT",
+        "Alta",
+        "Ciclo completo de venda: pedido → reserva → faturamento → boleto → financeiro → baixa de estoque",
+        "Cliente, produto, tabela de preço, tributação e local de cobrança cadastrados",
+        "1. Incluir pedido de venda com reserva de estoque\n2. Faturar o pedido e emitir a NF-e\n3. Gerar boleto/remessa na emissão\n4. Conferir gravação do contas a receber\n5. Conferir baixa de estoque e custo",
+        "NF autorizada; título a receber gerado; boleto/remessa ok; estoque e custo baixados; comissão registrada",
+        "Não testado"
+      ],
+      [
+        "INT-02",
+        "SIT",
+        "Alta",
+        "Ciclo de compra: pedido de compra → entrada de NF → estoque → contas a pagar",
+        "Fornecedor e produto cadastrados; pedido de compra liberado",
+        "1. Incluir pedido de compra\n2. Lançar entrada da NF do fornecedor\n3. Conferir movimentação e custo de estoque\n4. Conferir geração do contas a pagar",
+        "Estoque atualizado com custo correto; título a pagar gerado; impostos de entrada apurados",
+        "Não testado"
+      ]
+    ],
+    "Produção": [
+      [
+        "ID",
+        "Tipo",
+        "Criticidade",
+        "Cenário",
+        "Pré-requisitos",
+        "Passos",
+        "Resultado esperado",
+        "Status",
+        "Resultado obtido",
+        "Defeito",
+        "Testado por",
+        "Data"
+      ],
+      [
+        "PRO-01",
+        "UAT",
+        "Média",
+        "Ordem de produção: geração, apontamento e baixa de insumos",
+        "Estrutura de produto (ficha técnica) cadastrada",
+        "1. Gerar ordem de produção\n2. Apontar consumo de insumos e produção acabada\n3. Conferir baixa de insumos e entrada do produto acabado",
+        "Insumos baixados; produto acabado em estoque; custo de produção apurado",
+        "Não testado"
+      ]
+    ],
+    "Registro de Defeitos": [
+      [
+        "ID",
+        "Caso (ID)",
+        "Módulo",
+        "Descrição do defeito",
+        "Severidade",
+        "Status",
+        "Responsável",
+        "Aberto em",
+        "Resolvido em"
+      ]
+    ],
+    "Resumo e Sign-off": [
+      [
+        "Resumo dos Testes e Liberação"
+      ],
+      [],
+      [],
+      [
+        "Casos Aprovados",
+        "=COUNTIF('Macroprocesso (Integração)'!H:H,\"Aprovado\")+COUNTIF('Faturamento-Emissão'!H:H,\"Aprovado\")+COUNTIF('Estoque-Compras'!H:H,\"Aprovado\")+COUNTIF('Financeiro'!H:H,\"Aprovado\")+COUNTIF('Fiscal-Contábil'!H:H,\"Aprovado\")+COUNTIF('Produção'!H:H,\"Aprovado\")"
+      ],
+      [
+        "Casos Reprovados",
+        "=COUNTIF('Macroprocesso (Integração)'!H:H,\"Reprovado\")+COUNTIF('Faturamento-Emissão'!H:H,\"Reprovado\")+COUNTIF('Estoque-Compras'!H:H,\"Reprovado\")+COUNTIF('Financeiro'!H:H,\"Reprovado\")+COUNTIF('Fiscal-Contábil'!H:H,\"Reprovado\")+COUNTIF('Produção'!H:H,\"Reprovado\")"
+      ],
+      [
+        "Casos Bloqueados",
+        "=COUNTIF('Macroprocesso (Integração)'!H:H,\"Bloqueado\")+COUNTIF('Faturamento-Emissão'!H:H,\"Bloqueado\")+COUNTIF('Estoque-Compras'!H:H,\"Bloqueado\")+COUNTIF('Financeiro'!H:H,\"Bloqueado\")+COUNTIF('Fiscal-Contábil'!H:H,\"Bloqueado\")+COUNTIF('Produção'!H:H,\"Bloqueado\")"
+      ],
+      [
+        "Casos Não testados",
+        "=COUNTIF('Macroprocesso (Integração)'!H:H,\"Não testado\")+COUNTIF('Faturamento-Emissão'!H:H,\"Não testado\")+COUNTIF('Estoque-Compras'!H:H,\"Não testado\")+COUNTIF('Financeiro'!H:H,\"Não testado\")+COUNTIF('Fiscal-Contábil'!H:H,\"Não testado\")+COUNTIF('Produção'!H:H,\"Não testado\")"
+      ],
+      [],
+      [
+        "Gate da virada",
+        "Liberar a virada somente com ≥ 95% dos casos UAT Aprovados e 0 defeitos Críticos em aberto."
+      ],
+      [],
+      [
+        "Assinaturas"
+      ],
+      [],
+      [
+        "__________________________"
+      ],
+      [
+        "Consultor de Implantação"
+      ],
+      [
+        "__________________________"
+      ],
+      [
+        "Usuário Líder (cliente)"
+      ],
+      [
+        "__________________________"
+      ],
+      [
+        "Gerente do Projeto"
+      ]
+    ]
+  },
+  "abas_ordem": [
+    "Capa",
+    "Macroprocesso (Integração)",
+    "Faturamento-Emissão",
+    "Estoque-Compras",
+    "Financeiro",
+    "Fiscal-Contábil",
+    "Produção",
+    "Registro de Defeitos",
+    "Resumo e Sign-off"
+  ],
+  "tipo": "xlsx"
+}

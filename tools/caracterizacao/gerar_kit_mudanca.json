@@ -1,0 +1,226 @@
+{
+  "abas": {
+    "Capa": [
+      [
+        "Kit de Gestão da Mudança (OCM)"
+      ],
+      [
+        "Indústria Alfa Ltda · gerado em 21/07/2026"
+      ],
+      [],
+      [
+        "Cliente",
+        "Indústria Alfa Ltda"
+      ],
+      [
+        "Código SICLA",
+        "4521"
+      ],
+      [
+        "Usuário líder",
+        "Camila Bittencurt"
+      ],
+      [
+        "Virada prevista",
+        "2026-08-01"
+      ],
+      [],
+      [
+        "Propósito",
+        "Garantir adoção plena: tratar pessoas, comunicação e capacitação, não só o sistema."
+      ],
+      [
+        "Modelo",
+        "ADKAR — Consciência, Desejo, Conhecimento, Habilidade, Reforço."
+      ]
+    ],
+    "Indicadores de Adoção": [
+      [
+        "Indicador",
+        "Meta",
+        "Como medir",
+        "Resultado"
+      ],
+      [
+        "% de usuários treinados",
+        "100% antes da virada"
+      ],
+      [
+        "% de cenários UAT aprovados",
+        ">= 95% antes da virada"
+      ],
+      [
+        "Adesão no uso oficial (logins/transações vs. esperado)",
+        ">= 80% na 1ª semana"
+      ],
+      [
+        "Chamados por usuário (tendência no hypercare)",
+        "Queda semana a semana"
+      ],
+      [
+        "Satisfação do usuário (CSAT)",
+        ">= 4 de 5 ao encerrar"
+      ]
+    ],
+    "Mapa de Stakeholders": [
+      [
+        "Nome/Cargo",
+        "Papel",
+        "Influência",
+        "Interesse",
+        "Postura",
+        "Estratégia de engajamento"
+      ],
+      [
+        "Diretor Industrial",
+        "Patrocinador (Sponsor)",
+        "Alta",
+        "Alta",
+        "Apoiador",
+        "Manter engajado; reporte quinzenal de progresso e riscos"
+      ],
+      [
+        "Usuário Líder (key user)",
+        "Champion / multiplicador",
+        "Média",
+        "Alta",
+        "Apoiador",
+        "Treinar primeiro (train-the-trainer); dar protagonismo"
+      ],
+      [
+        "Gerente Financeiro",
+        "Dono de processo (Financeiro)",
+        "Alta",
+        "Média",
+        "Neutro",
+        "Envolver no desenho; demonstrar ganhos no fechamento"
+      ],
+      [
+        "Equipe de Faturamento",
+        "Usuário final",
+        "Baixa",
+        "Alta",
+        "Resistente (medo da mudança)",
+        "Treino por cenário do dia a dia; suporte reforçado na virada"
+      ]
+    ],
+    "Plano de Comunicação": [
+      [
+        "Momento",
+        "Público",
+        "Canal",
+        "Mensagem-chave",
+        "Responsável",
+        "Frequência"
+      ],
+      [
+        "Kickoff",
+        "Todos os envolvidos",
+        "Reunião + e-mail",
+        "Por que trocar de sistema (o 'porquê'), objetivos e cronograma macro",
+        "Gerente do Projeto",
+        "Único"
+      ],
+      [
+        "Durante a execução",
+        "Donos de processo + key users",
+        "Reunião de status",
+        "Progresso por módulo, decisões e pendências",
+        "Consultor de Implantação",
+        "Quinzenal"
+      ],
+      [
+        "Pré-virada (D-7)",
+        "Todos os usuários",
+        "Comunicado + treino de reforço",
+        "Data da virada, o que muda, plano de suporte (hypercare)",
+        "Gerente do Projeto + Consultor",
+        "Único"
+      ],
+      [
+        "Pós-virada (hypercare)",
+        "Usuários + liderança",
+        "Stand-up diário + canal de dúvidas",
+        "Status de estabilização, principais dúvidas e soluções",
+        "Consultor de Implantação",
+        "Diário (primeiras semanas)"
+      ]
+    ],
+    "Prontidão (ADKAR)": [
+      [
+        "Grupo / Área",
+        "Consciência (A) — entende por que a mudança ocorre",
+        "Desejo (D) — quer participar e apoiar",
+        "Conhecimento (K) — sabe como usar",
+        "Habilidade (H) — consegue executar na rotina",
+        "Reforço (R) — sustenta o novo jeito",
+        "Ações de reforço"
+      ],
+      [
+        "Financeiro"
+      ],
+      [
+        "Fiscal/Contábil"
+      ],
+      [
+        "Estoque/Compras"
+      ],
+      [
+        "Produção"
+      ],
+      [
+        "Faturamento"
+      ],
+      [],
+      [
+        "Preencher cada dimensão com nota de 1 (baixo) a 5 (alto) por grupo. Notas baixas viram ações de reforço."
+      ]
+    ],
+    "Treinamento por Papel": [
+      [
+        "Papel",
+        "Módulos",
+        "Cenários (não telas)",
+        "Carga horária",
+        "Status"
+      ],
+      [
+        "Faturista",
+        "Faturamento/Emissão, Financeiro",
+        "• Emitir NF de venda\n• Gerar boleto/remessa\n• Consultar título",
+        "8h",
+        "A treinar"
+      ],
+      [
+        "Comprador",
+        "Estoque/Compras",
+        "• Pedido de compra\n• Entrada de NF\n• Conferência de estoque",
+        "6h",
+        "A treinar"
+      ],
+      [
+        "Analista Fiscal",
+        "Fiscal/Contábil",
+        "• Apuração de impostos\n• Geração de obrigações acessórias",
+        "8h",
+        "A treinar"
+      ],
+      [
+        "PCP / Produção",
+        "Produção",
+        "• Gerar ordem de produção\n• Apontar consumo e baixa",
+        "6h",
+        "A treinar"
+      ]
+    ]
+  },
+  "abas_ordem": [
+    "Capa",
+    "Mapa de Stakeholders",
+    "Plano de Comunicação",
+    "Prontidão (ADKAR)",
+    "Treinamento por Papel",
+    "Indicadores de Adoção"
+  ],
+  "tipo": "xlsx"
+}

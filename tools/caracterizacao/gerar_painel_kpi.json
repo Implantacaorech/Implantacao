@@ -1,0 +1,186 @@
+{
+  "abas": {
+    "Capa": [
+      [
+        "Painel de KPIs da Implantação"
+      ],
+      [
+        "Indústria Alfa Ltda · gerado em 21/07/2026"
+      ],
+      [],
+      [
+        "Cliente",
+        "Indústria Alfa Ltda"
+      ],
+      [
+        "Código SICLA",
+        "4521"
+      ],
+      [
+        "RNS de Implantação",
+        "654321"
+      ],
+      [
+        "Virada prevista",
+        "2026-08-01"
+      ]
+    ],
+    "Horas (Plan x Real)": [
+      [
+        "Macro-etapa",
+        "Horas planejadas",
+        "Horas reais",
+        "Desvio",
+        "% do plano"
+      ],
+      [
+        "Parametrização",
+        "",
+        "",
+        "=IF(AND(B2<>\"\",C2<>\"\"),C2-B2,\"\")",
+        "=IF(B2>0,C2/B2,\"\")"
+      ],
+      [
+        "Treinamento",
+        "",
+        "",
+        "=IF(AND(B3<>\"\",C3<>\"\"),C3-B3,\"\")",
+        "=IF(B3>0,C3/B3,\"\")"
+      ],
+      [
+        "Simulações/Testes",
+        "",
+        "",
+        "=IF(AND(B4<>\"\",C4<>\"\"),C4-B4,\"\")",
+        "=IF(B4>0,C4/B4,\"\")"
+      ],
+      [
+        "Acompanhamento/Hypercare",
+        "",
+        "",
+        "=IF(AND(B5<>\"\",C5<>\"\"),C5-B5,\"\")",
+        "=IF(B5>0,C5/B5,\"\")"
+      ],
+      [
+        "TOTAL",
+        "=SUM(B2:B5)",
+        "=SUM(C2:C5)"
+      ]
+    ],
+    "Marcos (Prazo)": [
+      [
+        "Marco",
+        "Data prevista",
+        "Data real",
+        "Desvio (dias)"
+      ],
+      [
+        "Levantamento liberado",
+        "",
+        "",
+        "=IF(AND(B2<>\"\",C2<>\"\"),C2-B2,\"\")"
+      ],
+      [
+        "Projeto + Cronograma",
+        "",
+        "",
+        "=IF(AND(B3<>\"\",C3<>\"\"),C3-B3,\"\")"
+      ],
+      [
+        "Conversão prévia",
+        "",
+        "",
+        "=IF(AND(B4<>\"\",C4<>\"\"),C4-B4,\"\")"
+      ],
+      [
+        "Conversão oficial",
+        "",
+        "",
+        "=IF(AND(B5<>\"\",C5<>\"\"),C5-B5,\"\")"
+      ],
+      [
+        "Virada oficial",
+        "",
+        "",
+        "=IF(AND(B6<>\"\",C6<>\"\"),C6-B6,\"\")"
+      ],
+      [
+        "Encerramento",
+        "",
+        "",
+        "=IF(AND(B7<>\"\",C7<>\"\"),C7-B7,\"\")"
+      ]
+    ],
+    "Painel de KPIs": [
+      [
+        "KPI",
+        "Categoria",
+        "Meta",
+        "Medição",
+        "Valor atual",
+        "Farol"
+      ],
+      [
+        "Prazo (on-time)",
+        "Projeto",
+        "Virada na data prevista (± 5%)",
+        "Data real da virada vs. prevista"
+      ],
+      [
+        "Orçamento (on-budget)",
+        "Projeto",
+        "Horas reais ≤ horas contratadas + bonificadas",
+        "Horas reais / horas planejadas"
+      ],
+      [
+        "% usuários treinados",
+        "Adoção",
+        "100% antes da virada",
+        "Treinados / total de usuários"
+      ],
+      [
+        "% UAT aprovado",
+        "Qualidade",
+        ">= 95%",
+        "Casos aprovados / total UAT"
+      ],
+      [
+        "Defeitos críticos na virada",
+        "Qualidade",
+        "0",
+        "Contagem de severidade Crítica em aberto"
+      ],
+      [
+        "Adoção de uso (1ª semana)",
+        "Adoção",
+        ">= 80%",
+        "Usuários ativos / esperados"
+      ],
+      [
+        "Time-to-value",
+        "Valor",
+        "1º fechamento no 1º mês",
+        "Dias da virada até o 1º fechamento"
+      ],
+      [
+        "Chamados no hypercare (tendência)",
+        "Estabilização",
+        "Queda semana a semana",
+        "Chamados/semana"
+      ],
+      [
+        "CSAT do cliente",
+        "Satisfação",
+        ">= 4 de 5",
+        "Pesquisa no encerramento"
+      ]
+    ]
+  },
+  "abas_ordem": [
+    "Capa",
+    "Painel de KPIs",
+    "Marcos (Prazo)",
+    "Horas (Plan x Real)"
+  ],
+  "tipo": "xlsx"
+}

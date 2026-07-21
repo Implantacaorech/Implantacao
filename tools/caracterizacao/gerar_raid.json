@@ -1,0 +1,133 @@
+{
+  "abas": {
+    "Capa": [
+      [
+        "RAID — Riscos, Premissas, Issues e Decisões"
+      ],
+      [
+        "Indústria Alfa Ltda · gerado em 21/07/2026"
+      ],
+      [],
+      [
+        "R",
+        "Riscos — eventos futuros que podem impactar o projeto"
+      ],
+      [
+        "A",
+        "Premissas (Assumptions) — o que assumimos como verdade"
+      ],
+      [
+        "I",
+        "Issues — problemas que já ocorreram e precisam de ação"
+      ],
+      [
+        "D",
+        "Decisões e Dependências — o que foi decidido / o que depende de terceiros"
+      ]
+    ],
+    "Decisões": [
+      [
+        "ID",
+        "Descrição",
+        "Data",
+        "Decidido por"
+      ],
+      [
+        "D-01",
+        "Relatório gerencial específico fica fora do escopo (usar padrão)",
+        "2026-06-09",
+        "Gerente do Projeto"
+      ]
+    ],
+    "Dependências": [
+      [
+        "ID",
+        "Descrição",
+        "De quem",
+        "Prazo",
+        "Status"
+      ],
+      [
+        "DP-01",
+        "Desenvolvimento da comissão escalonada (RNS ORC 444444) antes da virada",
+        "Equipe de Desenvolvimento",
+        "2026-07-20",
+        "Em andamento"
+      ]
+    ],
+    "Issues": [
+      [
+        "ID",
+        "Descrição",
+        "Severidade",
+        "Ação",
+        "Responsável",
+        "Status"
+      ],
+      [
+        "I-01",
+        "Remessa bancária não homologada pelo banco",
+        "Alta",
+        "Abrir RNS; acionar o banco; testar arquivo CNAB",
+        "Consultor",
+        "Aberto"
+      ]
+    ],
+    "Premissas": [
+      [
+        "ID",
+        "Descrição",
+        "Validada?",
+        "Observação"
+      ],
+      [
+        "A-01",
+        "Cliente disponibilizará usuários-chave nos treinamentos conforme cronograma",
+        "Não"
+      ],
+      [
+        "A-02",
+        "Infraestrutura/instalação do SIGER® concluída antes da visita inicial",
+        "Sim"
+      ]
+    ],
+    "Riscos": [
+      [
+        "ID",
+        "Descrição",
+        "Impacto",
+        "Probabilidade",
+        "Mitigação",
+        "Responsável",
+        "Status"
+      ],
+      [
+        "R-01",
+        "Atraso na entrega de dados para conversão pelo cliente",
+        "Alto",
+        "Média",
+        "Definir SLA de entrega no projeto; cobrar o usuário líder semanalmente",
+        "Consultor",
+        "Aberto"
+      ],
+      [
+        "R-02",
+        "Baixa disponibilidade dos usuários-chave para treinamento",
+        "Alto",
+        "Média",
+        "Formalizar no projeto a alocação; envolver o patrocinador",
+        "Gerente do Projeto",
+        "Aberto"
+      ]
+    ]
+  },
+  "abas_ordem": [
+    "Capa",
+    "Riscos",
+    "Premissas",
+    "Issues",
+    "Decisões",
+    "Dependências"
+  ],
+  "tipo": "xlsx"
+}

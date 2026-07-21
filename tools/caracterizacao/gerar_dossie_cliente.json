@@ -1,0 +1,162 @@
+{
+  "paragrafos": [
+    "Dossiê de Implantação — Indústria Alfa Ltda",
+    "Atualizado em 21/07/2026",
+    "Identificação",
+    "Escopo (módulos)",
+    "Estoque/Compras",
+    "Fiscal/Contábil",
+    "Financeiro",
+    "Faturamento/Emissão",
+    "Produção",
+    "Status por etapa",
+    "RNS vinculadas",
+    "Artefatos gerados",
+    "Kit de Gestão da Mudança (gestao-mudanca)",
+    "Roteiros SIT/UAT + Termo de Aceite (testes-sit-uat)",
+    "Reconciliação de Conversão (validacao-conversao)",
+    "Painel de Hypercare (hypercare)",
+    "Log de Fit/Gap (aderencia-siger)",
+    "Painel de KPIs (metricas-kpi)",
+    "RAID (gestao-riscos-raid)",
+    "Links",
+    "Observações",
+    "________________________________________________________________",
+    "________________________________________________________________"
+  ],
+  "tabelas": [
+    [
+      [
+        "Campo",
+        "Valor"
+      ],
+      [
+        "Cliente",
+        "Indústria Alfa Ltda"
+      ],
+      [
+        "Código SICLA",
+        "4521"
+      ],
+      [
+        "CNPJ(s) / Sigla(s)",
+        "A01 — 12.345.678/0001-90"
+      ],
+      [
+        "RNS de Implantação",
+        "654321"
+      ],
+      [
+        "Consultor responsável",
+        "Sandri"
+      ],
+      [
+        "Área",
+        "Negócios e Produção"
+      ],
+      [
+        "Usuário líder",
+        "Camila Bittencurt"
+      ],
+      [
+        "Contato",
+        "(51) 9 9739.4656"
+      ],
+      [
+        "Virada prevista",
+        "2026-08-01"
+      ]
+    ],
+    [
+      [
+        "Etapa",
+        "Status"
+      ],
+      [
+        "Levantamento de processos",
+        "Concluído"
+      ],
+      [
+        "Aderência ao SIGER (fit/gap)",
+        "Concluído"
+      ],
+      [
+        "Projeto + Cronograma",
+        "Concluído"
+      ],
+      [
+        "Conversões",
+        "Em andamento"
+      ],
+      [
+        "Parametrização",
+        "Em andamento"
+      ],
+      [
+        "Treinamento",
+        "Não iniciado"
+      ],
+      [
+        "Testes SIT/UAT",
+        "Não iniciado"
+      ],
+      [
+        "Virada oficial",
+        "Não iniciado"
+      ],
+      [
+        "Hypercare",
+        "Não iniciado"
+      ],
+      [
+        "Encerramento",
+        "Não iniciado"
+      ]
+    ],
+    [
+      [
+        "Tipo",
+        "Número",
+        "Descrição",
+        "Status"
+      ],
+      [
+        "RNS(I)",
+        "654321",
+        "Implantação",
+        "Em andamento"
+      ],
+      [
+        "RNS COB",
+        "444444-02",
+        "Desenvolvimento — comissão escalonada",
+        "Em desenvolvimento"
+      ],
+      [
+        "RNS COB",
+        "222222-01",
+        "Conversão — Clientes/Fornecedores",
+        "Pendente"
+      ]
+    ],
+    [
+      [
+        "Recurso",
+        "Link"
+      ],
+      [
+        "Levantamento (Google Drive)",
+        "<link do Drive>"
+      ],
+      [
+        "Cronograma (SharePoint)",
+        "<link do SharePoint>"
+      ],
+      [
+        "Pasta do cliente (rede R:)",
+        "R:\\Rech\\2-Grm\\Impl\\1-Proc_Impl\\3-Documentacao_Clientes\\1-Clientes_Imp\\4521-Industria Alfa"
+      ]
+    ]
+  ],
+  "tipo": "docx"
+}

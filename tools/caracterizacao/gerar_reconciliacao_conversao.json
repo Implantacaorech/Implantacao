@@ -1,0 +1,181 @@
+{
+  "abas": {
+    "Capa": [
+      [
+        "Reconciliação de Conversão"
+      ],
+      [
+        "Indústria Alfa Ltda · gerado em 21/07/2026"
+      ],
+      [],
+      [
+        "Cliente",
+        "Indústria Alfa Ltda"
+      ],
+      [
+        "Código SICLA",
+        "4521"
+      ],
+      [
+        "Virada prevista",
+        "2026-08-01"
+      ],
+      [],
+      [
+        "Origem",
+        "Sistema antigo do cliente"
+      ],
+      [
+        "Destino",
+        "SIGER®"
+      ],
+      [],
+      [
+        "Critérios de aceite"
+      ],
+      [
+        "• Diferença de contagem (origem × destino) = 0 nas entidades-chave"
+      ],
+      [
+        "• Soma de valores financeiros confere (origem × destino)"
+      ],
+      [
+        "• Amostra de 20 registros validada manualmente por entidade"
+      ],
+      [
+        "• Divergências conhecidas documentadas e aceitas pelo cliente"
+      ],
+      [
+        "• Ponto de corte definido e comunicado"
+      ]
+    ],
+    "Cargas (mock loads)": [
+      [
+        "Carga",
+        "Data",
+        "Resultado",
+        "Divergências encontradas",
+        "Responsável"
+      ],
+      [
+        "Prévia 1"
+      ],
+      [
+        "Prévia 2"
+      ],
+      [
+        "Conversão oficial"
+      ]
+    ],
+    "Reconciliação": [
+      [
+        "Entidade",
+        "Chave",
+        "RNS COB",
+        "Qtd Origem",
+        "Qtd Destino",
+        "Dif. Qtd",
+        "Valor Origem (R$)",
+        "Valor Destino (R$)",
+        "Dif. Valor",
+        "Amostra OK?",
+        "Status",
+        "Observação"
+      ],
+      [
+        "Clientes/Fornecedores",
+        "CNPJ/CPF",
+        "222222-01",
+        "",
+        "",
+        "=E2-D2",
+        "",
+        "",
+        "=H2-G2",
+        "",
+        "",
+        "Conferir grupo de cadastros, representantes e local de cobrança (de/para)"
+      ],
+      [
+        "Produtos",
+        "Código / EAN",
+        "555555-01",
+        "",
+        "",
+        "=E3-D3",
+        "",
+        "",
+        "=H3-G3",
+        "",
+        "",
+        "Conferir saldo de estoque e custo médio na data de corte"
+      ],
+      [
+        "Financeiro a Pagar/Receber (em aberto)",
+        "Nº do título",
+        "777777-01",
+        "",
+        "",
+        "=E4-D4",
+        "",
+        "",
+        "=H4-G4",
+        "",
+        "",
+        "Soma dos saldos em aberto deve bater origem × destino"
+      ],
+      [
+        "Notas Fiscais emitidas",
+        "Chave NF-e",
+        "88888-01",
+        "",
+        "",
+        "=E5-D5",
+        "",
+        "",
+        "=H5-G5",
+        "",
+        "",
+        "Conferir numeração e totais por série"
+      ]
+    ],
+    "Sign-off": [
+      [
+        "Aceite dos dados convertidos"
+      ],
+      [],
+      [],
+      [
+        "Liberar a conversão oficial somente com contagem e valores conferidos, amostra validada e divergências aceitas pelo cliente."
+      ],
+      [],
+      [],
+      [],
+      [
+        "__________________________"
+      ],
+      [
+        "Consultor de Implantação"
+      ],
+      [
+        "__________________________"
+      ],
+      [
+        "Equipe de Conversão"
+      ],
+      [
+        "__________________________"
+      ],
+      [
+        "Usuário Líder (cliente)"
+      ]
+    ]
+  },
+  "abas_ordem": [
+    "Capa",
+    "Reconciliação",
+    "Cargas (mock loads)",
+    "Sign-off"
+  ],
+  "tipo": "xlsx"
+}
