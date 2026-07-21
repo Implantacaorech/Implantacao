@@ -29,6 +29,7 @@ import importlib
 import io
 import json
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -58,6 +59,17 @@ GERADORES = [
 ]
 
 
+# Vários geradores carimbam a data de hoje ("gerado em 21/07/2026"). Sem mascarar, o
+# snapshot quebraria sozinho no dia seguinte e o teste viraria ruído que todo mundo ignora.
+# O que interessa ao porte é que exista uma data ali, não qual é.
+_RE_DATA = re.compile(r"\b\d{2}/\d{2}/\d{4}\b")
+
+
+def _mascarar(valor):
+    """Substitui datas dd/mm/aaaa por <DATA>, para o snapshot ser determinístico."""
+    return _RE_DATA.sub("<DATA>", valor) if isinstance(valor, str) else valor
+
+
 def extrair_docx(caminho):
     """Conteúdo observável de um .docx: parágrafos e tabelas, na ordem."""
     from docx import Document
@@ -65,9 +77,9 @@ def extrair_docx(caminho):
     d = Document(caminho)
     return {
         "tipo": "docx",
-        "paragrafos": [p.text for p in d.paragraphs],
+        "paragrafos": [_mascarar(p.text) for p in d.paragraphs],
         "tabelas": [
-            [[c.text for c in linha.cells] for linha in t.rows] for t in d.tables
+            [[_mascarar(c.text) for c in linha.cells] for linha in t.rows] for t in d.tables
         ],
     }
 
@@ -83,7 +95,7 @@ def extrair_xlsx(caminho):
         linhas = []
         for linha in ws.iter_rows(values_only=True):
             # Normaliza para texto e descarta a cauda de células vazias da linha.
-            valores = ["" if v is None else str(v) for v in linha]
+            valores = ["" if v is None else _mascarar(str(v)) for v in linha]
             while valores and valores[-1] == "":
                 valores.pop()
             linhas.append(valores)
