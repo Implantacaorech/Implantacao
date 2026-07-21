@@ -106,6 +106,21 @@
   `docservice/gerador/` (11) e a ponte `webapp/` (4). Aprovado em 2026-07-21; fazer com testes
   de caracterização antes (§4.7 passo 1) e equivalência de saída dos .xlsx/.docx confirmada
   antes de desativar o original.
+  - **Geradores Office: 12 de 14 portados** (2026-07-21), em `backend/src/geradores/`. Cada um
+    tem prova de equivalência contra o snapshot do original em `tools/caracterizacao/`.
+    Nada foi desativado no Python ainda — os dois lados convivem até o porte fechar.
+  - [ ] **Faltam 2: `gerar_levantamento.py` e `gerar_projeto_implantacao.py`.** Não é "traduzir
+    código": os dois fazem **cirurgia de DOM em .docx oficial já existente** — o Levantamento
+    reescreve parágrafos no lugar casando por prefixo de texto e preenche tabelas identificadas
+    pelo cabeçalho; o Projeto remove áreas não selecionadas, faz `deepcopy` de linhas-modelo de
+    tabela e limpa marcadores. A base já existe (`docx-template.ts`, provada no Termo de
+    Encerramento), mas ela hoje só troca o miolo do corpo preservando seção/timbre; para estes
+    dois é preciso **ler, localizar e alterar elementos** do documento do template.
+    **Risco a pesar antes de decidir:** são documentos oficiais entregues ao cliente, e um erro
+    sutil gera documento malformado sem necessariamente quebrar o teste — o contrato de
+    caracterização cobre texto de corpo/tabela/timbre, não a formatação inteira.
+    **Alternativa prevista na §4.3:** manter estes dois em Python sob exceção documentada
+    (nomeando a limitação e a alternativa avaliada). Decisão pendente com o usuário.
 
 ## ▶️ Próximo passo combinado
 - [ ] Decidir "onde os dados moram" → **começar pelo Hub "Projetos por Cliente" com banco**.
