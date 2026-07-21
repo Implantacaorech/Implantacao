@@ -21,6 +21,10 @@ export interface SnapshotDocx {
   tipo: string;
   paragrafos: string[];
   tabelas: string[][][];
+  /** Parágrafos de cada word/headerN.xml, por nome de parte. */
+  cabecalhos: Record<string, string[]>;
+  /** Parágrafos de cada word/footerN.xml, por nome de parte. */
+  rodapes: Record<string, string[]>;
 }
 
 /** Data de hoje em dd/mm/aaaa — a única que é mascarada, pelo mesmo motivo do .xlsx. */
@@ -120,6 +124,36 @@ function extrairTabela(tbl: No): string[][] {
   );
 }
 
+/** Parágrafos de cada parte word/<prefixo>N.xml, por nome de parte.
+ *
+ * Cabeçalho e rodapé são o TIMBRE OFICIAL da Rech — são a razão de os geradores carregarem
+ * `tools/templates/base_*.docx`. Sem eles no contrato, um porte que perdesse o timbre passaria
+ * no teste, que é justamente o erro que mais importa evitar aqui. */
+async function textoDasPartes(
+  zip: JSZip,
+  prefixo: string,
+): Promise<Record<string, string[]>> {
+  const padrao = new RegExp(`^word/${prefixo}\\d*\\.xml$`);
+  const nomes = Object.keys(zip.files)
+    .filter((n) => padrao.test(n))
+    .sort();
+  const partes: Record<string, string[]> = {};
+  for (const nome of nomes) {
+    const xml = await zip.files[nome].async('string');
+    const raiz = parser.parse(xml) as No[];
+    const paragrafos: string[] = [];
+    const percorrer = (nos: No[]): void => {
+      for (const no of nos) {
+        if (nomeDaTag(no) === 'w:p') paragrafos.push(textoDoParagrafo(no));
+        else percorrer(filhosDe(no));
+      }
+    };
+    percorrer(raiz);
+    partes[nome] = paragrafos;
+  }
+  return partes;
+}
+
 /** Extrai o conteúdo observável de um .docx já em memória. */
 export async function extrairDocx(buffer: Buffer): Promise<SnapshotDocx> {
   const zip = await JSZip.loadAsync(buffer);
@@ -141,7 +175,13 @@ export async function extrairDocx(buffer: Buffer): Promise<SnapshotDocx> {
     else if (tag === 'w:tbl') tabelas.push(extrairTabela(no));
   }
 
-  return { tipo: 'docx', paragrafos, tabelas };
+  return {
+    tipo: 'docx',
+    paragrafos,
+    tabelas,
+    cabecalhos: await textoDasPartes(zip, 'header'),
+    rodapes: await textoDasPartes(zip, 'footer'),
+  };
 }
 
 /** Carrega o snapshot dourado gerado a partir do gerador Python original. */

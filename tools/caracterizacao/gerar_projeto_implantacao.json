@@ -1,4 +1,15 @@
 {
+  "cabecalhos": {
+    "word/header1.xml": [
+      ""
+    ],
+    "word/header2.xml": [
+      ""
+    ],
+    "word/header3.xml": [
+      ""
+    ]
+  },
   "paragrafos": [
     "Projeto de Implantação do SIGER®",
     "",
@@ -216,6 +227,22 @@
     "                                        Assinatura Rech\t\t\tAssinatura Cliente",
     ""
   ],
+  "rodapes": {
+    "word/footer1.xml": [
+      "",
+      "",
+      "PI",
+      "xxxx_xx",
+      "Página: 7/7",
+      ""
+    ],
+    "word/footer2.xml": [
+      ""
+    ],
+    "word/footer3.xml": [
+      ""
+    ]
+  },
   "tabelas": [
     [
       [

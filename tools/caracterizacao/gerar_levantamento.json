@@ -1,4 +1,25 @@
 {
+  "cabecalhos": {
+    "word/header1.xml": [
+      "",
+      ""
+    ],
+    "word/header2.xml": [
+      "",
+      "Rech Informática Ltda",
+      "SIGER®",
+      "",
+      "<Nome do Projeto>",
+      ""
+    ],
+    "word/header3.xml": [
+      ""
+    ],
+    "word/header4.xml": [
+      "",
+      ""
+    ]
+  },
   "paragrafos": [
     "",
     "",
@@ -317,6 +338,34 @@
     "",
     ""
   ],
+  "rodapes": {
+    "word/footer1.xml": [
+      "",
+      "",
+      "",
+      ""
+    ],
+    "word/footer2.xml": [
+      "",
+      "Documento1",
+      "Página  de ",
+      ""
+    ],
+    "word/footer3.xml": [
+      ""
+    ],
+    "word/footer4.xml": [
+      "",
+      ""
+    ],
+    "word/footer5.xml": [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
   "tabelas": [
     [
       [

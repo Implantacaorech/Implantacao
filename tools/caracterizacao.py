@@ -84,8 +84,35 @@ def _mascarar(valor):
     return valor.replace(_HOJE, "<HOJE>").replace(_HOJE_EXTENSO, "<HOJE_EXTENSO>")
 
 
+_W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+
+
+def _texto_das_partes(caminho, prefixo):
+    """Parágrafos de cada parte word/<prefixo>N.xml de um .docx, por nome de parte.
+
+    Cabeçalho e rodapé são o TIMBRE OFICIAL da Rech — são a razão de os geradores carregarem
+    `tools/templates/base_*.docx`. Sem eles no contrato, um porte que perdesse o timbre
+    passaria no teste, que é justamente o erro que mais importa evitar aqui.
+    """
+    import re
+    import xml.etree.ElementTree as ET
+    import zipfile
+
+    padrao = re.compile(r"^word/%s\d*\.xml$" % prefixo)
+    partes = {}
+    with zipfile.ZipFile(caminho) as z:
+        for nome in sorted(n for n in z.namelist() if padrao.match(n)):
+            raiz = ET.fromstring(z.read(nome))
+            paragrafos = []
+            for p in raiz.iter(_W + "p"):
+                texto = "".join(t.text or "" for t in p.iter(_W + "t"))
+                paragrafos.append(_mascarar(texto))
+            partes[nome] = paragrafos
+    return partes
+
+
 def extrair_docx(caminho):
-    """Conteúdo observável de um .docx: parágrafos e tabelas, na ordem."""
+    """Conteúdo observável de um .docx: parágrafos, tabelas, cabeçalhos e rodapés."""
     from docx import Document
 
     d = Document(caminho)
@@ -95,6 +122,8 @@ def extrair_docx(caminho):
         "tabelas": [
             [[_mascarar(c.text) for c in linha.cells] for linha in t.rows] for t in d.tables
         ],
+        "cabecalhos": _texto_das_partes(caminho, "header"),
+        "rodapes": _texto_das_partes(caminho, "footer"),
     }
 
 
@@ -176,6 +205,9 @@ def comparar(modname, atual):
         for i, (a, b) in enumerate(zip(pe, pa)):
             if a != b:
                 return False, "parágrafo %d: %r -> %r" % (i, a[:60], b[:60])
+        for chave in ("cabecalhos", "rodapes"):
+            if esperado.get(chave) != atual.get(chave):
+                return False, "%s divergiram" % chave
         return False, "tabelas divergiram"
     ae, aa = esperado["abas_ordem"], atual["abas_ordem"]
     if ae != aa:

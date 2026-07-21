@@ -1,4 +1,15 @@
 {
+  "cabecalhos": {
+    "word/header1.xml": [
+      ""
+    ],
+    "word/header2.xml": [
+      ""
+    ],
+    "word/header3.xml": [
+      ""
+    ]
+  },
   "paragrafos": [
     "Termo de encerramento do projeto de implantação do SIGER®",
     "Cliente: GRX EMBALAGENS LTDA",
@@ -30,6 +41,22 @@
     "",
     "Assinatura Rech\t\t\tAssinatura Cliente"
   ],
+  "rodapes": {
+    "word/footer1.xml": [
+      ""
+    ],
+    "word/footer2.xml": [
+      "",
+      "",
+      "",
+      "",
+      "Página: 2/3",
+      ""
+    ],
+    "word/footer3.xml": [
+      ""
+    ]
+  },
   "tabelas": [
     [
       [
