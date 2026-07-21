@@ -32,8 +32,36 @@ function dataDeHoje(): string {
 
 const HOJE = dataDeHoje();
 
+// O Cronograma fecha com "Novo Hamburgo, 21 de julho de 2026." — a data de hoje POR EXTENSO,
+// que a máscara dd/mm/aaaa não pega. O harness Python mascara as duas formas; aqui também.
+const MESES = [
+  'janeiro',
+  'fevereiro',
+  'março',
+  'abril',
+  'maio',
+  'junho',
+  'julho',
+  'agosto',
+  'setembro',
+  'outubro',
+  'novembro',
+  'dezembro',
+];
+
+function dataDeHojePorExtenso(): string {
+  const d = new Date();
+  return `${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
+}
+
+const HOJE_EXTENSO = dataDeHojePorExtenso();
+
 function mascarar(valor: string): string {
-  return valor.split(HOJE).join('<HOJE>');
+  return valor
+    .split(HOJE)
+    .join('<HOJE>')
+    .split(HOJE_EXTENSO)
+    .join('<HOJE_EXTENSO>');
 }
 
 // preserveOrder mantém a ordem entre <w:p> e <w:tbl> dentro do corpo, que faz parte do

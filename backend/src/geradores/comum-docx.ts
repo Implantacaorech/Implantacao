@@ -1,4 +1,5 @@
 import {
+  AlignmentType,
   BorderStyle,
   Paragraph,
   Table,
@@ -23,6 +24,19 @@ export const GRADE = {
   insideHorizontal: { style: BorderStyle.SINGLE, size: 1 },
   insideVertical: { style: BorderStyle.SINGLE, size: 1 },
 };
+
+/** Título no estilo Rech — `_common.docx_heading()`: parágrafo comum com run em negrito, NÃO
+ * o estilo "Heading" do Word. O tamanho vem em pontos; o OOXML usa meios-pontos. */
+export function tituloRech(
+  texto: string,
+  tamanhoPt = 13,
+  centralizado = false,
+): Paragraph {
+  return new Paragraph({
+    alignment: centralizado ? AlignmentType.CENTER : undefined,
+    children: [new TextRun({ text: texto, bold: true, size: tamanhoPt * 2 })],
+  });
+}
 
 /** Célula de conteúdo simples. */
 export function celula(texto: string): TableCell {

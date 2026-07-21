@@ -68,10 +68,20 @@ GERADORES = [
 # elas no contrato, um porte com aritmética de datas errada passaria despercebido.
 _HOJE = datetime.date.today().strftime("%d/%m/%Y")
 
+# O Cronograma fecha com "Novo Hamburgo, 21 de julho de 2026." — a data de hoje POR EXTENSO,
+# que a máscara dd/mm/aaaa não pega. Sem mascarar as duas formas, aquele snapshot quebraria
+# sozinho no dia seguinte.
+_MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho",
+          "agosto", "setembro", "outubro", "novembro", "dezembro"]
+_hoje = datetime.date.today()
+_HOJE_EXTENSO = "%d de %s de %d" % (_hoje.day, _MESES[_hoje.month - 1], _hoje.year)
+
 
 def _mascarar(valor):
     """Substitui a data de HOJE por <HOJE>, mantendo as demais datas no contrato."""
-    return valor.replace(_HOJE, "<HOJE>") if isinstance(valor, str) else valor
+    if not isinstance(valor, str):
+        return valor
+    return valor.replace(_HOJE, "<HOJE>").replace(_HOJE_EXTENSO, "<HOJE_EXTENSO>")
 
 
 def extrair_docx(caminho):
