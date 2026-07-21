@@ -62,6 +62,31 @@ export function hoje(): string {
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
+/** Converte "aaaa-mm-dd" ou "dd/mm/aaaa" em Date (UTC), ou null se não reconhecer — equivale
+ * ao `parse_date()` dos geradores Python. Usa UTC de propósito: aritmética de dias com Date
+ * local sofre com horário de verão e pode "pular" um dia. */
+export function parseData(
+  valor: string | number | null | undefined,
+): Date | null {
+  const texto = String(valor ?? '').trim();
+  let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto);
+  if (m) return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(texto);
+  if (m) return new Date(Date.UTC(+m[3], +m[2] - 1, +m[1]));
+  return null;
+}
+
+/** Formata um Date (UTC) como dd/mm/aaaa. */
+export function formatarData(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
+}
+
+/** Soma dias a uma data (UTC), sem alterar a original. */
+export function somarDias(d: Date, dias: number): Date {
+  return new Date(d.getTime() + dias * 86_400_000);
+}
+
 /** Equivale a `_common.slug()`: sem acento, não alfanumérico vira "_". Aceita só tipos
  * primitivos — objeto viraria "[object Object]" no nome do arquivo, o que é bug, não uso. */
 export function slug(texto: string | number | null | undefined): string {
@@ -72,6 +97,16 @@ export function slug(texto: string | number | null | undefined): string {
     .replace(/[^A-Za-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '');
   return limpo || 'cliente';
+}
+
+/** Sanitiza nome de aba do Excel — `_common.safe_sheet()`. O Excel proíbe \ / ? * [ ] : e
+ * limita a 31 caracteres. Aceita só primitivos, pelo mesmo motivo de `slug()`. */
+export function nomeAbaSeguro(
+  nome: string | number | null | undefined,
+): string {
+  return String(nome ?? '')
+    .replace(/[\\/?*[\]:]/g, '-')
+    .slice(0, 31);
 }
 
 /** Cabeçalho da tabela (linha 1) com estilo e painel congelado — `_common.header_row()`. */

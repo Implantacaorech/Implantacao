@@ -1,9 +1,9 @@
 {
   "paragrafos": [
     "Termo de encerramento do projeto de implantação do SIGER®",
-    "Cliente: Metalúrgica Horizonte S.A.",
+    "Cliente: GRX EMBALAGENS LTDA",
     "Processo de transição e finalização da implantação",
-    "O presente termo tem por finalidade oficializar o encerramento da implantação do ERP SIGER® junto à empresa Metalúrgica Horizonte S.A., cujo escopo do projeto original (nº PRJ-2026-0187) fora estabelecido e validado entre as partes na data de ____.",
+    "O presente termo tem por finalidade oficializar o encerramento da implantação do ERP SIGER® junto à empresa GRX EMBALAGENS LTDA, cujo escopo do projeto original (nº 123456) fora estabelecido e validado entre as partes na data de 25 de maio de 2026.",
     "Diante do encerramento do projeto referenciado neste termo, a empresa supracitada desvincula-se do atendimento do setor de implantação da Rech, passando a ter como canal principal de atendimento o setor de suporte, cujos meios de contatos são indicados a seguir:",
     "•  Dúvidas pontuais de uso e situações que necessitem suporte técnico deverão ser reportadas ao setor de Suporte da Rech®:",
     "•  Os contatos receberão prioridade de retorno na seguinte ordem:",
@@ -19,7 +19,9 @@
     "No ato de formalização deste termo, ratificamos a inexistência de pendências ou restrições ao processo de implantação por parte da contratante.",
     "Das alterações e incrementos tratados fora do escopo original",
     "Neste tópico serão apresentados aspectos que refletiram em incrementos, mudanças de definições e alterações do processo inicialmente mapeado e da sua efetiva aderência.",
-    "Não houve alterações significativas no projeto original, tais como substituição, cancelamento ou incrementos de módulos e mudanças de rotinas que impactassem no objetivo final de uso do SIGER®.",
+    "Módulo Vendas e Faturamento",
+    "Rotina de separação e conferência",
+    "Originalmente as rotinas de depósito, separação e conferência eram realizadas utilizando diretamente o ERP, posteriormente foi incrementado o uso do WMS de terceiros e realizada a integração com o SIGER®.",
     "Do resumo geral da implantação",
     "Dos pontos que serão sequenciados e entregues pelo setor de implantação mesmo após o encerramento do projeto",
     "Não há pendências a serem sequenciadas após o encerramento do projeto.",
@@ -38,15 +40,29 @@
         "Obs."
       ],
       [
-        "Controle de Estoques",
-        "",
+        "Vendas e Faturamento",
+        "NF-e / MDF-e",
         "Implantado",
         "Sim",
         ""
       ],
       [
-        "Controle de Compras - Geral/Básico",
-        "",
+        "Controle de Estoque",
+        "Formulação/Estruturará",
+        "Implantado",
+        "Sim",
+        ""
+      ],
+      [
+        "Controle Financeiro",
+        "—",
+        "Implantado",
+        "Sim",
+        ""
+      ],
+      [
+        "Livros Fiscais",
+        "Repositório DF-e",
         "Implantado",
         "Sim",
         ""

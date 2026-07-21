@@ -3,16 +3,16 @@
     "",
     "",
     "Mapeamento de Processos",
-    "Metalúrgica Teste Ltda",
+    "Indústria Alfa Ltda",
     "",
     "",
     "",
-    "Data: 2026-06-11",
+    "Data: 09/06/2026",
     "",
     "",
     "",
     "",
-    "Responsáveis: ",
+    "Responsáveis: Sandri",
     "",
     "",
     "",
@@ -24,16 +24,16 @@
     "",
     "Informações da empresa",
     "Identificação da Empresa",
-    "Razão Social: Metalúrgica Teste Ltda",
-    "Ramo Atividade: ",
-    "Produto: ",
-    "Fornecedor Atual Software: ",
+    "Razão Social: Indústria Alfa Ltda",
+    "Ramo Atividade: Indústria de embalagens",
+    "Produto: Embalagens plásticas",
+    "Fornecedor Atual Software: Sistema X",
     "",
-    "Localização / Filiais: ",
+    "Localização / Filiais: Novo Hamburgo/RS — matriz",
     "",
-    "Observações / Objetivos: Técnicos: Pedro, Ana",
+    "Observações / Objetivos: Centralizar controles no SIGER® e automatizar estoque e financeiro.",
     "",
-    "Quantidade usuários e identificação: ",
+    "Quantidade usuários e identificação: 2 usuários",
     "",
     "",
     "\t",
@@ -70,7 +70,7 @@
     "",
     "",
     "",
-    "CONVERSÕES ( horas)",
+    "CONVERSÕES (0 horas)",
     "",
     "Detalhamento e considerações levantadas: ",
     "",
@@ -132,7 +132,7 @@
     "Mapeamento de processo – VENDAS E FATURAMENTO",
     "Módulos Previstos:",
     "",
-    "Vendas e Faturamento",
+    "Vendas e Faturamento; Geração/Autenticação de NF-e – Nota Fiscal Eletrônica; Geração/Autenticação de NFS-e – Nota Fiscal Serviços Eletrônica; Frente de Caixa; EDI (Intercâmbio Eletrônico de Dados); Metas de Venda Avançado; Controle de Reservas de Fat/Vendas; Controle Separação de Pedidos Faturamento",
     "",
     "Aspectos identificados – Processo de faturamento",
     "",
@@ -144,7 +144,7 @@
     "Mapeamento de processo – PRODUÇÃO",
     "Módulos Previstos:",
     "",
-    "",
+    "Gestão Industrial",
     "",
     "Aspectos identificados – Engenharia de produto",
     "",
@@ -160,7 +160,7 @@
     "Mapeamento de processo – COMPRAS/ESTOQUE",
     "Módulos Previstos:",
     "",
-    "Controle de Estoques",
+    "Controle de Estoques; Controle de Compras - Geral/Básico",
     "",
     "Aspectos identificados – Processo de compras",
     "",
@@ -178,7 +178,7 @@
     "Mapeamento de processo – GESTÃO FINANCEIRA",
     "Módulos Previstos:",
     "",
-    "",
+    "Controle Financeiro",
     "",
     "Aspectos identificados – Gestão financeira",
     "",
@@ -190,7 +190,7 @@
     "Mapeamento de processo – GESTÃO FISCAL, CONTÁBIL E PATRIMONIAL",
     "Módulos Previsto:",
     "",
-    "Contabilidade Geral",
+    "Contabilidade Geral; Lalur; Gestão Patrimonial; Livros Fiscais; Repositório de DF-e Rech",
     "",
     "Aspectos identificados – Gestão fiscal",
     "",
@@ -393,14 +393,14 @@
         "Atribuições"
       ],
       [
-        "",
-        "",
-        ""
+        "Gustavo",
+        "gustavo@alfa.com",
+        "Comercial"
       ],
       [
-        "",
-        "",
-        ""
+        "Carlos",
+        "carlos@alfa.com",
+        "Produção"
       ],
       [
         "",
@@ -432,7 +432,91 @@
         ""
       ],
       [
+        "CTB — Contabilidade Geral",
+        "X",
+        "",
+        ""
+      ],
+      [
+        "CCC — ",
+        "X",
+        "",
+        ""
+      ],
+      [
+        "LAL — Lalur",
+        "X",
+        "",
+        ""
+      ],
+      [
+        "GPA — Gestão Patrimonial",
+        "X",
+        "",
+        ""
+      ],
+      [
+        "LFI — Livros Fiscais",
+        "X",
+        "",
+        ""
+      ],
+      [
+        "DFR — Repositório de DF-e Rech",
+        "X",
+        "",
+        ""
+      ],
+      [
         "FAT — Vendas e Faturamento",
+        "X",
+        "",
+        ""
+      ],
+      [
+        "NFE — Geração/Autenticação de NF-e – Nota Fiscal Eletrônica",
+        "X",
+        "",
+        ""
+      ],
+      [
+        "NSE — Geração/Autenticação de NFS-e – Nota Fiscal Serviços Eletrônica",
+        "X",
+        "",
+        ""
+      ],
+      [
+        "UFX — Frente de Caixa",
+        "X",
+        "",
+        ""
+      ],
+      [
+        "EDI — EDI (Intercâmbio Eletrônico de Dados)",
+        "X",
+        "",
+        ""
+      ],
+      [
+        "MVA — Metas de Venda Avançado",
+        "X",
+        "",
+        ""
+      ],
+      [
+        "CRF — Controle de Reservas de Fat/Vendas",
+        "X",
+        "",
+        ""
+      ],
+      [
+        "SEP — Controle Separação de Pedidos Faturamento",
+        "X",
+        "",
+        ""
+      ],
+      [
+        "FIN — Controle Financeiro",
         "X",
         "",
         ""
@@ -444,7 +528,13 @@
         ""
       ],
       [
-        "CTB — Contabilidade Geral",
+        "COM — Controle de Compras - Geral/Básico",
+        "X",
+        "",
+        ""
+      ],
+      [
+        "GIN — Gestão Industrial",
         "X",
         "",
         ""
@@ -462,9 +552,9 @@
         ""
       ],
       [
-        "",
-        "",
-        ""
+        "Repositório DF-e",
+        "Sim",
+        "Identificado no levantamento"
       ]
     ],
     [
@@ -474,9 +564,9 @@
         "Total de Horas previstas:"
       ],
       [
-        "40 horas",
-        "8 horas",
-        ""
+        "",
+        "68 horas",
+        "68 horas"
       ]
     ]
   ],

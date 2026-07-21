@@ -31,6 +31,7 @@ import json
 import os
 import datetime
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
@@ -110,15 +111,29 @@ def extrair_xlsx(caminho):
 
 
 def rodar_gerador(modname, prefix, kind):
-    """Executa o gerador e devolve o conteúdo extraído do arquivo mais recente."""
+    """Executa o gerador e devolve o conteúdo extraído do arquivo que ELE acabou de escrever.
+
+    `exemplos/` acumula saídas antigas de vários clientes (Cronograma_ tem 10, Levantamento_
+    tem 11). Escolher "o último em ordem alfabética" pegava um arquivo de outro cliente, de
+    semanas atrás — o snapshot congelava um artefato morto e o teste passava para sempre sem
+    olhar o gerador. Por isso a escolha é por data de modificação, e o arquivo TEM de ter sido
+    escrito nesta execução: se não foi, o gerador não produziu nada e isso é uma falha.
+    """
     os.makedirs(OUT, exist_ok=True)
     mod = importlib.import_module(modname)
+    marco = time.time()
     with contextlib.redirect_stdout(io.StringIO()):
         mod.main()
     saidas = [f for f in os.listdir(OUT) if f.startswith(prefix)]
     if not saidas:
         raise RuntimeError("gerador não produziu arquivo com prefixo %r" % prefix)
-    caminho = os.path.join(OUT, sorted(saidas)[-1])
+    caminho = max((os.path.join(OUT, f) for f in saidas), key=os.path.getmtime)
+    # Tolerância de 2s: FAT tem resolução de 2 segundos em mtime.
+    if os.path.getmtime(caminho) < marco - 2:
+        raise RuntimeError(
+            "nenhum arquivo com prefixo %r foi escrito nesta execução (mais recente: %s)"
+            % (prefix, os.path.basename(caminho))
+        )
     return extrair_xlsx(caminho) if kind == "xlsx" else extrair_docx(caminho)
 
 
