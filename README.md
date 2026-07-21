@@ -6,6 +6,77 @@ padronizar o processo de implantação do ERP **SIGER®**, conforme o processo
 
 Repositório: <https://github.com/Implantacaorech/Implantacao>
 
+> Este projeto segue os
+> [Padrões de Desenvolvimento da Rech](https://gitlab.rech.com.br/gitlab/rech/ia/padrao-ia/raw/master/PADRAO-RECH.md).
+
+## Acesso
+
+**Painel de Implantação (aplicação web)** — em produção desde 2026-07-19:
+
+| Ambiente | URL | Host |
+|---|---|---|
+| Produção (rede interna) | <http://I7M1700-01-EVE:5100> | `I7M1700-01-EVE` |
+
+Um único processo/porta: o backend **NestJS** serve o build do **Angular**
+(`@nestjs/serve-static`), conforme §4.8.5 do padrão.
+
+## Como executar
+
+```bash
+# 1) Build (sempre que atualizar o código)
+Build_Painel_Novo.bat          # ou: cd backend && npm run build ; cd ../frontend && npm run build -- --configuration production
+
+# 2) Subir o servidor (valida as variáveis obrigatórias antes)
+Iniciar_Painel_Novo.bat
+
+# Testes (obrigatórios antes de todo push)
+cd backend  && npm test && npm run test:e2e
+cd frontend && npm test
+
+# Banco: aplicar migrations
+cd backend && npm run migration:run
+```
+
+O guardião (`Guardiao_Painel_Novo.vbs`) e a verificação de integridade rodam como Tarefas
+Agendadas do Windows e reiniciam o serviço se `/api/health` não responder.
+
+## Dependências de runtime
+
+| Dependência | Versão / observação |
+|---|---|
+| **Node.js** | LTS ativa (**24.x**) — ver `.nvmrc` e `engines` do `package.json` |
+| **MariaDB** | 11.x — banco `painel_novo` (container `painel-db-mariadb`, porta 3307) |
+| **Python** | 3.12 — apenas para `docservice/` e `tools/` (ver "Exceções ao padrão") |
+
+**Variáveis de ambiente obrigatórias** (definidas como variáveis de USUÁRIO do Windows;
+nunca versionadas — ver `backend/.env.example`):
+
+| Variável | Para que serve |
+|---|---|
+| `MIGRACAO_DB_URL` | Conexão do MariaDB (`mysql://…/painel_novo`) |
+| `MIGRACAO_JWT_SECRET` | Segredo de assinatura do token de acesso |
+| `MIGRACAO_JWT_REFRESH_SECRET` | Segredo do token de renovação (diferente do anterior) |
+| `MIGRACAO_PORT` | Porta do Painel (produção: `5100`) |
+
+Chaves de IA **não** são variáveis de ambiente: ficam por finalidade em `dados/ia_config.json`
+(fora do Git), configuradas na tela **Ferramentas → Modo IA**.
+
+## Exceções ao padrão (§4.3 / §4.8)
+
+Este projeto tem componentes **Python** fora da stack homologada, em processo de adequação
+(auditoria de 2026-07-21 contra o `PADRAO-RECH.md` rev. 2.0.0):
+
+| Componente | Situação |
+|---|---|
+| `tools/`, `docservice/gerador/`, ponte `webapp/` | **A portar para Node/TypeScript** (§4.7) — geração de Office tem equivalente na stack; não configura exceção. |
+| `docservice/transcricao/` | **Candidato à exceção da §4.3** (inferência local de modelo, faster-whisper). Pendente de verificação das alternativas em Rust (`whisper-rs`, `candle`, `ort`) e de validação com o **DevTools**. |
+| `projeto_old/` | Arquivo morto do Painel Flask desligado — fora do runtime. |
+
+**Por que não foi feito no SICLA (§9.1):** o Painel automatiza o processo de implantação
+(fluxo por etapas, geração fiel dos documentos oficiais da Rech, gates de documentos
+obrigatórios e integração com SIGER/RNS) — domínio que não é coberto pela agenda/tarefas do
+SICLA. As pendências de conformidade estão em [docs/pendencias.md](docs/pendencias.md).
+
 ## O que é isto
 
 O processo de implantação foi traduzido para três camadas que o Claude Code entende:

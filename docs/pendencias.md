@@ -81,6 +81,32 @@
 - [ ] Chave da API da IA + teto de custo definido.
 - [ ] Estruturar dados que hoje estão soltos (YAMLs por cliente).
 
+## 📐 Conformidade com os Padrões de Desenvolvimento da Rech
+> Auditoria de 2026-07-21 contra o `PADRAO-RECH.md` rev. 2.0.0. Ver o relatório completo e o
+> plano de adequação no histórico da sessão.
+
+- [ ] **Migrar o repositório para o GitLab interno** (`rech/javascript`) — **adiado por decisão
+  do usuário em 2026-07-21, a tratar depois.** Hoje o remoto é
+  `github.com/Implantacaorech/Implantacao`, o que viola §3/§3.3/§3.4 (GitHub só para open source
+  aprovado pela direção). É o achado de maior risco de governança: código corporativo fora do
+  repositório oficial, sem o backup e a auditoria corporativos.
+  Procedimento (§3.6): criar o projeto no GitLab, depois
+  `git remote set-url origin https://gitlab.rech.com.br/gitlab/rech/javascript/<projeto>.git && git push -u origin --all`.
+- [ ] **Exceção §4.3 para a transcrição** (`docservice/transcricao`, faster-whisper) — validar com
+  o **DevTools**, declarando a verificação das alternativas em Rust (`whisper-rs`, `candle`, `ort`)
+  e registrando a justificativa no README.
+- [ ] **Homologar o pipeline Node/TS com o DevTools** (§7.1) — não há template compartilhado ainda.
+- [ ] **Publicar a rev. 2.0.0 do padrão na URL canônica** — a cópia local está à frente da canônica
+  (que ainda responde 1.0.0, sem a §4.8 de aplicações web).
+- [ ] **Acessibilidade: 16 avisos do ESLint nos templates** (`npm run lint` no frontend) —
+  `autofocus` (3), `label` sem controle associado (4), clique sem equivalente de teclado (4) e
+  correlatos. Entraram como **aviso** para não bloquear o pipeline com dívida antiga; corrigir
+  muda comportamento de UI e deve ser mudança própria. 3 são auto-corrigíveis (`--fix`).
+- [ ] **Porte dos componentes Python para Node/TS** (§4.2/§4.7) — `tools/` (28 arquivos),
+  `docservice/gerador/` (11) e a ponte `webapp/` (4). Aprovado em 2026-07-21; fazer com testes
+  de caracterização antes (§4.7 passo 1) e equivalência de saída dos .xlsx/.docx confirmada
+  antes de desativar o original.
+
 ## ▶️ Próximo passo combinado
 - [ ] Decidir "onde os dados moram" → **começar pelo Hub "Projetos por Cliente" com banco**.
 

@@ -1,0 +1,85 @@
+# Pipeline do Painel de Implantação (Angular + NestJS).
+#
+# Não existe template compartilhado de Node/TypeScript em `rech/gitlab-ci-lib` (§7.1 dos
+# Padrões de Desenvolvimento da Rech). Enquanto ele não existe, a §4.8.7 exige que o projeto
+# defina o seu, cobrindo no mínimo `test` (backend e frontend), `code-quality` (lint) e
+# `build` — é o que este arquivo faz. Ao criar o projeto no GitLab, acionar o DevTools para
+# que o pipeline nasça alinhado ao que virará template.
+#
+# Pendente (registrado em docs/pendencias.md):
+#   - estágio `sca` (§7.2, §10.3) — depende de definição do DevTools para Node/TS;
+#   - deploy — hoje a publicação é manual (build + reinício do serviço na máquina do Painel).
+
+stages:
+  - test
+  - code-quality
+  - build
+
+default:
+  image: node:24
+  tags:
+    - docker
+  cache:
+    key:
+      files:
+        - backend/package-lock.json
+        - frontend/package-lock.json
+    paths:
+      - backend/node_modules/
+      - frontend/node_modules/
+
+# ------------------------------------------------------------------ test ----
+backend-test:
+  stage: test
+  script:
+    - cd backend
+    - npm ci
+    - npm test
+    # e2e sobe o AppModule inteiro com SQLite em memória — sem MIGRACAO_DB_URL de propósito,
+    # para não tocar em banco real (ver backend/src/database/data-source.ts).
+    - MIGRACAO_DB_URL= npm run test:e2e
+
+frontend-test:
+  stage: test
+  script:
+    - cd frontend
+    - npm ci
+    - npm test -- --watch=false
+
+# ---------------------------------------------------------- code-quality ----
+backend-lint:
+  stage: code-quality
+  script:
+    - cd backend
+    - npm ci
+    - npx eslint "{src,apps,libs,test}/**/*.ts"
+
+frontend-lint:
+  stage: code-quality
+  script:
+    - cd frontend
+    - npm ci
+    - npm run lint
+
+# ----------------------------------------------------------------- build ----
+backend-build:
+  stage: build
+  script:
+    - cd backend
+    - npm ci
+    - npm run build
+  artifacts:
+    paths:
+      - backend/dist/
+    expire_in: 1 week
+
+frontend-build:
+  stage: build
+  script:
+    - cd frontend
+    - npm ci
+    - npm run build -- --configuration production
+  artifacts:
+    paths:
+      - frontend/dist/
+    expire_in: 1 week

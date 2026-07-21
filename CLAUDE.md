@@ -5,6 +5,19 @@ Repositório do **time de implantação** da Rech: **agentes** (papéis), **skil
 2026-07-19 — porta 5100, `http://I7M1700-01-EVE:5100`). Este arquivo é curto de propósito —
 o detalhamento operacional está em **[docs/guia-operacional-ia.md](docs/guia-operacional-ia.md)**.
 
+## Padrões de desenvolvimento da Rech
+Antes de criar, alterar estruturalmente ou auditar este projeto, carregue e siga:
+<https://gitlab.rech.com.br/gitlab/rech/ia/padrao-ia/raw/master/PADRAO-RECH.md>
+
+> Há uma cópia local em `MD Padrao desenv/Padrao_Rech.md` (rev. **2.0.0**). Em 2026-07-21 a
+> canônica ainda respondia rev. 1.0.0 (sem a §4.8, de aplicações web) — a cópia local está
+> **à frente**. Compare as revisões antes de assumir qual vale.
+>
+> **Este projeto é uma aplicação web** e está sujeito à §4.8 (Angular · NestJS + TypeORM ·
+> MariaDB · entrega em processo único). Não conformidades conhecidas e o plano de adequação
+> estão em [docs/pendencias.md](docs/pendencias.md) — a principal é o repositório ainda estar
+> no GitHub, não no GitLab interno (§3).
+
 ## Idioma
 Tudo em **português do Brasil (pt-BR)**, em qualquer arquivo novo.
 
