@@ -96,17 +96,28 @@ function filhosComTag(no: No, tag: string): No[] {
   return filhosDe(no).filter((f) => nomeDaTag(f) === tag);
 }
 
-/** Concatena o texto das runs de um <w:p> — equivale a `Paragraph.text` do python-docx. */
+/** Concatena o texto das runs de um <w:p> — equivale a `Paragraph.text` do python-docx.
+ *
+ * Nem todo caractere vira `<w:t>`: no OOXML a tabulação é o elemento `<w:tab/>` e a quebra
+ * de linha é `<w:br/>`/`<w:cr/>`. O `CT_R.text` do python-docx traduz os três, e é por isso
+ * que a linha de assinaturas do Termo aparece como "Assinatura Rech\t\t\tAssinatura Cliente"
+ * no snapshot. Ler só `<w:t>` faria as tabulações sumirem do contrato. */
 function textoDoParagrafo(p: No): string {
   let texto = '';
   for (const run of filhosComTag(p, 'w:r')) {
-    for (const t of filhosComTag(run, 'w:t')) {
-      for (const no of filhosDe(t)) {
-        // O parser devolve o texto como string ou, quando o conteúdo é numérico, como number.
-        // Qualquer outro tipo aqui significa que a leitura do XML saiu do esperado.
-        const bruto = no['#text'];
-        if (typeof bruto === 'string') texto += bruto;
-        else if (typeof bruto === 'number') texto += String(bruto);
+    for (const filho of filhosDe(run)) {
+      const tag = nomeDaTag(filho);
+      if (tag === 'w:t') {
+        for (const no of filhosDe(filho)) {
+          // O parser devolve o texto como string ou, quando é numérico, como number.
+          const bruto = no['#text'];
+          if (typeof bruto === 'string') texto += bruto;
+          else if (typeof bruto === 'number') texto += String(bruto);
+        }
+      } else if (tag === 'w:tab') {
+        texto += '\t';
+      } else if (tag === 'w:br' || tag === 'w:cr') {
+        texto += '\n';
       }
     }
   }
@@ -118,10 +129,59 @@ function textoDaCelula(tc: No): string {
   return filhosComTag(tc, 'w:p').map(textoDoParagrafo).join('\n');
 }
 
+/** Quantas colunas da grade esta célula ocupa (`<w:gridSpan w:val="n"/>`). */
+function colunasOcupadas(tc: No): number {
+  for (const tcPr of filhosComTag(tc, 'w:tcPr')) {
+    for (const span of filhosComTag(tcPr, 'w:gridSpan')) {
+      const atributos = span[':@'] as Record<string, string> | undefined;
+      const valor = Number(atributos?.['@_w:val']);
+      if (Number.isFinite(valor) && valor > 0) return valor;
+    }
+  }
+  return 1;
+}
+
+/** Tipo de mescla VERTICAL da célula: `<w:vMerge w:val="restart"/>` abre a mescla e
+ * `<w:vMerge/>` (sem valor) continua a de cima. */
+function tipoDeMesclaVertical(tc: No): 'inicio' | 'continua' | null {
+  for (const tcPr of filhosComTag(tc, 'w:tcPr')) {
+    for (const vm of filhosComTag(tcPr, 'w:vMerge')) {
+      const atributos = vm[':@'] as Record<string, string> | undefined;
+      return atributos?.['@_w:val'] === 'restart' ? 'inicio' : 'continua';
+    }
+  }
+  return null;
+}
+
+/** Reproduz a grade de células como o python-docx a enxerga.
+ *
+ * Duas regras dele que precisam ser espelhadas, senão a comparação acusa falsa divergência:
+ *   `gridSpan` (mescla horizontal) — a célula é REPETIDA em cada coluna que ocupa, então toda
+ *     linha acaba com o mesmo número de posições;
+ *   `vMerge`   (mescla vertical) — a célula de continuação devolve o texto da célula que
+ *     ABRIU a mescla, não vazio. É o caso das colunas "Planejamento"/"Execução" do
+ *     cronograma dentro do Projeto de Implantação. */
 function extrairTabela(tbl: No): string[][] {
-  return filhosComTag(tbl, 'w:tr').map((tr) =>
-    filhosComTag(tr, 'w:tc').map(textoDaCelula),
-  );
+  const textoAcimaPorColuna: string[] = [];
+  return filhosComTag(tbl, 'w:tr').map((tr) => {
+    const linha: string[] = [];
+    let coluna = 0;
+    for (const tc of filhosComTag(tr, 'w:tc')) {
+      const largura = colunasOcupadas(tc);
+      const mescla = tipoDeMesclaVertical(tc);
+      const texto =
+        mescla === 'continua'
+          ? (textoAcimaPorColuna[coluna] ?? '')
+          : textoDaCelula(tc);
+      if (mescla !== 'continua') {
+        for (let k = 0; k < largura; k += 1)
+          textoAcimaPorColuna[coluna + k] = texto;
+      }
+      for (let k = 0; k < largura; k += 1) linha.push(texto);
+      coluna += largura;
+    }
+    return linha;
+  });
 }
 
 /** Parágrafos de cada parte word/<prefixo>N.xml, por nome de parte.
