@@ -46,8 +46,11 @@ export class RoboCaixaService implements OnModuleInit, OnModuleDestroy {
   async tick(): Promise<void> {
     try {
       if (this.imap.configurado()) {
-        const n = await this.imap.processarFechamentos((corpo, assunto) =>
-          this.fluxo.criarDeFechamento(corpo, assunto).then(() => undefined),
+        const n = await this.imap.processarFechamentos(
+          (corpo, assunto, remetente) =>
+            this.fluxo
+              .criarDeFechamento(corpo, assunto, remetente)
+              .then(() => undefined),
         );
         if (n)
           this.logger.log(`Robô da caixa: ${n} fechamento(s) processado(s).`);

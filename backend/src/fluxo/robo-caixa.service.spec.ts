@@ -40,13 +40,19 @@ describe('RoboCaixaService', () => {
     it('processa fechamentos quando configurado, repassando fluxo.criarDeFechamento', async () => {
       imap.configurado.mockReturnValue(true);
       imap.processarFechamentos.mockImplementation(async (criarFn: any) => {
-        await criarFn('corpo', 'assunto');
+        await criarFn('corpo', 'assunto', 'vendedor@rech.com.br');
         return 1;
       });
       fluxo.criarDeFechamento.mockResolvedValue(42);
       await service.tick();
       expect(imap.processarFechamentos).toHaveBeenCalled();
-      expect(fluxo.criarDeFechamento).toHaveBeenCalledWith('corpo', 'assunto');
+      // O REMETENTE é repassado: é o comercial que recebe o retorno do levantamento
+      // (passo 3), e é gravado em `comercialEmail` na criação da ficha.
+      expect(fluxo.criarDeFechamento).toHaveBeenCalledWith(
+        'corpo',
+        'assunto',
+        'vendedor@rech.com.br',
+      );
     });
 
     it('uma falha no tick não propaga', async () => {

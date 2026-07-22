@@ -9,9 +9,11 @@ import { EmailModule } from '../email/email.module';
 import { MetricasModule } from '../metricas/metricas.module';
 import { DesignacaoService } from './designacao.service';
 import { DesignacaoController } from './designacao.controller';
+import { PassosModule } from '../passos/passos.module';
 
 @Module({
   imports: [
+    PassosModule,
     TypeOrmModule.forFeature([Projeto, Documento, Evento, Designacao]),
     UsersModule,
     EmailModule,

@@ -86,7 +86,12 @@ export class DesignacaoController {
     @CurrentUser() user: AuthUser,
   ) {
     return new ApiEnvelope(
-      await this.service.agendar(id, dto.dataLevantamento, user.nome),
+      await this.service.agendar(
+        id,
+        dto.dataLevantamento,
+        user.nome,
+        dto.levantadores ?? [],
+      ),
     );
   }
 

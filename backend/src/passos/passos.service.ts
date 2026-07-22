@@ -13,10 +13,16 @@ import {
   ProjetoPessoa,
 } from '../database/entities/projeto-pessoa.entity';
 import { Evento } from '../database/entities/evento.entity';
+import { Documento } from '../database/entities/documento.entity';
+import { DocumentosService } from '../documentos/documentos.service';
 import { Perfil } from '../common/constants/perfis';
+import { hojeIso } from '../cronograma/datas.util';
+import { PassosNotificacaoService } from './passos-notificacao.service';
 import {
   DefinicaoPasso,
+  EXTENSOES_EMAIL,
   PASSOS,
+  PASSOS_COM_ANEXO_DE_EMAIL,
   PASSOS_COM_CONFERENCIA,
   PASSOS_POR_NUMERO,
   PERFIS_POR_RESPONSAVEL,
@@ -46,6 +52,8 @@ export class PassosService {
     private readonly pessoas: Repository<ProjetoPessoa>,
     @InjectRepository(Evento)
     private readonly eventos: Repository<Evento>,
+    private readonly notificacao: PassosNotificacaoService,
+    private readonly documentos: DocumentosService,
   ) {}
 
   private definicao(numero: number): DefinicaoPasso {
@@ -200,7 +208,9 @@ export class PassosService {
       }),
     );
 
+    await this.registrarEfeitosNoProjeto(projeto, numero);
     await this.sincronizarEtapa(projeto);
+    void this.notificacao.notificarPasso(projeto, def, usuario.nome);
     return this.listar(projetoId, usuario.perfil);
   }
 
@@ -290,6 +300,66 @@ export class PassosService {
     const projeto = await this.projetos.findOne({ where: { id: projetoId } });
     if (projeto) await this.sincronizarEtapa(projeto);
     return this.listar(projetoId, usuario.perfil);
+  }
+
+  /** Anexa ao projeto o e-mail ENCAMINHADO pelo Outlook, como registro dos passos 3 e 4.
+   *
+   * O e-mail desses passos sai do Outlook da própria pessoa, não do Painel; o que o sistema
+   * guarda é a prova de que aconteceu. Aceita `.msg` (nativo do Outlook) e `.eml`. */
+  async anexarEmail(
+    projetoId: number,
+    numero: number,
+    arquivo: { originalname: string; buffer: Buffer },
+    usuario: { nome: string; perfil: Perfil },
+  ): Promise<Documento> {
+    const def = this.definicao(numero);
+    if (!PASSOS_COM_ANEXO_DE_EMAIL.has(numero)) {
+      throw new BadRequestException(
+        `Passo ${numero} não registra e-mail encaminhado.`,
+      );
+    }
+    if (!this.perfilAtende(def, usuario.perfil)) {
+      throw new ForbiddenException(
+        `Passo ${numero} é do ${def.responsavel}; seu perfil é ${usuario.perfil}.`,
+      );
+    }
+    const nome = arquivo.originalname || '';
+    const ext = nome.slice(nome.lastIndexOf('.')).toLowerCase();
+    if (!EXTENSOES_EMAIL.includes(ext)) {
+      throw new BadRequestException(
+        `Anexe o e-mail encaminhado do Outlook (${EXTENSOES_EMAIL.join(' ou ')}).`,
+      );
+    }
+    const doc = await this.documentos.anexarDocumento(
+      projetoId,
+      `email_passo_${numero}`,
+      nome,
+      arquivo.buffer,
+    );
+    await this.eventos.save(
+      this.eventos.create({
+        projetoId,
+        tipo: 'documento',
+        descricao: `Passo ${numero}: e-mail encaminhado anexado (${nome})`,
+        autor: usuario.nome,
+      }),
+    );
+    return doc;
+  }
+
+  /** Efeitos que a conclusão de um passo tem sobre os campos do projeto.
+   *
+   * Passo 14 ("Sinalizar Projeto concluído + Data de conclusão") grava a data em
+   * `dataEncerramento` — decisão do usuário em 2026-07-22. Só grava se ainda estiver vazio,
+   * para não sobrescrever uma data que alguém já tenha informado à mão. */
+  private async registrarEfeitosNoProjeto(
+    projeto: Projeto,
+    numero: number,
+  ): Promise<void> {
+    if (numero === 14 && !projeto.dataEncerramento.trim()) {
+      projeto.dataEncerramento = hojeIso();
+      await this.projetos.save(projeto);
+    }
   }
 
   /** Mantém a macro-etapa do projeto coerente com os passos concluídos.

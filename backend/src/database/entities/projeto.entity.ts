@@ -73,6 +73,12 @@ export class Projeto {
   @Column({ name: 'contato_tel', length: 60, default: '' })
   contatoTel: string;
 
+  /** E-mail do Comercial que abriu o cliente — destinatário do passo 3 (o levantador
+   * repassa a ele o que encontrou no levantamento). Preenchido automaticamente com o
+   * REMETENTE do e-mail de fechamento; o Administrativo pode corrigir na ficha. */
+  @Column({ name: 'comercial_email', length: 160, default: '' })
+  comercialEmail: string;
+
   @Column({ type: 'text', default: '' })
   contatos: string;
 

@@ -58,3 +58,7 @@ export interface Rns {
 }
 
 export const TIPOS_RNS: TipoRns[] = ['RNI', 'COB', 'Conversão'];
+
+/** Passos cujo registro é o e-mail ENCAMINHADO pelo Outlook — espelha
+ * `PASSOS_COM_ANEXO_DE_EMAIL` do backend. */
+export const PASSOS_COM_ANEXO_DE_EMAIL = [3, 4];

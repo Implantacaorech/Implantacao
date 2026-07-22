@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -7,8 +8,11 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -101,6 +105,32 @@ export class PassosController {
   ) {
     return new ApiEnvelope(
       await this.passos.reabrir(id, numero, {
+        nome: user.nome,
+        perfil: user.perfil,
+      }),
+    );
+  }
+
+  @Post('passos/:numero/anexar-email')
+  @Roles()
+  @UseInterceptors(FileInterceptor('arquivo'))
+  @ApiOperation({
+    summary:
+      'Anexa o e-mail encaminhado do Outlook (.msg/.eml) — registro dos passos 3 e 4',
+  })
+  async anexarEmail(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('numero', ParseIntPipe) numero: number,
+    @UploadedFile() arquivo: Express.Multer.File | undefined,
+    @CurrentUser() user: AuthUser,
+  ) {
+    if (!arquivo) {
+      throw new BadRequestException(
+        'Selecione o e-mail encaminhado (.msg ou .eml).',
+      );
+    }
+    return new ApiEnvelope(
+      await this.passos.anexarEmail(id, numero, arquivo, {
         nome: user.nome,
         perfil: user.perfil,
       }),

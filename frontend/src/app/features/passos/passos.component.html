@@ -56,6 +56,23 @@
             @if (p.email) {
               <p style="margin:4px 0 0;color:var(--muted);font-size:.85rem">✉ {{ p.email }}</p>
             }
+            @if (aceitaAnexoDeEmail(p)) {
+              <p style="margin:6px 0 0;font-size:.85rem">
+                <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
+                  <span style="color:var(--muted)">Registro: anexe o e-mail encaminhado do Outlook (.msg/.eml)</span>
+                  <input
+                    type="file"
+                    accept=".msg,.eml"
+                    (change)="anexarEmail(p, $event)"
+                    [disabled]="ocupado() === p.numero"
+                    style="max-width:230px"
+                  />
+                </label>
+                @if (anexados().includes(p.numero)) {
+                  <span style="color:var(--brand);font-weight:600"> ✓ anexado</span>
+                }
+              </p>
+            }
 
             @if (p.concluido) {
               <p style="margin:6px 0 0;font-size:.85rem">

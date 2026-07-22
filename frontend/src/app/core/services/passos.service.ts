@@ -55,6 +55,22 @@ export class PassosService {
     return res.data;
   }
 
+  /** Anexa o e-mail encaminhado do Outlook (.msg/.eml) como registro dos passos 3 e 4. */
+  async anexarEmail(
+    projetoId: number,
+    numero: number,
+    arquivo: File,
+  ): Promise<void> {
+    const form = new FormData();
+    form.append('arquivo', arquivo);
+    await firstValueFrom(
+      this.http.post<ApiEnvelope<unknown>>(
+        `${this.base(projetoId)}/passos/${numero}/anexar-email`,
+        form,
+      ),
+    );
+  }
+
   async pessoas(projetoId: number): Promise<PessoasProjeto> {
     const res = await firstValueFrom(
       this.http.get<ApiEnvelope<PessoasProjeto>>(`${this.base(projetoId)}/pessoas`),

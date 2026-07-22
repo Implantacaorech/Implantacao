@@ -8,6 +8,10 @@ import { ProjetoRns } from '../database/entities/projeto-rns.entity';
 import { PassosController } from './passos.controller';
 import { PassosService } from './passos.service';
 import { RnsService } from './rns.service';
+import { PassosNotificacaoService } from './passos-notificacao.service';
+import { UsersModule } from '../users/users.module';
+import { EmailModule } from '../email/email.module';
+import { DocumentosModule } from '../documentos/documentos.module';
 
 /** Os 18 passos operacionais do processo de implantação (revisão de 2026-07-22), os
  * vínculos de pessoas por papel e as RNS do projeto. */
@@ -20,9 +24,12 @@ import { RnsService } from './rns.service';
       ProjetoPessoa,
       ProjetoRns,
     ]),
+    UsersModule,
+    EmailModule,
+    DocumentosModule,
   ],
   controllers: [PassosController],
-  providers: [PassosService, RnsService],
-  exports: [PassosService, RnsService],
+  providers: [PassosService, RnsService, PassosNotificacaoService],
+  exports: [PassosService, RnsService, PassosNotificacaoService],
 })
 export class PassosModule {}

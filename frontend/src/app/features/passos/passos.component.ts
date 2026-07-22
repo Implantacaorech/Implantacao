@@ -5,7 +5,13 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { PassosService } from '../../core/services/passos.service';
 import { ProjetosService } from '../../core/services/projetos.service';
-import { Passo, Rns, TIPOS_RNS, TipoRns } from '../../core/models/passo.model';
+import {
+  PASSOS_COM_ANEXO_DE_EMAIL,
+  Passo,
+  Rns,
+  TIPOS_RNS,
+  TipoRns,
+} from '../../core/models/passo.model';
 
 /** Tela dos 18 passos do processo de implantação de um projeto.
  *
@@ -32,6 +38,8 @@ export class PassosComponent {
   readonly passos = signal<Passo[]>([]);
   readonly rns = signal<Rns[]>([]);
   readonly ocupado = signal<number | null>(null);
+  /** Passos cujo e-mail foi anexado nesta sessão — feedback imediato na tela. */
+  readonly anexados = signal<number[]>([]);
 
   readonly tiposRns = TIPOS_RNS;
   novoTipo: TipoRns = 'RNI';
@@ -129,6 +137,28 @@ export class PassosComponent {
 
   temConferencia(p: Passo): boolean {
     return p.numero === 9 || p.numero === 16;
+  }
+
+  /** Passos 3 e 4: o e-mail sai do Outlook da pessoa; o Painel guarda a PROVA. */
+  aceitaAnexoDeEmail(p: Passo): boolean {
+    return PASSOS_COM_ANEXO_DE_EMAIL.includes(p.numero);
+  }
+
+  async anexarEmail(p: Passo, evento: Event): Promise<void> {
+    const input = evento.target as HTMLInputElement;
+    const arquivo = input.files?.[0];
+    if (!arquivo) return;
+    this.ocupado.set(p.numero);
+    this.erro.set(null);
+    try {
+      await this.service.anexarEmail(this.projetoId, p.numero, arquivo);
+      this.anexados.update((atual) => [...atual, p.numero]);
+    } catch (e) {
+      this.erro.set(this.mensagem(e));
+    } finally {
+      this.ocupado.set(null);
+      input.value = '';
+    }
   }
 
   async acrescentarRns(): Promise<void> {

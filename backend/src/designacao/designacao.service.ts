@@ -12,6 +12,7 @@ import { Designacao } from '../database/entities/designacao.entity';
 import { UsersService } from '../users/users.service';
 import { MailerService } from '../email/mailer.service';
 import { MetricasService, DocLeve } from '../metricas/metricas.service';
+import { PassosService } from '../passos/passos.service';
 // Antes havia uma cópia local desta função, em UTC — mesma falha corrigida em datas.util.
 import { hojeIso } from '../cronograma/datas.util';
 
@@ -63,6 +64,7 @@ export class DesignacaoService {
     private readonly users: UsersService,
     private readonly mailer: MailerService,
     private readonly metricas: MetricasService,
+    private readonly passos: PassosService,
   ) {}
 
   private async buscarProjeto(id: number): Promise<Projeto> {
@@ -148,6 +150,7 @@ export class DesignacaoService {
     projetoId: number,
     dataLevantamento: string,
     autor: string,
+    levantadores: string[] = [],
   ): Promise<Projeto> {
     const projeto = await this.buscarProjeto(projetoId);
     if (!this.metricas.gciDefinido(projeto)) {
@@ -163,6 +166,10 @@ export class DesignacaoService {
     }
     projeto.dataLevantamento = dataLevantamento;
     await this.projetos.save(projeto);
+    // A data é única (a visita é a mesma), mas os levantadores podem ser vários.
+    if (levantadores.length > 0) {
+      await this.passos.definirPessoas(projetoId, 'levantador', levantadores);
+    }
     await this.registrarEvento(
       projetoId,
       `Data do Levantamento definida: ${formatBr(dataLevantamento)} (GCI: ${projeto.gci})`,
@@ -231,11 +238,15 @@ export class DesignacaoService {
         }),
       ),
     );
-    projeto.consultor = [...new Set(linhas.map((d) => d.consultor))]
-      .sort()
-      .join(', ');
+    const nomes = [...new Set(linhas.map((d) => d.consultor))].sort();
+    projeto.consultor = nomes.join(', ');
     const concluido = projeto.situacao === 'Concluído';
     await this.projetos.save(projeto);
+
+    // Além da designação POR MÓDULO (acima), grava o vínculo por PAPEL — é a fonte da
+    // verdade de "quem são os consultores do projeto" desde a revisão de 2026-07-22, e é
+    // ela que os e-mails dos passos consultam. `Projeto.consultor` segue como espelho.
+    await this.passos.definirPessoas(projetoId, 'consultor', nomes);
     await this.registrarEvento(
       projetoId,
       `Consultores designados: ${projeto.consultor}`,

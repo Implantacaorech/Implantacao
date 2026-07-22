@@ -9,9 +9,16 @@ import { Designacao } from '../database/entities/designacao.entity';
 import { UsersService } from '../users/users.service';
 import { MailerService } from '../email/mailer.service';
 import { MetricasService } from '../metricas/metricas.service';
+import { PassosService } from '../passos/passos.service';
 
 // 2026-08-10 é o "hoje" fixado para os testes de data.
 const HOJE = new Date('2026-08-10T12:00:00');
+
+const pessoasDefinidas: {
+  projetoId: number;
+  papel: string;
+  nomes: string[];
+}[] = [];
 
 describe('DesignacaoService', () => {
   let service: DesignacaoService;
@@ -64,6 +71,21 @@ describe('DesignacaoService', () => {
         { provide: UsersService, useValue: users },
         { provide: MailerService, useValue: mailer },
         { provide: MetricasService, useValue: metricas },
+        // A Designação passou a gravar TAMBÉM o vínculo por papel (projeto_pessoas), que é
+        // a fonte da verdade de "quem são os consultores" desde a revisão do processo.
+        {
+          provide: PassosService,
+          useValue: {
+            definirPessoas: (
+              projetoId: number,
+              papel: string,
+              nomes: string[],
+            ) => {
+              pessoasDefinidas.push({ projetoId, papel, nomes });
+              return Promise.resolve([]);
+            },
+          },
+        },
       ],
     }).compile();
     service = module.get(DesignacaoService);

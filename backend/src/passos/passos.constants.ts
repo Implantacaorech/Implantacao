@@ -237,3 +237,16 @@ export const PASSOS_POR_NUMERO = new Map(PASSOS.map((p) => [p.numero, p]));
 
 /** Passos que exigem a marcação explícita de "conferido" antes de liberar o seguinte. */
 export const PASSOS_COM_CONFERENCIA = new Set([9, 16]);
+
+/** Passos em que o registro é o e-mail ENCAMINHADO pelo Outlook, anexado à ficha.
+ *
+ * Passo 3: o levantador repassa ao Comercial o que encontrou no levantamento.
+ * Passo 4: o Administrativo finaliza a negociação e envia o fechamento.
+ *
+ * Nos dois casos o e-mail sai do Outlook da pessoa, não do Painel — o que o sistema guarda
+ * é a PROVA de que aconteceu. */
+export const PASSOS_COM_ANEXO_DE_EMAIL = new Set([3, 4]);
+
+/** Extensões aceitas no anexo de e-mail: formato nativo do Outlook (.msg) e o padrão
+ * de e-mail exportado (.eml). */
+export const EXTENSOES_EMAIL = ['.msg', '.eml'];

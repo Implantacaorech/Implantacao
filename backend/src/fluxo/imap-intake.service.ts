@@ -145,11 +145,15 @@ export class ImapIntakeService {
   }
 
   /** Para cada e-mail NÃO LIDO cujo assunto contém `marcador`, chama `criarFn(corpo,
-   * assunto)` e o marca como lido (só se `criarFn` não lançar — falha deixa não lido
+   * assunto, remetente)` e o marca como lido (só se `criarFn` não lançar — falha deixa não lido
    * para nova tentativa na próxima varredura). Devolve quantos foram processados. Usado
    * pelo robô (`RoboCaixaService`). */
   async processarFechamentos(
-    criarFn: (corpo: string, assunto: string) => Promise<void>,
+    criarFn: (
+      corpo: string,
+      assunto: string,
+      remetente: string,
+    ) => Promise<void>,
     marcador = MARCADOR_PADRAO,
   ): Promise<number> {
     const cfg = this.carregarConfig();
@@ -178,7 +182,10 @@ export class ImapIntakeService {
           if (!full || !full.source) continue;
           const parsed = await simpleParser(full.source);
           try {
-            await criarFn(parsed.text || '', assunto);
+            // O REMETENTE é o comercial que mandou o fechamento — é ele quem recebe o
+            // retorno do levantamento (passo 3), e não havia campo para isso.
+            const remetente = parsed.from?.value?.[0]?.address ?? '';
+            await criarFn(parsed.text || '', assunto, remetente);
             await client.messageFlagsAdd({ uid: String(uid) }, ['\\Seen'], {
               uid: true,
             });

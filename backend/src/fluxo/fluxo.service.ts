@@ -166,8 +166,16 @@ export class FluxoService {
 
   /** Cria a ficha do projeto a partir do corpo do e-mail de fechamento (robô da caixa) —
    * faz o parse e delega para `criarDeCampos`. */
-  async criarDeFechamento(corpo: string, _assunto = ''): Promise<number> {
-    return this.criarDeCampos(this.paraProjeto(this.parseFechamento(corpo)));
+  async criarDeFechamento(
+    corpo: string,
+    _assunto = '',
+    remetente = '',
+  ): Promise<number> {
+    const campos = this.paraProjeto(this.parseFechamento(corpo));
+    // O remetente do fechamento É o comercial responsável pelo cliente — é ele quem recebe
+    // o retorno do levantamento (passo 3). O Administrativo pode corrigir na ficha.
+    if (remetente.trim()) campos.comercialEmail = remetente.trim();
+    return this.criarDeCampos(campos);
   }
 
   /** Cria a ficha do projeto a partir de campos JÁ estruturados (confirmação manual da
