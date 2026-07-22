@@ -1,8 +1,14 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { AppConfig } from '../config/configuration';
 import { DigestService } from './digest.service';
+import { hojeIso } from '../cronograma/datas.util';
 
 const NOME_INTERVALO = 'robo-digest';
 const CHECAGEM_MS = 30 * 60 * 1000; // checa a cada 30min — mesmo `time.sleep(1800)` do Flask
@@ -40,14 +46,23 @@ export class RoboDigestService implements OnModuleInit, OnModuleDestroy {
     try {
       const hora = this.config.get('digestHora', { infer: true });
       const agora = new Date();
-      const hojeIso = agora.toISOString().slice(0, 10);
-      if (agora.getHours() === hora && this.ultimoEnvio !== hojeIso && this.digest.destinos().length > 0) {
+      // A hora comparada é local; a data do "já enviei hoje" precisa ser local também, senão
+      // a chave vira o dia seguinte às 21h e a trava do dia se solta antes da meia-noite.
+      const hoje = hojeIso();
+      if (
+        agora.getHours() === hora &&
+        this.ultimoEnvio !== hoje &&
+        this.digest.destinos().length > 0
+      ) {
         const r = await this.digest.enviar();
-        this.ultimoEnvio = hojeIso;
+        this.ultimoEnvio = hoje;
         this.logger.log(`Digest diário: enviado=${r.ok}`);
       }
     } catch (e) {
-      this.logger.error('Robô de digest falhou', e instanceof Error ? e.stack : String(e));
+      this.logger.error(
+        'Robô de digest falhou',
+        e instanceof Error ? e.stack : String(e),
+      );
     }
   }
 }

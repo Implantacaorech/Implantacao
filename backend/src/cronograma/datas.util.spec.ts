@@ -2,10 +2,35 @@ import {
   addDays,
   addMonthsClamped,
   diaUtil,
+  hojeIso,
   parseIso,
   toIso,
   weekdaySegunda0,
 } from './datas.util';
+
+describe('hojeIso — dia de hoje no fuso de quem usa o Painel', () => {
+  const tzOriginal = process.env.TZ;
+
+  afterEach(() => {
+    jest.useRealTimers();
+    process.env.TZ = tzOriginal;
+  });
+
+  it('devolve o dia LOCAL, não o dia em UTC, na virada noturna', () => {
+    // 22/07 às 02:04 UTC é ainda 21/07 às 23:04 em Brasília. Com `toISOString()` o sistema
+    // dizia "hoje = 22/07" para quem estava trabalhando no dia 21 — todo dia, das 21h à
+    // meia-noite. O fuso é fixado aqui porque o CI roda em UTC, onde o defeito não aparece.
+    process.env.TZ = 'America/Sao_Paulo';
+    jest.useFakeTimers().setSystemTime(new Date('2026-07-22T02:04:00Z'));
+    expect(hojeIso()).toBe('2026-07-21');
+  });
+
+  it('coincide com o dia em UTC quando não há virada envolvida', () => {
+    process.env.TZ = 'America/Sao_Paulo';
+    jest.useFakeTimers().setSystemTime(new Date('2026-07-22T15:00:00Z'));
+    expect(hojeIso()).toBe('2026-07-22');
+  });
+});
 
 describe('datas.util', () => {
   it('parseIso/toIso fazem ida e volta sem deslocamento de fuso', () => {

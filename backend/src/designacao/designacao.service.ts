@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Projeto } from '../database/entities/projeto.entity';
@@ -8,6 +12,8 @@ import { Designacao } from '../database/entities/designacao.entity';
 import { UsersService } from '../users/users.service';
 import { MailerService } from '../email/mailer.service';
 import { MetricasService, DocLeve } from '../metricas/metricas.service';
+// Antes havia uma cópia local desta função, em UTC — mesma falha corrigida em datas.util.
+import { hojeIso } from '../cronograma/datas.util';
 
 export interface DefinirGciView {
   gciAtual: string;
@@ -24,10 +30,6 @@ export interface ConsultoresView {
   modulos: string[];
   consultores: string[];
   atuais: Record<string, string>;
-}
-
-function hojeIso(): string {
-  return new Date().toISOString().slice(0, 10);
 }
 
 function formatBr(iso: string): string {
@@ -53,9 +55,11 @@ function parseModulos(modulos: string): string[] {
 export class DesignacaoService {
   constructor(
     @InjectRepository(Projeto) private readonly projetos: Repository<Projeto>,
-    @InjectRepository(Documento) private readonly documentos: Repository<Documento>,
+    @InjectRepository(Documento)
+    private readonly documentos: Repository<Documento>,
     @InjectRepository(Evento) private readonly eventos: Repository<Evento>,
-    @InjectRepository(Designacao) private readonly designacoes: Repository<Designacao>,
+    @InjectRepository(Designacao)
+    private readonly designacoes: Repository<Designacao>,
     private readonly users: UsersService,
     private readonly mailer: MailerService,
     private readonly metricas: MetricasService,
@@ -68,11 +72,19 @@ export class DesignacaoService {
   }
 
   private async docsDoProjeto(projetoId: number): Promise<DocLeve[]> {
-    return (await this.documentos.find({ where: { projetoId } })).map((d) => ({ tipo: d.tipo }));
+    return (await this.documentos.find({ where: { projetoId } })).map((d) => ({
+      tipo: d.tipo,
+    }));
   }
 
-  private async registrarEvento(projetoId: number, descricao: string, autor: string): Promise<void> {
-    await this.eventos.save(this.eventos.create({ projetoId, tipo: 'etapa', descricao, autor }));
+  private async registrarEvento(
+    projetoId: number,
+    descricao: string,
+    autor: string,
+  ): Promise<void> {
+    await this.eventos.save(
+      this.eventos.create({ projetoId, tipo: 'etapa', descricao, autor }),
+    );
   }
 
   /** Avança a etapa automaticamente (quando o gate seguinte já está ok) e registra um
@@ -98,13 +110,24 @@ export class DesignacaoService {
     return { gciAtual: projeto.gci, gcis: gcis.map((u) => u.nome) };
   }
 
-  async definirGci(projetoId: number, gcisSelecionados: string[], autor: string): Promise<Projeto> {
-    const nomes = [...new Set(gcisSelecionados.map((n) => n.trim()).filter(Boolean))];
-    if (nomes.length === 0) throw new BadRequestException('Selecione ao menos um GCI.');
+  async definirGci(
+    projetoId: number,
+    gcisSelecionados: string[],
+    autor: string,
+  ): Promise<Projeto> {
+    const nomes = [
+      ...new Set(gcisSelecionados.map((n) => n.trim()).filter(Boolean)),
+    ];
+    if (nomes.length === 0)
+      throw new BadRequestException('Selecione ao menos um GCI.');
     const projeto = await this.buscarProjeto(projetoId);
     projeto.gci = nomes.join(', ');
     await this.projetos.save(projeto);
-    await this.registrarEvento(projetoId, `GCI(s) definido(s): ${projeto.gci}`, autor);
+    await this.registrarEvento(
+      projetoId,
+      `GCI(s) definido(s): ${projeto.gci}`,
+      autor,
+    );
     // Sem notificação aqui de propósito — só quando a data é confirmada (etapa seguinte),
     // igual webapp/routes_designacao.py:projeto_definir_gci.
     return projeto;
@@ -114,17 +137,29 @@ export class DesignacaoService {
 
   async obterAgendar(projetoId: number): Promise<AgendarView> {
     const projeto = await this.buscarProjeto(projetoId);
-    return { gci: projeto.gci, dataLevantamento: projeto.dataLevantamento, hojeIso: hojeIso() };
+    return {
+      gci: projeto.gci,
+      dataLevantamento: projeto.dataLevantamento,
+      hojeIso: hojeIso(),
+    };
   }
 
-  async agendar(projetoId: number, dataLevantamento: string, autor: string): Promise<Projeto> {
+  async agendar(
+    projetoId: number,
+    dataLevantamento: string,
+    autor: string,
+  ): Promise<Projeto> {
     const projeto = await this.buscarProjeto(projetoId);
     if (!this.metricas.gciDefinido(projeto)) {
-      throw new BadRequestException('Defina o GCI antes de agendar o levantamento.');
+      throw new BadRequestException(
+        'Defina o GCI antes de agendar o levantamento.',
+      );
     }
     const hoje = hojeIso();
     if (!dataLevantamento || dataLevantamento < hoje) {
-      throw new BadRequestException('Informe uma data válida (hoje ou futura).');
+      throw new BadRequestException(
+        'Informe uma data válida (hoje ou futura).',
+      );
     }
     projeto.dataLevantamento = dataLevantamento;
     await this.projetos.save(projeto);
@@ -138,9 +173,9 @@ export class DesignacaoService {
       .split(',')
       .map((n) => n.trim())
       .filter(Boolean);
-    const emails = (await Promise.all(nomes.map((n) => this.users.emailDoUsuario(n)))).filter(
-      (e): e is string => !!e,
-    );
+    const emails = (
+      await Promise.all(nomes.map((n) => this.users.emailDoUsuario(n)))
+    ).filter((e): e is string => !!e);
     if (emails.length > 0) {
       await this.mailer.enviar(
         emails,
@@ -160,7 +195,9 @@ export class DesignacaoService {
     const modulos = parseModulos(projeto.modulos);
     const consultores = await this.users.porPerfil('Consultor');
     const atuaisLista = await this.designacoes.find({ where: { projetoId } });
-    const atuais = Object.fromEntries(atuaisLista.map((d) => [d.modulo, d.consultor]));
+    const atuais = Object.fromEntries(
+      atuaisLista.map((d) => [d.modulo, d.consultor]),
+    );
     return { modulos, consultores: consultores.map((u) => u.nome), atuais };
   }
 
@@ -172,7 +209,10 @@ export class DesignacaoService {
     const projeto = await this.buscarProjeto(projetoId);
     const modulos = parseModulos(projeto.modulos);
     const linhas = modulos
-      .map((m) => ({ modulo: m, consultor: (designacoesPorModulo[m] || '').trim() }))
+      .map((m) => ({
+        modulo: m,
+        consultor: (designacoesPorModulo[m] || '').trim(),
+      }))
       .filter((d) => d.consultor);
     if (linhas.length === 0) {
       throw new BadRequestException('Designe ao menos um consultor.');
@@ -183,12 +223,24 @@ export class DesignacaoService {
     // DesignacoesService.tecnicoModulo, que existe para o fluxo do Agendador).
     await this.designacoes.delete({ projetoId });
     await this.designacoes.save(
-      linhas.map((d) => this.designacoes.create({ projetoId, modulo: d.modulo, consultor: d.consultor })),
+      linhas.map((d) =>
+        this.designacoes.create({
+          projetoId,
+          modulo: d.modulo,
+          consultor: d.consultor,
+        }),
+      ),
     );
-    projeto.consultor = [...new Set(linhas.map((d) => d.consultor))].sort().join(', ');
+    projeto.consultor = [...new Set(linhas.map((d) => d.consultor))]
+      .sort()
+      .join(', ');
     const concluido = projeto.situacao === 'Concluído';
     await this.projetos.save(projeto);
-    await this.registrarEvento(projetoId, `Consultores designados: ${projeto.consultor}`, autor);
+    await this.registrarEvento(
+      projetoId,
+      `Consultores designados: ${projeto.consultor}`,
+      autor,
+    );
 
     // Sem e-mail se o projeto já está Concluído — reatribuições pós-encerramento não
     // devem spammar o consultor. Espelha webapp/routes_designacao.py:projeto_consultores.
