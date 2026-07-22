@@ -32,9 +32,18 @@ export class DesignacaoService {
     return res.data;
   }
 
-  async agendar(projetoId: number, dataLevantamento: string): Promise<Projeto> {
+  /** Agenda o Levantamento. A data é única (a visita é a mesma), mas pode haver mais de um
+   * levantador — é o passo 2 do processo. */
+  async agendar(
+    projetoId: number,
+    dataLevantamento: string,
+    levantadores: string[] = [],
+  ): Promise<Projeto> {
     const res = await firstValueFrom(
-      this.http.post<ApiEnvelope<Projeto>>(`${this.base(projetoId)}/agendar`, { dataLevantamento }),
+      this.http.post<ApiEnvelope<Projeto>>(`${this.base(projetoId)}/agendar`, {
+        dataLevantamento,
+        levantadores,
+      }),
     );
     return res.data;
   }

@@ -30,13 +30,17 @@
     <h2 style="font-size:1rem;margin:18px 0 8px">{{ grupo.etapa }}</h2>
 
     @for (p of grupo.itens; track p.numero) {
-      <div class="painel" style="margin-bottom:10px;padding:12px 14px">
+      <div
+        class="painel"
+        style="margin-bottom:10px;padding:12px 14px;border-left-width:4px"
+        [style.border-left-color]="p.concluido ? 'var(--ok, #16a34a)' : 'var(--err, #dc2626)'"
+        [style.background]="p.concluido ? 'rgba(22,163,74,.05)' : 'rgba(220,38,38,.04)'"
+      >
         <div style="display:flex;align-items:flex-start;gap:12px">
           <span
-            [style.background]="p.concluido ? 'var(--brand)' : 'var(--surface)'"
-            [style.color]="p.concluido ? '#fff' : 'var(--muted)'"
-            [style.border]="p.concluido ? 'none' : '1px solid var(--line)'"
-            style="border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none;font-size:.8rem"
+            [style.background]="p.concluido ? 'var(--ok, #16a34a)' : 'var(--err, #dc2626)'"
+            style="border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none;font-size:.8rem;color:#fff"
+            [title]="p.concluido ? 'Concluído' : 'Ainda falta fazer'"
           >{{ p.numero }}</span>
 
           <div style="flex:1">
@@ -89,16 +93,82 @@
                 @for (m of p.motivos; track m) { <li>{{ m }}</li> }
               </ul>
             }
+
+            @if (formAberto() === p.numero) {
+              <div style="margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--surface)">
+                @if (formDoPasso(p) === 'agendar') {
+                  <label class="campo" style="max-width:220px">
+                    <span>Data do levantamento *</span>
+                    <input type="date" [(ngModel)]="dataLevantamento" name="dataLev" />
+                  </label>
+                  <div class="campo" style="margin-top:8px">
+                    <span>Levantador(es) <small style="color:var(--muted);font-weight:400">— a data é a mesma para todos</small></span>
+                    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">
+                      @for (nome of consultoresDisponiveis(); track nome) {
+                        <label style="display:flex;align-items:center;gap:6px;font-weight:500;cursor:pointer">
+                          <input
+                            type="checkbox"
+                            [checked]="levantadoresSelecionados.includes(nome)"
+                            (change)="levantadoresSelecionados = alternarSelecao(levantadoresSelecionados, nome, $any($event.target).checked)"
+                          />
+                          {{ nome }}
+                        </label>
+                      }
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:8px;margin-top:12px">
+                    <button type="button" class="btn primario" [disabled]="ocupado() === p.numero" (click)="salvarAgendamento()">Salvar e concluir</button>
+                    <button type="button" class="btn btn-sec" (click)="fecharForm()">Cancelar</button>
+                  </div>
+                } @else {
+                  <label class="campo" style="max-width:280px">
+                    <span>GCI responsável * <small style="color:var(--muted);font-weight:400">— único</small></span>
+                    <select [(ngModel)]="gciSelecionado" name="gciSel">
+                      <option value="">— selecione —</option>
+                      @for (nome of gcisDisponiveis(); track nome) { <option [value]="nome">{{ nome }}</option> }
+                    </select>
+                  </label>
+                  <div class="campo" style="margin-top:8px">
+                    <span>Técnicos (consultores) * <small style="color:var(--muted);font-weight:400">— pode marcar mais de um</small></span>
+                    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">
+                      @for (nome of consultoresDisponiveis(); track nome) {
+                        <label style="display:flex;align-items:center;gap:6px;font-weight:500;cursor:pointer">
+                          <input
+                            type="checkbox"
+                            [checked]="consultoresSelecionados.includes(nome)"
+                            (change)="consultoresSelecionados = alternarSelecao(consultoresSelecionados, nome, $any($event.target).checked)"
+                          />
+                          {{ nome }}
+                        </label>
+                      }
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:8px;margin-top:12px">
+                    <button type="button" class="btn primario" [disabled]="ocupado() === p.numero" (click)="salvarDesignacao()">Salvar e concluir</button>
+                    <button type="button" class="btn btn-sec" (click)="fecharForm()">Cancelar</button>
+                  </div>
+                }
+              </div>
+            }
           </div>
 
           <div style="display:flex;flex-direction:column;gap:6px;flex:none">
             @if (!p.concluido) {
+              @if (formDoPasso(p)) {
+                <button
+                  type="button"
+                  class="btn"
+                  [disabled]="!p.liberado || ocupado() === p.numero"
+                  (click)="abrirForm(p)"
+                >Preencher</button>
+              } @else {
               <button
                 type="button"
                 class="btn"
                 [disabled]="!p.liberado || ocupado() === p.numero"
                 (click)="concluir(p)"
               >Concluir</button>
+              }
             } @else {
               @if (aguardandoConferencia(p)) {
                 <button

@@ -78,10 +78,81 @@ export class PassosService {
     return def;
   }
 
-  /** O perfil basta para o papel do passo? Levantador e Consultor compartilham o perfil
-   * `Consultor`; a diferença de PAPEL é checada à parte, contra `projeto_pessoas`. */
-  private perfilAtende(def: DefinicaoPasso, perfil: Perfil): boolean {
-    return PERFIS_POR_RESPONSAVEL[def.responsavel].includes(perfil);
+  /** Quem pode executar ESTE passo NESTE projeto.
+   *
+   * Regra do usuário (2026-07-22): "o único que pode fazer tudo é o Administrador; os
+   * demais só conseguem alterar as atividades a eles designadas". Então não basta ter o
+   * perfil — para os papéis que são designados por projeto, a pessoa tem de estar
+   * designada NAQUELE projeto:
+   *
+   *   GCI        -> precisa ser o GCI do projeto (`Projeto.gci`)
+   *   Consultor  -> precisa estar em `projeto_pessoas` com papel 'consultor'
+   *   Levantador -> precisa estar em `projeto_pessoas` com papel 'levantador'
+   *
+   * Administrativo e Coordenador NÃO são designados por projeto — não existe esse vínculo
+   * no processo —, então para eles vale o perfil. ADM passa em tudo, por ser o perfil de
+   * administração do Painel. */
+  private podeExecutar(
+    def: DefinicaoPasso,
+    usuario: { nome: string; perfil: Perfil },
+    projeto: Projeto,
+    designados: ProjetoPessoa[],
+  ): boolean {
+    if (usuario.perfil === 'ADM') return true;
+    if (!PERFIS_POR_RESPONSAVEL[def.responsavel].includes(usuario.perfil)) {
+      return false;
+    }
+
+    const nome = usuario.nome.trim().toLowerCase();
+    const temPapel = (papel: PapelProjeto) =>
+      designados.some(
+        (d) => d.papel === papel && d.pessoa.trim().toLowerCase() === nome,
+      );
+
+    switch (def.responsavel) {
+      case 'GCI':
+        return projeto.gci
+          .split(',')
+          .some((g) => g.trim().toLowerCase() === nome);
+      case 'Consultor':
+        return temPapel('consultor');
+      case 'Levantador':
+        // Enquanto ninguém tiver sido designado como levantador, quem é consultor do
+        // projeto também atende — senão o passo 3 ficaria travado nos projetos antigos,
+        // criados antes de o papel existir.
+        return (
+          temPapel('levantador') ||
+          (!designados.some((d) => d.papel === 'levantador') &&
+            temPapel('consultor'))
+        );
+      default:
+        return true;
+    }
+  }
+
+  /** Carrega projeto + designados e verifica a permissão, lançando 403 com o motivo. */
+  private async exigirPermissao(
+    projetoId: number,
+    def: DefinicaoPasso,
+    usuario: { nome: string; perfil: Perfil },
+  ): Promise<Projeto> {
+    const projeto = await this.projetos.findOne({ where: { id: projetoId } });
+    if (!projeto) throw new NotFoundException('Projeto não encontrado.');
+    const designados = await this.pessoas.find({ where: { projetoId } });
+    if (!this.podeExecutar(def, usuario, projeto, designados)) {
+      throw new ForbiddenException(this.motivoSemPermissao(def, usuario));
+    }
+    return projeto;
+  }
+
+  /** Motivo, em linguagem de negócio, de a pessoa não poder executar o passo. */
+  private motivoSemPermissao(
+    def: DefinicaoPasso,
+    usuario: { perfil: Perfil },
+  ): string {
+    return PERFIS_POR_RESPONSAVEL[def.responsavel].includes(usuario.perfil)
+      ? `Você não está designado(a) neste projeto como ${def.responsavel}.`
+      : `Só o responsável (${def.responsavel}) pode concluir.`;
   }
 
   async pessoasDoProjeto(
@@ -119,10 +190,14 @@ export class PassosService {
   }
 
   /** Os passos do projeto com o estado de cada um, para a tela de tarefas. */
-  async listar(projetoId: number, perfil: Perfil): Promise<PassoView[]> {
+  async listar(
+    projetoId: number,
+    usuario: { nome: string; perfil: Perfil },
+  ): Promise<PassoView[]> {
     const projeto = await this.projetos.findOne({ where: { id: projetoId } });
     if (!projeto) throw new NotFoundException('Projeto não encontrado.');
 
+    const designados = await this.pessoas.find({ where: { projetoId } });
     const feitos = await this.passos.find({ where: { projetoId } });
     const porNumero = new Map(feitos.map((f) => [f.passo, f]));
 
@@ -145,8 +220,8 @@ export class PassosService {
             : `Depende do passo ${n} (${d?.titulo ?? ''}).`,
         );
       }
-      if (!this.perfilAtende(def, perfil)) {
-        motivos.push(`Só o responsável (${def.responsavel}) pode concluir.`);
+      if (!this.podeExecutar(def, usuario, projeto, designados)) {
+        motivos.push(this.motivoSemPermissao(def, usuario));
       }
 
       return {
@@ -174,10 +249,15 @@ export class PassosService {
     const projeto = await this.projetos.findOne({ where: { id: projetoId } });
     if (!projeto) throw new NotFoundException('Projeto não encontrado.');
 
-    if (!this.perfilAtende(def, usuario.perfil)) {
-      throw new ForbiddenException(
-        `Passo ${numero} é do ${def.responsavel}; seu perfil é ${usuario.perfil}.`,
-      );
+    if (
+      !this.podeExecutar(
+        def,
+        usuario,
+        projeto,
+        await this.pessoas.find({ where: { projetoId } }),
+      )
+    ) {
+      throw new ForbiddenException(this.motivoSemPermissao(def, usuario));
     }
 
     const jaFeito = await this.passos.findOne({
@@ -227,7 +307,7 @@ export class PassosService {
     await this.registrarEfeitosNoProjeto(projeto, numero);
     await this.sincronizarEtapa(projeto);
     void this.notificacao.notificarPasso(projeto, def, usuario.nome);
-    return this.listar(projetoId, usuario.perfil);
+    return this.listar(projetoId, usuario);
   }
 
   /** Em que passo cada projeto está, para montar o quadro (Kanban) por fase.
@@ -353,11 +433,7 @@ export class PassosService {
     if (!PASSOS_COM_CONFERENCIA.has(numero)) {
       throw new BadRequestException(`Passo ${numero} não tem conferência.`);
     }
-    if (!this.perfilAtende(def, usuario.perfil)) {
-      throw new ForbiddenException(
-        `A conferência do passo ${numero} é do ${def.responsavel}.`,
-      );
-    }
+    await this.exigirPermissao(projetoId, def, usuario);
     const feito = await this.passos.findOne({
       where: { projetoId, passo: numero },
     });
@@ -376,7 +452,7 @@ export class PassosService {
         autor: usuario.nome,
       }),
     );
-    return this.listar(projetoId, usuario.perfil);
+    return this.listar(projetoId, usuario);
   }
 
   /** Desfaz a conclusão de um passo REVERSÍVEL.
@@ -395,11 +471,7 @@ export class PassosService {
         `Passo ${numero} não pode ser desmarcado: uma vez concluído, é definitivo.`,
       );
     }
-    if (!this.perfilAtende(def, usuario.perfil)) {
-      throw new ForbiddenException(
-        `Passo ${numero} é do ${def.responsavel}; seu perfil é ${usuario.perfil}.`,
-      );
-    }
+    await this.exigirPermissao(projetoId, def, usuario);
     // Um passo reversível não pode ser reaberto se algum passo que depende dele já andou —
     // senão o processo ficaria com um buraco no meio.
     const dependentes = PASSOS.filter((p) => p.depende.includes(numero)).map(
@@ -427,7 +499,7 @@ export class PassosService {
     );
     const projeto = await this.projetos.findOne({ where: { id: projetoId } });
     if (projeto) await this.sincronizarEtapa(projeto);
-    return this.listar(projetoId, usuario.perfil);
+    return this.listar(projetoId, usuario);
   }
 
   /** Anexa ao projeto o e-mail ENCAMINHADO pelo Outlook, como registro dos passos 3 e 4.
@@ -446,11 +518,7 @@ export class PassosService {
         `Passo ${numero} não registra e-mail encaminhado.`,
       );
     }
-    if (!this.perfilAtende(def, usuario.perfil)) {
-      throw new ForbiddenException(
-        `Passo ${numero} é do ${def.responsavel}; seu perfil é ${usuario.perfil}.`,
-      );
-    }
+    await this.exigirPermissao(projetoId, def, usuario);
     const nome = arquivo.originalname || '';
     const ext = nome.slice(nome.lastIndexOf('.')).toLowerCase();
     if (!EXTENSOES_EMAIL.includes(ext)) {

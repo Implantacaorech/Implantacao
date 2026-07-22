@@ -53,7 +53,9 @@ export class PassosController {
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: AuthUser,
   ) {
-    return new ApiEnvelope(await this.passos.listar(id, user.perfil));
+    return new ApiEnvelope(
+      await this.passos.listar(id, { nome: user.nome, perfil: user.perfil }),
+    );
   }
 
   @Post('passos/:numero/concluir')

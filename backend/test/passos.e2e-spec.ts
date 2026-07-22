@@ -48,6 +48,20 @@ describe('Passos do processo (e2e)', () => {
     }
   }
 
+  /** Designa a pessoa no projeto — sem isso, Consultor/GCI não podem executar os passos
+   * deles (regra: "os demais só alteram as atividades a eles designadas"). */
+  async function designar(
+    papel: 'levantador' | 'consultor',
+    pessoas: string[],
+  ) {
+    await auth(
+      request(server()).patch(`/api/projetos/${projetoId}/pessoas`),
+      tokens.adm,
+    )
+      .send({ papel, pessoas })
+      .expect(200);
+  }
+
   async function criarUsuario(
     login: string,
     perfil: Perfil,
@@ -177,6 +191,7 @@ describe('Passos do processo (e2e)', () => {
 
   it('permite o Cronograma (10) sem o Projeto (8) — trilhas paralelas', async () => {
     await jaConcluido([1, 2, 3, 4, 5, 6, 7]);
+    await designar('consultor', ['Consultor Um']);
     // O passo 10 sai direto do 7; não espera o 8 nem o 9.
     await auth(
       request(server()).post(`/api/projetos/${projetoId}/passos/10/concluir`),
@@ -188,6 +203,7 @@ describe('Passos do processo (e2e)', () => {
 
   it('segura o passo 10 enquanto o passo 7 não foi concluído', async () => {
     await jaConcluido([1, 2, 3, 4, 5, 6]);
+    await designar('consultor', ['Consultor Um']);
     await auth(
       request(server()).post(`/api/projetos/${projetoId}/passos/10/concluir`),
       tokens.consultor,
@@ -271,6 +287,76 @@ describe('Passos do processo (e2e)', () => {
     )
       .send({})
       .expect(400);
+  });
+
+  describe('permissão por designação (só mexe no que é seu)', () => {
+    it('Consultor NÃO designado no projeto é recusado', async () => {
+      await jaConcluido([1, 2, 3, 4, 5, 6, 7]);
+      const res = await auth(
+        request(server()).post(`/api/projetos/${projetoId}/passos/10/concluir`),
+        tokens.consultor,
+      )
+        .send({})
+        .expect(403);
+      expect(JSON.stringify(res.body)).toContain('não está designado');
+    });
+
+    it('Consultor designado consegue', async () => {
+      await jaConcluido([1, 2, 3, 4, 5, 6, 7]);
+      await designar('consultor', ['Consultor Um']);
+      await auth(
+        request(server()).post(`/api/projetos/${projetoId}/passos/10/concluir`),
+        tokens.consultor,
+      )
+        .send({})
+        .expect(201);
+    });
+
+    it('GCI só age no projeto em que é o GCI', async () => {
+      await jaConcluido([1, 2, 3, 4, 5, 6, 7]);
+      // Sem `Projeto.gci` apontando para ele, o passo 8 é recusado.
+      await auth(
+        request(server()).post(`/api/projetos/${projetoId}/passos/8/concluir`),
+        tokens.gci,
+      )
+        .send({})
+        .expect(403);
+
+      await auth(
+        request(server()).post(`/api/projetos/${projetoId}/definir-gci`),
+        tokens.coordenador,
+      )
+        .send({ gcis: ['GCI Um'] })
+        .expect(200);
+      await auth(
+        request(server()).post(`/api/projetos/${projetoId}/passos/8/concluir`),
+        tokens.gci,
+      )
+        .send({})
+        .expect(201);
+    });
+
+    it('ADM faz tudo, mesmo sem estar designado', async () => {
+      await jaConcluido([1, 2, 3, 4, 5, 6, 7]);
+      await auth(
+        request(server()).post(`/api/projetos/${projetoId}/passos/10/concluir`),
+        tokens.adm,
+      )
+        .send({})
+        .expect(201);
+    });
+
+    it('a lista explica o motivo de não poder — não some o botão sem dizer por quê', async () => {
+      await jaConcluido([1, 2, 3, 4, 5, 6, 7]);
+      const res = await auth(
+        request(server()).get(`/api/projetos/${projetoId}/passos`),
+        tokens.consultor,
+      ).expect(200);
+      const passo10 = (
+        res.body as { data: { numero: number; motivos: string[] }[] }
+      ).data.find((p) => p.numero === 10);
+      expect(passo10?.motivos.join(' ')).toContain('não está designado');
+    });
   });
 
   describe('ligação com as ações reais do sistema', () => {

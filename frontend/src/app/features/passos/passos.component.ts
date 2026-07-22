@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { PassosService } from '../../core/services/passos.service';
+import { DesignacaoService } from '../../core/services/designacao.service';
 import { ProjetosService } from '../../core/services/projetos.service';
 import {
   PASSOS_COM_ANEXO_DE_EMAIL,
@@ -28,6 +29,7 @@ import {
 export class PassosComponent {
   private readonly service = inject(PassosService);
   private readonly projetos = inject(ProjetosService);
+  private readonly designacao = inject(DesignacaoService);
   private readonly route = inject(ActivatedRoute);
 
   readonly projetoId = Number(this.route.snapshot.paramMap.get('id'));
@@ -42,6 +44,120 @@ export class PassosComponent {
   readonly anexados = signal<number[]>([]);
 
   readonly tiposRns = TIPOS_RNS;
+
+  /** Passo aberto para preencher os dados que ele exige. O passo não é uma caixinha: o
+   * agendamento pede data e levantadores, a designação pede GCI e técnicos. Sem isso, a
+   * pessoa teria de sair da tela, achar a tela certa e voltar. */
+  readonly formAberto = signal<number | null>(null);
+  readonly consultoresDisponiveis = signal<string[]>([]);
+  readonly gcisDisponiveis = signal<string[]>([]);
+  dataLevantamento = '';
+  levantadoresSelecionados: string[] = [];
+  gciSelecionado = '';
+  consultoresSelecionados: string[] = [];
+
+  /** Passos que abrem formulário em vez de só concluir. */
+  private static readonly FORM_POR_PASSO: Record<number, 'agendar' | 'designar'> = {
+    2: 'agendar',
+    6: 'designar',
+  };
+
+  formDoPasso(p: Passo): 'agendar' | 'designar' | null {
+    return PassosComponent.FORM_POR_PASSO[p.numero] ?? null;
+  }
+
+  async abrirForm(p: Passo): Promise<void> {
+    this.erro.set(null);
+    const tipo = this.formDoPasso(p);
+    if (!tipo) return;
+    this.formAberto.set(p.numero);
+    try {
+      if (tipo === 'agendar') {
+        const [view, pessoas] = await Promise.all([
+          this.designacao.obterAgendar(this.projetoId),
+          this.service.pessoas(this.projetoId),
+        ]);
+        this.dataLevantamento = view.dataLevantamento || '';
+        this.levantadoresSelecionados = pessoas.levantadores.map((l) => l.pessoa);
+        const cons = await this.designacao.obterConsultores(this.projetoId);
+        this.consultoresDisponiveis.set(cons.consultores);
+      } else {
+        const [gciView, cons, pessoas] = await Promise.all([
+          this.designacao.obterDefinirGci(this.projetoId),
+          this.designacao.obterConsultores(this.projetoId),
+          this.service.pessoas(this.projetoId),
+        ]);
+        this.gcisDisponiveis.set(gciView.gcis);
+        this.gciSelecionado = (gciView.gciAtual || '').split(',')[0].trim();
+        this.consultoresDisponiveis.set(cons.consultores);
+        this.consultoresSelecionados = pessoas.consultores.map((c) => c.pessoa);
+      }
+    } catch (e) {
+      this.erro.set(this.mensagem(e));
+      this.formAberto.set(null);
+    }
+  }
+
+  fecharForm(): void {
+    this.formAberto.set(null);
+  }
+
+  alternarSelecao(lista: string[], nome: string, marcado: boolean): string[] {
+    return marcado
+      ? [...new Set([...lista, nome])]
+      : lista.filter((n) => n !== nome);
+  }
+
+  /** Passo 2: grava data + levantadores. O backend conclui o passo sozinho. */
+  async salvarAgendamento(): Promise<void> {
+    if (!this.dataLevantamento) {
+      this.erro.set('Informe a data do levantamento.');
+      return;
+    }
+    this.ocupado.set(2);
+    this.erro.set(null);
+    try {
+      await this.designacao.agendar(
+        this.projetoId,
+        this.dataLevantamento,
+        this.levantadoresSelecionados,
+      );
+      this.formAberto.set(null);
+      await this.carregar();
+    } catch (e) {
+      this.erro.set(this.mensagem(e));
+    } finally {
+      this.ocupado.set(null);
+    }
+  }
+
+  /** Passo 6: grava o GCI e os técnicos. O backend conclui o passo sozinho. */
+  async salvarDesignacao(): Promise<void> {
+    if (!this.gciSelecionado) {
+      this.erro.set('Selecione o GCI.');
+      return;
+    }
+    if (this.consultoresSelecionados.length === 0) {
+      this.erro.set('Selecione ao menos um técnico.');
+      return;
+    }
+    this.ocupado.set(6);
+    this.erro.set(null);
+    try {
+      await this.designacao.definirGci(this.projetoId, [this.gciSelecionado]);
+      await this.service.definirPessoas(
+        this.projetoId,
+        'consultor',
+        this.consultoresSelecionados,
+      );
+      this.formAberto.set(null);
+      await this.carregar();
+    } catch (e) {
+      this.erro.set(this.mensagem(e));
+    } finally {
+      this.ocupado.set(null);
+    }
+  }
   novoTipo: TipoRns = 'RNI';
   novoNumero = '';
   novaDescricao = '';

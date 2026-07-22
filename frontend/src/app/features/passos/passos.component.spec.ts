@@ -3,6 +3,7 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { PassosComponent } from './passos.component';
 import { PassosService } from '../../core/services/passos.service';
 import { ProjetosService } from '../../core/services/projetos.service';
+import { DesignacaoService } from '../../core/services/designacao.service';
 import { Passo } from '../../core/models/passo.model';
 import { Projeto } from '../../core/models/projeto.model';
 
@@ -59,6 +60,8 @@ describe('PassosComponent', () => {
   let servicoFake: {
     listar: () => Promise<Passo[]>;
     listarRns: () => Promise<[]>;
+    pessoas: () => Promise<{ levantadores: []; consultores: [] }>;
+    definirPessoas: () => Promise<[]>;
     concluir: (id: number, numero: number) => Promise<Passo[]>;
     conferir: () => Promise<Passo[]>;
     reabrir: () => Promise<Passo[]>;
@@ -70,6 +73,8 @@ describe('PassosComponent', () => {
       concluidos: [],
       listar: () => Promise.resolve(passos),
       listarRns: () => Promise.resolve([]),
+      pessoas: () => Promise.resolve({ levantadores: [], consultores: [] }),
+      definirPessoas: () => Promise.resolve([]),
       concluir: (_id: number, numero: number) => {
         servicoFake.concluidos.push(numero);
         return Promise.resolve(passos);
@@ -83,6 +88,17 @@ describe('PassosComponent', () => {
       providers: [
         provideRouter([]),
         { provide: PassosService, useValue: servicoFake },
+        {
+          provide: DesignacaoService,
+          useValue: {
+            obterAgendar: () => Promise.resolve({ gci: '', dataLevantamento: '', hojeIso: '' }),
+            obterConsultores: () =>
+              Promise.resolve({ modulos: [], consultores: ['Ana', 'Bruno'], atuais: {} }),
+            obterDefinirGci: () => Promise.resolve({ gciAtual: '', gcis: ['GCI Um'] }),
+            agendar: () => Promise.resolve({}),
+            definirGci: () => Promise.resolve({}),
+          },
+        },
         { provide: ProjetosService, useValue: { buscar: () => Promise.resolve(projeto()) } },
         {
           provide: ActivatedRoute,
@@ -133,6 +149,36 @@ describe('PassosComponent', () => {
     ]);
     const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(texto).toContain('Só o responsável (Coordenador) pode concluir.');
+  });
+
+  it('os passos que exigem dados abrem formulário em vez de só concluir', async () => {
+    // Foi a reclamação do usuário: "Agendar Levantamento" não abria onde informar os
+    // levantadores e a data.
+    const fixture = await montar([passo()]);
+    const c = fixture.componentInstance;
+    expect(c.formDoPasso(passo({ numero: 2 }))).toBe('agendar');
+    expect(c.formDoPasso(passo({ numero: 6 }))).toBe('designar');
+    expect(c.formDoPasso(passo({ numero: 13 }))).toBeNull();
+  });
+
+  it('abre o formulário do passo 2 já com os levantadores disponíveis', async () => {
+    const fixture = await montar([passo({ numero: 2, titulo: 'Agendar' })]);
+    const c = fixture.componentInstance;
+    await c.abrirForm(passo({ numero: 2 }));
+    expect(c.formAberto()).toBe(2);
+    expect(c.consultoresDisponiveis()).toEqual(['Ana', 'Bruno']);
+  });
+
+  it('marca e desmarca pessoa na seleção múltipla, sem repetir', async () => {
+    const fixture = await montar([passo()]);
+    const c = fixture.componentInstance;
+    let sel: string[] = [];
+    sel = c.alternarSelecao(sel, 'Ana', true);
+    sel = c.alternarSelecao(sel, 'Ana', true);
+    sel = c.alternarSelecao(sel, 'Bruno', true);
+    expect(sel).toEqual(['Ana', 'Bruno']);
+    sel = c.alternarSelecao(sel, 'Ana', false);
+    expect(sel).toEqual(['Bruno']);
   });
 
   it('só reconhece conferência nos passos 9 e 16', async () => {
