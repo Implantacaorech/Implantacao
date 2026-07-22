@@ -42,6 +42,9 @@
           <svg class="svgi" aria-hidden="true"><use href="#ic-mail"/></svg>
         </a>
       }
+      <a class="btn" [routerLink]="['/projetos', projetoId(), 'passos']" title="Os 18 passos do processo">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Passos
+      </a>
       <a class="btn" [routerLink]="['/projetos', projetoId(), 'email']" title="Enviar e-mail ao cliente">
         <svg class="svgi" aria-hidden="true"><use href="#ic-send"/></svg> E-mail
       </a>

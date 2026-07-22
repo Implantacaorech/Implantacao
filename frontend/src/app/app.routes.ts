@@ -109,6 +109,16 @@ export const routes: Routes = [
           ),
       },
       {
+        // Sem perfilGuard: todo autenticado VÊ os 18 passos; quem pode CONCLUIR cada um é
+        // decidido pelo backend, passo a passo (ver PERFIS_POR_RESPONSAVEL).
+        path: 'projetos/:id/passos',
+        data: { titulo: 'Passos do processo' },
+        loadComponent: () =>
+          import('./features/passos/passos.component').then(
+            (m) => m.PassosComponent,
+          ),
+      },
+      {
         path: 'projetos/:id/cronograma',
         canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'Consultor')],
         data: { titulo: 'Cronograma' },
