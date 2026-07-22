@@ -153,11 +153,10 @@ export class DesignacaoService {
     levantadores: string[] = [],
   ): Promise<Projeto> {
     const projeto = await this.buscarProjeto(projetoId);
-    if (!this.metricas.gciDefinido(projeto)) {
-      throw new BadRequestException(
-        'Defina o GCI antes de agendar o levantamento.',
-      );
-    }
+    // NÃO exige GCI aqui. No fluxo antigo o GCI era definido antes do agendamento; no
+    // processo revisado (2026-07-22) agendar é o passo 2 e o GCI só é indicado no passo 6,
+    // pelo Coordenador. Manter a pré-condição travava o passo 2 para sempre — era por isso
+    // que "Salvar e concluir" não gravava.
     const hoje = hojeIso();
     if (!dataLevantamento || dataLevantamento < hoje) {
       throw new BadRequestException(
@@ -170,12 +169,7 @@ export class DesignacaoService {
     if (levantadores.length > 0) {
       await this.passos.definirPessoas(projetoId, 'levantador', levantadores);
     }
-    await this.passos.concluirAutomatico(
-      projetoId,
-      2,
-      autor,
-      'Levantamento agendado',
-    );
+
     await this.registrarEvento(
       projetoId,
       `Data do Levantamento definida: ${formatBr(dataLevantamento)} (GCI: ${projeto.gci})`,
@@ -197,7 +191,16 @@ export class DesignacaoService {
       );
     }
 
+    // O auto-avanço antigo e o motor de passos escrevem os DOIS em `projeto.etapa`.
+    // Concluir o passo por ÚLTIMO faz o motor de passos ter a palavra final — senão o
+    // auto-avanço sobrescreveria a etapa derivada dos passos.
     await this.autoAvancar(projeto);
+    await this.passos.concluirAutomatico(
+      projetoId,
+      2,
+      autor,
+      'Levantamento agendado',
+    );
     return projeto;
   }
 
@@ -252,15 +255,8 @@ export class DesignacaoService {
     // Além da designação POR MÓDULO (acima), grava o vínculo por PAPEL — é a fonte da
     // verdade de "quem são os consultores do projeto" desde a revisão de 2026-07-22, e é
     // ela que os e-mails dos passos consultam. `Projeto.consultor` segue como espelho.
-    await this.passos.definirPessoas(projetoId, 'consultor', nomes);
-    // Passo 6 é "indicar o GCI E os técnicos": o GCI vem da tela anterior, então é aqui,
-    // quando os consultores entram, que o passo se completa.
-    await this.passos.concluirAutomatico(
-      projetoId,
-      6,
-      autor,
-      'GCI e técnicos indicados',
-    );
+    // `definirPessoas` já conclui o passo 6 quando há GCI definido.
+    await this.passos.definirPessoas(projetoId, 'consultor', nomes, autor);
     await this.registrarEvento(
       projetoId,
       `Consultores designados: ${projeto.consultor}`,

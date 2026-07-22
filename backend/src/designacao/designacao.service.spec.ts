@@ -118,12 +118,18 @@ describe('DesignacaoService', () => {
   });
 
   describe('agendar', () => {
-    it('rejeita se o GCI ainda não foi definido', async () => {
+    it('NÃO exige GCI — no processo revisado ele só entra no passo 6', async () => {
+      // Regra antiga (fluxo do Flask): o GCI era definido ANTES do agendamento. No
+      // processo de 2026-07-22, agendar é o passo 2 e o GCI é indicado pelo Coordenador no
+      // passo 6 — manter a exigência travava o passo 2 para sempre, e era exatamente por
+      // isso que "Salvar e concluir" não gravava.
       projetosRepo.findOne.mockResolvedValue(projeto({ gci: '' }));
       metricas.gciDefinido.mockReturnValue(false);
-      await expect(service.agendar(1, '2026-08-15', 'Admin')).rejects.toThrow(
-        BadRequestException,
-      );
+      const futuro = new Date();
+      futuro.setDate(futuro.getDate() + 10);
+      await expect(
+        service.agendar(1, futuro.toISOString().slice(0, 10), 'Admin'),
+      ).resolves.toBeDefined();
     });
 
     it('rejeita data no passado', async () => {

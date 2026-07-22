@@ -157,9 +157,10 @@ export class PassosController {
   async definirPessoas(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: DefinirPessoasDto,
+    @CurrentUser() user: AuthUser,
   ) {
     return new ApiEnvelope(
-      await this.passos.definirPessoas(id, dto.papel, dto.pessoas),
+      await this.passos.definirPessoas(id, dto.papel, dto.pessoas, user.nome),
     );
   }
 

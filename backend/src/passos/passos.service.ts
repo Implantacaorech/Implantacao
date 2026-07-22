@@ -170,6 +170,7 @@ export class PassosService {
     projetoId: number,
     papel: PapelProjeto,
     nomes: string[],
+    autor = 'sistema',
   ): Promise<ProjetoPessoa[]> {
     const limpos = [
       ...new Set(nomes.map((n) => n.trim()).filter(Boolean)),
@@ -184,6 +185,18 @@ export class PassosService {
     }
     if (papel === 'consultor') {
       await this.projetos.update(projetoId, { consultor: limpos.join(', ') });
+      // Passo 6 é "indicar o GCI E os técnicos". Ele se completa aqui, quando os técnicos
+      // entram — desde que o GCI já esteja definido. Ficava pendente para sempre quando a
+      // pessoa salvava pelo formulário do passo, que não passa por `designarConsultores`.
+      const projeto = await this.projetos.findOne({ where: { id: projetoId } });
+      if (limpos.length > 0 && projeto?.gci.trim()) {
+        await this.concluirAutomatico(
+          projetoId,
+          6,
+          autor,
+          'GCI e técnicos indicados',
+        );
+      }
     }
     return this.pessoasDoProjeto(projetoId, papel);
   }

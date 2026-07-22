@@ -359,6 +359,89 @@ describe('Passos do processo (e2e)', () => {
     });
   });
 
+  describe('alinhamento com o processo revisado (bugs reportados)', () => {
+    it('agendar o levantamento (passo 2) NÃO exige GCI — ele só entra no passo 6', async () => {
+      // Era o bug: `agendar` herdou do fluxo antigo a exigência de GCI definido, mas no
+      // processo novo o GCI é indicado só no passo 6. O passo 2 nunca gravava.
+      await jaConcluido([1]);
+      const futuro = new Date();
+      futuro.setDate(futuro.getDate() + 10);
+
+      const projetoAntes = await projetos.findOne({ where: { id: projetoId } });
+      expect(projetoAntes?.gci).toBe('');
+
+      await auth(
+        request(server()).post(`/api/projetos/${projetoId}/agendar`),
+        tokens.administrativo,
+      )
+        .send({
+          dataLevantamento: futuro.toISOString().slice(0, 10),
+          levantadores: ['GCI Um'],
+        })
+        .expect(200);
+
+      const feitos = await passosRepo.find({ where: { projetoId } });
+      expect(feitos.map((f) => f.passo).sort((a, b) => a - b)).toEqual([1, 2]);
+    });
+
+    it('grava os levantadores junto com a data', async () => {
+      await jaConcluido([1]);
+      const futuro = new Date();
+      futuro.setDate(futuro.getDate() + 10);
+      await auth(
+        request(server()).post(`/api/projetos/${projetoId}/agendar`),
+        tokens.administrativo,
+      )
+        .send({
+          dataLevantamento: futuro.toISOString().slice(0, 10),
+          levantadores: ['GCI Um'],
+        })
+        .expect(200);
+
+      const res = await auth(
+        request(server()).get(`/api/projetos/${projetoId}/pessoas`),
+        tokens.administrativo,
+      ).expect(200);
+      const dados = (
+        res.body as { data: { levantadores: { pessoa: string }[] } }
+      ).data;
+      expect(dados.levantadores.map((l) => l.pessoa)).toEqual(['GCI Um']);
+    });
+
+    it('o passo 6 conclui ao salvar GCI + técnicos pelo formulário do passo', async () => {
+      // O formulário do passo grava por `definir-gci` + `pessoas`; antes só
+      // `designarConsultores` (a tela antiga) concluía o passo 6, então ele ficava pendente.
+      await jaConcluido([1, 2, 3, 4, 5]);
+      await auth(
+        request(server()).post(`/api/projetos/${projetoId}/definir-gci`),
+        tokens.coordenador,
+      )
+        .send({ gcis: ['GCI Um'] })
+        .expect(200);
+      await auth(
+        request(server()).patch(`/api/projetos/${projetoId}/pessoas`),
+        tokens.coordenador,
+      )
+        .send({ papel: 'consultor', pessoas: ['Consultor Um'] })
+        .expect(200);
+
+      const feitos = await passosRepo.find({ where: { projetoId } });
+      expect(feitos.map((f) => f.passo)).toContain(6);
+    });
+
+    it('não conclui o passo 6 se ainda não há GCI', async () => {
+      await jaConcluido([1, 2, 3, 4, 5]);
+      await auth(
+        request(server()).patch(`/api/projetos/${projetoId}/pessoas`),
+        tokens.coordenador,
+      )
+        .send({ papel: 'consultor', pessoas: ['Consultor Um'] })
+        .expect(200);
+      const feitos = await passosRepo.find({ where: { projetoId } });
+      expect(feitos.map((f) => f.passo)).not.toContain(6);
+    });
+  });
+
   describe('ligação com as ações reais do sistema', () => {
     // Sem estas ligações, os 18 passos seriam um checklist manual em paralelo ao sistema:
     // a pessoa faria o trabalho numa tela e teria de marcar a caixinha em outra.
