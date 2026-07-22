@@ -127,6 +127,18 @@
 
 ---
 ## 🟢 Resolvidos (histórico)
+- **Bug de fuso: "hoje" era calculado em UTC** — 2026-07-21. `hojeIso()` e 4 cópias inline
+  usavam `toISOString()`; como o Brasil é UTC-3, das 21h à meia-noite o Painel considerava
+  hoje = amanhã, todo dia. O efeito visível: agendar para o DIA CORRENTE era recusado com
+  "não é possível agendar em data passada"; a data de início do projeto criado pelo robô da
+  caixa saía com um dia a mais; as janelas de disponibilidade descartavam o próprio dia.
+  Apareceu sozinho, quando o relógio cruzou as 21h durante a sessão e um teste virou.
+- **Dívida de lint zerada e passo do CI voltou a bloquear** — 2026-07-21. Eram 1243 achados
+  (1152 de formatação); o passo estava `continue-on-error` desde que foi criado, então
+  achado novo se perdia no meio dos velhos. Entre os 73 de código havia defeito real (o de
+  fuso acima e um helper de teste que descartava seus overrides) e 15 falsos positivos que,
+  "corrigidos" ingenuamente, fariam a **senha voltar a sair no JSON** da API — eram o idioma
+  `const { senha: _senha, ...cfg }`; a configuração passou a respeitar o prefixo `_`.
 - Levantamento passa a **preencher o modelo real** (não reconstrói do zero) — 2026-06-10.
 - Tela "Criação dos Templates" (abas) · Mapa mental do setor · espaçamento 1.15 — 2026-06-10.
 - Modo IA (reconferência verbal + ortografia) e Conversões com "horas" automático — 2026-06-10.
