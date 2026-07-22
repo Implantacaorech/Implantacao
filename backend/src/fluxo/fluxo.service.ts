@@ -14,6 +14,7 @@ import { NotificacaoService } from '../email/notificacao.service';
 import { LegadoCliService } from '../legado/legado-cli.service';
 import { LABELS } from './fluxo.constants';
 import { hojeIso } from '../cronograma/datas.util';
+import { PassosService } from '../passos/passos.service';
 
 // Pacote inicial do fluxo — mesmo default de webapp/routes_fluxo.py:fluxo_criar
 // (`gerar = f.getlist("gerar") or ["levantamento", "checklist", "cronograma"]`).
@@ -106,6 +107,7 @@ export class FluxoService {
     private readonly geracaoLayout: GeracaoLayoutService,
     private readonly legadoCli: LegadoCliService,
     private readonly mailer: MailerService,
+    private readonly passos: PassosService,
   ) {}
 
   /** Extrai os campos do corpo do e-mail (linhas "Rótulo: valor"). */
@@ -197,6 +199,14 @@ export class FluxoService {
         cliente: pf.cliente || 'Cliente',
         dataInicio: hoje,
       }),
+    );
+    // Passo 1 do processo é do ROBÔ: a ficha existir É a conclusão dele. Sem isto o
+    // Administrativo não conseguiria começar — o passo 2 depende do 1.
+    await this.passos.concluirAutomatico(
+      projeto.id,
+      1,
+      'sistema',
+      'Fechamento recebido do Comercial',
     );
     await this.documentos.registrarEvento(
       projeto.id,
@@ -294,6 +304,13 @@ export class FluxoService {
         cliente: dto.cliente || 'Cliente',
         dataInicio: hoje,
       }),
+    );
+    // Mesmo passo 1 do outro caminho de criação (confirmação manual pela tela do Fluxo).
+    await this.passos.concluirAutomatico(
+      projeto.id,
+      1,
+      autor || 'sistema',
+      'Fechamento recebido do Comercial',
     );
     await this.documentos.registrarEvento(
       projeto.id,

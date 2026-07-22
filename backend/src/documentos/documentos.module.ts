@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Documento } from '../database/entities/documento.entity';
 import { Evento } from '../database/entities/evento.entity';
@@ -13,6 +13,7 @@ import { LegadoModule } from '../legado/legado.module';
 import { DocumentosService } from './documentos.service';
 import { GeracaoLayoutService } from './geracao-layout.service';
 import { DocumentosController } from './documentos.controller';
+import { PassosModule } from '../passos/passos.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { DocumentosController } from './documentos.controller';
     EmailModule,
     PlanoCronogramaModule,
     MetricasModule,
+    forwardRef(() => PassosModule),
     LegadoModule,
   ],
   controllers: [DocumentosController],

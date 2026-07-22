@@ -273,6 +273,101 @@ describe('Passos do processo (e2e)', () => {
       .expect(400);
   });
 
+  describe('ligação com as ações reais do sistema', () => {
+    // Sem estas ligações, os 18 passos seriam um checklist manual em paralelo ao sistema:
+    // a pessoa faria o trabalho numa tela e teria de marcar a caixinha em outra.
+
+    it('o passo 1 é concluído quando a ficha nasce do e-mail de fechamento', async () => {
+      const parse = await auth(
+        request(server()).post('/api/fluxo/parse'),
+        tokens.administrativo,
+      )
+        .send({
+          texto: [
+            'Cliente (Razão Social): Cliente Ligacao LTDA',
+            'CNPJ: 11.222.333/0001-44',
+            'Módulos contratados (siglas): FAT',
+            'Horas cobradas: 10',
+          ].join(String.fromCharCode(10)),
+        })
+        .expect(200);
+
+      const criar = await auth(
+        request(server()).post('/api/fluxo/criar'),
+        tokens.administrativo,
+      )
+        .send((parse.body as { data: { campos: unknown } }).data.campos)
+        .expect(200);
+      const novoId = (criar.body as { data: { projetoId: number } }).data
+        .projetoId;
+
+      const lista = await auth(
+        request(server()).get(`/api/projetos/${novoId}/passos`),
+        tokens.administrativo,
+      ).expect(200);
+      const passo1 = (
+        lista.body as { data: { numero: number; concluido: boolean }[] }
+      ).data.find((p) => p.numero === 1);
+      expect(passo1?.concluido).toBe(true);
+    });
+
+    it('o Administrativo consegue seguir sem depender de um ADM marcar o passo 1', async () => {
+      // Era o bloqueio prático: passo 1 é do robô, passo 2 depende dele, e o robô não o
+      // concluía — ninguém conseguia começar.
+      await jaConcluido([1]);
+      await auth(
+        request(server()).post(`/api/projetos/${projetoId}/passos/2/concluir`),
+        tokens.administrativo,
+      )
+        .send({})
+        .expect(201);
+    });
+
+    it('agendar o levantamento conclui o passo 2 sozinho', async () => {
+      await jaConcluido([1]);
+      await auth(
+        request(server()).post(`/api/projetos/${projetoId}/definir-gci`),
+        tokens.coordenador,
+      )
+        .send({ gcis: ['GCI Um'] })
+        .expect(200);
+
+      const futuro = new Date();
+      futuro.setDate(futuro.getDate() + 10);
+      await auth(
+        request(server()).post(`/api/projetos/${projetoId}/agendar`),
+        tokens.administrativo,
+      )
+        .send({ dataLevantamento: futuro.toISOString().slice(0, 10) })
+        .expect(200);
+
+      const feitos = await passosRepo.find({ where: { projetoId } });
+      expect(feitos.map((f) => f.passo).sort((a, b) => a - b)).toEqual([1, 2]);
+    });
+
+    it('registra o motivo quando a ação acontece fora de ordem, sem concluir o passo', async () => {
+      // Agendar sem a ficha ter passado pelo passo 1: a ação vale, o passo não pode ser
+      // dado como feito — e o porquê fica na timeline em vez de sumir.
+      await auth(
+        request(server()).post(`/api/projetos/${projetoId}/definir-gci`),
+        tokens.coordenador,
+      )
+        .send({ gcis: ['GCI Um'] })
+        .expect(200);
+      const futuro = new Date();
+      futuro.setDate(futuro.getDate() + 10);
+      await auth(
+        request(server()).post(`/api/projetos/${projetoId}/agendar`),
+        tokens.administrativo,
+      )
+        .send({ dataLevantamento: futuro.toISOString().slice(0, 10) })
+        .expect(200);
+
+      const feitos = await passosRepo.find({ where: { projetoId } });
+      expect(feitos).toHaveLength(0);
+    });
+  });
+
   describe('pessoas do projeto', () => {
     it('aceita MAIS DE UM levantador e mais de um consultor', async () => {
       await auth(

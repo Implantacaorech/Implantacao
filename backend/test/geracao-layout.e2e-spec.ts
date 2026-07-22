@@ -216,7 +216,15 @@ describe('Geração de documentos fiéis — Levantamento/Projeto/Termo (e2e)', 
     const eventos = await auth(
       request(server()).get(`/api/projetos/${pid}/eventos`),
     );
-    expect(eventos.body.data).toHaveLength(2);
+    // Também entra um evento de PASSO: gerar o Termo é o passo 15 do processo, e como este
+    // projeto de teste não passou pelos passos anteriores, o sistema registra que o passo
+    // NÃO foi concluído e por quê — a geração acontece do mesmo jeito.
+    expect(
+      eventos.body.data.some(
+        (e: { tipo: string; descricao: string }) =>
+          e.tipo === 'passo' && e.descricao.includes('passo 15'),
+      ),
+    ).toBe(true);
     expect(
       eventos.body.data.some((e: { descricao: string }) =>
         e.descricao.includes('termo_teste.docx'),

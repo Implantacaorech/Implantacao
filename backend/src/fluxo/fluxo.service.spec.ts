@@ -6,6 +6,7 @@ import { DocumentosService } from '../documentos/documentos.service';
 import { GeracaoLayoutService } from '../documentos/geracao-layout.service';
 import { LegadoCliService } from '../legado/legado-cli.service';
 import { MailerService } from '../email/mailer.service';
+import { PassosService } from '../passos/passos.service';
 import { NotificacaoService } from '../email/notificacao.service';
 
 // checklist (gerador legado) lê o arquivo do disco (readFileSync) — mockado aqui pra não
@@ -44,6 +45,11 @@ describe('FluxoService', () => {
         { provide: GeracaoLayoutService, useValue: geracaoLayout },
         { provide: LegadoCliService, useValue: legadoCli },
         { provide: MailerService, useValue: mailer },
+        // A criação da ficha passou a concluir o passo 1 do processo (o passo do robô).
+        {
+          provide: PassosService,
+          useValue: { concluirAutomatico: () => Promise.resolve(true) },
+        },
       ],
     }).compile();
     service = module.get(FluxoService);

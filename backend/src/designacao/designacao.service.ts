@@ -170,6 +170,12 @@ export class DesignacaoService {
     if (levantadores.length > 0) {
       await this.passos.definirPessoas(projetoId, 'levantador', levantadores);
     }
+    await this.passos.concluirAutomatico(
+      projetoId,
+      2,
+      autor,
+      'Levantamento agendado',
+    );
     await this.registrarEvento(
       projetoId,
       `Data do Levantamento definida: ${formatBr(dataLevantamento)} (GCI: ${projeto.gci})`,
@@ -247,6 +253,14 @@ export class DesignacaoService {
     // verdade de "quem são os consultores do projeto" desde a revisão de 2026-07-22, e é
     // ela que os e-mails dos passos consultam. `Projeto.consultor` segue como espelho.
     await this.passos.definirPessoas(projetoId, 'consultor', nomes);
+    // Passo 6 é "indicar o GCI E os técnicos": o GCI vem da tela anterior, então é aqui,
+    // quando os consultores entram, que o passo se completa.
+    await this.passos.concluirAutomatico(
+      projetoId,
+      6,
+      autor,
+      'GCI e técnicos indicados',
+    );
     await this.registrarEvento(
       projetoId,
       `Consultores designados: ${projeto.consultor}`,

@@ -84,6 +84,8 @@ describe('DesignacaoService', () => {
               pessoasDefinidas.push({ projetoId, papel, nomes });
               return Promise.resolve([]);
             },
+            // Agendar e designar passaram a concluir os passos 2 e 6 do processo.
+            concluirAutomatico: () => Promise.resolve(true),
           },
         },
       ],

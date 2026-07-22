@@ -11,6 +11,7 @@ import { ConfigImapController } from './config-imap.controller';
 import { FluxoController } from './fluxo.controller';
 import { ProjetoEmailService } from './projeto-email.service';
 import { ProjetoEmailController } from './projeto-email.controller';
+import { PassosModule } from '../passos/passos.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ProjetoEmailController } from './projeto-email.controller';
     DocumentosModule,
     EmailModule,
     LegadoModule,
+    PassosModule,
   ],
   controllers: [ConfigImapController, FluxoController, ProjetoEmailController],
   providers: [

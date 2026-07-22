@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Projeto } from '../database/entities/projeto.entity';
 import { Evento } from '../database/entities/evento.entity';
@@ -26,7 +26,7 @@ import { DocumentosModule } from '../documentos/documentos.module';
     ]),
     UsersModule,
     EmailModule,
-    DocumentosModule,
+    forwardRef(() => DocumentosModule),
   ],
   controllers: [PassosController],
   providers: [PassosService, RnsService, PassosNotificacaoService],

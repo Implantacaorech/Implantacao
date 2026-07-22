@@ -1,8 +1,10 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
@@ -53,6 +55,7 @@ export class PassosService {
     @InjectRepository(Evento)
     private readonly eventos: Repository<Evento>,
     private readonly notificacao: PassosNotificacaoService,
+    @Inject(forwardRef(() => DocumentosService))
     private readonly documentos: DocumentosService,
   ) {}
 
@@ -212,6 +215,85 @@ export class PassosService {
     await this.sincronizarEtapa(projeto);
     void this.notificacao.notificarPasso(projeto, def, usuario.nome);
     return this.listar(projetoId, usuario.perfil);
+  }
+
+  /** Conclui um passo porque a AÇÃO CORRESPONDENTE aconteceu no sistema — o robô criou a
+   * ficha, o Administrativo agendou o levantamento, o GCI gerou o Projeto.
+   *
+   * Sem isto, os 18 passos seriam um checklist manual rodando em paralelo ao sistema: a
+   * pessoa faria o trabalho numa tela e teria de ir marcar a caixinha em outra.
+   *
+   * Diferenças em relação a `concluir()`, ambas deliberadas:
+   *   NÃO checa o perfil — quem autorizou foi o gate da própria rota que executou a ação;
+   *   NÃO lança quando algo impede — a ação JÁ ACONTECEU e não pode ser desfeita por causa
+   *     do registro. Quando a dependência não está satisfeita, registra o motivo na timeline
+   *     e devolve `false`, para o passo ficar visível como pendente em vez de sumir.
+   *
+   * É idempotente: chamar de novo num passo já concluído não faz nada. */
+  async concluirAutomatico(
+    projetoId: number,
+    numero: number,
+    autor: string,
+    acao: string,
+  ): Promise<boolean> {
+    const def = PASSOS_POR_NUMERO.get(numero);
+    if (!def) return false;
+
+    const projeto = await this.projetos.findOne({ where: { id: projetoId } });
+    if (!projeto) return false;
+
+    const jaFeito = await this.passos.findOne({
+      where: { projetoId, passo: numero },
+    });
+    if (jaFeito) return false;
+
+    if (def.depende.length > 0) {
+      const anteriores = await this.passos.find({
+        where: { projetoId, passo: In(def.depende) },
+      });
+      const porNumero = new Map(anteriores.map((a) => [a.passo, a]));
+      const pendentes = def.depende.filter((n) => {
+        const anterior = porNumero.get(n);
+        return (
+          !anterior || (PASSOS_COM_CONFERENCIA.has(n) && !anterior.conferido)
+        );
+      });
+      if (pendentes.length > 0) {
+        await this.eventos.save(
+          this.eventos.create({
+            projetoId,
+            tipo: 'passo',
+            descricao:
+              `${acao} — o passo ${numero} (${def.titulo}) NÃO foi concluído: ` +
+              `falta o passo ${pendentes.join(', ')}.`,
+            autor,
+          }),
+        );
+        return false;
+      }
+    }
+
+    await this.passos.save(
+      this.passos.create({
+        projetoId,
+        passo: numero,
+        concluidoPor: autor,
+        observacao: acao,
+      }),
+    );
+    await this.eventos.save(
+      this.eventos.create({
+        projetoId,
+        tipo: 'passo',
+        descricao: `Passo ${numero} concluído automaticamente (${acao}): ${def.titulo}`,
+        autor,
+      }),
+    );
+
+    await this.registrarEfeitosNoProjeto(projeto, numero);
+    await this.sincronizarEtapa(projeto);
+    void this.notificacao.notificarPasso(projeto, def, autor);
+    return true;
   }
 
   /** Marca a conferência dos passos 9 e 16 (Administrativo, validado com GCI ou

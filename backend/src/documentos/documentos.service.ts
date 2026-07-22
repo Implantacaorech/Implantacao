@@ -1,7 +1,9 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { mkdirSync, unlinkSync, writeFileSync } from 'fs';
@@ -18,6 +20,7 @@ import {
   DocLeve,
   MetricasService,
 } from '../metricas/metricas.service';
+import { PassosService } from '../passos/passos.service';
 
 // Precedência dos documentos no fluxo — a exclusão respeita as dependências: um documento
 // só pode ser excluído se nenhum documento POSTERIOR existir (ex.: exclua o Projeto antes
@@ -53,6 +56,11 @@ export class DocumentosService {
     @InjectRepository(Evento) private readonly eventos: Repository<Evento>,
     @InjectRepository(Projeto) private readonly projetos: Repository<Projeto>,
     private readonly metricas: MetricasService,
+    // forwardRef: PassosModule importa DocumentosModule (para anexar o e-mail do Outlook)
+    // e este importa PassosModule (para concluir o passo do documento) — ciclo real,
+    // resolvido do jeito que o Nest prevê.
+    @Inject(forwardRef(() => PassosService))
+    private readonly passos: PassosService,
   ) {}
 
   private async buscarProjeto(id: number): Promise<Projeto> {
@@ -188,16 +196,40 @@ export class DocumentosService {
     return { arquivo, caminho };
   }
 
+  /** Documento gerado/anexado -> conclui o passo do processo que corresponde a ele.
+   *
+   * Todo caminho de geração passa por aqui, então este é o único lugar que precisa saber a
+   * correspondência. Tipo que não estiver no mapa (por exemplo `email_passo_3`, do anexo do
+   * Outlook) simplesmente não conclui passo nenhum. */
+  private static readonly PASSO_POR_TIPO: Record<string, number> = {
+    projeto: 8,
+    cronograma: 10,
+    checklist: 11,
+    termo: 15,
+  };
+
   async registrarDocumento(
     projetoId: number,
     tipo: string,
     arquivo: string,
     caminho: string,
     origem: OrigemDocumento = 'gerado',
+    autor = 'sistema',
   ): Promise<Documento> {
-    return this.documentos.save(
+    const doc = await this.documentos.save(
       this.documentos.create({ projetoId, tipo, arquivo, caminho, origem }),
     );
+    const passo =
+      DocumentosService.PASSO_POR_TIPO[(tipo || '').trim().toLowerCase()];
+    if (passo) {
+      await this.passos.concluirAutomatico(
+        projetoId,
+        passo,
+        autor,
+        `Documento ${tipo} gerado`,
+      );
+    }
+    return doc;
   }
 
   async registrarEvento(
