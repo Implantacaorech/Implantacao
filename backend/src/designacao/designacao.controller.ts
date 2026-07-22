@@ -17,6 +17,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import {
   PERFIS_AGENDAMENTO,
+  PERFIS_DEFINE_GCI,
   PERFIS_DESIGNA_CONSULTORES,
 } from '../common/constants/perfis';
 import { ApiEnvelope } from '../common/dto/api-envelope';
@@ -26,9 +27,11 @@ import { AgendarLevantamentoDto } from './dto/agendar-levantamento.dto';
 import { DesignarConsultoresDto } from './dto/designar-consultores.dto';
 
 /** Fluxo de Designação por projeto (`/projetos/:id/definir-gci`, `/agendar`,
- * `/consultores`). Cada etapa tem um gate PRÓPRIO e deliberadamente distinto — não é
- * inconsistência, é o processo real (ver `PERFIS_AGENDAMENTO`/`PERFIS_DESIGNA_CONSULTORES`
- * em common/constants/perfis.ts). Espelha webapp/routes_designacao.py. */
+ * `/consultores`). Cada rota tem um gate PRÓPRIO e deliberadamente distinto — não é
+ * inconsistência, é o processo real (ver as constantes em common/constants/perfis.ts).
+ *
+ * Revisão de 2026-07-22: agendar o Levantamento segue com o Administrativo (passo 2), mas
+ * definir o GCI e designar os consultores passaram para o COORDENADOR (passo 6). */
 @ApiTags('designacao')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -37,20 +40,19 @@ export class DesignacaoController {
   constructor(private readonly service: DesignacaoService) {}
 
   @Get('definir-gci')
-  @Roles(...PERFIS_AGENDAMENTO)
+  @Roles(...PERFIS_DEFINE_GCI)
   @ApiOperation({
-    summary: 'Etapa 5 (Administrativo): dados para definir o(s) GCI(s)',
+    summary: 'Passo 6 (Coordenador): dados para definir o GCI',
   })
   async obterDefinirGci(@Param('id', ParseIntPipe) id: number) {
     return new ApiEnvelope(await this.service.obterDefinirGci(id));
   }
 
   @Post('definir-gci')
-  @Roles(...PERFIS_AGENDAMENTO)
+  @Roles(...PERFIS_DEFINE_GCI)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary:
-      'Etapa 5 (Administrativo): define o(s) GCI(s) — sem notificar ainda',
+    summary: 'Passo 6 (Coordenador): define o GCI — sem notificar ainda',
   })
   async definirGci(
     @Param('id', ParseIntPipe) id: number,
@@ -65,7 +67,7 @@ export class DesignacaoController {
   @Get('agendar')
   @Roles(...PERFIS_AGENDAMENTO)
   @ApiOperation({
-    summary: 'Etapa 2 (Administrativo): dados para agendar o Levantamento',
+    summary: 'Passo 2 (Administrativo): dados para agendar o Levantamento',
   })
   async obterAgendar(@Param('id', ParseIntPipe) id: number) {
     return new ApiEnvelope(await this.service.obterAgendar(id));

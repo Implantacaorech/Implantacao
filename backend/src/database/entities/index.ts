@@ -26,9 +26,15 @@ import { ChecklistItem } from './checklist-item.entity';
 import { Modificacao } from './modificacao.entity';
 import { AgenteExecucao } from './agente-execucao.entity';
 import { DicionarioDocumento } from './dicionario-documento.entity';
+import { ProjetoPessoa } from './projeto-pessoa.entity';
+import { ProjetoRns } from './projeto-rns.entity';
+import { ProjetoPasso } from './projeto-passo.entity';
 
 export * from './usuario.entity';
 export * from './projeto.entity';
+export * from './projeto-pessoa.entity';
+export * from './projeto-rns.entity';
+export * from './projeto-passo.entity';
 export * from './refresh-token.entity';
 export * from './checklist-modelo.entity';
 export * from './designacao.entity';
@@ -87,4 +93,7 @@ export const ENTITIES = [
   Modificacao,
   AgenteExecucao,
   DicionarioDocumento,
+  ProjetoPessoa,
+  ProjetoRns,
+  ProjetoPasso,
 ];

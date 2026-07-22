@@ -1,0 +1,321 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { In, Repository } from 'typeorm';
+import { Projeto } from '../database/entities/projeto.entity';
+import { ProjetoPasso } from '../database/entities/projeto-passo.entity';
+import {
+  PapelProjeto,
+  ProjetoPessoa,
+} from '../database/entities/projeto-pessoa.entity';
+import { Evento } from '../database/entities/evento.entity';
+import { Perfil } from '../common/constants/perfis';
+import {
+  DefinicaoPasso,
+  PASSOS,
+  PASSOS_COM_CONFERENCIA,
+  PASSOS_POR_NUMERO,
+  PERFIS_POR_RESPONSAVEL,
+} from './passos.constants';
+
+export interface PassoView extends DefinicaoPasso {
+  concluido: boolean;
+  concluidoEm: string | null;
+  concluidoPor: string;
+  conferido: boolean;
+  /** Passos que faltam concluir antes deste. */
+  bloqueadoPor: number[];
+  /** Pode ser concluído AGORA por quem está pedindo. */
+  liberado: boolean;
+  /** Por que não está liberado, em linguagem de negócio. */
+  motivos: string[];
+}
+
+@Injectable()
+export class PassosService {
+  constructor(
+    @InjectRepository(Projeto)
+    private readonly projetos: Repository<Projeto>,
+    @InjectRepository(ProjetoPasso)
+    private readonly passos: Repository<ProjetoPasso>,
+    @InjectRepository(ProjetoPessoa)
+    private readonly pessoas: Repository<ProjetoPessoa>,
+    @InjectRepository(Evento)
+    private readonly eventos: Repository<Evento>,
+  ) {}
+
+  private definicao(numero: number): DefinicaoPasso {
+    const def = PASSOS_POR_NUMERO.get(numero);
+    if (!def) throw new NotFoundException(`Passo ${numero} não existe.`);
+    return def;
+  }
+
+  /** O perfil basta para o papel do passo? Levantador e Consultor compartilham o perfil
+   * `Consultor`; a diferença de PAPEL é checada à parte, contra `projeto_pessoas`. */
+  private perfilAtende(def: DefinicaoPasso, perfil: Perfil): boolean {
+    return PERFIS_POR_RESPONSAVEL[def.responsavel].includes(perfil);
+  }
+
+  async pessoasDoProjeto(
+    projetoId: number,
+    papel?: PapelProjeto,
+  ): Promise<ProjetoPessoa[]> {
+    return this.pessoas.find({
+      where: papel ? { projetoId, papel } : { projetoId },
+      order: { pessoa: 'ASC' },
+    });
+  }
+
+  /** Substitui a lista de pessoas de um papel. `Projeto.consultor` continua sendo mantido
+   * com a lista consolidada, para não quebrar telas e documentos que leem aquele campo. */
+  async definirPessoas(
+    projetoId: number,
+    papel: PapelProjeto,
+    nomes: string[],
+  ): Promise<ProjetoPessoa[]> {
+    const limpos = [
+      ...new Set(nomes.map((n) => n.trim()).filter(Boolean)),
+    ].sort();
+    await this.pessoas.delete({ projetoId, papel });
+    if (limpos.length > 0) {
+      await this.pessoas.save(
+        limpos.map((pessoa) =>
+          this.pessoas.create({ projetoId, papel, pessoa }),
+        ),
+      );
+    }
+    if (papel === 'consultor') {
+      await this.projetos.update(projetoId, { consultor: limpos.join(', ') });
+    }
+    return this.pessoasDoProjeto(projetoId, papel);
+  }
+
+  /** Os passos do projeto com o estado de cada um, para a tela de tarefas. */
+  async listar(projetoId: number, perfil: Perfil): Promise<PassoView[]> {
+    const projeto = await this.projetos.findOne({ where: { id: projetoId } });
+    if (!projeto) throw new NotFoundException('Projeto não encontrado.');
+
+    const feitos = await this.passos.find({ where: { projetoId } });
+    const porNumero = new Map(feitos.map((f) => [f.passo, f]));
+
+    return PASSOS.map((def) => {
+      const feito = porNumero.get(def.numero);
+      const bloqueadoPor = def.depende.filter((n) => {
+        const anterior = porNumero.get(n);
+        if (!anterior) return true;
+        // Passo com conferência só libera o seguinte depois de conferido.
+        return PASSOS_COM_CONFERENCIA.has(n) && !anterior.conferido;
+      });
+
+      const motivos: string[] = [];
+      if (feito) motivos.push('Já concluído.');
+      for (const n of bloqueadoPor) {
+        const d = PASSOS_POR_NUMERO.get(n);
+        motivos.push(
+          PASSOS_COM_CONFERENCIA.has(n) && porNumero.has(n)
+            ? `Aguardando a conferência do passo ${n} (${d?.titulo ?? ''}).`
+            : `Depende do passo ${n} (${d?.titulo ?? ''}).`,
+        );
+      }
+      if (!this.perfilAtende(def, perfil)) {
+        motivos.push(`Só o responsável (${def.responsavel}) pode concluir.`);
+      }
+
+      return {
+        ...def,
+        concluido: !!feito,
+        concluidoEm: feito ? feito.concluidoEm.toISOString() : null,
+        concluidoPor: feito?.concluidoPor ?? '',
+        conferido: feito?.conferido ?? false,
+        bloqueadoPor,
+        liberado: motivos.length === 0,
+        motivos,
+      };
+    });
+  }
+
+  /** Conclui um passo. Recusa quando o perfil não é o responsável, quando alguma dependência
+   * não está satisfeita ou quando o passo já foi concluído. */
+  async concluir(
+    projetoId: number,
+    numero: number,
+    usuario: { nome: string; perfil: Perfil },
+    observacao = '',
+  ): Promise<PassoView[]> {
+    const def = this.definicao(numero);
+    const projeto = await this.projetos.findOne({ where: { id: projetoId } });
+    if (!projeto) throw new NotFoundException('Projeto não encontrado.');
+
+    if (!this.perfilAtende(def, usuario.perfil)) {
+      throw new ForbiddenException(
+        `Passo ${numero} é do ${def.responsavel}; seu perfil é ${usuario.perfil}.`,
+      );
+    }
+
+    const jaFeito = await this.passos.findOne({
+      where: { projetoId, passo: numero },
+    });
+    if (jaFeito) {
+      throw new BadRequestException(`Passo ${numero} já foi concluído.`);
+    }
+
+    if (def.depende.length > 0) {
+      const anteriores = await this.passos.find({
+        where: { projetoId, passo: In(def.depende) },
+      });
+      const porNumero = new Map(anteriores.map((a) => [a.passo, a]));
+      for (const n of def.depende) {
+        const anterior = porNumero.get(n);
+        if (!anterior) {
+          throw new BadRequestException(
+            `Passo ${numero} depende do passo ${n}, que ainda não foi concluído.`,
+          );
+        }
+        if (PASSOS_COM_CONFERENCIA.has(n) && !anterior.conferido) {
+          throw new BadRequestException(
+            `Passo ${numero} só libera depois da conferência do passo ${n}.`,
+          );
+        }
+      }
+    }
+
+    await this.passos.save(
+      this.passos.create({
+        projetoId,
+        passo: numero,
+        concluidoPor: usuario.nome,
+        observacao,
+      }),
+    );
+    await this.eventos.save(
+      this.eventos.create({
+        projetoId,
+        tipo: 'passo',
+        descricao: `Passo ${numero} concluído: ${def.titulo}`,
+        autor: usuario.nome,
+      }),
+    );
+
+    await this.sincronizarEtapa(projeto);
+    return this.listar(projetoId, usuario.perfil);
+  }
+
+  /** Marca a conferência dos passos 9 e 16 (Administrativo, validado com GCI ou
+   * Coordenador). É o que libera o passo seguinte. */
+  async conferir(
+    projetoId: number,
+    numero: number,
+    usuario: { nome: string; perfil: Perfil },
+  ): Promise<PassoView[]> {
+    const def = this.definicao(numero);
+    if (!PASSOS_COM_CONFERENCIA.has(numero)) {
+      throw new BadRequestException(`Passo ${numero} não tem conferência.`);
+    }
+    if (!this.perfilAtende(def, usuario.perfil)) {
+      throw new ForbiddenException(
+        `A conferência do passo ${numero} é do ${def.responsavel}.`,
+      );
+    }
+    const feito = await this.passos.findOne({
+      where: { projetoId, passo: numero },
+    });
+    if (!feito) {
+      throw new BadRequestException(
+        `Conclua o passo ${numero} antes de marcar a conferência.`,
+      );
+    }
+    feito.conferido = true;
+    await this.passos.save(feito);
+    await this.eventos.save(
+      this.eventos.create({
+        projetoId,
+        tipo: 'passo',
+        descricao: `Passo ${numero} conferido: ${def.titulo}`,
+        autor: usuario.nome,
+      }),
+    );
+    return this.listar(projetoId, usuario.perfil);
+  }
+
+  /** Desfaz a conclusão de um passo REVERSÍVEL.
+   *
+   * A partir do passo 11 a conclusão é definitiva: são atos já formalizados com o cliente
+   * (check-list gerado, boas-vindas enviadas, termo assinado). Reabrir daria ao Painel um
+   * histórico que não corresponde ao que o cliente recebeu. */
+  async reabrir(
+    projetoId: number,
+    numero: number,
+    usuario: { nome: string; perfil: Perfil },
+  ): Promise<PassoView[]> {
+    const def = this.definicao(numero);
+    if (def.irreversivel) {
+      throw new BadRequestException(
+        `Passo ${numero} não pode ser desmarcado: uma vez concluído, é definitivo.`,
+      );
+    }
+    if (!this.perfilAtende(def, usuario.perfil)) {
+      throw new ForbiddenException(
+        `Passo ${numero} é do ${def.responsavel}; seu perfil é ${usuario.perfil}.`,
+      );
+    }
+    // Um passo reversível não pode ser reaberto se algum passo que depende dele já andou —
+    // senão o processo ficaria com um buraco no meio.
+    const dependentes = PASSOS.filter((p) => p.depende.includes(numero)).map(
+      (p) => p.numero,
+    );
+    if (dependentes.length > 0) {
+      const seguintes = await this.passos.find({
+        where: { projetoId, passo: In(dependentes) },
+      });
+      if (seguintes.length > 0) {
+        const lista = seguintes.map((s) => s.passo).join(', ');
+        throw new BadRequestException(
+          `Passo ${numero} não pode ser reaberto: o passo ${lista} já foi concluído.`,
+        );
+      }
+    }
+    await this.passos.delete({ projetoId, passo: numero });
+    await this.eventos.save(
+      this.eventos.create({
+        projetoId,
+        tipo: 'passo',
+        descricao: `Passo ${numero} reaberto: ${def.titulo}`,
+        autor: usuario.nome,
+      }),
+    );
+    const projeto = await this.projetos.findOne({ where: { id: projetoId } });
+    if (projeto) await this.sincronizarEtapa(projeto);
+    return this.listar(projetoId, usuario.perfil);
+  }
+
+  /** Mantém a macro-etapa do projeto coerente com os passos concluídos.
+   *
+   * A macro-etapa é a do passo pendente mais antigo — assim o painel continua mostrando
+   * "onde o projeto está" mesmo com as duas trilhas (Projeto e Cronograma) correndo em
+   * paralelo depois do passo 7. */
+  private async sincronizarEtapa(projeto: Projeto): Promise<void> {
+    const feitos = await this.passos.find({
+      where: { projetoId: projeto.id },
+    });
+    const concluidos = new Set(feitos.map((f) => f.passo));
+    const pendente = PASSOS.find((p) => !concluidos.has(p.numero));
+    const etapa = pendente ? pendente.etapa : 'Encerramento';
+    if (projeto.etapa !== etapa) {
+      const anterior = projeto.etapa;
+      projeto.etapa = etapa;
+      await this.projetos.save(projeto);
+      await this.eventos.save(
+        this.eventos.create({
+          projetoId: projeto.id,
+          tipo: 'etapa',
+          descricao: `Etapa ajustada pelos passos: ${anterior} → ${etapa}`,
+          autor: 'sistema',
+        }),
+      );
+    }
+  }
+}

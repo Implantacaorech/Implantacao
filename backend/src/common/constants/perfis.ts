@@ -64,12 +64,18 @@ export const PERFIS_GERA_LEVANTAMENTO: Perfil[] = [
   'Administrativo',
   'GCI',
 ];
-// Gate de webapp/routes_designacao.py:projeto_definir_gci/projeto_agendar (Etapas 2 e 5
-// do processo real — ver memória de projeto "processo-etapas-responsaveis-emails"):
-// SÓ o Administrativo define o GCI e agenda o Levantamento — Coordenador fica de fora de
-// propósito aqui, apesar de estar em PERFIS_DESIGNA (confirmado com o usuário, não é bug).
+// Agendar o Levantamento é do Administrativo — passo 2 do processo (`PASSOS` em
+// passos/passos.constants.ts). Coordenador fica de fora de propósito, apesar de estar em
+// PERFIS_DESIGNA.
 export const PERFIS_AGENDAMENTO: Perfil[] = ['ADM', 'Administrativo'];
-// Gate de webapp/routes_designacao.py:projeto_consultores (Etapa 6 do processo real): só
-// o GCI designa os consultores da implantação — Coordenador/Administrativo ficam de fora
-// de propósito aqui (confirmado com o usuário).
-export const PERFIS_DESIGNA_CONSULTORES: Perfil[] = ['ADM', 'GCI'];
+
+// REVISÃO DO PROCESSO EM 2026-07-22 — mudança deliberada, confirmada com o usuário.
+//
+// Antes: o Administrativo definia o GCI e o GCI designava os consultores.
+// Agora: o passo 6 é do COORDENADOR, que indica o GCI **e** os técnicos de uma vez.
+//
+// As duas constantes abaixo passam a valer para a mesma pessoa por isso — quem indica o
+// GCI é quem indica os consultores. Mantidas separadas porque as rotas são distintas e
+// podem voltar a divergir.
+export const PERFIS_DEFINE_GCI: Perfil[] = ['ADM', 'Coordenador'];
+export const PERFIS_DESIGNA_CONSULTORES: Perfil[] = ['ADM', 'Coordenador'];

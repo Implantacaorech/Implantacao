@@ -33,6 +33,7 @@ describe('Designação (e2e)', () => {
   let tokenAdm: string;
   let tokenAdministrativo: string;
   let tokenGci: string;
+  let tokenCoordenador: string;
   let tokenConsultor: string;
   let projetoId: number;
 
@@ -111,6 +112,17 @@ describe('Designação (e2e)', () => {
       }),
     );
 
+    await usuarios.save(
+      usuarios.create({
+        login: 'paim',
+        nome: 'Paim Coordenador',
+        email: 'paim@teste.com',
+        senhaHash: await bcrypt.hash('senha-coord-123', 4),
+        perfil: 'Coordenador',
+        ativo: true,
+      }),
+    );
+
     tokenAdm = (
       await request(server())
         .post('/api/auth/login')
@@ -125,6 +137,11 @@ describe('Designação (e2e)', () => {
       await request(server())
         .post('/api/auth/login')
         .send({ login: 'gci1', senha: 'senha-gci-123' })
+    ).body.data.accessToken;
+    tokenCoordenador = (
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'paim', senha: 'senha-coord-123' })
     ).body.data.accessToken;
     tokenConsultor = (
       await request(server())
@@ -150,8 +167,10 @@ describe('Designação (e2e)', () => {
     await app.close();
   });
 
-  describe('GET/POST /projetos/:id/definir-gci (Etapa 5 — Administrativo)', () => {
-    it('GCI não acessa (403) — só ADM/Administrativo', async () => {
+  // REVISÃO DO PROCESSO EM 2026-07-22: definir o GCI passou do Administrativo para o
+  // COORDENADOR (passo 6 — "Paim indica o GCI e os técnicos responsáveis").
+  describe('GET/POST /projetos/:id/definir-gci (passo 6 — Coordenador)', () => {
+    it('GCI não acessa (403) — só ADM/Coordenador', async () => {
       const res = await auth(
         request(server()).get(`/api/projetos/${projetoId}/definir-gci`),
         tokenGci,
@@ -159,19 +178,27 @@ describe('Designação (e2e)', () => {
       expect(res.status).toBe(403);
     });
 
-    it('rejeita quando nenhum GCI é selecionado', async () => {
+    it('Administrativo NÃO define mais o GCI (mudou na revisão do processo)', async () => {
       const res = await auth(
         request(server()).post(`/api/projetos/${projetoId}/definir-gci`),
         tokenAdministrativo,
+      ).send({ gcis: ['Ana GCI'] });
+      expect(res.status).toBe(403);
+    });
+
+    it('rejeita quando nenhum GCI é selecionado', async () => {
+      const res = await auth(
+        request(server()).post(`/api/projetos/${projetoId}/definir-gci`),
+        tokenCoordenador,
       ).send({ gcis: [] });
       expect(res.status).toBe(400);
     });
 
-    it('Administrativo define o GCI, sem notificar por e-mail', async () => {
+    it('Coordenador define o GCI, sem notificar por e-mail', async () => {
       mailerFake.enviados = [];
       const res = await auth(
         request(server()).post(`/api/projetos/${projetoId}/definir-gci`),
-        tokenAdministrativo,
+        tokenCoordenador,
       ).send({ gcis: ['Ana GCI'] });
       expect(res.status).toBe(200);
       expect(res.body.data.gci).toBe('Ana GCI');
@@ -179,7 +206,7 @@ describe('Designação (e2e)', () => {
     });
   });
 
-  describe('GET/POST /projetos/:id/agendar (Etapa 2 — Administrativo)', () => {
+  describe('GET/POST /projetos/:id/agendar (passo 2 — Administrativo)', () => {
     it('rejeita data no passado', async () => {
       const res = await auth(
         request(server()).post(`/api/projetos/${projetoId}/agendar`),
@@ -208,8 +235,10 @@ describe('Designação (e2e)', () => {
     });
   });
 
-  describe('GET/POST /projetos/:id/consultores (Etapa 6 — GCI)', () => {
-    it('Administrativo não acessa (403) — só ADM/GCI', async () => {
+  // REVISÃO DO PROCESSO EM 2026-07-22: designar os consultores passou do GCI para o
+  // COORDENADOR — é o mesmo passo 6 em que ele indica o GCI.
+  describe('GET/POST /projetos/:id/consultores (passo 6 — Coordenador)', () => {
+    it('Administrativo não acessa (403) — só ADM/Coordenador', async () => {
       const res = await auth(
         request(server()).get(`/api/projetos/${projetoId}/consultores`),
         tokenAdministrativo,
@@ -225,10 +254,18 @@ describe('Designação (e2e)', () => {
       expect(res.status).toBe(403);
     });
 
-    it('GCI vê os módulos do projeto e a lista de consultores ativos', async () => {
+    it('GCI NÃO designa mais os consultores (mudou na revisão do processo)', async () => {
       const res = await auth(
         request(server()).get(`/api/projetos/${projetoId}/consultores`),
         tokenGci,
+      );
+      expect(res.status).toBe(403);
+    });
+
+    it('Coordenador vê os módulos do projeto e a lista de consultores ativos', async () => {
+      const res = await auth(
+        request(server()).get(`/api/projetos/${projetoId}/consultores`),
+        tokenCoordenador,
       );
       expect(res.status).toBe(200);
       expect(res.body.data.modulos).toEqual(['FAT', 'CTB']);
@@ -238,16 +275,16 @@ describe('Designação (e2e)', () => {
     it('rejeita quando nenhum consultor é designado', async () => {
       const res = await auth(
         request(server()).post(`/api/projetos/${projetoId}/consultores`),
-        tokenGci,
+        tokenCoordenador,
       ).send({ designacoes: {} });
       expect(res.status).toBe(400);
     });
 
-    it('GCI designa os consultores, cada um é notificado e a etapa avança automaticamente', async () => {
+    it('Coordenador designa os consultores, cada um é notificado e a etapa avança automaticamente', async () => {
       mailerFake.enviados = [];
       const res = await auth(
         request(server()).post(`/api/projetos/${projetoId}/consultores`),
-        tokenGci,
+        tokenCoordenador,
       ).send({ designacoes: { FAT: 'Beto Consultor', CTB: 'Beto Consultor' } });
 
       expect(res.status).toBe(200);

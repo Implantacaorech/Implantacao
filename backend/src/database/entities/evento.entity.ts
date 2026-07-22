@@ -6,7 +6,14 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-export type TipoEvento = 'nota' | 'etapa' | 'documento' | 'email' | 'alerta';
+export type TipoEvento =
+  | 'nota'
+  | 'etapa'
+  | 'documento'
+  | 'email'
+  | 'alerta'
+  // Conclusão/conferência/reabertura de um dos 18 passos operacionais do processo.
+  | 'passo';
 
 /** Item da timeline/histórico de um projeto (auditoria + passagem de bastão). Espelha
  * webapp/db.py:Evento. */

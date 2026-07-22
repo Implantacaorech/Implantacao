@@ -25,6 +25,7 @@ import { PlanoCronogramaModule } from './plano-cronograma/plano-cronograma.modul
 import { LegadoModule } from './legado/legado.module';
 import { AgentesModule } from './agentes/agentes.module';
 import { DicionarioModule } from './dicionario/dicionario.module';
+import { PassosModule } from './passos/passos.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { DicionarioModule } from './dicionario/dicionario.module';
     LegadoModule,
     AgentesModule,
     DicionarioModule,
+    PassosModule,
   ],
 })
 export class AppModule {}
