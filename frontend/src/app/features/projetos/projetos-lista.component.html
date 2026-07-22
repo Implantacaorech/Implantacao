@@ -53,21 +53,42 @@
   </div>
 
   @if (vista() === 'kanban') {
+    @if (colunas().length === 0) {
+      <div class="painel" style="text-align:center;color:var(--muted)">
+        Nenhum projeto no quadro com os filtros atuais.
+      </div>
+    }
     <div class="kanban">
-      @for (e of etapas; track e) {
+      @for (col of colunas(); track col.numero) {
         <div class="kan-col">
           <div class="kan-head">
-            <span style="display:flex;align-items:center;gap:6px">
-              <span [style.background]="'var(--' + (faseCls[e] ?? 'accent') + ')'" style="width:8px;height:8px;border-radius:50%;flex:none"></span>
-              {{ e }}
+            <span style="display:flex;align-items:center;gap:6px;min-width:0">
+              <span [style.background]="'var(--' + (faseCls[col.etapa] ?? 'accent') + ')'" style="width:8px;height:8px;border-radius:50%;flex:none"></span>
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                @if (col.numero > 0) { <strong>{{ col.numero }}.</strong> }
+                {{ col.titulo }}
+              </span>
             </span>
-            <span class="cnt">{{ (porEtapa().get(e) ?? []).length }}</span>
+            <span class="cnt">{{ col.projetos.length }}</span>
           </div>
-          @for (p of porEtapa().get(e); track p.id) {
-            <a class="kan-card" [routerLink]="['/projetos', p.id]">
+          <div style="font-size:.7rem;color:var(--muted);padding:0 2px 6px;display:flex;justify-content:space-between;gap:6px">
+            <span>{{ col.etapa }}</span>
+            @if (col.responsavel) { <span>{{ col.responsavel }}</span> }
+          </div>
+
+          @for (p of col.projetos; track p.id) {
+            <a class="kan-card" [routerLink]="['/projetos', p.id, 'passos']" [title]="'Abrir as fases de ' + p.cliente">
               <div class="cli">
                 <span>{{ p.cliente }} @if (p.numeroProjeto) { <span class="num">({{ p.numeroProjeto }})</span> }</span>
                 <span class="badge-sit" [attr.data-s]="p.situacao">{{ p.situacao }}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;margin:5px 0 2px">
+                <div style="flex:1;height:5px;background:var(--surface);border:1px solid var(--line);border-radius:99px;overflow:hidden">
+                  <div [style.width.%]="progresso(p.id)" style="height:100%;background:var(--brand)"></div>
+                </div>
+                <span style="font-size:.7rem;color:var(--muted);flex:none">
+                  {{ atual(p.id)?.concluidos ?? 0 }}/{{ atual(p.id)?.total ?? 18 }}
+                </span>
               </div>
               <div class="meta">
                 <span>{{ p.consultor || '— sem consultor —' }}</span>
@@ -78,9 +99,6 @@
                 </span>
               </div>
             </a>
-          }
-          @if (!(porEtapa().get(e) ?? []).length) {
-            <div class="kan-vazio">— sem projetos —</div>
           }
         </div>
       }

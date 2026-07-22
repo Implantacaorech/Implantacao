@@ -17,18 +17,31 @@ import {
 import { Evento } from '../database/entities/evento.entity';
 import { Documento } from '../database/entities/documento.entity';
 import { DocumentosService } from '../documentos/documentos.service';
-import { Perfil } from '../common/constants/perfis';
+import { Etapa, Perfil } from '../common/constants/perfis';
 import { hojeIso } from '../cronograma/datas.util';
 import { PassosNotificacaoService } from './passos-notificacao.service';
 import {
   DefinicaoPasso,
   EXTENSOES_EMAIL,
+  ResponsavelPasso,
   PASSOS,
   PASSOS_COM_ANEXO_DE_EMAIL,
   PASSOS_COM_CONFERENCIA,
   PASSOS_POR_NUMERO,
   PERFIS_POR_RESPONSAVEL,
 } from './passos.constants';
+
+/** Onde cada projeto está no processo — uma linha por projeto, para o quadro por fase. */
+export interface PassoAtualDoProjeto {
+  projetoId: number;
+  /** Primeiro passo PENDENTE; `null` quando o processo inteiro foi concluído. */
+  passo: number | null;
+  titulo: string;
+  responsavel: ResponsavelPasso | null;
+  etapa: Etapa;
+  concluidos: number;
+  total: number;
+}
 
 export interface PassoView extends DefinicaoPasso {
   concluido: boolean;
@@ -215,6 +228,39 @@ export class PassosService {
     await this.sincronizarEtapa(projeto);
     void this.notificacao.notificarPasso(projeto, def, usuario.nome);
     return this.listar(projetoId, usuario.perfil);
+  }
+
+  /** Em que passo cada projeto está, para montar o quadro (Kanban) por fase.
+   *
+   * O "passo atual" é o primeiro PENDENTE — é onde o trabalho parou e, portanto, a coluna em
+   * que o projeto aparece. Projeto com tudo concluído sai com `passo: null` (encerrado).
+   *
+   * Faz DUAS consultas no total, não uma por projeto: a lista de projetos costuma ser a tela
+   * mais aberta do Painel e não pode pagar N+1. */
+  async passoAtualDeTodos(): Promise<PassoAtualDoProjeto[]> {
+    const projetos = await this.projetos.find({ select: ['id'] });
+    const feitos = await this.passos.find({ select: ['projetoId', 'passo'] });
+
+    const concluidosPorProjeto = new Map<number, Set<number>>();
+    for (const f of feitos) {
+      const atual = concluidosPorProjeto.get(f.projetoId) ?? new Set<number>();
+      atual.add(f.passo);
+      concluidosPorProjeto.set(f.projetoId, atual);
+    }
+
+    return projetos.map((p) => {
+      const concluidos = concluidosPorProjeto.get(p.id) ?? new Set<number>();
+      const pendente = PASSOS.find((d) => !concluidos.has(d.numero));
+      return {
+        projetoId: p.id,
+        passo: pendente ? pendente.numero : null,
+        titulo: pendente ? pendente.titulo : 'Processo concluído',
+        responsavel: pendente ? pendente.responsavel : null,
+        etapa: pendente ? pendente.etapa : 'Encerramento',
+        concluidos: concluidos.size,
+        total: PASSOS.length,
+      };
+    });
   }
 
   /** Conclui um passo porque a AÇÃO CORRESPONDENTE aconteceu no sistema — o robô criou a

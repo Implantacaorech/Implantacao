@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiEnvelope } from '../models/api-envelope.model';
 import {
+  PassoAtualDoProjeto,
   PapelProjeto,
   Passo,
   PessoaProjeto,
@@ -18,6 +19,16 @@ export class PassosService {
   private readonly http = inject(HttpClient);
   private readonly base = (projetoId: number) =>
     `${environment.apiUrl}/projetos/${projetoId}`;
+
+  /** Em que passo cada projeto está — uma chamada só, para o quadro por fase. */
+  async atuais(): Promise<PassoAtualDoProjeto[]> {
+    const res = await firstValueFrom(
+      this.http.get<ApiEnvelope<PassoAtualDoProjeto[]>>(
+        `${environment.apiUrl}/passos/atuais`,
+      ),
+    );
+    return res.data;
+  }
 
   async listar(projetoId: number): Promise<Passo[]> {
     const res = await firstValueFrom(

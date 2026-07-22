@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ETAPAS, SITUACOES, Projeto } from '../../core/models/projeto.model';
 import { ProjetosService } from '../../core/services/projetos.service';
+import { PassosService } from '../../core/services/passos.service';
+import { PassoAtualDoProjeto } from '../../core/models/passo.model';
 import { AuthService } from '../../core/services/auth.service';
 
 type Vista = 'kanban' | 'tabela';
@@ -24,6 +26,7 @@ const FASE_CLS: Record<string, string> = {
 })
 export class ProjetosListaComponent {
   private readonly service = inject(ProjetosService);
+  private readonly passosService = inject(PassosService);
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
 
@@ -32,6 +35,8 @@ export class ProjetosListaComponent {
   readonly faseCls = FASE_CLS;
 
   readonly todos = signal<Projeto[]>([]);
+  /** Passo atual de cada projeto, por id — é o que define a coluna do quadro. */
+  readonly passoPorProjeto = signal<Map<number, PassoAtualDoProjeto>>(new Map());
   readonly carregando = signal(false);
   readonly erro = signal<string | null>(null);
   readonly vista = signal<Vista>('kanban');
@@ -50,12 +55,78 @@ export class ProjetosListaComponent {
     );
   });
 
-  readonly porEtapa = computed(() => {
-    const grupos = new Map<string, Projeto[]>();
-    for (const e of this.etapas) grupos.set(e, []);
-    for (const p of this.filtrados()) grupos.get(p.etapa)?.push(p);
-    return grupos;
+  /** Colunas do quadro: uma por PASSO do processo, na ordem, e SÓ as que têm projeto.
+   *
+   * Coluna vazia some de propósito — com 18 fases, mostrar todas deixaria o quadro largo e
+   * quase todo em branco. O quadro cresce conforme o trabalho anda. */
+  readonly colunas = computed(() => {
+    const porPasso = new Map<number, Projeto[]>();
+    const concluidos: Projeto[] = [];
+    const semInformacao: Projeto[] = [];
+    const mapa = this.passoPorProjeto();
+
+    for (const p of this.filtrados()) {
+      const atual = mapa.get(p.id);
+      // Duas ausências DIFERENTES, que não podem cair no mesmo balde: `passo: null` é
+      // processo terminado; sem entrada no mapa é falta de informação (por exemplo, a
+      // chamada dos passos falhou). Tratar o segundo como "concluído" mentiria na tela.
+      if (!atual) {
+        semInformacao.push(p);
+        continue;
+      }
+      if (atual.passo === null) {
+        concluidos.push(p);
+        continue;
+      }
+      const lista = porPasso.get(atual.passo) ?? [];
+      lista.push(p);
+      porPasso.set(atual.passo, lista);
+    }
+
+    const colunas = [...porPasso.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([numero, projetos]) => {
+        const ref = mapa.get(projetos[0].id);
+        return {
+          numero,
+          titulo: ref?.titulo ?? '',
+          etapa: ref?.etapa ?? '',
+          responsavel: ref?.responsavel ?? null,
+          projetos,
+        };
+      });
+
+    if (concluidos.length > 0) {
+      colunas.push({
+        numero: 0,
+        titulo: 'Processo concluído',
+        etapa: 'Encerramento',
+        responsavel: null,
+        projetos: concluidos,
+      });
+    }
+    if (semInformacao.length > 0) {
+      colunas.push({
+        numero: -1,
+        titulo: 'Fase não identificada',
+        etapa: '',
+        responsavel: null,
+        projetos: semInformacao,
+      });
+    }
+    return colunas;
   });
+
+  /** Progresso do projeto no processo, para a barra do card. */
+  progresso(projetoId: number): number {
+    const a = this.passoPorProjeto().get(projetoId);
+    if (!a || a.total === 0) return 0;
+    return Math.round((a.concluidos / a.total) * 100);
+  }
+
+  atual(projetoId: number): PassoAtualDoProjeto | undefined {
+    return this.passoPorProjeto().get(projetoId);
+  }
 
   readonly perfilNomeConsultor = computed(() => {
     const u = this.auth.usuario();
@@ -73,8 +144,12 @@ export class ProjetosListaComponent {
     this.carregando.set(true);
     this.erro.set(null);
     try {
-      const res = await this.service.listar({ page: 1, limit: 1000 });
+      const [res, atuais] = await Promise.all([
+        this.service.listar({ page: 1, limit: 1000 }),
+        this.passosService.atuais(),
+      ]);
       this.todos.set(res.data);
+      this.passoPorProjeto.set(new Map(atuais.map((a) => [a.projetoId, a])));
     } catch {
       this.erro.set('Não foi possível carregar os projetos.');
     } finally {

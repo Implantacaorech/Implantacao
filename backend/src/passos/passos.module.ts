@@ -6,6 +6,7 @@ import { ProjetoPasso } from '../database/entities/projeto-passo.entity';
 import { ProjetoPessoa } from '../database/entities/projeto-pessoa.entity';
 import { ProjetoRns } from '../database/entities/projeto-rns.entity';
 import { PassosController } from './passos.controller';
+import { PassosPainelController } from './passos-painel.controller';
 import { PassosService } from './passos.service';
 import { RnsService } from './rns.service';
 import { PassosNotificacaoService } from './passos-notificacao.service';
@@ -28,7 +29,7 @@ import { DocumentosModule } from '../documentos/documentos.module';
     EmailModule,
     forwardRef(() => DocumentosModule),
   ],
-  controllers: [PassosController],
+  controllers: [PassosController, PassosPainelController],
   providers: [PassosService, RnsService, PassosNotificacaoService],
   exports: [PassosService, RnsService, PassosNotificacaoService],
 })
