@@ -118,6 +118,21 @@
   - [ ] Restam os demais componentes Python previstos no item acima: `docservice/gerador/`
     (11 arquivos) e a ponte `webapp/` (4).
 
+## 🔁 Processo de 18 passos (revisão de 2026-07-22)
+- [x] Mapa dos 18 passos, vínculo pessoa×papel (vários levantadores/consultores), RNS de
+  quantidade livre, gates por responsável, paralelismo (10 não espera o 8), conferência
+  (9 e 16) e irreversibilidade (11 em diante). Backend + tela, 24 testes.
+- [x] Passo 6 passou do Administrativo/GCI para o **Coordenador** (indica GCI e técnicos).
+- [ ] **Disparo automático dos e-mails de cada passo.** O mapa já documenta QUAIS são
+  (passos 1, 3, 5, 6, 7, 8, 10, 12, 15 e 16), mas hoje só os e-mails que já existiam
+  antes disparam. Falta ligar cada passo ao seu modelo e destinatário.
+- [ ] **Anexar e-mail encaminhado do Outlook** (passos 3 e 4), só para registro. Não existe
+  hoje; avaliar reaproveitar a entidade `Documento`.
+- [ ] **Passo 14 grava a data de conclusão.** Hoje o passo é marcado, mas a data não vai
+  para nenhum campo do projeto — decidir se é `dataUsoOficial` ou `dataEncerramento`.
+- [ ] Passos 2 e 6 ainda gravam pessoas pelas telas ANTIGAS de Designação; migrar essas
+  telas para `projeto_pessoas` (a tabela já existe e a API já aceita vários).
+
 ## ▶️ Próximo passo combinado
 - [ ] Decidir "onde os dados moram" → **começar pelo Hub "Projetos por Cliente" com banco**.
 
