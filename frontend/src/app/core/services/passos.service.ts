@@ -30,6 +30,16 @@ export class PassosService {
     return res.data;
   }
 
+  /** Nomes dos usuários que TÊM o papel — para os seletores dos passos. */
+  async pessoasPorPapel(papel: string): Promise<string[]> {
+    const res = await firstValueFrom(
+      this.http.get<ApiEnvelope<string[]>>(
+        `${environment.apiUrl}/passos/pessoas-por-papel/${papel}`,
+      ),
+    );
+    return res.data;
+  }
+
   async listar(projetoId: number): Promise<Passo[]> {
     const res = await firstValueFrom(
       this.http.get<ApiEnvelope<Passo[]>>(`${this.base(projetoId)}/passos`),

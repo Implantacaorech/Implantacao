@@ -47,9 +47,9 @@ export const PERFIS_POR_RESPONSAVEL: Record<ResponsavelPasso, Perfil[]> = {
   // Passo 1 é do robô; ADM aparece para permitir reprocessar à mão quando o robô falha.
   Automatico: ['ADM'],
   Administrativo: ['ADM', 'Administrativo'],
-  // Levantador e Consultor são o mesmo perfil no sistema; o que distingue é o papel no
-  // projeto (ver entidade ProjetoPessoa).
-  Levantador: ['ADM', 'Consultor'],
+  // Levantador virou papel PRÓPRIO (revisão de 2026-07-22) — na prática são os GCIs, mas
+  // quem marca isso é o cadastro do usuário, e uma pessoa acumula cargos.
+  Levantador: ['ADM', 'Levantador'],
   Coordenador: ['ADM', 'Coordenador'],
   GCI: ['ADM', 'GCI'],
   Consultor: ['ADM', 'Consultor'],

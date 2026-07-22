@@ -62,6 +62,7 @@ export class UsersController {
       email: dto.email,
       senha: dto.senha,
       perfil: dto.perfil ?? 'Consultor',
+      perfis: dto.perfis,
       codigoSicla: dto.codigoSicla,
     });
     return new ApiEnvelope(semSenha(usuario));

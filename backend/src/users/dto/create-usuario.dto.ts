@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsArray,
   IsBoolean,
   IsEmail,
   IsIn,
@@ -25,6 +26,14 @@ export class CreateUsuarioDto {
   @IsOptional()
   @IsIn(PERFIS)
   perfil?: Perfil;
+
+  /** TODOS os papéis do usuário — a mesma pessoa acumula cargos (GCI e Levantador, por
+   * exemplo). Vazio = vale só o `perfil`. */
+  @ApiPropertyOptional({ enum: PERFIS, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @IsIn(PERFIS, { each: true })
+  perfis?: Perfil[];
 
   // Obrigatório em todo perfil — elo com a agenda externa (SICLA). Espelha a validação
   // de webapp/app.py:usuarios ("Informe o Código SICLA do usuário — é obrigatório.").

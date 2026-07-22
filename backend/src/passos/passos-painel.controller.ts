@@ -1,4 +1,10 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -6,6 +12,8 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { PassosService } from './passos.service';
 import { PASSOS } from './passos.constants';
+import { PERFIS, Perfil } from '../common/constants/perfis';
+import { UsersService } from '../users/users.service';
 
 /** Dados do PROCESSO para a carteira (quadro por fase), não de um projeto específico.
  *
@@ -16,7 +24,10 @@ import { PASSOS } from './passos.constants';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('passos')
 export class PassosPainelController {
-  constructor(private readonly passos: PassosService) {}
+  constructor(
+    private readonly passos: PassosService,
+    private readonly users: UsersService,
+  ) {}
 
   @Get('definicoes')
   @Roles()
@@ -26,6 +37,21 @@ export class PassosPainelController {
   })
   definicoes() {
     return new ApiEnvelope(PASSOS);
+  }
+
+  @Get('pessoas-por-papel/:papel')
+  @Roles()
+  @ApiOperation({
+    summary:
+      'Nomes dos usuários ativos que TÊM o papel — alimenta os seletores dos passos',
+  })
+  async pessoasPorPapel(@Param('papel') papel: string) {
+    const alvo = (PERFIS as readonly string[]).includes(papel)
+      ? (papel as Perfil)
+      : null;
+    if (!alvo) throw new BadRequestException(`Papel "${papel}" não existe.`);
+    const usuarios = await this.users.porPerfil(alvo);
+    return new ApiEnvelope(usuarios.map((u) => u.nome).sort());
   }
 
   @Get('atuais')

@@ -1,11 +1,11 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Perfil } from '../constants/perfis';
+import { Perfil, temPapel } from '../constants/perfis';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { AuthUser } from '../decorators/current-user.decorator';
 
-/** Equivalente a pode_ver/pode_gerar/pode_designar: rota sem @Roles() fica liberada para
- * qualquer usuário autenticado; com @Roles(...), só os perfis listados passam. */
+/** Rota sem @Roles() fica liberada para qualquer autenticado; com @Roles(...), passa quem
+ * TIVER pelo menos um dos papéis listados (o usuário pode ter vários). */
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
@@ -17,6 +17,8 @@ export class RolesGuard implements CanActivate {
     );
     if (!required || required.length === 0) return true;
     const { user } = context.switchToHttp().getRequest<{ user?: AuthUser }>();
-    return !!user && required.includes(user.perfil);
+    // Basta ter UM dos papéis exigidos: a mesma pessoa acumula cargos (GCI e Levantador,
+    // por exemplo), então comparar com um perfil único trancaria acesso legítimo.
+    return temPapel(user, ...required);
   }
 }

@@ -62,6 +62,7 @@ describe('PassosComponent', () => {
     listarRns: () => Promise<[]>;
     pessoas: () => Promise<{ levantadores: []; consultores: [] }>;
     definirPessoas: () => Promise<[]>;
+    pessoasPorPapel: (papel: string) => Promise<string[]>;
     concluir: (id: number, numero: number) => Promise<Passo[]>;
     conferir: () => Promise<Passo[]>;
     reabrir: () => Promise<Passo[]>;
@@ -75,6 +76,9 @@ describe('PassosComponent', () => {
       listarRns: () => Promise.resolve([]),
       pessoas: () => Promise.resolve({ levantadores: [], consultores: [] }),
       definirPessoas: () => Promise.resolve([]),
+      // Levantadores vêm do PAPEL 'Levantador' no cadastro, não da lista de consultores.
+      pessoasPorPapel: (papel: string) =>
+        Promise.resolve(papel === 'Levantador' ? ['Ana GCI', 'Caio GCI'] : []),
       concluir: (_id: number, numero: number) => {
         servicoFake.concluidos.push(numero);
         return Promise.resolve(passos);
@@ -161,12 +165,14 @@ describe('PassosComponent', () => {
     expect(c.formDoPasso(passo({ numero: 13 }))).toBeNull();
   });
 
-  it('abre o formulário do passo 2 já com os levantadores disponíveis', async () => {
+  it('lista como levantador SÓ quem tem o papel Levantador', async () => {
+    // Regra do usuário: "só devem ser listados nas opções de Levantador(es) os GCI" — e o
+    // que define isso é a marcação de papel no cadastro, não ser consultor do projeto.
     const fixture = await montar([passo({ numero: 2, titulo: 'Agendar' })]);
     const c = fixture.componentInstance;
     await c.abrirForm(passo({ numero: 2 }));
     expect(c.formAberto()).toBe(2);
-    expect(c.consultoresDisponiveis()).toEqual(['Ana', 'Bruno']);
+    expect(c.levantadoresDisponiveis()).toEqual(['Ana GCI', 'Caio GCI']);
   });
 
   it('marca e desmarca pessoa na seleção múltipla, sem repetir', async () => {

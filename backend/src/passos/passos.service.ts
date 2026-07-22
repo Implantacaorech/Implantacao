@@ -17,7 +17,7 @@ import {
 import { Evento } from '../database/entities/evento.entity';
 import { Documento } from '../database/entities/documento.entity';
 import { DocumentosService } from '../documentos/documentos.service';
-import { Etapa, Perfil } from '../common/constants/perfis';
+import { Etapa, Perfil, temPapel } from '../common/constants/perfis';
 import { hojeIso } from '../cronograma/datas.util';
 import { PassosNotificacaoService } from './passos-notificacao.service';
 import {
@@ -94,17 +94,19 @@ export class PassosService {
    * administração do Painel. */
   private podeExecutar(
     def: DefinicaoPasso,
-    usuario: { nome: string; perfil: Perfil },
+    usuario: { nome: string; perfil: Perfil; perfis?: Perfil[] },
     projeto: Projeto,
     designados: ProjetoPessoa[],
   ): boolean {
-    if (usuario.perfil === 'ADM') return true;
-    if (!PERFIS_POR_RESPONSAVEL[def.responsavel].includes(usuario.perfil)) {
+    if (temPapel(usuario, 'ADM')) return true;
+    if (!temPapel(usuario, ...PERFIS_POR_RESPONSAVEL[def.responsavel])) {
       return false;
     }
 
     const nome = usuario.nome.trim().toLowerCase();
-    const temPapel = (papel: PapelProjeto) =>
+    // Nome diferente do `temPapel` importado de propósito: aquele pergunta pelo CARGO no
+    // cadastro; este, pela DESIGNAÇÃO neste projeto. São checagens distintas.
+    const designadoComo = (papel: PapelProjeto) =>
       designados.some(
         (d) => d.papel === papel && d.pessoa.trim().toLowerCase() === nome,
       );
@@ -115,16 +117,13 @@ export class PassosService {
           .split(',')
           .some((g) => g.trim().toLowerCase() === nome);
       case 'Consultor':
-        return temPapel('consultor');
+        return designadoComo('consultor');
       case 'Levantador':
-        // Enquanto ninguém tiver sido designado como levantador, quem é consultor do
-        // projeto também atende — senão o passo 3 ficaria travado nos projetos antigos,
-        // criados antes de o papel existir.
-        return (
-          temPapel('levantador') ||
-          (!designados.some((d) => d.papel === 'levantador') &&
-            temPapel('consultor'))
-        );
+        // Sem fallback de propósito: o passo 2 designa os levantadores ANTES de o passo 3
+        // existir, então quando ele chega já há gente designada. Se um projeto antigo não
+        // tiver ninguém, o ADM resolve — é melhor do que deixar um consultor qualquer
+        // assumir o levantamento sem estar designado.
+        return designadoComo('levantador');
       default:
         return true;
     }
@@ -134,7 +133,7 @@ export class PassosService {
   private async exigirPermissao(
     projetoId: number,
     def: DefinicaoPasso,
-    usuario: { nome: string; perfil: Perfil },
+    usuario: { nome: string; perfil: Perfil; perfis?: Perfil[] },
   ): Promise<Projeto> {
     const projeto = await this.projetos.findOne({ where: { id: projetoId } });
     if (!projeto) throw new NotFoundException('Projeto não encontrado.');
@@ -148,9 +147,9 @@ export class PassosService {
   /** Motivo, em linguagem de negócio, de a pessoa não poder executar o passo. */
   private motivoSemPermissao(
     def: DefinicaoPasso,
-    usuario: { perfil: Perfil },
+    usuario: { perfil: Perfil; perfis?: Perfil[] },
   ): string {
-    return PERFIS_POR_RESPONSAVEL[def.responsavel].includes(usuario.perfil)
+    return temPapel(usuario, ...PERFIS_POR_RESPONSAVEL[def.responsavel])
       ? `Você não está designado(a) neste projeto como ${def.responsavel}.`
       : `Só o responsável (${def.responsavel}) pode concluir.`;
   }
@@ -192,7 +191,7 @@ export class PassosService {
   /** Os passos do projeto com o estado de cada um, para a tela de tarefas. */
   async listar(
     projetoId: number,
-    usuario: { nome: string; perfil: Perfil },
+    usuario: { nome: string; perfil: Perfil; perfis?: Perfil[] },
   ): Promise<PassoView[]> {
     const projeto = await this.projetos.findOne({ where: { id: projetoId } });
     if (!projeto) throw new NotFoundException('Projeto não encontrado.');
@@ -242,7 +241,7 @@ export class PassosService {
   async concluir(
     projetoId: number,
     numero: number,
-    usuario: { nome: string; perfil: Perfil },
+    usuario: { nome: string; perfil: Perfil; perfis?: Perfil[] },
     observacao = '',
   ): Promise<PassoView[]> {
     const def = this.definicao(numero);
@@ -427,7 +426,7 @@ export class PassosService {
   async conferir(
     projetoId: number,
     numero: number,
-    usuario: { nome: string; perfil: Perfil },
+    usuario: { nome: string; perfil: Perfil; perfis?: Perfil[] },
   ): Promise<PassoView[]> {
     const def = this.definicao(numero);
     if (!PASSOS_COM_CONFERENCIA.has(numero)) {
@@ -463,7 +462,7 @@ export class PassosService {
   async reabrir(
     projetoId: number,
     numero: number,
-    usuario: { nome: string; perfil: Perfil },
+    usuario: { nome: string; perfil: Perfil; perfis?: Perfil[] },
   ): Promise<PassoView[]> {
     const def = this.definicao(numero);
     if (def.irreversivel) {
@@ -510,7 +509,7 @@ export class PassosService {
     projetoId: number,
     numero: number,
     arquivo: { originalname: string; buffer: Buffer },
-    usuario: { nome: string; perfil: Perfil },
+    usuario: { nome: string; perfil: Perfil; perfis?: Perfil[] },
   ): Promise<Documento> {
     const def = this.definicao(numero);
     if (!PASSOS_COM_ANEXO_DE_EMAIL.has(numero)) {

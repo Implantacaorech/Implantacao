@@ -1,7 +1,12 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-import { CriarUsuarioPayload, PERFIS, Usuario } from '../../core/models/usuario.model';
+import {
+  CriarUsuarioPayload,
+  PERFIS,
+  ROTULO_PERFIL,
+  Usuario,
+} from '../../core/models/usuario.model';
 import { UsuariosService } from '../../core/services/usuarios.service';
 
 @Component({
@@ -16,6 +21,23 @@ export class UsuariosComponent {
   private readonly service = inject(UsuariosService);
 
   readonly perfis = PERFIS;
+  readonly rotuloPerfil = ROTULO_PERFIL;
+
+  /** Papéis marcados do usuário em edição. A pessoa acumula cargos — é comum ser GCI e
+   * Levantador ao mesmo tempo —, então isto é uma LISTA, não um select. */
+  readonly papeisMarcados = signal<string[]>(['Consultor']);
+
+  marcado(papel: string): boolean {
+    return this.papeisMarcados().includes(papel);
+  }
+
+  alternarPapel(papel: string, marcado: boolean): void {
+    this.papeisMarcados.update((atual) =>
+      marcado
+        ? [...new Set([...atual, papel])]
+        : atual.filter((p) => p !== papel),
+    );
+  }
   readonly carregando = signal(true);
   readonly salvando = signal(false);
   readonly erro = signal<string | null>(null);
@@ -51,12 +73,19 @@ export class UsuariosComponent {
 
   editar(u: Usuario): void {
     this.usuarioId.set(u.id);
+    this.papeisMarcados.set(
+      (u.perfis || u.perfil)
+        .split(',')
+        .map((p) => p.trim())
+        .filter(Boolean),
+    );
     this.form.patchValue({ ...u, senha: '' });
     window.scrollTo(0, 0);
   }
 
   limpar(): void {
     this.usuarioId.set(null);
+    this.papeisMarcados.set(['Consultor']);
     this.form.reset({ nome: '', email: '', login: '', codigoSicla: '', perfil: 'Consultor', senha: '', ativo: true });
   }
 
@@ -71,7 +100,14 @@ export class UsuariosComponent {
     this.erro.set(null);
     this.aviso.set(null);
     try {
-      const dto = { ...dados } as CriarUsuarioPayload;
+      const papeis = this.papeisMarcados();
+      const dto = {
+        ...dados,
+        perfis: papeis as CriarUsuarioPayload['perfis'],
+        // O papel PRINCIPAL é o primeiro marcado — é o que aparece onde só cabe um
+        // rótulo (listagem, timeline). Se nada foi marcado, mantém o do formulário.
+        perfil: (papeis[0] ?? dados.perfil) as CriarUsuarioPayload['perfil'],
+      } as CriarUsuarioPayload;
       if (!dto.senha) delete (dto as Partial<CriarUsuarioPayload>).senha;
       const id = this.usuarioId();
       if (id) await this.service.atualizar(id, dto);

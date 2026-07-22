@@ -50,6 +50,9 @@ export class PassosComponent {
    * pessoa teria de sair da tela, achar a tela certa e voltar. */
   readonly formAberto = signal<number | null>(null);
   readonly consultoresDisponiveis = signal<string[]>([]);
+  /** Levantadores vêm do PAPEL 'Levantador' no cadastro — na prática são os GCIs, mas
+   * quem define é a marcação do usuário, não o perfil de consultor. */
+  readonly levantadoresDisponiveis = signal<string[]>([]);
   readonly gcisDisponiveis = signal<string[]>([]);
   dataLevantamento = '';
   levantadoresSelecionados: string[] = [];
@@ -79,8 +82,9 @@ export class PassosComponent {
         ]);
         this.dataLevantamento = view.dataLevantamento || '';
         this.levantadoresSelecionados = pessoas.levantadores.map((l) => l.pessoa);
-        const cons = await this.designacao.obterConsultores(this.projetoId);
-        this.consultoresDisponiveis.set(cons.consultores);
+        this.levantadoresDisponiveis.set(
+          await this.service.pessoasPorPapel('Levantador'),
+        );
       } else {
         const [gciView, cons, pessoas] = await Promise.all([
           this.designacao.obterDefinirGci(this.projetoId),

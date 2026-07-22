@@ -9,6 +9,7 @@ import { RefreshToken } from '../database/entities/refresh-token.entity';
 import { Usuario } from '../database/entities/usuario.entity';
 import { UsersService } from '../users/users.service';
 import { AuthUser } from '../common/decorators/current-user.decorator';
+import { papeisDoUsuario } from '../users/papeis.util';
 
 export interface TokenPair {
   accessToken: string;
@@ -47,6 +48,7 @@ export class AuthService {
       login: usuario.login,
       nome: usuario.nome,
       perfil: usuario.perfil,
+      perfis: papeisDoUsuario(usuario),
       codigoSicla: usuario.codigoSicla,
     };
     const tokens = await this.emitirTokens(payload);
@@ -77,6 +79,8 @@ export class AuthService {
       login: payload.login,
       nome: payload.nome,
       perfil: payload.perfil,
+      // Cadastros antigos (token emitido antes dos papéis múltiplos) não trazem `perfis`.
+      perfis: payload.perfis?.length ? payload.perfis : [payload.perfil],
       codigoSicla: payload.codigoSicla,
     });
   }

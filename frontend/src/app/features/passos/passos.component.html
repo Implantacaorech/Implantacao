@@ -104,7 +104,7 @@
                   <div class="campo" style="margin-top:8px">
                     <span>Levantador(es) <small style="color:var(--muted);font-weight:400">— a data é a mesma para todos</small></span>
                     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">
-                      @for (nome of consultoresDisponiveis(); track nome) {
+                      @for (nome of levantadoresDisponiveis(); track nome) {
                         <label style="display:flex;align-items:center;gap:6px;font-weight:500;cursor:pointer">
                           <input
                             type="checkbox"
@@ -113,6 +113,11 @@
                           />
                           {{ nome }}
                         </label>
+                      }
+                      @if (levantadoresDisponiveis().length === 0) {
+                        <span style="color:var(--muted);font-size:.85rem">
+                          Nenhum usuário com o papel <strong>Levantador</strong>. Marque o papel no cadastro de usuários.
+                        </span>
                       }
                     </div>
                   </div>

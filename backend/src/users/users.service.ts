@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Usuario } from '../database/entities/usuario.entity';
 import { Perfil } from '../common/constants/perfis';
+import { normalizarPapeis, papeisDoUsuario } from './papeis.util';
 
 const SALT_ROUNDS = 12;
 
@@ -72,9 +73,14 @@ export class UsersService {
     return u.email || u.login || null;
   }
 
-  /** Espelha webapp/db.py:usuarios_por_perfil — usuários ativos de um perfil. */
+  /** Usuários ativos que TÊM o papel — não só quem o tem como principal.
+   *
+   * Desde que os papéis passaram a ser múltiplos, filtrar por `perfil` deixaria de fora
+   * justamente quem acumula cargo (o GCI que também é Levantador, por exemplo). O filtro
+   * é feito em memória porque a lista de usuários do Painel é pequena e cabe inteira. */
   async porPerfil(perfil: Perfil): Promise<Usuario[]> {
-    return this.repo.find({ where: { perfil, ativo: true } });
+    const ativos = await this.repo.find({ where: { ativo: true } });
+    return ativos.filter((u) => papeisDoUsuario(u).includes(perfil));
   }
 
   /** `{nomeLower: codigoSicla}` dos usuários ativos (restringe a `nomes` se informado) — o
@@ -105,6 +111,7 @@ export class UsersService {
     email: string;
     senha: string;
     perfil: Perfil;
+    perfis?: Perfil[];
     codigoSicla?: string;
   }): Promise<Usuario> {
     const login = (dados.login || '').trim() || dados.email.trim(); // login em branco usa o e-mail
@@ -120,6 +127,7 @@ export class UsersService {
       email: dados.email,
       senhaHash,
       perfil: dados.perfil,
+      perfis: normalizarPapeis(dados.perfis ?? [dados.perfil]).join(', '),
       codigoSicla: dados.codigoSicla ?? '',
       ativo: true,
     });
@@ -137,6 +145,7 @@ export class UsersService {
       email?: string;
       senha?: string;
       perfil?: Perfil;
+      perfis?: Perfil[];
       codigoSicla?: string;
       ativo?: boolean;
     },
@@ -156,6 +165,9 @@ export class UsersService {
     if (dados.nome !== undefined) usuario.nome = dados.nome;
     usuario.email = emailNovo;
     if (dados.perfil !== undefined) usuario.perfil = dados.perfil;
+    if (dados.perfis !== undefined) {
+      usuario.perfis = normalizarPapeis(dados.perfis).join(', ');
+    }
     if (dados.codigoSicla !== undefined)
       usuario.codigoSicla = dados.codigoSicla;
     if (dados.ativo !== undefined) usuario.ativo = dados.ativo;
