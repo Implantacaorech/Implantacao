@@ -106,27 +106,29 @@
   `docservice/gerador/` (11) e a ponte `webapp/` (4). Aprovado em 2026-07-21; fazer com testes
   de caracterização antes (§4.7 passo 1) e equivalência de saída dos .xlsx/.docx confirmada
   antes de desativar o original.
-  - **Geradores Office: 12 de 14 portados** (2026-07-21), em `backend/src/geradores/`. Cada um
-    tem prova de equivalência contra o snapshot do original em `tools/caracterizacao/`.
-    Nada foi desativado no Python ainda — os dois lados convivem até o porte fechar.
-  - [ ] **Faltam 2: `gerar_levantamento.py` e `gerar_projeto_implantacao.py`.** Não é "traduzir
-    código": os dois fazem **cirurgia de DOM em .docx oficial já existente** — o Levantamento
-    reescreve parágrafos no lugar casando por prefixo de texto e preenche tabelas identificadas
-    pelo cabeçalho; o Projeto remove áreas não selecionadas, faz `deepcopy` de linhas-modelo de
-    tabela e limpa marcadores. A base já existe (`docx-template.ts`, provada no Termo de
-    Encerramento), mas ela hoje só troca o miolo do corpo preservando seção/timbre; para estes
-    dois é preciso **ler, localizar e alterar elementos** do documento do template.
-    **Risco a pesar antes de decidir:** são documentos oficiais entregues ao cliente, e um erro
-    sutil gera documento malformado sem necessariamente quebrar o teste — o contrato de
-    caracterização cobre texto de corpo/tabela/timbre, não a formatação inteira.
-    **Alternativa prevista na §4.3:** manter estes dois em Python sob exceção documentada
-    (nomeando a limitação e a alternativa avaliada). Decisão pendente com o usuário.
+  - [x] **Geradores Office: 14 de 14 portados** (2026-07-21), em `backend/src/geradores/` —
+    104 testes. Cada um prova equivalência contra o snapshot do original em
+    `tools/caracterizacao/`, e os `.docx` gerados pelo TS foram conferidos também com
+    python-docx (parser independente do extrator próprio).
+  - [ ] **Desativar o lado Python dos geradores.** Nada foi removido: os dois lados convivem.
+    Antes de desligar, decidir quem passa a chamar os geradores novos (hoje a ponte
+    `webapp/legado_cli.py` chama os Python) e conferir um documento de cada tipo ABERTO NO
+    WORD — o contrato de caracterização cobre texto de corpo, tabelas e timbre, não a
+    formatação inteira.
+  - [ ] Restam os demais componentes Python previstos no item acima: `docservice/gerador/`
+    (11 arquivos) e a ponte `webapp/` (4).
 
 ## ▶️ Próximo passo combinado
 - [ ] Decidir "onde os dados moram" → **começar pelo Hub "Projetos por Cliente" com banco**.
 
 ---
 ## 🟢 Resolvidos (histórico)
+- **Porte dos 14 geradores Office de Python para Node/TS** — 2026-07-21. Rede de segurança
+  primeiro (§4.7): `tools/caracterizacao.py` fotografa o conteúdo observável de cada gerador
+  e cada porte prova equivalência contra esse snapshot. Dois furos foram encontrados NA
+  PRÓPRIA rede durante o trabalho: o harness comparava o último arquivo em ordem alfabética
+  de `exemplos/` (5 snapshots eram de artefatos de outros clientes, de semanas antes) e o
+  extrator ignorava tabulação, `gridSpan` e `vMerge`. Os dois consertados e revalidados.
 - **Bug de fuso: "hoje" era calculado em UTC** — 2026-07-21. `hojeIso()` e 4 cópias inline
   usavam `toISOString()`; como o Brasil é UTC-3, das 21h à meia-noite o Painel considerava
   hoje = amanhã, todo dia. O efeito visível: agendar para o DIA CORRENTE era recusado com
