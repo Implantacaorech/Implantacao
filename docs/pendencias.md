@@ -143,6 +143,15 @@
 
 ---
 ## 🟢 Resolvidos (histórico)
+- **INCIDENTE: Painel fora do ar ~13h (22/07/2026, 00:00→13:21).** O container
+  `painel-db-mariadb` estava com `restart=no`: quando o Docker parou, o banco não voltou
+  e o Painel passou a falhar com `ECONNREFUSED 127.0.0.1:3307`. O guardião funcionou —
+  reiniciou 159 vezes no dia — mas ninguém foi avisado, porque **não há alerta de queda
+  prolongada**. Corrigido: container agora é `restart=unless-stopped`.
+  - [ ] **Alertar quando o guardião falhar N vezes seguidas.** Reiniciar em laço por 13h sem
+    avisar ninguém é o verdadeiro defeito; o `restart=no` foi só o gatilho.
+  - [ ] **Backup do banco não rodou em 21/07** (último: 20/07 22:00). Verificar por que a
+    tarefa pulou — provavelmente máquina desligada às 22:00, sem reagendamento.
 - **Porte dos 14 geradores Office de Python para Node/TS** — 2026-07-21. Rede de segurança
   primeiro (§4.7): `tools/caracterizacao.py` fotografa o conteúdo observável de cada gerador
   e cada porte prova equivalência contra esse snapshot. Dois furos foram encontrados NA
