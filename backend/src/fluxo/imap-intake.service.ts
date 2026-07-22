@@ -19,6 +19,9 @@ const MARCADOR_PADRAO = 'IMPLANTA';
  * `MIGRACAO_IMAP_*`. */
 @Injectable()
 export class ImapIntakeService {
+  /** Motivo da última falha ao ler a caixa — `null` quando a última leitura deu certo. */
+  private ultimoErro: { quando: string; mensagem: string } | null = null;
+
   private readonly logger = new Logger('ImapIntakeService');
 
   private dir(): string {
@@ -103,6 +106,11 @@ export class ImapIntakeService {
       secure: true,
       auth: { user: cfg.user, pass: cfg.senha },
       logger: false,
+      // Sem limites explícitos, uma conexão problemática fica pendurada por minutos e os
+      // ciclos do robô (a cada IMAP_POLL_MIN) se acumulam em cima uns dos outros.
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 30000,
     });
     // ImapFlow é um EventEmitter; sem um listener de 'error', um problema assíncrono no
     // socket (ex.: timeout de conexão) vira uma exceção não tratada que derruba o
@@ -125,6 +133,17 @@ export class ImapIntakeService {
     const codigo = (e as NodeJS.ErrnoException)?.code;
     const texto =
       e instanceof Error ? `${e.constructor.name}: ${e.message}` : String(e);
+    // O imapflow sinaliza recusa de credencial pela PROPRIEDADE `authenticationFailed`; a
+    // mensagem vem só como "Command failed". Detectar por texto (como era feito abaixo)
+    // deixava passar justamente o caso mais comum, e o operador via um erro genérico.
+    if ((e as { authenticationFailed?: boolean })?.authenticationFailed) {
+      return (
+        'Usuário ou senha recusados pelo servidor de e-mail. Gmail e Outlook/365 exigem ' +
+        'uma SENHA DE APP (não a senha normal da conta) e o IMAP habilitado na conta. ' +
+        'Se a senha de app foi trocada ou revogada, gere outra e salve em ' +
+        'Config → Caixa de entrada.'
+      );
+    }
     if (codigo === 'ENOTFOUND' || codigo === 'EAI_AGAIN') {
       return (
         `Servidor IMAP não encontrado (${host}). Confira o host em Config → Caixa de ` +
@@ -200,12 +219,32 @@ export class ImapIntakeService {
       } finally {
         lock.release();
       }
-    } catch {
+    } catch (e) {
+      // ANTES: `catch { return n; }` — silêncio total. Uma senha recusada fazia o robô
+      // devolver "0 processados" indefinidamente, sem log e sem nada na tela; para quem
+      // usa, o Painel simplesmente "não lê e-mail". O motivo agora fica registrado e é
+      // devolvido na tela de configuração.
+      this.registrarFalha(e, cfg.host);
       return n;
     } finally {
       if (client) await client.logout().catch(() => {});
     }
+    this.ultimoErro = null;
     return n;
+  }
+
+  /** Guarda e loga o motivo real da última falha de leitura da caixa. */
+  private registrarFalha(e: unknown, host: string): void {
+    this.ultimoErro = {
+      quando: new Date().toISOString(),
+      mensagem: this.erroAmigavel(e, host),
+    };
+    this.logger.error(`Leitura da caixa falhou: ${this.ultimoErro.mensagem}`);
+  }
+
+  /** Último erro de leitura da caixa, para a tela de configuração mostrar. */
+  ultimoErroLeitura(): { quando: string; mensagem: string } | null {
+    return this.ultimoErro;
   }
 
   /** Devolve (corpo, assunto) do último e-mail NÃO LIDO cujo assunto contém `marcador` —

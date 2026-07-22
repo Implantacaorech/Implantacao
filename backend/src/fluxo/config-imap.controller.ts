@@ -32,7 +32,13 @@ export class ConfigImapController {
   })
   status() {
     const { senha: _senha, ...cfg } = this.imap.carregarConfig();
-    return new ApiEnvelope({ ...cfg, configurado: this.imap.configurado() });
+    return new ApiEnvelope({
+      ...cfg,
+      configurado: this.imap.configurado(),
+      // Sem isto, senha recusada aparece como "nada acontece": o robô falha em silêncio e
+      // a tela mostra só "configurado: true", que é verdade e não ajuda.
+      ultimoErro: this.imap.ultimoErroLeitura(),
+    });
   }
 
   @Post()
