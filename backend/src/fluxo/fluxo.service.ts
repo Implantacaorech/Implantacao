@@ -13,6 +13,7 @@ import { MailerService } from '../email/mailer.service';
 import { NotificacaoService } from '../email/notificacao.service';
 import { LegadoCliService } from '../legado/legado-cli.service';
 import { LABELS } from './fluxo.constants';
+import { hojeIso } from '../cronograma/datas.util';
 
 // Pacote inicial do fluxo — mesmo default de webapp/routes_fluxo.py:fluxo_criar
 // (`gerar = f.getlist("gerar") or ["levantamento", "checklist", "cronograma"]`).
@@ -181,7 +182,7 @@ export class FluxoService {
       );
       return ja;
     }
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = hojeIso();
     const projeto = await this.projetos.save(
       this.projetos.create({
         ...pf,
@@ -269,7 +270,7 @@ export class FluxoService {
       };
     }
 
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = hojeIso();
     const {
       consultor: _consultor,
       tecnicos: _tecnicos,

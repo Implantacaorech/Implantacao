@@ -1,4 +1,5 @@
 import type { Worksheet, CellValue } from 'exceljs';
+import { textoAparado, textoDe } from '../common/utils/texto.util';
 
 // Espelha webapp/matriz.py — aba 'Matriz': linha 7 = áreas (forward-fill por coluna),
 // linha 8 = siglas das competências + colunas fixas (Nome/Dias/Setor/Ár/Dt.última atu),
@@ -29,9 +30,9 @@ function cellText(v: CellValue): string {
     if ('richText' in v) {
       return v.richText.map((r) => r.text).join('');
     }
-    if ('text' in v) return String((v as { text: unknown }).text);
+    if ('text' in v) return textoDe((v as { text: unknown }).text);
   }
-  return String(v).trim();
+  return textoAparado(v);
 }
 
 export interface CompetenciaLida {

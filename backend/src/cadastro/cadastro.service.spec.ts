@@ -18,7 +18,7 @@ describe('CadastroService', () => {
     save: jest.fn((e) => Promise.resolve({ id: e.id ?? 1, ...e })),
     create: jest.fn((dto) => dto),
     remove: jest.fn(),
-    createQueryBuilder: jest.fn((alias?: string) => qbPendentes),
+    createQueryBuilder: jest.fn((_alias?: string) => qbPendentes),
   };
   const usuariosRepo = {
     save: jest.fn((e) => Promise.resolve({ id: 1, ...e })),

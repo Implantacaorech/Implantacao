@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConsultaBdService } from './consulta-bd.service';
 import { DisponibilidadeService } from './disponibilidade.service';
+import { hojeIso } from '../cronograma/datas.util';
+import { textoAparado } from '../common/utils/texto.util';
 
 const MESES_PT = [
   '',
@@ -89,7 +91,7 @@ export class DashboardsService {
    * (AAAA-MM, padrão = mês atual), `direcao` (avancar|recuar, padrão avancar) e `n`
    * (padrão 12). Espelha webapp/routes_dashboards.py:_periodo. */
   periodo(query: QueryDashboard): Periodo {
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = hojeIso();
     let refIni = `${hoje.slice(0, 7)}-01`;
     const refRaw = (query.ref || '').trim();
     if (/^\d{4}-\d{1,2}$/.test(refRaw)) {
@@ -147,7 +149,7 @@ export class DashboardsService {
   private comoData(v: unknown): string | null {
     if (v === null || v === undefined) return null;
     if (v instanceof Date) return v.toISOString().slice(0, 10);
-    const s = String(v).trim().slice(0, 10);
+    const s = textoAparado(v).slice(0, 10);
     return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
   }
 
@@ -236,7 +238,7 @@ export class DashboardsService {
       )
         continue;
       const situacao = colunaSituacao
-        ? String(linha[colunaSituacao] ?? '').trim()
+        ? textoAparado(linha[colunaSituacao])
         : '';
       if (situacao && !situacoesDisp.includes(situacao))
         situacoesDisp.push(situacao);

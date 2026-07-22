@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import oracledb from 'oracledb';
+import { textoAparado } from '../common/utils/texto.util';
 
 export interface ConfigDisponibilidade {
   tipo: string;
@@ -96,7 +97,9 @@ export class DisponibilidadeService {
     let cfg: Partial<ConfigDisponibilidade> = {};
     if (existsSync(this.arquivo())) {
       try {
-        cfg = JSON.parse(readFileSync(this.arquivo(), 'utf8'));
+        cfg = JSON.parse(
+          readFileSync(this.arquivo(), 'utf8'),
+        ) as Partial<ConfigDisponibilidade>;
       } catch {
         cfg = {};
       }
@@ -283,14 +286,10 @@ export class DisponibilidadeService {
     });
     return rows.map((row) => {
       const d = this.normalizarLinha(row);
-      const turno = String(d.turno ?? '')
-        .trim()
-        .toLowerCase();
+      const turno = textoAparado(d.turno).toLowerCase();
       return {
-        tecnico: String(d.tecnico ?? '').trim(),
-        data: String(d.data ?? '')
-          .trim()
-          .slice(0, 10),
+        tecnico: textoAparado(d.tecnico),
+        data: textoAparado(d.data).slice(0, 10),
         turno: turno === 'manha' || turno === 'tarde' ? turno : '',
       };
     });
@@ -438,8 +437,8 @@ export class DisponibilidadeService {
       });
       for (const row of rows) {
         const d = this.normalizarLinha(row);
-        const nome = String(d.tecnico ?? '').trim();
-        const cod = String(d.codigo ?? '').trim();
+        const nome = textoAparado(d.tecnico);
+        const cod = textoAparado(d.codigo);
         if (!nome) continue;
         mapa[nome.toLowerCase()] = nome;
         if (cod) mapa[cod.toLowerCase()] = nome;

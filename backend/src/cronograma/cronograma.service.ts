@@ -17,6 +17,7 @@ import { ChecklistModeloService } from '../catalogos/checklist-modelo.service';
 import { UsersService } from '../users/users.service';
 import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
 import { DesignacoesService } from './designacoes.service';
+import { hojeIso } from './datas.util';
 
 export interface VisitaAgrupada {
   modulo: string;
@@ -549,7 +550,7 @@ export class CronogramaService {
   ): Promise<string | null> {
     const d = (data || '').trim();
     if (!d) return null;
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = hojeIso();
     if (d < hoje)
       return 'Não é possível agendar em data passada — escolha hoje ou uma data futura.';
     if (projetoId !== undefined) {

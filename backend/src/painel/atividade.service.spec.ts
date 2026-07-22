@@ -16,6 +16,7 @@ function projeto(over: Partial<Projeto> = {}): Projeto {
     gci: '',
     criadoEm: new Date(),
     atualizadoEm: new Date(),
+    ...over,
   } as Projeto;
 }
 

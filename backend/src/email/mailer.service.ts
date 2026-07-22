@@ -41,7 +41,9 @@ export class MailerService {
     let cfg: Partial<ConfigSmtp> = {};
     if (existsSync(this.arquivo())) {
       try {
-        cfg = JSON.parse(readFileSync(this.arquivo(), 'utf8'));
+        cfg = JSON.parse(
+          readFileSync(this.arquivo(), 'utf8'),
+        ) as Partial<ConfigSmtp>;
       } catch {
         cfg = {};
       }

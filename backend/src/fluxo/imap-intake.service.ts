@@ -42,7 +42,9 @@ export class ImapIntakeService {
     let cfg: Partial<ConfigImap> = {};
     if (existsSync(this.arquivo())) {
       try {
-        cfg = JSON.parse(readFileSync(this.arquivo(), 'utf8'));
+        cfg = JSON.parse(
+          readFileSync(this.arquivo(), 'utf8'),
+        ) as Partial<ConfigImap>;
       } catch {
         cfg = {};
       }

@@ -1,15 +1,50 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { OAuth2Client } from 'google-auth-library';
+import { Credentials, OAuth2Client } from 'google-auth-library';
 import { randomBytes } from 'crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
-const MailComposer = require('nodemailer/lib/mail-composer');
 import { AppConfig } from '../config/configuration';
 import { Anexo } from './anexo';
 
 const SCOPES = ['https://www.googleapis.com/auth/gmail.send'];
+
+/** `nodemailer/lib/mail-composer` é um subcaminho sem tipos publicados, então o `require`
+ * entrava como `any` e contaminava tudo que passava por ele. Declaramos aqui só a fatia da
+ * API que este serviço usa — montar a mensagem MIME crua que a API do Gmail espera. */
+interface OpcoesMailComposer {
+  to: string;
+  subject: string;
+  text: string;
+  // `filename` é opcional: `Anexo.nomeArquivo` também é, e sem ele o mail-composer usa o
+  // nome do próprio arquivo no disco.
+  attachments: { path: string; filename?: string }[];
+}
+interface MensagemCompilada {
+  build(retorno: (erro: Error | null, mensagem: Buffer) => void): void;
+}
+interface MailComposerInstancia {
+  compile(): MensagemCompilada;
+}
+type ConstrutorMailComposer = new (
+  opcoes: OpcoesMailComposer,
+) => MailComposerInstancia;
+
+const MailComposer =
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- subcaminho sem tipos
+  require('nodemailer/lib/mail-composer') as ConstrutorMailComposer;
+
+/** Bloco de credenciais do arquivo client_secret.json baixado do Google Cloud. */
+interface BlocoCliente {
+  client_id?: string;
+  client_secret?: string;
+  redirect_uris?: string[];
+}
+interface ArquivoClienteOAuth {
+  web?: BlocoCliente;
+  installed?: BlocoCliente;
+}
 
 export interface ResultadoEnvio {
   ok: boolean;
@@ -73,7 +108,9 @@ export class GmailService {
   private lerCliente(): ClienteOAuth | null {
     if (!this.temCliente()) return null;
     try {
-      const json = JSON.parse(readFileSync(this.arquivoCliente(), 'utf8'));
+      const json = JSON.parse(
+        readFileSync(this.arquivoCliente(), 'utf8'),
+      ) as ArquivoClienteOAuth;
       const bloco = json.web ?? json.installed;
       if (!bloco?.client_id || !bloco?.client_secret) return null;
       const redirectUri =
@@ -156,12 +193,14 @@ export class GmailService {
 
   /** Carrega o token salvo, atualizando o client (renova sozinho na 1ª chamada que
    * precisar, via `google-auth-library`) e regravando o arquivo se o token mudou. */
-  private async credenciais(): Promise<OAuth2Client | null> {
+  private credenciais(): OAuth2Client | null {
     if (!this.configurado()) return null;
     const client = this.cliente();
     if (!client) return null;
     try {
-      const tokens = JSON.parse(readFileSync(this.arquivoToken(), 'utf8'));
+      const tokens = JSON.parse(
+        readFileSync(this.arquivoToken(), 'utf8'),
+      ) as Credentials;
       client.setCredentials(tokens);
       client.on('tokens', (novos) => {
         const atual = { ...tokens, ...novos };
@@ -187,7 +226,7 @@ export class GmailService {
     corpo: string,
     anexos: Anexo[] = [],
   ): Promise<ResultadoEnvio> {
-    const client = await this.credenciais();
+    const client = this.credenciais();
     if (!client) {
       return {
         ok: false,

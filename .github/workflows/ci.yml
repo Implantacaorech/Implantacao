@@ -41,9 +41,10 @@ jobs:
         run: npm ci
       - name: Testes (Jest)
         run: npm test -- --ci
-      - name: Lint (best-effort — ~1200 achados pre-existentes, sobretudo formatacao Prettier; nao bloqueia ainda)
-        run: npx eslint "{src,apps,libs,test}/**/*.ts"
-        continue-on-error: true
+      # Passa a BLOQUEAR: a divida de ~1200 achados pre-existentes foi zerada. Enquanto o
+      # passo era best-effort, achado novo se perdia no meio dos velhos e ninguem lia.
+      - name: Lint
+        run: npx eslint "{src,apps,libs,test}/**/*.ts" --max-warnings 10
 
   frontend-test:
     # Stack novo (Angular) — Vitest via @angular/build:unit-test, roda em Node sem browser real.

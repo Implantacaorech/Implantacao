@@ -62,12 +62,12 @@ export class MatrizController {
   })
   async listar(@CurrentUser() user: AuthUser) {
     if (veTudo(user.perfil)) {
-      const itens = await Promise.all(
-        (await this.service.listar()).map(async (t) => ({
-          ...t,
-          qtdNotas: Object.keys(this.service.notas(t)).length,
-        })),
-      );
+      // `notas()` é síncrono: o `Promise.all` com callback `async` só criava uma Promise
+      // por técnico para resolver de imediato, sem nada assíncrono dentro.
+      const itens = (await this.service.listar()).map((t) => ({
+        ...t,
+        qtdNotas: Object.keys(this.service.notas(t)).length,
+      }));
       return new ApiEnvelope({
         itens,
         restrito: false,

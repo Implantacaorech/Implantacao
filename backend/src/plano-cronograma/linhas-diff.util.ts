@@ -1,3 +1,5 @@
+import { textoAparado, textoDe } from '../common/utils/texto.util';
+
 export interface DiffLinha {
   ref: string;
   campo: string;
@@ -20,8 +22,8 @@ export function diffLinhas<T extends Record<string, unknown>>(
 ): DiffLinha[] {
   const resumo = (r: T | undefined): string => {
     if (!r) return '(linha vazia)';
-    const a = String(r[camposResumo[0]] ?? '').trim();
-    const b = String(r[camposResumo[1]] ?? '').trim();
+    const a = textoAparado(r[camposResumo[0]]);
+    const b = textoAparado(r[camposResumo[1]]);
     const texto = [a, b].filter(Boolean).join(' · ');
     return texto || '(linha vazia)';
   };
@@ -47,8 +49,8 @@ export function diffLinhas<T extends Record<string, unknown>>(
       });
     } else if (antiga && nova) {
       for (const campo of campos) {
-        const de = String(antiga[campo] ?? '');
-        const para = String(nova[campo] ?? '');
+        const de = textoDe(antiga[campo]);
+        const para = textoDe(nova[campo]);
         if (de !== para) {
           diffs.push({ ref: `linha ${i + 1} · ${campo}`, campo, de, para });
         }

@@ -6,7 +6,7 @@ import {
   writeFileSync,
   utimesSync,
   existsSync,
-  readdirSync,
+  mkdirSync,
 } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -184,7 +184,7 @@ describe('ProcessamentoProtocolosService', () => {
   describe('varrerPasta', () => {
     it('ignora arquivo instável (mtime recente), extensão não suportada, e faz dedup', async () => {
       const pend = join(raiz, 'Videos Pendentes');
-      require('fs').mkdirSync(pend, { recursive: true });
+      mkdirSync(pend, { recursive: true });
       const video = join(pend, 'novo.mp4');
       writeFileSync(video, 'conteudo');
       // mtime "agora" -> instável
@@ -215,7 +215,7 @@ describe('ProcessamentoProtocolosService', () => {
 
   describe('configurado', () => {
     it('true quando "Videos Pendentes" existe', () => {
-      require('fs').mkdirSync(join(raiz, 'Videos Pendentes'), {
+      mkdirSync(join(raiz, 'Videos Pendentes'), {
         recursive: true,
       });
       expect(service.configurado()).toBe(true);
