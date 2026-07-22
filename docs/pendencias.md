@@ -123,15 +123,20 @@
   quantidade livre, gates por responsável, paralelismo (10 não espera o 8), conferência
   (9 e 16) e irreversibilidade (11 em diante). Backend + tela, 24 testes.
 - [x] Passo 6 passou do Administrativo/GCI para o **Coordenador** (indica GCI e técnicos).
-- [ ] **Disparo automático dos e-mails de cada passo.** O mapa já documenta QUAIS são
-  (passos 1, 3, 5, 6, 7, 8, 10, 12, 15 e 16), mas hoje só os e-mails que já existiam
-  antes disparam. Falta ligar cada passo ao seu modelo e destinatário.
-- [ ] **Anexar e-mail encaminhado do Outlook** (passos 3 e 4), só para registro. Não existe
-  hoje; avaliar reaproveitar a entidade `Documento`.
-- [ ] **Passo 14 grava a data de conclusão.** Hoje o passo é marcado, mas a data não vai
-  para nenhum campo do projeto — decidir se é `dataUsoOficial` ou `dataEncerramento`.
-- [ ] Passos 2 e 6 ainda gravam pessoas pelas telas ANTIGAS de Designação; migrar essas
-  telas para `projeto_pessoas` (a tabela já existe e a API já aceita vários).
+- [x] **Disparo automático dos e-mails de cada passo** — 12 e-mails, com destinatário
+  resolvido por perfil, por vínculo de papel ou por campo do projeto.
+- [x] **E-mail do Comercial**: campo novo `comercialEmail`, preenchido com o REMETENTE do
+  e-mail de fechamento (era o bloqueio do passo 3).
+- [x] **Anexar e-mail encaminhado do Outlook** (.msg/.eml) nos passos 3 e 4.
+- [x] **Passo 14 grava `dataEncerramento`** (só quando ainda está vazio).
+- [x] Telas de Designação migradas: `agendar` aceita vários levantadores e
+  `designarConsultores` grava o vínculo por papel.
+- [ ] **ANEXOS nos e-mails.** O passo 18 diz "Termo de Encerramento em anexo" e o 12
+  menciona vídeos/BI, mas o envio ainda não anexa arquivo — o texto sai, o anexo não.
+- [ ] **Teste e2e intermitente.** Em 1 de 4 execuções, `email-fluxo.e2e-spec` › "criar
+  registra o projeto e a timeline recebe o evento de etapa" falhou; não reproduziu nas
+  outras três, nem com `--runInBand`. Causa não isolada. Não toca em passos, mas
+  apareceu na mesma sessão em que o módulo foi criado — investigar antes de confiar.
 
 ## ▶️ Próximo passo combinado
 - [ ] Decidir "onde os dados moram" → **começar pelo Hub "Projetos por Cliente" com banco**.
