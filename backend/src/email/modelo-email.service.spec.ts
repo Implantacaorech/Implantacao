@@ -9,7 +9,9 @@ describe('ModeloEmailService', () => {
 
   const repo = {
     count: jest.fn(),
-    save: jest.fn((entity) => Promise.resolve({ id: entity.id ?? 1, ...entity })),
+    save: jest.fn((entity) =>
+      Promise.resolve({ id: entity.id ?? 1, ...entity }),
+    ),
     create: jest.fn((dto) => dto),
     find: jest.fn(),
     findOne: jest.fn(),
@@ -46,26 +48,44 @@ describe('ModeloEmailService', () => {
   describe('salvar', () => {
     it('gera um slug único a partir do nome ao criar', async () => {
       repo.count.mockResolvedValue(0);
-      const m = await service.salvar({ nome: 'Aviso Rapido', assunto: 'A', corpo: 'B' });
+      const m = await service.salvar({
+        nome: 'Aviso Rapido',
+        assunto: 'A',
+        corpo: 'B',
+      });
       expect(m.slug).toBe('aviso-rapido');
     });
 
-    it('slug não normaliza acentos — mesmo comportamento do regex original em Python ' +
-      '(re.sub(r"[^a-z0-9]+", "-", nome.lower()), sem NFKD)', async () => {
-      repo.count.mockResolvedValue(0);
-      const m = await service.salvar({ nome: 'Início Rápido', assunto: 'A', corpo: 'B' });
-      expect(m.slug).toBe('in-cio-r-pido');
-    });
+    it(
+      'slug não normaliza acentos — mesmo comportamento do regex original em Python ' +
+        '(re.sub(r"[^a-z0-9]+", "-", nome.lower()), sem NFKD)',
+      async () => {
+        repo.count.mockResolvedValue(0);
+        const m = await service.salvar({
+          nome: 'Início Rápido',
+          assunto: 'A',
+          corpo: 'B',
+        });
+        expect(m.slug).toBe('in-cio-r-pido');
+      },
+    );
 
     it('evita colisão de slug adicionando sufixo numérico', async () => {
       repo.count.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
-      const m = await service.salvar({ nome: 'Boas-vindas', assunto: 'A', corpo: 'B' });
+      const m = await service.salvar({
+        nome: 'Boas-vindas',
+        assunto: 'A',
+        corpo: 'B',
+      });
       expect(m.slug).toBe('boas-vindas-1');
     });
 
     it('atualizar não regenera o slug', async () => {
       repo.findOne.mockResolvedValue({ id: 5, slug: 'antigo', padrao: false });
-      const m = await service.salvar({ nome: 'Novo nome', assunto: 'A', corpo: 'B' }, 5);
+      const m = await service.salvar(
+        { nome: 'Novo nome', assunto: 'A', corpo: 'B' },
+        5,
+      );
       expect(m.slug).toBe('antigo');
     });
   });
@@ -88,17 +108,18 @@ describe('ModeloEmailService', () => {
 
   describe('renderizar', () => {
     it('substitui variáveis simples e deriva CONSULTOR_A/B do campo consultor', () => {
-      const texto = 'Olá {{CLIENTE}}, consultores {{CONSULTOR_A}} e {{CONSULTOR_B}}.';
+      const texto =
+        'Olá {{CLIENTE}}, consultores {{CONSULTOR_A}} e {{CONSULTOR_B}}.';
       const out = service.renderizar(texto, {
         cliente: 'Cliente Teste',
         consultor: 'Ana, Beto',
-      } as any);
+      });
       expect(out).toBe('Olá Cliente Teste, consultores Ana e Beto.');
     });
 
     it('deixa placeholders sem correspondência intactos e não recursiona substituições', () => {
       const texto = '{{CLIENTE}} — {{NAO_EXISTE}}';
-      const out = service.renderizar(texto, { cliente: '{{OUTRO}}' } as any);
+      const out = service.renderizar(texto, { cliente: '{{OUTRO}}' });
       expect(out).toBe('{{OUTRO}} — {{NAO_EXISTE}}');
     });
 

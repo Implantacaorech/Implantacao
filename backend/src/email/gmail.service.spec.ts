@@ -36,7 +36,11 @@ describe('GmailService', () => {
 
   it('salvarCliente grava o arquivo e temCliente passa a true', () => {
     const json = JSON.stringify({
-      web: { client_id: 'id123', client_secret: 'segredo', redirect_uris: ['http://localhost/callback'] },
+      web: {
+        client_id: 'id123',
+        client_secret: 'segredo',
+        redirect_uris: ['http://localhost/callback'],
+      },
     });
     service.salvarCliente(Buffer.from(json, 'utf8'));
     expect(service.temCliente()).toBe(true);
@@ -48,7 +52,11 @@ describe('GmailService', () => {
 
   it('urlAutorizacao devolve uma URL do Google com o scope de envio, depois de salvar o client', () => {
     const json = JSON.stringify({
-      web: { client_id: 'id123', client_secret: 'segredo', redirect_uris: ['http://localhost/callback'] },
+      web: {
+        client_id: 'id123',
+        client_secret: 'segredo',
+        redirect_uris: ['http://localhost/callback'],
+      },
     });
     service.salvarCliente(Buffer.from(json, 'utf8'));
     const url = service.urlAutorizacao();
@@ -58,7 +66,11 @@ describe('GmailService', () => {
 
   it('trocarCodigoPorToken rejeita state divergente/ausente (proteção CSRF)', async () => {
     const json = JSON.stringify({
-      web: { client_id: 'id123', client_secret: 'segredo', redirect_uris: ['http://localhost/callback'] },
+      web: {
+        client_id: 'id123',
+        client_secret: 'segredo',
+        redirect_uris: ['http://localhost/callback'],
+      },
     });
     service.salvarCliente(Buffer.from(json, 'utf8'));
     service.urlAutorizacao(); // gera o estado pendente

@@ -8,7 +8,11 @@ describe('RoboDigestService', () => {
   let service: RoboDigestService;
   const config = { get: jest.fn().mockReturnValue(8) };
   const digest = { destinos: jest.fn(), enviar: jest.fn() };
-  const scheduler = { addInterval: jest.fn(), deleteInterval: jest.fn(), doesExist: jest.fn() };
+  const scheduler = {
+    addInterval: jest.fn(),
+    deleteInterval: jest.fn(),
+    doesExist: jest.fn(),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -73,7 +77,10 @@ describe('RoboDigestService', () => {
     it('registra um intervalo de checagem fora de teste', () => {
       process.env.NODE_ENV = 'production';
       service.onModuleInit();
-      expect(scheduler.addInterval).toHaveBeenCalledWith('robo-digest', expect.anything());
+      expect(scheduler.addInterval).toHaveBeenCalledWith(
+        'robo-digest',
+        expect.anything(),
+      );
       const intervalo = scheduler.addInterval.mock.calls[0][1];
       clearInterval(intervalo);
     });

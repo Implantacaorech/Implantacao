@@ -15,7 +15,9 @@ export class MatrizConhecimento1768924800000 implements MigrationInterface {
         "ordem" integer NOT NULL DEFAULT 0
       );
     `);
-    await queryRunner.query(`CREATE INDEX "IDX_matriz_competencias_sigla" ON "matriz_competencias" ("sigla");`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_matriz_competencias_sigla" ON "matriz_competencias" ("sigla");`,
+    );
 
     await queryRunner.query(`
       CREATE TABLE "matriz_tecnicos" (
@@ -28,7 +30,9 @@ export class MatrizConhecimento1768924800000 implements MigrationInterface {
         "atualizado_por" varchar(120) NOT NULL DEFAULT ''
       );
     `);
-    await queryRunner.query(`CREATE INDEX "IDX_matriz_tecnicos_nome" ON "matriz_tecnicos" ("nome");`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_matriz_tecnicos_nome" ON "matriz_tecnicos" ("nome");`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

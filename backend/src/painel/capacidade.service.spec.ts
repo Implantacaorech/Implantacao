@@ -16,7 +16,10 @@ describe('CapacidadeService', () => {
   const usuarios = { find: jest.fn() };
   const projetos = { find: jest.fn() };
   const atividades = { find: jest.fn() };
-  const disponibilidade = { configurado: jest.fn(), ocupacaoPorSlotCache: jest.fn() };
+  const disponibilidade = {
+    configurado: jest.fn(),
+    ocupacaoPorSlotCache: jest.fn(),
+  };
   const matriz = { listar: jest.fn(), notas: jest.fn() };
 
   beforeEach(async () => {
@@ -26,14 +29,19 @@ describe('CapacidadeService', () => {
     atividades.find.mockResolvedValue([]);
     disponibilidade.configurado.mockReturnValue(false);
     matriz.listar.mockResolvedValue([]);
-    matriz.notas.mockImplementation((t: { notas: string }) => JSON.parse(t.notas || '{}'));
+    matriz.notas.mockImplementation((t: { notas: string }) =>
+      JSON.parse(t.notas || '{}'),
+    );
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CapacidadeService,
         { provide: getRepositoryToken(Usuario), useValue: usuarios },
         { provide: getRepositoryToken(Projeto), useValue: projetos },
-        { provide: getRepositoryToken(AtividadeCronograma), useValue: atividades },
+        {
+          provide: getRepositoryToken(AtividadeCronograma),
+          useValue: atividades,
+        },
         { provide: DisponibilidadeService, useValue: disponibilidade },
         { provide: MatrizService, useValue: matriz },
       ],
@@ -57,7 +65,7 @@ describe('CapacidadeService', () => {
       ativo: true,
       criadoEm: new Date(),
       ...over,
-    } as Usuario;
+    };
   }
 
   it('sem módulos pedidos, sem carga e sem ocupação: score alto e veredito "Pronto"', async () => {
@@ -86,7 +94,9 @@ describe('CapacidadeService', () => {
 
   it('módulo pedido com nota alta -> conta na média e no score, veredito "Pronto"', async () => {
     usuarios.find.mockResolvedValue([usuario()]);
-    matriz.listar.mockResolvedValue([{ id: 1, nome: '007', notas: JSON.stringify({ FAT: 9 }) }]);
+    matriz.listar.mockResolvedValue([
+      { id: 1, nome: '007', notas: JSON.stringify({ FAT: 9 }) },
+    ]);
 
     const r = await service.avaliarEquipe(['fat'], 6); // case-insensitive
 
@@ -97,11 +107,34 @@ describe('CapacidadeService', () => {
 
   it('carga cheia (>= CARGA_CHEIA clientes ativos) rebaixa para "Parcial" mesmo com nota boa', async () => {
     usuarios.find.mockResolvedValue([usuario()]);
-    matriz.listar.mockResolvedValue([{ id: 1, nome: '007', notas: JSON.stringify({ FAT: 9 }) }]);
+    matriz.listar.mockResolvedValue([
+      { id: 1, nome: '007', notas: JSON.stringify({ FAT: 9 }) },
+    ]);
     projetos.find.mockResolvedValue([
-      { id: 1, cliente: 'A', consultor: 'Ana', gci: '', etapa: 'Projeto', dataUsoOficial: '' },
-      { id: 2, cliente: 'B', consultor: 'Ana', gci: '', etapa: 'Projeto', dataUsoOficial: '' },
-      { id: 3, cliente: 'C', consultor: 'Ana', gci: '', etapa: 'Projeto', dataUsoOficial: '' },
+      {
+        id: 1,
+        cliente: 'A',
+        consultor: 'Ana',
+        gci: '',
+        etapa: 'Projeto',
+        dataUsoOficial: '',
+      },
+      {
+        id: 2,
+        cliente: 'B',
+        consultor: 'Ana',
+        gci: '',
+        etapa: 'Projeto',
+        dataUsoOficial: '',
+      },
+      {
+        id: 3,
+        cliente: 'C',
+        consultor: 'Ana',
+        gci: '',
+        etapa: 'Projeto',
+        dataUsoOficial: '',
+      },
     ]);
 
     const r = await service.avaliarEquipe(['FAT'], 6);
@@ -114,12 +147,42 @@ describe('CapacidadeService', () => {
     usuarios.find.mockResolvedValue([usuario()]);
     // Ocupa 6 dos 10 turnos da 1ª semana (seg-sex, 2 turnos/dia) -> livres = 4 < LIVRE_MIN(6)
     atividades.find.mockResolvedValue([
-      { tecnico: 'Ana', data: '2026-08-03', turno: 'manha', status: 'Agendada' },
-      { tecnico: 'Ana', data: '2026-08-03', turno: 'tarde', status: 'Agendada' },
-      { tecnico: 'Ana', data: '2026-08-04', turno: 'manha', status: 'Solicitada' },
-      { tecnico: 'Ana', data: '2026-08-04', turno: 'tarde', status: 'Solicitada' },
-      { tecnico: 'Ana', data: '2026-08-05', turno: 'manha', status: 'Agendada' },
-      { tecnico: 'Ana', data: '2026-08-05', turno: 'tarde', status: 'Agendada' },
+      {
+        tecnico: 'Ana',
+        data: '2026-08-03',
+        turno: 'manha',
+        status: 'Agendada',
+      },
+      {
+        tecnico: 'Ana',
+        data: '2026-08-03',
+        turno: 'tarde',
+        status: 'Agendada',
+      },
+      {
+        tecnico: 'Ana',
+        data: '2026-08-04',
+        turno: 'manha',
+        status: 'Solicitada',
+      },
+      {
+        tecnico: 'Ana',
+        data: '2026-08-04',
+        turno: 'tarde',
+        status: 'Solicitada',
+      },
+      {
+        tecnico: 'Ana',
+        data: '2026-08-05',
+        turno: 'manha',
+        status: 'Agendada',
+      },
+      {
+        tecnico: 'Ana',
+        data: '2026-08-05',
+        turno: 'tarde',
+        status: 'Agendada',
+      },
     ]);
 
     const r = await service.avaliarEquipe([], 6);
@@ -138,7 +201,9 @@ describe('CapacidadeService', () => {
   });
 
   it('mescla ocupação do SICLA com a do painel (fecha o turno pra quem bate a chave)', async () => {
-    usuarios.find.mockResolvedValue([usuario({ nome: 'Ana', codigoSicla: '007' })]);
+    usuarios.find.mockResolvedValue([
+      usuario({ nome: 'Ana', codigoSicla: '007' }),
+    ]);
     disponibilidade.configurado.mockReturnValue(true);
     disponibilidade.ocupacaoPorSlotCache.mockResolvedValue({
       '007|2026-08-03|manha': true,
@@ -153,7 +218,9 @@ describe('CapacidadeService', () => {
   it('falha ao consultar disponibilidade externa não derruba a avaliação (fail-open)', async () => {
     usuarios.find.mockResolvedValue([usuario()]);
     disponibilidade.configurado.mockReturnValue(true);
-    disponibilidade.ocupacaoPorSlotCache.mockRejectedValue(new Error('Oracle indisponível'));
+    disponibilidade.ocupacaoPorSlotCache.mockRejectedValue(
+      new Error('Oracle indisponível'),
+    );
 
     const r = await service.avaliarEquipe([], 6);
 
@@ -167,9 +234,30 @@ describe('CapacidadeService', () => {
     ]);
     // Beto com 3 clientes ativos (carga cheia) fica com score menor que Ana (sem carga).
     projetos.find.mockResolvedValue([
-      { id: 1, cliente: 'A', consultor: '', gci: 'Beto', etapa: 'Projeto', dataUsoOficial: '' },
-      { id: 2, cliente: 'B', consultor: '', gci: 'Beto', etapa: 'Projeto', dataUsoOficial: '' },
-      { id: 3, cliente: 'C', consultor: '', gci: 'Beto', etapa: 'Projeto', dataUsoOficial: '' },
+      {
+        id: 1,
+        cliente: 'A',
+        consultor: '',
+        gci: 'Beto',
+        etapa: 'Projeto',
+        dataUsoOficial: '',
+      },
+      {
+        id: 2,
+        cliente: 'B',
+        consultor: '',
+        gci: 'Beto',
+        etapa: 'Projeto',
+        dataUsoOficial: '',
+      },
+      {
+        id: 3,
+        cliente: 'C',
+        consultor: '',
+        gci: 'Beto',
+        etapa: 'Projeto',
+        dataUsoOficial: '',
+      },
     ]);
 
     const r = await service.avaliarEquipe([], 6);

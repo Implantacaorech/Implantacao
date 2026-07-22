@@ -18,21 +18,41 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Response } from 'express';
-import { createReadStream, existsSync, mkdirSync, statSync, writeFileSync } from 'fs';
+import {
+  createReadStream,
+  existsSync,
+  mkdirSync,
+  statSync,
+  writeFileSync,
+} from 'fs';
 import { extname, join, resolve, sep } from 'path';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
-import { CurrentUser, type AuthUser } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type AuthUser,
+} from '../common/decorators/current-user.decorator';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { ProtocolosService } from './protocolos.service';
 import { ProcessamentoProtocolosService } from './processamento-protocolos.service';
 import { TranscricaoService } from '../transcricao/transcricao.service';
 import { SalvarEdicaoProtocoloDto } from './dto/salvar-edicao-protocolo.dto';
 import { ListarProtocolosDto } from './dto/listar-protocolos.dto';
-import { EXTS, EXTS_AUDIO, EXTS_VIDEO, ehAudio, slug } from './protocolos.constants';
+import {
+  EXTS,
+  EXTS_AUDIO,
+  EXTS_VIDEO,
+  ehAudio,
+  slug,
+} from './protocolos.constants';
 
 // Aprovar/reprovar é mais restrito que o resto da tela (qualquer autenticado pode listar/
 // enviar/editar) — espelha webapp/routes_protocolos.py:_pode_aprovar.
@@ -67,14 +87,17 @@ export class ProtocolosController {
   @UseInterceptors(FileInterceptor('video'))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
-    summary: 'Upload manual: salva o vídeo/áudio e dispara o pipeline de transcrição+IA',
+    summary:
+      'Upload manual: salva o vídeo/áudio e dispara o pipeline de transcrição+IA',
   })
   async novo(
     @UploadedFile() arquivo: Express.Multer.File | undefined,
     @CurrentUser() user: AuthUser,
   ) {
     if (!arquivo) {
-      throw new UnprocessableEntityException('Selecione um arquivo de vídeo ou áudio.');
+      throw new UnprocessableEntityException(
+        'Selecione um arquivo de vídeo ou áudio.',
+      );
     }
     const ext = extname(arquivo.originalname).toLowerCase();
     if (!EXTS.includes(ext)) {
@@ -95,7 +118,12 @@ export class ProtocolosController {
     }
     writeFileSync(caminho, arquivo.buffer);
 
-    const { id, novo } = await this.protocolos.criar(nome, caminho, 'upload', user.nome);
+    const { id, novo } = await this.protocolos.criar(
+      nome,
+      caminho,
+      'upload',
+      user.nome,
+    );
     if (!novo) {
       return new ApiEnvelope({
         id,
@@ -112,12 +140,19 @@ export class ProtocolosController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Ficha de revisão: vídeo, transcrição e protocolo editável' })
-  async ficha(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser) {
+  @ApiOperation({
+    summary: 'Ficha de revisão: vídeo, transcrição e protocolo editável',
+  })
+  async ficha(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser,
+  ) {
     const p = await this.protocolos.buscarPorId(id);
     return new ApiEnvelope({
       protocolo: p,
-      podeAprovar: (PERFIS_APROVA_PROTOCOLO as readonly string[]).includes(user.perfil),
+      podeAprovar: (PERFIS_APROVA_PROTOCOLO as readonly string[]).includes(
+        user.perfil,
+      ),
       ehAudio: ehAudio(p.videoNome),
     });
   }
@@ -137,11 +172,19 @@ export class ProtocolosController {
 
   @Post(':id/processar')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: '(Re)processa o vídeo — transcreve e analisa de novo' })
-  async processar(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser) {
+  @ApiOperation({
+    summary: '(Re)processa o vídeo — transcreve e analisa de novo',
+  })
+  async processar(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser,
+  ) {
     const p = await this.protocolos.buscarPorId(id);
     if (p.status === 'Transcrevendo' || p.status === 'Analisando') {
-      return new ApiEnvelope({ iniciado: false, aviso: 'Já está em processamento.' });
+      return new ApiEnvelope({
+        iniciado: false,
+        aviso: 'Já está em processamento.',
+      });
     }
     this.processamento.processarAsync(id, user.nome);
     return new ApiEnvelope({
@@ -155,7 +198,10 @@ export class ProtocolosController {
   @UseGuards(RolesGuard)
   @Roles(...PERFIS_APROVA_PROTOCOLO)
   @ApiOperation({ summary: 'Aprova — publica na base de conhecimento' })
-  async aprovar(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser) {
+  async aprovar(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser,
+  ) {
     const ok = await this.protocolos.decidir(id, true, user.nome);
     if (!ok) throw new NotFoundException('Protocolo não encontrado.');
     return new ApiEnvelope({ salvo: true });
@@ -166,14 +212,19 @@ export class ProtocolosController {
   @UseGuards(RolesGuard)
   @Roles(...PERFIS_APROVA_PROTOCOLO)
   @ApiOperation({ summary: 'Reprova — devolve para ajuste' })
-  async reprovar(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser) {
+  async reprovar(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser,
+  ) {
     const ok = await this.protocolos.decidir(id, false, user.nome);
     if (!ok) throw new NotFoundException('Protocolo não encontrado.');
     return new ApiEnvelope({ salvo: true });
   }
 
   @Get(':id/status')
-  @ApiOperation({ summary: 'Andamento do processamento — polling da tela de revisão' })
+  @ApiOperation({
+    summary: 'Andamento do processamento — polling da tela de revisão',
+  })
   async status(@Param('id', ParseIntPipe) id: number) {
     const p = await this.protocolos.buscar(id);
     if (!p) throw new NotFoundException('Protocolo não encontrado.');
@@ -195,16 +246,18 @@ export class ProtocolosController {
   }
 
   @Get(':id/video')
-  @ApiOperation({ summary: 'Serve o vídeo/áudio para o player da revisão (com Range)' })
-  async video(
-    @Param('id', ParseIntPipe) id: number,
-    @Res() res: Response,
-  ) {
+  @ApiOperation({
+    summary: 'Serve o vídeo/áudio para o player da revisão (com Range)',
+  })
+  async video(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     const p = await this.protocolos.buscar(id);
     if (!p) throw new NotFoundException('Protocolo não encontrado.');
     const caminho = resolve(p.videoCaminho || '');
     const raiz = resolve(this.processamento.pastaRaiz());
-    if (!existsSync(caminho) || !(caminho === raiz || caminho.startsWith(raiz + sep))) {
+    if (
+      !existsSync(caminho) ||
+      !(caminho === raiz || caminho.startsWith(raiz + sep))
+    ) {
       throw new ForbiddenException('Arquivo fora da pasta permitida.');
     }
     const tamanho = statSync(caminho).size;

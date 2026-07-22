@@ -34,11 +34,18 @@ function projeto(over: Partial<Projeto> = {}): Projeto {
     criadoEm: new Date(),
     atualizadoEm: new Date(),
     ...over,
-  } as Projeto;
+  };
 }
 
 function usuario(over: Partial<AuthUser> = {}): AuthUser {
-  return { sub: 1, login: 'x', nome: 'Ana', perfil: 'ADM', codigoSicla: '', ...over };
+  return {
+    sub: 1,
+    login: 'x',
+    nome: 'Ana',
+    perfil: 'ADM',
+    codigoSicla: '',
+    ...over,
+  };
 }
 
 describe('CoordenacaoService', () => {

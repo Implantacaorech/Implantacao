@@ -5,7 +5,11 @@ import { Projeto } from '../database/entities/projeto.entity';
 import { Documento } from '../database/entities/documento.entity';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { soMeus } from '../common/utils/so-meus.util';
-import { Alerta, Cabecalho, MetricasService } from '../metricas/metricas.service';
+import {
+  Alerta,
+  Cabecalho,
+  MetricasService,
+} from '../metricas/metricas.service';
 import { construirDocsMap } from './docs-map.util';
 
 export interface ItemPendenciaHome {
@@ -53,7 +57,8 @@ export interface PainelHome {
 export class HomeService {
   constructor(
     @InjectRepository(Projeto) private readonly projetos: Repository<Projeto>,
-    @InjectRepository(Documento) private readonly documentos: Repository<Documento>,
+    @InjectRepository(Documento)
+    private readonly documentos: Repository<Documento>,
     private readonly metricas: MetricasService,
   ) {}
 
@@ -108,18 +113,30 @@ export class HomeService {
     });
 
     const ativosOrd = [...ativos].sort((a, b) => {
-      const at = a.atualizadoEm ? new Date(a.atualizadoEm).getTime() : -Infinity;
-      const bt = b.atualizadoEm ? new Date(b.atualizadoEm).getTime() : -Infinity;
+      const at = a.atualizadoEm
+        ? new Date(a.atualizadoEm).getTime()
+        : -Infinity;
+      const bt = b.atualizadoEm
+        ? new Date(b.atualizadoEm).getTime()
+        : -Infinity;
       return bt - at;
     });
     const foco: FocoHome | null =
       ativosOrd.length > 0
         ? {
             projeto: ativosOrd[0],
-            cabecalho: this.metricas.cabecalho(ativosOrd[0], docsMap[ativosOrd[0].id] ?? []),
+            cabecalho: this.metricas.cabecalho(
+              ativosOrd[0],
+              docsMap[ativosOrd[0].id] ?? [],
+            ),
           }
         : null;
 
-    return { dados, alertas: alertas.slice(0, 6), pendencias: pendencias.slice(0, 8), foco };
+    return {
+      dados,
+      alertas: alertas.slice(0, 6),
+      pendencias: pendencias.slice(0, 8),
+      foco,
+    };
   }
 }

@@ -13,9 +13,19 @@ import { ProjetoEmailService } from './projeto-email.service';
 import { ProjetoEmailController } from './projeto-email.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Projeto]), DocumentosModule, EmailModule, LegadoModule],
+  imports: [
+    TypeOrmModule.forFeature([Projeto]),
+    DocumentosModule,
+    EmailModule,
+    LegadoModule,
+  ],
   controllers: [ConfigImapController, FluxoController, ProjetoEmailController],
-  providers: [ImapIntakeService, FluxoService, RoboCaixaService, ProjetoEmailService],
+  providers: [
+    ImapIntakeService,
+    FluxoService,
+    RoboCaixaService,
+    ProjetoEmailService,
+  ],
   exports: [ImapIntakeService, FluxoService],
 })
 export class FluxoModule {}

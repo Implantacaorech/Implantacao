@@ -1,8 +1,14 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
-export type StatusCronogramaItem = 'Previsto' | 'Agendado' | 'Concluído' | 'Cancelado';
+export type StatusCronogramaItem =
+  'Previsto' | 'Agendado' | 'Concluído' | 'Cancelado';
 
-export const CRONO_STATUS: StatusCronogramaItem[] = ['Previsto', 'Agendado', 'Concluído', 'Cancelado'];
+export const CRONO_STATUS: StatusCronogramaItem[] = [
+  'Previsto',
+  'Agendado',
+  'Concluído',
+  'Cancelado',
+];
 
 /** Linha EDITÁVEL do documento Cronograma, rastreada durante a implantação (status por
  * linha) — NÃO confundir com `AtividadeCronograma`/`SlotCronograma` (o motor de

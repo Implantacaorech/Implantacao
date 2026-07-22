@@ -6,7 +6,11 @@ import { Documento } from '../database/entities/documento.entity';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { soMeus } from '../common/utils/so-meus.util';
 import { ETAPAS, SITUACOES } from '../common/constants/perfis';
-import { Alerta, MetricasService, ResultadoMetricas } from '../metricas/metricas.service';
+import {
+  Alerta,
+  MetricasService,
+  ResultadoMetricas,
+} from '../metricas/metricas.service';
 import { construirDocsMap } from './docs-map.util';
 
 export interface PainelCoordenacao {
@@ -24,7 +28,8 @@ export interface PainelCoordenacao {
 export class CoordenacaoService {
   constructor(
     @InjectRepository(Projeto) private readonly projetos: Repository<Projeto>,
-    @InjectRepository(Documento) private readonly documentos: Repository<Documento>,
+    @InjectRepository(Documento)
+    private readonly documentos: Repository<Documento>,
     private readonly metricas: MetricasService,
   ) {}
 

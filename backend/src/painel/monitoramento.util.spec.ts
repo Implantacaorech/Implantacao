@@ -1,4 +1,12 @@
-import { estadoSetor, formatarDataHoraBr, idadeMedia, parseData, pessoas, pnum, splitNomes } from './monitoramento.util';
+import {
+  estadoSetor,
+  formatarDataHoraBr,
+  idadeMedia,
+  parseData,
+  pessoas,
+  pnum,
+  splitNomes,
+} from './monitoramento.util';
 
 describe('monitoramento.util', () => {
   describe('splitNomes', () => {
@@ -63,21 +71,39 @@ describe('monitoramento.util', () => {
 
   describe('estadoSetor', () => {
     it('concluído quando não há andamento/pendências/atrasos e já concluiu algo', () => {
-      expect(estadoSetor(0, 0, 0, 0, 3)).toEqual(['concluido', 'Processo concluído']);
+      expect(estadoSetor(0, 0, 0, 0, 3)).toEqual([
+        'concluido',
+        'Processo concluído',
+      ]);
     });
 
     it('aprovação tem prioridade sobre sobrecarga', () => {
-      expect(estadoSetor(10, 10, 10, 1, 0)).toEqual(['aprovacao', 'Aguardando aprovação']);
+      expect(estadoSetor(10, 10, 10, 1, 0)).toEqual([
+        'aprovacao',
+        'Aguardando aprovação',
+      ]);
     });
 
     it('sobrecarregado quando atrasadas>=2 OU pendentes>=6 OU andamento>=8', () => {
-      expect(estadoSetor(0, 0, 2, 0, 0)).toEqual(['sobrecarregado', 'Sobrecarregado']);
-      expect(estadoSetor(0, 6, 0, 0, 0)).toEqual(['sobrecarregado', 'Sobrecarregado']);
-      expect(estadoSetor(8, 0, 0, 0, 0)).toEqual(['sobrecarregado', 'Sobrecarregado']);
+      expect(estadoSetor(0, 0, 2, 0, 0)).toEqual([
+        'sobrecarregado',
+        'Sobrecarregado',
+      ]);
+      expect(estadoSetor(0, 6, 0, 0, 0)).toEqual([
+        'sobrecarregado',
+        'Sobrecarregado',
+      ]);
+      expect(estadoSetor(8, 0, 0, 0, 0)).toEqual([
+        'sobrecarregado',
+        'Sobrecarregado',
+      ]);
     });
 
     it('com pendências quando há atraso ou pendente (abaixo do limiar de sobrecarga)', () => {
-      expect(estadoSetor(1, 1, 0, 0, 0)).toEqual(['pendencias', 'Com pendências']);
+      expect(estadoSetor(1, 1, 0, 0, 0)).toEqual([
+        'pendencias',
+        'Com pendências',
+      ]);
     });
 
     it('em espera quando não há andamento nenhum', () => {
@@ -85,7 +111,10 @@ describe('monitoramento.util', () => {
     });
 
     it('normal no caso comum', () => {
-      expect(estadoSetor(3, 0, 0, 0, 0)).toEqual(['normal', 'Trabalhando normalmente']);
+      expect(estadoSetor(3, 0, 0, 0, 0)).toEqual([
+        'normal',
+        'Trabalhando normalmente',
+      ]);
     });
   });
 
@@ -99,7 +128,17 @@ describe('monitoramento.util', () => {
     });
 
     it('deduplica entre os vários argumentos e limita a 8', () => {
-      const r = pessoas('Ana', ['Ana', 'Beto', 'Caio', 'Dani', 'Eva', 'Fabio', 'Gui', 'Hugo', 'Ivo']);
+      const r = pessoas('Ana', [
+        'Ana',
+        'Beto',
+        'Caio',
+        'Dani',
+        'Eva',
+        'Fabio',
+        'Gui',
+        'Hugo',
+        'Ivo',
+      ]);
       expect(r).toHaveLength(8);
       expect(r[0]).toBe('Ana');
     });

@@ -49,7 +49,11 @@ describe('DashboardsService', () => {
 
   describe('mesesDoPeriodo / atalhosMes', () => {
     it('lista os meses em ordem cronológica, cruzando o ano', () => {
-      const periodo = service.periodo({ ref: '2026-11', n: 4, direcao: 'avancar' });
+      const periodo = service.periodo({
+        ref: '2026-11',
+        n: 4,
+        direcao: 'avancar',
+      });
       const meses = service.mesesDoPeriodo(periodo);
       expect(meses.map((m) => `${m.ano}-${m.mes}`)).toEqual([
         '2026-11',
@@ -60,7 +64,11 @@ describe('DashboardsService', () => {
     });
 
     it('atalhos mapeia cada mês (1ª ocorrência) ao seu ano dentro do período', () => {
-      const periodo = service.periodo({ ref: '2026-11', n: 4, direcao: 'avancar' });
+      const periodo = service.periodo({
+        ref: '2026-11',
+        n: 4,
+        direcao: 'avancar',
+      });
       const meses = service.mesesDoPeriodo(periodo);
       const atalhos = service.atalhosMes(meses);
       expect(atalhos[11]).toBe(2026);
@@ -102,14 +110,29 @@ describe('DashboardsService', () => {
         mensagem: '2 linha(s).',
         colunas: [],
         linhas: [
-          { CODIGO: 'A1', PREVISAO_INICIO_OFICIAL: '2026-01-15', SITUACAO: 'Em andamento' },
-          { CODIGO: 'A2', PREVISAO_INICIO_OFICIAL: '2026-02-10', SITUACAO: 'Concluído' },
+          {
+            CODIGO: 'A1',
+            PREVISAO_INICIO_OFICIAL: '2026-01-15',
+            SITUACAO: 'Em andamento',
+          },
+          {
+            CODIGO: 'A2',
+            PREVISAO_INICIO_OFICIAL: '2026-02-10',
+            SITUACAO: 'Concluído',
+          },
           // fora do período (fim exclusivo) — não deve entrar
-          { CODIGO: 'A3', PREVISAO_INICIO_OFICIAL: '2026-04-01', SITUACAO: 'Em andamento' },
+          {
+            CODIGO: 'A3',
+            PREVISAO_INICIO_OFICIAL: '2026-04-01',
+            SITUACAO: 'Em andamento',
+          },
         ],
       });
 
-      const r = await service.rodar('previsao_inicio_oficial', { ref: '2026-01', n: 3 });
+      const r = await service.rodar('previsao_inicio_oficial', {
+        ref: '2026-01',
+        n: 3,
+      });
       expect(r.erro).toBeNull();
       expect(r.linhasTabela).toHaveLength(2);
       expect(r.situacoesDisponiveis).toEqual(['Concluído', 'Em andamento']);
@@ -120,7 +143,10 @@ describe('DashboardsService', () => {
       expect(r.totalPeriodo).toBe(2);
 
       const [, bindsChamados] = disponibilidade.executarSql.mock.calls[0];
-      expect(bindsChamados).toEqual({ data_ini: '2026-01-01', data_fim: '2026-03-31' });
+      expect(bindsChamados).toEqual({
+        data_ini: '2026-01-01',
+        data_fim: '2026-03-31',
+      });
     });
 
     it('filtro de situação na URL restringe a tabela e o total, mas não o gráfico geral', async () => {
@@ -167,7 +193,12 @@ describe('DashboardsService', () => {
     });
 
     it('consulta sem colunaData nunca lista como dashboard, mas ainda roda via slug (linhas cruas, sem gráfico)', async () => {
-      const consultaSemData = { ...CONSULTA, colunaData: '', colunaSituacao: '', mostrarGrafico: false };
+      const consultaSemData = {
+        ...CONSULTA,
+        colunaData: '',
+        colunaSituacao: '',
+        mostrarGrafico: false,
+      };
       consultas.listar.mockResolvedValue([consultaSemData]);
       consultas.porSlug.mockResolvedValue(consultaSemData);
       disponibilidade.configurado.mockReturnValue(true);

@@ -1,4 +1,10 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 
 /** Auto-cadastro em andamento: aguardando confirmação do código de 6 dígitos enviado por
  * e-mail. Vira um `Usuario` real (perfil `Consultor`, sempre) só na confirmação. Espelha

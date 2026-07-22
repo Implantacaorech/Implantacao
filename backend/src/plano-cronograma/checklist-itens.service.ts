@@ -21,7 +21,8 @@ const CAMPOS = ['modulo', 'item', 'responsavel', 'status', 'obs'];
 @Injectable()
 export class ChecklistItensService {
   constructor(
-    @InjectRepository(ChecklistItem) private readonly repo: Repository<ChecklistItem>,
+    @InjectRepository(ChecklistItem)
+    private readonly repo: Repository<ChecklistItem>,
     private readonly modificacoes: ModificacoesService,
     private readonly checklistModelo: ChecklistModeloService,
   ) {}
@@ -30,7 +31,11 @@ export class ChecklistItensService {
     return this.repo.find({ where: { projetoId }, order: { ordem: 'ASC' } });
   }
 
-  async salvar(projetoId: number, linhas: LinhaChecklistDto[], autor: string): Promise<number> {
+  async salvar(
+    projetoId: number,
+    linhas: LinhaChecklistDto[],
+    autor: string,
+  ): Promise<number> {
     const antigas = await this.doProjeto(projetoId);
     const diffs = diffLinhas(
       antigas as unknown as Record<string, unknown>[],
@@ -39,7 +44,15 @@ export class ChecklistItensService {
       ['modulo', 'item'],
     );
     for (const d of diffs) {
-      await this.modificacoes.registrar(projetoId, 'checklist', d.ref, d.campo, d.de, d.para, autor);
+      await this.modificacoes.registrar(
+        projetoId,
+        'checklist',
+        d.ref,
+        d.campo,
+        d.de,
+        d.para,
+        autor,
+      );
     }
     await this.repo.delete({ projetoId });
     if (linhas.length > 0) {

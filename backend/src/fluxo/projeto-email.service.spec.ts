@@ -10,7 +10,10 @@ import { ModeloEmailService } from '../email/modelo-email.service';
 describe('ProjetoEmailService', () => {
   let service: ProjetoEmailService;
   const projetos = { findOne: jest.fn() };
-  const modelos = { listar: jest.fn(), renderizar: jest.fn((texto: string) => `[${texto}]`) };
+  const modelos = {
+    listar: jest.fn(),
+    renderizar: jest.fn((texto: string) => `[${texto}]`),
+  };
   const mailer = { configurado: jest.fn(), enviar: jest.fn() };
   const documentos = { registrarEvento: jest.fn() };
 
@@ -35,9 +38,18 @@ describe('ProjetoEmailService', () => {
     });
 
     it('renderiza os modelos ativos com os dados do projeto e devolve o destino padrão', async () => {
-      projetos.findOne.mockResolvedValue({ id: 1, cliente: 'X', contatoEmail: 'contato@x.com' });
+      projetos.findOne.mockResolvedValue({
+        id: 1,
+        cliente: 'X',
+        contatoEmail: 'contato@x.com',
+      });
       modelos.listar.mockResolvedValue([
-        { id: 5, nome: 'Boas-vindas', assunto: 'Assunto {{CLIENTE}}', corpo: 'Corpo {{CLIENTE}}' },
+        {
+          id: 5,
+          nome: 'Boas-vindas',
+          assunto: 'Assunto {{CLIENTE}}',
+          corpo: 'Corpo {{CLIENTE}}',
+        },
       ]);
       mailer.configurado.mockReturnValue(true);
 
@@ -54,7 +66,11 @@ describe('ProjetoEmailService', () => {
     });
 
     it('sem e-mail de contato: destinoPadrao fica vazio', async () => {
-      projetos.findOne.mockResolvedValue({ id: 1, cliente: 'X', contatoEmail: '' });
+      projetos.findOne.mockResolvedValue({
+        id: 1,
+        cliente: 'X',
+        contatoEmail: '',
+      });
       modelos.listar.mockResolvedValue([]);
       mailer.configurado.mockReturnValue(false);
       const r = await service.dadosTela(1);
@@ -65,7 +81,9 @@ describe('ProjetoEmailService', () => {
   describe('enviar', () => {
     it('404 se o projeto não existe', async () => {
       projetos.findOne.mockResolvedValue(null);
-      await expect(service.enviar(1, 'a@x.com', 'Oi', 'Corpo', 'ana')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.enviar(1, 'a@x.com', 'Oi', 'Corpo', 'ana'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('SMTP não configurado: não tenta enviar', async () => {
@@ -88,9 +106,19 @@ describe('ProjetoEmailService', () => {
       projetos.findOne.mockResolvedValue({ id: 1 });
       mailer.configurado.mockReturnValue(true);
       mailer.enviar.mockResolvedValue({ ok: true });
-      const r = await service.enviar(1, 'a@x.com, b@x.com', 'Assunto X', 'Corpo X', 'ana');
+      const r = await service.enviar(
+        1,
+        'a@x.com, b@x.com',
+        'Assunto X',
+        'Corpo X',
+        'ana',
+      );
       expect(r).toEqual({ enviado: true });
-      expect(mailer.enviar).toHaveBeenCalledWith('a@x.com, b@x.com', 'Assunto X', 'Corpo X');
+      expect(mailer.enviar).toHaveBeenCalledWith(
+        'a@x.com, b@x.com',
+        'Assunto X',
+        'Corpo X',
+      );
       expect(documentos.registrarEvento).toHaveBeenCalledWith(
         1,
         'email',
@@ -103,7 +131,13 @@ describe('ProjetoEmailService', () => {
       projetos.findOne.mockResolvedValue({ id: 1 });
       mailer.configurado.mockReturnValue(true);
       mailer.enviar.mockResolvedValue({ ok: false, erro: 'timeout' });
-      const r = await service.enviar(1, 'a@x.com', 'Assunto X', 'Corpo X', 'ana');
+      const r = await service.enviar(
+        1,
+        'a@x.com',
+        'Assunto X',
+        'Corpo X',
+        'ana',
+      );
       expect(r).toEqual({ enviado: false, erro: 'timeout' });
       expect(documentos.registrarEvento).toHaveBeenCalledWith(
         1,

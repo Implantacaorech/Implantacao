@@ -7,7 +7,10 @@ import { ProcessamentoProtocolosService } from './processamento-protocolos.servi
 describe('RoboProtocolosService', () => {
   let service: RoboProtocolosService;
   const config = { get: jest.fn().mockReturnValue(10) };
-  const processamento = { configurado: jest.fn(), processarPendentes: jest.fn() };
+  const processamento = {
+    configurado: jest.fn(),
+    processarPendentes: jest.fn(),
+  };
   const scheduler = {
     addInterval: jest.fn(),
     deleteInterval: jest.fn(),

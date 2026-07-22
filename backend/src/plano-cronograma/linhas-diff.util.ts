@@ -32,9 +32,19 @@ export function diffLinhas<T extends Record<string, unknown>>(
     const antiga = antigas[i];
     const nova = novas[i];
     if (antiga && !nova) {
-      diffs.push({ ref: `linha ${i + 1}`, campo: 'linha', de: resumo(antiga), para: '(removida)' });
+      diffs.push({
+        ref: `linha ${i + 1}`,
+        campo: 'linha',
+        de: resumo(antiga),
+        para: '(removida)',
+      });
     } else if (!antiga && nova) {
-      diffs.push({ ref: `linha ${i + 1}`, campo: 'linha', de: '(nova)', para: resumo(nova) });
+      diffs.push({
+        ref: `linha ${i + 1}`,
+        campo: 'linha',
+        de: '(nova)',
+        para: resumo(nova),
+      });
     } else if (antiga && nova) {
       for (const campo of campos) {
         const de = String(antiga[campo] ?? '');

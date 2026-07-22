@@ -103,9 +103,12 @@ export class ProtocolosService {
    * webapp/db.py:protocolos_listar. */
   async listar(filtro: FiltroProtocolos): Promise<Protocolo[]> {
     const qb = this.repo.createQueryBuilder('p').orderBy('p.criadoEm', 'DESC');
-    if (filtro.modulo) qb.andWhere('p.modulo = :modulo', { modulo: filtro.modulo });
-    if (filtro.status) qb.andWhere('p.status = :status', { status: filtro.status });
-    if (filtro.origem) qb.andWhere('p.videoOrigem = :origem', { origem: filtro.origem });
+    if (filtro.modulo)
+      qb.andWhere('p.modulo = :modulo', { modulo: filtro.modulo });
+    if (filtro.status)
+      qb.andWhere('p.status = :status', { status: filtro.status });
+    if (filtro.origem)
+      qb.andWhere('p.videoOrigem = :origem', { origem: filtro.origem });
     if (filtro.menu)
       qb.andWhere('LOWER(p.menu) LIKE :menu', {
         menu: `%${filtro.menu.toLowerCase()}%`,

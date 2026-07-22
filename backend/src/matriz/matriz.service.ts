@@ -65,13 +65,20 @@ export class MatrizService {
   /** A linha da matriz de um usuário: casa pelo Código SICLA ou pelo nome (case-insensitive).
    * Espelha webapp/db.py:matriz_linha_do_usuario — aqui recebe as chaves já resolvidas
    * (o JWT já carrega nome/codigoSicla, sem precisar reconsultar Usuario). */
-  async linhaDoUsuario(nome: string, codigoSicla: string): Promise<MatrizTecnico | null> {
+  async linhaDoUsuario(
+    nome: string,
+    codigoSicla: string,
+  ): Promise<MatrizTecnico | null> {
     const chaves = new Set(
-      [codigoSicla, nome].map((x) => (x || '').trim().toLowerCase()).filter(Boolean),
+      [codigoSicla, nome]
+        .map((x) => (x || '').trim().toLowerCase())
+        .filter(Boolean),
     );
     if (chaves.size === 0) return null;
     const todos = await this.tecnicos.find();
-    return todos.find((t) => chaves.has((t.nome || '').trim().toLowerCase())) ?? null;
+    return (
+      todos.find((t) => chaves.has((t.nome || '').trim().toLowerCase())) ?? null
+    );
   }
 
   /** Grava notas (0-10; valor vazio remove), setor e dias. Devolve false se o técnico não
@@ -90,7 +97,9 @@ export class MatrizService {
     } catch {
       notas = {};
     }
-    const siglas = new Set((await this.competencias.find()).map((c) => c.sigla));
+    const siglas = new Set(
+      (await this.competencias.find()).map((c) => c.sigla),
+    );
     for (const [sigla, bruto] of Object.entries(form.notas ?? {})) {
       if (!siglas.has(sigla)) continue;
       const v = (bruto ?? '').trim().replace(',', '.');
@@ -116,14 +125,19 @@ export class MatrizService {
   }
 
   /** Reimporta a planilha (aditivo). Espelha webapp/matriz.py:importar. */
-  async importar(autor = 'importação', caminho?: string): Promise<ResultadoImportacao> {
+  async importar(
+    autor = 'importação',
+    caminho?: string,
+  ): Promise<ResultadoImportacao> {
     const wb = new Workbook();
     await wb.xlsx.readFile(caminho ?? this.caminhoPadrao());
     const ws = wb.getWorksheet('Matriz') ?? wb.worksheets[0];
     if (!ws) throw new Error('Planilha sem abas.');
     const { comps, tecnicos } = parseMatrizWorksheet(ws);
 
-    const existentesComp = new Set((await this.competencias.find()).map((c) => c.sigla));
+    const existentesComp = new Set(
+      (await this.competencias.find()).map((c) => c.sigla),
+    );
     let novasCompetencias = 0;
     for (const c of comps) {
       if (existentesComp.has(c.sigla)) continue;
@@ -132,7 +146,9 @@ export class MatrizService {
     }
 
     const nomesExistentes = new Set(
-      (await this.tecnicos.find()).map((t) => (t.nome || '').trim().toLowerCase()),
+      (await this.tecnicos.find()).map((t) =>
+        (t.nome || '').trim().toLowerCase(),
+      ),
     );
     let novosTecnicos = 0;
     let ignorados = 0;

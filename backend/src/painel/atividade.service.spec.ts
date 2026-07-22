@@ -20,7 +20,14 @@ function projeto(over: Partial<Projeto> = {}): Projeto {
 }
 
 function usuario(over: Partial<AuthUser> = {}): AuthUser {
-  return { sub: 1, login: 'x', nome: 'Ana', perfil: 'ADM', codigoSicla: '', ...over };
+  return {
+    sub: 1,
+    login: 'x',
+    nome: 'Ana',
+    perfil: 'ADM',
+    codigoSicla: '',
+    ...over,
+  };
 }
 
 describe('AtividadeService', () => {
@@ -53,7 +60,14 @@ describe('AtividadeService', () => {
   it('monta o feed com o nome do cliente e limita a 60 itens', async () => {
     projetos.find.mockResolvedValue([projeto({ id: 1, cliente: 'Cliente X' })]);
     eventos.find.mockResolvedValue([
-      { id: 1, projetoId: 1, tipo: 'nota', descricao: 'x', autor: 'Ana', criadoEm: new Date() },
+      {
+        id: 1,
+        projetoId: 1,
+        tipo: 'nota',
+        descricao: 'x',
+        autor: 'Ana',
+        criadoEm: new Date(),
+      },
     ]);
 
     const r = await service.painel(usuario());

@@ -44,7 +44,9 @@ export class Protocolos1768665600000 implements MigrationInterface {
         "aprovado_em" TIMESTAMP
       );
     `);
-    await queryRunner.query(`CREATE INDEX "IDX_protocolos_video_hash" ON "protocolos" ("video_hash");`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_protocolos_video_hash" ON "protocolos" ("video_hash");`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

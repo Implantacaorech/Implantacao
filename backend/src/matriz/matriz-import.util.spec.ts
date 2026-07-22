@@ -55,7 +55,9 @@ describe('parseMatrizWorksheet', () => {
 
   it('não inclui as colunas fixas (Nome/Dias/Setor/Ár) como competência', () => {
     const { comps } = parseMatrizWorksheet(planilhaExemplo());
-    expect(comps.map((c) => c.sigla)).not.toEqual(expect.arrayContaining(['Nome', 'Dias', 'Setor', 'Ár']));
+    expect(comps.map((c) => c.sigla)).not.toEqual(
+      expect.arrayContaining(['Nome', 'Dias', 'Setor', 'Ár']),
+    );
   });
 
   it('lê os técnicos e clampa as notas em 0-10, aceitando vírgula decimal', () => {

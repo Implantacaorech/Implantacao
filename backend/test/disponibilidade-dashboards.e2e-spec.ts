@@ -57,7 +57,11 @@ describe('Disponibilidade / Consultas BD / Dashboards (e2e)', () => {
     }).compile();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new ResponseInterceptor());
@@ -97,7 +101,9 @@ describe('Disponibilidade / Consultas BD / Dashboards (e2e)', () => {
     );
 
     tokenAdm = (
-      await request(server()).post('/api/auth/login').send({ login: 'admin', senha: 'senha-adm-123' })
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'admin', senha: 'senha-adm-123' })
     ).body.data.accessToken;
     tokenConsultor = (
       await request(server())
@@ -105,7 +111,9 @@ describe('Disponibilidade / Consultas BD / Dashboards (e2e)', () => {
         .send({ login: 'consultor1', senha: 'senha-cons-123' })
     ).body.data.accessToken;
     tokenGci = (
-      await request(server()).post('/api/auth/login').send({ login: 'gci1', senha: 'senha-gci-123' })
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'gci1', senha: 'senha-gci-123' })
     ).body.data.accessToken;
 
     // Auto-seed pulado em teste (NODE_ENV=test) — semeia manualmente, mesmo padrão já
@@ -129,21 +137,33 @@ describe('Disponibilidade / Consultas BD / Dashboards (e2e)', () => {
 
   describe('Config → Disponibilidade', () => {
     it('não-ADM não acessa', async () => {
-      const res = await auth(request(server()).get('/api/config/disponibilidade'), tokenConsultor);
+      const res = await auth(
+        request(server()).get('/api/config/disponibilidade'),
+        tokenConsultor,
+      );
       expect(res.status).toBe(403);
     });
 
     it('salva e lê de volta, sem nunca devolver a senha', async () => {
       const salvar = await auth(
-        request(server())
-          .post('/api/config/disponibilidade')
-          .send({ tipo: 'oracle', host: 'sicla.invalid', porta: '1521', banco: 'ORCL', usuario: 'u', senha: 'segredo', select: 'SELECT 1', ativo: true }),
+        request(server()).post('/api/config/disponibilidade').send({
+          tipo: 'oracle',
+          host: 'sicla.invalid',
+          porta: '1521',
+          banco: 'ORCL',
+          usuario: 'u',
+          senha: 'segredo',
+          select: 'SELECT 1',
+          ativo: true,
+        }),
       );
       expect(salvar.status).toBe(200);
       expect(salvar.body.data.senha).toBeUndefined();
       expect(salvar.body.data.configurado).toBe(true);
 
-      const status = await auth(request(server()).get('/api/config/disponibilidade'));
+      const status = await auth(
+        request(server()).get('/api/config/disponibilidade'),
+      );
       expect(status.body.data.host).toBe('sicla.invalid');
       expect(status.body.data.senha).toBeUndefined();
     });
@@ -153,7 +173,9 @@ describe('Disponibilidade / Consultas BD / Dashboards (e2e)', () => {
         rows: [{ TECNICO: 'Ana', DATA: '2026-08-10', TURNO: '' }],
       });
       mockedOracledb.getConnection.mockResolvedValue(conexaoFake(execute));
-      const r = await auth(request(server()).post('/api/config/disponibilidade/testar'));
+      const r = await auth(
+        request(server()).post('/api/config/disponibilidade/testar'),
+      );
       expect(r.status).toBe(200);
       expect(r.body.data.ok).toBe(true);
       expect(r.body.data.amostra).toHaveLength(1);
@@ -162,7 +184,10 @@ describe('Disponibilidade / Consultas BD / Dashboards (e2e)', () => {
 
   describe('Config → Consultas BD', () => {
     it('não-ADM não acessa (nem Coordenador/GCI — mais restrito que as demais telas de Sistema)', async () => {
-      const res = await auth(request(server()).get('/api/config/consultas-bd'), tokenGci);
+      const res = await auth(
+        request(server()).get('/api/config/consultas-bd'),
+        tokenGci,
+      );
       expect(res.status).toBe(403);
     });
 
@@ -192,10 +217,16 @@ describe('Disponibilidade / Consultas BD / Dashboards (e2e)', () => {
       );
       expect(editar.body.data.sql).toBe('SELECT 2 FROM dual');
 
-      const excluir = await auth(request(server()).post('/api/config/consultas-bd/minha_consulta/excluir'));
+      const excluir = await auth(
+        request(server()).post(
+          '/api/config/consultas-bd/minha_consulta/excluir',
+        ),
+      );
       expect(excluir.status).toBe(200);
 
-      const depois = await auth(request(server()).get('/api/config/consultas-bd/minha_consulta'));
+      const depois = await auth(
+        request(server()).get('/api/config/consultas-bd/minha_consulta'),
+      );
       expect(depois.status).toBe(404);
     });
 
@@ -206,9 +237,11 @@ describe('Disponibilidade / Consultas BD / Dashboards (e2e)', () => {
       // vez de reenviar "Previsão Início Oficial" (que geraria um slug ACENTUADO
       // diferente do seed ASCII "previsao_inicio_oficial").
       const r = await auth(
-        request(server())
-          .post('/api/config/consultas-bd')
-          .send({ slug: 'previsao_inicio_oficial', nome: 'Duplicata', sql: 'SELECT 1' }),
+        request(server()).post('/api/config/consultas-bd').send({
+          slug: 'previsao_inicio_oficial',
+          nome: 'Duplicata',
+          sql: 'SELECT 1',
+        }),
       );
       expect(r.status).toBe(400);
     });
@@ -221,7 +254,9 @@ describe('Disponibilidade / Consultas BD / Dashboards (e2e)', () => {
           .post('/api/config/consultas-bd')
           .send({ nome: 'Sem Data', sql: 'SELECT 1 FROM dual' }),
       );
-      const r = await auth(request(server()).post('/api/config/consultas-bd/sem_data/testar'));
+      const r = await auth(
+        request(server()).post('/api/config/consultas-bd/sem_data/testar'),
+      );
       expect(r.status).toBe(200);
       expect(r.body.data.ok).toBe(true);
       const [, bindsChamados] = execute.mock.calls[0];
@@ -232,15 +267,23 @@ describe('Disponibilidade / Consultas BD / Dashboards (e2e)', () => {
 
   describe('Dashboards', () => {
     it('Consultor não acessa (só gestão: ADM/Coordenador/Administrativo/GCI)', async () => {
-      const res = await auth(request(server()).get('/api/dashboards'), tokenConsultor);
+      const res = await auth(
+        request(server()).get('/api/dashboards'),
+        tokenConsultor,
+      );
       expect(res.status).toBe(403);
     });
 
     it('GCI acessa a listagem de dashboards disponíveis', async () => {
-      const res = await auth(request(server()).get('/api/dashboards'), tokenGci);
+      const res = await auth(
+        request(server()).get('/api/dashboards'),
+        tokenGci,
+      );
       expect(res.status).toBe(200);
       expect(
-        res.body.data.itens.some((d: { slug: string }) => d.slug === 'previsao_inicio_oficial'),
+        res.body.data.itens.some(
+          (d: { slug: string }) => d.slug === 'previsao_inicio_oficial',
+        ),
       ).toBe(true);
     });
 
@@ -251,21 +294,36 @@ describe('Disponibilidade / Consultas BD / Dashboards (e2e)', () => {
           .post('/api/config/disponibilidade')
           .send({ select: 'SELECT 1', ativo: false }),
       );
-      const res = await auth(request(server()).get('/api/dashboards/previsao_inicio_oficial'));
+      const res = await auth(
+        request(server()).get('/api/dashboards/previsao_inicio_oficial'),
+      );
       expect(res.status).toBe(200);
       expect(res.body.data.erro).toContain('não configurada');
     });
 
     it('roda o dashboard: filtra por período, monta o gráfico por mês e a lista de situações', async () => {
       await auth(
-        request(server())
-          .post('/api/config/disponibilidade')
-          .send({ host: 'sicla.invalid', banco: 'ORCL', select: 'SELECT 1', ativo: true }),
+        request(server()).post('/api/config/disponibilidade').send({
+          host: 'sicla.invalid',
+          banco: 'ORCL',
+          select: 'SELECT 1',
+          ativo: true,
+        }),
       );
       const execute = jest.fn().mockResolvedValue({
         rows: [
-          { CODIGO: 'A1', CLIENTE: 'Cliente X', PREVISAO_INICIO_OFICIAL: '2026-01-15', SITUACAO: 'Em andamento' },
-          { CODIGO: 'A2', CLIENTE: 'Cliente Y', PREVISAO_INICIO_OFICIAL: '2026-02-05', SITUACAO: 'Concluído' },
+          {
+            CODIGO: 'A1',
+            CLIENTE: 'Cliente X',
+            PREVISAO_INICIO_OFICIAL: '2026-01-15',
+            SITUACAO: 'Em andamento',
+          },
+          {
+            CODIGO: 'A2',
+            CLIENTE: 'Cliente Y',
+            PREVISAO_INICIO_OFICIAL: '2026-02-05',
+            SITUACAO: 'Concluído',
+          },
         ],
       });
       mockedOracledb.getConnection.mockResolvedValue(conexaoFake(execute));
@@ -279,12 +337,21 @@ describe('Disponibilidade / Consultas BD / Dashboards (e2e)', () => {
       expect(res.status).toBe(200);
       expect(res.body.data.erro).toBeNull();
       expect(res.body.data.linhasTabela).toHaveLength(2);
-      expect(res.body.data.grafico).toEqual({ labels: ['janeiro', 'fevereiro'], valores: [1, 1] });
-      expect(res.body.data.situacoesDisponiveis).toEqual(['Concluído', 'Em andamento']);
+      expect(res.body.data.grafico).toEqual({
+        labels: ['janeiro', 'fevereiro'],
+        valores: [1, 1],
+      });
+      expect(res.body.data.situacoesDisponiveis).toEqual([
+        'Concluído',
+        'Em andamento',
+      ]);
     });
 
     it('dashboard inexistente devolve o erro de "não configurada" (não 404 solto)', async () => {
-      const res = await auth(request(server()).get('/api/dashboards/nao-existe'), tokenGci);
+      const res = await auth(
+        request(server()).get('/api/dashboards/nao-existe'),
+        tokenGci,
+      );
       expect(res.status).toBe(200);
       expect(res.body.data.erro).toContain('não configurada');
     });

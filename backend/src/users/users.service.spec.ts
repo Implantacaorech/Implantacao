@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from './users.service';
 import { Usuario } from '../database/entities/usuario.entity';
@@ -25,7 +29,10 @@ describe('UsersService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UsersService, { provide: getRepositoryToken(Usuario), useValue: repo }],
+      providers: [
+        UsersService,
+        { provide: getRepositoryToken(Usuario), useValue: repo },
+      ],
     }).compile();
     service = module.get(UsersService);
   });
@@ -88,7 +95,9 @@ describe('UsersService', () => {
         perfil: 'Consultor',
         codigoSicla: '007',
       });
-      expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ login: 'x@teste.com' }));
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ login: 'x@teste.com' }),
+      );
     });
 
     it('rejeita login ou e-mail já cadastrado', async () => {
@@ -143,11 +152,15 @@ describe('UsersService', () => {
     });
 
     it('rejeita quando o novo login/email já pertence a outro usuário', async () => {
-      repo.findOne.mockResolvedValue({ id: 1, login: 'x', email: 'x@teste.com' });
+      repo.findOne.mockResolvedValue({
+        id: 1,
+        login: 'x',
+        email: 'x@teste.com',
+      });
       qb.getCount.mockResolvedValue(1);
-      await expect(service.atualizar(1, { email: 'ocupado@teste.com' })).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.atualizar(1, { email: 'ocupado@teste.com' }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
@@ -158,16 +171,18 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(existente);
       await service.trocarSenha(1, 'senha-atual-123', 'senha-nova-456');
       expect(existente.senhaHash).not.toBe(senhaHash);
-      expect(await bcrypt.compare('senha-nova-456', existente.senhaHash)).toBe(true);
+      expect(await bcrypt.compare('senha-nova-456', existente.senhaHash)).toBe(
+        true,
+      );
     });
 
     it('rejeita quando a senha atual está incorreta, sem alterar o hash', async () => {
       const senhaHash = await bcrypt.hash('senha-atual-123', 12);
       const existente = { id: 1, senhaHash };
       repo.findOne.mockResolvedValue(existente);
-      await expect(service.trocarSenha(1, 'senha-errada', 'senha-nova-456')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.trocarSenha(1, 'senha-errada', 'senha-nova-456'),
+      ).rejects.toThrow(UnauthorizedException);
       expect(existente.senhaHash).toBe(senhaHash);
     });
   });

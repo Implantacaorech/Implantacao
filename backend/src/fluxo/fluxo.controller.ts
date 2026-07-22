@@ -1,8 +1,19 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ApiEnvelope } from '../common/dto/api-envelope';
-import { CurrentUser, type AuthUser } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type AuthUser,
+} from '../common/decorators/current-user.decorator';
 import { ImapIntakeService } from './imap-intake.service';
 import { FluxoService } from './fluxo.service';
 import { MailerService } from '../email/mailer.service';
@@ -27,7 +38,10 @@ export class FluxoController {
   ) {}
 
   @Get()
-  @ApiOperation({ summary: 'Status do fluxo: IMAP/SMTP configurados, modelo de e-mail de fechamento' })
+  @ApiOperation({
+    summary:
+      'Status do fluxo: IMAP/SMTP configurados, modelo de e-mail de fechamento',
+  })
   status() {
     return new ApiEnvelope({
       imapConfigurado: this.imap.configurado(),
@@ -38,15 +52,22 @@ export class FluxoController {
 
   @Post('parse')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Extrai os campos de um texto colado (sem consultar o IMAP)' })
+  @ApiOperation({
+    summary: 'Extrai os campos de um texto colado (sem consultar o IMAP)',
+  })
   parse(@Body() dto: ParseFechamentoDto) {
-    const campos = this.fluxo.paraProjeto(this.fluxo.parseFechamento(dto.texto));
+    const campos = this.fluxo.paraProjeto(
+      this.fluxo.parseFechamento(dto.texto),
+    );
     return new ApiEnvelope({ campos });
   }
 
   @Post('inbox')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Busca o e-mail de fechamento mais recente não lido via IMAP (não marca como lido)' })
+  @ApiOperation({
+    summary:
+      'Busca o e-mail de fechamento mais recente não lido via IMAP (não marca como lido)',
+  })
   async inbox() {
     const { corpo, assunto, erro } = await this.imap.buscarFechamento();
     if (erro || corpo === null) {

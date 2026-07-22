@@ -13,7 +13,12 @@ import {
   Post,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -59,7 +64,10 @@ export class ConfigGmailController {
       'Envia a credencial OAuth (JSON "Aplicativo da Web") baixada do Google Cloud Console',
   })
   enviarCliente(@UploadedFile() arquivo: Express.Multer.File | undefined) {
-    if (!arquivo) throw new UnprocessableEntityException('Selecione o arquivo JSON da credencial.');
+    if (!arquivo)
+      throw new UnprocessableEntityException(
+        'Selecione o arquivo JSON da credencial.',
+      );
     this.gmail.salvarCliente(arquivo.buffer);
     return new ApiEnvelope({ temCliente: true });
   }
@@ -68,10 +76,16 @@ export class ConfigGmailController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(...PERFIS_SISTEMA)
-  @ApiOperation({ summary: 'URL de consentimento do Google — o front navega o browser até ela' })
+  @ApiOperation({
+    summary:
+      'URL de consentimento do Google — o front navega o browser até ela',
+  })
   autorizar() {
     const url = this.gmail.urlAutorizacao();
-    if (!url) throw new UnprocessableEntityException('Falta a credencial OAuth (envie o client JSON primeiro).');
+    if (!url)
+      throw new UnprocessableEntityException(
+        'Falta a credencial OAuth (envie o client JSON primeiro).',
+      );
     return new ApiEnvelope({ url });
   }
 
@@ -86,17 +100,23 @@ export class ConfigGmailController {
     @Query('error') erro: string | undefined,
     @Res() res: Response,
   ) {
-    const destino = process.env.MIGRACAO_FRONTEND_URL ?? 'http://localhost:4200';
+    const destino =
+      process.env.MIGRACAO_FRONTEND_URL ?? 'http://localhost:4200';
     if (erro) {
       res.redirect(`${destino}/config/gmail?erro=${encodeURIComponent(erro)}`);
       return;
     }
-    if (!code || !state) throw new BadRequestException('code/state ausentes no callback do Google.');
+    if (!code || !state)
+      throw new BadRequestException(
+        'code/state ausentes no callback do Google.',
+      );
     const r = await this.gmail.trocarCodigoPorToken(code, state);
     if (r.ok) {
       res.redirect(`${destino}/config/gmail?autorizado=1`);
     } else {
-      res.redirect(`${destino}/config/gmail?erro=${encodeURIComponent(r.erro ?? 'falha')}`);
+      res.redirect(
+        `${destino}/config/gmail?erro=${encodeURIComponent(r.erro ?? 'falha')}`,
+      );
     }
   }
 }

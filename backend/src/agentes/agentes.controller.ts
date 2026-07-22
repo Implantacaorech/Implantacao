@@ -33,14 +33,18 @@ export class AgentesController {
 
   @Post('execucoes')
   @Roles() // qualquer autenticado — é o próprio agente (via curl) reportando início
-  @ApiOperation({ summary: 'Registra o início real de uma execução de agente/subagente' })
+  @ApiOperation({
+    summary: 'Registra o início real de uma execução de agente/subagente',
+  })
   async iniciar(@Body() dto: IniciarExecucaoDto) {
     return new ApiEnvelope(await this.service.iniciar(dto));
   }
 
   @Patch('execucoes/:id')
   @Roles() // qualquer autenticado — idem
-  @ApiOperation({ summary: 'Conclui (ou marca falha) uma execução em andamento' })
+  @ApiOperation({
+    summary: 'Conclui (ou marca falha) uma execução em andamento',
+  })
   async concluir(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ConcluirExecucaoDto,
@@ -49,7 +53,9 @@ export class AgentesController {
   }
 
   @Get('execucoes')
-  @ApiOperation({ summary: 'Lista execuções recentes (dashboard de Monitoramento)' })
+  @ApiOperation({
+    summary: 'Lista execuções recentes (dashboard de Monitoramento)',
+  })
   async listar(@Query() filtro: ListarExecucoesDto) {
     const ativos = filtro.ativos === 'true';
     const limite = parseInt(filtro.limite ?? '50', 10) || 50;
@@ -58,7 +64,8 @@ export class AgentesController {
 
   @Get('grafo')
   @ApiOperation({
-    summary: 'Topologia dos 13 agentes (.claude/agents/) + status real das últimas 24h',
+    summary:
+      'Topologia dos 13 agentes (.claude/agents/) + status real das últimas 24h',
   })
   async grafo() {
     return new ApiEnvelope(await this.service.grafo());

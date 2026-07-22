@@ -71,7 +71,13 @@ export class ModeloEmailService implements OnModuleInit {
   }
 
   async salvar(
-    dados: { nome?: string; assunto?: string; corpo?: string; etapa?: string; ativo?: boolean },
+    dados: {
+      nome?: string;
+      assunto?: string;
+      corpo?: string;
+      etapa?: string;
+      ativo?: boolean;
+    },
     id?: number,
   ): Promise<ModeloEmail> {
     let m: ModeloEmail;
@@ -92,7 +98,11 @@ export class ModeloEmailService implements OnModuleInit {
   }
 
   private async gerarSlugUnico(nome: string): Promise<string> {
-    const base = (nome || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'modelo';
+    const base =
+      (nome || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'modelo';
     let slug = base;
     let n = 1;
     while ((await this.repo.count({ where: { slug } })) > 0) {
@@ -107,7 +117,10 @@ export class ModeloEmailService implements OnModuleInit {
     const m = await this.repo.findOne({ where: { id } });
     if (!m) return { ok: false, erro: 'Modelo não encontrado.' };
     if (m.padrao) {
-      return { ok: false, erro: 'Modelos padrão não podem ser excluídos (apenas editados).' };
+      return {
+        ok: false,
+        erro: 'Modelos padrão não podem ser excluídos (apenas editados).',
+      };
     }
     await this.repo.remove(m);
     return { ok: true, erro: null };

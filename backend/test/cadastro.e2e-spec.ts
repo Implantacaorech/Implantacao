@@ -33,7 +33,8 @@ describe('Auto-cadastro (e2e)', () => {
   function codigoEnviado(): string {
     const ultimo = mailerFake.enviados[mailerFake.enviados.length - 1];
     const m = /(\d{6})/.exec(ultimo.corpo);
-    if (!m) throw new Error('Código não encontrado no corpo do e-mail simulado.');
+    if (!m)
+      throw new Error('Código não encontrado no corpo do e-mail simulado.');
     return m[1];
   }
 
@@ -49,7 +50,11 @@ describe('Auto-cadastro (e2e)', () => {
       .compile();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new ResponseInterceptor());
@@ -86,7 +91,9 @@ describe('Auto-cadastro (e2e)', () => {
     expect(confirma.body.data.accessToken).toBeDefined();
     expect(confirma.body.data.usuario.perfil).toBe('Consultor'); // sempre o de menor privilégio
 
-    const criado = await usuarios.findOne({ where: { email: 'ana.nova@teste.com' } });
+    const criado = await usuarios.findOne({
+      where: { email: 'ana.nova@teste.com' },
+    });
     expect(criado?.ativo).toBe(true);
     expect(criado?.codigoSicla).toBe('077');
   });
@@ -115,12 +122,16 @@ describe('Auto-cadastro (e2e)', () => {
     expect(errado.status).toBe(400);
     expect(errado.body.message).toContain('incorreto');
 
-    const pendente = await pendentes.findOne({ where: { email: 'beto.novo@teste.com' } });
+    const pendente = await pendentes.findOne({
+      where: { email: 'beto.novo@teste.com' },
+    });
     expect(pendente?.tentativas).toBe(1);
   });
 
   it('reenviar gera um novo código e reseta as tentativas', async () => {
-    const antes = await pendentes.findOne({ where: { email: 'beto.novo@teste.com' } });
+    const antes = await pendentes.findOne({
+      where: { email: 'beto.novo@teste.com' },
+    });
     const codigoAntigo = antes?.codigo;
 
     const reenviar = await request(server())
@@ -128,7 +139,9 @@ describe('Auto-cadastro (e2e)', () => {
       .send({ email: 'beto.novo@teste.com' });
     expect(reenviar.status).toBe(200);
 
-    const depois = await pendentes.findOne({ where: { email: 'beto.novo@teste.com' } });
+    const depois = await pendentes.findOne({
+      where: { email: 'beto.novo@teste.com' },
+    });
     expect(depois?.tentativas).toBe(0);
     expect(depois?.codigo).not.toBe(codigoAntigo);
 

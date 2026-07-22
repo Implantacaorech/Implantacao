@@ -9,7 +9,11 @@ import { MatrizTecnico } from '../database/entities/matriz-tecnico.entity';
 
 describe('MatrizService', () => {
   let service: MatrizService;
-  const competencias = { find: jest.fn(), save: jest.fn((e) => Promise.resolve(e)), create: jest.fn((dto) => dto) };
+  const competencias = {
+    find: jest.fn(),
+    save: jest.fn((e) => Promise.resolve(e)),
+    create: jest.fn((dto) => dto),
+  };
   const tecnicos = {
     find: jest.fn(),
     findOne: jest.fn(),
@@ -22,7 +26,10 @@ describe('MatrizService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MatrizService,
-        { provide: getRepositoryToken(MatrizCompetencia), useValue: competencias },
+        {
+          provide: getRepositoryToken(MatrizCompetencia),
+          useValue: competencias,
+        },
         { provide: getRepositoryToken(MatrizTecnico), useValue: tecnicos },
       ],
     }).compile();
@@ -31,8 +38,12 @@ describe('MatrizService', () => {
 
   describe('notas', () => {
     it('parseia o JSON de notas; devolve {} se inválido', () => {
-      expect(service.notas({ notas: '{"FAT01":8}' } as MatrizTecnico)).toEqual({ FAT01: 8 });
-      expect(service.notas({ notas: 'não é json' } as MatrizTecnico)).toEqual({});
+      expect(service.notas({ notas: '{"FAT01":8}' } as MatrizTecnico)).toEqual({
+        FAT01: 8,
+      });
+      expect(service.notas({ notas: 'não é json' } as MatrizTecnico)).toEqual(
+        {},
+      );
       expect(service.notas({ notas: '' } as MatrizTecnico)).toEqual({});
     });
   });
@@ -73,9 +84,17 @@ describe('MatrizService', () => {
     });
 
     it('clampa 0-10, remove nota quando o valor vem vazio, ignora sigla não cadastrada', async () => {
-      const t = { id: 1, notas: JSON.stringify({ FAT01: 5, FAT02: 3 }), setor: '', dias: '' };
+      const t = {
+        id: 1,
+        notas: JSON.stringify({ FAT01: 5, FAT02: 3 }),
+        setor: '',
+        dias: '',
+      };
       tecnicos.findOne.mockResolvedValue(t);
-      competencias.find.mockResolvedValue([{ sigla: 'FAT01' }, { sigla: 'FAT02' }]);
+      competencias.find.mockResolvedValue([
+        { sigla: 'FAT01' },
+        { sigla: 'FAT02' },
+      ]);
 
       const ok = await service.salvarNotas(
         1,
@@ -102,7 +121,11 @@ describe('MatrizService', () => {
   });
 
   describe('importar', () => {
-    const DIR = join(process.cwd(), 'dados', `matriz_test_${process.env.JEST_WORKER_ID ?? '0'}`);
+    const DIR = join(
+      process.cwd(),
+      'dados',
+      `matriz_test_${process.env.JEST_WORKER_ID ?? '0'}`,
+    );
     const ARQUIVO = join(DIR, 'matriz.xlsx');
 
     beforeAll(async () => {
@@ -131,12 +154,19 @@ describe('MatrizService', () => {
 
       const r = await service.importar('Admin', ARQUIVO);
 
-      expect(r).toEqual({ novasCompetencias: 1, novosTecnicos: 1, ignorados: 0 });
+      expect(r).toEqual({
+        novasCompetencias: 1,
+        novosTecnicos: 1,
+        ignorados: 0,
+      });
       expect(competencias.save).toHaveBeenCalledWith(
         expect.objectContaining({ sigla: 'FAT01', area: 'Gerais' }),
       );
       expect(tecnicos.save).toHaveBeenCalledWith(
-        expect.objectContaining({ nome: 'Ana Técnica', atualizadoPor: 'Admin' }),
+        expect.objectContaining({
+          nome: 'Ana Técnica',
+          atualizadoPor: 'Admin',
+        }),
       );
     });
 
@@ -146,7 +176,11 @@ describe('MatrizService', () => {
 
       const r = await service.importar('Admin', ARQUIVO);
 
-      expect(r).toEqual({ novasCompetencias: 0, novosTecnicos: 0, ignorados: 1 });
+      expect(r).toEqual({
+        novasCompetencias: 0,
+        novosTecnicos: 0,
+        ignorados: 1,
+      });
       expect(tecnicos.save).not.toHaveBeenCalled();
     });
   });

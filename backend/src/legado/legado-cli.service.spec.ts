@@ -11,7 +11,9 @@ class FakeProc extends EventEmitter {
 }
 
 const spawnMock = jest.fn();
-jest.mock('child_process', () => ({ spawn: (...args: unknown[]) => spawnMock(...args) }));
+jest.mock('child_process', () => ({
+  spawn: (...args: unknown[]) => spawnMock(...args),
+}));
 
 describe('LegadoCliService', () => {
   let service: LegadoCliService;
@@ -20,7 +22,10 @@ describe('LegadoCliService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
-      providers: [LegadoCliService, { provide: ConfigService, useValue: config }],
+      providers: [
+        LegadoCliService,
+        { provide: ConfigService, useValue: config },
+      ],
     }).compile();
     service = module.get(LegadoCliService);
   });
@@ -30,7 +35,10 @@ describe('LegadoCliService', () => {
     spawnMock.mockReturnValue(proc);
 
     const promessa = service.executar('saude', { x: 1 });
-    proc.stdout.emit('data', Buffer.from('{"ok": true, "data": {"code": 0}}\n'));
+    proc.stdout.emit(
+      'data',
+      Buffer.from('{"ok": true, "data": {"code": 0}}\n'),
+    );
     proc.emit('close', 0);
 
     await expect(promessa).resolves.toEqual({ code: 0 });
@@ -44,7 +52,10 @@ describe('LegadoCliService', () => {
     spawnMock.mockReturnValue(proc);
 
     const promessa = service.executar('gerar');
-    proc.stdout.emit('data', Buffer.from('{"ok": false, "erro": "deu ruim"}\n'));
+    proc.stdout.emit(
+      'data',
+      Buffer.from('{"ok": false, "erro": "deu ruim"}\n'),
+    );
     proc.emit('close', 1);
 
     await expect(promessa).rejects.toThrow(InternalServerErrorException);

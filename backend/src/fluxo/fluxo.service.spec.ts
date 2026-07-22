@@ -18,7 +18,11 @@ jest.mock('fs', () => ({
 
 describe('FluxoService', () => {
   let service: FluxoService;
-  const projetos = { find: jest.fn(), save: jest.fn(), create: jest.fn((dto) => dto) };
+  const projetos = {
+    find: jest.fn(),
+    save: jest.fn(),
+    create: jest.fn((dto) => dto),
+  };
   const documentos = {
     registrarEvento: jest.fn(),
     salvarArquivoGerado: jest.fn(),
@@ -78,7 +82,9 @@ Produto / Observações: Cliente estratégico`;
     });
 
     it('linhas sem ":" são ignoradas e rótulos desconhecidos não geram campo', () => {
-      const d = service.parseFechamento('isso não é um rótulo\nRótulo Inventado: valor');
+      const d = service.parseFechamento(
+        'isso não é um rótulo\nRótulo Inventado: valor',
+      );
       expect(Object.keys(d)).toHaveLength(0);
     });
 
@@ -95,7 +101,10 @@ Produto / Observações: Cliente estratégico`;
 
   describe('paraProjeto', () => {
     it('junta cidade + observações com separador', () => {
-      const p = service.paraProjeto({ cidade: 'Novo Hamburgo/RS', observacoes: 'obs aqui' });
+      const p = service.paraProjeto({
+        cidade: 'Novo Hamburgo/RS',
+        observacoes: 'obs aqui',
+      });
       expect(p.observacoes).toBe('Novo Hamburgo/RS · obs aqui');
     });
 
@@ -108,13 +117,17 @@ Produto / Observações: Cliente estratégico`;
 
   describe('existeSimilar', () => {
     it('casa por CNPJ ignorando formatação', async () => {
-      projetos.find.mockResolvedValue([{ id: 10, cnpj: '12.345.678/0001-90', cliente: 'X' }]);
+      projetos.find.mockResolvedValue([
+        { id: 10, cnpj: '12.345.678/0001-90', cliente: 'X' },
+      ]);
       const id = await service.existeSimilar('Outro Nome', '12345678000190');
       expect(id).toBe(10);
     });
 
     it('sem CNPJ, casa por nome do cliente normalizado', async () => {
-      projetos.find.mockResolvedValue([{ id: 11, cnpj: '', cliente: '  Cliente   Teste  ' }]);
+      projetos.find.mockResolvedValue([
+        { id: 11, cnpj: '', cliente: '  Cliente   Teste  ' },
+      ]);
       const id = await service.existeSimilar('cliente teste', '');
       expect(id).toBe(11);
     });
@@ -129,7 +142,10 @@ Produto / Observações: Cliente estratégico`;
   describe('criarDeFechamento', () => {
     it('cria o projeto, registra o evento de etapa e notifica "fechamento"', async () => {
       projetos.find.mockResolvedValue([]);
-      projetos.save.mockResolvedValue({ id: 99, cliente: 'Cliente Teste LTDA' });
+      projetos.save.mockResolvedValue({
+        id: 99,
+        cliente: 'Cliente Teste LTDA',
+      });
       const id = await service.criarDeFechamento(EMAIL_FECHAMENTO);
       expect(id).toBe(99);
       expect(documentos.registrarEvento).toHaveBeenCalledWith(
@@ -146,7 +162,9 @@ Produto / Observações: Cliente estratégico`;
     });
 
     it('dedup: não cria nem notifica de novo se o CNPJ já existe', async () => {
-      projetos.find.mockResolvedValue([{ id: 5, cnpj: '12345678000190', cliente: 'Já existe' }]);
+      projetos.find.mockResolvedValue([
+        { id: 5, cnpj: '12345678000190', cliente: 'Já existe' },
+      ]);
       const id = await service.criarDeFechamento(EMAIL_FECHAMENTO);
       expect(id).toBe(5);
       expect(projetos.save).not.toHaveBeenCalled();
@@ -165,9 +183,19 @@ Produto / Observações: Cliente estratégico`;
 
   describe('criarComPacote', () => {
     it('dedup: devolve o existente sem criar, gerar documentos ou enviar e-mail', async () => {
-      projetos.find.mockResolvedValue([{ id: 7, cnpj: '12345678000190', cliente: 'Já existe' }]);
-      const r = await service.criarComPacote({ cliente: 'X', cnpj: '12.345.678/0001-90' }, 'ana');
-      expect(r).toEqual({ projetoId: 7, duplicado: true, documentosGerados: [], emailEnviado: false });
+      projetos.find.mockResolvedValue([
+        { id: 7, cnpj: '12345678000190', cliente: 'Já existe' },
+      ]);
+      const r = await service.criarComPacote(
+        { cliente: 'X', cnpj: '12.345.678/0001-90' },
+        'ana',
+      );
+      expect(r).toEqual({
+        projetoId: 7,
+        duplicado: true,
+        documentosGerados: [],
+        emailEnviado: false,
+      });
       expect(projetos.save).not.toHaveBeenCalled();
       expect(geracaoLayout.gerar).not.toHaveBeenCalled();
       expect(mailer.enviar).not.toHaveBeenCalled();
@@ -175,8 +203,14 @@ Produto / Observações: Cliente estratégico`;
 
     it('cria o projeto com o texto de evento do fluxo manual (distinto do robô da caixa)', async () => {
       projetos.find.mockResolvedValue([]);
-      projetos.save.mockResolvedValue({ id: 42, cliente: 'Cliente Teste LTDA' });
-      await service.criarComPacote({ cliente: 'Cliente Teste LTDA', gerar: [] }, 'ana');
+      projetos.save.mockResolvedValue({
+        id: 42,
+        cliente: 'Cliente Teste LTDA',
+      });
+      await service.criarComPacote(
+        { cliente: 'Cliente Teste LTDA', gerar: [] },
+        'ana',
+      );
       expect(documentos.registrarEvento).toHaveBeenCalledWith(
         42,
         'etapa',
@@ -189,11 +223,19 @@ Produto / Observações: Cliente estratégico`;
       projetos.find.mockResolvedValue([]);
       projetos.save.mockResolvedValue({ id: 43, cliente: 'X' });
       await service.criarComPacote(
-        { cliente: 'X', consultor: 'Fulano', tecnicos: 'Ciclano, Beltrano', gerar: [] },
+        {
+          cliente: 'X',
+          consultor: 'Fulano',
+          tecnicos: 'Ciclano, Beltrano',
+          gerar: [],
+        },
         'ana',
       );
       expect(projetos.create).toHaveBeenCalledWith(
-        expect.objectContaining({ consultor: 'Fulano', observacoes: 'Técnicos: Ciclano, Beltrano' }),
+        expect.objectContaining({
+          consultor: 'Fulano',
+          observacoes: 'Técnicos: Ciclano, Beltrano',
+        }),
       );
       expect(documentos.registrarEvento).toHaveBeenCalledWith(
         43,
@@ -211,17 +253,38 @@ Produto / Observações: Cliente estratégico`;
 
     it('gera "checklist" pelo gerador legado (LegadoCliService), os outros pela layout fiel', async () => {
       projetos.find.mockResolvedValue([]);
-      projetos.save.mockResolvedValue({ id: 44, cliente: 'X', modulos: 'FAT, EST' });
-      geracaoLayout.gerar.mockResolvedValue({ filename: 'lev.docx', buffer: Buffer.from('x') });
-      legadoCli.executar.mockResolvedValue({ arquivo: 'C:\\exemplos\\CheckList_X.xlsx', log: 'ok' });
-      documentos.salvarArquivoGerado.mockReturnValue({ arquivo: 'lev.docx', caminho: '/tmp/lev.docx' });
+      projetos.save.mockResolvedValue({
+        id: 44,
+        cliente: 'X',
+        modulos: 'FAT, EST',
+      });
+      geracaoLayout.gerar.mockResolvedValue({
+        filename: 'lev.docx',
+        buffer: Buffer.from('x'),
+      });
+      legadoCli.executar.mockResolvedValue({
+        arquivo: 'C:\\exemplos\\CheckList_X.xlsx',
+        log: 'ok',
+      });
+      documentos.salvarArquivoGerado.mockReturnValue({
+        arquivo: 'lev.docx',
+        caminho: '/tmp/lev.docx',
+      });
       const r = await service.criarComPacote(
         { cliente: 'X', gerar: ['levantamento', 'checklist', 'cronograma'] },
         'ana',
       );
       expect(geracaoLayout.gerar).toHaveBeenCalledTimes(2);
-      expect(geracaoLayout.gerar).toHaveBeenCalledWith(44, 'levantamento', 'auto');
-      expect(geracaoLayout.gerar).toHaveBeenCalledWith(44, 'cronograma', 'auto');
+      expect(geracaoLayout.gerar).toHaveBeenCalledWith(
+        44,
+        'levantamento',
+        'auto',
+      );
+      expect(geracaoLayout.gerar).toHaveBeenCalledWith(
+        44,
+        'cronograma',
+        'auto',
+      );
       expect(legadoCli.executar).toHaveBeenCalledWith('gerar_do_projeto', {
         projeto: { cliente: 'X', modulos: 'FAT, EST' },
         tipo: 'checklist',
@@ -236,7 +299,10 @@ Produto / Observações: Cliente estratégico`;
     it('ignora um tipo pedido que não é reconhecido (nem "checklist" nem layout fiel)', async () => {
       projetos.find.mockResolvedValue([]);
       projetos.save.mockResolvedValue({ id: 45, cliente: 'X' });
-      const r = await service.criarComPacote({ cliente: 'X', gerar: ['termo'] }, 'ana');
+      const r = await service.criarComPacote(
+        { cliente: 'X', gerar: ['termo'] },
+        'ana',
+      );
       expect(geracaoLayout.gerar).not.toHaveBeenCalled();
       expect(legadoCli.executar).not.toHaveBeenCalled();
       expect(r.documentosGerados).toEqual([]);
@@ -244,13 +310,28 @@ Produto / Observações: Cliente estratégico`;
 
     it('envia o e-mail-resumo com os documentos gerados como anexo quando há destinos e SMTP configurado', async () => {
       projetos.find.mockResolvedValue([]);
-      projetos.save.mockResolvedValue({ id: 45, cliente: 'X', horasCobradas: '40', horasBonificadas: '8' });
-      geracaoLayout.gerar.mockResolvedValue({ filename: 'lev.docx', buffer: Buffer.from('x') });
-      documentos.salvarArquivoGerado.mockReturnValue({ arquivo: 'lev.docx', caminho: '/tmp/lev.docx' });
+      projetos.save.mockResolvedValue({
+        id: 45,
+        cliente: 'X',
+        horasCobradas: '40',
+        horasBonificadas: '8',
+      });
+      geracaoLayout.gerar.mockResolvedValue({
+        filename: 'lev.docx',
+        buffer: Buffer.from('x'),
+      });
+      documentos.salvarArquivoGerado.mockReturnValue({
+        arquivo: 'lev.docx',
+        caminho: '/tmp/lev.docx',
+      });
       mailer.configurado.mockReturnValue(true);
       mailer.enviar.mockResolvedValue({ ok: true });
       const r = await service.criarComPacote(
-        { cliente: 'X', gerar: ['levantamento'], emailsResponsaveis: 'a@x.com, b@x.com' },
+        {
+          cliente: 'X',
+          gerar: ['levantamento'],
+          emailsResponsaveis: 'a@x.com, b@x.com',
+        },
         'ana',
       );
       expect(mailer.enviar).toHaveBeenCalledWith(
@@ -266,9 +347,14 @@ Produto / Observações: Cliente estratégico`;
     it('sem destinatários: cria o fluxo mas avisa que não enviou e-mail', async () => {
       projetos.find.mockResolvedValue([]);
       projetos.save.mockResolvedValue({ id: 46, cliente: 'X' });
-      const r = await service.criarComPacote({ cliente: 'X', gerar: [] }, 'ana');
+      const r = await service.criarComPacote(
+        { cliente: 'X', gerar: [] },
+        'ana',
+      );
       expect(mailer.enviar).not.toHaveBeenCalled();
-      expect(r.avisoEmail).toBe('Fluxo criado. Nenhum destinatário informado — pacote não enviado por e-mail.');
+      expect(r.avisoEmail).toBe(
+        'Fluxo criado. Nenhum destinatário informado — pacote não enviado por e-mail.',
+      );
     });
   });
 });

@@ -14,7 +14,10 @@ describe('ModificacoesService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
-      providers: [ModificacoesService, { provide: getRepositoryToken(Modificacao), useValue: repo }],
+      providers: [
+        ModificacoesService,
+        { provide: getRepositoryToken(Modificacao), useValue: repo },
+      ],
     }).compile();
     service = module.get(ModificacoesService);
   });
@@ -22,7 +25,11 @@ describe('ModificacoesService', () => {
   it('registrar grava com autor vazio quando não informado', async () => {
     await service.registrar(1, 'cronograma', 'linha 1', 'status', 'A', 'B', '');
     expect(repo.save).toHaveBeenCalledWith(
-      expect.objectContaining({ projetoId: 1, entidade: 'cronograma', autor: '' }),
+      expect.objectContaining({
+        projetoId: 1,
+        entidade: 'cronograma',
+        autor: '',
+      }),
     );
   });
 

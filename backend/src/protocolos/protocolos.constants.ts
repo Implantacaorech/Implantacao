@@ -91,7 +91,11 @@ const MARCAS_DIACRITICAS = new RegExp(
 );
 
 export function slug(texto: string): string {
-  const semAcento = (texto || '').normalize('NFKD').replace(MARCAS_DIACRITICAS, '');
-  const limpo = semAcento.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  const semAcento = (texto || '')
+    .normalize('NFKD')
+    .replace(MARCAS_DIACRITICAS, '');
+  const limpo = semAcento
+    .replace(/[^A-Za-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
   return limpo || 'arquivo';
 }

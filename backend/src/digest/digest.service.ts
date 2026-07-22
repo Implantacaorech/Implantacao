@@ -20,7 +20,8 @@ export interface ResultadoDigest {
 export class DigestService {
   constructor(
     @InjectRepository(Projeto) private readonly projetos: Repository<Projeto>,
-    @InjectRepository(Documento) private readonly documentos: Repository<Documento>,
+    @InjectRepository(Documento)
+    private readonly documentos: Repository<Documento>,
     private readonly metricas: MetricasService,
     private readonly mailer: MailerService,
     private readonly config: ConfigService<AppConfig, true>,
@@ -54,7 +55,9 @@ export class DigestService {
     if (alertas.length > 0) {
       linhas.push(`Alertas (${alertas.length}):`);
       linhas.push(
-        ...alertas.slice(0, 30).map((a) => `  [${a.nivel.toUpperCase()}] ${a.cliente} — ${a.msg}`),
+        ...alertas
+          .slice(0, 30)
+          .map((a) => `  [${a.nivel.toUpperCase()}] ${a.cliente} — ${a.msg}`),
       );
     } else {
       linhas.push('Sem alertas no momento.');
@@ -72,13 +75,19 @@ export class DigestService {
   async enviar(): Promise<ResultadoDigest> {
     const destinos = this.destinos();
     if (destinos.length === 0) {
-      return { ok: false, mensagem: 'Sem destinatários (defina MIGRACAO_DIGEST_PARA).' };
+      return {
+        ok: false,
+        mensagem: 'Sem destinatários (defina MIGRACAO_DIGEST_PARA).',
+      };
     }
     if (!this.mailer.configurado()) {
       return { ok: false, mensagem: 'E-mail não configurado.' };
     }
     const { assunto, corpo } = await this.montarDigest();
     const r = await this.mailer.enviar(destinos, assunto, corpo);
-    return { ok: r.ok, mensagem: r.ok ? 'Digest enviado.' : r.erro ?? 'Falha ao enviar.' };
+    return {
+      ok: r.ok,
+      mensagem: r.ok ? 'Digest enviado.' : (r.erro ?? 'Falha ao enviar.'),
+    };
   }
 }

@@ -48,7 +48,9 @@ export class ConsultaBdService implements OnModuleInit {
 
   /** Idempotente — não sobrescreve se o Administrador já tiver editado. */
   async seedPadrao(): Promise<boolean> {
-    const existe = await this.repo.findOne({ where: { slug: 'previsao_inicio_oficial' } });
+    const existe = await this.repo.findOne({
+      where: { slug: 'previsao_inicio_oficial' },
+    });
     if (existe) return false;
     await this.repo.save(
       this.repo.create({
@@ -108,8 +110,10 @@ export class ConsultaBdService implements OnModuleInit {
       if (dados.nome !== undefined) c.nome = dados.nome;
       if (dados.sql !== undefined) c.sql = dados.sql;
       if (dados.colunaData !== undefined) c.colunaData = dados.colunaData;
-      if (dados.colunaSituacao !== undefined) c.colunaSituacao = dados.colunaSituacao;
-      if (dados.mostrarGrafico !== undefined) c.mostrarGrafico = dados.mostrarGrafico;
+      if (dados.colunaSituacao !== undefined)
+        c.colunaSituacao = dados.colunaSituacao;
+      if (dados.mostrarGrafico !== undefined)
+        c.mostrarGrafico = dados.mostrarGrafico;
     }
     if (dados.ordem !== undefined) c.ordem = dados.ordem;
     return this.repo.save(c);

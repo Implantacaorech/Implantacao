@@ -37,7 +37,13 @@ describe('MailerService', () => {
   });
 
   it('salvarConfig persiste e carregarConfig lê de volta', () => {
-    service.salvarConfig({ host: 'smtp.exemplo.com', port: '465', user: 'u', remetente: 'r@x.com', senha: 's3nha' });
+    service.salvarConfig({
+      host: 'smtp.exemplo.com',
+      port: '465',
+      user: 'u',
+      remetente: 'r@x.com',
+      senha: 's3nha',
+    });
     const cfg = service.carregarConfig();
     expect(cfg.host).toBe('smtp.exemplo.com');
     expect(cfg.senha).toBe('s3nha');
@@ -75,7 +81,12 @@ describe('MailerService', () => {
       gmail.enviar.mockResolvedValue({ ok: true, erro: null });
       const r = await service.enviar('dest@x.com', 'Assunto', 'Corpo');
       expect(r.ok).toBe(true);
-      expect(gmail.enviar).toHaveBeenCalledWith('dest@x.com', 'Assunto', 'Corpo', []);
+      expect(gmail.enviar).toHaveBeenCalledWith(
+        'dest@x.com',
+        'Assunto',
+        'Corpo',
+        [],
+      );
     });
 
     it('sem Gmail e sem SMTP configurado, devolve erro amigável', async () => {

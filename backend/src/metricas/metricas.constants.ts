@@ -3,10 +3,34 @@ import type { Etapa } from '../common/constants/perfis';
 // Campos obrigatórios por etapa — bloqueiam o avanço se vazios. Espelha
 // webapp/db.py:CAMPOS_OBRIGATORIOS (nomes de campo em camelCase, para bater com Projeto).
 export const CAMPOS_OBRIGATORIOS: Record<Etapa, string[]> = {
-  Agendamento: ['cliente', 'cnpj', 'numeroProjeto', 'modulos', 'horasCobradas', 'gci', 'dataLevantamento'],
-  Levantamento: ['cliente', 'cnpj', 'numeroProjeto', 'modulos', 'horasCobradas', 'gci', 'dataLevantamento'],
+  Agendamento: [
+    'cliente',
+    'cnpj',
+    'numeroProjeto',
+    'modulos',
+    'horasCobradas',
+    'gci',
+    'dataLevantamento',
+  ],
+  Levantamento: [
+    'cliente',
+    'cnpj',
+    'numeroProjeto',
+    'modulos',
+    'horasCobradas',
+    'gci',
+    'dataLevantamento',
+  ],
   Projeto: ['cliente', 'cnpj', 'numeroProjeto', 'modulos', 'horasCobradas'], // consultor é definido na Designação
-  Designação: ['cliente', 'cnpj', 'numeroProjeto', 'modulos', 'horasCobradas', 'consultor', 'dataUsoOficial'],
+  Designação: [
+    'cliente',
+    'cnpj',
+    'numeroProjeto',
+    'modulos',
+    'horasCobradas',
+    'consultor',
+    'dataUsoOficial',
+  ],
   'Cronograma e Check-list': [
     'cliente',
     'cnpj',
@@ -16,7 +40,15 @@ export const CAMPOS_OBRIGATORIOS: Record<Etapa, string[]> = {
     'consultor',
     'dataUsoOficial',
   ],
-  Encerramento: ['cliente', 'cnpj', 'numeroProjeto', 'modulos', 'horasCobradas', 'consultor', 'dataUsoOficial'],
+  Encerramento: [
+    'cliente',
+    'cnpj',
+    'numeroProjeto',
+    'modulos',
+    'horasCobradas',
+    'consultor',
+    'dataUsoOficial',
+  ],
 };
 
 // Rótulos amigáveis para campos obrigatórios. Espelha webapp/db.py:CAMPO_LABELS.
@@ -43,7 +75,8 @@ export const CAMPO_LABELS: Record<string, string> = {
   observacoes: 'Observações',
 };
 
-export type TipoDocumentoGate = 'levantamento' | 'projeto' | 'cronograma' | 'termo' | 'checklist';
+export type TipoDocumentoGate =
+  'levantamento' | 'projeto' | 'cronograma' | 'termo' | 'checklist';
 
 // Espelha webapp/db.py:DOC_LABELS.
 export const DOC_LABELS: Record<string, string> = {
@@ -65,12 +98,17 @@ export const GATES: Record<Etapa, TipoDocumentoGate[]> = {
   Encerramento: ['levantamento', 'projeto', 'cronograma', 'checklist'],
 };
 
-export type ChaveAcaoEntrada = 'gci_e_data_levantamento' | 'consultores_designacao' | 'consultores';
+export type ChaveAcaoEntrada =
+  'gci_e_data_levantamento' | 'consultores_designacao' | 'consultores';
 
 // Ações obrigatórias para ENTRAR em cada etapa (além dos documentos). Espelha
 // webapp/db.py:ACAO_ENTRADA.
-export const ACAO_ENTRADA: Partial<Record<Etapa, [ChaveAcaoEntrada, string]>> = {
-  Levantamento: ['gci_e_data_levantamento', 'Definir GCI e Data do Levantamento'],
-  Designação: ['consultores_designacao', 'Designar Consultores por Módulo'],
-  'Cronograma e Check-list': ['consultores', 'Designar os Consultores'],
-};
+export const ACAO_ENTRADA: Partial<Record<Etapa, [ChaveAcaoEntrada, string]>> =
+  {
+    Levantamento: [
+      'gci_e_data_levantamento',
+      'Definir GCI e Data do Levantamento',
+    ],
+    Designação: ['consultores_designacao', 'Designar Consultores por Módulo'],
+    'Cronograma e Check-list': ['consultores', 'Designar os Consultores'],
+  };

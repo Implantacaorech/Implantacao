@@ -18,6 +18,10 @@ import { ProtocolosController } from './protocolos.controller';
     ProcessamentoProtocolosService,
     RoboProtocolosService,
   ],
-  exports: [ProtocolosService, ProtocoloIaService, ProcessamentoProtocolosService],
+  exports: [
+    ProtocolosService,
+    ProtocoloIaService,
+    ProcessamentoProtocolosService,
+  ],
 })
 export class ProtocolosModule {}

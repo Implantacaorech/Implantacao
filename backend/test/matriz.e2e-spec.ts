@@ -38,7 +38,11 @@ describe('Matriz de Conhecimento (e2e)', () => {
     }).compile();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new ResponseInterceptor());
@@ -93,7 +97,9 @@ describe('Matriz de Conhecimento (e2e)', () => {
     );
 
     tokenAdm = (
-      await request(server()).post('/api/auth/login').send({ login: 'admin', senha: 'senha-adm-123' })
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'admin', senha: 'senha-adm-123' })
     ).body.data.accessToken;
     tokenCoordenador = (
       await request(server())
@@ -101,13 +107,19 @@ describe('Matriz de Conhecimento (e2e)', () => {
         .send({ login: 'coord1', senha: 'senha-coord-123' })
     ).body.data.accessToken;
     tokenAna = (
-      await request(server()).post('/api/auth/login').send({ login: 'ana', senha: 'senha-ana-123' })
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'ana', senha: 'senha-ana-123' })
     ).body.data.accessToken;
     tokenBeto = (
-      await request(server()).post('/api/auth/login').send({ login: 'beto', senha: 'senha-beto-123' })
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'beto', senha: 'senha-beto-123' })
     ).body.data.accessToken;
 
-    await competencias.save(competencias.create({ sigla: 'FAT01', area: 'Faturamento', ordem: 1 }));
+    await competencias.save(
+      competencias.create({ sigla: 'FAT01', area: 'Faturamento', ordem: 1 }),
+    );
     const ana = await tecnicos.save(
       tecnicos.create({
         nome: '007', // casado pelo Código SICLA da Ana
@@ -129,10 +141,15 @@ describe('Matriz de Conhecimento (e2e)', () => {
       expect(res.status).toBe(200);
       expect(res.body.data.restrito).toBe(false);
       expect(res.body.data.podeAdmin).toBe(true);
-      const linha = res.body.data.itens.find((t: { id: number }) => t.id === idAna);
+      const linha = res.body.data.itens.find(
+        (t: { id: number }) => t.id === idAna,
+      );
       expect(linha.qtdNotas).toBe(1);
 
-      const resCoord = await auth(request(server()).get('/api/matriz'), tokenCoordenador);
+      const resCoord = await auth(
+        request(server()).get('/api/matriz'),
+        tokenCoordenador,
+      );
       expect(resCoord.body.data.restrito).toBe(false);
       expect(resCoord.body.data.podeAdmin).toBe(false);
     });
@@ -154,7 +171,10 @@ describe('Matriz de Conhecimento (e2e)', () => {
 
   describe('GET /matriz/:id', () => {
     it('a própria consultora acessa a própria ficha, editável', async () => {
-      const res = await auth(request(server()).get(`/api/matriz/${idAna}`), tokenAna);
+      const res = await auth(
+        request(server()).get(`/api/matriz/${idAna}`),
+        tokenAna,
+      );
       expect(res.status).toBe(200);
       expect(res.body.data.editavel).toBe(true);
       expect(res.body.data.notas).toEqual({ FAT01: 8 });
@@ -162,18 +182,27 @@ describe('Matriz de Conhecimento (e2e)', () => {
     });
 
     it('GCI não pode abrir a ficha de outra pessoa (403)', async () => {
-      const res = await auth(request(server()).get(`/api/matriz/${idAna}`), tokenBeto);
+      const res = await auth(
+        request(server()).get(`/api/matriz/${idAna}`),
+        tokenBeto,
+      );
       expect(res.status).toBe(403);
     });
 
     it('Coordenador acessa qualquer ficha, mas não pode editar', async () => {
-      const res = await auth(request(server()).get(`/api/matriz/${idAna}`), tokenCoordenador);
+      const res = await auth(
+        request(server()).get(`/api/matriz/${idAna}`),
+        tokenCoordenador,
+      );
       expect(res.status).toBe(200);
       expect(res.body.data.editavel).toBe(false);
     });
 
     it('id inexistente -> 404', async () => {
-      const res = await auth(request(server()).get('/api/matriz/999999'), tokenAdm);
+      const res = await auth(
+        request(server()).get('/api/matriz/999999'),
+        tokenAdm,
+      );
       expect(res.status).toBe(404);
     });
   });
@@ -186,7 +215,10 @@ describe('Matriz de Conhecimento (e2e)', () => {
       ).send({ notas: { FAT01: '10' }, setor: 'Implantação Sênior' });
       expect(res.status).toBe(200);
 
-      const ficha = await auth(request(server()).get(`/api/matriz/${idAna}`), tokenAna);
+      const ficha = await auth(
+        request(server()).get(`/api/matriz/${idAna}`),
+        tokenAna,
+      );
       expect(ficha.body.data.notas).toEqual({ FAT01: 10 });
       expect(ficha.body.data.tecnico.setor).toBe('Implantação Sênior');
     });
@@ -218,12 +250,18 @@ describe('Matriz de Conhecimento (e2e)', () => {
 
   describe('POST /matriz/importar', () => {
     it('não-ADM não pode importar (403)', async () => {
-      const res = await auth(request(server()).post('/api/matriz/importar'), tokenCoordenador);
+      const res = await auth(
+        request(server()).post('/api/matriz/importar'),
+        tokenCoordenador,
+      );
       expect(res.status).toBe(403);
     });
 
     it('ADM pode disparar a importação (planilha local pode ou não existir no ambiente)', async () => {
-      const res = await auth(request(server()).post('/api/matriz/importar'), tokenAdm);
+      const res = await auth(
+        request(server()).post('/api/matriz/importar'),
+        tokenAdm,
+      );
       expect(res.status).toBe(200);
       expect(typeof res.body.data.ok).toBe('boolean');
       expect(typeof res.body.data.mensagem).toBe('string');

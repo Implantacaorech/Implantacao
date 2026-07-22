@@ -18,7 +18,11 @@ import { ResponseInterceptor } from '../src/common/interceptors/response.interce
 // DisponibilidadeModule transitivamente via CapacidadeService).
 jest.mock('oracledb', () => ({
   __esModule: true,
-  default: { getConnection: jest.fn(), initOracleClient: jest.fn(), OUT_FORMAT_OBJECT: 4002 },
+  default: {
+    getConnection: jest.fn(),
+    initOracleClient: jest.fn(),
+    OUT_FORMAT_OBJECT: 4002,
+  },
 }));
 
 describe('Painel (e2e)', () => {
@@ -46,7 +50,11 @@ describe('Painel (e2e)', () => {
     }).compile();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new ResponseInterceptor());
@@ -89,7 +97,9 @@ describe('Painel (e2e)', () => {
     );
 
     tokenAdm = (
-      await request(server()).post('/api/auth/login').send({ login: 'admin', senha: 'senha-adm-123' })
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'admin', senha: 'senha-adm-123' })
     ).body.data.accessToken;
     tokenConsultor = (
       await request(server())
@@ -97,7 +107,9 @@ describe('Painel (e2e)', () => {
         .send({ login: 'consultor1', senha: 'senha-cons-123' })
     ).body.data.accessToken;
     tokenGci = (
-      await request(server()).post('/api/auth/login').send({ login: 'gci1', senha: 'senha-gci-123' })
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'gci1', senha: 'senha-gci-123' })
     ).body.data.accessToken;
 
     const p1 = await projetos.save(
@@ -125,7 +137,9 @@ describe('Painel (e2e)', () => {
         situacao: 'Em risco',
       }),
     );
-    await documentos.save(documentos.create({ projetoId: p1.id, tipo: 'levantamento' }));
+    await documentos.save(
+      documentos.create({ projetoId: p1.id, tipo: 'levantamento' }),
+    );
   });
 
   afterAll(async () => {
@@ -134,7 +148,10 @@ describe('Painel (e2e)', () => {
 
   describe('GET /painel/home', () => {
     it('qualquer perfil autenticado acessa (Consultor incluído)', async () => {
-      const res = await auth(request(server()).get('/api/painel/home'), tokenConsultor);
+      const res = await auth(
+        request(server()).get('/api/painel/home'),
+        tokenConsultor,
+      );
       expect(res.status).toBe(200);
       expect(res.body.data.dados).toBeDefined();
     });
@@ -147,19 +164,28 @@ describe('Painel (e2e)', () => {
 
   describe('GET /painel/coordenacao', () => {
     it('Consultor não acessa (403)', async () => {
-      const res = await auth(request(server()).get('/api/painel/coordenacao'), tokenConsultor);
+      const res = await auth(
+        request(server()).get('/api/painel/coordenacao'),
+        tokenConsultor,
+      );
       expect(res.status).toBe(403);
     });
 
     it('ADM vê a carteira inteira', async () => {
-      const res = await auth(request(server()).get('/api/painel/coordenacao'), tokenAdm);
+      const res = await auth(
+        request(server()).get('/api/painel/coordenacao'),
+        tokenAdm,
+      );
       expect(res.status).toBe(200);
       expect(res.body.data.m.total).toBe(2);
       expect(res.body.data.etapas).toContain('Encerramento');
     });
 
     it('GCI só vê os próprios projetos', async () => {
-      const res = await auth(request(server()).get('/api/painel/coordenacao'), tokenGci);
+      const res = await auth(
+        request(server()).get('/api/painel/coordenacao'),
+        tokenGci,
+      );
       expect(res.status).toBe(200);
       expect(res.body.data.m.total).toBe(1);
     });
@@ -176,7 +202,9 @@ describe('Painel (e2e)', () => {
 
     it('ADM avalia a equipe (sem Consultor/GCI cadastrado com perfil certo -> equipe vazia é aceitável)', async () => {
       const res = await auth(
-        request(server()).get('/api/painel/coordenacao/capacidade').query({ semanas: '2' }),
+        request(server())
+          .get('/api/painel/coordenacao/capacidade')
+          .query({ semanas: '2' }),
         tokenAdm,
       );
       expect(res.status).toBe(200);
@@ -190,26 +218,41 @@ describe('Painel (e2e)', () => {
 
   describe('GET /painel/atividade', () => {
     it('Consultor não acessa (403)', async () => {
-      const res = await auth(request(server()).get('/api/painel/atividade'), tokenConsultor);
+      const res = await auth(
+        request(server()).get('/api/painel/atividade'),
+        tokenConsultor,
+      );
       expect(res.status).toBe(403);
     });
 
     it('ADM vê o funil macro cobrindo os projetos visíveis', async () => {
-      const res = await auth(request(server()).get('/api/painel/atividade'), tokenAdm);
+      const res = await auth(
+        request(server()).get('/api/painel/atividade'),
+        tokenAdm,
+      );
       expect(res.status).toBe(200);
-      const total = res.body.data.funil.reduce((n: number, f: { n: number }) => n + f.n, 0);
+      const total = res.body.data.funil.reduce(
+        (n: number, f: { n: number }) => n + f.n,
+        0,
+      );
       expect(total).toBe(2);
     });
   });
 
   describe('POST /painel/coordenacao/digest', () => {
     it('Consultor não acessa (403)', async () => {
-      const res = await auth(request(server()).post('/api/painel/coordenacao/digest'), tokenConsultor);
+      const res = await auth(
+        request(server()).post('/api/painel/coordenacao/digest'),
+        tokenConsultor,
+      );
       expect(res.status).toBe(403);
     });
 
     it('ADM aciona o envio manual — sem MIGRACAO_DIGEST_PARA configurado, devolve erro amigável (200)', async () => {
-      const res = await auth(request(server()).post('/api/painel/coordenacao/digest'), tokenAdm);
+      const res = await auth(
+        request(server()).post('/api/painel/coordenacao/digest'),
+        tokenAdm,
+      );
       expect(res.status).toBe(200);
       expect(res.body.data.ok).toBe(false);
       expect(res.body.data.mensagem).toContain('destinatários');
@@ -218,12 +261,18 @@ describe('Painel (e2e)', () => {
 
   describe('GET /painel/monitoramento', () => {
     it('Consultor não acessa (403)', async () => {
-      const res = await auth(request(server()).get('/api/painel/monitoramento'), tokenConsultor);
+      const res = await auth(
+        request(server()).get('/api/painel/monitoramento'),
+        tokenConsultor,
+      );
       expect(res.status).toBe(403);
     });
 
     it('ADM vê os 8 setores, saúde e mapa cobrindo a carteira inteira', async () => {
-      const res = await auth(request(server()).get('/api/painel/monitoramento'), tokenAdm);
+      const res = await auth(
+        request(server()).get('/api/painel/monitoramento'),
+        tokenAdm,
+      );
       expect(res.status).toBe(200);
       expect(res.body.data.setores).toHaveLength(8);
       expect(typeof res.body.data.saude).toBe('number');
@@ -231,7 +280,10 @@ describe('Painel (e2e)', () => {
     });
 
     it('GCI só vê o próprio projeto no mapa', async () => {
-      const res = await auth(request(server()).get('/api/painel/monitoramento'), tokenGci);
+      const res = await auth(
+        request(server()).get('/api/painel/monitoramento'),
+        tokenGci,
+      );
       expect(res.status).toBe(200);
       expect(res.body.data.mapa).toHaveLength(1);
       expect(res.body.data.mapa[0].cliente).toBe('Cliente Visível ao GCI');

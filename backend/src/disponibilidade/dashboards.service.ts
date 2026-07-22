@@ -94,7 +94,8 @@ export class DashboardsService {
     const refRaw = (query.ref || '').trim();
     if (/^\d{4}-\d{1,2}$/.test(refRaw)) {
       const [ano, mes] = refRaw.split('-').map(Number);
-      if (mes >= 1 && mes <= 12) refIni = `${ano}-${String(mes).padStart(2, '0')}-01`;
+      if (mes >= 1 && mes <= 12)
+        refIni = `${ano}-${String(mes).padStart(2, '0')}-01`;
     }
     const direcao = query.direcao === 'recuar' ? 'recuar' : 'avancar';
     let n = Number(query.n ?? 12);
@@ -110,7 +111,14 @@ export class DashboardsService {
       inicio = refIni;
       fimExclusivo = this.addMonths(refIni, n);
     }
-    return { ref: refIni.slice(0, 7), direcao, n, inicio, fimExclusivo, fim: this.addDays(fimExclusivo, -1) };
+    return {
+      ref: refIni.slice(0, 7),
+      direcao,
+      n,
+      inicio,
+      fimExclusivo,
+      fim: this.addDays(fimExclusivo, -1),
+    };
   }
 
   /** Cada mês do período, em ordem cronológica. */
@@ -143,14 +151,24 @@ export class DashboardsService {
     return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
   }
 
-  async listarDisponiveis(): Promise<{ id: number; slug: string; nome: string; mostrarGrafico: boolean }[]> {
+  async listarDisponiveis(): Promise<
+    { id: number; slug: string; nome: string; mostrarGrafico: boolean }[]
+  > {
     const consultas = await this.consultas.listar();
     return consultas
       .filter((c) => c.colunaData.trim())
-      .map((c) => ({ id: c.id, slug: c.slug, nome: c.nome, mostrarGrafico: c.mostrarGrafico }));
+      .map((c) => ({
+        id: c.id,
+        slug: c.slug,
+        nome: c.nome,
+        mostrarGrafico: c.mostrarGrafico,
+      }));
   }
 
-  async rodar(slug: string, query: QueryDashboard): Promise<ResultadoDashboard> {
+  async rodar(
+    slug: string,
+    query: QueryDashboard,
+  ): Promise<ResultadoDashboard> {
     const periodo = this.periodo(query);
     const meses = this.mesesDoPeriodo(periodo);
     const atalhos = this.atalhosMes(meses);
@@ -176,7 +194,10 @@ export class DashboardsService {
 
     const consulta = await this.consultas.porSlug(slug);
     if (!consulta || !consulta.sql.trim()) {
-      return { ...base, erro: `Consulta '${slug}' não configurada (Consultas BD, área Sistema).` };
+      return {
+        ...base,
+        erro: `Consulta '${slug}' não configurada (Consultas BD, área Sistema).`,
+      };
     }
     base.nome = consulta.nome;
     if (!this.disponibilidade.configurado()) {
@@ -194,22 +215,37 @@ export class DashboardsService {
 
     const colunaData = consulta.colunaData.toUpperCase();
     const colunaSituacao = consulta.colunaSituacao.toUpperCase();
-    const contagemMes = new Map<string, number>(meses.map((m) => [`${m.ano}-${m.mes}`, 0]));
+    const contagemMes = new Map<string, number>(
+      meses.map((m) => [`${m.ano}-${m.mes}`, 0]),
+    );
     const situacoesDisp: string[] = [];
-    const linhasPeriodo: { linha: Record<string, unknown>; data: string; situacao: string }[] = [];
+    const linhasPeriodo: {
+      linha: Record<string, unknown>;
+      data: string;
+      situacao: string;
+    }[] = [];
 
     for (const linhaBruta of r.linhas) {
       const linha: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(linhaBruta)) linha[(k || '').toUpperCase()] = v;
+      for (const [k, v] of Object.entries(linhaBruta))
+        linha[(k || '').toUpperCase()] = v;
       const dData = colunaData ? this.comoData(linha[colunaData]) : null;
-      if (colunaData && (!dData || dData < periodo.inicio || dData >= periodo.fimExclusivo)) continue;
-      const situacao = colunaSituacao ? String(linha[colunaSituacao] ?? '').trim() : '';
-      if (situacao && !situacoesDisp.includes(situacao)) situacoesDisp.push(situacao);
+      if (
+        colunaData &&
+        (!dData || dData < periodo.inicio || dData >= periodo.fimExclusivo)
+      )
+        continue;
+      const situacao = colunaSituacao
+        ? String(linha[colunaSituacao] ?? '').trim()
+        : '';
+      if (situacao && !situacoesDisp.includes(situacao))
+        situacoesDisp.push(situacao);
       linhasPeriodo.push({ linha, data: dData ?? '', situacao });
     }
     situacoesDisp.sort();
     // nada marcado na URL = "seleções múltiplas" (todas) — mesmo default do Flask original
-    const situacoesSel = situacoesSelParam.size > 0 ? situacoesSelParam : new Set(situacoesDisp);
+    const situacoesSel =
+      situacoesSelParam.size > 0 ? situacoesSelParam : new Set(situacoesDisp);
 
     const linhasTabela: Record<string, unknown>[] = [];
     for (const { linha, data, situacao } of linhasPeriodo) {
@@ -217,7 +253,8 @@ export class DashboardsService {
       if (colunaData && data) {
         const [ano, mes] = data.split('-').map(Number);
         const chave = `${ano}-${mes}`;
-        if (contagemMes.has(chave)) contagemMes.set(chave, (contagemMes.get(chave) ?? 0) + 1);
+        if (contagemMes.has(chave))
+          contagemMes.set(chave, (contagemMes.get(chave) ?? 0) + 1);
         if (mesSel && anoSel && (ano !== anoSel || mes !== mesSel)) continue;
       }
       linhasTabela.push(linha);
@@ -234,7 +271,9 @@ export class DashboardsService {
       consulta.mostrarGrafico && colunaData
         ? {
             labels: meses.map((m) => m.nome),
-            valores: meses.map((m) => contagemMes.get(`${m.ano}-${m.mes}`) ?? 0),
+            valores: meses.map(
+              (m) => contagemMes.get(`${m.ano}-${m.mes}`) ?? 0,
+            ),
           }
         : null;
 

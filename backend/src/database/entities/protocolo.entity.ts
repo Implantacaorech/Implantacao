@@ -32,7 +32,10 @@ export class Protocolo {
   @Column({ length: 60, default: 'Módulo a validar' })
   modulo: string;
 
-  @Column({ length: 120, default: 'Menu não identificado - revisar manualmente' })
+  @Column({
+    length: 120,
+    default: 'Menu não identificado - revisar manualmente',
+  })
   menu: string;
 
   @Column({ length: 255, default: '' })
@@ -83,7 +86,12 @@ export class Protocolo {
   videoCaminho: string;
 
   // type: 'varchar' explícito — ver comentário equivalente em projeto.entity.ts.
-  @Column({ name: 'video_origem', type: 'varchar', length: 20, default: 'sharepoint' })
+  @Column({
+    name: 'video_origem',
+    type: 'varchar',
+    length: 20,
+    default: 'sharepoint',
+  })
   videoOrigem: VideoOrigem;
 
   // Hash rápido (nome + tamanho + 1º MB) para dedup — o mesmo vídeo não é registrado 2x.

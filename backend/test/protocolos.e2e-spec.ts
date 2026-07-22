@@ -74,7 +74,11 @@ describe('Protocolos de Treinamento (e2e)', () => {
       .compile();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new ResponseInterceptor());
@@ -114,7 +118,9 @@ describe('Protocolos de Treinamento (e2e)', () => {
     );
 
     tokenAdm = (
-      await request(server()).post('/api/auth/login').send({ login: 'admin', senha: 'senha-adm-123' })
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'admin', senha: 'senha-adm-123' })
     ).body.data.accessToken;
     tokenConsultor = (
       await request(server())
@@ -122,7 +128,9 @@ describe('Protocolos de Treinamento (e2e)', () => {
         .send({ login: 'consultor1', senha: 'senha-cons-123' })
     ).body.data.accessToken;
     tokenCoordenador = (
-      await request(server()).post('/api/auth/login').send({ login: 'coord1', senha: 'senha-coord-123' })
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'coord1', senha: 'senha-coord-123' })
     ).body.data.accessToken;
   });
 
@@ -153,7 +161,11 @@ describe('Protocolos de Treinamento (e2e)', () => {
     const upload = await auth(
       request(server())
         .post('/api/protocolos/novo')
-        .attach('video', Buffer.from('bytes de video falso'), 'Aula Cadastro.mp4'),
+        .attach(
+          'video',
+          Buffer.from('bytes de video falso'),
+          'Aula Cadastro.mp4',
+        ),
     );
     expect(upload.status).toBe(200);
     expect(upload.body.data.novo).toBe(true);
@@ -171,7 +183,9 @@ describe('Protocolos de Treinamento (e2e)', () => {
     expect(ficha.body.data.protocolo.status).toBe('Em revisão');
     expect(ficha.body.data.protocolo.modulo).toBe('Estoque');
     expect(ficha.body.data.protocolo.menu).toBe('1.4-I');
-    expect(ficha.body.data.protocolo.transcricao).toContain('cadastro de produtos');
+    expect(ficha.body.data.protocolo.transcricao).toContain(
+      'cadastro de produtos',
+    );
     expect(ficha.body.data.ehAudio).toBe(false);
     expect(ficha.body.data.podeAprovar).toBe(true); // ADM
 
@@ -196,13 +210,17 @@ describe('Protocolos de Treinamento (e2e)', () => {
 
     const depois = await auth(request(server()).get(`/api/protocolos/${id}`));
     expect(depois.body.data.protocolo.status).toBe('Aprovado');
-    expect(depois.body.data.protocolo.titulo).toBe('Título revisado manualmente');
+    expect(depois.body.data.protocolo.titulo).toBe(
+      'Título revisado manualmente',
+    );
     expect(depois.body.data.protocolo.aprovador).toBe('Coordenadora');
 
     const listaFiltrada = await auth(
       request(server()).get('/api/protocolos').query({ status: 'Aprovado' }),
     );
-    expect(listaFiltrada.body.data.itens.some((p: any) => p.id === id)).toBe(true);
+    expect(listaFiltrada.body.data.itens.some((p: any) => p.id === id)).toBe(
+      true,
+    );
   }, 15000);
 
   // Nota: dedup por hash não pega uploads repetidos com o MESMO nome original — o
@@ -230,7 +248,9 @@ describe('Protocolos de Treinamento (e2e)', () => {
   }, 15000);
 
   it('/status devolve 404 para protocolo inexistente', async () => {
-    const res = await auth(request(server()).get('/api/protocolos/999999/status'));
+    const res = await auth(
+      request(server()).get('/api/protocolos/999999/status'),
+    );
     expect(res.status).toBe(404);
   });
 
@@ -238,10 +258,16 @@ describe('Protocolos de Treinamento (e2e)', () => {
     const upload = await auth(
       request(server())
         .post('/api/protocolos/novo')
-        .attach('video', Buffer.from('conteudo do video para stream'), 'stream.mp4'),
+        .attach(
+          'video',
+          Buffer.from('conteudo do video para stream'),
+          'stream.mp4',
+        ),
     );
     const id = upload.body.data.id as number;
-    const res = await auth(request(server()).get(`/api/protocolos/${id}/video`));
+    const res = await auth(
+      request(server()).get(`/api/protocolos/${id}/video`),
+    );
     expect(res.status).toBe(200);
     expect(res.text).toBe('conteudo do video para stream');
   });

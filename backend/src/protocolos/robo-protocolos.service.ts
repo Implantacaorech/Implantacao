@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { AppConfig } from '../config/configuration';
@@ -43,10 +48,14 @@ export class RoboProtocolosService implements OnModuleInit, OnModuleDestroy {
     try {
       if (this.processamento.configurado()) {
         const n = await this.processamento.processarPendentes();
-        if (n) this.logger.log(`Robô de protocolos: ${n} vídeo(s) processado(s).`);
+        if (n)
+          this.logger.log(`Robô de protocolos: ${n} vídeo(s) processado(s).`);
       }
     } catch (e) {
-      this.logger.error('Robô de protocolos falhou', e instanceof Error ? e.stack : String(e));
+      this.logger.error(
+        'Robô de protocolos falhou',
+        e instanceof Error ? e.stack : String(e),
+      );
     }
   }
 }

@@ -30,7 +30,11 @@ describe('Agentes — telemetria de execução (e2e)', () => {
     }).compile();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new ResponseInterceptor());
@@ -60,7 +64,9 @@ describe('Agentes — telemetria de execução (e2e)', () => {
     );
 
     tokenAdm = (
-      await request(server()).post('/api/auth/login').send({ login: 'admin', senha: 'senha-adm-123' })
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'admin', senha: 'senha-adm-123' })
     ).body.data.accessToken;
     tokenConsultor = (
       await request(server())
@@ -93,11 +99,15 @@ describe('Agentes — telemetria de execução (e2e)', () => {
       .get('/api/agentes/grafo')
       .set('Authorization', `Bearer ${tokenAdm}`);
     expect(grafo.status).toBe(200);
-    const no = grafo.body.data.nos.find((n: { id: string }) => n.id === 'documentacao-contexto');
+    const no = grafo.body.data.nos.find(
+      (n: { id: string }) => n.id === 'documentacao-contexto',
+    );
     expect(no.ativo).toBe(true);
     expect(no.execucoes24h).toBeGreaterThanOrEqual(1);
     // nó que nunca teve execução nesta suíte continua honesto (não inventa atividade)
-    const semExecucao = grafo.body.data.nos.find((n: { id: string }) => n.id === 'gestao-mudanca');
+    const semExecucao = grafo.body.data.nos.find(
+      (n: { id: string }) => n.id === 'gestao-mudanca',
+    );
     expect(semExecucao.ativo).toBe(false);
   });
 
@@ -119,7 +129,9 @@ describe('Agentes — telemetria de execução (e2e)', () => {
     const grafo = await request(server())
       .get('/api/agentes/grafo')
       .set('Authorization', `Bearer ${tokenAdm}`);
-    const no = grafo.body.data.nos.find((n: { id: string }) => n.id === 'seguranca-permissoes');
+    const no = grafo.body.data.nos.find(
+      (n: { id: string }) => n.id === 'seguranca-permissoes',
+    );
     expect(no.ativo).toBe(false);
     expect(no.execucoes24h).toBeGreaterThanOrEqual(1);
   });

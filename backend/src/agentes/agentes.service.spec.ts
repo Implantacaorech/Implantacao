@@ -41,22 +41,33 @@ describe('AgentesService', () => {
   it('iniciar grava com status em_execucao e agentePaiId nulo por padrão', async () => {
     const r = await service.iniciar({ agente: 'painel-core', tarefa: 'X' });
     expect(repo.create).toHaveBeenCalledWith(
-      expect.objectContaining({ agente: 'painel-core', status: 'em_execucao', agentePaiId: null }),
+      expect.objectContaining({
+        agente: 'painel-core',
+        status: 'em_execucao',
+        agentePaiId: null,
+      }),
     );
     expect(r.id).toBe(1);
   });
 
   it('concluir lança NotFound se a execução não existe', async () => {
     repo.findOne.mockResolvedValue(null);
-    await expect(service.concluir(999, { status: 'concluido' })).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      service.concluir(999, { status: 'concluido' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('concluir seta status/resultado/concluidoEm e salva', async () => {
-    const existente = { id: 5, agente: 'qualidade', status: 'em_execucao' } as AgenteExecucao;
+    const existente = {
+      id: 5,
+      agente: 'qualidade',
+      status: 'em_execucao',
+    } as AgenteExecucao;
     repo.findOne.mockResolvedValue(existente);
-    const r = await service.concluir(5, { status: 'falhou', resultado: 'quebrou o teste X' });
+    const r = await service.concluir(5, {
+      status: 'falhou',
+      resultado: 'quebrou o teste X',
+    });
     expect(r.status).toBe('falhou');
     expect(r.resultado).toBe('quebrou o teste X');
     expect(r.concluidoEm).toBeInstanceOf(Date);
@@ -74,7 +85,9 @@ describe('AgentesService', () => {
     queryBuilder.getRawMany.mockResolvedValue([]);
     const { nos, arestas } = await service.grafo();
     expect(nos.length).toBe(13); // os 13 agentes reais de .claude/agents/
-    expect(nos.every((n) => n.ativo === false && n.execucoes24h === 0)).toBe(true);
+    expect(nos.every((n) => n.ativo === false && n.execucoes24h === 0)).toBe(
+      true,
+    );
     expect(arestas.length).toBeGreaterThan(0);
   });
 

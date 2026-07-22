@@ -1,14 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Modificacao, EntidadeModificacao } from '../database/entities/modificacao.entity';
+import {
+  Modificacao,
+  EntidadeModificacao,
+} from '../database/entities/modificacao.entity';
 
 /** Histórico de modificações linha-a-linha do Cronograma/Check List. Espelha
  * webapp/db.py:registrar_modificacao/modificacoes_do_projeto. */
 @Injectable()
 export class ModificacoesService {
   constructor(
-    @InjectRepository(Modificacao) private readonly repo: Repository<Modificacao>,
+    @InjectRepository(Modificacao)
+    private readonly repo: Repository<Modificacao>,
   ) {}
 
   async doProjeto(
@@ -30,7 +34,15 @@ export class ModificacoesService {
     autor: string,
   ): Promise<void> {
     await this.repo.save(
-      this.repo.create({ projetoId, entidade, ref, campo, de, para, autor: autor || '' }),
+      this.repo.create({
+        projetoId,
+        entidade,
+        ref,
+        campo,
+        de,
+        para,
+        autor: autor || '',
+      }),
     );
   }
 }

@@ -112,7 +112,8 @@ export const MODELOS_EMAIL_PADRAO: ModeloEmailPadrao[] = [
   {
     slug: 'encerramento-coordenacao',
     nome: 'Encerramento da implantação (à Coordenação)',
-    assunto: 'Encerramento de Implantação — {{CLIENTE}} — RNS(I) {{NUMERO_PROJETO}}',
+    assunto:
+      'Encerramento de Implantação — {{CLIENTE}} — RNS(I) {{NUMERO_PROJETO}}',
     corpo:
       'Olá,\n\nInformo o encerramento da implantação do cliente {{CLIENTE}} ' +
       '(projeto nº {{NUMERO_PROJETO}}).\n\n' +

@@ -1,4 +1,12 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -19,7 +27,9 @@ export class ConfigImapController {
   constructor(private readonly imap: ImapIntakeService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Status/config atual do IMAP (nunca devolve a senha)' })
+  @ApiOperation({
+    summary: 'Status/config atual do IMAP (nunca devolve a senha)',
+  })
   status() {
     const { senha: _senha, ...cfg } = this.imap.carregarConfig();
     return new ApiEnvelope({ ...cfg, configurado: this.imap.configurado() });

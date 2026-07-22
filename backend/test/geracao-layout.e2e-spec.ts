@@ -124,9 +124,14 @@ describe('Geração de documentos fiéis — Levantamento/Projeto/Termo (e2e)', 
     tokenGci = loginGci.body.data.accessToken;
 
     await indiceRepo.save(
-      [{ moduloSigla: 'FAT', modulo: 'Faturamento', adicional: '', topico: 'Emissão de NF' }].map(
-        (l, i) => indiceRepo.create({ ordem: i, ...l }),
-      ),
+      [
+        {
+          moduloSigla: 'FAT',
+          modulo: 'Faturamento',
+          adicional: '',
+          topico: 'Emissão de NF',
+        },
+      ].map((l, i) => indiceRepo.create({ ordem: i, ...l })),
     );
 
     // Usa os layouts fiéis reais do repositório (tools/templates/layouts/) — mesmo padrão
@@ -213,7 +218,9 @@ describe('Geração de documentos fiéis — Levantamento/Projeto/Termo (e2e)', 
     );
     expect(eventos.body.data).toHaveLength(2);
     expect(
-      eventos.body.data.some((e: { descricao: string }) => e.descricao.includes('termo_teste.docx')),
+      eventos.body.data.some((e: { descricao: string }) =>
+        e.descricao.includes('termo_teste.docx'),
+      ),
     ).toBe(true);
     expect(
       eventos.body.data.some((e: { tipo: string }) => e.tipo === 'email'),
@@ -223,7 +230,9 @@ describe('Geração de documentos fiéis — Levantamento/Projeto/Termo (e2e)', 
   it('modo=modelo é repassado ao docservice (guia de preenchimento manual do Projeto)', async () => {
     const pid = await criarProjeto();
     await auth(
-      request(server()).post(`/api/projetos/${pid}/gerar-layout/projeto?modo=modelo`),
+      request(server()).post(
+        `/api/projetos/${pid}/gerar-layout/projeto?modo=modelo`,
+      ),
     );
     expect(fake.ultimoCorpo.slug).toBe('projeto');
     expect(fake.ultimoCorpo.modo).toBe('modelo');
@@ -264,7 +273,9 @@ describe('Geração de documentos fiéis — Levantamento/Projeto/Termo (e2e)', 
       request(server()).get(`/api/projetos/${pid}/eventos`),
     );
     expect(
-      eventos.body.data.some((e: { descricao: string }) => e.descricao.includes('pelo layout oficial (cronograma)')),
+      eventos.body.data.some((e: { descricao: string }) =>
+        e.descricao.includes('pelo layout oficial (cronograma)'),
+      ),
     ).toBe(true);
   });
 });

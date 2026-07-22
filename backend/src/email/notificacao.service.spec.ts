@@ -41,7 +41,9 @@ describe('NotificacaoService', () => {
     it('junta os logins de ADM + Coordenador', async () => {
       users.porPerfil.mockImplementation((perfil: string) =>
         Promise.resolve(
-          perfil === 'ADM' ? [{ login: 'adm1' }] : [{ login: 'coord1' }, { login: '' }],
+          perfil === 'ADM'
+            ? [{ login: 'adm1' }]
+            : [{ login: 'coord1' }, { login: '' }],
         ),
       );
       const emails = await service.emailsCoordenacao();
@@ -113,11 +115,15 @@ describe('NotificacaoService', () => {
       );
       mailer.configurado.mockReturnValue(true);
       mailer.enviar.mockResolvedValue({ ok: true, erro: null });
-      await service.notificarEvento(3, 'encerrado', { cliente: 'Cliente Teste' } as any);
+      await service.notificarEvento(3, 'encerrado', {
+        cliente: 'Cliente Teste',
+      });
       expect(mailer.enviar).toHaveBeenCalledWith(
         ['adm1'],
         'Implantação encerrada — Cliente Teste',
-        expect.stringContaining('A implantação de Cliente Teste foi encerrada.'),
+        expect.stringContaining(
+          'A implantação de Cliente Teste foi encerrada.',
+        ),
       );
     });
 
@@ -137,7 +143,7 @@ describe('NotificacaoService', () => {
     });
 
     it('evento desconhecido não faz nada', async () => {
-      await service.notificarEvento(5, 'nao-existe' as any);
+      await service.notificarEvento(5, 'nao-existe');
       expect(mailer.enviar).not.toHaveBeenCalled();
     });
   });

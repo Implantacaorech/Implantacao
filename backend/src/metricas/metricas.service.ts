@@ -209,7 +209,9 @@ export class MetricasService {
   }
 
   gateStatus(etapa: Etapa, docs: DocLeve[]): GateStatus {
-    const presentes = new Set((docs || []).map((d) => (d.tipo || '').toLowerCase()));
+    const presentes = new Set(
+      (docs || []).map((d) => (d.tipo || '').toLowerCase()),
+    );
     const itens: ItemGate[] = (GATES[etapa] ?? []).map((t) => ({
       tipo: t,
       label: DOC_LABELS[t] ?? t,
@@ -227,14 +229,20 @@ export class MetricasService {
     if (!etapa) return true;
     const req = ACAO_ENTRADA[etapa]?.[0];
     if (req === 'gci_e_data_levantamento') {
-      return !!(proj.gci || '').trim() && !!(proj.dataLevantamento || '').trim();
+      return (
+        !!(proj.gci || '').trim() && !!(proj.dataLevantamento || '').trim()
+      );
     }
     if (req === 'consultores_designacao') return !!(proj.gci || '').trim();
     if (req === 'consultores') return !!(proj.consultor || '').trim();
     return true;
   }
 
-  podeAvancar(etapa: Etapa, proj: Projeto, docs: DocLeve[]): { ok: boolean; bloqueios: string[] } {
+  podeAvancar(
+    etapa: Etapa,
+    proj: Projeto,
+    docs: DocLeve[],
+  ): { ok: boolean; bloqueios: string[] } {
     const bloqueios: string[] = [];
     for (const f of this.camposFaltantes(etapa, proj)) {
       bloqueios.push(`Campo obrigatório: ${f.label}`);
@@ -261,11 +269,18 @@ export class MetricasService {
    * preenchidos). Nunca avança PARA FORA de "Levantamento" — a conclusão do
    * Levantamento é confirmada manualmente pelo GCI (botão Avançar). Espelha
    * webapp/app.py:_auto_avancar. */
-  autoAvancar(projeto: Projeto, docs: DocLeve[]): { etapaAnterior: Etapa; etapaNova: Etapa }[] {
+  autoAvancar(
+    projeto: Projeto,
+    docs: DocLeve[],
+  ): { etapaAnterior: Etapa; etapaNova: Etapa }[] {
     const transicoes: { etapaAnterior: Etapa; etapaNova: Etapa }[] = [];
     if (projeto.etapa === 'Levantamento') return transicoes;
     let prox = this.proximaEtapa(projeto.etapa);
-    while (prox && this.gateStatus(prox, docs).ok && this.acaoEntradaOk(prox, projeto)) {
+    while (
+      prox &&
+      this.gateStatus(prox, docs).ok &&
+      this.acaoEntradaOk(prox, projeto)
+    ) {
       transicoes.push({ etapaAnterior: projeto.etapa, etapaNova: prox });
       projeto.etapa = prox;
       prox = this.proximaEtapa(projeto.etapa);
@@ -274,10 +289,17 @@ export class MetricasService {
   }
 
   /** Agrega a carteira p/ o Painel Coordenação. Espelha webapp/db.py:metricas. */
-  metricas(projetos: Projeto[], docsMap: Record<number, DocLeve[]> = {}): ResultadoMetricas {
+  metricas(
+    projetos: Projeto[],
+    docsMap: Record<number, DocLeve[]> = {},
+  ): ResultadoMetricas {
     const hoje = this.hoje();
-    const porSituacao: Record<string, number> = Object.fromEntries(SITUACOES.map((s) => [s, 0]));
-    const porEtapa: Record<string, number> = Object.fromEntries(ETAPAS.map((e) => [e, 0]));
+    const porSituacao: Record<string, number> = Object.fromEntries(
+      SITUACOES.map((s) => [s, 0]),
+    );
+    const porEtapa: Record<string, number> = Object.fromEntries(
+      ETAPAS.map((e) => [e, 0]),
+    );
     const consultores = new Map<string, LinhaConsultorCarga>();
     const atrasados: LinhaAtraso[] = [];
     const emRisco: LinhaRisco[] = [];
@@ -302,12 +324,17 @@ export class MetricasService {
       if (encerrado) {
         concluidos++;
         const di = this.pdate(p.dataInicio);
-        const df = this.pdate(p.dataUsoOficial) ?? this.pdate(p.dataEncerramento);
+        const df =
+          this.pdate(p.dataUsoOficial) ?? this.pdate(p.dataEncerramento);
         if (di && df && df >= di) ttv.push(this.diffDias(df, di));
         continue;
       }
 
-      const c = consultores.get(cons) ?? { consultor: cons, projetos: 0, horas: 0 };
+      const c = consultores.get(cons) ?? {
+        consultor: cons,
+        projetos: 0,
+        horas: 0,
+      };
       c.projetos += 1;
       c.horas += cob + bon;
       consultores.set(cons, c);
@@ -325,7 +352,7 @@ export class MetricasService {
       if (sit === 'Em risco') {
         emRisco.push({ id: p.id, cliente: p.cliente, etapa: et });
       }
-      if (!this.gateStatus(et as Etapa, docsMap[p.id] ?? []).ok) gatePendente++;
+      if (!this.gateStatus(et, docsMap[p.id] ?? []).ok) gatePendente++;
     }
 
     const ativos = projetos.length - concluidos;
@@ -343,17 +370,25 @@ export class MetricasService {
       nRisco: emRisco.length,
       gatePendente,
       noPrazo: ativos - atrasados.length,
-      consultores: [...consultores.values()].sort((a, b) => b.projetos - a.projetos),
+      consultores: [...consultores.values()].sort(
+        (a, b) => b.projetos - a.projetos,
+      ),
       horasCob,
       horasBon,
       horasTotal: horasCob + horasBon,
-      ttvMedio: ttv.length > 0 ? Math.round(ttv.reduce((a, b) => a + b, 0) / ttv.length) : null,
+      ttvMedio:
+        ttv.length > 0
+          ? Math.round(ttv.reduce((a, b) => a + b, 0) / ttv.length)
+          : null,
     };
   }
 
   /** Alertas proativos (SLA / hypercare / risco) dos projetos ATIVOS. Espelha
    * webapp/db.py:alertas. */
-  alertas(projetos: Projeto[], docsMap: Record<number, DocLeve[]> = {}): Alerta[] {
+  alertas(
+    projetos: Projeto[],
+    docsMap: Record<number, DocLeve[]> = {},
+  ): Alerta[] {
     const hoje = this.hoje();
     const agora = new Date();
     const out: Alerta[] = [];
@@ -364,21 +399,35 @@ export class MetricasService {
       if (sit === 'Concluído') continue;
       const pid = p.id;
       const cli = p.cliente;
-      const tipos = new Set((docsMap[pid] ?? []).map((d) => (d.tipo || '').toLowerCase()));
+      const tipos = new Set(
+        (docsMap[pid] ?? []).map((d) => (d.tipo || '').toLowerCase()),
+      );
       const duso = this.pdate(p.dataUsoOficial);
 
-      const add = (nivel: 'alto' | 'medio', tipo: string, msg: string): void => {
+      const add = (
+        nivel: 'alto' | 'medio',
+        tipo: string,
+        msg: string,
+      ): void => {
         out.push({ nivel, projetoId: pid, cliente: cli, tipo, msg });
       };
 
       if (duso && duso < hoje) {
-        add('alto', 'atraso', `Uso oficial previsto venceu há ${this.diffDias(hoje, duso)} dia(s)`);
+        add(
+          'alto',
+          'atraso',
+          `Uso oficial previsto venceu há ${this.diffDias(hoje, duso)} dia(s)`,
+        );
       }
       if (sit === 'Em risco') {
         add('alto', 'risco', 'Projeto marcado como Em risco');
       }
       const di = this.pdate(p.dataInicio);
-      if (di && !tipos.has('cronograma') && hoje > this.diasUteis(di, SLA_CRONOGRAMA_UTEIS)) {
+      if (
+        di &&
+        !tipos.has('cronograma') &&
+        hoje > this.diasUteis(di, SLA_CRONOGRAMA_UTEIS)
+      ) {
         add(
           'medio',
           'sla',
@@ -404,19 +453,27 @@ export class MetricasService {
       }
     }
 
-    out.sort((a, b) => (a.nivel === 'alto' ? 0 : 1) - (b.nivel === 'alto' ? 0 : 1));
+    out.sort(
+      (a, b) => (a.nivel === 'alto' ? 0 : 1) - (b.nivel === 'alto' ? 0 : 1),
+    );
     return out;
   }
 
   /** Contagens de uso no período: projetos criados + eventos por tipo. Espelha
    * webapp/db.py:metricas_uso. */
-  metricasUso(eventos: EventoLeve[], projetos: Projeto[], dias = 30): MetricasUso {
+  metricasUso(
+    eventos: EventoLeve[],
+    projetos: Projeto[],
+    dias = 30,
+  ): MetricasUso {
     const corte = new Date();
     corte.setDate(corte.getDate() - dias);
     const rec = eventos.filter((e) => e.criadoEm && e.criadoEm >= corte);
     const por = new Map<string, number>();
     for (const e of rec) por.set(e.tipo, (por.get(e.tipo) ?? 0) + 1);
-    const novos = projetos.filter((p) => p.criadoEm && p.criadoEm >= corte).length;
+    const novos = projetos.filter(
+      (p) => p.criadoEm && p.criadoEm >= corte,
+    ).length;
     return {
       dias,
       projetosNovos: novos,
@@ -436,7 +493,9 @@ export class MetricasService {
     for (const f of ETAPAS) porFase.set(f, []);
     for (const p of projetos) {
       const f = ETAPAS[this.macroIdx(p.etapa)];
-      const idade = p.criadoEm ? this.diffDias(hoje, new Date(p.criadoEm)) : null;
+      const idade = p.criadoEm
+        ? this.diffDias(hoje, new Date(p.criadoEm))
+        : null;
       porFase.get(f)!.push(idade);
     }
     return ETAPAS.map((f) => {
@@ -445,7 +504,10 @@ export class MetricasService {
       return {
         fase: f,
         n: lista.length,
-        idadeMedia: idades.length > 0 ? Math.round(idades.reduce((a, b) => a + b, 0) / idades.length) : null,
+        idadeMedia:
+          idades.length > 0
+            ? Math.round(idades.reduce((a, b) => a + b, 0) / idades.length)
+            : null,
       };
     });
   }
@@ -464,9 +526,12 @@ export class MetricasService {
     const duso = this.pdate(d.dataUsoOficial);
     const encerrado = d.situacao === 'Concluído';
     const hoje = this.hoje();
-    const atraso = duso && !encerrado && duso < hoje ? this.diffDias(hoje, duso) : null;
+    const atraso =
+      duso && !encerrado && duso < hoje ? this.diffDias(hoje, duso) : null;
     const prox = this.proximaEtapa(etapa);
-    const gateRef = prox ? this.gateStatus(prox, docs) : this.gateStatus(etapa, docs);
+    const gateRef = prox
+      ? this.gateStatus(prox, docs)
+      : this.gateStatus(etapa, docs);
     const itens = gateRef.itens;
     let proxima: ProximaAcao | null = itens.find((i) => !i.ok) ?? null;
     const acaoOk = this.acaoEntradaOk(prox, d);
@@ -476,8 +541,16 @@ export class MetricasService {
         const [chave, label] = entrada;
         if (chave === 'gci_e_data_levantamento') {
           proxima = !this.gciDefinido(d)
-            ? { tipo: 'acao:definir_gci', label: 'Definir GCI Responsável', ok: false }
-            : { tipo: 'acao:data_levantamento', label: 'Definir Data do Levantamento', ok: false };
+            ? {
+                tipo: 'acao:definir_gci',
+                label: 'Definir GCI Responsável',
+                ok: false,
+              }
+            : {
+                tipo: 'acao:data_levantamento',
+                label: 'Definir Data do Levantamento',
+                ok: false,
+              };
         } else {
           proxima = { tipo: `acao:${chave}`, label, ok: false };
         }

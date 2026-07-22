@@ -39,6 +39,12 @@ import { PainelController } from './painel.controller';
     UsersModule,
   ],
   controllers: [PainelController],
-  providers: [CapacidadeService, CoordenacaoService, AtividadeService, HomeService, MonitoramentoService],
+  providers: [
+    CapacidadeService,
+    CoordenacaoService,
+    AtividadeService,
+    HomeService,
+    MonitoramentoService,
+  ],
 })
 export class PainelModule {}

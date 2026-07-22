@@ -1,5 +1,11 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 // Formulários do wizard legado chegam como um dict livre (chave -> string | string[]) —
 // mesma forma do flask.request.form (campos simples + campos repetidos das linhas
@@ -21,7 +27,11 @@ export class ConverterVerbalTextoDto {
 export class FormModulosDto {
   @IsIn(['levantamento', 'checklist']) tipo: 'levantamento' | 'checklist';
   @ApiPropertyOptional({ type: Object }) @IsOptional() form?: FormLegado;
-  @ApiPropertyOptional({ type: [String] }) @IsOptional() @IsArray() @IsString({ each: true }) modulos?: string[];
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  modulos?: string[];
 }
 
 export class GerarDto {

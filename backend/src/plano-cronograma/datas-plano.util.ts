@@ -7,7 +7,8 @@ export function parseDataPlano(s: string | null | undefined): Date {
   const v = (s || '').trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return parseIso(v);
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v);
-  if (m) return new Date(Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1])));
+  if (m)
+    return new Date(Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1])));
   return parseIso(hojeIso());
 }
 

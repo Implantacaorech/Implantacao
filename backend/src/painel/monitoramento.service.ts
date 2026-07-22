@@ -9,10 +9,22 @@ import { Designacao } from '../database/entities/designacao.entity';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { soMeus } from '../common/utils/so-meus.util';
 import { ETAPAS } from '../common/constants/perfis';
-import { Alerta, MetricasService, ResultadoMetricas } from '../metricas/metricas.service';
+import {
+  Alerta,
+  MetricasService,
+  ResultadoMetricas,
+} from '../metricas/metricas.service';
 import { UsersService } from '../users/users.service';
 import { construirDocsMap } from './docs-map.util';
-import { estadoSetor, EstadoSetor, formatarDataHoraBr, idadeMedia, parseData, pessoas, pnum } from './monitoramento.util';
+import {
+  estadoSetor,
+  EstadoSetor,
+  formatarDataHoraBr,
+  idadeMedia,
+  parseData,
+  pessoas,
+  pnum,
+} from './monitoramento.util';
 
 export interface SetorMonitoramento {
   nome: string;
@@ -81,7 +93,11 @@ export interface ResultadoMonitoramento {
   };
 }
 
-const ETAPAS_PRECISA_CONSULTOR = new Set(['Designação', 'Cronograma e Check-list', 'Encerramento']);
+const ETAPAS_PRECISA_CONSULTOR = new Set([
+  'Designação',
+  'Cronograma e Check-list',
+  'Encerramento',
+]);
 const DEV_KW = ['desenv', 'custom', 'integra', 'rns', 'orc', 'cob', 'api'];
 
 /** Centro de Monitoramento Operacional: consolida a carteira em visão executiva —
@@ -95,10 +111,14 @@ const DEV_KW = ['desenv', 'custom', 'integra', 'rns', 'orc', 'cob', 'api'];
 export class MonitoramentoService {
   constructor(
     @InjectRepository(Projeto) private readonly projetos: Repository<Projeto>,
-    @InjectRepository(Documento) private readonly documentos: Repository<Documento>,
-    @InjectRepository(CronogramaItem) private readonly cronogramaRepo: Repository<CronogramaItem>,
-    @InjectRepository(ChecklistItem) private readonly checklistRepo: Repository<ChecklistItem>,
-    @InjectRepository(Designacao) private readonly designacoesRepo: Repository<Designacao>,
+    @InjectRepository(Documento)
+    private readonly documentos: Repository<Documento>,
+    @InjectRepository(CronogramaItem)
+    private readonly cronogramaRepo: Repository<CronogramaItem>,
+    @InjectRepository(ChecklistItem)
+    private readonly checklistRepo: Repository<ChecklistItem>,
+    @InjectRepository(Designacao)
+    private readonly designacoesRepo: Repository<Designacao>,
     private readonly metricas: MetricasService,
     private readonly users: UsersService,
   ) {}
@@ -108,18 +128,35 @@ export class MonitoramentoService {
     const meus = soMeus(todos, user);
     const ids = meus.map((p) => p.id);
 
-    const [documentos, cronos, checks, designacoes, usuariosAdm, usuariosCoord, usuariosAdmPerfil, usuariosGci, usuariosCons] =
-      await Promise.all([
-        ids.length > 0 ? this.documentos.find({ where: { projetoId: In(ids) } }) : Promise.resolve([]),
-        ids.length > 0 ? this.cronogramaRepo.find({ where: { projetoId: In(ids) } }) : Promise.resolve([]),
-        ids.length > 0 ? this.checklistRepo.find({ where: { projetoId: In(ids) } }) : Promise.resolve([]),
-        ids.length > 0 ? this.designacoesRepo.find({ where: { projetoId: In(ids) } }) : Promise.resolve([]),
-        this.users.porPerfil('Administrativo'),
-        this.users.porPerfil('Coordenador'),
-        this.users.porPerfil('ADM'),
-        this.users.porPerfil('GCI'),
-        this.users.porPerfil('Consultor'),
-      ]);
+    const [
+      documentos,
+      cronos,
+      checks,
+      designacoes,
+      usuariosAdm,
+      usuariosCoord,
+      usuariosAdmPerfil,
+      usuariosGci,
+      usuariosCons,
+    ] = await Promise.all([
+      ids.length > 0
+        ? this.documentos.find({ where: { projetoId: In(ids) } })
+        : Promise.resolve([]),
+      ids.length > 0
+        ? this.cronogramaRepo.find({ where: { projetoId: In(ids) } })
+        : Promise.resolve([]),
+      ids.length > 0
+        ? this.checklistRepo.find({ where: { projetoId: In(ids) } })
+        : Promise.resolve([]),
+      ids.length > 0
+        ? this.designacoesRepo.find({ where: { projetoId: In(ids) } })
+        : Promise.resolve([]),
+      this.users.porPerfil('Administrativo'),
+      this.users.porPerfil('Coordenador'),
+      this.users.porPerfil('ADM'),
+      this.users.porPerfil('GCI'),
+      this.users.porPerfil('Consultor'),
+    ]);
 
     const usuariosPorPerfil: UsuariosPorPerfilNomes = {
       adm: usuariosAdm.map((u) => u.nome),
@@ -128,7 +165,14 @@ export class MonitoramentoService {
       consultor: usuariosCons.map((u) => u.nome),
     };
 
-    return this.avaliar(meus, construirDocsMap(documentos), cronos, checks, designacoes, usuariosPorPerfil);
+    return this.avaliar(
+      meus,
+      construirDocsMap(documentos),
+      cronos,
+      checks,
+      designacoes,
+      usuariosPorPerfil,
+    );
   }
 
   avaliar(
@@ -140,7 +184,11 @@ export class MonitoramentoService {
     usuariosPorPerfil: UsuariosPorPerfilNomes,
   ): ResultadoMonitoramento {
     const hoje = new Date();
-    const hojeMeia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const hojeMeia = new Date(
+      hoje.getFullYear(),
+      hoje.getMonth(),
+      hoje.getDate(),
+    );
     const ativos = projetos.filter((p) => p.situacao !== 'Concluído');
     const concluidos = projetos.filter((p) => p.situacao === 'Concluído');
     const porId = new Map(projetos.map((p) => [p.id, p]));
@@ -155,23 +203,32 @@ export class MonitoramentoService {
 
     const faltasPorPid = new Map<number, string[]>();
     for (const p of ativos) {
-      faltasPorPid.set(p.id, this.metricas.gateStatus(p.etapa, docsMap[p.id] ?? []).faltam);
+      faltasPorPid.set(
+        p.id,
+        this.metricas.gateStatus(p.etapa, docsMap[p.id] ?? []).faltam,
+      );
     }
 
-    const cronoPend = cronos.filter((c) => c.status !== 'Concluído' && c.status !== 'Cancelado');
+    const cronoPend = cronos.filter(
+      (c) => c.status !== 'Concluído' && c.status !== 'Cancelado',
+    );
     const cronoOk = cronos.filter((c) => c.status === 'Concluído');
     const cronoAtrasado = cronoPend.filter((c) => {
       const d = parseData(c.data);
       return d !== null && d < hojeMeia;
     });
-    const checkPend = checks.filter((c) => c.status !== 'Concluído' && c.status !== 'N/A');
+    const checkPend = checks.filter(
+      (c) => c.status !== 'Concluído' && c.status !== 'N/A',
+    );
     const checkOk = checks.filter((c) => c.status === 'Concluído');
 
     const devChecks = checks.filter((c) => {
       const texto = `${c.item} ${c.obs}`.toLowerCase();
       return DEV_KW.some((k) => texto.includes(k));
     });
-    const devPend = devChecks.filter((c) => c.status !== 'Concluído' && c.status !== 'N/A');
+    const devPend = devChecks.filter(
+      (c) => c.status !== 'Concluído' && c.status !== 'N/A',
+    );
     const devIds = new Set(devChecks.map((c) => c.projetoId));
     for (const p of projetos) {
       const texto = `${p.modulos || ''} ${p.observacoes || ''}`.toLowerCase();
@@ -189,8 +246,16 @@ export class MonitoramentoService {
       responsaveis: string[] = [],
       alertasTxt: string[] = [],
     ): SetorMonitoramento => {
-      const rel = [...ids].map((i) => porId.get(i)).filter((p): p is Projeto => !!p);
-      const [estado, label] = estadoSetor(andamento, pendentes, atrasadas, aprovacao, concluidasSetor);
+      const rel = [...ids]
+        .map((i) => porId.get(i))
+        .filter((p): p is Projeto => !!p);
+      const [estado, label] = estadoSetor(
+        andamento,
+        pendentes,
+        atrasadas,
+        aprovacao,
+        concluidasSetor,
+      );
       return {
         nome,
         estado,
@@ -212,24 +277,41 @@ export class MonitoramentoService {
       0,
     );
     const comercialAtraso = agendamento.filter(
-      (p) => p.criadoEm && Math.floor((hoje.getTime() - new Date(p.criadoEm).getTime()) / 86_400_000) >= 2,
+      (p) =>
+        p.criadoEm &&
+        Math.floor(
+          (hoje.getTime() - new Date(p.criadoEm).getTime()) / 86_400_000,
+        ) >= 2,
     );
 
     const adminIds = new Set(
-      ativos.filter((p) => (faltasPorPid.get(p.id)?.length ?? 0) > 0 || !p.responsavel).map((p) => p.id),
+      ativos
+        .filter(
+          (p) => (faltasPorPid.get(p.id)?.length ?? 0) > 0 || !p.responsavel,
+        )
+        .map((p) => p.id),
     );
     let adminFaltas = 0;
     for (const v of faltasPorPid.values()) adminFaltas += v.length;
     const adminSla = alertas.filter((a) => a.tipo === 'sla');
 
-    const coordPend = ativos.filter((p) => !p.gci || (ETAPAS_PRECISA_CONSULTOR.has(p.etapa) && !p.consultor));
+    const coordPend = ativos.filter(
+      (p) => !p.gci || (ETAPAS_PRECISA_CONSULTOR.has(p.etapa) && !p.consultor),
+    );
     const coordAprov = ativos.filter((p) => p.situacao === 'Em risco');
 
     const gciIds = new Set(
-      ativos.filter((p) => p.gci || p.etapa === 'Levantamento' || p.etapa === 'Designação').map((p) => p.id),
+      ativos
+        .filter(
+          (p) =>
+            p.gci || p.etapa === 'Levantamento' || p.etapa === 'Designação',
+        )
+        .map((p) => p.id),
     );
     const gciPend = ativos.filter(
-      (p) => p.etapa === 'Levantamento' && (faltasPorPid.get(p.id) ?? []).includes('Mapeamento (Levantamento)'),
+      (p) =>
+        p.etapa === 'Levantamento' &&
+        (faltasPorPid.get(p.id) ?? []).includes('Mapeamento (Levantamento)'),
     );
     const gciAtraso = ativos.filter((p) => {
       if (p.etapa !== 'Agendamento' && p.etapa !== 'Levantamento') return false;
@@ -239,22 +321,35 @@ export class MonitoramentoService {
 
     const consultoriaIds = new Set(
       ativos
-        .filter((p) => p.consultor || p.etapa === 'Cronograma e Check-list' || p.etapa === 'Encerramento')
+        .filter(
+          (p) =>
+            p.consultor ||
+            p.etapa === 'Cronograma e Check-list' ||
+            p.etapa === 'Encerramento',
+        )
         .map((p) => p.id),
     );
     for (const c of cronoPend) consultoriaIds.add(c.projetoId);
     for (const c of checkPend) consultoriaIds.add(c.projetoId);
-    const implantacaoIds = new Set(ativos.filter((p) => p.etapa !== 'Agendamento').map((p) => p.id));
+    const implantacaoIds = new Set(
+      ativos.filter((p) => p.etapa !== 'Agendamento').map((p) => p.id),
+    );
     const suporteIds = new Set(
-      projetos.filter((p) => p.etapa === 'Encerramento' || p.situacao === 'Concluído').map((p) => p.id),
+      projetos
+        .filter((p) => p.etapa === 'Encerramento' || p.situacao === 'Concluído')
+        .map((p) => p.id),
     );
     const suportePend = ativos.filter((p) => p.etapa === 'Encerramento');
     const suporteAtraso = alertas.filter((a) => a.tipo === 'encerramento');
 
-    const designados = designacoes.filter((d) => d.consultor).map((d) => d.consultor);
+    const designados = designacoes
+      .filter((d) => d.consultor)
+      .map((d) => d.consultor);
 
     const idsAtivos = new Set(ativos.map((p) => p.id));
-    const projetosNaoAgendamento = projetos.filter((p) => p.etapa !== 'Agendamento').length;
+    const projetosNaoAgendamento = projetos.filter(
+      (p) => p.etapa !== 'Agendamento',
+    ).length;
     const projetosSemAgendamentoLevantamento = projetos.filter(
       (p) => p.etapa !== 'Agendamento' && p.etapa !== 'Levantamento',
     ).length;
@@ -279,7 +374,10 @@ export class MonitoramentoService {
         adminFaltas,
         adminSla.length,
         0,
-        pessoas(usuariosPorPerfil.adm, ativos.map((p) => p.responsavel)),
+        pessoas(
+          usuariosPorPerfil.adm,
+          ativos.map((p) => p.responsavel),
+        ),
         adminSla.map((a) => a.msg),
       ),
       setor(
@@ -301,8 +399,13 @@ export class MonitoramentoService {
         gciPend.length,
         gciAtraso.length,
         0,
-        pessoas(usuariosPorPerfil.gci, ativos.map((p) => p.gci)),
-        gciAtraso.length || gciPend.length ? ['Levantamento vencido ou mapeamento pendente'] : [],
+        pessoas(
+          usuariosPorPerfil.gci,
+          ativos.map((p) => p.gci),
+        ),
+        gciAtraso.length || gciPend.length
+          ? ['Levantamento vencido ou mapeamento pendente']
+          : [],
       ),
       setor(
         'Consultoria',
@@ -312,8 +415,14 @@ export class MonitoramentoService {
         cronoPend.length + checkPend.length,
         cronoAtrasado.length,
         0,
-        pessoas(usuariosPorPerfil.consultor, ativos.map((p) => p.consultor), designados),
-        cronoPend.length || checkPend.length ? ['Cronograma/check-list com linhas pendentes'] : [],
+        pessoas(
+          usuariosPorPerfil.consultor,
+          ativos.map((p) => p.consultor),
+          designados,
+        ),
+        cronoPend.length || checkPend.length
+          ? ['Cronograma/check-list com linhas pendentes']
+          : [],
       ),
       setor(
         'Implantação',
@@ -323,7 +432,10 @@ export class MonitoramentoService {
         m.gatePendente,
         m.nAtrasados,
         m.emRisco.length,
-        pessoas(ativos.map((p) => p.gci), ativos.map((p) => p.consultor)),
+        pessoas(
+          ativos.map((p) => p.gci),
+          ativos.map((p) => p.consultor),
+        ),
         alertas.slice(0, 3).map((a) => a.msg),
       ),
       setor(
@@ -366,7 +478,12 @@ export class MonitoramentoService {
     for (const p of ativos) {
       const horas = pnum(p.horasCobradas) + pnum(p.horasBonificadas);
       for (const nome of pessoas(p.gci, p.consultor)) {
-        const c = carga.get(nome) ?? { nome, projetos: new Set<number>(), horas: 0, atrasos: 0 };
+        const c = carga.get(nome) ?? {
+          nome,
+          projetos: new Set<number>(),
+          horas: 0,
+          atrasos: 0,
+        };
         c.projetos.add(p.id);
         c.horas += horas;
         if ((alertasPorPid.get(p.id) ?? []).length > 0) c.atrasos += 1;
@@ -375,7 +492,12 @@ export class MonitoramentoService {
     }
     for (const d of designacoes) {
       if (d.consultor) {
-        const c = carga.get(d.consultor) ?? { nome: d.consultor, projetos: new Set<number>(), horas: 0, atrasos: 0 };
+        const c = carga.get(d.consultor) ?? {
+          nome: d.consultor,
+          projetos: new Set<number>(),
+          horas: 0,
+          atrasos: 0,
+        };
         c.projetos.add(d.projetoId);
         carga.set(d.consultor, c);
       }
@@ -392,7 +514,11 @@ export class MonitoramentoService {
       return a.nome.localeCompare(b.nome);
     });
 
-    const CAMPOS_DATA: { campo: 'dataLevantamento' | 'dataUsoOficial'; label: string; setor: string }[] = [
+    const CAMPOS_DATA: {
+      campo: 'dataLevantamento' | 'dataUsoOficial';
+      label: string;
+      setor: string;
+    }[] = [
       { campo: 'dataLevantamento', label: 'Levantamento', setor: 'GCI' },
       { campo: 'dataUsoOficial', label: 'Go-live', setor: 'Implantação' },
     ];
@@ -406,7 +532,9 @@ export class MonitoramentoService {
             projetoId: p.id,
             tipo: label,
             data,
-            dias: Math.floor((data.getTime() - hojeMeia.getTime()) / 86_400_000),
+            dias: Math.floor(
+              (data.getTime() - hojeMeia.getTime()) / 86_400_000,
+            ),
             setor: setorNome,
           });
         }
@@ -431,7 +559,10 @@ export class MonitoramentoService {
     const totalEtapas = Math.max(1, ETAPAS.length - 1);
     const mapa: LinhaMapa[] = ativos.map((p) => {
       const idx = this.metricas.macroIdx(p.etapa);
-      const progresso = p.situacao === 'Concluído' ? 100 : Math.round((idx / totalEtapas) * 100);
+      const progresso =
+        p.situacao === 'Concluído'
+          ? 100
+          : Math.round((idx / totalEtapas) * 100);
       const al = alertasPorPid.get(p.id) ?? [];
       return {
         id: p.id,
@@ -460,7 +591,10 @@ export class MonitoramentoService {
     saude -= Math.min(35, m.nAtrasados * 10);
     saude -= Math.min(25, m.nRisco * 8);
     saude -= Math.min(20, m.gatePendente * 3);
-    saude -= Math.min(20, setores.filter((s) => s.estado === 'sobrecarregado').length * 8);
+    saude -= Math.min(
+      20,
+      setores.filter((s) => s.estado === 'sobrecarregado').length * 8,
+    );
     saude = Math.max(0, saude);
 
     const fluxo = ETAPAS.map((e) => ({

@@ -37,7 +37,12 @@ export interface AppConfig {
 // do Postgres e fallback fraco de secret_key"). Fora de produção, mantém o fallback fixo
 // (conveniência de desenvolvimento/teste — refresh tokens emitidos localmente não
 // precisam sobreviver a um segredo trocado a cada boot).
-function exigirEmProducao(env: string, valor: string | undefined, nomeVar: string, fallback: string): string {
+function exigirEmProducao(
+  env: string,
+  valor: string | undefined,
+  nomeVar: string,
+  fallback: string,
+): string {
   if (valor) return valor;
   if (env === 'production') {
     throw new Error(
@@ -121,6 +126,7 @@ export default (): AppConfig => {
     // cujo escopo documentado é só geração fiel + transcrição). process.cwd() é `backend/`.
     legadoPythonExe: process.env.MIGRACAO_LEGADO_PYTHON ?? 'python',
     legadoWebappDir:
-      process.env.MIGRACAO_LEGADO_WEBAPP_DIR ?? join(process.cwd(), '..', 'webapp'),
+      process.env.MIGRACAO_LEGADO_WEBAPP_DIR ??
+      join(process.cwd(), '..', 'webapp'),
   };
 };

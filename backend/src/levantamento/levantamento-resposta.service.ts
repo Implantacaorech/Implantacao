@@ -91,7 +91,10 @@ export class LevantamentoRespostaService {
    * (não lê o .docx aqui — quem lê é o gerador legado via subprocesso, ver
    * LegadoCliService; esta camada nunca toca em arquivo, só nas próprias linhas).
    * Equivalente a webapp/db.py:levantamento_importar_respostas. */
-  async importarDeParagrafos(projetoId: number, paragrafos: string[]): Promise<number> {
+  async importarDeParagrafos(
+    projetoId: number,
+    paragrafos: string[],
+  ): Promise<number> {
     const linhas = await this.repo.find({ where: { projetoId } });
     let n = 0;
     for (const r of linhas) {

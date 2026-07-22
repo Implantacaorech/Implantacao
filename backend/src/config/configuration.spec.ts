@@ -13,7 +13,9 @@ describe('configuration — segredos de JWT', () => {
     delete process.env.MIGRACAO_JWT_REFRESH_SECRET;
     const cfg = configuration();
     expect(cfg.jwtSecret).toBe('dev-only-secret-troque-em-producao');
-    expect(cfg.jwtRefreshSecret).toBe('dev-only-refresh-secret-troque-em-producao');
+    expect(cfg.jwtRefreshSecret).toBe(
+      'dev-only-refresh-secret-troque-em-producao',
+    );
   });
 
   it('falha o boot em produção sem MIGRACAO_JWT_SECRET', () => {

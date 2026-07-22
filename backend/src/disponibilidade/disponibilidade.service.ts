@@ -49,7 +49,8 @@ const CAMPOS_TEXTO: (keyof ConfigDisponibilidade)[] = [
 
 // Espelha webapp/disponibilidade.py:SELECT_TECNICOS_PADRAO — casa o cadastro (código OU
 // nome) com o NOME canônico do técnico no SICLA.
-const SELECT_TECNICOS_PADRAO = 'SELECT CODIGO AS codigo, TECNICO AS tecnico FROM SICLA.TECNICOS';
+const SELECT_TECNICOS_PADRAO =
+  'SELECT CODIGO AS codigo, TECNICO AS tecnico FROM SICLA.TECNICOS';
 
 const CACHE_TTL_MS = 180_000; // 180s — ver webapp/disponibilidade.py:_CACHE_TTL
 const TEC_TTL_MS = 600_000; // 600s — ver webapp/disponibilidade.py:_TEC_TTL
@@ -65,13 +66,23 @@ export class DisponibilidadeService {
   private readonly logger = new Logger('DisponibilidadeService');
   private thickInicializado = false;
 
-  private cacheOcupacao = new Map<string, { ts: number; valor: Record<string, boolean> }>();
-  private cacheTecnicos: { ts: number; mapa: Record<string, string> } = { ts: 0, mapa: {} };
+  private cacheOcupacao = new Map<
+    string,
+    { ts: number; valor: Record<string, boolean> }
+  >();
+  private cacheTecnicos: { ts: number; mapa: Record<string, string> } = {
+    ts: 0,
+    mapa: {},
+  };
 
   private dir(): string {
     const base =
       process.env.NODE_ENV === 'test'
-        ? join(process.cwd(), 'dados', `disponibilidade_test_${process.env.JEST_WORKER_ID ?? '0'}`)
+        ? join(
+            process.cwd(),
+            'dados',
+            `disponibilidade_test_${process.env.JEST_WORKER_ID ?? '0'}`,
+          )
         : join(process.cwd(), 'dados');
     mkdirSync(base, { recursive: true });
     return base;
@@ -137,7 +148,9 @@ export class DisponibilidadeService {
   private parsearUrl(
     url: string,
   ): { usuario: string; senha: string; connectString: string } | null {
-    const m = /^[\w+]+:\/\/([^:@/]+)(?::([^@]*))?@([^/]+)\/(.*)$/.exec(url.trim());
+    const m = /^[\w+]+:\/\/([^:@/]+)(?::([^@]*))?@([^/]+)\/(.*)$/.exec(
+      url.trim(),
+    );
     if (!m) return null;
     return {
       usuario: decodeURIComponent(m[1]),
@@ -152,11 +165,16 @@ export class DisponibilidadeService {
       return p?.connectString ?? '';
     }
     if (!cfg.host.trim()) return '';
-    const host = cfg.porta.trim() ? `${cfg.host.trim()}:${cfg.porta.trim()}` : cfg.host.trim();
+    const host = cfg.porta.trim()
+      ? `${cfg.host.trim()}:${cfg.porta.trim()}`
+      : cfg.host.trim();
     return `${host}/${cfg.banco.trim()}`;
   }
 
-  private credenciais(cfg: ConfigDisponibilidade): { usuario: string; senha: string } {
+  private credenciais(cfg: ConfigDisponibilidade): {
+    usuario: string;
+    senha: string;
+  } {
     if (cfg.url.trim()) {
       const p = this.parsearUrl(cfg.url);
       if (p) return { usuario: p.usuario, senha: p.senha };
@@ -169,9 +187,14 @@ export class DisponibilidadeService {
   private talvezThick(cfg: ConfigDisponibilidade): void {
     if (this.thickInicializado || !cfg.oracleThick) return;
     try {
-      oracledb.initOracleClient(cfg.oracleLibDir.trim() ? { libDir: cfg.oracleLibDir.trim() } : {});
+      oracledb.initOracleClient(
+        cfg.oracleLibDir.trim() ? { libDir: cfg.oracleLibDir.trim() } : {},
+      );
     } catch (e) {
-      if (!(e instanceof Error) || !e.message.toLowerCase().includes('already been initialized')) {
+      if (
+        !(e instanceof Error) ||
+        !e.message.toLowerCase().includes('already been initialized')
+      ) {
         throw e;
       }
     }
@@ -188,7 +211,11 @@ export class DisponibilidadeService {
     }
     this.talvezThick(cfg);
     const { usuario, senha } = this.credenciais(cfg);
-    const connection = await oracledb.getConnection({ user: usuario, password: senha, connectString });
+    const connection = await oracledb.getConnection({
+      user: usuario,
+      password: senha,
+      connectString,
+    });
     try {
       return await fn(connection);
     } finally {
@@ -226,7 +253,9 @@ export class DisponibilidadeService {
     return { sql: sql.replace(/:tecnicos\b/g, placeholder), binds };
   }
 
-  private normalizarLinha(row: Record<string, unknown>): Record<string, unknown> {
+  private normalizarLinha(
+    row: Record<string, unknown>,
+  ): Record<string, unknown> {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(row)) out[k.toLowerCase()] = v;
     return out;
@@ -241,7 +270,10 @@ export class DisponibilidadeService {
     cfg?: ConfigDisponibilidade,
   ): Promise<LinhaOcupacao[]> {
     const c = cfg ?? this.carregarConfig();
-    const { sql, binds: bindsTecnicos } = this.expandirTecnicos(c.select, tecnicos ?? []);
+    const { sql, binds: bindsTecnicos } = this.expandirTecnicos(
+      c.select,
+      tecnicos ?? [],
+    );
     const binds = { data_ini: dataIni, data_fim: dataFim, ...bindsTecnicos };
     const rows = await this.comConexao(c, async (conn) => {
       const r = await conn.execute<Record<string, unknown>>(sql, binds, {
@@ -251,10 +283,14 @@ export class DisponibilidadeService {
     });
     return rows.map((row) => {
       const d = this.normalizarLinha(row);
-      const turno = String(d.turno ?? '').trim().toLowerCase();
+      const turno = String(d.turno ?? '')
+        .trim()
+        .toLowerCase();
       return {
         tecnico: String(d.tecnico ?? '').trim(),
-        data: String(d.data ?? '').trim().slice(0, 10),
+        data: String(d.data ?? '')
+          .trim()
+          .slice(0, 10),
         turno: turno === 'manha' || turno === 'tarde' ? turno : '',
       };
     });
@@ -289,8 +325,16 @@ export class DisponibilidadeService {
   ): Promise<ResultadoExecucao> {
     const c = cfg ?? this.carregarConfig();
     const sql = (sqlBruto || '').trim();
-    if (!sql) return { ok: false, mensagem: 'Consulta vazia.', colunas: [], linhas: [] };
-    const inicio = this.semComentariosIniciais(sql).replace(/^\(/, '').toUpperCase();
+    if (!sql)
+      return {
+        ok: false,
+        mensagem: 'Consulta vazia.',
+        colunas: [],
+        linhas: [],
+      };
+    const inicio = this.semComentariosIniciais(sql)
+      .replace(/^\(/, '')
+      .toUpperCase();
     if (!(inicio.startsWith('SELECT') || inicio.startsWith('WITH'))) {
       return {
         ok: false,
@@ -305,11 +349,24 @@ export class DisponibilidadeService {
           outFormat: oracledb.OUT_FORMAT_OBJECT,
           maxRows: limite,
         });
-        return { colunas: (r.metaData ?? []).map((m) => m.name), linhas: r.rows ?? [] };
+        return {
+          colunas: (r.metaData ?? []).map((m) => m.name),
+          linhas: r.rows ?? [],
+        };
       });
-      return { ok: true, mensagem: `${linhas.length} linha(s).`, colunas, linhas };
+      return {
+        ok: true,
+        mensagem: `${linhas.length} linha(s).`,
+        colunas,
+        linhas,
+      };
     } catch (e) {
-      return { ok: false, mensagem: this.mensagemErro(e), colunas: [], linhas: [] };
+      return {
+        ok: false,
+        mensagem: this.mensagemErro(e),
+        colunas: [],
+        linhas: [],
+      };
     }
   }
 
@@ -338,12 +395,16 @@ export class DisponibilidadeService {
     const texto = e instanceof Error ? e.message : String(e);
     if (texto.includes('DPY-3015') || texto.includes('ORA-28040')) {
       return (
-        'Senha Oracle com verificador antigo (não aceito no modo thin). Marque \'Modo ' +
+        "Senha Oracle com verificador antigo (não aceito no modo thin). Marque 'Modo " +
         "thick' na aba Disponibilidade e informe a pasta do client, OU peça ao DBA para " +
         'redefinir a senha com verificador 11g/12c.'
       );
     }
-    if (texto.includes('DPI-1047') || texto.includes('NJS-045') || /\b126\b/.test(texto)) {
+    if (
+      texto.includes('DPI-1047') ||
+      texto.includes('NJS-045') ||
+      /\b126\b/.test(texto)
+    ) {
       return (
         'Não consegui carregar o Oracle Instant Client (modo thick) — veja a aba ' +
         'Disponibilidade para os detalhes de configuração.'
@@ -355,10 +416,16 @@ export class DisponibilidadeService {
   /** `{chaveLower: NOME canônico do técnico}`, resolvendo tanto o CÓDIGO numérico quanto o
    * próprio nome. Cache de 600s — {} se indisponível (o painel usa o valor do cadastro como
    * está). */
-  async mapaTecnicos(cfg?: ConfigDisponibilidade): Promise<Record<string, string>> {
+  async mapaTecnicos(
+    cfg?: ConfigDisponibilidade,
+  ): Promise<Record<string, string>> {
     const c = cfg ?? this.carregarConfig();
-    if (this.cacheTecnicos.mapa && Date.now() - this.cacheTecnicos.ts < TEC_TTL_MS) {
-      if (Object.keys(this.cacheTecnicos.mapa).length > 0) return this.cacheTecnicos.mapa;
+    if (
+      this.cacheTecnicos.mapa &&
+      Date.now() - this.cacheTecnicos.ts < TEC_TTL_MS
+    ) {
+      if (Object.keys(this.cacheTecnicos.mapa).length > 0)
+        return this.cacheTecnicos.mapa;
     }
     const query = (c.selectTecnicos || SELECT_TECNICOS_PADRAO).trim();
     const mapa: Record<string, string> = {};
@@ -397,7 +464,9 @@ export class DisponibilidadeService {
     cfg?: ConfigDisponibilidade,
   ): Promise<Record<string, boolean>> {
     const c = cfg ?? this.carregarConfig();
-    const entradas = (tecnicos ?? []).map((t) => String(t).trim()).filter(Boolean);
+    const entradas = (tecnicos ?? [])
+      .map((t) => String(t).trim())
+      .filter(Boolean);
     const mapa = entradas.length > 0 ? await this.mapaTecnicos(c) : {};
     const nomes: string[] = [];
     const alias = new Map<string, Set<string>>();
@@ -409,12 +478,19 @@ export class DisponibilidadeService {
       alias.get(chave)!.add(e.toLowerCase());
     }
     const ocup: Record<string, boolean> = {};
-    const linhas = await this.consultar(dataIni, dataFim, nomes.length > 0 ? nomes : undefined, c);
+    const linhas = await this.consultar(
+      dataIni,
+      dataFim,
+      nomes.length > 0 ? nomes : undefined,
+      c,
+    );
     for (const r of linhas) {
       const tec = r.tecnico.trim().toLowerCase();
       if (!tec || !r.data) continue;
       const chaves = new Set([tec, ...(alias.get(tec) ?? [])]);
-      const turnos: ('manha' | 'tarde')[] = r.turno ? [r.turno] : ['manha', 'tarde'];
+      const turnos: ('manha' | 'tarde')[] = r.turno
+        ? [r.turno]
+        : ['manha', 'tarde'];
       for (const turno of turnos) {
         for (const k of chaves) ocup[`${k}|${r.data}|${turno}`] = true;
       }
@@ -441,7 +517,9 @@ export class DisponibilidadeService {
     const ocup = await this.ocupacaoPorSlot(dataIni, dataFim, tecnicos, cfg);
     this.cacheOcupacao.set(chave, { ts: agora, valor: ocup });
     if (this.cacheOcupacao.size > 64) {
-      const entradas = [...this.cacheOcupacao.entries()].sort((a, b) => a[1].ts - b[1].ts);
+      const entradas = [...this.cacheOcupacao.entries()].sort(
+        (a, b) => a[1].ts - b[1].ts,
+      );
       for (const [k] of entradas.slice(0, 32)) this.cacheOcupacao.delete(k);
     }
     return ocup;

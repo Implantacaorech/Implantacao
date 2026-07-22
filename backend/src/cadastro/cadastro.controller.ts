@@ -1,4 +1,11 @@
-import { BadRequestException, Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CadastroService } from './cadastro.service';
 import { UsersService } from '../users/users.service';
@@ -26,11 +33,15 @@ export class CadastroController {
 
   @Post()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Inicia o auto-cadastro: valida, gera e envia o código por e-mail' })
+  @ApiOperation({
+    summary: 'Inicia o auto-cadastro: valida, gera e envia o código por e-mail',
+  })
   async criar(@Body() dto: CriarCadastroDto) {
     await this.cadastro.limparPendentes();
     if (await this.users.existeUsuario(dto.email, dto.email)) {
-      throw new BadRequestException('Este e-mail já tem acesso. Use a tela de login.');
+      throw new BadRequestException(
+        'Este e-mail já tem acesso. Use a tela de login.',
+      );
     }
     if (!this.mailer.configurado()) {
       throw new BadRequestException(
@@ -38,17 +49,29 @@ export class CadastroController {
       );
     }
     const codigo = this.cadastro.gerarCodigo();
-    await this.cadastro.salvarPendente(dto.nome, dto.email, dto.email, dto.senha, codigo, dto.codigoSicla);
+    await this.cadastro.salvarPendente(
+      dto.nome,
+      dto.email,
+      dto.email,
+      dto.senha,
+      codigo,
+      dto.codigoSicla,
+    );
     const envio = await this.enviarCodigo(dto.nome, dto.email, codigo);
     if (!envio.ok) {
-      throw new BadRequestException(envio.erro ?? 'Falha ao enviar o e-mail com o código.');
+      throw new BadRequestException(
+        envio.erro ?? 'Falha ao enviar o e-mail com o código.',
+      );
     }
     return new ApiEnvelope({ email: dto.email });
   }
 
   @Post('confirmar')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Confirma o código: cria o usuário e já devolve os tokens (login imediato)' })
+  @ApiOperation({
+    summary:
+      'Confirma o código: cria o usuário e já devolve os tokens (login imediato)',
+  })
   async confirmar(@Body() dto: ConfirmarCadastroDto) {
     const r = await this.cadastro.confirmarPendente(dto.email, dto.codigo);
     if (!r.ok) throw new BadRequestException(r.mensagem);
@@ -61,9 +84,15 @@ export class CadastroController {
   async reenviar(@Body() dto: ReenviarCadastroDto) {
     const codigo = this.cadastro.gerarCodigo();
     const existia = await this.cadastro.atualizarCodigo(dto.email, codigo);
-    if (!existia) throw new BadRequestException('Cadastro não encontrado. Recomece o cadastro.');
+    if (!existia)
+      throw new BadRequestException(
+        'Cadastro não encontrado. Recomece o cadastro.',
+      );
     const envio = await this.enviarCodigo('', dto.email, codigo);
-    if (!envio.ok) throw new BadRequestException(envio.erro ?? 'Falha ao reenviar o e-mail.');
+    if (!envio.ok)
+      throw new BadRequestException(
+        envio.erro ?? 'Falha ao reenviar o e-mail.',
+      );
     return new ApiEnvelope({ email: dto.email });
   }
 
@@ -74,6 +103,10 @@ export class CadastroController {
       `Seu código de verificação para acessar o Painel de Implantação é: ${codigo}\n\n` +
       `Este código expira em 30 minutos.\n\n` +
       `Se você não solicitou este cadastro, ignore este e-mail.`;
-    return this.mailer.enviar(email, 'Código de validação — Painel de Implantação', corpo);
+    return this.mailer.enviar(
+      email,
+      'Código de validação — Painel de Implantação',
+      corpo,
+    );
   }
 }

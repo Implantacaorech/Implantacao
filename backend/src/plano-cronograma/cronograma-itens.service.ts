@@ -6,7 +6,12 @@ import { Projeto } from '../database/entities/projeto.entity';
 import { ModificacoesService } from './modificacoes.service';
 import { diffLinhas } from './linhas-diff.util';
 import { resolverModulos } from './catalogo-modulos.util';
-import { formatarBr, parseDataPlano, proximoUtil, somarUteis } from './datas-plano.util';
+import {
+  formatarBr,
+  parseDataPlano,
+  proximoUtil,
+  somarUteis,
+} from './datas-plano.util';
 import { LinhaCronogramaDto } from './dto/linha-cronograma.dto';
 
 const CAMPOS = ['etapa', 'topicos', 'horas', 'data', 'modalidade', 'status'];
@@ -30,7 +35,9 @@ function distribuir(total: number, pesos: number[]): number[] {
   const exatos = pesos.map((p) => (total * p) / soma);
   const base = exatos.map((x) => Math.trunc(x));
   let resto = Math.round(total) - base.reduce((a, b) => a + b, 0);
-  const ordem = pesos.map((_, i) => i).sort((a, b) => exatos[b] - base[b] - (exatos[a] - base[a]));
+  const ordem = pesos
+    .map((_, i) => i)
+    .sort((a, b) => exatos[b] - base[b] - (exatos[a] - base[a]));
   let i = 0;
   while (resto > 0 && ordem.length > 0) {
     base[ordem[i % ordem.length]] += 1;
@@ -65,7 +72,8 @@ function planoAutomatico(modulos: string[]): EtapaPlano[] {
   if (achados.length === 0) {
     plano.push({
       etapa: 'Treinamento das rotinas',
-      topicos: 'Tabelas e cadastros; importações via layout; rotinas dos processos.',
+      topicos:
+        'Tabelas e cadastros; importações via layout; rotinas dos processos.',
       peso: 4.0,
     });
   }
@@ -77,22 +85,26 @@ function planoAutomatico(modulos: string[]): EtapaPlano[] {
     },
     {
       etapa: 'Simulação do macroprocesso',
-      topicos: 'Ensaio do processo completo (cenário real); validação ponta a ponta.',
+      topicos:
+        'Ensaio do processo completo (cenário real); validação ponta a ponta.',
       peso: 1.5,
     },
     {
       etapa: 'Conversão — prévia',
-      topicos: 'Carga de teste; reconciliação origem × destino; validação de amostras.',
+      topicos:
+        'Carga de teste; reconciliação origem × destino; validação de amostras.',
       peso: 1.0,
     },
     {
       etapa: 'Conversão — oficial / ponto de corte',
-      topicos: 'Conversão oficial; conferência de saldos; definição do ponto de corte.',
+      topicos:
+        'Conversão oficial; conferência de saldos; definição do ponto de corte.',
       peso: 1.0,
     },
     {
       etapa: 'Virada oficial (go-live)',
-      topicos: 'Início do uso em produção; acompanhamento full time; primeiros lançamentos.',
+      topicos:
+        'Início do uso em produção; acompanhamento full time; primeiros lançamentos.',
       peso: 1.5,
     },
     {
@@ -102,7 +114,8 @@ function planoAutomatico(modulos: string[]): EtapaPlano[] {
     },
     {
       etapa: 'Encerramento',
-      topicos: 'Revisão de pendências; Termo de Encerramento; transição ao Suporte.',
+      topicos:
+        'Revisão de pendências; Termo de Encerramento; transição ao Suporte.',
       peso: 0.5,
     },
   );
@@ -116,7 +129,8 @@ function planoAutomatico(modulos: string[]): EtapaPlano[] {
 @Injectable()
 export class CronogramaItensService {
   constructor(
-    @InjectRepository(CronogramaItem) private readonly repo: Repository<CronogramaItem>,
+    @InjectRepository(CronogramaItem)
+    private readonly repo: Repository<CronogramaItem>,
     private readonly modificacoes: ModificacoesService,
   ) {}
 
@@ -128,7 +142,11 @@ export class CronogramaItensService {
    * `Modificacao` por linha/campo alterado (comparação POSICIONAL — ver linhas-diff.util
    * para a limitação conhecida, preservada de propósito por fidelidade). Devolve o nº de
    * alterações registradas. */
-  async salvar(projetoId: number, linhas: LinhaCronogramaDto[], autor: string): Promise<number> {
+  async salvar(
+    projetoId: number,
+    linhas: LinhaCronogramaDto[],
+    autor: string,
+  ): Promise<number> {
     const antigas = await this.doProjeto(projetoId);
     const diffs = diffLinhas(
       antigas as unknown as Record<string, unknown>[],
@@ -137,7 +155,15 @@ export class CronogramaItensService {
       ['etapa', 'topicos'],
     );
     for (const d of diffs) {
-      await this.modificacoes.registrar(projetoId, 'cronograma', d.ref, d.campo, d.de, d.para, autor);
+      await this.modificacoes.registrar(
+        projetoId,
+        'cronograma',
+        d.ref,
+        d.campo,
+        d.de,
+        d.para,
+        autor,
+      );
     }
     await this.repo.delete({ projetoId });
     if (linhas.length > 0) {

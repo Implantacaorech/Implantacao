@@ -33,7 +33,7 @@ function projeto(over: Partial<Projeto> = {}): Projeto {
     criadoEm: HOJE,
     atualizadoEm: HOJE,
     ...over,
-  } as Projeto;
+  };
 }
 
 describe('MetricasService', () => {
@@ -53,7 +53,12 @@ describe('MetricasService', () => {
 
   describe('camposFaltantes / gateStatus / podeAvancar', () => {
     it('acusa os campos obrigatórios vazios da etapa', () => {
-      const p = projeto({ etapa: 'Agendamento', cliente: '', cnpj: 'x', horasCobradas: '10' });
+      const p = projeto({
+        etapa: 'Agendamento',
+        cliente: '',
+        cnpj: 'x',
+        horasCobradas: '10',
+      });
       const faltam = service.camposFaltantes('Agendamento', p);
       expect(faltam.map((f) => f.campo)).toEqual(
         expect.arrayContaining(['cliente', 'gci', 'dataLevantamento']),
@@ -64,9 +69,14 @@ describe('MetricasService', () => {
     it('gateStatus: documento presente marca ok, ausente marca faltante', () => {
       const g = service.gateStatus('Projeto', [{ tipo: 'levantamento' }]);
       expect(g.ok).toBe(true);
-      expect(g.itens).toEqual([{ tipo: 'levantamento', label: 'Mapeamento (Levantamento)', ok: true }]);
+      expect(g.itens).toEqual([
+        { tipo: 'levantamento', label: 'Mapeamento (Levantamento)', ok: true },
+      ]);
 
-      const g2 = service.gateStatus('Encerramento', [{ tipo: 'levantamento' }, { tipo: 'projeto' }]);
+      const g2 = service.gateStatus('Encerramento', [
+        { tipo: 'levantamento' },
+        { tipo: 'projeto' },
+      ]);
       expect(g2.ok).toBe(false);
       expect(g2.faltam).toEqual(['Cronograma', 'Check List']);
     });
@@ -75,7 +85,9 @@ describe('MetricasService', () => {
       const p = projeto({ etapa: 'Agendamento', cliente: '' });
       const r = service.podeAvancar('Agendamento', p, []);
       expect(r.ok).toBe(false);
-      expect(r.bloqueios).toEqual(expect.arrayContaining([expect.stringContaining('Razão Social')]));
+      expect(r.bloqueios).toEqual(
+        expect.arrayContaining([expect.stringContaining('Razão Social')]),
+      );
     });
 
     it('podeAvancar bloqueia por documento pendente do gate da PRÓXIMA etapa', () => {
@@ -91,7 +103,9 @@ describe('MetricasService', () => {
       const r = service.podeAvancar('Levantamento', p, []); // sem doc "levantamento" -> bloqueia entrada em Projeto
       expect(r.ok).toBe(false);
       expect(r.bloqueios).toEqual(
-        expect.arrayContaining([expect.stringContaining('Mapeamento (Levantamento)')]),
+        expect.arrayContaining([
+          expect.stringContaining('Mapeamento (Levantamento)'),
+        ]),
       );
     });
 
@@ -106,10 +120,14 @@ describe('MetricasService', () => {
         gci: '',
         dataLevantamento: '',
       });
-      const r = service.podeAvancar('Agendamento', p, [{ tipo: 'levantamento' }]);
+      const r = service.podeAvancar('Agendamento', p, [
+        { tipo: 'levantamento' },
+      ]);
       expect(r.ok).toBe(false);
       expect(r.bloqueios).toEqual(
-        expect.arrayContaining([expect.stringContaining('Definir GCI e Data do Levantamento')]),
+        expect.arrayContaining([
+          expect.stringContaining('Definir GCI e Data do Levantamento'),
+        ]),
       );
     });
 
@@ -145,7 +163,9 @@ describe('MetricasService', () => {
         dataLevantamento: '2026-08-01',
       });
       const r = service.autoAvancar(p, []); // Projeto exige "levantamento", ausente -> para aqui
-      expect(r).toEqual([{ etapaAnterior: 'Agendamento', etapaNova: 'Levantamento' }]);
+      expect(r).toEqual([
+        { etapaAnterior: 'Agendamento', etapaNova: 'Levantamento' },
+      ]);
       expect(p.etapa).toBe('Levantamento');
     });
 
@@ -155,19 +175,30 @@ describe('MetricasService', () => {
       // "consultores" (presente); ambos os gates de documento pedem só levantamento+projeto.
       const docs = [{ tipo: 'levantamento' }, { tipo: 'projeto' }];
       const r = service.autoAvancar(p, docs);
-      expect(r.map((t) => t.etapaNova)).toEqual(['Designação', 'Cronograma e Check-list']);
+      expect(r.map((t) => t.etapaNova)).toEqual([
+        'Designação',
+        'Cronograma e Check-list',
+      ]);
       expect(p.etapa).toBe('Cronograma e Check-list'); // para aqui: falta cronograma/checklist p/ Encerramento
     });
 
     it('para no primeiro gate ainda pendente', () => {
-      const p = projeto({ etapa: 'Agendamento', gci: '', dataLevantamento: '' });
+      const p = projeto({
+        etapa: 'Agendamento',
+        gci: '',
+        dataLevantamento: '',
+      });
       const r = service.autoAvancar(p, []);
       expect(r).toEqual([]);
       expect(p.etapa).toBe('Agendamento');
     });
 
     it('não avança quando já está na última etapa (Encerramento)', () => {
-      const p = projeto({ etapa: 'Encerramento', consultor: 'Ana', dataUsoOficial: '2026-01-01' });
+      const p = projeto({
+        etapa: 'Encerramento',
+        consultor: 'Ana',
+        dataUsoOficial: '2026-01-01',
+      });
       const r = service.autoAvancar(p, [
         { tipo: 'levantamento' },
         { tipo: 'projeto' },
@@ -182,9 +213,26 @@ describe('MetricasService', () => {
   describe('metricas', () => {
     it('agrega por situação/etapa, calcula atrasados (ordenados por dias desc) e gate pendente', () => {
       const projetos = [
-        projeto({ id: 1, situacao: 'Em andamento', etapa: 'Projeto', dataUsoOficial: '2026-08-01', consultor: 'Ana' }), // 9 dias atrasado
-        projeto({ id: 2, situacao: 'Em andamento', etapa: 'Projeto', dataUsoOficial: '2026-08-05', consultor: 'Ana' }), // 5 dias atrasado
-        projeto({ id: 3, situacao: 'Em risco', etapa: 'Designação', consultor: 'Beto' }),
+        projeto({
+          id: 1,
+          situacao: 'Em andamento',
+          etapa: 'Projeto',
+          dataUsoOficial: '2026-08-01',
+          consultor: 'Ana',
+        }), // 9 dias atrasado
+        projeto({
+          id: 2,
+          situacao: 'Em andamento',
+          etapa: 'Projeto',
+          dataUsoOficial: '2026-08-05',
+          consultor: 'Ana',
+        }), // 5 dias atrasado
+        projeto({
+          id: 3,
+          situacao: 'Em risco',
+          etapa: 'Designação',
+          consultor: 'Beto',
+        }),
         projeto({
           id: 4,
           situacao: 'Concluído',
@@ -193,7 +241,10 @@ describe('MetricasService', () => {
           dataUsoOficial: '2026-03-01',
         }),
       ];
-      const m = service.metricas(projetos, { 1: [], 2: [{ tipo: 'levantamento' }] });
+      const m = service.metricas(projetos, {
+        1: [],
+        2: [{ tipo: 'levantamento' }],
+      });
 
       expect(m.total).toBe(4);
       expect(m.concluidos).toBe(1);
@@ -201,7 +252,9 @@ describe('MetricasService', () => {
       expect(m.atrasados.map((a) => a.id)).toEqual([1, 2]); // 9 dias antes de 5 dias
       expect(m.nRisco).toBe(1);
       expect(m.gatePendente).toBe(2); // etapa "Projeto" exige "levantamento" — nenhum dos 2 tem doc completo do gate (Projeto exige só 'levantamento'; #2 tem)
-      expect(m.consultores.find((c) => c.consultor === 'Ana')?.projetos).toBe(2);
+      expect(m.consultores.find((c) => c.consultor === 'Ana')?.projetos).toBe(
+        2,
+      );
       expect(m.ttvMedio).toBe(59); // 2026-01-01 -> 2026-03-01
     });
   });
@@ -209,7 +262,11 @@ describe('MetricasService', () => {
   describe('alertas', () => {
     it('gera alerta de atraso (go-live vencido) e de risco, ignora projetos concluídos', () => {
       const projetos = [
-        projeto({ id: 1, situacao: 'Em andamento', dataUsoOficial: '2026-08-01' }),
+        projeto({
+          id: 1,
+          situacao: 'Em andamento',
+          dataUsoOficial: '2026-08-01',
+        }),
         projeto({ id: 2, situacao: 'Em risco' }),
         projeto({ id: 3, situacao: 'Concluído', dataUsoOficial: '2026-01-01' }),
       ];
@@ -234,13 +291,20 @@ describe('MetricasService', () => {
     });
 
     it('gera alerta de hypercare (Encerramento há mais de 15 dias do go-live)', () => {
-      const p = projeto({ id: 1, etapa: 'Encerramento', dataUsoOficial: '2026-07-01' });
+      const p = projeto({
+        id: 1,
+        etapa: 'Encerramento',
+        dataUsoOficial: '2026-07-01',
+      });
       const out = service.alertas([p], {});
       expect(out.some((a) => a.tipo === 'encerramento')).toBe(true);
     });
 
     it('gera alerta de "parado" quando não atualiza há >= 14 dias', () => {
-      const p = projeto({ id: 1, atualizadoEm: new Date('2026-07-01T12:00:00') });
+      const p = projeto({
+        id: 1,
+        atualizadoEm: new Date('2026-07-01T12:00:00'),
+      });
       const out = service.alertas([p], {});
       expect(out.some((a) => a.tipo === 'parado')).toBe(true);
     });
@@ -249,9 +313,24 @@ describe('MetricasService', () => {
   describe('metricasUso', () => {
     it('conta eventos recentes por tipo e projetos novos no período', () => {
       const eventos = [
-        { id: 1, projetoId: 1, tipo: 'documento', criadoEm: new Date('2026-08-05') },
-        { id: 2, projetoId: 1, tipo: 'documento', criadoEm: new Date('2026-08-05') },
-        { id: 3, projetoId: 1, tipo: 'email', criadoEm: new Date('2026-08-05') },
+        {
+          id: 1,
+          projetoId: 1,
+          tipo: 'documento',
+          criadoEm: new Date('2026-08-05'),
+        },
+        {
+          id: 2,
+          projetoId: 1,
+          tipo: 'documento',
+          criadoEm: new Date('2026-08-05'),
+        },
+        {
+          id: 3,
+          projetoId: 1,
+          tipo: 'email',
+          criadoEm: new Date('2026-08-05'),
+        },
         { id: 4, projetoId: 1, tipo: 'nota', criadoEm: new Date('2020-01-01') }, // fora da janela
       ];
       const projetos = [projeto({ id: 1, criadoEm: new Date('2026-08-01') })];
@@ -282,20 +361,40 @@ describe('MetricasService', () => {
 
   describe('cabecalho', () => {
     it('próxima ação = documento pendente do gate da próxima etapa', () => {
-      const p = projeto({ etapa: 'Levantamento', gci: 'Ana', dataLevantamento: '2026-08-01' });
+      const p = projeto({
+        etapa: 'Levantamento',
+        gci: 'Ana',
+        dataLevantamento: '2026-08-01',
+      });
       const c = service.cabecalho(p, []);
-      expect(c.proxima).toEqual({ tipo: 'levantamento', label: 'Mapeamento (Levantamento)', ok: false });
+      expect(c.proxima).toEqual({
+        tipo: 'levantamento',
+        label: 'Mapeamento (Levantamento)',
+        ok: false,
+      });
       expect(c.proxEtapa).toBe('Projeto');
     });
 
     it('próxima ação = "Definir GCI" quando o gate está ok mas falta o GCI', () => {
-      const p = projeto({ etapa: 'Agendamento', gci: '', dataLevantamento: '' });
+      const p = projeto({
+        etapa: 'Agendamento',
+        gci: '',
+        dataLevantamento: '',
+      });
       const c = service.cabecalho(p, [{ tipo: 'levantamento' }]);
-      expect(c.proxima).toEqual({ tipo: 'acao:definir_gci', label: 'Definir GCI Responsável', ok: false });
+      expect(c.proxima).toEqual({
+        tipo: 'acao:definir_gci',
+        label: 'Definir GCI Responsável',
+        ok: false,
+      });
     });
 
     it('próxima ação = "Definir Data do Levantamento" quando o GCI já foi definido', () => {
-      const p = projeto({ etapa: 'Agendamento', gci: 'Ana', dataLevantamento: '' });
+      const p = projeto({
+        etapa: 'Agendamento',
+        gci: 'Ana',
+        dataLevantamento: '',
+      });
       const c = service.cabecalho(p, [{ tipo: 'levantamento' }]);
       expect(c.proxima).toEqual({
         tipo: 'acao:data_levantamento',
@@ -307,19 +406,32 @@ describe('MetricasService', () => {
     it('stepper marca fases anteriores como "done" e a atual como "atual"', () => {
       const p = projeto({ etapa: 'Designação' });
       const c = service.cabecalho(p, []);
-      expect(c.stepper.find((s) => s.nome === 'Agendamento')?.estado).toBe('done');
-      expect(c.stepper.find((s) => s.nome === 'Designação')?.estado).toBe('atual');
-      expect(c.stepper.find((s) => s.nome === 'Encerramento')?.estado).toBe('futuro');
+      expect(c.stepper.find((s) => s.nome === 'Agendamento')?.estado).toBe(
+        'done',
+      );
+      expect(c.stepper.find((s) => s.nome === 'Designação')?.estado).toBe(
+        'atual',
+      );
+      expect(c.stepper.find((s) => s.nome === 'Encerramento')?.estado).toBe(
+        'futuro',
+      );
     });
 
     it('calcula atraso em dias quando o go-live já venceu e o projeto não está concluído', () => {
-      const p = projeto({ etapa: 'Cronograma e Check-list', dataUsoOficial: '2026-08-01', situacao: 'Em andamento' });
+      const p = projeto({
+        etapa: 'Cronograma e Check-list',
+        dataUsoOficial: '2026-08-01',
+        situacao: 'Em andamento',
+      });
       const c = service.cabecalho(p, []);
       expect(c.atraso).toBe(9);
     });
 
     it('não calcula atraso para projeto concluído', () => {
-      const p = projeto({ dataUsoOficial: '2026-08-01', situacao: 'Concluído' });
+      const p = projeto({
+        dataUsoOficial: '2026-08-01',
+        situacao: 'Concluído',
+      });
       const c = service.cabecalho(p, []);
       expect(c.atraso).toBeNull();
     });

@@ -31,7 +31,11 @@ describe('Usuários (e2e)', () => {
     }).compile();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new ResponseInterceptor());
@@ -61,7 +65,9 @@ describe('Usuários (e2e)', () => {
     );
 
     tokenAdm = (
-      await request(server()).post('/api/auth/login').send({ login: 'admin', senha: 'senha-adm-123' })
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'admin', senha: 'senha-adm-123' })
     ).body.data.accessToken;
     tokenConsultor = (
       await request(server())
@@ -75,7 +81,10 @@ describe('Usuários (e2e)', () => {
   });
 
   it('Consultor não acessa (403) — só ADM', async () => {
-    const res = await auth(request(server()).get('/api/usuarios'), tokenConsultor);
+    const res = await auth(
+      request(server()).get('/api/usuarios'),
+      tokenConsultor,
+    );
     expect(res.status).toBe(403);
   });
 
@@ -83,17 +92,27 @@ describe('Usuários (e2e)', () => {
     const res = await auth(request(server()).get('/api/usuarios'), tokenAdm);
     expect(res.status).toBe(200);
     expect(res.body.data.itens.length).toBeGreaterThanOrEqual(2);
-    expect(res.body.data.itens.every((u: Record<string, unknown>) => !('senhaHash' in u))).toBe(true);
+    expect(
+      res.body.data.itens.every(
+        (u: Record<string, unknown>) => !('senhaHash' in u),
+      ),
+    ).toBe(true);
   });
 
   it('cria um usuário; login em branco usa o e-mail; Código SICLA é obrigatório', async () => {
-    const semCodigo = await auth(request(server()).post('/api/usuarios'), tokenAdm).send({
+    const semCodigo = await auth(
+      request(server()).post('/api/usuarios'),
+      tokenAdm,
+    ).send({
       email: 'novo@teste.com',
       senha: 'segredo1',
     });
     expect(semCodigo.status).toBe(400);
 
-    const res = await auth(request(server()).post('/api/usuarios'), tokenAdm).send({
+    const res = await auth(
+      request(server()).post('/api/usuarios'),
+      tokenAdm,
+    ).send({
       email: 'novo@teste.com',
       senha: 'segredo1',
       codigoSicla: '099',
@@ -105,7 +124,10 @@ describe('Usuários (e2e)', () => {
   });
 
   it('rejeita e-mail/login duplicado', async () => {
-    const res = await auth(request(server()).post('/api/usuarios'), tokenAdm).send({
+    const res = await auth(
+      request(server()).post('/api/usuarios'),
+      tokenAdm,
+    ).send({
       email: 'novo@teste.com',
       senha: 'segredo1',
       codigoSicla: '098',
@@ -114,14 +136,20 @@ describe('Usuários (e2e)', () => {
   });
 
   it('atualiza um usuário sem enviar senha — login continua funcionando com a senha antiga', async () => {
-    const criado = await auth(request(server()).post('/api/usuarios'), tokenAdm).send({
+    const criado = await auth(
+      request(server()).post('/api/usuarios'),
+      tokenAdm,
+    ).send({
       email: 'editar@teste.com',
       senha: 'senha-original',
       codigoSicla: '050',
     });
     const id = criado.body.data.id;
 
-    const editado = await auth(request(server()).put(`/api/usuarios/${id}`), tokenAdm).send({
+    const editado = await auth(
+      request(server()).put(`/api/usuarios/${id}`),
+      tokenAdm,
+    ).send({
       nome: 'Nome Editado',
     });
     expect(editado.status).toBe(200);
@@ -134,7 +162,10 @@ describe('Usuários (e2e)', () => {
   });
 
   it('altera a senha quando enviada na edição', async () => {
-    const criado = await auth(request(server()).post('/api/usuarios'), tokenAdm).send({
+    const criado = await auth(
+      request(server()).post('/api/usuarios'),
+      tokenAdm,
+    ).send({
       email: 'trocar-senha@teste.com',
       senha: 'senha-velha-123',
       codigoSicla: '051',

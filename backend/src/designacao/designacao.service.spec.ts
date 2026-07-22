@@ -15,7 +15,10 @@ const HOJE = new Date('2026-08-10T12:00:00');
 
 describe('DesignacaoService', () => {
   let service: DesignacaoService;
-  const projetosRepo = { findOne: jest.fn(), save: jest.fn((p) => Promise.resolve(p)) };
+  const projetosRepo = {
+    findOne: jest.fn(),
+    save: jest.fn((p) => Promise.resolve(p)),
+  };
   const documentosRepo = { find: jest.fn() };
   const eventosRepo = { save: jest.fn(), create: jest.fn((dto) => dto) };
   const designacoesRepo = {
@@ -25,8 +28,13 @@ describe('DesignacaoService', () => {
     create: jest.fn((dto) => dto),
   };
   const users = { porPerfil: jest.fn(), emailDoUsuario: jest.fn() };
-  const mailer = { enviar: jest.fn().mockResolvedValue({ ok: true, erro: null }) };
-  const metricas = { gciDefinido: jest.fn(), autoAvancar: jest.fn().mockReturnValue([]) };
+  const mailer = {
+    enviar: jest.fn().mockResolvedValue({ ok: true, erro: null }),
+  };
+  const metricas = {
+    gciDefinido: jest.fn(),
+    autoAvancar: jest.fn().mockReturnValue([]),
+  };
 
   function projeto(over: Partial<Projeto> = {}): Projeto {
     return {
@@ -67,7 +75,9 @@ describe('DesignacaoService', () => {
 
   describe('definirGci', () => {
     it('rejeita quando nenhum GCI é selecionado', async () => {
-      await expect(service.definirGci(1, [], 'Admin')).rejects.toThrow(BadRequestException);
+      await expect(service.definirGci(1, [], 'Admin')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('deduplica preservando a ordem e junta com vírgula; não envia e-mail', async () => {
@@ -76,7 +86,9 @@ describe('DesignacaoService', () => {
       expect(p.gci).toBe('Ana, Beto');
       expect(mailer.enviar).not.toHaveBeenCalled();
       expect(eventosRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ descricao: expect.stringContaining('GCI(s) definido(s): Ana, Beto') }),
+        expect.objectContaining({
+          descricao: expect.stringContaining('GCI(s) definido(s): Ana, Beto'),
+        }),
       );
     });
   });
@@ -85,13 +97,17 @@ describe('DesignacaoService', () => {
     it('rejeita se o GCI ainda não foi definido', async () => {
       projetosRepo.findOne.mockResolvedValue(projeto({ gci: '' }));
       metricas.gciDefinido.mockReturnValue(false);
-      await expect(service.agendar(1, '2026-08-15', 'Admin')).rejects.toThrow(BadRequestException);
+      await expect(service.agendar(1, '2026-08-15', 'Admin')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('rejeita data no passado', async () => {
       projetosRepo.findOne.mockResolvedValue(projeto({ gci: 'Ana' }));
       metricas.gciDefinido.mockReturnValue(true);
-      await expect(service.agendar(1, '2020-01-01', 'Admin')).rejects.toThrow(BadRequestException);
+      await expect(service.agendar(1, '2020-01-01', 'Admin')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('salva a data, notifica o(s) GCI(s) resolvidos por e-mail e roda o auto-avanço', async () => {
@@ -125,12 +141,18 @@ describe('DesignacaoService', () => {
   describe('designarConsultores', () => {
     it('rejeita quando nenhum módulo recebe consultor', async () => {
       projetosRepo.findOne.mockResolvedValue(projeto());
-      await expect(service.designarConsultores(1, {}, 'GCI Um')).rejects.toThrow(BadRequestException);
+      await expect(
+        service.designarConsultores(1, {}, 'GCI Um'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('substitui todas as designações (apaga e reinsere) e denormaliza Projeto.consultor', async () => {
       projetosRepo.findOne.mockResolvedValue(projeto());
-      await service.designarConsultores(1, { FAT: 'Beto', CTB: 'Ana' }, 'GCI Um');
+      await service.designarConsultores(
+        1,
+        { FAT: 'Beto', CTB: 'Ana' },
+        'GCI Um',
+      );
       expect(designacoesRepo.delete).toHaveBeenCalledWith({ projetoId: 1 });
       expect(designacoesRepo.save).toHaveBeenCalledWith([
         { projetoId: 1, modulo: 'FAT', consultor: 'Beto' },
@@ -141,13 +163,21 @@ describe('DesignacaoService', () => {
     it('ignora módulos sem consultor selecionado', async () => {
       projetosRepo.findOne.mockResolvedValue(projeto());
       await service.designarConsultores(1, { FAT: 'Beto', CTB: '' }, 'GCI Um');
-      expect(designacoesRepo.save).toHaveBeenCalledWith([{ projetoId: 1, modulo: 'FAT', consultor: 'Beto' }]);
+      expect(designacoesRepo.save).toHaveBeenCalledWith([
+        { projetoId: 1, modulo: 'FAT', consultor: 'Beto' },
+      ]);
     });
 
     it('notifica cada consultor designado com os módulos dele', async () => {
       projetosRepo.findOne.mockResolvedValue(projeto());
-      users.emailDoUsuario.mockImplementation((n: string) => Promise.resolve(`${n.toLowerCase()}@teste.com`));
-      await service.designarConsultores(1, { FAT: 'Ana', CTB: 'Ana' }, 'GCI Um');
+      users.emailDoUsuario.mockImplementation((n: string) =>
+        Promise.resolve(`${n.toLowerCase()}@teste.com`),
+      );
+      await service.designarConsultores(
+        1,
+        { FAT: 'Ana', CTB: 'Ana' },
+        'GCI Um',
+      );
       expect(mailer.enviar).toHaveBeenCalledWith(
         'ana@teste.com',
         expect.stringContaining('Implantação designada'),
@@ -156,7 +186,9 @@ describe('DesignacaoService', () => {
     });
 
     it('não notifica quando o projeto já está Concluído (evita reenvio pós-encerramento)', async () => {
-      projetosRepo.findOne.mockResolvedValue(projeto({ situacao: 'Concluído' }));
+      projetosRepo.findOne.mockResolvedValue(
+        projeto({ situacao: 'Concluído' }),
+      );
       await service.designarConsultores(1, { FAT: 'Ana' }, 'GCI Um');
       expect(mailer.enviar).not.toHaveBeenCalled();
     });

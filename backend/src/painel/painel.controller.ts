@@ -1,4 +1,12 @@
-import { Controller, Get, HttpCode, HttpStatus, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -34,13 +42,17 @@ export class PainelController {
 
   @Get('home')
   @Roles() // sobrepõe o @Roles(...PERFIS_GESTAO) da classe — todos os perfis autenticados
-  @ApiOperation({ summary: 'Home: KPIs + fila de próximas ações + projeto em foco' })
+  @ApiOperation({
+    summary: 'Home: KPIs + fila de próximas ações + projeto em foco',
+  })
   async painelHome(@CurrentUser() user: AuthUser) {
     return new ApiEnvelope(await this.home.painel(user));
   }
 
   @Get('coordenacao')
-  @ApiOperation({ summary: 'Painel de Coordenação: KPIs, funil, atrasados, alertas' })
+  @ApiOperation({
+    summary: 'Painel de Coordenação: KPIs, funil, atrasados, alertas',
+  })
   async painelCoordenacao(@CurrentUser() user: AuthUser) {
     return new ApiEnvelope(await this.coordenacao.painel(user));
   }
@@ -63,21 +75,27 @@ export class PainelController {
   }
 
   @Get('atividade')
-  @ApiOperation({ summary: 'Atividade da operação: uso 30 dias, funil macro, feed de eventos' })
+  @ApiOperation({
+    summary: 'Atividade da operação: uso 30 dias, funil macro, feed de eventos',
+  })
   async painelAtividade(@CurrentUser() user: AuthUser) {
     return new ApiEnvelope(await this.atividade.painel(user));
   }
 
   @Post('coordenacao/digest')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Dispara manualmente o resumo diário por e-mail (botão "enviar agora")' })
+  @ApiOperation({
+    summary:
+      'Dispara manualmente o resumo diário por e-mail (botão "enviar agora")',
+  })
   async enviarDigest() {
     return new ApiEnvelope(await this.digest.enviar());
   }
 
   @Get('monitoramento')
   @ApiOperation({
-    summary: 'Centro de Monitoramento Operacional: setores, saúde, carga, entregas e mapa de progresso',
+    summary:
+      'Centro de Monitoramento Operacional: setores, saúde, carga, entregas e mapa de progresso',
   })
   async painelMonitoramento(@CurrentUser() user: AuthUser) {
     return new ApiEnvelope(await this.monitoramento.painel(user));

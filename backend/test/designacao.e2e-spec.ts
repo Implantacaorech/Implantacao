@@ -54,7 +54,11 @@ describe('Designação (e2e)', () => {
       .compile();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new ResponseInterceptor());
@@ -108,16 +112,24 @@ describe('Designação (e2e)', () => {
     );
 
     tokenAdm = (
-      await request(server()).post('/api/auth/login').send({ login: 'admin', senha: 'senha-adm-123' })
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'admin', senha: 'senha-adm-123' })
     ).body.data.accessToken;
     tokenAdministrativo = (
-      await request(server()).post('/api/auth/login').send({ login: 'adm1', senha: 'senha-adm1-123' })
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'adm1', senha: 'senha-adm1-123' })
     ).body.data.accessToken;
     tokenGci = (
-      await request(server()).post('/api/auth/login').send({ login: 'gci1', senha: 'senha-gci-123' })
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'gci1', senha: 'senha-gci-123' })
     ).body.data.accessToken;
     tokenConsultor = (
-      await request(server()).post('/api/auth/login').send({ login: 'cons1', senha: 'senha-cons-123' })
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'cons1', senha: 'senha-cons-123' })
     ).body.data.accessToken;
 
     const p = await projetos.save(
@@ -140,7 +152,10 @@ describe('Designação (e2e)', () => {
 
   describe('GET/POST /projetos/:id/definir-gci (Etapa 5 — Administrativo)', () => {
     it('GCI não acessa (403) — só ADM/Administrativo', async () => {
-      const res = await auth(request(server()).get(`/api/projetos/${projetoId}/definir-gci`), tokenGci);
+      const res = await auth(
+        request(server()).get(`/api/projetos/${projetoId}/definir-gci`),
+        tokenGci,
+      );
       expect(res.status).toBe(403);
     });
 
@@ -203,12 +218,18 @@ describe('Designação (e2e)', () => {
     });
 
     it('Consultor não acessa (403)', async () => {
-      const res = await auth(request(server()).get(`/api/projetos/${projetoId}/consultores`), tokenConsultor);
+      const res = await auth(
+        request(server()).get(`/api/projetos/${projetoId}/consultores`),
+        tokenConsultor,
+      );
       expect(res.status).toBe(403);
     });
 
     it('GCI vê os módulos do projeto e a lista de consultores ativos', async () => {
-      const res = await auth(request(server()).get(`/api/projetos/${projetoId}/consultores`), tokenGci);
+      const res = await auth(
+        request(server()).get(`/api/projetos/${projetoId}/consultores`),
+        tokenGci,
+      );
       expect(res.status).toBe(200);
       expect(res.body.data.modulos).toEqual(['FAT', 'CTB']);
       expect(res.body.data.consultores).toContain('Beto Consultor');
@@ -236,15 +257,28 @@ describe('Designação (e2e)', () => {
       expect(mailerFake.enviados[0].corpo).toContain('FAT, CTB');
 
       const eventosDoProjeto = await eventos.find({ where: { projetoId } });
-      expect(eventosDoProjeto.some((e) => e.descricao.includes('Consultores designados'))).toBe(true);
+      expect(
+        eventosDoProjeto.some((e) =>
+          e.descricao.includes('Consultores designados'),
+        ),
+      ).toBe(true);
     });
   });
 
   describe('ADM sempre acessa (super-perfil em todas as etapas)', () => {
     it('ADM acessa definir-gci, agendar e consultores', async () => {
-      const r1 = await auth(request(server()).get(`/api/projetos/${projetoId}/definir-gci`), tokenAdm);
-      const r2 = await auth(request(server()).get(`/api/projetos/${projetoId}/agendar`), tokenAdm);
-      const r3 = await auth(request(server()).get(`/api/projetos/${projetoId}/consultores`), tokenAdm);
+      const r1 = await auth(
+        request(server()).get(`/api/projetos/${projetoId}/definir-gci`),
+        tokenAdm,
+      );
+      const r2 = await auth(
+        request(server()).get(`/api/projetos/${projetoId}/agendar`),
+        tokenAdm,
+      );
+      const r3 = await auth(
+        request(server()).get(`/api/projetos/${projetoId}/consultores`),
+        tokenAdm,
+      );
       expect(r1.status).toBe(200);
       expect(r2.status).toBe(200);
       expect(r3.status).toBe(200);

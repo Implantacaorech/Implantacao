@@ -5,7 +5,12 @@ import { firstValueFrom } from 'rxjs';
 
 export type StatusTranscricao =
   | { status: 'processando'; pct: number | null; pos: number; dur: number }
-  | { status: 'concluido'; transcricao: string; duracaoSeg: number; idioma: string }
+  | {
+      status: 'concluido';
+      transcricao: string;
+      duracaoSeg: number;
+      idioma: string;
+    }
   | { status: 'erro'; mensagem: string };
 
 /** Cliente HTTP do job de transcrição do docservice (faster-whisper, local, CPU) — nunca

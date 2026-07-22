@@ -56,7 +56,10 @@ export class ModeloEmailController {
   @Post(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Atualiza um modelo de e-mail' })
-  async atualizar(@Param('id', ParseIntPipe) id: number, @Body() dto: SalvarModeloEmailDto) {
+  async atualizar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SalvarModeloEmailDto,
+  ) {
     if (!(dto.nome || '').trim()) {
       throw new BadRequestException('O nome do modelo é obrigatório.');
     }
@@ -65,7 +68,9 @@ export class ModeloEmailController {
 
   @Post(':id/excluir')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Exclui um modelo (modelos padrão não podem ser excluídos)' })
+  @ApiOperation({
+    summary: 'Exclui um modelo (modelos padrão não podem ser excluídos)',
+  })
   async excluir(@Param('id', ParseIntPipe) id: number) {
     const r = await this.modelos.excluir(id);
     if (!r.ok) throw new BadRequestException(r.erro ?? 'Falha ao excluir.');

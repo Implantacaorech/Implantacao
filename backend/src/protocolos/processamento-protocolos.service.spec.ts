@@ -1,6 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { mkdtempSync, rmSync, writeFileSync, utimesSync, existsSync, readdirSync } from 'fs';
+import {
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+  utimesSync,
+  existsSync,
+  readdirSync,
+} from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { ProcessamentoProtocolosService } from './processamento-protocolos.service';
@@ -133,7 +140,10 @@ describe('ProcessamentoProtocolosService', () => {
       protocolos.buscar.mockResolvedValue(
         protocolo({ videoCaminho: video, transcricao: 'já transcrito' }),
       );
-      ia.analisar.mockResolvedValue({ campos: { modulo: 'Fiscal' }, bruto: '{}' });
+      ia.analisar.mockResolvedValue({
+        campos: { modulo: 'Fiscal' },
+        bruto: '{}',
+      });
 
       const r = await service.processar(1, 'Fulano');
       expect(r.ok).toBe(true);
@@ -163,7 +173,9 @@ describe('ProcessamentoProtocolosService', () => {
       const chamadaErro = protocolos.atualizarStatus.mock.calls.find(
         (c: unknown[]) => c[1] === 'Erro',
       );
-      expect(chamadaErro[2]).toBe('Chave da API de IA inválida — confira em Config → IA.');
+      expect(chamadaErro[2]).toBe(
+        'Chave da API de IA inválida — confira em Config → IA.',
+      );
       expect(existsSync(video)).toBe(false); // foi movido
       expect(existsSync(join(raiz, 'Videos Com Erro', 'aula3.mp4'))).toBe(true);
     });
@@ -192,13 +204,20 @@ describe('ProcessamentoProtocolosService', () => {
 
       const novos2 = await service.varrerPasta('robô');
       expect(novos2).toEqual([42]);
-      expect(protocolos.criar).toHaveBeenCalledWith('novo.mp4', video, 'sharepoint', 'robô');
+      expect(protocolos.criar).toHaveBeenCalledWith(
+        'novo.mp4',
+        video,
+        'sharepoint',
+        'robô',
+      );
     });
   });
 
   describe('configurado', () => {
     it('true quando "Videos Pendentes" existe', () => {
-      require('fs').mkdirSync(join(raiz, 'Videos Pendentes'), { recursive: true });
+      require('fs').mkdirSync(join(raiz, 'Videos Pendentes'), {
+        recursive: true,
+      });
       expect(service.configurado()).toBe(true);
     });
 

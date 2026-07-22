@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { spawn } from 'child_process';
 import { join } from 'path';
@@ -21,7 +25,10 @@ export class LegadoCliService {
 
   constructor(private readonly config: ConfigService<AppConfig, true>) {}
 
-  async executar<T = unknown>(acao: string, payload: Record<string, unknown> = {}): Promise<T> {
+  async executar<T = unknown>(
+    acao: string,
+    payload: Record<string, unknown> = {},
+  ): Promise<T> {
     const webappDir = this.config.get('legadoWebappDir', { infer: true });
     const pythonExe = this.config.get('legadoPythonExe', { infer: true });
     const script = join(webappDir, 'legado_cli.py');
@@ -42,8 +49,14 @@ export class LegadoCliService {
         try {
           resolve(JSON.parse(linha) as RespostaCli);
         } catch {
-          this.logger.error(`legado_cli (${acao}) não devolveu JSON válido. stderr: ${stderr}`);
-          reject(new InternalServerErrorException('Falha ao executar o gerador legado.'));
+          this.logger.error(
+            `legado_cli (${acao}) não devolveu JSON válido. stderr: ${stderr}`,
+          );
+          reject(
+            new InternalServerErrorException(
+              'Falha ao executar o gerador legado.',
+            ),
+          );
         }
       });
       proc.stdin.write(Buffer.from(entrada, 'utf8'));
@@ -52,7 +65,9 @@ export class LegadoCliService {
 
     if (!resposta.ok) {
       this.logger.warn(`legado_cli (${acao}) devolveu erro: ${resposta.erro}`);
-      throw new InternalServerErrorException(resposta.erro || 'Falha ao executar o gerador legado.');
+      throw new InternalServerErrorException(
+        resposta.erro || 'Falha ao executar o gerador legado.',
+      );
     }
     return resposta.data as T;
   }

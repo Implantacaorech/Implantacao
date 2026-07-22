@@ -2,14 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OAuth2Client } from 'google-auth-library';
 import { randomBytes } from 'crypto';
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+
 const MailComposer = require('nodemailer/lib/mail-composer');
 import { AppConfig } from '../config/configuration';
 import { Anexo } from './anexo';
@@ -45,7 +40,11 @@ export class GmailService {
   private dir(): string {
     const base =
       process.env.NODE_ENV === 'test'
-        ? join(process.cwd(), 'dados', `email_test_${process.env.JEST_WORKER_ID ?? '0'}`)
+        ? join(
+            process.cwd(),
+            'dados',
+            `email_test_${process.env.JEST_WORKER_ID ?? '0'}`,
+          )
         : join(process.cwd(), 'dados');
     mkdirSync(base, { recursive: true });
     return base;
@@ -118,21 +117,40 @@ export class GmailService {
 
   /** Troca o `code` do redirect do Google por tokens e grava o arquivo local. Confere o
    * `state` contra o gerado em `urlAutorizacao()` antes de trocar o código. */
-  async trocarCodigoPorToken(code: string, state: string): Promise<ResultadoEnvio> {
+  async trocarCodigoPorToken(
+    code: string,
+    state: string,
+  ): Promise<ResultadoEnvio> {
     if (!this.estadoPendente || state !== this.estadoPendente) {
-      return { ok: false, erro: 'Autorização inválida ou expirada — clique em Autorizar novamente.' };
+      return {
+        ok: false,
+        erro: 'Autorização inválida ou expirada — clique em Autorizar novamente.',
+      };
     }
     this.estadoPendente = null;
     const client = this.cliente();
     if (!client) {
-      return { ok: false, erro: 'Falta a credencial OAuth (gmail_client.json) do Google Cloud.' };
+      return {
+        ok: false,
+        erro: 'Falta a credencial OAuth (gmail_client.json) do Google Cloud.',
+      };
     }
     try {
       const { tokens } = await client.getToken(code);
-      writeFileSync(this.arquivoToken(), JSON.stringify(tokens, null, 2), 'utf8');
+      writeFileSync(
+        this.arquivoToken(),
+        JSON.stringify(tokens, null, 2),
+        'utf8',
+      );
       return { ok: true, erro: null };
     } catch (e) {
-      return { ok: false, erro: e instanceof Error ? `${e.constructor.name}: ${e.message}` : String(e) };
+      return {
+        ok: false,
+        erro:
+          e instanceof Error
+            ? `${e.constructor.name}: ${e.message}`
+            : String(e),
+      };
     }
   }
 
@@ -147,11 +165,18 @@ export class GmailService {
       client.setCredentials(tokens);
       client.on('tokens', (novos) => {
         const atual = { ...tokens, ...novos };
-        writeFileSync(this.arquivoToken(), JSON.stringify(atual, null, 2), 'utf8');
+        writeFileSync(
+          this.arquivoToken(),
+          JSON.stringify(atual, null, 2),
+          'utf8',
+        );
       });
       return client;
     } catch (e) {
-      this.logger.error('Falha ao carregar token do Gmail', e instanceof Error ? e.stack : String(e));
+      this.logger.error(
+        'Falha ao carregar token do Gmail',
+        e instanceof Error ? e.stack : String(e),
+      );
       return null;
     }
   }
@@ -164,9 +189,14 @@ export class GmailService {
   ): Promise<ResultadoEnvio> {
     const client = await this.credenciais();
     if (!client) {
-      return { ok: false, erro: 'Gmail API não autorizado (Config → Gmail API).' };
+      return {
+        ok: false,
+        erro: 'Gmail API não autorizado (Config → Gmail API).',
+      };
     }
-    const para = Array.isArray(destino) ? destino.filter(Boolean).join(', ') : destino;
+    const para = Array.isArray(destino)
+      ? destino.filter(Boolean).join(', ')
+      : destino;
     const composer = new MailComposer({
       to: para,
       subject: assunto,
@@ -201,9 +231,18 @@ export class GmailService {
       );
       if (res.status === 200) return { ok: true, erro: null };
       const texto = await res.text();
-      return { ok: false, erro: `Gmail API ${res.status}: ${texto.slice(0, 140)}` };
+      return {
+        ok: false,
+        erro: `Gmail API ${res.status}: ${texto.slice(0, 140)}`,
+      };
     } catch (e) {
-      return { ok: false, erro: e instanceof Error ? `${e.constructor.name}: ${e.message}` : String(e) };
+      return {
+        ok: false,
+        erro:
+          e instanceof Error
+            ? `${e.constructor.name}: ${e.message}`
+            : String(e),
+      };
     }
   }
 }

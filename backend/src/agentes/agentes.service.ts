@@ -31,7 +31,10 @@ export class AgentesService {
     return this.repo.save(execucao);
   }
 
-  async concluir(id: number, dto: ConcluirExecucaoDto): Promise<AgenteExecucao> {
+  async concluir(
+    id: number,
+    dto: ConcluirExecucaoDto,
+  ): Promise<AgenteExecucao> {
     const execucao = await this.repo.findOne({ where: { id } });
     if (!execucao) throw new NotFoundException('Execução não encontrada.');
     execucao.status = dto.status;
@@ -51,7 +54,10 @@ export class AgentesService {
 
   /** Topologia estática (`.claude/agents/`) + status real vindo do banco — nunca dado
    * inventado: `ativo`/`execucoes24h` só refletem linhas que agentes de verdade gravaram. */
-  async grafo(): Promise<{ nos: NoGrafoComStatus[]; arestas: typeof ARESTAS_AGENTES }> {
+  async grafo(): Promise<{
+    nos: NoGrafoComStatus[];
+    arestas: typeof ARESTAS_AGENTES;
+  }> {
     const desde = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const recentes = await this.repo
       .createQueryBuilder('e')

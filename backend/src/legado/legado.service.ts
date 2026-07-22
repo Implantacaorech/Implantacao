@@ -38,7 +38,10 @@ export class LegadoService {
 
   private raizesPermitidas(): string[] {
     const webappDir = this.config.get('legadoWebappDir', { infer: true });
-    return [resolve(webappDir, '..', 'exemplos'), resolve(webappDir, '..', 'tools', 'data')];
+    return [
+      resolve(webappDir, '..', 'exemplos'),
+      resolve(webappDir, '..', 'tools', 'data'),
+    ];
   }
 
   private pathDentro(caminho: string): boolean {
@@ -64,7 +67,10 @@ export class LegadoService {
     }
   }
 
-  private registrarSeExistir(caminho: string | null, rotulo: string): ArquivoBaixavel | null {
+  private registrarSeExistir(
+    caminho: string | null,
+    rotulo: string,
+  ): ArquivoBaixavel | null {
     if (!caminho) return null;
     const token = this.registro.registrar(caminho);
     return { token, rotulo, nome: basename(caminho) };
@@ -75,26 +81,34 @@ export class LegadoService {
   }
 
   async saude(): Promise<{ ok: boolean; relatorio: string }> {
-    const r = await this.cli.executar<{ code: number; relatorio: string }>('saude');
+    const r = await this.cli.executar<{ code: number; relatorio: string }>(
+      'saude',
+    );
     return { ok: r.code === 0, relatorio: r.relatorio };
   }
 
   async catalogo(): Promise<GrupoCatalogo[]> {
-    const r = await this.cli.executar<{ grupos: GrupoCatalogo[] }>('catalogo_por_area');
+    const r = await this.cli.executar<{ grupos: GrupoCatalogo[] }>(
+      'catalogo_por_area',
+    );
     return r.grupos;
   }
 
-  async definirCliente(form: FormLegado): Promise<{ arquivo: string; nome: string }> {
+  async definirCliente(
+    form: FormLegado,
+  ): Promise<{ arquivo: string; nome: string }> {
     return this.cli.executar('cliente_yaml', { form });
   }
 
   async criarTemplates(
     form: FormLegado,
   ): Promise<{ ok: boolean; erro?: string; arquivos: ArquivoBaixavel[] }> {
-    const r = await this.cli.executar<{ ok: boolean; erro?: string; mapa?: string; termo?: string }>(
-      'criar_templates',
-      { form },
-    );
+    const r = await this.cli.executar<{
+      ok: boolean;
+      erro?: string;
+      mapa?: string;
+      termo?: string;
+    }>('criar_templates', { form });
     if (!r.ok) return { ok: false, erro: r.erro, arquivos: [] };
     const arquivos = [
       this.registrarSeExistir(r.mapa ?? null, 'Mapeamento de Processos (Word)'),
@@ -103,18 +117,32 @@ export class LegadoService {
     return { ok: true, arquivos };
   }
 
-  async converterVerbalTexto(texto: string): Promise<{ depois: string; mudancas: [string, string][] }> {
+  async converterVerbalTexto(
+    texto: string,
+  ): Promise<{ depois: string; mudancas: [string, string][] }> {
     return this.cli.executar('converter_verbal_texto', { texto });
   }
 
-  async converterVerbalDocx(buffer: Buffer, nomeOriginal: string): Promise<ArquivoBaixavel> {
+  async converterVerbalDocx(
+    buffer: Buffer,
+    nomeOriginal: string,
+  ): Promise<ArquivoBaixavel> {
     return this.comArquivoTemporario(buffer, nomeOriginal, async (caminho) => {
-      const r = await this.cli.executar<{ arquivo: string }>('converter_verbal_docx', {
-        caminho,
-        nomeOriginal,
-      });
-      const arquivo = this.registrarSeExistir(r.arquivo, 'Documento corrigido (.docx)');
-      if (!arquivo) throw new NotFoundException('Não foi possível gerar o documento corrigido.');
+      const r = await this.cli.executar<{ arquivo: string }>(
+        'converter_verbal_docx',
+        {
+          caminho,
+          nomeOriginal,
+        },
+      );
+      const arquivo = this.registrarSeExistir(
+        r.arquivo,
+        'Documento corrigido (.docx)',
+      );
+      if (!arquivo)
+        throw new NotFoundException(
+          'Não foi possível gerar o documento corrigido.',
+        );
       return arquivo;
     });
   }
@@ -124,9 +152,16 @@ export class LegadoService {
     form: FormLegado,
     modulos: string[],
   ): Promise<{ ok: boolean; erro?: string; arquivo?: ArquivoBaixavel }> {
-    const acao = tipo === 'checklist' ? 'gerar_checklist_form' : 'gerar_levantamento_form';
-    const rotulo = tipo === 'checklist' ? 'Check List do Consultor (Excel)' : 'Levantamento (Word)';
-    const r = await this.cli.executar<{ arquivo: string | null; log: string }>(acao, { form, modulos });
+    const acao =
+      tipo === 'checklist' ? 'gerar_checklist_form' : 'gerar_levantamento_form';
+    const rotulo =
+      tipo === 'checklist'
+        ? 'Check List do Consultor (Excel)'
+        : 'Levantamento (Word)';
+    const r = await this.cli.executar<{ arquivo: string | null; log: string }>(
+      acao,
+      { form, modulos },
+    );
     if (!r.arquivo) return { ok: false, erro: 'Não foi possível gerar.' };
     const arquivo = this.registrarSeExistir(r.arquivo, rotulo);
     return { ok: true, arquivo: arquivo ?? undefined };
@@ -142,13 +177,20 @@ export class LegadoService {
     clienteArquivo?: string,
   ): Promise<string | undefined> {
     if (buffer && nomeOriginal) {
-      return this.comArquivoTemporario(buffer, nomeOriginal, async (caminho) => {
-        const r = await this.cli.executar<{ arquivo: string }>('save_upload_yaml', {
-          caminho,
-          nomeOriginal,
-        });
-        return r.arquivo;
-      });
+      return this.comArquivoTemporario(
+        buffer,
+        nomeOriginal,
+        async (caminho) => {
+          const r = await this.cli.executar<{ arquivo: string }>(
+            'save_upload_yaml',
+            {
+              caminho,
+              nomeOriginal,
+            },
+          );
+          return r.arquivo;
+        },
+      );
     }
     return clienteArquivo;
   }
@@ -157,16 +199,26 @@ export class LegadoService {
     mod: string,
     yamlBasename: string | undefined,
   ): Promise<{ ok: boolean; erro?: string; arquivo?: ArquivoBaixavel }> {
-    const r = await this.cli.executar<{ arquivo: string | null; log: string }>('gerar', {
-      mod,
-      yamlBasename: yamlBasename ?? null,
-    });
-    if (!r.arquivo) return { ok: false, erro: 'Não foi possível localizar o arquivo gerado.' };
+    const r = await this.cli.executar<{ arquivo: string | null; log: string }>(
+      'gerar',
+      {
+        mod,
+        yamlBasename: yamlBasename ?? null,
+      },
+    );
+    if (!r.arquivo)
+      return {
+        ok: false,
+        erro: 'Não foi possível localizar o arquivo gerado.',
+      };
     const arquivo = this.registrarSeExistir(r.arquivo, 'Documento gerado');
     return { ok: true, arquivo: arquivo ?? undefined };
   }
 
-  async importarSequencia(buffer: Buffer, nomeOriginal: string): Promise<{
+  async importarSequencia(
+    buffer: Buffer,
+    nomeOriginal: string,
+  ): Promise<{
     ok: boolean;
     erro?: string;
     cliente?: string;
@@ -185,13 +237,23 @@ export class LegadoService {
         }>('run_sequencia', { caminho });
         const arquivos = [
           this.registrarSeExistir(r.projeto, 'Projeto de Implantação (Word)'),
-          this.registrarSeExistir(r.checklist, 'Check List do Consultor (Excel)'),
+          this.registrarSeExistir(
+            r.checklist,
+            'Check List do Consultor (Excel)',
+          ),
           this.registrarSeExistir(r.termo, 'Termo de Encerramento (Word)'),
-          this.registrarSeExistir(r.yaml, 'projeto.yaml (para ajustes manuais)'),
+          this.registrarSeExistir(
+            r.yaml,
+            'projeto.yaml (para ajustes manuais)',
+          ),
         ].filter((a): a is ArquivoBaixavel => a !== null);
         return { ok: true, cliente: r.cliente, modulos: r.modulos, arquivos };
       } catch {
-        return { ok: false, erro: 'Não foi possível importar o Levantamento.', arquivos: [] };
+        return {
+          ok: false,
+          erro: 'Não foi possível importar o Levantamento.',
+          arquivos: [],
+        };
       }
     });
   }

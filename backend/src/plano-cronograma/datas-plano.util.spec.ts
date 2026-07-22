@@ -1,4 +1,9 @@
-import { formatarBr, parseDataPlano, proximoUtil, somarUteis } from './datas-plano.util';
+import {
+  formatarBr,
+  parseDataPlano,
+  proximoUtil,
+  somarUteis,
+} from './datas-plano.util';
 
 describe('datas-plano.util', () => {
   describe('parseDataPlano', () => {
@@ -21,19 +26,25 @@ describe('datas-plano.util', () => {
   describe('proximoUtil', () => {
     it('mantém um dia útil como está', () => {
       // 2026-08-10 é uma segunda-feira.
-      expect(formatarBr(proximoUtil(parseDataPlano('2026-08-10')))).toBe('10/08/2026');
+      expect(formatarBr(proximoUtil(parseDataPlano('2026-08-10')))).toBe(
+        '10/08/2026',
+      );
     });
 
     it('pula sábado/domingo para a segunda seguinte', () => {
       // 2026-08-15 é um sábado.
-      expect(formatarBr(proximoUtil(parseDataPlano('2026-08-15')))).toBe('17/08/2026');
+      expect(formatarBr(proximoUtil(parseDataPlano('2026-08-15')))).toBe(
+        '17/08/2026',
+      );
     });
   });
 
   describe('somarUteis', () => {
     it('soma dias úteis pulando fins de semana', () => {
       // 2026-08-10 (segunda) + 5 dias úteis = 2026-08-17 (segunda seguinte).
-      expect(formatarBr(somarUteis(parseDataPlano('2026-08-10'), 5))).toBe('17/08/2026');
+      expect(formatarBr(somarUteis(parseDataPlano('2026-08-10'), 5))).toBe(
+        '17/08/2026',
+      );
     });
   });
 });

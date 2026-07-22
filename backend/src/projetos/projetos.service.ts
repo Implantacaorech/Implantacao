@@ -42,8 +42,13 @@ export class ProjetosService {
 
   /** Equivalente a _so_meus() do Flask: ADM/Coordenador/Administrativo veem tudo; GCI só onde
    * é GCI; Consultor só onde é consultor designado. */
-  async listar(filtro: ListarProjetosDto, user: AuthUser): Promise<Paginado<Projeto>> {
-    const qb = this.repo.createQueryBuilder('p').orderBy('p.atualizadoEm', 'DESC');
+  async listar(
+    filtro: ListarProjetosDto,
+    user: AuthUser,
+  ): Promise<Paginado<Projeto>> {
+    const qb = this.repo
+      .createQueryBuilder('p')
+      .orderBy('p.atualizadoEm', 'DESC');
 
     if (filtro.cliente) {
       qb.andWhere('LOWER(p.cliente) LIKE LOWER(:cliente)', {

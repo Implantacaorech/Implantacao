@@ -17,8 +17,22 @@ import { ModeloEmailController } from './modelo-email.controller';
     TypeOrmModule.forFeature([ModeloEmail, Projeto, Evento]),
     UsersModule,
   ],
-  controllers: [ConfigEmailController, ConfigGmailController, ModeloEmailController],
-  providers: [MailerService, GmailService, ModeloEmailService, NotificacaoService],
-  exports: [MailerService, GmailService, ModeloEmailService, NotificacaoService],
+  controllers: [
+    ConfigEmailController,
+    ConfigGmailController,
+    ModeloEmailController,
+  ],
+  providers: [
+    MailerService,
+    GmailService,
+    ModeloEmailService,
+    NotificacaoService,
+  ],
+  exports: [
+    MailerService,
+    GmailService,
+    ModeloEmailService,
+    NotificacaoService,
+  ],
 })
 export class EmailModule {}

@@ -19,13 +19,21 @@ export class DashboardsController {
   constructor(private readonly dashboards: DashboardsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Lista os dashboards disponíveis (consultas com colunaData preenchida)' })
+  @ApiOperation({
+    summary:
+      'Lista os dashboards disponíveis (consultas com colunaData preenchida)',
+  })
   async listar() {
-    return new ApiEnvelope({ itens: await this.dashboards.listarDisponiveis() });
+    return new ApiEnvelope({
+      itens: await this.dashboards.listarDisponiveis(),
+    });
   }
 
   @Get(':slug')
-  @ApiOperation({ summary: 'Roda o dashboard: período, filtros, tabela e gráfico (se aplicável)' })
+  @ApiOperation({
+    summary:
+      'Roda o dashboard: período, filtros, tabela e gráfico (se aplicável)',
+  })
   async rodar(@Param('slug') slug: string, @Query() query: QueryDashboardDto) {
     return new ApiEnvelope(await this.dashboards.rodar(slug, query));
   }

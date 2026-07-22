@@ -5,7 +5,11 @@ import { Projeto } from '../database/entities/projeto.entity';
 import { Evento } from '../database/entities/evento.entity';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { soMeus } from '../common/utils/so-meus.util';
-import { FaseFunil, MetricasService, MetricasUso } from '../metricas/metricas.service';
+import {
+  FaseFunil,
+  MetricasService,
+  MetricasUso,
+} from '../metricas/metricas.service';
 
 export interface ItemFeedAtividade {
   id: number;
@@ -42,7 +46,10 @@ export class AtividadeService {
 
     const eventos =
       ids.length > 0
-        ? await this.eventosRepo.find({ where: { projetoId: In(ids) }, order: { criadoEm: 'DESC' } })
+        ? await this.eventosRepo.find({
+            where: { projetoId: In(ids) },
+            order: { criadoEm: 'DESC' },
+          })
         : [];
 
     const feed: ItemFeedAtividade[] = eventos

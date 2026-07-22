@@ -18,7 +18,11 @@ import { ModeloEmailService } from '../src/email/modelo-email.service';
 // gmail_token.json entre execuções — limpo no início E no fim para não vazar estado de
 // uma corrida anterior (mesma lição do EBUSY/store isolado por worker, ver
 // docs/migracao/03-documento-conversao.md §6).
-const DIR_TESTE = join(process.cwd(), 'dados', `email_test_${process.env.JEST_WORKER_ID ?? '0'}`);
+const DIR_TESTE = join(
+  process.cwd(),
+  'dados',
+  `email_test_${process.env.JEST_WORKER_ID ?? '0'}`,
+);
 
 describe('E-mail / Fluxo (e2e)', () => {
   let app: INestApplication<App>;
@@ -39,7 +43,11 @@ describe('E-mail / Fluxo (e2e)', () => {
     }).compile();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new ResponseInterceptor());
@@ -71,7 +79,9 @@ describe('E-mail / Fluxo (e2e)', () => {
     );
 
     tokenAdm = (
-      await request(server()).post('/api/auth/login').send({ login: 'admin', senha: 'senha-adm-123' })
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'admin', senha: 'senha-adm-123' })
     ).body.data.accessToken;
     tokenConsultor = (
       await request(server())
@@ -100,7 +110,10 @@ describe('E-mail / Fluxo (e2e)', () => {
   describe('Notificação automática de encerramento', () => {
     it('mudar a situação do projeto para Concluído registra um evento "email" pendente', async () => {
       const projeto = await projetos.save(
-        projetos.create({ cliente: 'Cliente Encerramento', situacao: 'Em andamento' }),
+        projetos.create({
+          cliente: 'Cliente Encerramento',
+          situacao: 'Em andamento',
+        }),
       );
       const res = await auth(
         request(server())
@@ -109,17 +122,26 @@ describe('E-mail / Fluxo (e2e)', () => {
       );
       expect(res.status).toBe(200);
 
-      const eventos = await auth(request(server()).get(`/api/projetos/${projeto.id}/eventos`));
-      const eventoEmail = eventos.body.data.find((e: { tipo: string }) => e.tipo === 'email');
+      const eventos = await auth(
+        request(server()).get(`/api/projetos/${projeto.id}/eventos`),
+      );
+      const eventoEmail = eventos.body.data.find(
+        (e: { tipo: string }) => e.tipo === 'email',
+      );
       expect(eventoEmail).toBeDefined();
-      expect(eventoEmail.descricao).toContain('Implantação encerrada — Cliente Encerramento');
+      expect(eventoEmail.descricao).toContain(
+        'Implantação encerrada — Cliente Encerramento',
+      );
       expect(eventoEmail.descricao).toContain('Notificação pendente');
     });
   });
 
   describe('Config → E-mail (SMTP)', () => {
     it('não-ADM não acessa', async () => {
-      const res = await auth(request(server()).get('/api/config/email'), tokenConsultor);
+      const res = await auth(
+        request(server()).get('/api/config/email'),
+        tokenConsultor,
+      );
       expect(res.status).toBe(403);
     });
 
@@ -128,9 +150,13 @@ describe('E-mail / Fluxo (e2e)', () => {
       // tentativa real de envio nos testes seguintes falha rápido e deterministicamente
       // (ENOTFOUND), sem depender de acesso à rede deste ambiente.
       const salvar = await auth(
-        request(server())
-          .post('/api/config/email')
-          .send({ host: 'smtp.invalid', port: '587', user: 'u', remetente: 'r@x.com', senha: 'segredo' }),
+        request(server()).post('/api/config/email').send({
+          host: 'smtp.invalid',
+          port: '587',
+          user: 'u',
+          remetente: 'r@x.com',
+          senha: 'segredo',
+        }),
       );
       expect(salvar.status).toBe(200);
       expect(salvar.body.data.senha).toBeUndefined();
@@ -144,15 +170,21 @@ describe('E-mail / Fluxo (e2e)', () => {
 
   describe('Config → Caixa de entrada (IMAP)', () => {
     it('não-ADM não acessa', async () => {
-      const res = await auth(request(server()).get('/api/config/imap'), tokenConsultor);
+      const res = await auth(
+        request(server()).get('/api/config/imap'),
+        tokenConsultor,
+      );
       expect(res.status).toBe(403);
     });
 
     it('salva e lê de volta, sem nunca devolver a senha', async () => {
       const salvar = await auth(
-        request(server())
-          .post('/api/config/imap')
-          .send({ host: 'imap.exemplo.com', user: 'u', pasta: 'Fechamentos', senha: 'segredo' }),
+        request(server()).post('/api/config/imap').send({
+          host: 'imap.exemplo.com',
+          user: 'u',
+          pasta: 'Fechamentos',
+          senha: 'segredo',
+        }),
       );
       expect(salvar.status).toBe(200);
       expect(salvar.body.data.senha).toBeUndefined();
@@ -185,7 +217,9 @@ describe('E-mail / Fluxo (e2e)', () => {
     });
 
     it('autorizar devolve a URL de consentimento do Google', async () => {
-      const res = await auth(request(server()).get('/api/config/gmail/autorizar'));
+      const res = await auth(
+        request(server()).get('/api/config/gmail/autorizar'),
+      );
       expect(res.status).toBe(200);
       expect(res.body.data.url).toContain('accounts.google.com');
     });
@@ -201,24 +235,32 @@ describe('E-mail / Fluxo (e2e)', () => {
 
   describe('Config → Modelos de e-mail', () => {
     it('lista os 7 modelos padrão semeados', async () => {
-      const res = await auth(request(server()).get('/api/config/modelos-email'));
+      const res = await auth(
+        request(server()).get('/api/config/modelos-email'),
+      );
       expect(res.body.data.itens).toHaveLength(7);
-      expect(res.body.data.itens.map((m: { slug: string }) => m.slug)).toContain('boas-vindas');
+      expect(
+        res.body.data.itens.map((m: { slug: string }) => m.slug),
+      ).toContain('boas-vindas');
     });
 
     it('cria, edita e não deixa excluir um modelo padrão', async () => {
       const criar = await auth(
-        request(server())
-          .post('/api/config/modelos-email')
-          .send({ nome: 'Aviso Extra', assunto: 'Assunto', corpo: 'Corpo {{CLIENTE}}' }),
+        request(server()).post('/api/config/modelos-email').send({
+          nome: 'Aviso Extra',
+          assunto: 'Assunto',
+          corpo: 'Corpo {{CLIENTE}}',
+        }),
       );
       expect(criar.status).toBe(200);
       const id = criar.body.data.id;
 
       const editar = await auth(
-        request(server())
-          .post(`/api/config/modelos-email/${id}`)
-          .send({ nome: 'Aviso Extra Editado', assunto: 'Assunto', corpo: 'Corpo' }),
+        request(server()).post(`/api/config/modelos-email/${id}`).send({
+          nome: 'Aviso Extra Editado',
+          assunto: 'Assunto',
+          corpo: 'Corpo',
+        }),
       );
       expect(editar.body.data.nome).toBe('Aviso Extra Editado');
 
@@ -227,10 +269,16 @@ describe('E-mail / Fluxo (e2e)', () => {
       );
       expect(excluirNaoPadrao.status).toBe(200);
 
-      const listaPadrao = await auth(request(server()).get('/api/config/modelos-email'));
-      const padrao = listaPadrao.body.data.itens.find((m: { slug: string }) => m.slug === 'boas-vindas');
+      const listaPadrao = await auth(
+        request(server()).get('/api/config/modelos-email'),
+      );
+      const padrao = listaPadrao.body.data.itens.find(
+        (m: { slug: string }) => m.slug === 'boas-vindas',
+      );
       const excluirPadrao = await auth(
-        request(server()).post(`/api/config/modelos-email/${padrao.id}/excluir`),
+        request(server()).post(
+          `/api/config/modelos-email/${padrao.id}/excluir`,
+        ),
       );
       expect(excluirPadrao.status).toBe(400);
     });
@@ -249,18 +297,26 @@ Horas cobradas: 20`;
     });
 
     it('parse extrai os campos sem criar nada', async () => {
-      const res = await auth(request(server()).post('/api/fluxo/parse').send({ texto: EMAIL }));
+      const res = await auth(
+        request(server()).post('/api/fluxo/parse').send({ texto: EMAIL }),
+      );
       expect(res.body.data.campos.cliente).toBe('Cliente Fluxo LTDA');
       expect(res.body.data.campos.cnpj).toBe('11.222.333/0001-44');
     });
 
     it('criar registra o projeto e a timeline recebe o evento de etapa', async () => {
-      const parse = await auth(request(server()).post('/api/fluxo/parse').send({ texto: EMAIL }));
-      const criar = await auth(request(server()).post('/api/fluxo/criar').send(parse.body.data.campos));
+      const parse = await auth(
+        request(server()).post('/api/fluxo/parse').send({ texto: EMAIL }),
+      );
+      const criar = await auth(
+        request(server()).post('/api/fluxo/criar').send(parse.body.data.campos),
+      );
       expect(criar.status).toBe(200);
       const projetoId = criar.body.data.projetoId;
 
-      const eventos = await auth(request(server()).get(`/api/projetos/${projetoId}/eventos`));
+      const eventos = await auth(
+        request(server()).get(`/api/projetos/${projetoId}/eventos`),
+      );
       // '/api/fluxo/criar' chama criarComPacote (confirmação manual da tela), que registra
       // esta mensagem — 'Fechamento recebido automaticamente' é do OUTRO caminho
       // (criarDeCampos/criarDeFechamento, usado pelo robô da caixa). Achado real: este

@@ -13,7 +13,12 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -44,40 +49,54 @@ export class LegadoController {
   constructor(private readonly legado: LegadoService) {}
 
   @Get('ia-status')
-  @ApiOperation({ summary: 'Status da reconferência por IA (chave configurada?)' })
+  @ApiOperation({
+    summary: 'Status da reconferência por IA (chave configurada?)',
+  })
   async iaStatus() {
     return new ApiEnvelope(await this.legado.iaStatus());
   }
 
   @Get('saude')
-  @ApiOperation({ summary: 'Roda o verificador (ambiente, templates, geradores) e devolve o relatório' })
+  @ApiOperation({
+    summary:
+      'Roda o verificador (ambiente, templates, geradores) e devolve o relatório',
+  })
   async saude() {
     return new ApiEnvelope(await this.legado.saude());
   }
 
   @Get('catalogo')
-  @ApiOperation({ summary: 'Catálogo de módulos por área, para a seleção de módulos' })
+  @ApiOperation({
+    summary: 'Catálogo de módulos por área, para a seleção de módulos',
+  })
   async catalogo() {
     return new ApiEnvelope(await this.legado.catalogo());
   }
 
   @Post('cliente')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Grava o dossiê do cliente (YAML) usado como base pelos geradores' })
+  @ApiOperation({
+    summary: 'Grava o dossiê do cliente (YAML) usado como base pelos geradores',
+  })
   async definirCliente(@Body() dto: ClienteYamlDto) {
     return new ApiEnvelope(await this.legado.definirCliente(dto.form ?? {}));
   }
 
   @Post('criar-templates')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Gera o Mapeamento de Processos e/ou o Termo de Encerramento (tela tabbada)' })
+  @ApiOperation({
+    summary:
+      'Gera o Mapeamento de Processos e/ou o Termo de Encerramento (tela tabbada)',
+  })
   async criarTemplates(@Body() dto: CriarTemplatesDto) {
     return new ApiEnvelope(await this.legado.criarTemplates(dto.form ?? {}));
   }
 
   @Post('verbal/texto')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Converte um texto colado para o tempo futuro + ortografia' })
+  @ApiOperation({
+    summary: 'Converte um texto colado para o tempo futuro + ortografia',
+  })
   async converterVerbalTexto(@Body() dto: ConverterVerbalTextoDto) {
     return new ApiEnvelope(await this.legado.converterVerbalTexto(dto.texto));
   }
@@ -86,17 +105,37 @@ export class LegadoController {
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(FileInterceptor('arquivo'))
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Corrige tempo verbal + ortografia de um .docx, preservando o layout' })
-  async converterVerbalDocx(@UploadedFile() arquivo: Express.Multer.File | undefined) {
-    if (!arquivo) throw new UnprocessableEntityException('Envie um arquivo .docx.');
-    return new ApiEnvelope(await this.legado.converterVerbalDocx(arquivo.buffer, arquivo.originalname));
+  @ApiOperation({
+    summary:
+      'Corrige tempo verbal + ortografia de um .docx, preservando o layout',
+  })
+  async converterVerbalDocx(
+    @UploadedFile() arquivo: Express.Multer.File | undefined,
+  ) {
+    if (!arquivo)
+      throw new UnprocessableEntityException('Envie um arquivo .docx.');
+    return new ApiEnvelope(
+      await this.legado.converterVerbalDocx(
+        arquivo.buffer,
+        arquivo.originalname,
+      ),
+    );
   }
 
   @Post('form-modulos')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Gera o Levantamento ou o Check List a partir dos módulos selecionados' })
+  @ApiOperation({
+    summary:
+      'Gera o Levantamento ou o Check List a partir dos módulos selecionados',
+  })
   async formModulos(@Body() dto: FormModulosDto) {
-    return new ApiEnvelope(await this.legado.formModulos(dto.tipo, dto.form ?? {}, dto.modulos ?? []));
+    return new ApiEnvelope(
+      await this.legado.formModulos(
+        dto.tipo,
+        dto.form ?? {},
+        dto.modulos ?? [],
+      ),
+    );
   }
 
   @Post('importar')
@@ -104,19 +143,31 @@ export class LegadoController {
   @UseInterceptors(FileInterceptor('arquivo'))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
-    summary: 'Importa o Levantamento (.docx) e gera em sequência Projeto + Check List + Termo',
+    summary:
+      'Importa o Levantamento (.docx) e gera em sequência Projeto + Check List + Termo',
   })
   async importar(@UploadedFile() arquivo: Express.Multer.File | undefined) {
-    if (!arquivo) throw new UnprocessableEntityException('Envie o arquivo .docx do Levantamento.');
-    return new ApiEnvelope(await this.legado.importarSequencia(arquivo.buffer, arquivo.originalname));
+    if (!arquivo)
+      throw new UnprocessableEntityException(
+        'Envie o arquivo .docx do Levantamento.',
+      );
+    return new ApiEnvelope(
+      await this.legado.importarSequencia(arquivo.buffer, arquivo.originalname),
+    );
   }
 
   @Post('gerar')
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(FileInterceptor('yaml'))
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Roda um gerador (tipo "gerar" de roles.py) com YAML opcional (upload ou cliente salvo)' })
-  async gerar(@Body() dto: GerarDto, @UploadedFile() yaml: Express.Multer.File | undefined) {
+  @ApiOperation({
+    summary:
+      'Roda um gerador (tipo "gerar" de roles.py) com YAML opcional (upload ou cliente salvo)',
+  })
+  async gerar(
+    @Body() dto: GerarDto,
+    @UploadedFile() yaml: Express.Multer.File | undefined,
+  ) {
     const yamlBasename = await this.legado.resolverYamlBase(
       yaml?.buffer ?? null,
       yaml?.originalname ?? null,

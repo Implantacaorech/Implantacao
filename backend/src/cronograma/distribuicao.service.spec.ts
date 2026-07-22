@@ -42,9 +42,14 @@ describe('DistribuicaoService — disponibilidade externa (SICLA/Oracle)', () =>
     alocar: jest.fn().mockResolvedValue(null),
   };
   const designacoesService = { doProjeto: jest.fn() };
-  const projetos = { findOne: jest.fn().mockResolvedValue({ dataUsoOficial: '' }) };
+  const projetos = {
+    findOne: jest.fn().mockResolvedValue({ dataUsoOficial: '' }),
+  };
   const users = { codigosSiclaPorNome: jest.fn() };
-  const disponibilidade = { configurado: jest.fn(), ocupacaoPorSlotCache: jest.fn() };
+  const disponibilidade = {
+    configurado: jest.fn(),
+    ocupacaoPorSlotCache: jest.fn(),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -65,7 +70,9 @@ describe('DistribuicaoService — disponibilidade externa (SICLA/Oracle)', () =>
     service = module.get(DistribuicaoService);
   });
 
-  function configurarCenarioUmModulo(modo: 'conjunta' | 'individual' = 'individual') {
+  function configurarCenarioUmModulo(
+    modo: 'conjunta' | 'individual' = 'individual',
+  ) {
     cronograma.listarAtividades.mockResolvedValue([atividadeFat]);
     cronograma.visitas.mockResolvedValue([
       { modulo: 'FAT', seq: 1, atividades: [atividadeFat] },
@@ -209,7 +216,9 @@ describe('DistribuicaoService — disponibilidade externa (SICLA/Oracle)', () =>
     configurarCenarioUmModulo();
     users.codigosSiclaPorNome.mockResolvedValue({ ana: '007' });
     disponibilidade.configurado.mockReturnValue(true);
-    disponibilidade.ocupacaoPorSlotCache.mockRejectedValue(new Error('Oracle indisponível'));
+    disponibilidade.ocupacaoPorSlotCache.mockRejectedValue(
+      new Error('Oracle indisponível'),
+    );
 
     const r = await service.distribuirAutomatico(1);
 

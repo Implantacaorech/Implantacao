@@ -33,11 +33,25 @@ describe('ChecklistItensService', () => {
   describe('salvar', () => {
     it('substitui todas as linhas e registra o histórico', async () => {
       repo.find.mockResolvedValue([
-        { modulo: 'FAT', item: 'x', responsavel: '', status: 'Pendente', obs: '' },
+        {
+          modulo: 'FAT',
+          item: 'x',
+          responsavel: '',
+          status: 'Pendente',
+          obs: '',
+        },
       ]);
       const mudancas = await service.salvar(
         1,
-        [{ modulo: 'FAT', item: 'x', responsavel: '', status: 'Concluído', obs: '' }],
+        [
+          {
+            modulo: 'FAT',
+            item: 'x',
+            responsavel: '',
+            status: 'Concluído',
+            obs: '',
+          },
+        ],
         'Ana',
       );
       expect(mudancas).toBe(1);
@@ -61,7 +75,13 @@ describe('ChecklistItensService', () => {
 
     it('usa o catálogo ChecklistModelo (não relê o YAML) e monta item + ação', async () => {
       checklistModelo.listarPorModulos.mockResolvedValue([
-        { modulo: 'FAT', adicional: '', item: 'Emitir nota', acao: 'conferir tributação', menu: '2.1.A' },
+        {
+          modulo: 'FAT',
+          adicional: '',
+          item: 'Emitir nota',
+          acao: 'conferir tributação',
+          menu: '2.1.A',
+        },
       ]);
       const linhas = await service.gerarRoteiroDoCatalogo(projeto());
       expect(checklistModelo.listarPorModulos).toHaveBeenCalledWith(['FAT']);
@@ -86,7 +106,13 @@ describe('ChecklistItensService', () => {
 
     it('sem ação, o item fica só com o texto original (sem travessão solto)', async () => {
       checklistModelo.listarPorModulos.mockResolvedValue([
-        { modulo: 'FAT', adicional: '', item: 'Emitir nota', acao: '', menu: '' },
+        {
+          modulo: 'FAT',
+          adicional: '',
+          item: 'Emitir nota',
+          acao: '',
+          menu: '',
+        },
       ]);
       const linhas = await service.gerarRoteiroDoCatalogo(projeto());
       expect(linhas[0].item).toBe('Emitir nota');

@@ -7,7 +7,13 @@ import { AtividadeCronograma } from '../database/entities/atividade-cronograma.e
 import type { Perfil } from '../common/constants/perfis';
 import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
 import { MatrizService } from '../matriz/matriz.service';
-import { addDays, hojeIso, parseIso, toIso, weekdaySegunda0 } from '../cronograma/datas.util';
+import {
+  addDays,
+  hojeIso,
+  parseIso,
+  toIso,
+  weekdaySegunda0,
+} from '../cronograma/datas.util';
 
 const TURNOS_SEMANA = 10; // 5 dias úteis x 2 turnos — ver webapp/capacidade.py
 const LIVRE_MIN = 6; // turnos livres na semana p/ considerá-la "janela de início"
@@ -78,8 +84,13 @@ export class CapacidadeService {
     return out;
   }
 
-  async avaliarEquipe(modulosBrutos: string[] = [], semanasQtd = 6): Promise<ResultadoCapacidade> {
-    const modulos = modulosBrutos.map((m) => m.trim().toUpperCase()).filter(Boolean);
+  async avaliarEquipe(
+    modulosBrutos: string[] = [],
+    semanasQtd = 6,
+  ): Promise<ResultadoCapacidade> {
+    const modulos = modulosBrutos
+      .map((m) => m.trim().toUpperCase())
+      .filter(Boolean);
     const hojeIsoStr = hojeIso();
     const jan = this.semanas(semanasQtd);
     const ini = jan[0][0];
@@ -89,16 +100,27 @@ export class CapacidadeService {
       where: { perfil: In(['Consultor', 'GCI'] as Perfil[]), ativo: true },
       order: { nome: 'ASC' },
     });
-    const projetos = await this.projetos.find({ where: { etapa: Not('Encerramento') } });
+    const projetos = await this.projetos.find({
+      where: { etapa: Not('Encerramento') },
+    });
     const atividades = await this.atividades.find({
-      where: { data: Between(ini, fim), status: In(['Solicitada', 'Agendada']) },
+      where: {
+        data: Between(ini, fim),
+        status: In(['Solicitada', 'Agendada']),
+      },
     });
 
-    const codigos = usuarios.map((u) => u.codigoSicla || u.nome || '').filter(Boolean);
+    const codigos = usuarios
+      .map((u) => u.codigoSicla || u.nome || '')
+      .filter(Boolean);
     let ocupSicla: Record<string, boolean> = {};
     if (this.disponibilidade.configurado() && codigos.length > 0) {
       try {
-        ocupSicla = await this.disponibilidade.ocupacaoPorSlotCache(ini, fim, codigos);
+        ocupSicla = await this.disponibilidade.ocupacaoPorSlotCache(
+          ini,
+          fim,
+          codigos,
+        );
       } catch (e) {
         this.logger.error(
           'Falha ao consultar disponibilidade externa na Capacidade da equipe',
@@ -107,7 +129,10 @@ export class CapacidadeService {
       }
     }
 
-    const matrizPorNome = new Map<string, Awaited<ReturnType<typeof this.matriz.listar>>[number]>();
+    const matrizPorNome = new Map<
+      string,
+      Awaited<ReturnType<typeof this.matriz.listar>>[number]
+    >();
     for (const t of await this.matriz.listar()) {
       const nl = (t.nome || '').trim().toLowerCase();
       if (nl) matrizPorNome.set(nl, t);
@@ -157,13 +182,15 @@ export class CapacidadeService {
       }
 
       // 1. conhecimento nos módulos pedidos
-      const linha = [...chaves].map((c) => matrizPorNome.get(c)).find(Boolean) ?? null;
+      const linha =
+        [...chaves].map((c) => matrizPorNome.get(c)).find(Boolean) ?? null;
       const notasMod: Record<string, number> = {};
       let semNota: string[] = [];
       if (linha) {
         const notas = this.matriz.notas(linha);
         const notasCi: Record<string, number> = {};
-        for (const [k, v] of Object.entries(notas)) notasCi[k.trim().toUpperCase()] = v;
+        for (const [k, v] of Object.entries(notas))
+          notasCi[k.trim().toUpperCase()] = v;
         for (const m of modulos) {
           if (m in notasCi) notasMod[m] = notasCi[m];
           else semNota.push(m);
@@ -172,11 +199,18 @@ export class CapacidadeService {
         semNota = [...modulos];
       }
       const valoresNotas = Object.values(notasMod);
-      const media = valoresNotas.length > 0 ? valoresNotas.reduce((a, b) => a + b, 0) / valoresNotas.length : 0;
+      const media =
+        valoresNotas.length > 0
+          ? valoresNotas.reduce((a, b) => a + b, 0) / valoresNotas.length
+          : 0;
 
       // score explicável
       const pCon = modulos.length > 0 ? media / 10 : 0.5; // sem recorte: neutro
-      const pAg = jan.length > 0 ? livresSemana.reduce((a, b) => a + b, 0) / (TURNOS_SEMANA * jan.length) : 0;
+      const pAg =
+        jan.length > 0
+          ? livresSemana.reduce((a, b) => a + b, 0) /
+            (TURNOS_SEMANA * jan.length)
+          : 0;
       const pCg = Math.max(0, 1 - meus.length / CARGA_CHEIA);
       const score = Math.round(100 * (0.45 * pCon + 0.35 * pAg + 0.2 * pCg));
 
@@ -185,7 +219,10 @@ export class CapacidadeService {
         veredito = 'Sem nota nos módulos';
       } else if (!janela) {
         veredito = 'Sem janela no período';
-      } else if ((modulos.length === 0 || media >= 6) && meus.length < CARGA_CHEIA) {
+      } else if (
+        (modulos.length === 0 || media >= 6) &&
+        meus.length < CARGA_CHEIA
+      ) {
         veredito = 'Pronto';
       } else {
         veredito = 'Parcial';
@@ -196,7 +233,10 @@ export class CapacidadeService {
         perfil: u.perfil,
         sicla: u.codigoSicla || '',
         clientes: meus.length,
-        projetos: meus.map((p) => ({ cliente: p.cliente, golive: p.dataUsoOficial || '' })),
+        projetos: meus.map((p) => ({
+          cliente: p.cliente,
+          golive: p.dataUsoOficial || '',
+        })),
         liberaEm,
         livresSemana,
         janela,
@@ -210,6 +250,11 @@ export class CapacidadeService {
     });
 
     equipe.sort((a, b) => b.score - a.score);
-    return { equipe, semanas: jan.map(([s]) => s), modulos, turnosSemana: TURNOS_SEMANA };
+    return {
+      equipe,
+      semanas: jan.map(([s]) => s),
+      modulos,
+      turnosSemana: TURNOS_SEMANA,
+    };
   }
 }

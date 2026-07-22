@@ -48,7 +48,10 @@ describe('ProjetosService', () => {
         { provide: getRepositoryToken(Projeto), useValue: repo },
         { provide: CronogramaService, useValue: cronograma },
         { provide: DesignacoesService, useValue: designacoes },
-        { provide: LevantamentoRespostaService, useValue: levantamentoResposta },
+        {
+          provide: LevantamentoRespostaService,
+          useValue: levantamentoResposta,
+        },
         { provide: DocConteudoService, useValue: docConteudo },
         { provide: DocumentosService, useValue: documentos },
         { provide: NotificacaoService, useValue: notificacao },
@@ -146,7 +149,10 @@ describe('ProjetosService', () => {
       cliente: 'Cliente Z',
       situacao: 'Concluído',
     });
-    await service.atualizar(3, { situacao: 'Concluído', observacoes: 'ajuste' });
+    await service.atualizar(3, {
+      situacao: 'Concluído',
+      observacoes: 'ajuste',
+    });
     expect(notificacao.notificarEvento).not.toHaveBeenCalled();
   });
 
@@ -156,9 +162,9 @@ describe('ProjetosService', () => {
       cliente: 'Cliente W',
       etapa: 'Levantamento',
     });
-    await expect(
-      service.atualizar(4, { etapa: 'Projeto' }),
-    ).rejects.toThrow(BadRequestException);
+    await expect(service.atualizar(4, { etapa: 'Projeto' })).rejects.toThrow(
+      BadRequestException,
+    );
     expect(repo.save).not.toHaveBeenCalled();
   });
 
@@ -172,7 +178,10 @@ describe('ProjetosService', () => {
       etapa: 'Levantamento',
       observacoes: 'ajuste',
     });
-    expect(atualizado).toMatchObject({ etapa: 'Levantamento', observacoes: 'ajuste' });
+    expect(atualizado).toMatchObject({
+      etapa: 'Levantamento',
+      observacoes: 'ajuste',
+    });
   });
 
   it('excluir limpa os dados de todos os módulos antes de remover o projeto (sem FK cascade no schema)', async () => {

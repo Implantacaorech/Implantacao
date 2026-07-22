@@ -13,11 +13,21 @@ import { PlanoCronogramaController } from './plano-cronograma.controller';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Projeto, Evento, CronogramaItem, ChecklistItem, Modificacao]),
+    TypeOrmModule.forFeature([
+      Projeto,
+      Evento,
+      CronogramaItem,
+      ChecklistItem,
+      Modificacao,
+    ]),
     CatalogosModule,
   ],
   controllers: [PlanoCronogramaController],
-  providers: [CronogramaItensService, ChecklistItensService, ModificacoesService],
+  providers: [
+    CronogramaItensService,
+    ChecklistItensService,
+    ModificacoesService,
+  ],
   exports: [CronogramaItensService, ChecklistItensService, ModificacoesService],
 })
 export class PlanoCronogramaModule {}

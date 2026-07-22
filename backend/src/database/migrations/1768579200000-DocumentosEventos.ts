@@ -19,7 +19,9 @@ export class DocumentosEventos1768579200000 implements MigrationInterface {
         "criado_em" TIMESTAMP NOT NULL DEFAULT now()
       );
     `);
-    await queryRunner.query(`CREATE INDEX "IDX_documentos_projeto_id" ON "documentos" ("projeto_id");`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_documentos_projeto_id" ON "documentos" ("projeto_id");`,
+    );
 
     await queryRunner.query(`
       CREATE TABLE "eventos" (
@@ -31,7 +33,9 @@ export class DocumentosEventos1768579200000 implements MigrationInterface {
         "criado_em" TIMESTAMP NOT NULL DEFAULT now()
       );
     `);
-    await queryRunner.query(`CREATE INDEX "IDX_eventos_projeto_id" ON "eventos" ("projeto_id");`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_eventos_projeto_id" ON "eventos" ("projeto_id");`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

@@ -9,7 +9,12 @@ import { ImapIntakeService } from './imap-intake.service';
 // produção, ver imap-intake.service.ts:conectar) não escapa como exceção não tratada.
 class ImapFlowFalsoComErro extends EventEmitter {
   async connect(): Promise<void> {
-    setImmediate(() => this.emit('error', Object.assign(new Error('Socket timeout'), { code: 'ETIMEOUT' })));
+    setImmediate(() =>
+      this.emit(
+        'error',
+        Object.assign(new Error('Socket timeout'), { code: 'ETIMEOUT' }),
+      ),
+    );
   }
   async getMailboxLock(): Promise<{ release: () => void }> {
     return { release: () => {} };
@@ -51,7 +56,12 @@ describe('ImapIntakeService', () => {
   });
 
   it('salvarConfig persiste e carregarConfig lê de volta', () => {
-    service.salvarConfig({ host: 'imap.exemplo.com', user: 'u', pasta: 'Fechamentos', senha: 's3nha' });
+    service.salvarConfig({
+      host: 'imap.exemplo.com',
+      user: 'u',
+      pasta: 'Fechamentos',
+      senha: 's3nha',
+    });
     const cfg = service.carregarConfig();
     expect(cfg.host).toBe('imap.exemplo.com');
     expect(cfg.pasta).toBe('Fechamentos');

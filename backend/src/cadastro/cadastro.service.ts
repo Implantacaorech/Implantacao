@@ -11,8 +11,7 @@ const EXPIRA_MIN = 30;
 const MAX_TENTATIVAS = 5;
 
 export type ResultadoConfirmacao =
-  | { ok: true; usuario: Usuario }
-  | { ok: false; mensagem: string };
+  { ok: true; usuario: Usuario } | { ok: false; mensagem: string };
 
 /** Auto-cadastro com código de verificação por e-mail (sem aprovação de ADM — a conta é
  * criada direto, sempre com perfil `Consultor`, o de menor privilégio). Espelha
@@ -54,7 +53,15 @@ export class CadastroService {
       .execute();
     const senhaHash = await bcrypt.hash(senha, SALT_ROUNDS);
     await this.pendentes.save(
-      this.pendentes.create({ nome, login, email, senhaHash, codigo, codigoSicla, tentativas: 0 }),
+      this.pendentes.create({
+        nome,
+        login,
+        email,
+        senhaHash,
+        codigo,
+        codigoSicla,
+        tentativas: 0,
+      }),
     );
   }
 
@@ -70,10 +77,14 @@ export class CadastroService {
     return true;
   }
 
-  private async buscarPendente(email: string): Promise<CadastroPendente | null> {
+  private async buscarPendente(
+    email: string,
+  ): Promise<CadastroPendente | null> {
     return this.pendentes
       .createQueryBuilder('p')
-      .where('LOWER(p.email) = :email', { email: (email || '').trim().toLowerCase() })
+      .where('LOWER(p.email) = :email', {
+        email: (email || '').trim().toLowerCase(),
+      })
       .orderBy('p.criadoEm', 'DESC')
       .getOne();
   }
@@ -82,9 +93,16 @@ export class CadastroService {
    * apaga o pendente. Espelha webapp/db.py:confirmar_pendente (bloqueio por expiração de
    * 30min e por 5 tentativas erradas — em ambos os casos o pendente é descartado, forçando
    * recomeçar do zero). */
-  async confirmarPendente(email: string, codigo: string): Promise<ResultadoConfirmacao> {
+  async confirmarPendente(
+    email: string,
+    codigo: string,
+  ): Promise<ResultadoConfirmacao> {
     const p = await this.buscarPendente(email);
-    if (!p) return { ok: false, mensagem: 'Cadastro não encontrado. Recomece o cadastro.' };
+    if (!p)
+      return {
+        ok: false,
+        mensagem: 'Cadastro não encontrado. Recomece o cadastro.',
+      };
 
     const expiraEm = new Date(p.criadoEm.getTime() + EXPIRA_MIN * 60_000);
     if (new Date() > expiraEm) {
@@ -98,7 +116,10 @@ export class CadastroService {
     if (p.codigo !== codigo) {
       p.tentativas += 1;
       await this.pendentes.save(p);
-      return { ok: false, mensagem: 'Código incorreto. Confira e tente novamente.' };
+      return {
+        ok: false,
+        mensagem: 'Código incorreto. Confira e tente novamente.',
+      };
     }
 
     const usuario = await this.usuarios.save(

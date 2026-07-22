@@ -27,7 +27,7 @@ function cellText(v: CellValue): string {
   if (typeof v === 'object') {
     if ('result' in v) return cellText((v as { result: CellValue }).result);
     if ('richText' in v) {
-      return (v as { richText: { text: string }[] }).richText.map((r) => r.text).join('');
+      return v.richText.map((r) => r.text).join('');
     }
     if ('text' in v) return String((v as { text: unknown }).text);
   }

@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { AppConfig } from '../config/configuration';
@@ -44,10 +49,14 @@ export class RoboCaixaService implements OnModuleInit, OnModuleDestroy {
         const n = await this.imap.processarFechamentos((corpo, assunto) =>
           this.fluxo.criarDeFechamento(corpo, assunto).then(() => undefined),
         );
-        if (n) this.logger.log(`Robô da caixa: ${n} fechamento(s) processado(s).`);
+        if (n)
+          this.logger.log(`Robô da caixa: ${n} fechamento(s) processado(s).`);
       }
     } catch (e) {
-      this.logger.error('Robô da caixa falhou', e instanceof Error ? e.stack : String(e));
+      this.logger.error(
+        'Robô da caixa falhou',
+        e instanceof Error ? e.stack : String(e),
+      );
     }
   }
 }

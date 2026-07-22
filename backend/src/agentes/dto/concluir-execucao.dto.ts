@@ -4,7 +4,9 @@ import { STATUS_AGENTE_EXECUCAO } from '../../database/entities/agente-execucao.
 import type { StatusAgenteExecucao } from '../../database/entities/agente-execucao.entity';
 
 export class ConcluirExecucaoDto {
-  @ApiProperty({ enum: STATUS_AGENTE_EXECUCAO.filter((s) => s !== 'em_execucao') })
+  @ApiProperty({
+    enum: STATUS_AGENTE_EXECUCAO.filter((s) => s !== 'em_execucao'),
+  })
   @IsIn(STATUS_AGENTE_EXECUCAO)
   status: StatusAgenteExecucao;
 

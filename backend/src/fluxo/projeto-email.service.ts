@@ -69,9 +69,11 @@ export class ProjetoEmailService {
     autor: string,
   ): Promise<ResultadoEnvioEmailProjeto> {
     await this.buscar(projetoId);
-    if (!this.mailer.configurado()) return { enviado: false, erro: 'SMTP não configurado.' };
+    if (!this.mailer.configurado())
+      return { enviado: false, erro: 'SMTP não configurado.' };
     const destinoLimpo = (destino || '').trim();
-    if (!destinoLimpo) return { enviado: false, erro: 'Informe o destinatário.' };
+    if (!destinoLimpo)
+      return { enviado: false, erro: 'Informe o destinatário.' };
 
     const r = await this.mailer.enviar(destinoLimpo, assunto, corpo);
     await this.documentos.registrarEvento(
@@ -82,6 +84,8 @@ export class ProjetoEmailService {
         : `Falha ao enviar e-mail a ${destinoLimpo}: ${r.erro}`,
       autor,
     );
-    return r.ok ? { enviado: true } : { enviado: false, erro: r.erro ?? undefined };
+    return r.ok
+      ? { enviado: true }
+      : { enviado: false, erro: r.erro ?? undefined };
   }
 }

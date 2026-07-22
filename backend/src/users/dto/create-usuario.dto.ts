@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 import { PERFIS } from '../../common/constants/perfis';
 import type { Perfil } from '../../common/constants/perfis';
 
@@ -22,5 +30,8 @@ export class CreateUsuarioDto {
   // de webapp/app.py:usuarios ("Informe o Código SICLA do usuário — é obrigatório.").
   @ApiProperty() @IsString() @IsNotEmpty() codigoSicla: string;
 
-  @ApiPropertyOptional({ default: true }) @IsOptional() @IsBoolean() ativo?: boolean;
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  ativo?: boolean;
 }

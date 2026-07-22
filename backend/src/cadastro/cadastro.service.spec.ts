@@ -30,7 +30,10 @@ describe('CadastroService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CadastroService,
-        { provide: getRepositoryToken(CadastroPendente), useValue: pendentesRepo },
+        {
+          provide: getRepositoryToken(CadastroPendente),
+          useValue: pendentesRepo,
+        },
         { provide: getRepositoryToken(Usuario), useValue: usuariosRepo },
       ],
     }).compile();
@@ -47,10 +50,21 @@ describe('CadastroService', () => {
 
   describe('salvarPendente', () => {
     it('apaga qualquer pendente anterior do mesmo e-mail antes de criar o novo', async () => {
-      await service.salvarPendente('Ana', 'ana@teste.com', 'ana@teste.com', 'senha123', '123456', '007');
+      await service.salvarPendente(
+        'Ana',
+        'ana@teste.com',
+        'ana@teste.com',
+        'senha123',
+        '123456',
+        '007',
+      );
       expect(qbPendentes.delete).toHaveBeenCalled();
       expect(pendentesRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ nome: 'Ana', codigo: '123456', codigoSicla: '007' }),
+        expect.objectContaining({
+          nome: 'Ana',
+          codigo: '123456',
+          codigoSicla: '007',
+        }),
       );
       // a senha nunca é gravada em texto puro
       const salvo = pendentesRepo.save.mock.calls[0][0];
@@ -66,7 +80,12 @@ describe('CadastroService', () => {
     });
 
     it('renova código, zera tentativas e reseta criadoEm', async () => {
-      const pendente = { id: 1, codigo: '000000', tentativas: 3, criadoEm: new Date('2020-01-01') };
+      const pendente = {
+        id: 1,
+        codigo: '000000',
+        tentativas: 3,
+        criadoEm: new Date('2020-01-01'),
+      };
       qbPendentes.getOne.mockResolvedValue(pendente);
       const r = await service.atualizarCodigo('ana@teste.com', '999999');
       expect(r).toBe(true);
@@ -80,7 +99,10 @@ describe('CadastroService', () => {
     it('cadastro não encontrado', async () => {
       qbPendentes.getOne.mockResolvedValue(null);
       const r = await service.confirmarPendente('ninguem@teste.com', '123456');
-      expect(r).toEqual({ ok: false, mensagem: expect.stringContaining('não encontrado') });
+      expect(r).toEqual({
+        ok: false,
+        mensagem: expect.stringContaining('não encontrado'),
+      });
     });
 
     it('código expirado (> 30min) apaga o pendente', async () => {
@@ -92,20 +114,36 @@ describe('CadastroService', () => {
       };
       qbPendentes.getOne.mockResolvedValue(pendente);
       const r = await service.confirmarPendente('ana@teste.com', '123456');
-      expect(r).toEqual({ ok: false, mensagem: expect.stringContaining('expirou') });
+      expect(r).toEqual({
+        ok: false,
+        mensagem: expect.stringContaining('expirou'),
+      });
       expect(pendentesRepo.remove).toHaveBeenCalledWith(pendente);
     });
 
     it('5ª tentativa errada apaga o pendente (lockout por tentativas)', async () => {
-      const pendente = { id: 1, codigo: '123456', tentativas: 5, criadoEm: new Date() };
+      const pendente = {
+        id: 1,
+        codigo: '123456',
+        tentativas: 5,
+        criadoEm: new Date(),
+      };
       qbPendentes.getOne.mockResolvedValue(pendente);
       const r = await service.confirmarPendente('ana@teste.com', '000000');
-      expect(r).toEqual({ ok: false, mensagem: expect.stringContaining('Muitas tentativas') });
+      expect(r).toEqual({
+        ok: false,
+        mensagem: expect.stringContaining('Muitas tentativas'),
+      });
       expect(pendentesRepo.remove).toHaveBeenCalledWith(pendente);
     });
 
     it('código incorreto incrementa tentativas sem apagar o pendente', async () => {
-      const pendente = { id: 1, codigo: '123456', tentativas: 1, criadoEm: new Date() };
+      const pendente = {
+        id: 1,
+        codigo: '123456',
+        tentativas: 1,
+        criadoEm: new Date(),
+      };
       qbPendentes.getOne.mockResolvedValue(pendente);
       const r = await service.confirmarPendente('ana@teste.com', '000000');
       expect(r.ok).toBe(false);
@@ -129,10 +167,17 @@ describe('CadastroService', () => {
       const r = await service.confirmarPendente('ana@teste.com', '123456');
       expect(r.ok).toBe(true);
       if (r.ok) {
-        expect(r.usuario).toMatchObject({ nome: 'Ana', perfil: 'Consultor', ativo: true });
+        expect(r.usuario).toMatchObject({
+          nome: 'Ana',
+          perfil: 'Consultor',
+          ativo: true,
+        });
       }
       expect(usuariosRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ senhaHash: 'hash-ja-pronto', perfil: 'Consultor' }),
+        expect.objectContaining({
+          senhaHash: 'hash-ja-pronto',
+          perfil: 'Consultor',
+        }),
       );
       expect(pendentesRepo.remove).toHaveBeenCalledWith(pendente);
     });

@@ -24,7 +24,11 @@ export class ImapIntakeService {
   private dir(): string {
     const base =
       process.env.NODE_ENV === 'test'
-        ? join(process.cwd(), 'dados', `email_test_${process.env.JEST_WORKER_ID ?? '0'}`)
+        ? join(
+            process.cwd(),
+            'dados',
+            `email_test_${process.env.JEST_WORKER_ID ?? '0'}`,
+          )
         : join(process.cwd(), 'dados');
     mkdirSync(base, { recursive: true });
     return base;
@@ -62,8 +66,18 @@ export class ImapIntakeService {
     };
   }
 
-  salvarConfig(dados: { host?: string; port?: string; user?: string; pasta?: string; senha?: string }): ConfigImap {
-    const senha = (dados.senha || '').trim();
+  salvarConfig(dados: {
+    host?: string;
+    port?: string;
+    user?: string;
+    pasta?: string;
+    senha?: string;
+  }): ConfigImap {
+    // replace, não só trim: senha de app do Gmail vem formatada com espaços internos
+    // ("abcd efgh ijkl mnop") quando copiada da tela do Google — o servidor IMAP rejeita
+    // com espaço (achado real: "Invalid credentials" numa senha de 19 caracteres em vez
+    // dos 16 esperados). Remove todo espaço, não só as pontas.
+    const senha = (dados.senha || '').replace(/\s+/g, '');
     const cfg: ConfigImap = {
       host: (dados.host || '').trim(),
       port: (dados.port || '').trim() || '993',
@@ -107,14 +121,18 @@ export class ImapIntakeService {
 
   private erroAmigavel(e: unknown, host: string): string {
     const codigo = (e as NodeJS.ErrnoException)?.code;
-    const texto = e instanceof Error ? `${e.constructor.name}: ${e.message}` : String(e);
+    const texto =
+      e instanceof Error ? `${e.constructor.name}: ${e.message}` : String(e);
     if (codigo === 'ENOTFOUND' || codigo === 'EAI_AGAIN') {
       return (
         `Servidor IMAP não encontrado (${host}). Confira o host em Config → Caixa de ` +
         'entrada — ex.: imap.gmail.com ou outlook.office365.com.'
       );
     }
-    if (texto.toLowerCase().includes('authenticate') || texto.toLowerCase().includes('login')) {
+    if (
+      texto.toLowerCase().includes('authenticate') ||
+      texto.toLowerCase().includes('login')
+    ) {
       return (
         'Falha de autenticação (usuário/senha rejeitados). Gmail e Outlook/365 exigem ' +
         'uma SENHA DE APP (não a senha normal da conta) e o IMAP habilitado. Confira o ' +
@@ -140,20 +158,34 @@ export class ImapIntakeService {
       client = await this.conectar(cfg);
       const lock = await client.getMailboxLock(cfg.pasta);
       try {
-        const uids = (await client.search({ seen: false }, { uid: true })) || [];
+        const uids =
+          (await client.search({ seen: false }, { uid: true })) || [];
         for (const uid of uids) {
-          const cab = await client.fetchOne(String(uid), { envelope: true }, { uid: true });
+          const cab = await client.fetchOne(
+            String(uid),
+            { envelope: true },
+            { uid: true },
+          );
           const assunto = cab && cab.envelope ? cab.envelope.subject || '' : '';
           if (!assunto.toLowerCase().includes(marcador.toLowerCase())) continue;
-          const full = await client.fetchOne(String(uid), { source: true }, { uid: true });
+          const full = await client.fetchOne(
+            String(uid),
+            { source: true },
+            { uid: true },
+          );
           if (!full || !full.source) continue;
           const parsed = await simpleParser(full.source);
           try {
             await criarFn(parsed.text || '', assunto);
-            await client.messageFlagsAdd({ uid: String(uid) }, ['\\Seen'], { uid: true });
+            await client.messageFlagsAdd({ uid: String(uid) }, ['\\Seen'], {
+              uid: true,
+            });
             n += 1;
           } catch (e) {
-            this.logger.warn(`criarFn falhou para uid=${uid} — deixado não lido`, e instanceof Error ? e.message : String(e));
+            this.logger.warn(
+              `criarFn falhou para uid=${uid} — deixado não lido`,
+              e instanceof Error ? e.message : String(e),
+            );
           }
         }
       } finally {
@@ -169,34 +201,60 @@ export class ImapIntakeService {
 
   /** Devolve (corpo, assunto) do último e-mail NÃO LIDO cujo assunto contém `marcador` —
    * usado pelo botão manual "Verificar caixa". NÃO marca como lido. */
-  async buscarFechamento(
-    marcador = MARCADOR_PADRAO,
-  ): Promise<{ corpo: string | null; assunto: string | null; erro: string | null }> {
+  async buscarFechamento(marcador = MARCADOR_PADRAO): Promise<{
+    corpo: string | null;
+    assunto: string | null;
+    erro: string | null;
+  }> {
     const cfg = this.carregarConfig();
     if (!cfg.host) {
-      return { corpo: null, assunto: null, erro: 'IMAP não configurado (Config → Caixa de entrada).' };
+      return {
+        corpo: null,
+        assunto: null,
+        erro: 'IMAP não configurado (Config → Caixa de entrada).',
+      };
     }
     let client: ImapFlow | undefined;
     try {
       client = await this.conectar(cfg);
       const lock = await client.getMailboxLock(cfg.pasta);
       try {
-        const uids = ((await client.search({ seen: false }, { uid: true })) || []).slice().reverse();
+        const uids = (
+          (await client.search({ seen: false }, { uid: true })) || []
+        )
+          .slice()
+          .reverse();
         for (const uid of uids) {
-          const cab = await client.fetchOne(String(uid), { envelope: true }, { uid: true });
+          const cab = await client.fetchOne(
+            String(uid),
+            { envelope: true },
+            { uid: true },
+          );
           const assunto = cab && cab.envelope ? cab.envelope.subject || '' : '';
           if (!assunto.toLowerCase().includes(marcador.toLowerCase())) continue;
-          const full = await client.fetchOne(String(uid), { source: true }, { uid: true });
+          const full = await client.fetchOne(
+            String(uid),
+            { source: true },
+            { uid: true },
+          );
           if (!full || !full.source) continue;
           const parsed = await simpleParser(full.source);
           return { corpo: parsed.text || '', assunto, erro: null };
         }
-        return { corpo: null, assunto: null, erro: 'Nenhum e-mail de fechamento novo encontrado.' };
+        return {
+          corpo: null,
+          assunto: null,
+          erro: 'Nenhum e-mail de fechamento novo encontrado.',
+        };
       } finally {
         lock.release();
       }
     } catch (e) {
-      return { corpo: null, assunto: null, erro: this.erroAmigavel(e, cfg.host) };
+      return {
+        corpo: null,
+        assunto: null,
+        erro: this.erroAmigavel(e, cfg.host),
+      };
     } finally {
       if (client) await client.logout().catch(() => {});
     }

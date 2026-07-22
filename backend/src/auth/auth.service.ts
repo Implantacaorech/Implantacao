@@ -39,7 +39,9 @@ export class AuthService {
   /** Emite um par de tokens para um `Usuario` já resolvido/autenticado por outro meio
    * (ex.: confirmação de auto-cadastro, que loga a pessoa na hora, igual
    * webapp/app.py:cadastro_confirmar faz via sessão). */
-  async emitirParaUsuario(usuario: Usuario): Promise<TokenPair & { usuario: AuthUser }> {
+  async emitirParaUsuario(
+    usuario: Usuario,
+  ): Promise<TokenPair & { usuario: AuthUser }> {
     const payload: AuthUser = {
       sub: usuario.id,
       login: usuario.login,

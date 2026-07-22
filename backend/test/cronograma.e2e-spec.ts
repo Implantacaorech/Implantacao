@@ -306,10 +306,17 @@ describe('Agendador de Visitas (e2e)', () => {
       const hoje = new Date().toISOString().slice(0, 10);
       await auth(
         request(server()).post(`/api/projetos/${pid}/agenda/periodos`),
-      ).send({ dataIni: hoje, dataFim: hoje, motivo: 'Ana de folga', tecnicos: ['Ana'] });
+      ).send({
+        dataIni: hoje,
+        dataFim: hoje,
+        motivo: 'Ana de folga',
+        tecnicos: ['Ana'],
+      });
 
       const conjunta = await auth(
-        request(server()).get(`/api/projetos/${pid}/agenda/bloqueios`).query({ inicio: hoje, fim: hoje }),
+        request(server())
+          .get(`/api/projetos/${pid}/agenda/bloqueios`)
+          .query({ inicio: hoje, fim: hoje }),
       );
       expect(conjunta.status).toBe(200);
       expect(Object.keys(conjunta.body.data).length).toBeGreaterThan(0);

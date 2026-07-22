@@ -13,7 +13,9 @@ describe('ProtocolosService', () => {
   const repo = {
     findOne: jest.fn(),
     create: jest.fn((dto) => dto),
-    save: jest.fn((entity) => Promise.resolve({ id: entity.id ?? 1, ...entity })),
+    save: jest.fn((entity) =>
+      Promise.resolve({ id: entity.id ?? 1, ...entity }),
+    ),
     createQueryBuilder: jest.fn(),
     update: jest.fn(),
   };
@@ -57,7 +59,10 @@ describe('ProtocolosService', () => {
     expect(r1.novo).toBe(true);
     expect(repo.save).toHaveBeenCalledTimes(1);
 
-    repo.findOne.mockResolvedValueOnce({ id: r1.id, videoHash: service.hash(caminho) });
+    repo.findOne.mockResolvedValueOnce({
+      id: r1.id,
+      videoHash: service.hash(caminho),
+    });
     const r2 = await service.criar('video.mp4', caminho, 'upload', 'Fulano');
     expect(r2.novo).toBe(false);
     expect(r2.id).toBe(r1.id);
@@ -91,7 +96,11 @@ describe('ProtocolosService', () => {
       resumo: 'Resumo antigo',
     } as Protocolo;
     repo.findOne.mockResolvedValue(p);
-    const ok = await service.salvarEdicao(7, { titulo: '  Novo título  ' }, 'Ana');
+    const ok = await service.salvarEdicao(
+      7,
+      { titulo: '  Novo título  ' },
+      'Ana',
+    );
     expect(ok).toBe(true);
     expect(p.titulo).toBe('Novo título');
     expect(p.resumo).toBe('Resumo antigo');

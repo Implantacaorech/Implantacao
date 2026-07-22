@@ -17,7 +17,10 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
-import { PERFIS_SISTEMA, PERFIS_VEEM_TODOS_PROJETOS } from '../common/constants/perfis';
+import {
+  PERFIS_SISTEMA,
+  PERFIS_VEEM_TODOS_PROJETOS,
+} from '../common/constants/perfis';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { MatrizTecnico } from '../database/entities/matriz-tecnico.entity';
 import { MatrizService } from './matriz.service';
@@ -30,7 +33,11 @@ function veTudo(perfil: string): boolean {
   return (PERFIS_VEEM_TODOS_PROJETOS as string[]).includes(perfil);
 }
 
-function podeEditar(user: AuthUser, t: MatrizTecnico, minha: MatrizTecnico | null): boolean {
+function podeEditar(
+  user: AuthUser,
+  t: MatrizTecnico,
+  minha: MatrizTecnico | null,
+): boolean {
   if (user.perfil === 'ADM') return true;
   if (veTudo(user.perfil)) return false; // Administrativo/Coordenador: só consulta
   return !!(minha && minha.id === t.id);
@@ -61,18 +68,32 @@ export class MatrizController {
           qtdNotas: Object.keys(this.service.notas(t)).length,
         })),
       );
-      return new ApiEnvelope({ itens, restrito: false, podeAdmin: user.perfil === 'ADM' });
+      return new ApiEnvelope({
+        itens,
+        restrito: false,
+        podeAdmin: user.perfil === 'ADM',
+      });
     }
-    const minha = await this.service.linhaDoUsuario(user.nome, user.codigoSicla);
+    const minha = await this.service.linhaDoUsuario(
+      user.nome,
+      user.codigoSicla,
+    );
     if (minha) {
-      return new ApiEnvelope({ itens: [], restrito: false, redirecionarParaId: minha.id });
+      return new ApiEnvelope({
+        itens: [],
+        restrito: false,
+        redirecionarParaId: minha.id,
+      });
     }
     return new ApiEnvelope({ itens: [], restrito: true, podeAdmin: false });
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Ficha de um técnico, notas agrupadas por área' })
-  async ficha(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser) {
+  async ficha(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser,
+  ) {
     const t = await this.service.buscar(id);
     if (!t) throw new NotFoundException('Técnico não encontrado.');
     const minha = veTudo(user.perfil)
@@ -113,7 +134,9 @@ export class MatrizController {
   @Post('importar')
   @Roles(...PERFIS_SISTEMA)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Reimporta docs/Matriz de Conhecimento.xlsx (aditivo, ADM)' })
+  @ApiOperation({
+    summary: 'Reimporta docs/Matriz de Conhecimento.xlsx (aditivo, ADM)',
+  })
   async importar(@CurrentUser() user: AuthUser) {
     try {
       const r = await this.service.importar(user.nome || 'importação');
@@ -127,7 +150,10 @@ export class MatrizController {
       // devolve uma mensagem amigável (a planilha de origem é local/não versionada, então
       // "arquivo não encontrado" é uma falha esperada em vários ambientes).
       const msg = e instanceof Error ? e.message : String(e);
-      return new ApiEnvelope({ ok: false, mensagem: `Falha na importação: ${msg}` });
+      return new ApiEnvelope({
+        ok: false,
+        mensagem: `Falha na importação: ${msg}`,
+      });
     }
   }
 }

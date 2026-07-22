@@ -59,8 +59,14 @@ export class PlanoCronogramaController {
     return p;
   }
 
-  private async registrarEvento(projetoId: number, descricao: string, autor: string): Promise<void> {
-    await this.eventos.save(this.eventos.create({ projetoId, tipo: 'nota', descricao, autor }));
+  private async registrarEvento(
+    projetoId: number,
+    descricao: string,
+    autor: string,
+  ): Promise<void> {
+    await this.eventos.save(
+      this.eventos.create({ projetoId, tipo: 'nota', descricao, autor }),
+    );
   }
 
   // --- Cronograma ---
@@ -78,27 +84,54 @@ export class PlanoCronogramaController {
 
   @Post('cronograma')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Substitui as linhas do Cronograma (apaga tudo e reinsere, com histórico)' })
+  @ApiOperation({
+    summary:
+      'Substitui as linhas do Cronograma (apaga tudo e reinsere, com histórico)',
+  })
   async salvarCronograma(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SalvarCronogramaDto,
     @CurrentUser() user: AuthUser,
   ) {
     await this.buscarProjeto(id);
-    const mudancas = await this.cronogramaItens.salvar(id, dto.linhas, user.nome);
-    await this.registrarEvento(id, `Cronograma editado (${mudancas} alteração(ões)).`, user.nome);
-    return new ApiEnvelope({ itens: await this.cronogramaItens.doProjeto(id), mudancas });
+    const mudancas = await this.cronogramaItens.salvar(
+      id,
+      dto.linhas,
+      user.nome,
+    );
+    await this.registrarEvento(
+      id,
+      `Cronograma editado (${mudancas} alteração(ões)).`,
+      user.nome,
+    );
+    return new ApiEnvelope({
+      itens: await this.cronogramaItens.doProjeto(id),
+      mudancas,
+    });
   }
 
   @Post('cronograma/seed')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Substitui as linhas do Cronograma pelo plano automático (destrutivo)' })
-  async seedCronograma(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser) {
+  @ApiOperation({
+    summary:
+      'Substitui as linhas do Cronograma pelo plano automático (destrutivo)',
+  })
+  async seedCronograma(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser,
+  ) {
     const projeto = await this.buscarProjeto(id);
     const linhas = this.cronogramaItens.gerarPlanoAutomatico(projeto);
     const mudancas = await this.cronogramaItens.salvar(id, linhas, user.nome);
-    await this.registrarEvento(id, `Cronograma carregado do plano automático (${linhas.length} agendas).`, user.nome);
-    return new ApiEnvelope({ itens: await this.cronogramaItens.doProjeto(id), mudancas });
+    await this.registrarEvento(
+      id,
+      `Cronograma carregado do plano automático (${linhas.length} agendas).`,
+      user.nome,
+    );
+    return new ApiEnvelope({
+      itens: await this.cronogramaItens.doProjeto(id),
+      mudancas,
+    });
   }
 
   // --- Check List ---
@@ -116,26 +149,53 @@ export class PlanoCronogramaController {
 
   @Post('checklist')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Substitui as linhas do Check List (apaga tudo e reinsere, com histórico)' })
+  @ApiOperation({
+    summary:
+      'Substitui as linhas do Check List (apaga tudo e reinsere, com histórico)',
+  })
   async salvarChecklist(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SalvarChecklistDto,
     @CurrentUser() user: AuthUser,
   ) {
     await this.buscarProjeto(id);
-    const mudancas = await this.checklistItens.salvar(id, dto.linhas, user.nome);
-    await this.registrarEvento(id, `Check-list editado (${mudancas} alteração(ões)).`, user.nome);
-    return new ApiEnvelope({ itens: await this.checklistItens.doProjeto(id), mudancas });
+    const mudancas = await this.checklistItens.salvar(
+      id,
+      dto.linhas,
+      user.nome,
+    );
+    await this.registrarEvento(
+      id,
+      `Check-list editado (${mudancas} alteração(ões)).`,
+      user.nome,
+    );
+    return new ApiEnvelope({
+      itens: await this.checklistItens.doProjeto(id),
+      mudancas,
+    });
   }
 
   @Post('checklist/seed')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Substitui as linhas do Check List pelo roteiro dos módulos (destrutivo)' })
-  async seedChecklist(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser) {
+  @ApiOperation({
+    summary:
+      'Substitui as linhas do Check List pelo roteiro dos módulos (destrutivo)',
+  })
+  async seedChecklist(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser,
+  ) {
     const projeto = await this.buscarProjeto(id);
     const linhas = await this.checklistItens.gerarRoteiroDoCatalogo(projeto);
     const mudancas = await this.checklistItens.salvar(id, linhas, user.nome);
-    await this.registrarEvento(id, `Check-list carregado do roteiro dos módulos (${linhas.length} itens).`, user.nome);
-    return new ApiEnvelope({ itens: await this.checklistItens.doProjeto(id), mudancas });
+    await this.registrarEvento(
+      id,
+      `Check-list carregado do roteiro dos módulos (${linhas.length} itens).`,
+      user.nome,
+    );
+    return new ApiEnvelope({
+      itens: await this.checklistItens.doProjeto(id),
+      mudancas,
+    });
   }
 }

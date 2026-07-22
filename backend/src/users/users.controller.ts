@@ -42,7 +42,9 @@ export class UsersController {
   @Get()
   @ApiOperation({ summary: 'Lista todos os usuários (ativos e inativos)' })
   async listar() {
-    return new ApiEnvelope({ itens: (await this.service.listar()).map(semSenha) });
+    return new ApiEnvelope({
+      itens: (await this.service.listar()).map(semSenha),
+    });
   }
 
   @Get(':id')
@@ -68,7 +70,10 @@ export class UsersController {
   @Put(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Atualiza um usuário (senha só muda se enviada)' })
-  async atualizar(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUsuarioDto) {
+  async atualizar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateUsuarioDto,
+  ) {
     return new ApiEnvelope(semSenha(await this.service.atualizar(id, dto)));
   }
 }

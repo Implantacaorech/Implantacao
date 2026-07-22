@@ -22,13 +22,22 @@ const EVT_MSG: Record<string, [string, string]> = {
     'Projeto gerado — %s',
     'O Projeto de %s foi gerado. Designe os Consultores da implantação.',
   ],
-  cronograma_ok: ['Cronograma concluído — %s', 'O Cronograma de %s foi concluído.'],
-  checklist_ok: ['Check-list concluído — %s', 'O Check-list de %s foi concluído.'],
+  cronograma_ok: [
+    'Cronograma concluído — %s',
+    'O Cronograma de %s foi concluído.',
+  ],
+  checklist_ok: [
+    'Check-list concluído — %s',
+    'O Check-list de %s foi concluído.',
+  ],
   termo_ok: [
     'Termo de Encerramento — %s',
     'O Termo de Encerramento de %s foi gerado.',
   ],
-  encerrado: ['Implantação encerrada — %s', 'A implantação de %s foi encerrada.'],
+  encerrado: [
+    'Implantação encerrada — %s',
+    'A implantação de %s foi encerrada.',
+  ],
 };
 
 export type EventoNotificacao = keyof typeof EVT_MSG;
@@ -89,7 +98,8 @@ export class NotificacaoService {
       }
     } catch (e) {
       ok = false;
-      erro = e instanceof Error ? `${e.constructor.name}: ${e.message}` : String(e);
+      erro =
+        e instanceof Error ? `${e.constructor.name}: ${e.message}` : String(e);
     }
     try {
       const descricao = ok
@@ -117,12 +127,21 @@ export class NotificacaoService {
   ): Promise<void> {
     const destinos = emails.filter(Boolean);
     if (destinos.length === 0) return;
-    const tarefa = this.notificarSync(projetoId, destinos, assunto, corpo, autor);
+    const tarefa = this.notificarSync(
+      projetoId,
+      destinos,
+      assunto,
+      corpo,
+      autor,
+    );
     if (process.env.NODE_ENV === 'test') {
       await tarefa; // determinístico em teste, mesmo padrão de app.testing no Flask
     } else {
       tarefa.catch((e) => {
-        this.logger.error('notificarSync falhou', e instanceof Error ? e.stack : String(e));
+        this.logger.error(
+          'notificarSync falhou',
+          e instanceof Error ? e.stack : String(e),
+        );
       });
     }
   }

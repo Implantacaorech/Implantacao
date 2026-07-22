@@ -27,7 +27,11 @@ export class MailerService {
   private arquivo(): string {
     const dir =
       process.env.NODE_ENV === 'test'
-        ? join(process.cwd(), 'dados', `email_test_${process.env.JEST_WORKER_ID ?? '0'}`)
+        ? join(
+            process.cwd(),
+            'dados',
+            `email_test_${process.env.JEST_WORKER_ID ?? '0'}`,
+          )
         : join(process.cwd(), 'dados');
     mkdirSync(dir, { recursive: true });
     return join(dir, 'smtp.json');
@@ -52,7 +56,8 @@ export class MailerService {
     for (const [k, v] of Object.entries(env)) {
       if (v) (cfg as Record<string, string>)[k] = v;
     }
-    if (process.env.MIGRACAO_SMTP_TLS) cfg.useTls = process.env.MIGRACAO_SMTP_TLS === 'true';
+    if (process.env.MIGRACAO_SMTP_TLS)
+      cfg.useTls = process.env.MIGRACAO_SMTP_TLS === 'true';
     return {
       host: cfg.host ?? '',
       port: cfg.port ?? '587',
@@ -71,7 +76,9 @@ export class MailerService {
     useTls?: boolean;
     senha?: string;
   }): ConfigSmtp {
-    const senha = (dados.senha || '').trim();
+    // replace, não só trim: senha de app do Gmail vem formatada com espaços internos
+    // quando copiada da tela do Google — mesmo achado de imap-intake.service.ts.
+    const senha = (dados.senha || '').replace(/\s+/g, '');
     const cfg: ConfigSmtp = {
       host: (dados.host || '').trim(),
       port: (dados.port || '').trim() || '587',
@@ -107,7 +114,9 @@ export class MailerService {
     if (!c.host) {
       return { ok: false, erro: 'SMTP não configurado (Config → E-mail).' };
     }
-    const para = Array.isArray(destino) ? destino.filter(Boolean).join(', ') : destino;
+    const para = Array.isArray(destino)
+      ? destino.filter(Boolean).join(', ')
+      : destino;
     const port = Number(c.port) || 587;
     const transporter = nodemailer.createTransport({
       host: c.host,
@@ -137,7 +146,8 @@ export class MailerService {
 
   private erroAmigavel(e: unknown, host: string): string {
     const codigo = (e as NodeJS.ErrnoException)?.code;
-    const texto = e instanceof Error ? `${e.constructor.name}: ${e.message}` : String(e);
+    const texto =
+      e instanceof Error ? `${e.constructor.name}: ${e.message}` : String(e);
     if (codigo === 'ENOTFOUND' || codigo === 'EAI_AGAIN') {
       return (
         `Servidor SMTP não encontrado (${host}). Confira o host em Config → E-mail — ` +

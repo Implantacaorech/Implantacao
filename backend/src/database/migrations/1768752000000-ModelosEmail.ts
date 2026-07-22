@@ -21,7 +21,9 @@ export class ModelosEmail1768752000000 implements MigrationInterface {
         "atualizado_em" TIMESTAMP NOT NULL DEFAULT now()
       );
     `);
-    await queryRunner.query(`CREATE UNIQUE INDEX "IDX_modelos_email_slug" ON "modelos_email" ("slug");`);
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX "IDX_modelos_email_slug" ON "modelos_email" ("slug");`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

@@ -248,9 +248,15 @@ export class DocumentosController {
     let caminhoDocx: string;
     if (arquivo) {
       if (!arquivo.originalname.toLowerCase().endsWith('.docx')) {
-        throw new UnprocessableEntityException('O Levantamento importado deve ser um arquivo .docx.');
+        throw new UnprocessableEntityException(
+          'O Levantamento importado deve ser um arquivo .docx.',
+        );
       }
-      const salvoDocx = this.documentos.salvarArquivoGerado(projetoId, arquivo.originalname, arquivo.buffer);
+      const salvoDocx = this.documentos.salvarArquivoGerado(
+        projetoId,
+        arquivo.originalname,
+        arquivo.buffer,
+      );
       await this.documentos.registrarDocumento(
         projetoId,
         'levantamento',
@@ -266,21 +272,39 @@ export class DocumentosController {
       );
       caminhoDocx = salvoDocx.caminho;
     } else {
-      const anterior = await this.documentos.ultimoLevantamentoImportado(projetoId);
+      const anterior =
+        await this.documentos.ultimoLevantamentoImportado(projetoId);
       if (!anterior || !existsSync(anterior.caminho)) {
-        throw new UnprocessableEntityException('Não há Levantamento importado neste projeto.');
+        throw new UnprocessableEntityException(
+          'Não há Levantamento importado neste projeto.',
+        );
       }
       caminhoDocx = anterior.caminho;
     }
 
-    const { paragrafos } = await this.legadoCli.executar<{ paragrafos: string[] }>('docx_paragrafos', {
+    const { paragrafos } = await this.legadoCli.executar<{
+      paragrafos: string[];
+    }>('docx_paragrafos', {
       caminho: caminhoDocx,
     });
-    const respondidas = await this.levantamentoResposta.importarDeParagrafos(projetoId, paragrafos);
+    const respondidas = await this.levantamentoResposta.importarDeParagrafos(
+      projetoId,
+      paragrafos,
+    );
 
     const gerado = await this.geracaoLayout.gerar(projetoId, 'projeto', 'auto');
-    const salvo = this.documentos.salvarArquivoGerado(projetoId, gerado.filename, gerado.buffer);
-    await this.documentos.registrarDocumento(projetoId, 'projeto', salvo.arquivo, salvo.caminho, 'gerado');
+    const salvo = this.documentos.salvarArquivoGerado(
+      projetoId,
+      gerado.filename,
+      gerado.buffer,
+    );
+    await this.documentos.registrarDocumento(
+      projetoId,
+      'projeto',
+      salvo.arquivo,
+      salvo.caminho,
+      'gerado',
+    );
     await this.documentos.registrarEvento(
       projetoId,
       'documento',

@@ -232,7 +232,9 @@ export class DocumentosService {
   /** Levantamento (.docx) importado mais recente do projeto, se houver — equivalente a
    * webapp/db.py:levantamento_importado. Usado por "Projeto origem" (fonte "importado":
    * reusar o último Levantamento já enviado, sem pedir upload de novo). */
-  async ultimoLevantamentoImportado(projetoId: number): Promise<Documento | null> {
+  async ultimoLevantamentoImportado(
+    projetoId: number,
+  ): Promise<Documento | null> {
     return this.documentos.findOne({
       where: { projetoId, tipo: 'levantamento', origem: 'importado' },
       order: { id: 'DESC' },

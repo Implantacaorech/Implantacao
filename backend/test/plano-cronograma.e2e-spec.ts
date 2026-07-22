@@ -36,7 +36,11 @@ describe('Plano Cronograma/Checklist (e2e)', () => {
     }).compile();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new ResponseInterceptor());
@@ -69,10 +73,14 @@ describe('Plano Cronograma/Checklist (e2e)', () => {
     );
 
     tokenAdm = (
-      await request(server()).post('/api/auth/login').send({ login: 'admin', senha: 'senha-adm-123' })
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'admin', senha: 'senha-adm-123' })
     ).body.data.accessToken;
     tokenGci = (
-      await request(server()).post('/api/auth/login').send({ login: 'gci1', senha: 'senha-gci-123' })
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'gci1', senha: 'senha-gci-123' })
     ).body.data.accessToken;
 
     const p = await projetos.save(
@@ -108,57 +116,95 @@ describe('Plano Cronograma/Checklist (e2e)', () => {
 
   describe('GET/POST /projetos/:id/cronograma', () => {
     it('GCI não acessa (403) — fora de PERFIS_GERA_CRONOGRAMA', async () => {
-      const res = await auth(request(server()).get(`/api/projetos/${projetoId}/cronograma`), tokenGci);
+      const res = await auth(
+        request(server()).get(`/api/projetos/${projetoId}/cronograma`),
+        tokenGci,
+      );
       expect(res.status).toBe(403);
     });
 
     it('começa vazio, sem histórico', async () => {
-      const res = await auth(request(server()).get(`/api/projetos/${projetoId}/cronograma`), tokenAdm);
+      const res = await auth(
+        request(server()).get(`/api/projetos/${projetoId}/cronograma`),
+        tokenAdm,
+      );
       expect(res.status).toBe(200);
       expect(res.body.data.itens).toEqual([]);
       expect(res.body.data.historico).toEqual([]);
     });
 
     it('seed gera o plano automático a partir dos módulos/horas do projeto', async () => {
-      const res = await auth(request(server()).post(`/api/projetos/${projetoId}/cronograma/seed`), tokenAdm);
+      const res = await auth(
+        request(server()).post(`/api/projetos/${projetoId}/cronograma/seed`),
+        tokenAdm,
+      );
       expect(res.status).toBe(200);
       expect(res.body.data.itens.length).toBeGreaterThan(1);
-      expect(res.body.data.itens[0].etapa).toBe('Abertura + Parametrização inicial');
+      expect(res.body.data.itens[0].etapa).toBe(
+        'Abertura + Parametrização inicial',
+      );
       expect(res.body.data.itens[0].data).toBe('10/08/2026');
     });
 
     it('salvar substitui as linhas e registra o histórico + evento', async () => {
-      const atual = await auth(request(server()).get(`/api/projetos/${projetoId}/cronograma`), tokenAdm);
+      const atual = await auth(
+        request(server()).get(`/api/projetos/${projetoId}/cronograma`),
+        tokenAdm,
+      );
       const linhas = atual.body.data.itens.map(
-        (i: { etapa: string; topicos: string; horas: string; data: string; modalidade: string; status: string }) => ({
+        (i: {
+          etapa: string;
+          topicos: string;
+          horas: string;
+          data: string;
+          modalidade: string;
+          status: string;
+        }) => ({
           etapa: i.etapa,
           topicos: i.topicos,
           horas: i.horas,
           data: i.data,
           modalidade: i.modalidade,
-          status: i.etapa === 'Abertura + Parametrização inicial' ? 'Concluído' : i.status,
+          status:
+            i.etapa === 'Abertura + Parametrização inicial'
+              ? 'Concluído'
+              : i.status,
         }),
       );
 
-      const salvo = await auth(request(server()).post(`/api/projetos/${projetoId}/cronograma`), tokenAdm).send({
+      const salvo = await auth(
+        request(server()).post(`/api/projetos/${projetoId}/cronograma`),
+        tokenAdm,
+      ).send({
         linhas,
       });
       expect(salvo.status).toBe(200);
       expect(salvo.body.data.mudancas).toBe(1); // só o status da 1ª linha mudou
 
-      const depois = await auth(request(server()).get(`/api/projetos/${projetoId}/cronograma`), tokenAdm);
+      const depois = await auth(
+        request(server()).get(`/api/projetos/${projetoId}/cronograma`),
+        tokenAdm,
+      );
       expect(depois.body.data.itens[0].status).toBe('Concluído');
       // histórico acumula o seed (1 "linha nova" por etapa) + esta edição (1 "status")
       expect(depois.body.data.historico.length).toBeGreaterThanOrEqual(1);
-      expect(depois.body.data.historico.some((h: { campo: string; de: string; para: string }) =>
-        h.campo === 'status' && h.de === 'Previsto' && h.para === 'Concluído',
-      )).toBe(true);
+      expect(
+        depois.body.data.historico.some(
+          (h: { campo: string; de: string; para: string }) =>
+            h.campo === 'status' &&
+            h.de === 'Previsto' &&
+            h.para === 'Concluído',
+        ),
+      ).toBe(true);
     });
   });
 
   describe('GET/POST /projetos/:id/checklist', () => {
     it('seed gera o roteiro a partir do catálogo ChecklistModelo (não do YAML)', async () => {
-      const res = await auth(request(server()).post(`/api/projetos/${projetoId}/checklist/seed`), tokenAdm);
+      const res = await auth(
+        request(server()).post(`/api/projetos/${projetoId}/checklist/seed`),
+        tokenAdm,
+      );
       expect(res.status).toBe(200);
       expect(res.body.data.itens).toEqual([
         expect.objectContaining({
@@ -172,7 +218,10 @@ describe('Plano Cronograma/Checklist (e2e)', () => {
     });
 
     it('salvar substitui as linhas e registra o histórico', async () => {
-      const salvo = await auth(request(server()).post(`/api/projetos/${projetoId}/checklist`), tokenAdm).send({
+      const salvo = await auth(
+        request(server()).post(`/api/projetos/${projetoId}/checklist`),
+        tokenAdm,
+      ).send({
         linhas: [
           {
             modulo: 'FAT',
@@ -189,7 +238,10 @@ describe('Plano Cronograma/Checklist (e2e)', () => {
     });
 
     it('lista vazia apaga todas as linhas', async () => {
-      const salvo = await auth(request(server()).post(`/api/projetos/${projetoId}/checklist`), tokenAdm).send({
+      const salvo = await auth(
+        request(server()).post(`/api/projetos/${projetoId}/checklist`),
+        tokenAdm,
+      ).send({
         linhas: [],
       });
       expect(salvo.status).toBe(200);
@@ -198,7 +250,10 @@ describe('Plano Cronograma/Checklist (e2e)', () => {
   });
 
   it('projeto inexistente devolve 404', async () => {
-    const res = await auth(request(server()).get('/api/projetos/999999/cronograma'), tokenAdm);
+    const res = await auth(
+      request(server()).get('/api/projetos/999999/cronograma'),
+      tokenAdm,
+    );
     expect(res.status).toBe(404);
   });
 });

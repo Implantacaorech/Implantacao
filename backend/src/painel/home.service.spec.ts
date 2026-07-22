@@ -36,11 +36,18 @@ function projeto(over: Partial<Projeto> = {}): Projeto {
     criadoEm: HOJE,
     atualizadoEm: HOJE,
     ...over,
-  } as Projeto;
+  };
 }
 
 function usuario(over: Partial<AuthUser> = {}): AuthUser {
-  return { sub: 1, login: 'x', nome: 'Ana', perfil: 'ADM', codigoSicla: '', ...over };
+  return {
+    sub: 1,
+    login: 'x',
+    nome: 'Ana',
+    perfil: 'ADM',
+    codigoSicla: '',
+    ...over,
+  };
 }
 
 describe('HomeService', () => {
@@ -77,7 +84,9 @@ describe('HomeService', () => {
   });
 
   it('pendência = documento faltante do gate da próxima etapa', async () => {
-    projetos.find.mockResolvedValue([projeto({ id: 1, etapa: 'Levantamento' })]);
+    projetos.find.mockResolvedValue([
+      projeto({ id: 1, etapa: 'Levantamento' }),
+    ]);
 
     const r = await service.painel(usuario());
 
@@ -89,12 +98,28 @@ describe('HomeService', () => {
     // Levantamento não exige nenhum doc para SI mesma (GATES.Levantamento=[]); a próxima
     // etapa (Projeto) exige "levantamento", que aqui está presente -> sem próxima ação de
     // doc; ação de entrada de Projeto não existe -> avancarOk true -> "Avançar para Projeto".
-    documentos.find.mockResolvedValue([{ id: 1, projetoId: 1, tipo: 'levantamento', arquivo: '', caminho: '', origem: 'gerado', criadoEm: HOJE }]);
-    projetos.find.mockResolvedValue([projeto({ id: 1, etapa: 'Levantamento' })]);
+    documentos.find.mockResolvedValue([
+      {
+        id: 1,
+        projetoId: 1,
+        tipo: 'levantamento',
+        arquivo: '',
+        caminho: '',
+        origem: 'gerado',
+        criadoEm: HOJE,
+      },
+    ]);
+    projetos.find.mockResolvedValue([
+      projeto({ id: 1, etapa: 'Levantamento' }),
+    ]);
 
     const r = await service.painel(usuario());
 
-    expect(r.pendencias[0]).toMatchObject({ id: 1, tipo: 'avancar', acao: 'Avançar para Projeto' });
+    expect(r.pendencias[0]).toMatchObject({
+      id: 1,
+      tipo: 'avancar',
+      acao: 'Avançar para Projeto',
+    });
   });
 
   it('ordena pendências por atraso desc, sem atraso por último', async () => {

@@ -19,7 +19,9 @@ export class ConsultasBd1768838400000 implements MigrationInterface {
         "mostrar_grafico" boolean NOT NULL DEFAULT false
       );
     `);
-    await queryRunner.query(`CREATE UNIQUE INDEX "IDX_consultas_bd_slug" ON "consultas_bd" ("slug");`);
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX "IDX_consultas_bd_slug" ON "consultas_bd" ("slug");`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

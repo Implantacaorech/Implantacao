@@ -10,7 +10,11 @@ import { DashboardsController } from './dashboards.controller';
 
 @Module({
   imports: [TypeOrmModule.forFeature([ConsultaBD])],
-  controllers: [ConfigDisponibilidadeController, ConfigConsultasBdController, DashboardsController],
+  controllers: [
+    ConfigDisponibilidadeController,
+    ConfigConsultasBdController,
+    DashboardsController,
+  ],
   providers: [DisponibilidadeService, ConsultaBdService, DashboardsService],
   exports: [DisponibilidadeService, ConsultaBdService, DashboardsService],
 })

@@ -20,7 +20,10 @@ import { LABELS } from './fluxo.constants';
 // 'checklist' usa o gerador legado (runner.gerar_do_projeto, via LegadoCliService — mesma
 // ponte de subprocesso do assistente administrativo legado, ver LegadoModule). 'termo' não
 // faz parte do pacote inicial em nenhuma das duas versões.
-const TIPOS_LAYOUT_FIEL_PACOTE: readonly SlugDocumentoFiel[] = ['levantamento', 'cronograma'];
+const TIPOS_LAYOUT_FIEL_PACOTE: readonly SlugDocumentoFiel[] = [
+  'levantamento',
+  'cronograma',
+];
 const TIPOS_PACOTE_PADRAO = ['levantamento', 'checklist', 'cronograma'];
 
 const NOMES_DOC: Record<SlugDocumentoFiel, string> = {
@@ -149,7 +152,11 @@ export class FluxoService {
     const todos = await this.projetos.find();
     for (const p of todos) {
       if (cnpjD && (p.cnpj || '').replace(/\D/g, '') === cnpjD) return p.id;
-      if (cli && !cnpjD && (p.cliente || '').trim().toLowerCase().replace(/\s+/g, ' ') === cli) {
+      if (
+        cli &&
+        !cnpjD &&
+        (p.cliente || '').trim().toLowerCase().replace(/\s+/g, ' ') === cli
+      ) {
         return p.id;
       }
     }
@@ -194,9 +201,16 @@ export class FluxoService {
 
   /** Texto-resumo do projeto para o e-mail final aos responsáveis. Espelha
    * webapp/fluxo.py:resumo_projeto. */
-  private resumoProjeto(proj: Projeto, docs: string[], gci: string, tecnicos: string): string {
+  private resumoProjeto(
+    proj: Projeto,
+    docs: string[],
+    gci: string,
+    tecnicos: string,
+  ): string {
     const contato =
-      [proj.contatoNome, proj.contatoEmail, proj.contatoTel].filter(Boolean).join(' · ') ||
+      [proj.contatoNome, proj.contatoEmail, proj.contatoTel]
+        .filter(Boolean)
+        .join(' · ') ||
       proj.contatos ||
       '';
     const linhas = ['Resumo do projeto de implantação', '='.repeat(34), ''];
@@ -206,7 +220,10 @@ export class FluxoService {
       ['Ramo', proj.ramo],
       ['Nº do projeto', proj.numeroProjeto],
       ['Módulos', proj.modulos],
-      ['Horas', `${proj.horasCobradas || '0'} cobradas + ${proj.horasBonificadas || '0'} bonificadas`],
+      [
+        'Horas',
+        `${proj.horasCobradas || '0'} cobradas + ${proj.horasBonificadas || '0'} bonificadas`,
+      ],
       ['Contato', contato],
       ['GCI (Levantamento)', gci],
       ['Técnico(s)', tecnicos],
@@ -232,19 +249,34 @@ export class FluxoService {
    * aos responsáveis. Espelha webapp/routes_fluxo.py:fluxo_criar — distinto de
    * `criarDeCampos`, usado pelo robô automático da caixa (texto de evento e efeitos
    * colaterais diferentes). */
-  async criarComPacote(dto: CriarFluxoManualDto, autor = ''): Promise<ResultadoCriarFluxo> {
+  async criarComPacote(
+    dto: CriarFluxoManualDto,
+    autor = '',
+  ): Promise<ResultadoCriarFluxo> {
     const gci = (dto.consultor || '').trim();
     const tecnicos = (dto.tecnicos || '').trim();
     let observacoes = (dto.observacoes || '').trim();
-    if (tecnicos) observacoes = `${observacoes}${observacoes ? ' · ' : ''}Técnicos: ${tecnicos}`;
+    if (tecnicos)
+      observacoes = `${observacoes}${observacoes ? ' · ' : ''}Técnicos: ${tecnicos}`;
 
     const ja = await this.existeSimilar(dto.cliente, dto.cnpj);
     if (ja) {
-      return { projetoId: ja, duplicado: true, documentosGerados: [], emailEnviado: false };
+      return {
+        projetoId: ja,
+        duplicado: true,
+        documentosGerados: [],
+        emailEnviado: false,
+      };
     }
 
     const hoje = new Date().toISOString().slice(0, 10);
-    const { consultor: _consultor, tecnicos: _tecnicos, gerar: _gerar, emailsResponsaveis: _er, ...pf } = dto;
+    const {
+      consultor: _consultor,
+      tecnicos: _tecnicos,
+      gerar: _gerar,
+      emailsResponsaveis: _er,
+      ...pf
+    } = dto;
     const projeto = await this.projetos.save(
       this.projetos.create({
         ...pf,
@@ -278,13 +310,17 @@ export class FluxoService {
     }
     await this.notificacao.notificarEvento(projeto.id, 'fechamento', projeto);
 
-    const tiposPedidos = dto.gerar && dto.gerar.length > 0 ? dto.gerar : TIPOS_PACOTE_PADRAO;
+    const tiposPedidos =
+      dto.gerar && dto.gerar.length > 0 ? dto.gerar : TIPOS_PACOTE_PADRAO;
     const caminhos: string[] = [];
     const nomes: string[] = [];
     for (const tipo of tiposPedidos) {
       try {
         if (tipo === 'checklist') {
-          const r = await this.legadoCli.executar<{ arquivo: string | null; log: string }>('gerar_do_projeto', {
+          const r = await this.legadoCli.executar<{
+            arquivo: string | null;
+            log: string;
+          }>('gerar_do_projeto', {
             projeto: { cliente: projeto.cliente, modulos: projeto.modulos },
             tipo: 'checklist',
           });
@@ -294,17 +330,43 @@ export class FluxoService {
             basename(r.arquivo),
             readFileSync(r.arquivo),
           );
-          await this.documentos.registrarDocumento(projeto.id, 'checklist', salvo.arquivo, salvo.caminho, 'gerado');
-          await this.documentos.registrarEvento(projeto.id, 'documento', `Gerou ${salvo.arquivo} (checklist)`, autor);
+          await this.documentos.registrarDocumento(
+            projeto.id,
+            'checklist',
+            salvo.arquivo,
+            salvo.caminho,
+            'gerado',
+          );
+          await this.documentos.registrarEvento(
+            projeto.id,
+            'documento',
+            `Gerou ${salvo.arquivo} (checklist)`,
+            autor,
+          );
           caminhos.push(salvo.caminho);
           nomes.push(NOME_CHECKLIST);
           continue;
         }
-        if (!TIPOS_LAYOUT_FIEL_PACOTE.includes(tipo as SlugDocumentoFiel)) continue;
+        if (!TIPOS_LAYOUT_FIEL_PACOTE.includes(tipo as SlugDocumentoFiel))
+          continue;
         const slug = tipo as SlugDocumentoFiel;
-        const arquivo = await this.geracaoLayout.gerar(projeto.id, slug, 'auto');
-        const salvo = this.documentos.salvarArquivoGerado(projeto.id, arquivo.filename, arquivo.buffer);
-        await this.documentos.registrarDocumento(projeto.id, slug, salvo.arquivo, salvo.caminho, 'gerado');
+        const arquivo = await this.geracaoLayout.gerar(
+          projeto.id,
+          slug,
+          'auto',
+        );
+        const salvo = this.documentos.salvarArquivoGerado(
+          projeto.id,
+          arquivo.filename,
+          arquivo.buffer,
+        );
+        await this.documentos.registrarDocumento(
+          projeto.id,
+          slug,
+          salvo.arquivo,
+          salvo.caminho,
+          'gerado',
+        );
         await this.documentos.registrarEvento(
           projeto.id,
           'documento',
@@ -314,7 +376,9 @@ export class FluxoService {
         caminhos.push(salvo.caminho);
         nomes.push(NOMES_DOC[slug]);
       } catch (e) {
-        this.logger.warn(`Falha ao gerar ${tipo} no pacote inicial do fluxo: ${(e as Error).message}`);
+        this.logger.warn(
+          `Falha ao gerar ${tipo} no pacote inicial do fluxo: ${(e as Error).message}`,
+        );
       }
     }
 
@@ -342,13 +406,21 @@ export class FluxoService {
           : `Falha ao enviar o pacote: ${resultado.erro}`,
         autor,
       );
-      if (!resultado.ok) avisoEmail = `Fluxo criado, mas o e-mail não saiu: ${resultado.erro}`;
+      if (!resultado.ok)
+        avisoEmail = `Fluxo criado, mas o e-mail não saiu: ${resultado.erro}`;
     } else if (destinos.length === 0) {
-      avisoEmail = 'Fluxo criado. Nenhum destinatário informado — pacote não enviado por e-mail.';
+      avisoEmail =
+        'Fluxo criado. Nenhum destinatário informado — pacote não enviado por e-mail.';
     } else {
       avisoEmail = 'Fluxo criado, mas o e-mail não saiu: configure o SMTP.';
     }
 
-    return { projetoId: projeto.id, duplicado: false, documentosGerados: nomes, emailEnviado, avisoEmail };
+    return {
+      projetoId: projeto.id,
+      duplicado: false,
+      documentosGerados: nomes,
+      emailEnviado,
+      avisoEmail,
+    };
   }
 }

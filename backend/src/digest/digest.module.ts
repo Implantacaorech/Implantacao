@@ -8,7 +8,11 @@ import { DigestService } from './digest.service';
 import { RoboDigestService } from './robo-digest.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Projeto, Documento]), MetricasModule, EmailModule],
+  imports: [
+    TypeOrmModule.forFeature([Projeto, Documento]),
+    MetricasModule,
+    EmailModule,
+  ],
   providers: [DigestService, RoboDigestService],
   exports: [DigestService],
 })

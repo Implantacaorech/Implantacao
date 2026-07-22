@@ -39,7 +39,7 @@ function projeto(over: Partial<Projeto> = {}): Projeto {
     criadoEm: HOJE,
     atualizadoEm: HOJE,
     ...over,
-  } as Projeto;
+  };
 }
 
 function cronogramaItem(over: Partial<CronogramaItem> = {}): CronogramaItem {
@@ -54,7 +54,7 @@ function cronogramaItem(over: Partial<CronogramaItem> = {}): CronogramaItem {
     modalidade: '',
     status: 'Previsto',
     ...over,
-  } as CronogramaItem;
+  };
 }
 
 function checklistItem(over: Partial<ChecklistItem> = {}): ChecklistItem {
@@ -68,7 +68,7 @@ function checklistItem(over: Partial<ChecklistItem> = {}): ChecklistItem {
     status: 'Pendente',
     obs: '',
     ...over,
-  } as ChecklistItem;
+  };
 }
 
 const SEM_USUARIOS = { adm: [], coordenador: [], gci: [], consultor: [] };
@@ -119,7 +119,11 @@ describe('MonitoramentoService', () => {
   });
 
   it('projeto atrasado (go-live vencido) reduz a saúde e aparece no mapa como atrasado', () => {
-    const p = projeto({ id: 1, dataUsoOficial: '2026-08-01', etapa: 'Cronograma e Check-list' });
+    const p = projeto({
+      id: 1,
+      dataUsoOficial: '2026-08-01',
+      etapa: 'Cronograma e Check-list',
+    });
     const r = service.avaliar([p], {}, [], [], [], SEM_USUARIOS);
     expect(r.saude).toBeLessThan(100);
     expect(r.mapa[0].atrasado).toBe(true);
@@ -127,7 +131,11 @@ describe('MonitoramentoService', () => {
   });
 
   it('quirk preservada de propósito: no setor Suporte, "andamento" e "pendentes" usam o mesmo valor', () => {
-    const p = projeto({ id: 1, etapa: 'Encerramento', situacao: 'Em andamento' });
+    const p = projeto({
+      id: 1,
+      etapa: 'Encerramento',
+      situacao: 'Em andamento',
+    });
     const r = service.avaliar([p], {}, [], [], [], SEM_USUARIOS);
     const suporte = r.setores.find((s) => s.nome === 'Suporte')!;
     expect(suporte.andamento).toBe(suporte.pendentes);
@@ -135,23 +143,62 @@ describe('MonitoramentoService', () => {
   });
 
   it('mapa ordena atrasado antes de risco, e risco antes do resto', () => {
-    const atrasado = projeto({ id: 1, cliente: 'Atrasado', dataUsoOficial: '2026-08-01' });
+    const atrasado = projeto({
+      id: 1,
+      cliente: 'Atrasado',
+      dataUsoOficial: '2026-08-01',
+    });
     const risco = projeto({ id: 2, cliente: 'Risco', situacao: 'Em risco' });
     const normal = projeto({ id: 3, cliente: 'Normal' });
-    const r = service.avaliar([atrasado, risco, normal], {}, [], [], [], SEM_USUARIOS);
-    expect(r.mapa.map((x) => x.cliente)).toEqual(['Atrasado', 'Risco', 'Normal']);
+    const r = service.avaliar(
+      [atrasado, risco, normal],
+      {},
+      [],
+      [],
+      [],
+      SEM_USUARIOS,
+    );
+    expect(r.mapa.map((x) => x.cliente)).toEqual([
+      'Atrasado',
+      'Risco',
+      'Normal',
+    ]);
   });
 
   it('entregas: junta data_levantamento/data_uso_oficial + cronograma pendente, ordenadas por data', () => {
-    const p = projeto({ id: 1, cliente: 'Cliente Y', dataLevantamento: '2026-09-01', dataUsoOficial: '2026-08-20' });
-    const crono = cronogramaItem({ projetoId: 1, data: '15/08/2026', etapa: 'Treinamento FAT', status: 'Previsto' });
+    const p = projeto({
+      id: 1,
+      cliente: 'Cliente Y',
+      dataLevantamento: '2026-09-01',
+      dataUsoOficial: '2026-08-20',
+    });
+    const crono = cronogramaItem({
+      projetoId: 1,
+      data: '15/08/2026',
+      etapa: 'Treinamento FAT',
+      status: 'Previsto',
+    });
     const r = service.avaliar([p], {}, [crono], [], [], SEM_USUARIOS);
-    expect(r.entregas.map((e) => e.tipo)).toEqual(['Treinamento FAT', 'Go-live', 'Levantamento']);
+    expect(r.entregas.map((e) => e.tipo)).toEqual([
+      'Treinamento FAT',
+      'Go-live',
+      'Levantamento',
+    ]);
   });
 
   it('carga: soma horas e projetos por GCI/consultor (nomes separados de string bruta)', () => {
-    const p1 = projeto({ id: 1, gci: 'Ana', consultor: 'Beto', horasCobradas: '10' });
-    const p2 = projeto({ id: 2, gci: 'Ana', consultor: '', horasCobradas: '5' });
+    const p1 = projeto({
+      id: 1,
+      gci: 'Ana',
+      consultor: 'Beto',
+      horasCobradas: '10',
+    });
+    const p2 = projeto({
+      id: 2,
+      gci: 'Ana',
+      consultor: '',
+      horasCobradas: '5',
+    });
     const r = service.avaliar([p1, p2], {}, [], [], [], SEM_USUARIOS);
     const ana = r.carga.find((c) => c.nome === 'Ana')!;
     expect(ana.projetos).toBe(2);
@@ -165,7 +212,17 @@ describe('MonitoramentoService', () => {
       {},
       [],
       [],
-      [{ id: 1, projetoId: 1, modulo: 'FAT', consultor: 'Delta', ordem: 0, naoDistribuir: false, analista: '' }],
+      [
+        {
+          id: 1,
+          projetoId: 1,
+          modulo: 'FAT',
+          consultor: 'Delta',
+          ordem: 0,
+          naoDistribuir: false,
+          analista: '',
+        },
+      ],
       SEM_USUARIOS,
     );
     expect(r.carga.find((c) => c.nome === 'Delta')?.projetos).toBe(1);
@@ -173,14 +230,22 @@ describe('MonitoramentoService', () => {
 
   it('setor Desenvolvimento detecta por palavra-chave no item/obs do checklist', () => {
     const p = projeto({ id: 1 });
-    const check = checklistItem({ projetoId: 1, item: 'Integração bancária', status: 'Pendente' });
+    const check = checklistItem({
+      projetoId: 1,
+      item: 'Integração bancária',
+      status: 'Pendente',
+    });
     const r = service.avaliar([p], {}, [], [check], [], SEM_USUARIOS);
     const dev = r.setores.find((s) => s.nome === 'Desenvolvimento')!;
     expect(dev.pendentes).toBe(1);
   });
 
   it('projeto Concluído não entra em "ativos" nem no mapa/entregas', () => {
-    const p = projeto({ id: 1, situacao: 'Concluído', dataUsoOficial: '2026-01-01' });
+    const p = projeto({
+      id: 1,
+      situacao: 'Concluído',
+      dataUsoOficial: '2026-01-01',
+    });
     const r = service.avaliar([p], {}, [], [], [], SEM_USUARIOS);
     expect(r.mapa).toEqual([]);
     expect(r.entregas).toEqual([]);

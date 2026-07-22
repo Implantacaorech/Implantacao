@@ -5,7 +5,10 @@ export const LABELS: Array<[string[], string]> = [
   [['ramo'], 'ramo'],
   [['cidade', 'cidade/uf', 'localizacao', 'cidade / uf'], 'cidade'],
   [['contato', 'contato (nome)', 'nome do contato'], 'contatoNome'],
-  [['e-mail do contato', 'email do contato', 'e-mail', 'email'], 'contatoEmail'],
+  [
+    ['e-mail do contato', 'email do contato', 'e-mail', 'email'],
+    'contatoEmail',
+  ],
   [['telefone', 'fone', 'celular'], 'contatoTel'],
   [
     [
@@ -20,10 +23,22 @@ export const LABELS: Array<[string[], string]> = [
     ],
     'numeroProjeto',
   ],
-  [['modulos contratados', 'modulos contratados (siglas)', 'modulos'], 'modulos'],
+  [
+    ['modulos contratados', 'modulos contratados (siglas)', 'modulos'],
+    'modulos',
+  ],
   [['horas cobradas', 'horas contratadas'], 'horasCobradas'],
   [['horas bonificadas', 'bonificadas'], 'horasBonificadas'],
-  [['produto / observacoes', 'produto/observacoes', 'produto', 'observacoes', 'obs'], 'observacoes'],
+  [
+    [
+      'produto / observacoes',
+      'produto/observacoes',
+      'produto',
+      'observacoes',
+      'obs',
+    ],
+    'observacoes',
+  ],
 ];
 
 // Marcador no assunto, para exibição (comparado sem acento/caixa na busca real, que usa

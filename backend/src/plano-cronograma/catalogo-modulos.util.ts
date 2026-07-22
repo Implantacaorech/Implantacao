@@ -21,9 +21,12 @@ interface LinhaYaml {
  * Cronograma, uma ação manual pouco frequente — igual ao Flask original
  * (`tools/catalogo.py:load()`, recarregado a cada chamada). */
 function carregarCatalogo(caminhoYaml?: string): ModuloCatalogo[] {
-  const caminho = caminhoYaml ?? join(process.cwd(), '..', 'tools', 'data', 'catalogo_modulos.yaml');
+  const caminho =
+    caminhoYaml ??
+    join(process.cwd(), '..', 'tools', 'data', 'catalogo_modulos.yaml');
   if (!existsSync(caminho)) return [];
-  const doc = load(readFileSync(caminho, 'utf8')) as { modulos?: LinhaYaml[] } | undefined;
+  const doc = load(readFileSync(caminho, 'utf8')) as
+    { modulos?: LinhaYaml[] } | undefined;
   return (doc?.modulos ?? []).map((m) => ({
     codigo: String(m.codigo ?? ''),
     abrev: String(m.abrev ?? '').toUpperCase(),
@@ -36,7 +39,10 @@ function carregarCatalogo(caminhoYaml?: string): ModuloCatalogo[] {
  * aparecem, sem repetir a mesma abreviação duas vezes. Espelha
  * tools/catalogo.py:resolve — devolve só os encontrados (o port não precisa da lista de
  * "faltantes", só usada por telas de Levantamento ainda não portadas). */
-export function resolverModulos(tokens: string[], caminhoYaml?: string): ModuloCatalogo[] {
+export function resolverModulos(
+  tokens: string[],
+  caminhoYaml?: string,
+): ModuloCatalogo[] {
   const catalogo = carregarCatalogo(caminhoYaml);
   const porCodigo = new Map(catalogo.map((m) => [m.codigo, m]));
   const porAbrev = new Map(catalogo.map((m) => [m.abrev, m]));

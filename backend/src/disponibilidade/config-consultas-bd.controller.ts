@@ -52,15 +52,21 @@ export class ConfigConsultasBdController {
 
   @Post()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Cria uma nova consulta (slug derivado do nome, se não informado)' })
+  @ApiOperation({
+    summary: 'Cria uma nova consulta (slug derivado do nome, se não informado)',
+  })
   async criar(@Body() dto: SalvarConsultaBdDto & { slug?: string }) {
     const slugBase = (dto.slug || dto.nome || '').trim();
     if (!slugBase) {
-      throw new BadRequestException('Informe um nome (ou slug) para a nova consulta.');
+      throw new BadRequestException(
+        'Informe um nome (ou slug) para a nova consulta.',
+      );
     }
     const existente = await this.consultas.porSlug(slugBase);
     if (existente) {
-      throw new BadRequestException('Já existe uma consulta com esse identificador.');
+      throw new BadRequestException(
+        'Já existe uma consulta com esse identificador.',
+      );
     }
     return new ApiEnvelope(await this.consultas.salvar(slugBase, dto));
   }
@@ -68,7 +74,10 @@ export class ConfigConsultasBdController {
   @Post(':slug')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Atualiza uma consulta salva' })
-  async atualizar(@Param('slug') slug: string, @Body() dto: SalvarConsultaBdDto) {
+  async atualizar(
+    @Param('slug') slug: string,
+    @Body() dto: SalvarConsultaBdDto,
+  ) {
     const r = await this.consultas.salvar(slug, dto);
     if (!r) throw new NotFoundException('Consulta não encontrada.');
     return new ApiEnvelope(r);

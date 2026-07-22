@@ -63,7 +63,15 @@ describe('DigestService', () => {
       mailer.configurado.mockReturnValue(true);
       mailer.enviar.mockResolvedValue({ ok: true, erro: null });
       projetosRepo.find.mockResolvedValue([
-        { id: 1, situacao: 'Em risco', etapa: 'Projeto', consultor: '', cliente: 'X', criadoEm: new Date(), atualizadoEm: new Date() },
+        {
+          id: 1,
+          situacao: 'Em risco',
+          etapa: 'Projeto',
+          consultor: '',
+          cliente: 'X',
+          criadoEm: new Date(),
+          atualizadoEm: new Date(),
+        },
       ]);
 
       const r = await service.enviar();

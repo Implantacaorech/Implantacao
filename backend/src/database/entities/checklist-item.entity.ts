@@ -1,8 +1,14 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
-export type StatusChecklistItem = 'Pendente' | 'Em andamento' | 'Concluído' | 'N/A';
+export type StatusChecklistItem =
+  'Pendente' | 'Em andamento' | 'Concluído' | 'N/A';
 
-export const CHECK_STATUS: StatusChecklistItem[] = ['Pendente', 'Em andamento', 'Concluído', 'N/A'];
+export const CHECK_STATUS: StatusChecklistItem[] = [
+  'Pendente',
+  'Em andamento',
+  'Concluído',
+  'N/A',
+];
 
 /** Linha EDITÁVEL do documento Check List, rastreada durante a implantação (status por
  * linha). Espelha webapp/db.py:ChecklistItem. Vive em `plano-cronograma/` junto com

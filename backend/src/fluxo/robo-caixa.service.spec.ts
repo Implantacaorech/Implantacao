@@ -10,7 +10,11 @@ describe('RoboCaixaService', () => {
   const config = { get: jest.fn().mockReturnValue(10) };
   const imap = { configurado: jest.fn(), processarFechamentos: jest.fn() };
   const fluxo = { criarDeFechamento: jest.fn() };
-  const scheduler = { addInterval: jest.fn(), deleteInterval: jest.fn(), doesExist: jest.fn() };
+  const scheduler = {
+    addInterval: jest.fn(),
+    deleteInterval: jest.fn(),
+    doesExist: jest.fn(),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -68,7 +72,10 @@ describe('RoboCaixaService', () => {
     it('registra um intervalo fora de teste', () => {
       process.env.NODE_ENV = 'production';
       service.onModuleInit();
-      expect(scheduler.addInterval).toHaveBeenCalledWith('robo-caixa', expect.anything());
+      expect(scheduler.addInterval).toHaveBeenCalledWith(
+        'robo-caixa',
+        expect.anything(),
+      );
       clearInterval(scheduler.addInterval.mock.calls[0][1]);
     });
 
