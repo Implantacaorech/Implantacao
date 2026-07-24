@@ -29,6 +29,7 @@ function projeto(over: Partial<Projeto> = {}): Projeto {
     contatoNome: '',
     contatoEmail: '',
     contatoTel: '',
+    comercialEmail: '',
     contatos: '',
     observacoes: '',
     criadoEm: '',

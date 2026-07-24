@@ -42,9 +42,6 @@
           <svg class="svgi" aria-hidden="true"><use href="#ic-mail"/></svg>
         </a>
       }
-      <a class="btn" [routerLink]="['/projetos', projetoId(), 'passos']" title="Os 18 passos do processo">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Passos
-      </a>
       <a class="btn" [routerLink]="['/projetos', projetoId(), 'email']" title="Enviar e-mail ao cliente">
         <svg class="svgi" aria-hidden="true"><use href="#ic-send"/></svg> E-mail
       </a>
@@ -65,23 +62,15 @@
     </div>
   }
 
-  @if (cabecalho(); as cab) {
-    <!-- STEPPER -->
-    <div class="stepper-v2">
-      @for (f of cab.stepper; track f.nome; let i = $index) {
-        <div class="step-item" [class.done]="f.estado === 'done'">
-          <div class="step-dot" [class.done]="f.estado === 'done'" [class.atual]="f.estado === 'atual'">
-            @if (f.estado === 'done') {
-              <svg class="svgi" style="width:12px;height:12px;color:#fff" aria-hidden="true"><use href="#ic-check-circle"/></svg>
-            } @else {
-              {{ i + 1 }}
-            }
-          </div>
-          <div class="step-lbl" [class.atual]="f.estado === 'atual'">{{ f.nome }}</div>
-        </div>
-      }
-    </div>
+  <!-- O motor de fluxo antigo (stepper de 6 fases, "Próxima ação", "Avançar fase") foi
+       REMOVIDO em 2026-07-24. O fluxo agora vive num lugar só: a tela de Passos. Esta ficha
+       passou a ser só o EDITOR de dados do cliente, alcançado a partir do fluxo — mantê-la
+       com um stepper próprio recriava o "fluxo espaçado" que o usuário reportou. -->
+  <p class="dica" style="margin:6px 0 14px">
+    <a class="btn btn-sec" [routerLink]="['/projetos', projetoId()]">← Voltar ao fluxo do projeto</a>
+  </p>
 
+  @if (cabecalho(); as cab) {
     <!-- KPIS -->
     <div class="kpis-ficha">
       <div class="kpi-f">
@@ -124,93 +113,12 @@
       </div>
     }
 
-    @if (cab.proxima; as proxima) {
-      <div class="proxima">
-        <svg class="svgi" style="width:18px;height:18px;color:var(--warn);flex:none" aria-hidden="true"><use href="#ic-bell"/></svg>
-        <div class="txt">
-          <div class="titulo">Próxima ação necessária: {{ proxima.label }}</div>
-          <p class="dica" style="margin:2px 0 0">
-            @if (cab.proxEtapa) { Necessário para avançar para <strong>{{ cab.proxEtapa }}</strong>. }
-            @else { Documento obrigatório para concluir a implantação. }
-          </p>
-        </div>
-        @switch (proxima.tipo) {
-          @case ('acao:definir_gci') {
-            <a class="btn primario" [routerLink]="['/projetos', projetoId(), 'designacao', 'definir-gci']">
-              <svg class="svgi" aria-hidden="true"><use href="#ic-user"/></svg> Definir GCI Responsável
-            </a>
-          }
-          @case ('acao:data_levantamento') {
-            <a class="btn primario" [routerLink]="['/projetos', projetoId(), 'designacao', 'agendar']">
-              <svg class="svgi" aria-hidden="true"><use href="#ic-clock"/></svg> Definir Data do Levantamento
-            </a>
-          }
-          @case ('acao:consultores_designacao') {
-            <a class="btn primario" [routerLink]="['/projetos', projetoId(), 'designacao', 'consultores']">
-              <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg> Designar Consultores
-            </a>
-          }
-          @case ('acao:consultores') {
-            <a class="btn primario" [routerLink]="['/projetos', projetoId(), 'designacao', 'consultores']">
-              <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg> Designar Consultores
-            </a>
-          }
-          @case ('checklist') {
-            <a class="btn primario" [routerLink]="['/projetos', projetoId(), 'checklist']">
-              <svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg> Editar Check-list
-            </a>
-          }
-          @default {
-            <button class="btn primario" type="button" [disabled]="gerando() !== null" (click)="gerarDocumento($any(proxima.tipo))">
-              <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg>
-              {{ gerando() === proxima.tipo ? 'Gerando…' : 'Gerar agora' }}
-            </button>
-          }
-        }
-      </div>
-    } @else if (cab.proxEtapa) {
-      @if (cab.avancarOk) {
-        <div class="proxima ok">
-          <svg class="svgi" style="width:18px;height:18px;color:var(--ok);flex:none" aria-hidden="true"><use href="#ic-check-circle"/></svg>
-          <div class="txt">
-            <div class="titulo">Fase liberada — todos os requisitos estão atendidos.</div>
-            <p class="dica" style="margin:2px 0 0">Avance para <strong>{{ cab.proxEtapa }}</strong> quando estiver pronto.</p>
-          </div>
-          <button class="btn primario" type="button" [disabled]="avancando()" (click)="avancarEtapa()">
-            <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
-            {{ avancando() ? 'Avançando…' : 'Avançar para ' + cab.proxEtapa }}
-          </button>
-        </div>
-      } @else {
-        <div class="bloqueio-painel">
-          <div class="titulo">
-            <svg class="svgi" aria-hidden="true"><use href="#ic-lock"/></svg>
-            Avanço bloqueado — resolva as pendências abaixo:
-          </div>
-          <ul class="bloqueio-lista">
-            @for (b of cab.bloqueios; track b) {
-              <li><svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> {{ b }}</li>
-            }
-          </ul>
-        </div>
-      }
-    } @else {
-      <div class="proxima ok">
-        <svg class="svgi" style="width:18px;height:18px;color:var(--ok);flex:none" aria-hidden="true"><use href="#ic-check-circle"/></svg>
-        <div class="txt">
-          <div class="titulo">Projeto na fase final de encerramento.</div>
-          <p class="dica" style="margin:2px 0 0">Gere o Termo de Encerramento e finalize com o cliente.</p>
-        </div>
-      </div>
-    }
+    <!-- "Próxima ação" e "Avançar fase" foram removidos: quem conduz o processo agora é a
+         tela de Passos. Esta ficha só mostra os dados e os campos pendentes. -->
   }
 
   <!-- ABAS -->
   <div class="abas" style="margin-top:4px">
-    <button class="aba" [class.ativa]="aba() === 'execucao'" type="button" (click)="irParaAba('execucao')">
-      <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Andamento
-      @if (cabecalho()?.proxima) { <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn);margin-left:2px"></span> }
-    </button>
     <button class="aba" [class.ativa]="aba() === 'resumo'" type="button" (click)="irParaAba('resumo')">
       <svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg> Resumo
     </button>
@@ -274,9 +182,9 @@
           </div>
         }
         <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--line)">
-          <button class="btn primario" type="button" (click)="irParaAba('execucao')">
-            <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Ir para o Andamento
-          </button>
+          <a class="btn primario" [routerLink]="['/projetos', projetoId()]">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Ir para o fluxo do projeto
+          </a>
           <button class="btn" type="button" (click)="irParaAba('dados')">
             <svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Editar dados
           </button>
@@ -306,276 +214,6 @@
       } @else {
         <p class="dica">Sem atividade registrada ainda.</p>
       }
-    </section>
-  }
-
-  <!-- ABA: EXECUÇÃO -->
-  @if (aba() === 'execucao') {
-    <section class="painel-aba ativa">
-      @if (cabecalho(); as cab) {
-        <div class="workspace">
-          <div class="workspace-header">
-            <span class="fase-badge">{{ form.getRawValue().etapa }}</span>
-            <span class="titulo-fase">Ações desta fase</span>
-            <span class="sub-fase">{{ form.getRawValue().situacao }}</span>
-          </div>
-          <div class="workspace-meta">
-            @if (form.getRawValue().gci) { <span><svg class="svgi" aria-hidden="true"><use href="#ic-user"/></svg> GCI: <strong>{{ form.getRawValue().gci }}</strong></span><span class="sep">·</span> }
-            @if (form.getRawValue().consultor) { <span><svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg> Consultor: <strong>{{ form.getRawValue().consultor }}</strong></span><span class="sep">·</span> }
-            @if (form.getRawValue().modulos) { <span><svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg> Módulos: <strong>{{ form.getRawValue().modulos }}</strong></span> }
-          </div>
-          <div class="workspace-body">
-            @switch (form.getRawValue().etapa) {
-              @case ('Agendamento') {
-                <div class="acao-principal" [class.ativa]="!form.getRawValue().gci">
-                  <div class="titulo">
-                    <span class="passo-num" [class.concluido]="!!form.getRawValue().gci" [class.pendente]="!form.getRawValue().gci">1</span>
-                    Definir GCI Responsável
-                    @if (form.getRawValue().gci) { <span style="color:var(--ok);font-size:.8rem"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Definido</span> }
-                  </div>
-                  <p class="descricao">Selecione o GCI que conduzirá o Levantamento de Processos.</p>
-                  <div class="acoes-row">
-                    <a class="btn" [class.primario]="!form.getRawValue().gci" [routerLink]="['/projetos', projetoId(), 'designacao', 'definir-gci']">
-                      <svg class="svgi" aria-hidden="true"><use href="#ic-user"/></svg> {{ form.getRawValue().gci ? 'Alterar GCI' : 'Definir GCI' }}
-                    </a>
-                  </div>
-                </div>
-                <div class="acao-principal" [class.ativa]="!!form.getRawValue().gci && !form.getRawValue().dataLevantamento">
-                  <div class="titulo">
-                    <span class="passo-num" [class.concluido]="!!form.getRawValue().dataLevantamento">2</span>
-                    Definir Data do Levantamento
-                    @if (form.getRawValue().dataLevantamento) { <span style="color:var(--ok);font-size:.8rem"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Agendado</span> }
-                  </div>
-                  <div class="acoes-row">
-                    @if (form.getRawValue().gci) {
-                      <a class="btn" [class.primario]="!form.getRawValue().dataLevantamento" [routerLink]="['/projetos', projetoId(), 'designacao', 'agendar']">
-                        <svg class="svgi" aria-hidden="true"><use href="#ic-clock"/></svg> {{ form.getRawValue().dataLevantamento ? 'Rever data' : 'Definir Data' }}
-                      </a>
-                    } @else {
-                      <button class="btn" disabled title="Defina o GCI primeiro"><svg class="svgi" aria-hidden="true"><use href="#ic-clock"/></svg> Definir Data</button>
-                    }
-                  </div>
-                </div>
-              }
-              @case ('Levantamento') {
-                <div class="acao-principal ativa">
-                  <div class="titulo"><span class="passo-num">1</span> Levantamento de processos (GCI)</div>
-                  <p class="descricao">Responda as perguntas do Índice de Tópicos por módulo contratado direto no painel — essas respostas alimentam o Projeto. Você também pode gerar o modelo de Mapeamento (.docx). <em>O GCI e a data foram definidos no Agendamento; os Consultores serão designados na fase Designação.</em></p>
-                  <div class="acoes-row">
-                    <a class="btn primario" [routerLink]="['/projetos', projetoId(), 'levantamento']">
-                      <svg class="svgi" aria-hidden="true"><use href="#ic-compass"/></svg> Responder levantamento
-                    </a>
-                    <a class="btn" [routerLink]="['/projetos', projetoId(), 'editar', 'levantamento']">
-                      <svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Editar dados do Levantamento
-                    </a>
-                    @if (podeGerar('levantamento')) {
-                      <button class="btn" type="button" [disabled]="gerando() !== null" (click)="gerarDocumento('levantamento')">
-                        <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg> {{ gerando() === 'levantamento' ? 'Gerando…' : 'Gerar modelo de Mapeamento' }}
-                      </button>
-                    }
-                    @if (cab.proxEtapa) {
-                      <button class="btn primario" type="button" [disabled]="!cab.avancarOk || avancando()" (click)="avancarEtapa()">
-                        <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Levantamento concluído → Avançar para Projeto
-                      </button>
-                    }
-                  </div>
-                </div>
-              }
-              @case ('Projeto') {
-                <div class="acao-principal ativa">
-                  <div class="titulo"><span class="passo-num">1</span> Gerar Projeto de Implantação</div>
-                  <p class="descricao">Gera o Projeto a partir do layout oficial, já preenchido com os dados do projeto.</p>
-                  <div class="acoes-row">
-                    <a class="btn" [routerLink]="['/projetos', projetoId(), 'editar', 'projeto']">
-                      <svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Editar dados do Projeto
-                    </a>
-                  </div>
-                  @if (podeGerar('projeto')) {
-                    <a class="btn primario" style="margin-top:8px" [routerLink]="['/projetos', projetoId(), 'projeto', 'origem']">
-                      <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg> Gerar Projeto
-                    </a>
-                  } @else {
-                    <p class="dica">Sem permissão para gerar o Projeto neste perfil.</p>
-                  }
-                </div>
-                @if (cab.proxEtapa) {
-                  <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
-                    <button class="btn primario" type="button" [disabled]="!cab.avancarOk || avancando()" (click)="avancarEtapa()">
-                      <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Avançar para Designação
-                    </button>
-                  </div>
-                }
-              }
-              @case ('Designação') {
-                <div class="acao-principal ativa">
-                  <div class="titulo">
-                    <span class="passo-num" [class.concluido]="designacoesLista().length > 0">1</span> Designar Consultores por Módulo
-                    @if (designacoesLista().length > 0) { <span style="color:var(--ok);font-size:.8rem"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Designado</span> }
-                  </div>
-                  @if (designacoesLista().length > 0) {
-                    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
-                      @for (d of designacoesLista(); track d.modulo) {
-                        <span style="background:#E8EEF8;color:var(--brand);border-radius:6px;padding:3px 10px;font-size:.82rem;font-weight:600">{{ d.modulo }} → {{ d.consultor }}</span>
-                      }
-                    </div>
-                  }
-                  <div class="acoes-row">
-                    @if (podeDesignarConsultores()) {
-                      <a class="btn" [class.primario]="designacoesLista().length === 0" [routerLink]="['/projetos', projetoId(), 'designacao', 'consultores']">
-                        <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg> {{ designacoesLista().length > 0 ? 'Rever designações' : 'Designar consultores' }}
-                      </a>
-                    }
-                  </div>
-                </div>
-                @if (cab.proxEtapa) {
-                  <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
-                    <button class="btn primario" type="button" [disabled]="!cab.avancarOk || avancando()" (click)="avancarEtapa()">
-                      <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Avançar para Cronograma e Check-list
-                    </button>
-                  </div>
-                }
-              }
-              @case ('Cronograma e Check-list') {
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
-                  <div class="acao-principal" [class.ativa]="!temCronograma()">
-                    <div class="titulo">
-                      <span class="passo-num" [class.concluido]="temCronograma()">1</span> Cronograma de implantação
-                      @if (temCronograma()) { <span style="color:var(--ok);font-size:.8rem"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Gerado</span> }
-                    </div>
-                    <p class="descricao">Agende as visitas no calendário por dia e turno, por consultor designado.</p>
-                    <div class="acoes-row">
-                      @if (podeGerar('cronograma')) {
-                        <a class="btn primario" [routerLink]="['/projetos', projetoId(), 'agenda']">
-                          <svg class="svgi" aria-hidden="true"><use href="#ic-calendar"/></svg> Agenda de Visitas
-                        </a>
-                        <button class="btn" type="button" [disabled]="gerando() !== null" (click)="gerarDocumento('cronograma')">
-                          <svg class="svgi" aria-hidden="true"><use href="#ic-clock"/></svg> {{ temCronograma() ? 'Regenerar' : 'Gerar Cronograma' }}
-                        </button>
-                      }
-                      <a class="btn" [routerLink]="['/projetos', projetoId(), 'cronograma']">
-                        <svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg> Plano (lista)
-                      </a>
-                    </div>
-                  </div>
-                  <div class="acao-principal" [class.ativa]="!temChecklist()">
-                    <div class="titulo">
-                      <span class="passo-num" [class.concluido]="temChecklist()">2</span> Check-list de atividades
-                      @if (temChecklist()) { <span style="color:var(--ok);font-size:.8rem"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Gerado</span> }
-                    </div>
-                    <p class="descricao">Lista de verificação por módulo para acompanhar a execução.</p>
-                    <div class="acoes-row">
-                      <a class="btn" [routerLink]="['/projetos', projetoId(), 'checklist']">
-                        <svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg> Editar no painel
-                      </a>
-                    </div>
-                  </div>
-                </div>
-                @if (cab.proxEtapa) {
-                  <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
-                    <button class="btn primario" type="button" [disabled]="!cab.avancarOk || avancando()" (click)="avancarEtapa()">
-                      <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Avançar para Encerramento
-                    </button>
-                  </div>
-                }
-              }
-              @case ('Encerramento') {
-                <div class="acao-principal ativa">
-                  <div class="titulo">
-                    <span class="passo-num" [class.concluido]="temTermo()">1</span> Gerar Termo de Encerramento
-                    @if (temTermo()) { <span style="color:var(--ok);font-size:.8rem"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Gerado</span> }
-                  </div>
-                  <p class="descricao">Documento oficial que formaliza a conclusão da implantação.</p>
-                  <div class="acoes-row">
-                    @if (podeGerar('termo')) {
-                      <button class="btn primario" type="button" [disabled]="gerando() !== null" (click)="gerarDocumento('termo')">
-                        <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg> {{ temTermo() ? 'Regenerar Termo' : 'Gerar Termo de Encerramento' }}
-                      </button>
-                    }
-                  </div>
-                </div>
-                <div class="acao-principal">
-                  <div class="titulo">
-                    <span class="passo-num" [class.concluido]="!!form.getRawValue().dataEncerramento">2</span> Registrar data de encerramento
-                    @if (form.getRawValue().dataEncerramento) { <span style="color:var(--ok);font-size:.8rem"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Registrado</span> }
-                  </div>
-                  <div class="acoes-row">
-                    <button class="btn primario" type="button" (click)="irParaAba('dados')">
-                      <svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Preencher data de encerramento
-                    </button>
-                  </div>
-                </div>
-              }
-            }
-          </div>
-        </div>
-      }
-
-      <!-- DOCUMENTOS DO PROJETO -->
-      <div class="painel" style="margin-top:16px">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-          <h3 style="margin:0;color:var(--navy);display:flex;align-items:center;gap:7px">
-            <svg class="svgi svgi-lg" aria-hidden="true"><use href="#ic-file"/></svg> Documentos do projeto
-          </h3>
-          @if (cabecalho(); as cab) {
-            @if (cab.docsOk < cab.docsTotal) {
-              <button class="btn primario" type="button" [disabled]="gerando() !== null" (click)="gerarPendentes()">
-                <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Preparar {{ cab.docsTotal - cab.docsOk }} doc(s) pendente(s)
-              </button>
-            }
-          }
-        </div>
-        @if (cabecalho(); as cab) {
-          <div class="gate-lista">
-            @for (item of cab.gate.itens; track item.tipo) {
-              <span class="gate-item" [class.ok]="item.ok" [class.pendente]="!item.ok">
-                <svg class="svgi" aria-hidden="true"><use [attr.href]="item.ok ? '#ic-check-circle' : '#ic-clock'"/></svg> {{ item.label }}
-              </span>
-            }
-          </div>
-        }
-        @if (documentos().length > 0) {
-          <div class="docs-lista">
-            @for (d of documentos(); track d.id) {
-              <div class="doc-item">
-                <svg class="svgi svgi-lg" style="color:var(--brand);flex:none" aria-hidden="true"><use href="#ic-file"/></svg>
-                <div class="doc-info">
-                  <div class="doc-nome">{{ d.arquivo }}</div>
-                  <div class="doc-meta">{{ d.tipo }} · {{ d.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</div>
-                </div>
-                <div class="doc-acoes">
-                  <a class="btn" title="Visualizar" [routerLink]="['/projetos', projetoId(), 'documentos', d.id, 'ver']" [state]="{ documento: d }">
-                    <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg> Ver
-                  </a>
-                  <button class="btn" type="button" title="Baixar" (click)="baixarDocumento(d)">
-                    <svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> Baixar
-                  </button>
-                  @if (ehExcluivel(d)) {
-                    <button class="btn perigo" type="button" title="Excluir para regerar" (click)="excluirDocumento(d)">
-                      <svg class="svgi" aria-hidden="true"><use href="#ic-trash"/></svg> Excluir
-                    </button>
-                  } @else {
-                    <button class="btn" type="button" disabled title="Exclua antes os documentos que dependem deste">
-                      <svg class="svgi" aria-hidden="true"><use href="#ic-trash"/></svg> Excluir
-                    </button>
-                  }
-                </div>
-              </div>
-            }
-          </div>
-        } @else {
-          <p class="dica">Nenhum documento gerado ainda. Use a área de execução acima.</p>
-        }
-        <div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)">
-          <p class="dica" style="margin:0 0 8px">Anexar documento manualmente:</p>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <select [(ngModel)]="tipoAnexo" style="padding:7px 10px;border:1.5px solid var(--line-2);border-radius:var(--r-sm);font:inherit;font-size:.88rem">
-              @for (t of docTipos; track t.tipo) { <option [value]="t.tipo">{{ t.label }}</option> }
-              <option value="outro">Outro</option>
-            </select>
-            <input type="file" [disabled]="enviandoAnexo" (change)="anexarDocumento($event)" style="flex:1;min-width:180px" />
-          </div>
-        </div>
-      </div>
     </section>
   }
 

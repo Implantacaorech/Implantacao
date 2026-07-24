@@ -4,22 +4,12 @@ import { PainelService } from '../../core/services/painel.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ItemPendenciaHome, PainelHome } from '../../core/models/painel.model';
 
-/** Resolve a rota da próxima ação a partir do `tipo` (contrato definido no backend —
- * ver docs/migracao/03-documento-conversao.md, HomeService). Ainda não há tela dedicada
- * para todo tipo de ação (Designação/geração de documento) — nesses casos cai na ficha
- * do projeto, que já existe. Atualizar aqui conforme as telas forem sendo construídas. */
+/** A próxima ação da Home leva ao FLUXO do projeto — desde 2026-07-24 o fluxo vive num
+ * lugar só (a tela de Passos, que é a própria página do projeto). Antes cada tipo de ação
+ * apontava para uma tela solta (definir-gci, agendar, consultores); essas telas foram
+ * desativadas, e o passo certo já fica em evidência ao abrir o projeto. */
 function rotaAcao(item: ItemPendenciaHome): (string | number)[] {
-  switch (item.tipo) {
-    case 'acao:definir_gci':
-      return ['/projetos', item.id, 'designacao', 'definir-gci'];
-    case 'acao:data_levantamento':
-      return ['/projetos', item.id, 'designacao', 'agendar'];
-    case 'acao:consultores_designacao':
-    case 'acao:consultores':
-      return ['/projetos', item.id, 'designacao', 'consultores'];
-    default:
-      return ['/projetos', item.id];
-  }
+  return ['/projetos', item.id];
 }
 
 @Component({

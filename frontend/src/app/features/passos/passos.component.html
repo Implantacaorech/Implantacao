@@ -1,10 +1,10 @@
 <h1 style="display:flex;align-items:center;gap:10px">
   <svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
-  Passos do processo @if (cliente()) { — {{ cliente() }} }
+  @if (cliente()) { {{ cliente() }} } @else { Projeto }
 </h1>
 <p class="sub">
-  Os 18 passos da implantação, do e-mail do Comercial ao encerramento. Cada passo tem um
-  responsável; a partir do passo 11, concluir é definitivo.
+  Fluxo da implantação, do e-mail do Comercial ao encerramento — tudo acontece aqui. Cada
+  passo tem um responsável; a partir do passo 11, concluir é definitivo.
 </p>
 
 @if (erro()) {
@@ -16,6 +16,42 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
+  <!-- Dados do cliente: recolhidos por padrão. O foco é o fluxo; o cadastro fica à mão,
+       mas não disputa a atenção. -->
+  @if (projeto(); as pr) {
+    <div class="painel" style="margin-bottom:12px;padding:0">
+      <button
+        type="button"
+        (click)="dadosAbertos.set(!dadosAbertos())"
+        style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:none;border:none;padding:12px 14px;cursor:pointer;font:inherit;text-align:left"
+      >
+        <span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <strong>Dados do cliente</strong>
+          <span style="color:var(--muted);font-size:.85rem">
+            @if (pr.numeroProjeto) { nº {{ pr.numeroProjeto }} · } {{ pr.cnpj || 'sem CNPJ' }}
+            @if (pr.modulos) { · {{ pr.modulos }} }
+          </span>
+        </span>
+        <span style="color:var(--muted);font-size:.85rem">{{ dadosAbertos() ? '▲ recolher' : '▼ ver / editar' }}</span>
+      </button>
+      @if (dadosAbertos()) {
+        <div style="padding:0 14px 14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px 18px;font-size:.85rem">
+          <div><span style="color:var(--muted)">CNPJ</span><br />{{ pr.cnpj || '—' }}</div>
+          <div><span style="color:var(--muted)">Ramo</span><br />{{ pr.ramo || '—' }}</div>
+          <div><span style="color:var(--muted)">Módulos</span><br />{{ pr.modulos || '—' }}</div>
+          <div><span style="color:var(--muted)">Horas</span><br />{{ pr.horasCobradas || '—' }} + {{ pr.horasBonificadas || '0' }}</div>
+          <div><span style="color:var(--muted)">Contato</span><br />{{ pr.contatoNome || '—' }} {{ pr.contatoEmail ? '· ' + pr.contatoEmail : '' }}</div>
+          <div><span style="color:var(--muted)">Comercial</span><br />{{ pr.comercialEmail || '—' }}</div>
+          <div><span style="color:var(--muted)">GCI</span><br />{{ pr.gci || '—' }}</div>
+          <div><span style="color:var(--muted)">Consultor(es)</span><br />{{ pr.consultor || '—' }}</div>
+          <div style="grid-column:1/-1;margin-top:4px">
+            <a class="btn btn-sec" [routerLink]="['/projetos', projetoId, 'dados']">Editar dados do cliente</a>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
   <div class="painel" style="margin-bottom:16px">
     <div style="display:flex;align-items:center;gap:12px">
       <strong>{{ concluidos() }} de {{ passos().length }} passos</strong>
@@ -102,9 +138,28 @@
                 <button
                   type="button"
                   class="btn"
+                  style="width:100%"
                   [disabled]="!p.liberado || ocupado() === p.numero"
                   (click)="abrirForm(p)"
                 >Preencher</button>
+              } @else if (telaDoPasso(p); as tela) {
+                <!-- Passo de documento: o fluxo leva à tela de trabalho. Onde a geração
+                     produz o documento (Projeto, Cronograma), o backend conclui o passo
+                     sozinho; onde não (Check-list só salva linhas), conclui-se aqui depois
+                     de abrir. Por isso os dois botões — mas num lugar só, dentro do passo. -->
+                <a
+                  class="btn"
+                  style="width:100%;text-align:center"
+                  [class.btn-sec]="!p.liberado"
+                  [routerLink]="p.liberado ? tela : null"
+                >Abrir</a>
+                <button
+                  type="button"
+                  class="btn btn-sec"
+                  style="width:100%"
+                  [disabled]="!p.liberado || ocupado() === p.numero"
+                  (click)="concluir(p)"
+                >Concluir</button>
               } @else {
               <button
                 type="button"

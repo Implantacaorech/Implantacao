@@ -30,6 +30,7 @@ function projeto(id: number, cliente: string): Projeto {
     contatoNome: '',
     contatoEmail: '',
     contatoTel: '',
+    comercialEmail: '',
     contatos: '',
     observacoes: '',
     criadoEm: '',

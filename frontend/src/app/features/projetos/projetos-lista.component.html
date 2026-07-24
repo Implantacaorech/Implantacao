@@ -77,7 +77,7 @@
           </div>
 
           @for (p of col.projetos; track p.id) {
-            <a class="kan-card" [routerLink]="['/projetos', p.id, 'passos']" [title]="'Abrir as fases de ' + p.cliente">
+            <a class="kan-card" [routerLink]="['/projetos', p.id]" [title]="'Abrir as fases de ' + p.cliente">
               <div class="cli">
                 <span>{{ p.cliente }} @if (p.numeroProjeto) { <span class="num">({{ p.numeroProjeto }})</span> }</span>
                 <span class="badge-sit" [attr.data-s]="p.situacao">{{ p.situacao }}</span>

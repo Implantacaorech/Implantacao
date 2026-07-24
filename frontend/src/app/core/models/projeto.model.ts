@@ -41,6 +41,8 @@ export interface Projeto {
   contatoNome: string;
   contatoEmail: string;
   contatoTel: string;
+  /** E-mail do Comercial que abriu o cliente — destinatário do passo 3. */
+  comercialEmail: string;
   contatos: string;
   observacoes: string;
   criadoEm: string;

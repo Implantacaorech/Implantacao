@@ -34,8 +34,19 @@ export const routes: Routes = [
           import('./features/projetos/projeto-form.component').then((m) => m.ProjetoFormComponent),
       },
       {
+        // O FLUXO é a entrada do projeto: abrir um projeto cai direto nos passos, num lugar
+        // só. Antes aqui ficava a ficha (projeto-form) com um stepper próprio que competia
+        // com os passos — era o "fluxo espaçado" que o usuário reportou (2026-07-24).
         path: 'projetos/:id',
-        data: { titulo: 'Ficha do projeto' },
+        data: { titulo: 'Projeto' },
+        loadComponent: () =>
+          import('./features/passos/passos.component').then((m) => m.PassosComponent),
+      },
+      {
+        // A ficha vira o EDITOR de dados do cliente, alcançado a partir do fluxo — não é
+        // mais a página principal do projeto.
+        path: 'projetos/:id/dados',
+        data: { titulo: 'Dados do cliente' },
         loadComponent: () =>
           import('./features/projetos/projeto-form.component').then((m) => m.ProjetoFormComponent),
       },
@@ -83,31 +94,10 @@ export const routes: Routes = [
             (m) => m.AgendaAcompanhamentoComponent,
           ),
       },
-      {
-        path: 'projetos/:id/designacao/definir-gci',
-        canActivate: [perfilGuard('ADM', 'Administrativo')],
-        data: { titulo: 'Definir GCI' },
-        loadComponent: () =>
-          import('./features/designacao/definir-gci.component').then((m) => m.DefinirGciComponent),
-      },
-      {
-        path: 'projetos/:id/designacao/agendar',
-        canActivate: [perfilGuard('ADM', 'Administrativo')],
-        data: { titulo: 'Data do Levantamento' },
-        loadComponent: () =>
-          import('./features/designacao/agendar-levantamento.component').then(
-            (m) => m.AgendarLevantamentoComponent,
-          ),
-      },
-      {
-        path: 'projetos/:id/designacao/consultores',
-        canActivate: [perfilGuard('ADM', 'GCI')],
-        data: { titulo: 'Designar Consultores' },
-        loadComponent: () =>
-          import('./features/designacao/designar-consultores.component').then(
-            (m) => m.DesignarConsultoresComponent,
-          ),
-      },
+      // As 3 telas de Designação (definir-gci, agendar, consultores) foram DESATIVADAS em
+      // 2026-07-24: a função delas vive inteira nos formulários dos passos 2 e 6. Os
+      // componentes e o DesignacaoService seguem no repositório (o serviço é reaproveitado
+      // pelos passos); só não há mais porta de entrada dupla. Reativar é repor as rotas.
       {
         // Sem perfilGuard: todo autenticado VÊ os 18 passos; quem pode CONCLUIR cada um é
         // decidido pelo backend, passo a passo (ver PERFIS_POR_RESPONSAVEL).

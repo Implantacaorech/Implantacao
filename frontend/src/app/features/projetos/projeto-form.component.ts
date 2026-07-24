@@ -12,7 +12,7 @@ import { Cabecalho } from '../../core/models/painel.model';
 import { Documento, DOC_TIPOS, EventoProjeto, SlugDocumentoFiel } from '../../core/models/documento.model';
 import { podeGerar, PERFIS_DESIGNA_CONSULTORES } from '../../core/constants/perfis';
 
-type Aba = 'execucao' | 'resumo' | 'dados' | 'com' | 'hist';
+type Aba = 'resumo' | 'dados' | 'com' | 'hist';
 
 const ICONE_EVENTO: Record<string, string> = {
   nota: '#ic-pencil',
@@ -64,7 +64,7 @@ export class ProjetoFormComponent {
   readonly documentos = signal<Documento[]>([]);
   readonly eventos = signal<EventoProjeto[]>([]);
   readonly designacoesAtuais = signal<Record<string, string>>({});
-  readonly aba = signal<Aba>('execucao');
+  readonly aba = signal<Aba>('dados');
   readonly mostrarHistoricoResumo = signal(false);
 
   novaNota = '';

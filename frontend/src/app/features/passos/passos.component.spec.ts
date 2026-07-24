@@ -30,6 +30,7 @@ function projeto(): Projeto {
     contatoNome: '',
     contatoEmail: '',
     contatoTel: '',
+    comercialEmail: '',
     contatos: '',
     observacoes: '',
     criadoEm: '',

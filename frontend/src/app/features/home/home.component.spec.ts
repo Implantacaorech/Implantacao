@@ -87,19 +87,21 @@ describe('HomeComponent', () => {
     expect(texto).toContain('Definir GCI Responsável');
   });
 
-  it('resolve a rota da pendência para a tela de Designação correta', () => {
+  it('a próxima ação leva ao FLUXO do projeto, seja qual for o tipo', () => {
+    // Desde 2026-07-24 o fluxo vive num lugar só (a tela de Passos = página do projeto);
+    // as telas soltas de Designação foram desativadas. Toda pendência aponta para lá.
     const fixture = montar({ home: () => Promise.resolve(painelVazio()) });
     const comp = fixture.componentInstance;
-    expect(comp.rotaAcao({ id: 3, cliente: '', fase: '', atraso: null, acao: '', tipo: 'acao:definir_gci' })).toEqual([
-      '/projetos',
-      3,
-      'designacao',
-      'definir-gci',
-    ]);
-    expect(comp.rotaAcao({ id: 3, cliente: '', fase: '', atraso: null, acao: '', tipo: 'algo-desconhecido' })).toEqual([
-      '/projetos',
-      3,
-    ]);
+    for (const tipo of [
+      'acao:definir_gci',
+      'acao:data_levantamento',
+      'acao:consultores',
+      'algo-desconhecido',
+    ]) {
+      expect(
+        comp.rotaAcao({ id: 3, cliente: '', fase: '', atraso: null, acao: '', tipo }),
+      ).toEqual(['/projetos', 3]);
+    }
   });
 
   it('só mostra "Configurações e saúde" para o perfil ADM', async () => {

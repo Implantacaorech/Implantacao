@@ -13,6 +13,7 @@ import {
   TIPOS_RNS,
   TipoRns,
 } from '../../core/models/passo.model';
+import { Projeto } from '../../core/models/projeto.model';
 
 /** Tela dos 18 passos do processo de implantação de um projeto.
  *
@@ -37,6 +38,10 @@ export class PassosComponent {
   readonly carregando = signal(true);
   readonly erro = signal<string | null>(null);
   readonly cliente = signal('');
+  /** Projeto completo — alimenta o painel de dados do cliente no topo do fluxo. */
+  readonly projeto = signal<Projeto | null>(null);
+  /** Painel de dados recolhido por padrão: o foco da tela é o fluxo, não o cadastro. */
+  readonly dadosAbertos = signal(false);
   readonly passos = signal<Passo[]>([]);
   readonly rns = signal<Rns[]>([]);
   readonly ocupado = signal<number | null>(null);
@@ -67,6 +72,25 @@ export class PassosComponent {
 
   formDoPasso(p: Passo): 'agendar' | 'designar' | null {
     return PassosComponent.FORM_POR_PASSO[p.numero] ?? null;
+  }
+
+  /** Passos cuja ação é GERAR um documento em outra tela. O fluxo leva a pessoa até lá em
+   * vez de ter uma barra de botões espalhada na ficha — o documento gerado conclui o passo
+   * sozinho (o backend liga a geração ao passo). É o que mantém o fluxo contínuo e num
+   * ponto só: você sempre parte do passo. */
+  private static readonly TELA_POR_PASSO: Record<number, string[]> = {
+    // 8 e 10 geram o documento na tela e o backend conclui o passo sozinho. 11 (check-list)
+    // só salva as linhas — não gera documento —, então lá o passo é concluído à mão depois
+    // de abrir e trabalhar. Por isso os passos de documento mostram "Abrir" E "Concluir".
+    8: ['projeto', 'origem'],
+    10: ['cronograma'],
+    11: ['checklist'],
+  };
+
+  /** Rota da tela que o passo abre, ou `null` se o passo se resolve aqui mesmo. */
+  telaDoPasso(p: Passo): string[] | null {
+    const destino = PassosComponent.TELA_POR_PASSO[p.numero];
+    return destino ? ['/projetos', String(this.projetoId), ...destino] : null;
   }
 
   async abrirForm(p: Passo): Promise<void> {
@@ -200,6 +224,7 @@ export class PassosComponent {
         this.service.listarRns(this.projetoId),
       ]);
       this.passos.set(passos);
+      this.projeto.set(projeto);
       this.cliente.set(projeto.cliente);
       this.rns.set(rns);
     } catch (e) {
