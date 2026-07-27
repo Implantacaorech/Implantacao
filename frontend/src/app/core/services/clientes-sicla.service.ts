@@ -25,6 +25,14 @@ export interface ResultadoBuscaCliente {
   clientes: ClienteSicla[];
 }
 
+/** Um módulo contratado marcado no SICLA. `codigo` é o efetivo (adicional quando há, senão
+ * módulo); `descricao` é o rótulo; `obs` é a observação escrita ao lado do item. */
+export interface ModuloSelecionado {
+  codigo: string;
+  descricao: string;
+  obs: string;
+}
+
 export interface CadastrarClientePayload {
   cliente: string;
   cnpj?: string;
@@ -38,8 +46,9 @@ export interface CadastrarClientePayload {
   comercialEmail?: string;
   horasCobradas?: string;
   horasBonificadas?: string;
-  modulos?: string;
   observacoes?: string;
+  /** Módulos contratados marcados no SICLA (define `modulos` e `modulos_detalhe` no backend). */
+  modulosSelecionados?: ModuloSelecionado[];
 }
 
 export interface ResultadoCadastroCliente {

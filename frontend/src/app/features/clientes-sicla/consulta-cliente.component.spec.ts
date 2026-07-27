@@ -7,6 +7,10 @@ import {
   ClienteSicla,
   ClientesSiclaService,
 } from '../../core/services/clientes-sicla.service';
+import {
+  ModuloSicla,
+  ModulosSiclaService,
+} from '../../core/services/modulos-sicla.service';
 import { AuthUser } from '../../core/models/auth-user.model';
 
 function usuario(perfil: AuthUser['perfil'] = 'Comercial'): AuthUser {
@@ -29,13 +33,30 @@ function cliente(over: Partial<ClienteSicla> = {}): ClienteSicla {
   };
 }
 
+function moduloSicla(over: Partial<ModuloSicla> = {}): ModuloSicla {
+  return {
+    codModulo: '10',
+    descModulo: 'Faturamento',
+    codAdicional: '',
+    descAdicional: '',
+    codigo: '10',
+    descricao: 'Faturamento',
+    bruto: {},
+    ...over,
+  };
+}
+
 describe('ConsultaClienteComponent', () => {
-  function montar(service: Partial<ClientesSiclaService>) {
+  function montar(
+    service: Partial<ClientesSiclaService>,
+    modulos: Partial<ModulosSiclaService> = {},
+  ) {
     TestBed.configureTestingModule({
       imports: [ConsultaClienteComponent],
       providers: [
         provideRouter([]),
         { provide: ClientesSiclaService, useValue: service },
+        { provide: ModulosSiclaService, useValue: modulos },
         { provide: AuthService, useValue: { usuario: signal(usuario()) } },
       ],
     });
@@ -95,5 +116,46 @@ describe('ConsultaClienteComponent', () => {
     comp.selecionar(cliente({ cliente: '', fantasia: '' }));
     await comp.salvar();
     expect(cadastrar).not.toHaveBeenCalled();
+  });
+
+  it('busca módulos e marca/desmarca os contratados', async () => {
+    const buscar = vi.fn().mockResolvedValue({
+      ok: true,
+      mensagem: '2',
+      modulos: [
+        moduloSicla({ codigo: '10', descricao: 'Faturamento' }),
+        moduloSicla({ codModulo: '20', codigo: '205', descricao: 'Estoque · Inventário' }),
+      ],
+    });
+    const fixture = montar({}, { buscar });
+    const comp = fixture.componentInstance;
+    comp.termoModulo.set('fat');
+    await comp.buscarModulos();
+    expect(buscar).toHaveBeenCalledWith('fat');
+    expect(comp.resultadosModulo().length).toBe(2);
+
+    comp.toggleModulo(comp.resultadosModulo()[0]);
+    expect(comp.moduloMarcado('10')).toBe(true);
+    comp.toggleModulo(comp.resultadosModulo()[0]);
+    expect(comp.moduloMarcado('10')).toBe(false);
+  });
+
+  it('envia os módulos marcados (com observação) no cadastro', async () => {
+    const cadastrar = vi
+      .fn()
+      .mockResolvedValue({ projetoId: 9, duplicado: false });
+    const fixture = montar({ cadastrar });
+    const comp = fixture.componentInstance;
+    comp.selecionar(cliente());
+    comp.toggleModulo(moduloSicla({ codigo: '205', descricao: 'Estoque · Inventário' }));
+    comp.setObs('205', 'confirmar layout');
+    await comp.salvar();
+    expect(cadastrar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        modulosSelecionados: [
+          { codigo: '205', descricao: 'Estoque · Inventário', obs: 'confirmar layout' },
+        ],
+      }),
+    );
   });
 });

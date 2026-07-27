@@ -111,8 +111,122 @@
   border-color: var(--navy, #1f3b73);
 }
 
+/* ===== Seletor de módulos ===== */
+.mod-picker {
+  gap: 8px;
+}
+.mod-resultados {
+  display: grid;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--linha, #d9dee6);
+  border-radius: 8px;
+  padding: 4px;
+}
+.mod-op {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.mod-op:hover {
+  background: color-mix(in srgb, var(--navy, #1f3b73) 5%, transparent);
+}
+.mod-op.on {
+  background: color-mix(in srgb, var(--navy, #1f3b73) 9%, transparent);
+}
+.mod-op input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+}
+.mod-cod {
+  font-weight: 700;
+  color: var(--navy, #1f3b73);
+  font-variant-numeric: tabular-nums;
+}
+.mod-desc {
+  color: inherit;
+}
+.mod-desc em {
+  color: var(--muted, #6b7280);
+  font-style: normal;
+}
+.mod-orig {
+  font-size: .74rem;
+  color: var(--faint, #9aa3b2);
+  white-space: nowrap;
+}
+
+.mod-marcados {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+.mod-marcados-tit {
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--muted, #8a93a2);
+}
+.mod-item {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr) minmax(140px, 1.4fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--linha, #d9dee6);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--navy, #1f3b73) 4%, transparent);
+}
+.mod-obs {
+  border: 1px solid var(--linha, #d9dee6);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font: inherit;
+  color: inherit;
+  background: var(--card, #fff);
+}
+.mod-obs:focus {
+  outline: 0;
+  border-color: var(--navy, #1f3b73);
+}
+.btn-x {
+  border: 0;
+  background: transparent;
+  color: var(--muted, #8a93a2);
+  cursor: pointer;
+  display: inline-flex;
+  padding: 4px;
+  border-radius: 6px;
+}
+.btn-x:hover {
+  color: #c0392b;
+  background: color-mix(in srgb, #c0392b 10%, transparent);
+}
+.btn-x .svgi {
+  width: 15px;
+  height: 15px;
+}
+
 @media (max-width: 640px) {
   .grade {
     grid-template-columns: 1fr;
+  }
+  .mod-op {
+    grid-template-columns: auto auto 1fr;
+  }
+  .mod-op .mod-orig {
+    display: none;
+  }
+  .mod-item {
+    grid-template-columns: auto 1fr auto;
+  }
+  .mod-item .mod-obs {
+    grid-column: 1 / -1;
   }
 }

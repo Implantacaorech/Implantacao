@@ -140,10 +140,81 @@
           <span>Horas bonificadas</span>
           <input type="text" formControlName="horasBonificadas" />
         </label>
-        <label class="campo">
-          <span>Módulos contratados</span>
-          <input type="text" formControlName="modulos" placeholder="FAT, EST, CTB…" />
-        </label>
+
+        <div class="grade-sub">Módulos contratados</div>
+        <div class="campo campo-largo mod-picker">
+          <!-- Busca no SICLA (por código ou descrição) -->
+          <div class="busca-sicla">
+            <div class="campo-busca">
+              <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>
+              <input
+                type="text"
+                name="termoModulo"
+                [ngModelOptions]="{ standalone: true }"
+                [ngModel]="termoModulo()"
+                (ngModelChange)="termoModulo.set($event)"
+                (keydown.enter)="$event.preventDefault(); buscarModulos()"
+                placeholder="Código ou descrição do módulo/adicional…"
+                autocomplete="off"
+              />
+            </div>
+            <button class="btn" type="button" (click)="buscarModulos()" [disabled]="buscandoModulo()">
+              {{ buscandoModulo() ? 'Buscando…' : 'Buscar módulo' }}
+            </button>
+          </div>
+
+          @if (msgModulo(); as m) {
+            <div class="resultado erro" style="padding:6px 12px;margin:6px 0">{{ m }}</div>
+          }
+
+          <!-- Resultados: marcar os contratados -->
+          @if (resultadosModulo().length > 0) {
+            <div class="mod-resultados">
+              @for (mod of resultadosModulo(); track mod.codigo) {
+                <label class="mod-op" [class.on]="moduloMarcado(mod.codigo)">
+                  <input
+                    type="checkbox"
+                    [checked]="moduloMarcado(mod.codigo)"
+                    (change)="toggleModulo(mod)"
+                  />
+                  <span class="mod-cod">{{ mod.codigo }}</span>
+                  <span class="mod-desc">
+                    {{ mod.descModulo || mod.codModulo }}
+                    @if (mod.descAdicional) { <em>· {{ mod.descAdicional }}</em> }
+                  </span>
+                  <span class="mod-orig">
+                    mód {{ mod.codModulo }}@if (mod.codAdicional) {<span> · adic {{ mod.codAdicional }}</span>}
+                  </span>
+                </label>
+              }
+            </div>
+          }
+
+          <!-- Marcados: com campo de observação por item -->
+          @if (modulosSelecionados().length > 0) {
+            <div class="mod-marcados">
+              <div class="mod-marcados-tit">Contratados ({{ modulosSelecionados().length }})</div>
+              @for (s of modulosSelecionados(); track s.codigo) {
+                <div class="mod-item">
+                  <span class="mod-cod">{{ s.codigo }}</span>
+                  <span class="mod-desc">{{ s.descricao }}</span>
+                  <input
+                    class="mod-obs"
+                    type="text"
+                    [ngModelOptions]="{ standalone: true }"
+                    [ngModel]="s.obs"
+                    (ngModelChange)="setObs(s.codigo, $event)"
+                    placeholder="observação…"
+                  />
+                  <button class="btn-x" type="button" (click)="removerModulo(s.codigo)" title="Remover">
+                    <svg class="svgi" aria-hidden="true"><use href="#ic-x"/></svg>
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
         <label class="campo campo-largo">
           <span>Observações</span>
           <textarea rows="3" formControlName="observacoes"></textarea>

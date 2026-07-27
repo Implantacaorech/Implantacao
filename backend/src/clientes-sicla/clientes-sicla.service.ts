@@ -143,7 +143,30 @@ export class ClientesSiclaService implements OnModuleInit {
     const dup = await this.acharSimilar(cliente, cnpj);
     if (dup) return { projetoId: dup, duplicado: true };
 
-    const { comercialEmail, ...ficha } = dto;
+    const { comercialEmail, modulosSelecionados, ...ficha } = dto;
+
+    // Módulos marcados no SICLA (passo 1): a lista de CÓDIGOS efetivos alimenta `modulos`
+    // (o que os geradores leem); a descrição e a observação de cada item vão para
+    // `modulos_detalhe` (JSON). Sem marcação, mantém o `modulos` que veio (texto livre) e
+    // deixa o detalhe nulo.
+    const temModulos =
+      Array.isArray(modulosSelecionados) && modulosSelecionados.length > 0;
+    const modulosCodigos = temModulos
+      ? modulosSelecionados
+          .map((m) => (m.codigo ?? '').trim())
+          .filter(Boolean)
+          .join(', ')
+      : (ficha.modulos ?? '');
+    const modulosDetalhe = temModulos
+      ? JSON.stringify(
+          modulosSelecionados.map((m) => ({
+            codigo: (m.codigo ?? '').trim(),
+            descricao: (m.descricao ?? '').trim(),
+            obs: (m.obs ?? '').trim(),
+          })),
+        )
+      : null;
+
     const projeto = await this.projetos.save(
       this.projetos.create({
         ...ficha,
@@ -152,6 +175,8 @@ export class ClientesSiclaService implements OnModuleInit {
         situacao: 'Em andamento',
         dataInicio: dto.dataInicio?.trim() || hojeIso(),
         comercialEmail: (comercialEmail ?? '').trim(),
+        modulos: modulosCodigos,
+        modulosDetalhe,
       }),
     );
 

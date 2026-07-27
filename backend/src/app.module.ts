@@ -27,6 +27,7 @@ import { AgentesModule } from './agentes/agentes.module';
 import { DicionarioModule } from './dicionario/dicionario.module';
 import { PassosModule } from './passos/passos.module';
 import { ClientesSiclaModule } from './clientes-sicla/clientes-sicla.module';
+import { ModulosSiclaModule } from './modulos-sicla/modulos-sicla.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { ClientesSiclaModule } from './clientes-sicla/clientes-sicla.module';
     DicionarioModule,
     PassosModule,
     ClientesSiclaModule,
+    ModulosSiclaModule,
   ],
 })
 export class AppModule {}

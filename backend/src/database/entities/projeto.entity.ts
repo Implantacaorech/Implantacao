@@ -64,6 +64,13 @@ export class Projeto {
   @Column({ type: 'text', default: '' })
   modulos: string;
 
+  /** Detalhe dos módulos contratados marcados na consulta ao SICLA (passo 1): JSON no formato
+   * `[{ codigo, descricao, obs }]`. O campo `modulos` acima continua sendo a lista de CÓDIGOS
+   * efetivos (do adicional quando há, senão do módulo) que os geradores/cronograma leem; aqui
+   * ficam a descrição e a observação de cada item marcado. Nulo quando não houve marcação. */
+  @Column({ name: 'modulos_detalhe', type: 'text', nullable: true })
+  modulosDetalhe: string | null;
+
   @Column({ name: 'contato_nome', length: 160, default: '' })
   contatoNome: string;
 

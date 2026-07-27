@@ -164,4 +164,27 @@ describe('ClientesSiclaService', () => {
       expect.any(String),
     );
   });
+
+  it('grava os módulos marcados: códigos efetivos em `modulos` e detalhe em JSON', async () => {
+    const { service, projetoSave } = montar();
+    await service.cadastrar(
+      {
+        cliente: 'Nova Indústria',
+        modulosSelecionados: [
+          { codigo: '105', descricao: 'Faturamento · NF-e', obs: 'com nota' },
+          { codigo: '20', descricao: 'Estoque', obs: '' },
+        ],
+      },
+      { nome: 'Vendedor', perfil: 'Comercial' },
+    );
+    const salvo = projetoSave.mock.calls[0][0] as {
+      modulos: string;
+      modulosDetalhe: string;
+    };
+    expect(salvo.modulos).toBe('105, 20');
+    expect(JSON.parse(salvo.modulosDetalhe)).toEqual([
+      { codigo: '105', descricao: 'Faturamento · NF-e', obs: 'com nota' },
+      { codigo: '20', descricao: 'Estoque', obs: '' },
+    ]);
+  });
 });
