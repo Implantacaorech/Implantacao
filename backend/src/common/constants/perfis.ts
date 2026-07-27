@@ -10,6 +10,7 @@ export const PERFIS = [
   'Levantador',
   'GCI',
   'Consultor',
+  'Comercial',
 ] as const;
 export type Perfil = (typeof PERFIS)[number];
 
@@ -21,6 +22,7 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
   Levantador: 'Levantador',
   GCI: 'GCI',
   Consultor: 'Consultor',
+  Comercial: 'Comercial',
 };
 
 /** Um usuário TEM o papel se ele está na lista de papéis dele. Usar sempre isto no lugar

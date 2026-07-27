@@ -28,6 +28,18 @@ export const routes: Routes = [
           import('./features/projetos/projetos-lista.component').then((m) => m.ProjetosListaComponent),
       },
       {
+        // ENTRADA do processo (passo 1): o Comercial consulta o cliente no SICLA e cadastra
+        // a ficha. Substitui a antiga leitura automática de e-mail. Perfis internos também
+        // alcançam (podem iniciar por aqui); o backend decide quem realmente cadastra.
+        path: 'clientes/novo',
+        canActivate: [perfilGuard('ADM', 'Comercial', 'Administrativo', 'Coordenador')],
+        data: { titulo: 'Consulta e Cadastro do Cliente' },
+        loadComponent: () =>
+          import('./features/clientes-sicla/consulta-cliente.component').then(
+            (m) => m.ConsultaClienteComponent,
+          ),
+      },
+      {
         path: 'projetos/novo',
         data: { titulo: 'Novo projeto' },
         loadComponent: () =>

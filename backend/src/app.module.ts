@@ -26,6 +26,7 @@ import { LegadoModule } from './legado/legado.module';
 import { AgentesModule } from './agentes/agentes.module';
 import { DicionarioModule } from './dicionario/dicionario.module';
 import { PassosModule } from './passos/passos.module';
+import { ClientesSiclaModule } from './clientes-sicla/clientes-sicla.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { PassosModule } from './passos/passos.module';
     AgentesModule,
     DicionarioModule,
     PassosModule,
+    ClientesSiclaModule,
   ],
 })
 export class AppModule {}

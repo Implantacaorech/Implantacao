@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { PainelService } from '../../core/services/painel.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ItemPendenciaHome, PainelHome } from '../../core/models/painel.model';
@@ -22,6 +22,7 @@ function rotaAcao(item: ItemPendenciaHome): (string | number)[] {
 export class HomeComponent {
   private readonly service = inject(PainelService);
   private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
 
   readonly dados = signal<PainelHome | null>(null);
   readonly carregando = signal(false);
@@ -29,6 +30,12 @@ export class HomeComponent {
   readonly veSistema = computed(() => this.auth.usuario()?.perfil === 'ADM');
 
   constructor() {
+    // O Comercial não tem visão geral: a única tela dele é a consulta/cadastro do cliente.
+    // Se cair aqui (deep link ou redirect de guard), segue direto para ela.
+    if (this.auth.usuario()?.perfil === 'Comercial') {
+      void this.router.navigateByUrl('/clientes/novo');
+      return;
+    }
     void this.carregar();
   }
 

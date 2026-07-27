@@ -7,6 +7,7 @@ export const PERFIS: Perfil[] = [
   'Levantador',
   'GCI',
   'Consultor',
+  'Comercial',
 ];
 
 /** Rótulo de cada papel na tela — 'ADM' é como o valor é gravado desde o Flask. */
@@ -17,6 +18,7 @@ export const ROTULO_PERFIL: Record<string, string> = {
   Levantador: 'Levantador',
   GCI: 'GCI',
   Consultor: 'Consultor',
+  Comercial: 'Comercial',
 };
 
 export interface Usuario {

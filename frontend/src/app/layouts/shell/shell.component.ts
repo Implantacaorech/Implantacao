@@ -42,6 +42,10 @@ export class ShellComponent {
 
   readonly veSistema = computed(() => this.auth.usuario()?.perfil === 'ADM');
 
+  /** O Comercial só usa a tela de consulta/cadastro do cliente — o menu fica enxuto,
+   * sem carteira, gestão nem sistema. */
+  readonly soComercial = computed(() => this.auth.usuario()?.perfil === 'Comercial');
+
   readonly iniciais = computed(() => (this.auth.usuario()?.nome ?? 'P').slice(0, 2).toUpperCase());
 
   async buscar(): Promise<void> {

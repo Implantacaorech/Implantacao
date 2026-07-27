@@ -26,7 +26,9 @@ describe('mapa dos 18 passos do processo', () => {
 
   it('atribui a cada passo o responsável que o processo define', () => {
     const esperado: Record<number, string> = {
-      1: 'Automatico',
+      // Entrada do processo (revisão 2026-07-27): o Comercial consulta o cliente no SICLA e
+      // cadastra a ficha. Antes era 'Automatico' (robô de leitura de e-mail), já desligado.
+      1: 'Comercial',
       2: 'Administrativo',
       3: 'Levantador',
       4: 'Administrativo',

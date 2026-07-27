@@ -29,6 +29,16 @@ export class RoboCaixaService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit(): void {
     if (process.env.NODE_ENV === 'test') return;
+    // Entrada por e-mail desligada desde 2026-07-27: o processo passou a começar pela
+    // consulta ao SICLA + cadastro do Comercial (passo 1). O robô só volta a rodar se
+    // MIGRACAO_IMAP_INTAKE_ATIVO for ligado no ambiente.
+    if (!this.config.get('imapIntakeAtivo', { infer: true })) {
+      this.logger.log(
+        'Robô da caixa desligado (entrada do processo é a consulta ao SICLA). ' +
+          'Ligue com MIGRACAO_IMAP_INTAKE_ATIVO=1 para reativar.',
+      );
+      return;
+    }
     const mins = this.config.get('imapPollMin', { infer: true });
     const ms = Math.max(120, mins * 60) * 1000;
     const intervalo = setInterval(() => {

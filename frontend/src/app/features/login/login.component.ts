@@ -31,7 +31,11 @@ export class LoginComponent {
     try {
       const { login, senha } = this.form.getRawValue();
       await this.auth.login(login, senha);
-      await this.router.navigateByUrl('/home');
+      // O Comercial só usa a tela de consulta/cadastro do cliente — cai direto nela. Os
+      // demais perfis vão para a visão geral.
+      const destino =
+        this.auth.usuario()?.perfil === 'Comercial' ? '/clientes/novo' : '/home';
+      await this.router.navigateByUrl(destino);
     } catch (e) {
       const msg =
         e instanceof HttpErrorResponse && typeof e.error?.message === 'string'

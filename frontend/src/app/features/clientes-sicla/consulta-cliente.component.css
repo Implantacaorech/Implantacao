@@ -1,0 +1,118 @@
+.busca-sicla {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  margin: 6px 0 4px;
+  flex-wrap: wrap;
+}
+
+.campo-busca {
+  flex: 1 1 260px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--linha, #d9dee6);
+  border-radius: 10px;
+  background: var(--card, #fff);
+}
+.campo-busca .svgi {
+  width: 16px;
+  height: 16px;
+  color: var(--muted, #8a93a2);
+  flex: none;
+}
+.campo-busca input {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 10px 0;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+}
+
+.lista-clientes {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.cli-card {
+  text-align: left;
+  border: 1px solid var(--linha, #d9dee6);
+  border-radius: 10px;
+  background: var(--card, #fff);
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: border-color .12s, box-shadow .12s, background .12s;
+}
+.cli-card:hover {
+  border-color: var(--navy, #1f3b73);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .06);
+}
+.cli-card.sel {
+  border-color: var(--navy, #1f3b73);
+  background: color-mix(in srgb, var(--navy, #1f3b73) 6%, transparent);
+  box-shadow: 0 0 0 1px var(--navy, #1f3b73) inset;
+}
+.cli-nome {
+  font-weight: 600;
+  color: var(--navy, #1f3b73);
+}
+.cli-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 3px;
+  font-size: .82rem;
+  color: var(--muted, #8a93a2);
+}
+
+.grade {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+.grade-sub {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--muted, #8a93a2);
+  border-bottom: 1px solid var(--linha, #eceff3);
+  padding-bottom: 4px;
+}
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.campo-largo {
+  grid-column: 1 / -1;
+}
+.campo > span {
+  font-size: .82rem;
+  color: var(--muted, #6b7280);
+}
+.campo input,
+.campo textarea {
+  border: 1px solid var(--linha, #d9dee6);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  color: inherit;
+  background: var(--card, #fff);
+}
+.campo input:focus,
+.campo textarea:focus {
+  outline: 0;
+  border-color: var(--navy, #1f3b73);
+}
+
+@media (max-width: 640px) {
+  .grade {
+    grid-template-columns: 1fr;
+  }
+}

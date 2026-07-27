@@ -49,29 +49,31 @@
     </a>
     <nav class="side-nav">
       <div class="side-grp">Execução</div>
-      <a class="side-link" routerLink="/home" routerLinkActive="on">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg>Visão Geral
+      <a class="side-link" routerLink="/clientes/novo" routerLinkActive="on">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg>Novo Cliente
+        <span class="side-tip">Consulta SICLA + cadastro</span>
       </a>
-      <a class="side-link" routerLink="/fluxo" routerLinkActive="on">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg>Novo Projeto
-        <span class="side-tip">Onboarding</span>
-      </a>
-      <a class="side-link" routerLink="/projetos" routerLinkActive="on">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-folder"/></svg>Carteira
-        <span class="side-tip">Projetos</span>
-      </a>
-      <a class="side-link" routerLink="/protocolos" routerLinkActive="on">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-bulb"/></svg>Protocolos
-        <span class="side-tip">Vídeos → conhecimento</span>
-      </a>
-      <a class="side-link" routerLink="/matriz" routerLinkActive="on">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg>Matriz
-        <span class="side-tip">Matriz de Conhecimento</span>
-      </a>
-      <a class="side-link" routerLink="/dicionario" routerLinkActive="on">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>Dicionário Inteligente
-        <span class="side-tip">Consulta técnica do SIGER</span>
-      </a>
+      @if (!soComercial()) {
+        <a class="side-link" routerLink="/home" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg>Visão Geral
+        </a>
+        <a class="side-link" routerLink="/projetos" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-folder"/></svg>Carteira
+          <span class="side-tip">Projetos</span>
+        </a>
+        <a class="side-link" routerLink="/protocolos" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-bulb"/></svg>Protocolos
+          <span class="side-tip">Vídeos → conhecimento</span>
+        </a>
+        <a class="side-link" routerLink="/matriz" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg>Matriz
+          <span class="side-tip">Matriz de Conhecimento</span>
+        </a>
+        <a class="side-link" routerLink="/dicionario" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>Dicionário Inteligente
+          <span class="side-tip">Consulta técnica do SIGER</span>
+        </a>
+      }
       @if (vePainelGestao()) {
         <div class="side-grp">Gestão</div>
         <a class="side-link" routerLink="/coordenacao" routerLinkActive="on">

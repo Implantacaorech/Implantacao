@@ -14,8 +14,12 @@ import { Etapa, Perfil } from '../common/constants/perfis';
  *   Consultor  = pode ser mais de um por projeto
  */
 
-/** Papel responsável por executar o passo. "Automatico" é o robô da caixa de entrada. */
+/** Papel responsável por executar o passo. "Comercial" abre o processo consultando o cliente
+ * no SICLA e completando o cadastro (passo 1). "Automatico" é o antigo robô da caixa de
+ * entrada — mantido no tipo por compatibilidade, mas nenhum passo o usa mais desde que a
+ * entrada passou a ser a consulta ao SICLA (revisão de 2026-07-27). */
 export type ResponsavelPasso =
+  | 'Comercial'
   | 'Automatico'
   | 'Administrativo'
   | 'Levantador'
@@ -44,7 +48,11 @@ export interface DefinicaoPasso {
 /** Perfis do sistema que podem executar cada papel do processo. ADM entra em todos por ser o
  * perfil de administração do Painel. */
 export const PERFIS_POR_RESPONSAVEL: Record<ResponsavelPasso, Perfil[]> = {
-  // Passo 1 é do robô; ADM aparece para permitir reprocessar à mão quando o robô falha.
+  // Passo 1 é do Comercial: consulta o cliente no SICLA e completa o cadastro. ADM entra
+  // para poder abrir a ficha à mão quando necessário.
+  Comercial: ['ADM', 'Comercial'],
+  // 'Automatico' não é mais usado por nenhum passo (a entrada virou a consulta ao SICLA);
+  // mantido só para não quebrar referências antigas. ADM para reprocessar à mão.
   Automatico: ['ADM'],
   Administrativo: ['ADM', 'Administrativo'],
   // Levantador virou papel PRÓPRIO (revisão de 2026-07-22) — na prática são os GCIs, mas
@@ -58,14 +66,15 @@ export const PERFIS_POR_RESPONSAVEL: Record<ResponsavelPasso, Perfil[]> = {
 export const PASSOS: DefinicaoPasso[] = [
   {
     numero: 1,
-    titulo: 'Recebimento do e-mail do Comercial',
+    titulo: 'Consulta e Cadastro do Cliente',
     etapa: 'Agendamento',
-    responsavel: 'Automatico',
+    responsavel: 'Comercial',
     depende: [],
     irreversivel: false,
-    email: 'Avisa o Administrativo de que chegou um fechamento.',
+    email: 'Avisa o Administrativo de que um novo cliente foi cadastrado.',
     observacao:
-      'O robô lê a caixa de entrada, extrai os campos do e-mail e cria a ficha do projeto.',
+      'O Comercial busca o cliente no SICLA (por código ou descrição), os dados vêm ' +
+      'pré-preenchidos e ele completa o que faltar. Concluir cria a ficha do projeto.',
   },
   {
     numero: 2,

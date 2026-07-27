@@ -18,6 +18,10 @@ export interface AppConfig {
   protocolosPollMin: number;
   gmailRedirectUri: string;
   imapPollMin: number;
+  /** Liga o robô que LÊ a caixa e cria projetos a partir do e-mail de fechamento. Desligado
+   * por padrão desde 2026-07-27: a entrada do processo virou a consulta ao SICLA + cadastro
+   * pelo Comercial (passo 1). Reative com MIGRACAO_IMAP_INTAKE_ATIVO=1 se precisar voltar. */
+  imapIntakeAtivo: boolean;
   digestHora: number;
   digestPara: string;
   frontendDistPath: string;
@@ -106,6 +110,11 @@ export default (): AppConfig => {
     // Robô da caixa de entrada (fechamento automático via IMAP) — mesmo padrão do
     // PROTOCOLOS_POLL_MIN (piso real de 2 min), env IMAP_POLL_MIN no Flask original.
     imapPollMin: Number(process.env.MIGRACAO_IMAP_POLL_MIN ?? 10),
+    // Entrada por e-mail DESLIGADA por padrão — a entrada agora é a consulta ao SICLA
+    // (passo 1, feito pelo Comercial). Só liga se explicitamente pedido no ambiente.
+    imapIntakeAtivo: ['1', 'true', 'sim'].includes(
+      (process.env.MIGRACAO_IMAP_INTAKE_ATIVO ?? '').trim().toLowerCase(),
+    ),
     // Resumo diário da Coordenação (KPIs + alertas por e-mail) — envs DIGEST_HORA/
     // DIGEST_PARA no Flask original. Sem tela de configuração (nem lá, nem aqui) — é
     // ajuste de ambiente/ops, não algo editável pelo ADM. O fallback de arquivo

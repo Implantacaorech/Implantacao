@@ -1,0 +1,159 @@
+<div class="painel">
+  <h2 style="margin-top:0;color:var(--navy)">Consulta e Cadastro do Cliente</h2>
+  <p class="dica">
+    Busque o cliente no <strong>SICLA</strong> por código ou descrição. Ao selecionar, os
+    dados vêm pré-preenchidos — complete o que faltar e cadastre. É o primeiro passo do
+    processo de implantação.
+  </p>
+
+  @if (sucesso(); as s) {
+    <div class="resultado ok" style="padding:12px 16px;margin:10px 0">
+      <svg class="svgi" style="width:15px;height:15px" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+      @if (s.resultado.duplicado) {
+        <strong>{{ s.cliente }}</strong> já tinha ficha — nada foi duplicado.
+      } @else {
+        Cliente <strong>{{ s.cliente }}</strong> cadastrado. O Administrativo foi avisado para
+        agendar o levantamento.
+      }
+      @if (podeAbrirProjeto()) {
+        <a class="btn btn-sec" style="margin-left:10px" [routerLink]="['/projetos', s.resultado.projetoId]">
+          Abrir projeto <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+        </a>
+      }
+    </div>
+  }
+
+  <!-- ===== BUSCA ===== -->
+  <form class="busca-sicla" (submit)="$event.preventDefault(); buscar()">
+    <div class="campo-busca">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>
+      <input
+        type="text"
+        name="termo"
+        [ngModelOptions]="{ standalone: true }"
+        [ngModel]="termo()"
+        (ngModelChange)="termo.set($event)"
+        placeholder="Código ou descrição do cliente…"
+        aria-label="Código ou descrição do cliente"
+        autocomplete="off"
+      />
+    </div>
+    <button class="btn primario" type="submit" [disabled]="buscando()">
+      {{ buscando() ? 'Buscando…' : 'Buscar no SICLA' }}
+    </button>
+  </form>
+
+  @if (msgBusca(); as m) {
+    <div class="resultado erro" style="padding:8px 14px;margin:10px 0">{{ m }}</div>
+  }
+
+  <!-- ===== RESULTADOS ===== -->
+  @if (resultados().length > 0) {
+    <div class="lista-clientes">
+      @for (c of resultados(); track c.codigo + c.cliente) {
+        <button
+          type="button"
+          class="cli-card"
+          [class.sel]="selecionado()?.codigo === c.codigo && selecionado()?.cliente === c.cliente"
+          (click)="selecionar(c)"
+        >
+          <div class="cli-nome">{{ c.cliente || c.fantasia || '(sem nome)' }}</div>
+          <div class="cli-meta">
+            @if (c.codigo) { <span>Cód. {{ c.codigo }}</span> }
+            @if (c.cnpj) { <span>{{ c.cnpj }}</span> }
+            @if (c.fantasia && c.fantasia !== c.cliente) { <span>{{ c.fantasia }}</span> }
+            @if (c.responsavel) { <span>Resp. {{ c.responsavel }}</span> }
+          </div>
+        </button>
+      }
+    </div>
+  }
+</div>
+
+<!-- ===== FICHA (após selecionar) ===== -->
+@if (selecionado(); as sel) {
+  <div class="painel" style="margin-top:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <h3 style="margin:0;color:var(--navy)">Cadastro — {{ sel.cliente || sel.fantasia }}</h3>
+      <button type="button" class="btn btn-sec" (click)="limparSelecao()">Trocar cliente</button>
+    </div>
+    <p class="dica" style="margin:6px 0 12px">
+      Campos em cinza vieram do SICLA; confira e complete o restante. O que for obrigatório
+      ao andamento pode ser ajustado depois na ficha do projeto.
+    </p>
+
+    @if (erro(); as e) {
+      <div class="resultado erro" style="padding:8px 14px;margin-bottom:10px">{{ e }}</div>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="salvar()">
+      <div class="grade">
+        <label class="campo campo-largo">
+          <span>Razão social / Cliente *</span>
+          <input type="text" formControlName="cliente" />
+        </label>
+        <label class="campo">
+          <span>CNPJ</span>
+          <input type="text" formControlName="cnpj" />
+        </label>
+        <label class="campo">
+          <span>Código no SICLA / Nº do projeto</span>
+          <input type="text" formControlName="numeroProjeto" />
+        </label>
+        <label class="campo">
+          <span>Nº da proposta</span>
+          <input type="text" formControlName="numeroProposta" />
+        </label>
+        <label class="campo">
+          <span>Ramo</span>
+          <input type="text" formControlName="ramo" />
+        </label>
+        <label class="campo">
+          <span>Responsável (Comercial)</span>
+          <input type="text" formControlName="responsavel" />
+        </label>
+        <label class="campo">
+          <span>E-mail do Comercial</span>
+          <input type="email" formControlName="comercialEmail" placeholder="para o retorno do levantamento" />
+        </label>
+
+        <div class="grade-sub">Contato no cliente</div>
+        <label class="campo">
+          <span>Nome do contato</span>
+          <input type="text" formControlName="contatoNome" />
+        </label>
+        <label class="campo">
+          <span>E-mail do contato</span>
+          <input type="email" formControlName="contatoEmail" />
+        </label>
+        <label class="campo">
+          <span>Telefone do contato</span>
+          <input type="text" formControlName="contatoTel" />
+        </label>
+
+        <div class="grade-sub">Escopo (opcional)</div>
+        <label class="campo">
+          <span>Horas cobradas</span>
+          <input type="text" formControlName="horasCobradas" />
+        </label>
+        <label class="campo">
+          <span>Horas bonificadas</span>
+          <input type="text" formControlName="horasBonificadas" />
+        </label>
+        <label class="campo">
+          <span>Módulos contratados</span>
+          <input type="text" formControlName="modulos" placeholder="FAT, EST, CTB…" />
+        </label>
+        <label class="campo campo-largo">
+          <span>Observações</span>
+          <textarea rows="3" formControlName="observacoes"></textarea>
+        </label>
+      </div>
+
+      <button class="btn primario" type="submit" style="margin-top:12px" [disabled]="form.invalid || salvando()">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-check"/></svg>
+        {{ salvando() ? 'Cadastrando…' : 'Cadastrar cliente' }}
+      </button>
+    </form>
+  </div>
+}

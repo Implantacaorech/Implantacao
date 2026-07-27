@@ -38,10 +38,10 @@ export const EMAILS_POR_PASSO: EmailDePasso[] = [
   {
     passo: 1,
     para: ['administrativo'],
-    assunto: 'Novo fechamento — {{CLIENTE}}',
+    assunto: 'Novo cliente cadastrado — {{CLIENTE}}',
     corpo:
-      'Chegou o e-mail de fechamento da {{CLIENTE}} (projeto nº {{NUMERO_PROJETO}}) e a ' +
-      'ficha foi criada no Painel.\n\nPróximo passo: agendar o Levantamento de Processo e ' +
+      'O Comercial cadastrou a {{CLIENTE}} (projeto nº {{NUMERO_PROJETO}}) no Painel, a ' +
+      'partir da consulta ao SICLA.\n\nPróximo passo: agendar o Levantamento de Processo e ' +
       'indicar o(s) levantador(es).' +
       ASSINATURA,
   },

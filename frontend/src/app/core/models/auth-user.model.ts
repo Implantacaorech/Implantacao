@@ -5,7 +5,8 @@ export type Perfil =
   | 'Administrativo'
   | 'Levantador'
   | 'GCI'
-  | 'Consultor';
+  | 'Consultor'
+  | 'Comercial';
 
 export interface AuthUser {
   sub: number;
