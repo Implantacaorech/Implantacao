@@ -1,4 +1,10 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  OnDestroy,
+  signal,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -53,11 +59,16 @@ function conversoesIniciais(): ItemConversao[] {
   templateUrl: './consulta-cliente.component.html',
   styleUrl: './consulta-cliente.component.css',
 })
-export class ConsultaClienteComponent {
+export class ConsultaClienteComponent implements OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly service = inject(ClientesSiclaService);
   private readonly modulosService = inject(ModulosSiclaService);
   private readonly auth = inject(AuthService);
+
+  /** Debounce da busca-enquanto-digita (evita bater no SICLA a cada tecla). */
+  private static readonly DEBOUNCE_MS = 350;
+  private debCliente?: ReturnType<typeof setTimeout>;
+  private debModulo?: ReturnType<typeof setTimeout>;
 
   // Busca de cliente
   readonly termo = signal('');
@@ -107,6 +118,22 @@ export class ConsultaClienteComponent {
     observacoes: [''],
   });
 
+  /** Digitou no campo do cliente: busca sozinho após um respiro; se esvaziou, limpa a lista. */
+  onTermoChange(v: string): void {
+    this.termo.set(v);
+    clearTimeout(this.debCliente);
+    if (v.trim().length < 2) {
+      this.resultados.set([]);
+      this.buscou.set(false);
+      this.msgBusca.set(null);
+      return;
+    }
+    this.debCliente = setTimeout(
+      () => void this.buscar(),
+      ConsultaClienteComponent.DEBOUNCE_MS,
+    );
+  }
+
   async buscar(): Promise<void> {
     const t = this.termo().trim();
     if (t.length < 2) {
@@ -117,6 +144,8 @@ export class ConsultaClienteComponent {
     this.msgBusca.set(null);
     try {
       const r = await this.service.buscar(t);
+      // Ignora resposta obsoleta: se o termo já mudou, quem manda é a busca mais recente.
+      if (this.termo().trim() !== t) return;
       this.buscou.set(true);
       this.resultados.set(r.clientes);
       if (!r.ok) {
@@ -170,6 +199,21 @@ export class ConsultaClienteComponent {
 
   // ===== Módulos contratados (consulta + marcação no SICLA) =====
 
+  /** Digitou no campo do módulo: busca sozinho após um respiro; se esvaziou, limpa a lista. */
+  onTermoModuloChange(v: string): void {
+    this.termoModulo.set(v);
+    clearTimeout(this.debModulo);
+    if (v.trim().length < 1) {
+      this.resultadosModulo.set([]);
+      this.msgModulo.set(null);
+      return;
+    }
+    this.debModulo = setTimeout(
+      () => void this.buscarModulos(),
+      ConsultaClienteComponent.DEBOUNCE_MS,
+    );
+  }
+
   async buscarModulos(): Promise<void> {
     const t = this.termoModulo().trim();
     if (t.length < 1) {
@@ -180,6 +224,8 @@ export class ConsultaClienteComponent {
     this.msgModulo.set(null);
     try {
       const r = await this.modulosService.buscar(t);
+      // Ignora resposta obsoleta: se o termo já mudou, quem manda é a busca mais recente.
+      if (this.termoModulo().trim() !== t) return;
       this.resultadosModulo.set(r.modulos);
       if (!r.ok) {
         this.msgModulo.set(r.mensagem || 'Não foi possível consultar os módulos.');
@@ -304,5 +350,10 @@ export class ConsultaClienteComponent {
       return e.error.message;
     }
     return padrao;
+  }
+
+  ngOnDestroy(): void {
+    clearTimeout(this.debCliente);
+    clearTimeout(this.debModulo);
   }
 }

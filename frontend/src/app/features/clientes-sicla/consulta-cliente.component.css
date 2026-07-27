@@ -1,3 +1,19 @@
+/* Aviso âmbar (ex.: cliente já cadastrado) — distinto do verde de sucesso e do vermelho de erro. */
+.aviso {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: color-mix(in srgb, #d97706 12%, transparent);
+  border: 1px solid color-mix(in srgb, #d97706 45%, transparent);
+  color: #92400e;
+  border-radius: 10px;
+}
+.aviso .svgi {
+  color: #d97706;
+  flex: none;
+}
+
 .busca-sicla {
   display: flex;
   gap: 8px;

@@ -193,4 +193,60 @@ describe('ConsultaClienteComponent', () => {
       }),
     );
   });
+
+  it('esvaziar o campo do cliente limpa a lista de resultados', async () => {
+    const buscar = vi
+      .fn()
+      .mockResolvedValue({ ok: true, mensagem: '1', clientes: [cliente()] });
+    const fixture = montar({ buscar });
+    const comp = fixture.componentInstance;
+    comp.termo.set('acme');
+    await comp.buscar();
+    expect(comp.resultados().length).toBe(1);
+    comp.onTermoChange('');
+    expect(comp.resultados().length).toBe(0);
+    expect(comp.buscou()).toBe(false);
+  });
+
+  it('digitar no campo do cliente dispara a busca após o debounce', () => {
+    vi.useFakeTimers();
+    try {
+      const buscar = vi
+        .fn()
+        .mockResolvedValue({ ok: true, mensagem: '1', clientes: [] });
+      const fixture = montar({ buscar });
+      const comp = fixture.componentInstance;
+      comp.onTermoChange('acme');
+      expect(buscar).not.toHaveBeenCalled(); // ainda no debounce
+      vi.advanceTimersByTime(400);
+      expect(buscar).toHaveBeenCalledWith('acme');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('esvaziar o campo do módulo limpa a lista de módulos', async () => {
+    const buscar = vi
+      .fn()
+      .mockResolvedValue({ ok: true, mensagem: '1', modulos: [moduloSicla()] });
+    const fixture = montar({}, { buscar });
+    const comp = fixture.componentInstance;
+    comp.termoModulo.set('fat');
+    await comp.buscarModulos();
+    expect(comp.resultadosModulo().length).toBe(1);
+    comp.onTermoModuloChange('');
+    expect(comp.resultadosModulo().length).toBe(0);
+  });
+
+  it('avisa quando o cliente já possui cadastro (duplicado), sem tratar como sucesso', async () => {
+    const cadastrar = vi
+      .fn()
+      .mockResolvedValue({ projetoId: 3, duplicado: true });
+    const fixture = montar({ cadastrar });
+    const comp = fixture.componentInstance;
+    comp.selecionar(cliente());
+    await comp.salvar();
+    expect(comp.sucesso()?.resultado.duplicado).toBe(true);
+    expect(comp.sucesso()?.resultado.projetoId).toBe(3);
+  });
 });
