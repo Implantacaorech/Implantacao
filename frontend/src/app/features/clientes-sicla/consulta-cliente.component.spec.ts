@@ -158,4 +158,39 @@ describe('ConsultaClienteComponent', () => {
       }),
     );
   });
+
+  it('começa com as 4 conversões fixas, nenhuma marcada', () => {
+    const fixture = montar({});
+    const comp = fixture.componentInstance;
+    const nomes = comp.conversoes().map((c) => c.nome);
+    expect(nomes).toContain('Importação Cad. clientes e fornecedores');
+    expect(nomes).toContain('Importação Notas Fiscais já emitidas');
+    expect(comp.conversoes().length).toBe(4);
+    expect(comp.conversoes().every((c) => !c.marcado)).toBe(true);
+  });
+
+  it('marca conversões, informa horas e adiciona item livre — tudo enviado no cadastro', async () => {
+    const cadastrar = vi
+      .fn()
+      .mockResolvedValue({ projetoId: 9, duplicado: false });
+    const fixture = montar({ cadastrar });
+    const comp = fixture.componentInstance;
+    comp.selecionar(cliente());
+    // marca a 2ª fixa (produtos) e informa horas
+    comp.toggleConversao(1);
+    comp.setHorasConversao(1, '8');
+    // adiciona um item livre (entra já marcado)
+    comp.novaConversao.set('Conversão de contratos');
+    comp.adicionarConversao();
+    expect(comp.novaConversao()).toBe('');
+    await comp.salvar();
+    expect(cadastrar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversoesSelecionadas: [
+          { nome: 'Importação Cad. produtos', horas: '8' },
+          { nome: 'Conversão de contratos', horas: '' },
+        ],
+      }),
+    );
+  });
 });

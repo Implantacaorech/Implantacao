@@ -213,6 +213,78 @@
   height: 15px;
 }
 
+/* ===== Conversão ===== */
+.conv-lista {
+  display: grid;
+  gap: 6px;
+}
+.conv-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--linha, #d9dee6);
+  border-radius: 8px;
+}
+.conv-item.on {
+  border-color: var(--navy, #1f3b73);
+  background: color-mix(in srgb, var(--navy, #1f3b73) 5%, transparent);
+}
+.conv-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  flex: 1 1 auto;
+}
+.conv-check input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.conv-horas {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+.conv-horas input {
+  width: 72px;
+  border: 1px solid var(--linha, #d9dee6);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font: inherit;
+  color: inherit;
+  background: var(--card, #fff);
+  text-align: right;
+}
+.conv-horas input:focus {
+  outline: 0;
+  border-color: var(--navy, #1f3b73);
+}
+.conv-horas-lbl {
+  font-size: .82rem;
+  color: var(--muted, #8a93a2);
+}
+.conv-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+.conv-add input {
+  flex: 1 1 auto;
+  border: 1px solid var(--linha, #d9dee6);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  color: inherit;
+  background: var(--card, #fff);
+}
+.conv-add input:focus {
+  outline: 0;
+  border-color: var(--navy, #1f3b73);
+}
+
 @media (max-width: 640px) {
   .grade {
     grid-template-columns: 1fr;
@@ -228,5 +300,8 @@
   }
   .mod-item .mod-obs {
     grid-column: 1 / -1;
+  }
+  .conv-item {
+    flex-wrap: wrap;
   }
 }

@@ -7,6 +7,7 @@ import { AuthService } from '../../core/services/auth.service';
 import {
   ClienteSicla,
   ClientesSiclaService,
+  ConversaoSelecionada,
   ModuloSelecionado,
   ResultadoCadastroCliente,
 } from '../../core/services/clientes-sicla.service';
@@ -14,6 +15,32 @@ import {
   ModuloSicla,
   ModulosSiclaService,
 } from '../../core/services/modulos-sicla.service';
+
+/** Conversões de dados oferecidas por padrão no passo 1 (o Comercial marca as necessárias e
+ * estima as horas; pode acrescentar itens livres). */
+const CONVERSOES_FIXAS = [
+  'Importação Cad. clientes e fornecedores',
+  'Importação Cad. produtos',
+  'Importação Mov. Financeiro doc. em aberto',
+  'Importação Notas Fiscais já emitidas',
+];
+
+interface ItemConversao {
+  nome: string;
+  /** Item da lista padrão (não pode ser removido, só desmarcado) vs. digitado pelo Comercial. */
+  fixo: boolean;
+  marcado: boolean;
+  horas: string;
+}
+
+function conversoesIniciais(): ItemConversao[] {
+  return CONVERSOES_FIXAS.map((nome) => ({
+    nome,
+    fixo: true,
+    marcado: false,
+    horas: '',
+  }));
+}
 
 /** Passo 1 do processo — a ENTRADA. O Comercial busca o cliente no SICLA (por código ou
  * descrição), seleciona, a ficha vem pré-preenchida e ele completa o que faltar. Ao concluir,
@@ -45,6 +72,10 @@ export class ConsultaClienteComponent {
   readonly resultadosModulo = signal<ModuloSicla[]>([]);
   readonly msgModulo = signal<string | null>(null);
   readonly modulosSelecionados = signal<ModuloSelecionado[]>([]);
+
+  // Conversões de dados (lista fixa + itens livres), cada uma com estimativa de horas
+  readonly conversoes = signal<ItemConversao[]>(conversoesIniciais());
+  readonly novaConversao = signal('');
 
   // Seleção / cadastro
   readonly selecionado = signal<ClienteSicla | null>(null);
@@ -134,6 +165,7 @@ export class ConsultaClienteComponent {
     this.resultadosModulo.set([]);
     this.termoModulo.set('');
     this.msgModulo.set(null);
+    this.resetConversoes();
   }
 
   // ===== Módulos contratados (consulta + marcação no SICLA) =====
@@ -197,6 +229,41 @@ export class ConsultaClienteComponent {
     );
   }
 
+  // ===== Conversões de dados (lista fixa + itens livres) =====
+
+  toggleConversao(i: number): void {
+    this.conversoes.update((lista) =>
+      lista.map((c, idx) => (idx === i ? { ...c, marcado: !c.marcado } : c)),
+    );
+  }
+
+  setHorasConversao(i: number, horas: string): void {
+    this.conversoes.update((lista) =>
+      lista.map((c, idx) => (idx === i ? { ...c, horas } : c)),
+    );
+  }
+
+  /** Acrescenta um item de conversão digitado pelo Comercial (já marcado). */
+  adicionarConversao(): void {
+    const nome = this.novaConversao().trim();
+    if (!nome) return;
+    this.conversoes.update((lista) => [
+      ...lista,
+      { nome, fixo: false, marcado: true, horas: '' },
+    ]);
+    this.novaConversao.set('');
+  }
+
+  /** Remove um item de conversão digitado (os fixos só desmarcam). */
+  removerConversao(i: number): void {
+    this.conversoes.update((lista) => lista.filter((_, idx) => idx !== i));
+  }
+
+  private resetConversoes(): void {
+    this.conversoes.set(conversoesIniciais());
+    this.novaConversao.set('');
+  }
+
   async salvar(): Promise<void> {
     if (this.form.invalid || this.salvando()) {
       this.form.markAllAsTouched();
@@ -206,9 +273,13 @@ export class ConsultaClienteComponent {
     this.erro.set(null);
     try {
       const dados = this.form.getRawValue();
+      const conversoesSelecionadas: ConversaoSelecionada[] = this.conversoes()
+        .filter((c) => c.marcado)
+        .map((c) => ({ nome: c.nome, horas: c.horas }));
       const r = await this.service.cadastrar({
         ...dados,
         modulosSelecionados: this.modulosSelecionados(),
+        conversoesSelecionadas,
       });
       this.sucesso.set({ resultado: r, cliente: dados.cliente });
       this.selecionado.set(null);
@@ -220,6 +291,7 @@ export class ConsultaClienteComponent {
       this.resultadosModulo.set([]);
       this.termoModulo.set('');
       this.msgModulo.set(null);
+      this.resetConversoes();
     } catch (e) {
       this.erro.set(this.mensagemErro(e, 'Não foi possível cadastrar o cliente.'));
     } finally {

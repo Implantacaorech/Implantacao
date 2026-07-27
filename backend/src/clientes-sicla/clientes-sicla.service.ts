@@ -143,7 +143,12 @@ export class ClientesSiclaService implements OnModuleInit {
     const dup = await this.acharSimilar(cliente, cnpj);
     if (dup) return { projetoId: dup, duplicado: true };
 
-    const { comercialEmail, modulosSelecionados, ...ficha } = dto;
+    const {
+      comercialEmail,
+      modulosSelecionados,
+      conversoesSelecionadas,
+      ...ficha
+    } = dto;
 
     // Módulos marcados no SICLA (passo 1): a lista de CÓDIGOS efetivos alimenta `modulos`
     // (o que os geradores leem); a descrição e a observação de cada item vão para
@@ -167,6 +172,21 @@ export class ClientesSiclaService implements OnModuleInit {
         )
       : null;
 
+    // Conversões de dados estimadas (nome + horas). Só grava se houver alguma.
+    const temConversoes =
+      Array.isArray(conversoesSelecionadas) &&
+      conversoesSelecionadas.length > 0;
+    const conversoes = temConversoes
+      ? JSON.stringify(
+          conversoesSelecionadas
+            .map((c) => ({
+              nome: (c.nome ?? '').trim(),
+              horas: (c.horas ?? '').trim(),
+            }))
+            .filter((c) => c.nome !== ''),
+        )
+      : null;
+
     const projeto = await this.projetos.save(
       this.projetos.create({
         ...ficha,
@@ -177,6 +197,7 @@ export class ClientesSiclaService implements OnModuleInit {
         comercialEmail: (comercialEmail ?? '').trim(),
         modulos: modulosCodigos,
         modulosDetalhe,
+        conversoes,
       }),
     );
 

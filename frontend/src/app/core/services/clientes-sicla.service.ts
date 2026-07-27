@@ -33,6 +33,12 @@ export interface ModuloSelecionado {
   obs: string;
 }
 
+/** Uma conversão de dados estimada: nome (item fixo ou digitado) + horas de conversão. */
+export interface ConversaoSelecionada {
+  nome: string;
+  horas: string;
+}
+
 export interface CadastrarClientePayload {
   cliente: string;
   cnpj?: string;
@@ -49,6 +55,8 @@ export interface CadastrarClientePayload {
   observacoes?: string;
   /** Módulos contratados marcados no SICLA (define `modulos` e `modulos_detalhe` no backend). */
   modulosSelecionados?: ModuloSelecionado[];
+  /** Conversões de dados estimadas (define `conversoes` no backend). */
+  conversoesSelecionadas?: ConversaoSelecionada[];
 }
 
 export interface ResultadoCadastroCliente {

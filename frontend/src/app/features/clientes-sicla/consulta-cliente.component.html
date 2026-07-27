@@ -215,6 +215,51 @@
           }
         </div>
 
+        <div class="grade-sub">Conversão</div>
+        <div class="campo campo-largo conv-lista">
+          @for (c of conversoes(); track c.nome; let i = $index) {
+            <div class="conv-item" [class.on]="c.marcado">
+              <label class="conv-check">
+                <input type="checkbox" [checked]="c.marcado" (change)="toggleConversao(i)" />
+                <span>{{ c.nome }}</span>
+              </label>
+              @if (c.marcado) {
+                <div class="conv-horas">
+                  <input
+                    type="text"
+                    inputmode="numeric"
+                    [ngModelOptions]="{ standalone: true }"
+                    [ngModel]="c.horas"
+                    (ngModelChange)="setHorasConversao(i, $event)"
+                    placeholder="horas"
+                    aria-label="Estimativa de horas da conversão"
+                  />
+                  <span class="conv-horas-lbl">h</span>
+                </div>
+              }
+              @if (!c.fixo) {
+                <button class="btn-x" type="button" (click)="removerConversao(i)" title="Remover">
+                  <svg class="svgi" aria-hidden="true"><use href="#ic-x"/></svg>
+                </button>
+              }
+            </div>
+          }
+          <div class="conv-add">
+            <input
+              type="text"
+              [ngModelOptions]="{ standalone: true }"
+              [ngModel]="novaConversao()"
+              (ngModelChange)="novaConversao.set($event)"
+              (keydown.enter)="$event.preventDefault(); adicionarConversao()"
+              placeholder="Adicionar outra conversão…"
+              aria-label="Nome da nova conversão"
+            />
+            <button class="btn" type="button" (click)="adicionarConversao()">
+              <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg> Adicionar
+            </button>
+          </div>
+        </div>
+
         <label class="campo campo-largo">
           <span>Observações</span>
           <textarea rows="3" formControlName="observacoes"></textarea>

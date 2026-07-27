@@ -71,6 +71,13 @@ export class Projeto {
   @Column({ name: 'modulos_detalhe', type: 'text', nullable: true })
   modulosDetalhe: string | null;
 
+  /** Conversões de dados estimadas no passo 1 (Comercial): JSON `[{ nome, horas }]`. Lista
+   * fixa (clientes/fornecedores, produtos, financeiro em aberto, notas emitidas) mais itens
+   * livres que o Comercial acrescentar, cada um com a estimativa de horas de conversão. Nulo
+   * quando nada foi marcado. */
+  @Column({ type: 'text', nullable: true })
+  conversoes: string | null;
+
   @Column({ name: 'contato_nome', length: 160, default: '' })
   contatoNome: string;
 
