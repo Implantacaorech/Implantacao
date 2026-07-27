@@ -27,7 +27,7 @@
       ],
       [
         "1",
-        "15/06/2026",
+        "05/01/2099",
         "Abertura + Parametrização inicial",
         "Criação de empresas e siglas; parâmetros gerais (1.1.P) e por empresa (1.2.A); compartilhamento de cadastros (1.2.M); tabelas genéricas.",
         "5 h",
@@ -35,7 +35,7 @@
       ],
       [
         "2",
-        "22/06/2026",
+        "12/01/2099",
         "Treinamento — Vendas e Faturamento",
         "Tabelas e cadastros do módulo; importações via layout do SIGER®; rotinas do processo; relatórios.",
         "5 h",
@@ -43,7 +43,7 @@
       ],
       [
         "3",
-        "29/06/2026",
+        "19/01/2099",
         "Treinamento — Controle de Estoques",
         "Tabelas e cadastros do módulo; importações via layout do SIGER®; rotinas do processo; relatórios.",
         "5 h",
@@ -51,7 +51,7 @@
       ],
       [
         "4",
-        "06/07/2026",
+        "26/01/2099",
         "Treinamento — Contabilidade Geral",
         "Tabelas e cadastros do módulo; importações via layout do SIGER®; rotinas do processo; relatórios.",
         "5 h",
@@ -59,7 +59,7 @@
       ],
       [
         "5",
-        "13/07/2026",
+        "02/02/2099",
         "Treinamento — Controle Financeiro",
         "Tabelas e cadastros do módulo; importações via layout do SIGER®; rotinas do processo; relatórios.",
         "5 h",
@@ -67,7 +67,7 @@
       ],
       [
         "6",
-        "20/07/2026",
+        "09/02/2099",
         "Simulação de microprocessos",
         "Teste das rotinas treinadas por processo; ajustes finos.",
         "4 h",
@@ -75,7 +75,7 @@
       ],
       [
         "7",
-        "27/07/2026",
+        "16/02/2099",
         "Simulação do macroprocesso",
         "Ensaio do processo completo (cenário real); validação ponta a ponta.",
         "4 h",
@@ -83,7 +83,7 @@
       ],
       [
         "8",
-        "03/08/2026",
+        "23/02/2099",
         "Conversão — prévia",
         "Carga de teste; reconciliação origem × destino; validação de amostras.",
         "3 h",
@@ -91,7 +91,7 @@
       ],
       [
         "9",
-        "10/08/2026",
+        "02/03/2099",
         "Conversão — oficial / ponto de corte",
         "Conversão oficial; conferência de saldos; definição do ponto de corte.",
         "3 h",
@@ -99,7 +99,7 @@
       ],
       [
         "10",
-        "17/08/2026",
+        "09/03/2099",
         "Virada oficial (go-live)",
         "Início do uso em produção; acompanhamento full time; primeiros lançamentos.",
         "4 h",
@@ -107,7 +107,7 @@
       ],
       [
         "11",
-        "24/08/2026",
+        "16/03/2099",
         "Acompanhamento / Hypercare",
         "Estabilização; micro ajustes; primeiros fechamentos.",
         "3 h",
@@ -115,7 +115,7 @@
       ],
       [
         "12",
-        "31/08/2026",
+        "23/03/2099",
         "Encerramento",
         "Revisão de pendências; Termo de Encerramento; transição ao Suporte.",
         "2 h",

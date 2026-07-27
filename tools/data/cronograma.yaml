@@ -1,10 +1,17 @@
 # Exemplo do Cronograma de Implantação (usado pelo verificar.py).
 # As agendas são geradas automaticamente a partir das horas + módulos;
 # para um cronograma manual, preencha a lista "agendas:" (data/etapa/topicos/horas/modalidade).
+#
+# data_inicio fica NO FUTURO DISTANTE de propósito: o teste de caracterização
+# (tools/caracterizacao.py) mascara a data de HOJE em qualquer célula, e as datas das
+# agendas são fixas (derivadas daqui). Se uma delas coincidir com o dia em que o teste
+# roda, seria mascarada só na execução — mas não no snapshot —, quebrando o teste naquele
+# dia. Datando em 2099, nenhuma agenda jamais coincide com "hoje". Este é só o exemplo;
+# em produção as datas vêm do projeto, não deste arquivo.
 cliente: Indústria Exemplo Ltda
 numero_projeto: "3694"
 consultor: Consultor Rech
-data_inicio: "2026-06-15"
+data_inicio: "2099-01-05"
 cadencia_dias: 5
 modalidade_padrao: A combinar
 horas:

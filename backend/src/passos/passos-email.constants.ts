@@ -161,3 +161,14 @@ export const EMAILS_POR_PASSO: EmailDePasso[] = [
 export const EMAIL_POR_PASSO = new Map(
   EMAILS_POR_PASSO.map((e) => [e.passo, e]),
 );
+
+/** Passo → tipo de documento que o e-mail leva EM ANEXO.
+ *
+ * Só onde o texto promete o arquivo E existe um documento gerado daquele tipo: o Cronograma
+ * ("Segue o cronograma…") no passo 10 e o Termo ("segue em anexo") no passo 18. Anexa-se o
+ * documento mais RECENTE daquele tipo no projeto; se não houver, o e-mail sai só com o texto
+ * (o envio ignora anexo ausente sem falhar). */
+export const ANEXO_POR_PASSO: Record<number, string> = {
+  10: 'cronograma',
+  18: 'termo',
+};

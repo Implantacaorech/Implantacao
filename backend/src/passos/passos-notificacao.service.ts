@@ -1,13 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { existsSync } from 'fs';
 import { Projeto } from '../database/entities/projeto.entity';
 import { Evento } from '../database/entities/evento.entity';
 import { ProjetoPessoa } from '../database/entities/projeto-pessoa.entity';
+import { Documento } from '../database/entities/documento.entity';
 import { UsersService } from '../users/users.service';
 import { MailerService } from '../email/mailer.service';
+import { Anexo } from '../email/anexo';
 import { DefinicaoPasso } from './passos.constants';
 import {
+  ANEXO_POR_PASSO,
   DestinatarioPasso,
   EMAIL_POR_PASSO,
   EmailDePasso,
@@ -27,9 +31,28 @@ export class PassosNotificacaoService {
     @InjectRepository(Evento) private readonly eventos: Repository<Evento>,
     @InjectRepository(ProjetoPessoa)
     private readonly pessoas: Repository<ProjetoPessoa>,
+    @InjectRepository(Documento)
+    private readonly documentos: Repository<Documento>,
     private readonly mailer: MailerService,
     private readonly users: UsersService,
   ) {}
+
+  /** Documento mais RECENTE do tipo pedido, como anexo — ou nada se não houver. O arquivo
+   * pode ter sumido do disco; nesse caso o próprio envio ignora o anexo em silêncio, mas
+   * conferimos aqui para não anunciar "em anexo" um arquivo que não existe mais. */
+  private async anexoDoPasso(
+    projetoId: number,
+    passo: number,
+  ): Promise<Anexo[]> {
+    const tipo = ANEXO_POR_PASSO[passo];
+    if (!tipo) return [];
+    const doc = await this.documentos.findOne({
+      where: { projetoId, tipo },
+      order: { criadoEm: 'DESC' },
+    });
+    if (!doc || !doc.caminho || !existsSync(doc.caminho)) return [];
+    return [{ caminho: doc.caminho, nomeArquivo: doc.arquivo || undefined }];
+  }
 
   /** Converte nomes de pessoa (como gravados no projeto) nos e-mails do cadastro. O login
    * É o e-mail no Painel — mesma convenção de `NotificacaoService.emailsCoordenacao`. */
@@ -136,6 +159,8 @@ export class PassosNotificacaoService {
         return;
       }
 
+      const anexos = await this.anexoDoPasso(projeto.id, def.numero);
+
       let ok = false;
       let erro = 'e-mail não configurado';
       if (this.mailer.configurado()) {
@@ -143,14 +168,19 @@ export class PassosNotificacaoService {
           email.para,
           email.assunto,
           email.corpo,
+          anexos,
         );
         ok = r.ok;
         erro = r.erro ?? '';
       }
+      const comAnexo =
+        anexos.length > 0
+          ? ` (anexo: ${anexos[0].nomeArquivo ?? 'documento'})`
+          : '';
       await this.registrar(
         projeto.id,
         ok
-          ? `Passo ${def.numero}: e-mail enviado a ${email.para.join(', ')} — ${email.assunto}`
+          ? `Passo ${def.numero}: e-mail enviado a ${email.para.join(', ')}${comAnexo} — ${email.assunto}`
           : `Passo ${def.numero}: e-mail PENDENTE (${email.assunto}): ${erro || '?'}`,
         autor,
       );

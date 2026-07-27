@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { PassosNotificacaoService } from './passos-notificacao.service';
 import { Evento } from '../database/entities/evento.entity';
 import { ProjetoPessoa } from '../database/entities/projeto-pessoa.entity';
+import { Documento } from '../database/entities/documento.entity';
 import { Projeto } from '../database/entities/projeto.entity';
 import { MailerService } from '../email/mailer.service';
 import { UsersService } from '../users/users.service';
@@ -43,9 +44,12 @@ function projeto(over: Partial<Projeto> = {}): Projeto {
 describe('PassosNotificacaoService', () => {
   let service: PassosNotificacaoService;
   let enviados: { para: string[]; assunto: string; corpo: string }[];
+  /** Argumentos crus de cada chamada a `enviar()`, para inspecionar os anexos (4º arg). */
+  let enviadosArgs: unknown[][];
   let eventosSalvos: { descricao: string }[];
   let configurado: boolean;
   let pessoasVinculadas: ProjetoPessoa[];
+  let documentoDoProjeto: Partial<Documento> | null;
 
   const USUARIOS: Usuario[] = [
     usuario({
@@ -82,9 +86,11 @@ describe('PassosNotificacaoService', () => {
 
   beforeEach(async () => {
     enviados = [];
+    enviadosArgs = [];
     eventosSalvos = [];
     configurado = true;
     pessoasVinculadas = [];
+    documentoDoProjeto = null;
 
     const modulo: TestingModule = await Test.createTestingModule({
       providers: [
@@ -104,10 +110,16 @@ describe('PassosNotificacaoService', () => {
           useValue: { find: () => Promise.resolve(pessoasVinculadas) },
         },
         {
+          provide: getRepositoryToken(Documento),
+          useValue: { findOne: () => Promise.resolve(documentoDoProjeto) },
+        },
+        {
           provide: MailerService,
           useValue: {
             configurado: () => configurado,
-            enviar: (para: string[], assunto: string, corpo: string) => {
+            enviar: (...args: unknown[]) => {
+              enviadosArgs.push(args);
+              const [para, assunto, corpo] = args as [string[], string, string];
               enviados.push({ para, assunto, corpo });
               return Promise.resolve({ ok: true, erro: null });
             },
@@ -216,6 +228,57 @@ describe('PassosNotificacaoService', () => {
     );
     expect(enviados).toHaveLength(0);
     expect(eventosSalvos[0].descricao).toContain('PENDENTE');
+  });
+
+  it('anexa o Termo no passo 18 quando o documento existe', async () => {
+    documentoDoProjeto = {
+      tipo: 'termo',
+      caminho: __filename,
+      arquivo: 'Termo.docx',
+    };
+    await service.notificarPasso(
+      projeto(),
+      PASSOS_POR_NUMERO.get(18)!,
+      'Consultor',
+    );
+    expect(enviados).toHaveLength(1);
+    // 4º argumento de enviar() são os anexos.
+    const anexos = enviadosArgs[0][3] as { caminho: string }[];
+    expect(anexos).toHaveLength(1);
+    expect(anexos[0].caminho).toBe(__filename);
+    expect(eventosSalvos[0].descricao).toContain('anexo: Termo.docx');
+  });
+
+  it('não anexa nada quando o documento não existe em disco', async () => {
+    documentoDoProjeto = {
+      tipo: 'termo',
+      caminho: '/nao/existe/termo.docx',
+      arquivo: 'Termo.docx',
+    };
+    await service.notificarPasso(
+      projeto(),
+      PASSOS_POR_NUMERO.get(18)!,
+      'Consultor',
+    );
+    const anexos = enviadosArgs[0][3] as unknown[];
+    expect(anexos).toHaveLength(0);
+    expect(eventosSalvos[0].descricao).not.toContain('anexo:');
+  });
+
+  it('passo sem anexo no mapa não busca documento', async () => {
+    // Passo 1 não leva anexo; mesmo que houvesse documento, não deve anexar.
+    documentoDoProjeto = {
+      tipo: 'termo',
+      caminho: __filename,
+      arquivo: 'Termo.docx',
+    };
+    await service.notificarPasso(
+      projeto(),
+      PASSOS_POR_NUMERO.get(1)!,
+      'Dora Adm',
+    );
+    const anexos = enviadosArgs[0][3] as unknown[];
+    expect(anexos).toHaveLength(0);
   });
 
   it('registra quando não há destinatário — caso do Comercial em branco', async () => {

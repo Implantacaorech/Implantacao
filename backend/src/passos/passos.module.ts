@@ -13,6 +13,7 @@ import { PassosNotificacaoService } from './passos-notificacao.service';
 import { UsersModule } from '../users/users.module';
 import { EmailModule } from '../email/email.module';
 import { DocumentosModule } from '../documentos/documentos.module';
+import { Documento } from '../database/entities/documento.entity';
 
 /** Os 18 passos operacionais do processo de implantação (revisão de 2026-07-22), os
  * vínculos de pessoas por papel e as RNS do projeto. */
@@ -24,6 +25,7 @@ import { DocumentosModule } from '../documentos/documentos.module';
       ProjetoPasso,
       ProjetoPessoa,
       ProjetoRns,
+      Documento,
     ]),
     UsersModule,
     EmailModule,
