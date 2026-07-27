@@ -152,6 +152,16 @@
     avisar ninguém é o verdadeiro defeito; o `restart=no` foi só o gatilho.
   - [ ] **Backup do banco não rodou em 21/07** (último: 20/07 22:00). Verificar por que a
     tarefa pulou — provavelmente máquina desligada às 22:00, sem reagendamento.
+- **CAUSA RAIZ do incidente recorrente: o Docker Desktop não sobe sozinho** — repetiu em
+  27/07/2026. O container é `restart=unless-stopped`, mas isso só o reergue DEPOIS que o
+  engine sobe. Diagnóstico: `com.docker.service` está em StartType=Manual e parado;
+  `AutoStart=False`; sem entrada de autostart no login. Se o Docker inteiro para (reboot ou
+  ele mesmo encerra), o MariaDB não volta e o Painel fica em `ECONNREFUSED 3307`. Restaurado
+  à mão nas duas vezes.
+  - [ ] **Decidir como o Docker sobe no boot** (decisão do usuário — envolve como a máquina
+    opera): (a) marcar "Start Docker Desktop when you sign in" + auto-login da máquina; ou
+    (b) rodar o banco como serviço Windows headless (não depende de sessão de usuário). Sem
+    isso, todo reboot sem login manual = Painel fora do ar até alguém subir o Docker.
 - **Porte dos 14 geradores Office de Python para Node/TS** — 2026-07-21. Rede de segurança
   primeiro (§4.7): `tools/caracterizacao.py` fotografa o conteúdo observável de cada gerador
   e cada porte prova equivalência contra esse snapshot. Dois furos foram encontrados NA
