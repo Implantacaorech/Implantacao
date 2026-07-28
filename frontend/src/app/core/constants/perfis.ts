@@ -34,9 +34,18 @@ export const MENU_PROTOCOLOS: Perfil[] = [
 export const MENU_DICIONARIO: Perfil[] = ['ADM'];
 /** Gestão (Coordenação, Centro Operacional, Atividade). */
 export const MENU_GESTAO: Perfil[] = ['ADM', 'Coordenador', 'GCI'];
+/** Matriz de Conhecimento: todo o time, menos o Comercial. */
+export const MENU_MATRIZ: Perfil[] = [
+  'ADM',
+  'Coordenador',
+  'Administrativo',
+  'Levantador',
+  'GCI',
+  'Consultor',
+];
 /** Sistema (usuários, cadastros, config, legado). */
 export const MENU_SISTEMA: Perfil[] = ['ADM'];
-// Carteira, Matriz e Dashboards = TODOS_PERFIS.
+// Carteira e Dashboards = TODOS_PERFIS.
 
 export function podeGerar(tipo: string, perfil: Perfil | undefined): boolean {
   if (!perfil) return false;

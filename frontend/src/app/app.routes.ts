@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { perfilGuard } from './core/guards/perfil.guard';
-import { MENU_GESTAO, MENU_PROTOCOLOS } from './core/constants/perfis';
+import { MENU_GESTAO, MENU_MATRIZ, MENU_PROTOCOLOS } from './core/constants/perfis';
 import { LoginComponent } from './features/login/login.component';
 import { ShellComponent } from './layouts/shell/shell.component';
 
@@ -196,12 +196,14 @@ export const routes: Routes = [
       },
       {
         path: 'matriz',
+        canActivate: [perfilGuard(...MENU_MATRIZ)],
         data: { titulo: 'Matriz de Conhecimento' },
         loadComponent: () =>
           import('./features/matriz/matriz-lista.component').then((m) => m.MatrizListaComponent),
       },
       {
         path: 'matriz/:id',
+        canActivate: [perfilGuard(...MENU_MATRIZ)],
         data: { titulo: 'Matriz' },
         loadComponent: () =>
           import('./features/matriz/matriz-ficha.component').then((m) => m.MatrizFichaComponent),

@@ -18,6 +18,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import {
+  PERFIS_MENU_MATRIZ,
   PERFIS_SISTEMA,
   PERFIS_VEEM_TODOS_PROJETOS,
 } from '../common/constants/perfis';
@@ -27,15 +28,9 @@ import { MatrizService } from './matriz.service';
 import { SalvarNotasMatrizDto } from './dto/salvar-notas-matriz.dto';
 
 // Quem vê TODAS as linhas da matriz (consulta): PERFIS_VEEM_TODOS_PROJETOS
-// (ADM/Coordenador/Administrativo) + Comercial, que ganhou acesso à Matriz em 2026-07-28
-// só como consulta (sem editar). ADM é o único que edita tudo; GCI/Levantador/Consultor
-// veem/editam apenas a própria linha — não confundir com PERFIS_GESTAO.
-const MATRIZ_VE_TODOS: string[] = [
-  ...(PERFIS_VEEM_TODOS_PROJETOS as string[]),
-  'Comercial',
-];
+// (ADM/Coordenador/Administrativo). O Comercial não entra nesta tela (gate de classe).
 function veTudo(perfil: string): boolean {
-  return MATRIZ_VE_TODOS.includes(perfil);
+  return (PERFIS_VEEM_TODOS_PROJETOS as string[]).includes(perfil);
 }
 
 function podeEditar(
@@ -44,18 +39,21 @@ function podeEditar(
   minha: MatrizTecnico | null,
 ): boolean {
   if (user.perfil === 'ADM') return true;
-  if (veTudo(user.perfil)) return false; // Administrativo/Coordenador: só consulta
+  // Qualquer outro perfil — inclusive Coordenador/Administrativo, que veem todas as linhas —
+  // edita SOMENTE a própria (definição do usuário em 2026-07-28: "vê de todos, mas a própria
+  // pode alterar"). A linha é casada por Código SICLA/nome.
   return !!(minha && minha.id === t.id);
 }
 
 /** Matriz de Conhecimento (/matriz*). Permissões (definição do usuário em 2026-07-28):
- * ADM vê/edita tudo (+ importar planilha); Coordenador/Administrativo/Comercial veem tudo,
- * só consulta; Consultor/GCI/Levantador veem/editam apenas a própria linha (casada por
- * Código SICLA/nome). Sem o fallback "sem login = acesso total" do Flask — `JwtAuthGuard`
- * já exige login sempre neste backend novo. */
+ * ADM vê/edita tudo (+ importar planilha); Coordenador/Administrativo veem tudo (consulta)
+ * e ainda editam a PRÓPRIA linha; Consultor/GCI/Levantador veem/editam apenas a própria
+ * (casada por Código SICLA/nome). O Comercial não acessa esta tela. Sem o fallback "sem
+ * login = acesso total" do Flask — `JwtAuthGuard` já exige login sempre. */
 @ApiTags('matriz')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(...PERFIS_MENU_MATRIZ)
 @Controller('matriz')
 export class MatrizController {
   constructor(private readonly service: MatrizService) {}
@@ -101,9 +99,9 @@ export class MatrizController {
   ) {
     const t = await this.service.buscar(id);
     if (!t) throw new NotFoundException('Técnico não encontrado.');
-    const minha = veTudo(user.perfil)
-      ? null
-      : await this.service.linhaDoUsuario(user.nome, user.codigoSicla);
+    // Calcula a própria linha SEMPRE — até quem vê tudo precisa dela para saber se pode
+    // editar a sua (não só consultar).
+    const minha = await this.service.linhaDoUsuario(user.nome, user.codigoSicla);
     if (!veTudo(user.perfil) && !(minha && minha.id === t.id)) {
       throw new ForbiddenException('Sem acesso à ficha de outro técnico.');
     }
@@ -126,9 +124,7 @@ export class MatrizController {
   ) {
     const t = await this.service.buscar(id);
     if (!t) throw new NotFoundException('Técnico não encontrado.');
-    const minha = veTudo(user.perfil)
-      ? null
-      : await this.service.linhaDoUsuario(user.nome, user.codigoSicla);
+    const minha = await this.service.linhaDoUsuario(user.nome, user.codigoSicla);
     if (!podeEditar(user, t, minha)) {
       throw new ForbiddenException('Sem permissão para alterar esta ficha.');
     }

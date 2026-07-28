@@ -8,6 +8,7 @@ import { Perfil } from '../../core/models/auth-user.model';
 import {
   MENU_DICIONARIO,
   MENU_GESTAO,
+  MENU_MATRIZ,
   MENU_NOVO_CLIENTE,
   MENU_PROTOCOLOS,
   MENU_SISTEMA,
@@ -55,6 +56,7 @@ export class ShellComponent {
   );
   readonly podeNovoCliente = computed(() => this.tem(MENU_NOVO_CLIENTE));
   readonly podeProtocolos = computed(() => this.tem(MENU_PROTOCOLOS));
+  readonly podeMatriz = computed(() => this.tem(MENU_MATRIZ));
   readonly podeDicionario = computed(() => this.tem(MENU_DICIONARIO));
   /** Coordenação, Centro Operacional e Atividade. */
   readonly podeGestao = computed(() => this.tem(MENU_GESTAO));

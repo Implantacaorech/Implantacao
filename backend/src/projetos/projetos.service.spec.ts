@@ -78,20 +78,35 @@ describe('ProjetosService', () => {
     );
   });
 
-  it('GCI só vê onde é GCI (_so_meus)', async () => {
+  it('GCI vê onde está ligado por nome (_so_meus) — cobre lista separada por vírgula', async () => {
     qb.getCount.mockResolvedValue(0);
     qb.getMany.mockResolvedValue([]);
     await service.listar({ page: 1, limit: 20 }, user('GCI', 'Ana'));
-    expect(qb.andWhere).toHaveBeenCalledWith('p.gci = :nome', { nome: 'Ana' });
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      expect.stringContaining('projeto_pessoas'),
+      expect.objectContaining({
+        nome: 'Ana',
+        nomeIni: 'Ana, %',
+        nomeMeio: '%, Ana, %',
+        nomeFim: '%, Ana',
+      }),
+    );
+    // e o mesmo predicado cobre gci e consultor (não é mais só uma coluna por perfil)
+    const [sql] = qb.andWhere.mock.calls.find(([s]: [string]) =>
+      String(s).includes('projeto_pessoas'),
+    );
+    expect(sql).toContain('p.gci');
+    expect(sql).toContain('p.consultor');
   });
 
-  it('Consultor só vê onde é consultor designado (_so_meus)', async () => {
+  it('Consultor vê onde está designado (_so_meus) — via projeto_pessoas/consultor', async () => {
     qb.getCount.mockResolvedValue(0);
     qb.getMany.mockResolvedValue([]);
     await service.listar({ page: 1, limit: 20 }, user('Consultor', 'Beto'));
-    expect(qb.andWhere).toHaveBeenCalledWith('p.consultor = :nome', {
-      nome: 'Beto',
-    });
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      expect.stringContaining('projeto_pessoas'),
+      expect.objectContaining({ nome: 'Beto' }),
+    );
   });
 
   it('calcula paginação corretamente', async () => {

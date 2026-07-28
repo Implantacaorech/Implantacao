@@ -78,6 +78,15 @@ export const PERFIS_MENU_PROTOCOLOS: Perfil[] = [
 ];
 /** Dicionário Inteligente: só o Administrador. */
 export const PERFIS_MENU_DICIONARIO: Perfil[] = ['ADM'];
+/** Matriz de Conhecimento: todo o time, menos o Comercial (que não entra nessa tela). */
+export const PERFIS_MENU_MATRIZ: Perfil[] = [
+  'ADM',
+  'Coordenador',
+  'Administrativo',
+  'Levantador',
+  'GCI',
+  'Consultor',
+];
 /** Gestão (Coordenação, Centro Operacional, Atividade) — SEM o Administrativo. Não confundir
  * com PERFIS_GESTAO (que ainda inclui o Administrativo, usado por outras telas). */
 export const PERFIS_MENU_GESTAO: Perfil[] = ['ADM', 'Coordenador', 'GCI'];

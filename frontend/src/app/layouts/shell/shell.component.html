@@ -70,10 +70,12 @@
           <span class="side-tip">Vídeos → conhecimento</span>
         </a>
       }
-      <a class="side-link" routerLink="/matriz" routerLinkActive="on">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg>Matriz
-        <span class="side-tip">Matriz de Conhecimento</span>
-      </a>
+      @if (podeMatriz()) {
+        <a class="side-link" routerLink="/matriz" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg>Matriz
+          <span class="side-tip">Matriz de Conhecimento</span>
+        </a>
+      }
       @if (podeDicionario()) {
         <a class="side-link" routerLink="/dicionario" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>Dicionário Inteligente

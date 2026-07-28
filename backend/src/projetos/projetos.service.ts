@@ -59,11 +59,24 @@ export class ProjetosService {
       qb.andWhere('p.etapa = :etapa', { etapa: filtro.etapa });
     }
     if (!PERFIS_VEEM_TODOS_PROJETOS.includes(user.perfil)) {
-      if (user.perfil === 'GCI') {
-        qb.andWhere('p.gci = :nome', { nome: user.nome });
-      } else {
-        qb.andWhere('p.consultor = :nome', { nome: user.nome });
-      }
+      // "_so_meus": vê o projeto quem está ligado a ele POR NOME — não pelo perfil (a mesma
+      // pessoa pode ser GCI num projeto e consultor/levantador em outro; e há vários por
+      // papel). Cobre: GCI (Projeto.gci), consultor/levantador (projeto_pessoas, a fonte da
+      // verdade) e o espelho Projeto.consultor. Como gci/consultor guardam a lista separada
+      // por ", ", o match é posicional (exato/início/meio/fim) — portável para o MariaDB de
+      // produção e o SQLite dos testes (sem FIND_IN_SET).
+      qb.andWhere(
+        `(EXISTS (SELECT 1 FROM projeto_pessoas pp
+                    WHERE pp.projeto_id = p.id AND pp.pessoa = :nome)
+          OR p.gci = :nome OR p.gci LIKE :nomeIni OR p.gci LIKE :nomeMeio OR p.gci LIKE :nomeFim
+          OR p.consultor = :nome OR p.consultor LIKE :nomeIni OR p.consultor LIKE :nomeMeio OR p.consultor LIKE :nomeFim)`,
+        {
+          nome: user.nome,
+          nomeIni: `${user.nome}, %`,
+          nomeMeio: `%, ${user.nome}, %`,
+          nomeFim: `%, ${user.nome}`,
+        },
+      );
     }
 
     const totalItems = await qb.getCount();
