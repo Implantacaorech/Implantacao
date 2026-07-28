@@ -4,6 +4,14 @@ import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, Ro
 import { FormsModule } from '@angular/forms';
 import { filter, map, startWith } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { Perfil } from '../../core/models/auth-user.model';
+import {
+  MENU_DICIONARIO,
+  MENU_GESTAO,
+  MENU_NOVO_CLIENTE,
+  MENU_PROTOCOLOS,
+  MENU_SISTEMA,
+} from '../../core/constants/perfis';
 
 @Component({
   selector: 'app-shell',
@@ -35,23 +43,22 @@ export class ShellComponent {
     { initialValue: 'Painel de Implantação' },
   );
 
-  readonly vePainelGestao = computed(() => {
+  /** Liberação por item de menu (definição do usuário em 2026-07-28). Carteira, Matriz e
+   * Dashboards são de TODOS os perfis, então aparecem sempre (menu só existe autenticado). */
+  private tem(perfis: Perfil[]): boolean {
     const p = this.auth.usuario()?.perfil;
-    return p === 'ADM' || p === 'Coordenador' || p === 'Administrativo' || p === 'GCI';
-  });
+    return !!p && perfis.includes(p);
+  }
 
-  readonly veSistema = computed(() => this.auth.usuario()?.perfil === 'ADM');
-
-  /** O Comercial só usa a tela de consulta/cadastro do cliente — o menu fica enxuto,
-   * sem carteira, gestão nem sistema. */
-  readonly soComercial = computed(() => this.auth.usuario()?.perfil === 'Comercial');
-
-  /** Quem pode cadastrar novo cliente (passo 1): ADM, Comercial e Coordenador. Só eles
-   * enxergam o link "Novo Cliente" (os demais seriam desviados pela rota). */
-  readonly podeNovoCliente = computed(() => {
-    const p = this.auth.usuario()?.perfil;
-    return p === 'ADM' || p === 'Comercial' || p === 'Coordenador';
-  });
+  readonly soComercial = computed(
+    () => this.auth.usuario()?.perfil === 'Comercial',
+  );
+  readonly podeNovoCliente = computed(() => this.tem(MENU_NOVO_CLIENTE));
+  readonly podeProtocolos = computed(() => this.tem(MENU_PROTOCOLOS));
+  readonly podeDicionario = computed(() => this.tem(MENU_DICIONARIO));
+  /** Coordenação, Centro Operacional e Atividade. */
+  readonly podeGestao = computed(() => this.tem(MENU_GESTAO));
+  readonly veSistema = computed(() => this.tem(MENU_SISTEMA));
 
   readonly iniciais = computed(() => (this.auth.usuario()?.nome ?? 'P').slice(0, 2).toUpperCase());
 

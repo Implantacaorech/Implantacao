@@ -54,7 +54,7 @@ export const SITUACOES = [
 ] as const;
 export type Situacao = (typeof SITUACOES)[number];
 
-// pode_ver("gestao") no Flask
+// pode_ver("gestao") no Flask — mantido para telas que ainda incluem o Administrativo.
 export const PERFIS_GESTAO: Perfil[] = [
   'ADM',
   'Coordenador',
@@ -63,6 +63,24 @@ export const PERFIS_GESTAO: Perfil[] = [
 ];
 // pode_ver("sistema") no Flask
 export const PERFIS_SISTEMA: Perfil[] = ['ADM'];
+
+// ===== Liberação por item de menu/tela (definição do usuário em 2026-07-28) =====
+// Espelha frontend/src/app/core/constants/perfis.ts (MENU_*). Aqui é a regra de verdade,
+// aplicada como @Roles nos controllers.
+/** Protocolos: todo o time de implantação, menos o Comercial. */
+export const PERFIS_MENU_PROTOCOLOS: Perfil[] = [
+  'ADM',
+  'Coordenador',
+  'Administrativo',
+  'Levantador',
+  'GCI',
+  'Consultor',
+];
+/** Dicionário Inteligente: só o Administrador. */
+export const PERFIS_MENU_DICIONARIO: Perfil[] = ['ADM'];
+/** Gestão (Coordenação, Centro Operacional, Atividade) — SEM o Administrativo. Não confundir
+ * com PERFIS_GESTAO (que ainda inclui o Administrativo, usado por outras telas). */
+export const PERFIS_MENU_GESTAO: Perfil[] = ['ADM', 'Coordenador', 'GCI'];
 // pode_designar() no Flask
 export const PERFIS_DESIGNA: Perfil[] = [
   'ADM',

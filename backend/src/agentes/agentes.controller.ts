@@ -13,7 +13,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
-import { PERFIS_GESTAO } from '../common/constants/perfis';
+import { PERFIS_MENU_GESTAO } from '../common/constants/perfis';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { AgentesService } from './agentes.service';
 import { IniciarExecucaoDto } from './dto/iniciar-execucao.dto';
@@ -26,7 +26,7 @@ import { ListarExecucoesDto } from './dto/listar-execucoes.dto';
 @ApiTags('agentes')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(...PERFIS_GESTAO)
+@Roles(...PERFIS_MENU_GESTAO)
 @Controller('agentes')
 export class AgentesController {
   constructor(private readonly service: AgentesService) {}

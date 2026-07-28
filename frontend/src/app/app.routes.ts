@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { perfilGuard } from './core/guards/perfil.guard';
+import { MENU_GESTAO, MENU_PROTOCOLOS } from './core/constants/perfis';
 import { LoginComponent } from './features/login/login.component';
 import { ShellComponent } from './layouts/shell/shell.component';
 
@@ -140,51 +141,55 @@ export const routes: Routes = [
       },
       {
         path: 'coordenacao',
-        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'GCI')],
+        canActivate: [perfilGuard(...MENU_GESTAO)],
         data: { titulo: 'Painel de Coordenação' },
         loadComponent: () =>
           import('./features/coordenacao/coordenacao.component').then((m) => m.CoordenacaoComponent),
       },
       {
         path: 'coordenacao/capacidade',
-        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'GCI')],
+        canActivate: [perfilGuard(...MENU_GESTAO)],
         data: { titulo: 'Capacidade da equipe' },
         loadComponent: () =>
           import('./features/coordenacao/capacidade.component').then((m) => m.CapacidadeComponent),
       },
       {
         path: 'atividade',
-        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'GCI')],
+        canActivate: [perfilGuard(...MENU_GESTAO)],
         data: { titulo: 'Atividade' },
         loadComponent: () =>
           import('./features/atividade/atividade.component').then((m) => m.AtividadeComponent),
       },
       {
         path: 'monitoramento',
-        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'GCI')],
+        canActivate: [perfilGuard(...MENU_GESTAO)],
         data: { titulo: 'Centro de Monitoramento' },
         loadComponent: () =>
           import('./features/monitoramento/monitoramento.component').then((m) => m.MonitoramentoComponent),
       },
       {
         path: 'protocolos',
+        canActivate: [perfilGuard(...MENU_PROTOCOLOS)],
         data: { titulo: 'Protocolos de Treinamento' },
         loadComponent: () => import('./features/protocolos/protocolos.component').then((m) => m.ProtocolosComponent),
       },
       {
         path: 'dicionario',
+        canActivate: [perfilGuard('ADM')],
         data: { titulo: 'Dicionário Inteligente' },
         loadComponent: () =>
           import('./features/dicionario/dicionario.component').then((m) => m.DicionarioComponent),
       },
       {
         path: 'dicionario/:slug',
+        canActivate: [perfilGuard('ADM')],
         data: { titulo: 'Documento — Dicionário Inteligente' },
         loadComponent: () =>
           import('./features/dicionario/dicionario-documento.component').then((m) => m.DicionarioDocumentoComponent),
       },
       {
         path: 'protocolos/:id',
+        canActivate: [perfilGuard(...MENU_PROTOCOLOS)],
         data: { titulo: 'Protocolo' },
         loadComponent: () =>
           import('./features/protocolos/protocolo-ficha.component').then((m) => m.ProtocoloFichaComponent),
@@ -280,14 +285,12 @@ export const routes: Routes = [
       },
       {
         path: 'dashboards',
-        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'GCI')],
         data: { titulo: 'Dashboards' },
         loadComponent: () =>
           import('./features/dashboards/dashboard.component').then((m) => m.DashboardComponent),
       },
       {
         path: 'dashboards/:slug',
-        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'GCI')],
         data: { titulo: 'Dashboards' },
         loadComponent: () =>
           import('./features/dashboards/dashboard.component').then((m) => m.DashboardComponent),

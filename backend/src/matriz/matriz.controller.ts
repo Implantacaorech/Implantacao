@@ -26,11 +26,16 @@ import { MatrizTecnico } from '../database/entities/matriz-tecnico.entity';
 import { MatrizService } from './matriz.service';
 import { SalvarNotasMatrizDto } from './dto/salvar-notas-matriz.dto';
 
-// "VE_TUDO" de webapp/routes_matriz.py — coincide com PERFIS_VEEM_TODOS_PROJETOS
-// (ADM/Coordenador/Administrativo); GCI, aqui, só vê/edita a própria linha (igual
-// Consultor) — não confundir com PERFIS_GESTAO, que inclui GCI para outras telas.
+// Quem vê TODAS as linhas da matriz (consulta): PERFIS_VEEM_TODOS_PROJETOS
+// (ADM/Coordenador/Administrativo) + Comercial, que ganhou acesso à Matriz em 2026-07-28
+// só como consulta (sem editar). ADM é o único que edita tudo; GCI/Levantador/Consultor
+// veem/editam apenas a própria linha — não confundir com PERFIS_GESTAO.
+const MATRIZ_VE_TODOS: string[] = [
+  ...(PERFIS_VEEM_TODOS_PROJETOS as string[]),
+  'Comercial',
+];
 function veTudo(perfil: string): boolean {
-  return (PERFIS_VEEM_TODOS_PROJETOS as string[]).includes(perfil);
+  return MATRIZ_VE_TODOS.includes(perfil);
 }
 
 function podeEditar(
@@ -43,11 +48,11 @@ function podeEditar(
   return !!(minha && minha.id === t.id);
 }
 
-/** Matriz de Conhecimento (/matriz*). Permissões (espelha webapp/routes_matriz.py):
- * ADM vê/edita tudo (+ importar planilha); Administrativo/Coordenador veem tudo, só
- * consulta; Consultor/GCI veem/editam apenas a própria linha (casada por Código
- * SICLA/nome). Sem o fallback "sem login = acesso total" do Flask — `JwtAuthGuard` já
- * exige login sempre neste backend novo. */
+/** Matriz de Conhecimento (/matriz*). Permissões (definição do usuário em 2026-07-28):
+ * ADM vê/edita tudo (+ importar planilha); Coordenador/Administrativo/Comercial veem tudo,
+ * só consulta; Consultor/GCI/Levantador veem/editam apenas a própria linha (casada por
+ * Código SICLA/nome). Sem o fallback "sem login = acesso total" do Flask — `JwtAuthGuard`
+ * já exige login sempre neste backend novo. */
 @ApiTags('matriz')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)

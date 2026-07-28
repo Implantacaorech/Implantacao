@@ -36,6 +36,7 @@ import { extname, join, resolve, sep } from 'path';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { PERFIS_MENU_PROTOCOLOS } from '../common/constants/perfis';
 import {
   CurrentUser,
   type AuthUser,
@@ -59,10 +60,12 @@ import {
 const PERFIS_APROVA_PROTOCOLO = ['ADM', 'Coordenador'] as const;
 
 /** Protocolos de Treinamento (/protocolos/*): base de conhecimento de vídeos
- * transcritos e analisados por IA. Espelha webapp/routes_protocolos.py. */
+ * transcritos e analisados por IA. Gate = todo o time de implantação, menos o Comercial
+ * (definição do usuário em 2026-07-28). Aprovar/reprovar é mais restrito (ver métodos). */
 @ApiTags('protocolos')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(...PERFIS_MENU_PROTOCOLOS)
 @Controller('protocolos')
 export class ProtocolosController {
   constructor(

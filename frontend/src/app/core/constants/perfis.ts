@@ -8,6 +8,36 @@ export const PERFIS_GERA_CRONOGRAMA: Perfil[] = ['ADM', 'Coordenador', 'Administ
 export const PERFIS_DESIGNA_CONSULTORES: Perfil[] = ['ADM', 'GCI'];
 export const PERFIS_AGENDAMENTO: Perfil[] = ['ADM', 'Administrativo'];
 
+// ===== Liberação por item de menu/tela (definição do usuário em 2026-07-28) =====
+// Usados nas rotas (perfilGuard) e no menu (shell). A regra de verdade fica no backend.
+export const TODOS_PERFIS: Perfil[] = [
+  'ADM',
+  'Coordenador',
+  'Administrativo',
+  'Levantador',
+  'GCI',
+  'Consultor',
+  'Comercial',
+];
+/** Novo Cliente (passo 1). */
+export const MENU_NOVO_CLIENTE: Perfil[] = ['ADM', 'Coordenador', 'Comercial'];
+/** Protocolos: todos, menos o Comercial. */
+export const MENU_PROTOCOLOS: Perfil[] = [
+  'ADM',
+  'Coordenador',
+  'Administrativo',
+  'Levantador',
+  'GCI',
+  'Consultor',
+];
+/** Dicionário Inteligente: só o Administrador. */
+export const MENU_DICIONARIO: Perfil[] = ['ADM'];
+/** Gestão (Coordenação, Centro Operacional, Atividade). */
+export const MENU_GESTAO: Perfil[] = ['ADM', 'Coordenador', 'GCI'];
+/** Sistema (usuários, cadastros, config, legado). */
+export const MENU_SISTEMA: Perfil[] = ['ADM'];
+// Carteira, Matriz e Dashboards = TODOS_PERFIS.
+
 export function podeGerar(tipo: string, perfil: Perfil | undefined): boolean {
   if (!perfil) return false;
   if (tipo === 'levantamento' || tipo === 'projeto') return PERFIS_GERA_LEVANTAMENTO.includes(perfil);

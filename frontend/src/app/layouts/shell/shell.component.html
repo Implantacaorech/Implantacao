@@ -59,25 +59,29 @@
         <a class="side-link" routerLink="/home" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg>Visão Geral
         </a>
-        <a class="side-link" routerLink="/projetos" routerLinkActive="on">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-folder"/></svg>Carteira
-          <span class="side-tip">Projetos</span>
-        </a>
+      }
+      <a class="side-link" routerLink="/projetos" routerLinkActive="on">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-folder"/></svg>Carteira
+        <span class="side-tip">Projetos</span>
+      </a>
+      @if (podeProtocolos()) {
         <a class="side-link" routerLink="/protocolos" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-bulb"/></svg>Protocolos
           <span class="side-tip">Vídeos → conhecimento</span>
         </a>
-        <a class="side-link" routerLink="/matriz" routerLinkActive="on">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg>Matriz
-          <span class="side-tip">Matriz de Conhecimento</span>
-        </a>
+      }
+      <a class="side-link" routerLink="/matriz" routerLinkActive="on">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg>Matriz
+        <span class="side-tip">Matriz de Conhecimento</span>
+      </a>
+      @if (podeDicionario()) {
         <a class="side-link" routerLink="/dicionario" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>Dicionário Inteligente
           <span class="side-tip">Consulta técnica do SIGER</span>
         </a>
       }
-      @if (vePainelGestao()) {
-        <div class="side-grp">Gestão</div>
+      <div class="side-grp">Gestão</div>
+      @if (podeGestao()) {
         <a class="side-link" routerLink="/coordenacao" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-chart"/></svg>Coordenação
         </a>
@@ -87,10 +91,10 @@
         <a class="side-link" routerLink="/atividade" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-activity"/></svg>Atividade
         </a>
-        <a class="side-link" routerLink="/dashboards" routerLinkActive="on">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg>Dashboards
-        </a>
       }
+      <a class="side-link" routerLink="/dashboards" routerLinkActive="on">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg>Dashboards
+      </a>
       @if (veSistema()) {
         <div class="side-grp">Sistema</div>
         <a class="side-link" routerLink="/home" fragment="ferramentas">

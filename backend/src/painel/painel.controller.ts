@@ -13,7 +13,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
-import { PERFIS_GESTAO } from '../common/constants/perfis';
+import { PERFIS_MENU_GESTAO } from '../common/constants/perfis';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { CapacidadeService } from './capacidade.service';
 import { CoordenacaoService } from './coordenacao.service';
@@ -23,12 +23,13 @@ import { MonitoramentoService } from './monitoramento.service';
 import { DigestService } from '../digest/digest.service';
 import { QueryCapacidadeDto } from './dto/query-capacidade.dto';
 
-/** Telas-painel (visão executiva). Espelha webapp/routes_painel.py — gate único
- * `pode_ver("gestao")` (ADM/Coordenador/Administrativo/GCI; Consultor não acessa). */
+/** Telas-painel (visão executiva). Gate de Gestão = ADM/Coordenador/GCI (definição do
+ * usuário em 2026-07-28 — o Administrativo saiu de Coordenação/Atividade/Monitoramento).
+ * `home` sobrepõe para todos os autenticados. */
 @ApiTags('painel')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(...PERFIS_GESTAO)
+@Roles(...PERFIS_MENU_GESTAO)
 @Controller('painel')
 export class PainelController {
   constructor(

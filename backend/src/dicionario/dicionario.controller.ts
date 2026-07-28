@@ -11,6 +11,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { PERFIS_MENU_DICIONARIO } from '../common/constants/perfis';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { DicionarioService } from './dicionario.service';
 import { DicionarioIaService } from './dicionario-ia.service';
@@ -18,13 +19,13 @@ import { PesquisarDicionarioDto } from './dto/pesquisar-dicionario.dto';
 import { PerguntarDicionarioDto } from './dto/perguntar-dicionario.dto';
 
 /** Dicionário Inteligente do SIGER® — consulta técnica sobre os documentos curados
- * (módulos + adicionais, repositório Documentacao-Fonte-P). Qualquer perfil autenticado
- * consulta (é ferramenta de apoio, não de gestão). A rota `/perguntar` sintetiza uma
- * resposta por IA a partir dos documentos, sempre citando as fontes. */
+ * (módulos + adicionais, repositório Documentacao-Fonte-P). Restrito ao Administrador
+ * (definição do usuário em 2026-07-28). A rota `/perguntar` sintetiza uma resposta por IA
+ * a partir dos documentos, sempre citando as fontes. */
 @ApiTags('dicionario')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles()
+@Roles(...PERFIS_MENU_DICIONARIO)
 @Controller('dicionario')
 export class DicionarioController {
   constructor(
