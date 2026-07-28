@@ -5,10 +5,21 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ETAPAS, SITUACOES, Projeto } from '../../core/models/projeto.model';
 import { ProjetosService } from '../../core/services/projetos.service';
 import { PassosService } from '../../core/services/passos.service';
-import { PassoAtualDoProjeto } from '../../core/models/passo.model';
+import {
+  GradeView,
+  PassoAtualDoProjeto,
+  StatusFase,
+} from '../../core/models/passo.model';
 import { AuthService } from '../../core/services/auth.service';
 
-type Vista = 'kanban' | 'tabela';
+type Vista = 'kanban' | 'tabela' | 'grade';
+
+/** Rótulo de cada status na Grade. */
+const ROTULO_STATUS: Record<StatusFase, string> = {
+  realizado: 'Realizado',
+  andamento: 'Em andamento',
+  nao: 'Não realizado',
+};
 
 const FASE_CLS: Record<string, string> = {
   Levantamento: 'fase-1',
@@ -41,9 +52,27 @@ export class ProjetosListaComponent {
   readonly erro = signal<string | null>(null);
   readonly vista = signal<Vista>('kanban');
 
+  // Grade Cliente × fases (carregada sob demanda ao abrir a visão em grade).
+  readonly grade = signal<GradeView | null>(null);
+  readonly carregandoGrade = signal(false);
+  readonly rotuloStatus = ROTULO_STATUS;
+
   busca = '';
   fstatus = '';
   fetapa = '';
+
+  /** Colunas da grade (as fases do processo). */
+  readonly gradePassos = computed(() => this.grade()?.passos ?? []);
+
+  /** Linhas da grade (um projeto cada), respeitando o filtro de busca por cliente. */
+  readonly gradeLinhas = computed(() => {
+    const g = this.grade();
+    if (!g) return [];
+    const q = this.busca.trim().toLowerCase();
+    return q
+      ? g.linhas.filter((l) => l.cliente.toLowerCase().includes(q))
+      : g.linhas;
+  });
 
   readonly filtrados = computed(() => {
     const q = this.busca.trim().toLowerCase();
@@ -138,6 +167,7 @@ export class ProjetosListaComponent {
     this.vista.set(v);
     this.busca = this.route.snapshot.queryParamMap.get('q') ?? '';
     void this.carregar();
+    if (v === 'grade') void this.carregarGrade();
   }
 
   async carregar(): Promise<void> {
@@ -150,6 +180,9 @@ export class ProjetosListaComponent {
       ]);
       this.todos.set(res.data);
       this.passoPorProjeto.set(new Map(atuais.map((a) => [a.projetoId, a])));
+      // A grade é derivada dos mesmos dados; invalida para recarregar se estiver aberta.
+      this.grade.set(null);
+      if (this.vista() === 'grade') void this.carregarGrade();
     } catch {
       this.erro.set('Não foi possível carregar os projetos.');
     } finally {
@@ -157,9 +190,23 @@ export class ProjetosListaComponent {
     }
   }
 
+  /** Carrega a grade sob demanda (uma vez; reidrata após `carregar()` a invalidar). */
+  async carregarGrade(): Promise<void> {
+    if (this.grade() || this.carregandoGrade()) return;
+    this.carregandoGrade.set(true);
+    try {
+      this.grade.set(await this.passosService.grade());
+    } catch {
+      /* mantém null — a grade mostra o aviso de vazio. */
+    } finally {
+      this.carregandoGrade.set(false);
+    }
+  }
+
   setVista(v: Vista): void {
     this.vista.set(v);
     localStorage.setItem('vista_carteira', v);
+    if (v === 'grade') void this.carregarGrade();
   }
 
   async excluir(projeto: Projeto): Promise<void> {

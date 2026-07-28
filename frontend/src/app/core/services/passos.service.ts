@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiEnvelope } from '../models/api-envelope.model';
 import {
+  GradeView,
   PassoAtualDoProjeto,
   PapelProjeto,
   Passo,
@@ -25,6 +26,16 @@ export class PassosService {
     const res = await firstValueFrom(
       this.http.get<ApiEnvelope<PassoAtualDoProjeto[]>>(
         `${environment.apiUrl}/passos/atuais`,
+      ),
+    );
+    return res.data;
+  }
+
+  /** Grade Cliente × fases (status de cada passo por projeto) — alimenta a visão em grade. */
+  async grade(): Promise<GradeView> {
+    const res = await firstValueFrom(
+      this.http.get<ApiEnvelope<GradeView>>(
+        `${environment.apiUrl}/passos/grade`,
       ),
     );
     return res.data;

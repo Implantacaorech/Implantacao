@@ -43,6 +43,21 @@ export interface PassoAtualDoProjeto {
   total: number;
 }
 
+/** Status de uma fase (passo) para a Grade da carteira. */
+export type StatusFase = 'realizado' | 'andamento' | 'nao';
+
+/** Grade Cliente × fases: cada projeto é uma linha; cada passo, uma coluna, com o status
+ * (realizado / em andamento / não realizado). `passos` são as colunas (na ordem do processo);
+ * `status` de cada linha mapeia o número do passo ao seu estado naquele projeto. */
+export interface GradeView {
+  passos: { numero: number; titulo: string; etapa: Etapa }[];
+  linhas: {
+    projetoId: number;
+    cliente: string;
+    status: Record<number, StatusFase>;
+  }[];
+}
+
 export interface PassoView extends DefinicaoPasso {
   concluido: boolean;
   concluidoEm: string | null;
@@ -354,6 +369,60 @@ export class PassosService {
         total: PASSOS.length,
       };
     });
+  }
+
+  /** Grade Cliente × fases para a carteira: cada projeto vira uma linha com o status de CADA
+   * um dos passos. Realizado = concluído; Em andamento = liberado (dependências prontas) mas
+   * ainda não concluído; Não realizado = ainda bloqueado. Também em DUAS consultas. */
+  async gradeDeTodos(): Promise<GradeView> {
+    const projetos = await this.projetos.find({
+      select: ['id', 'cliente'],
+      order: { cliente: 'ASC', id: 'ASC' },
+    });
+    const feitos = await this.passos.find({
+      select: ['projetoId', 'passo', 'conferido'],
+    });
+
+    const concluidosPorProjeto = new Map<number, Set<number>>();
+    const conferidosPorProjeto = new Map<number, Set<number>>();
+    for (const f of feitos) {
+      const c = concluidosPorProjeto.get(f.projetoId) ?? new Set<number>();
+      c.add(f.passo);
+      concluidosPorProjeto.set(f.projetoId, c);
+      if (f.conferido) {
+        const k = conferidosPorProjeto.get(f.projetoId) ?? new Set<number>();
+        k.add(f.passo);
+        conferidosPorProjeto.set(f.projetoId, k);
+      }
+    }
+
+    const linhas = projetos.map((p) => {
+      const concluidos = concluidosPorProjeto.get(p.id) ?? new Set<number>();
+      const conferidos = conferidosPorProjeto.get(p.id) ?? new Set<number>();
+      const status: Record<number, StatusFase> = {};
+      for (const def of PASSOS) {
+        if (concluidos.has(def.numero)) {
+          status[def.numero] = 'realizado';
+          continue;
+        }
+        const liberado = def.depende.every(
+          (n) =>
+            concluidos.has(n) &&
+            (!PASSOS_COM_CONFERENCIA.has(n) || conferidos.has(n)),
+        );
+        status[def.numero] = liberado ? 'andamento' : 'nao';
+      }
+      return { projetoId: p.id, cliente: p.cliente, status };
+    });
+
+    return {
+      passos: PASSOS.map((d) => ({
+        numero: d.numero,
+        titulo: d.titulo,
+        etapa: d.etapa,
+      })),
+      linhas,
+    };
   }
 
   /** Conclui um passo porque a AÇÃO CORRESPONDENTE aconteceu no sistema — o robô criou a

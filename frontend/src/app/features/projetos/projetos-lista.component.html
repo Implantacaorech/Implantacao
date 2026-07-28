@@ -49,6 +49,9 @@
       <button class="btn" [class.primario]="vista() === 'tabela'" type="button" (click)="setVista('tabela')">
         <svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg> Tabela
       </button>
+      <button class="btn" [class.primario]="vista() === 'grade'" type="button" (click)="setVista('grade')">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg> Grade
+      </button>
     </div>
   </div>
 
@@ -103,7 +106,7 @@
         </div>
       }
     </div>
-  } @else {
+  } @else if (vista() === 'tabela') {
     <div class="painel" style="padding:0;overflow:hidden">
       <table class="form-tab" style="margin:0">
         <thead>
@@ -142,6 +145,52 @@
         </tbody>
       </table>
     </div>
+  } @else {
+    <!-- ===== VISTA: GRADE (Cliente × fases) ===== -->
+    <div class="grade-legenda">
+      <span><i class="gl gl-realizado"></i> Realizado</span>
+      <span><i class="gl gl-andamento"></i> Em andamento</span>
+      <span><i class="gl gl-nao"></i> Não realizado</span>
+    </div>
+    @if (carregandoGrade()) {
+      <div class="painel" style="text-align:center;color:var(--muted)">Carregando a grade…</div>
+    } @else if (gradeLinhas().length === 0) {
+      <div class="painel" style="text-align:center;color:var(--muted)">Nenhum projeto na grade com os filtros atuais.</div>
+    } @else {
+      <div class="painel grade-wrap">
+        <table class="grade-tab">
+          <thead>
+            <tr>
+              <th class="grade-cli">Cliente</th>
+              @for (f of gradePassos(); track f.numero) {
+                <th class="grade-fase" [title]="f.numero + '. ' + f.titulo">
+                  <span>{{ f.numero }}. {{ f.titulo }}</span>
+                </th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (l of gradeLinhas(); track l.projetoId) {
+              <tr>
+                <td class="grade-cli">
+                  <a [routerLink]="['/projetos', l.projetoId]">{{ l.cliente }}</a>
+                </td>
+                @for (f of gradePassos(); track f.numero) {
+                  <td
+                    class="grade-cel"
+                    [attr.data-s]="l.status[f.numero]"
+                    [title]="f.numero + '. ' + f.titulo + ' — ' + rotuloStatus[l.status[f.numero]]"
+                  >
+                    @if (l.status[f.numero] === 'realizado') { ✓ }
+                    @else if (l.status[f.numero] === 'andamento') { • }
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
   }
 } @else {
   <div class="painel" style="text-align:center;padding:40px 24px;margin-top:20px">

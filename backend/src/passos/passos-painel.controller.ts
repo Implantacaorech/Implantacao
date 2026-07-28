@@ -62,4 +62,14 @@ export class PassosPainelController {
   async atuais() {
     return new ApiEnvelope(await this.passos.passoAtualDeTodos());
   }
+
+  @Get('grade')
+  @Roles()
+  @ApiOperation({
+    summary:
+      'Grade Cliente × fases: status de cada passo por projeto (realizado/andamento/não)',
+  })
+  async grade() {
+    return new ApiEnvelope(await this.passos.gradeDeTodos());
+  }
 }

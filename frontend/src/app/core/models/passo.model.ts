@@ -74,3 +74,17 @@ export interface PassoAtualDoProjeto {
   concluidos: number;
   total: number;
 }
+
+/** Status de uma fase na Grade da carteira. */
+export type StatusFase = 'realizado' | 'andamento' | 'nao';
+
+/** Grade Cliente × fases: colunas (`passos`) + uma linha por projeto com o status de cada
+ * passo (mapa número→status). */
+export interface GradeView {
+  passos: { numero: number; titulo: string; etapa: string }[];
+  linhas: {
+    projetoId: number;
+    cliente: string;
+    status: Record<number, StatusFase>;
+  }[];
+}

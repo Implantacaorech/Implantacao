@@ -1,2 +1,113 @@
-/* Todo o visual vem do sistema de design global (src/styles.css, portado de
-   webapp/static/style.css) — projetos_lista.html não tem bloco <style> próprio. */
+/* O visual geral vem do sistema de design global (src/styles.css, portado de
+   webapp/static/style.css). Abaixo, só o específico da VISTA EM GRADE (Cliente × fases). */
+
+.grade-legenda {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 14px 0 8px;
+  font-size: 0.82rem;
+  color: var(--muted, #6b7280);
+}
+.grade-legenda .gl {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+.gl-realizado {
+  background: #16a34a;
+}
+.gl-andamento {
+  background: #d97706;
+}
+.gl-nao {
+  background: var(--surface-2, #f1f4f8);
+  border: 1px solid var(--line, #d9dee6);
+}
+
+.grade-wrap {
+  padding: 0;
+  overflow-x: auto;
+}
+.grade-tab {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.82rem;
+}
+.grade-tab th,
+.grade-tab td {
+  border-bottom: 1px solid var(--line, #eceff3);
+  border-right: 1px solid var(--line, #eceff3);
+}
+
+/* Coluna Cliente: fixa à esquerda ao rolar na horizontal. */
+.grade-cli {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--surface, #fff);
+  text-align: left;
+  padding: 8px 12px;
+  min-width: 190px;
+  max-width: 260px;
+}
+thead .grade-cli {
+  z-index: 3;
+  background: var(--surface-2, #f1f4f8);
+}
+.grade-cli a {
+  color: var(--navy, #1f3b73);
+  font-weight: 600;
+  text-decoration: none;
+}
+.grade-cli a:hover {
+  text-decoration: underline;
+}
+
+/* Cabeçalho das fases: texto vertical, para caber as 19 colunas. */
+.grade-fase {
+  padding: 6px 2px;
+  vertical-align: bottom;
+  height: 140px;
+  background: var(--surface-2, #f1f4f8);
+}
+.grade-fase span {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted, #6b7280);
+  max-height: 128px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+}
+
+/* Células de status. */
+.grade-cel {
+  width: 30px;
+  min-width: 30px;
+  text-align: center;
+  font-weight: 700;
+  color: #fff;
+  font-size: 0.8rem;
+  cursor: default;
+}
+.grade-cel[data-s='realizado'] {
+  background: #16a34a;
+}
+.grade-cel[data-s='andamento'] {
+  background: #d97706;
+}
+.grade-cel[data-s='nao'] {
+  background: var(--surface-2, #f1f4f8);
+  color: var(--faint, #9aa3b2);
+}
+.grade-tab tbody tr:hover .grade-cli {
+  background: var(--surface-2, #f1f4f8);
+}
