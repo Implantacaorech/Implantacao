@@ -46,6 +46,13 @@ export class ShellComponent {
    * sem carteira, gestão nem sistema. */
   readonly soComercial = computed(() => this.auth.usuario()?.perfil === 'Comercial');
 
+  /** Quem pode cadastrar novo cliente (passo 1): ADM, Comercial e Coordenador. Só eles
+   * enxergam o link "Novo Cliente" (os demais seriam desviados pela rota). */
+  readonly podeNovoCliente = computed(() => {
+    const p = this.auth.usuario()?.perfil;
+    return p === 'ADM' || p === 'Comercial' || p === 'Coordenador';
+  });
+
   readonly iniciais = computed(() => (this.auth.usuario()?.nome ?? 'P').slice(0, 2).toUpperCase());
 
   async buscar(): Promise<void> {

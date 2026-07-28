@@ -48,9 +48,10 @@ export interface DefinicaoPasso {
 /** Perfis do sistema que podem executar cada papel do processo. ADM entra em todos por ser o
  * perfil de administração do Painel. */
 export const PERFIS_POR_RESPONSAVEL: Record<ResponsavelPasso, Perfil[]> = {
-  // Passo 1 é do Comercial: consulta o cliente no SICLA e completa o cadastro. ADM entra
-  // para poder abrir a ficha à mão quando necessário.
-  Comercial: ['ADM', 'Comercial'],
+  // Passo 1 é do Comercial: consulta o cliente no SICLA e completa o cadastro. Podem cadastrar
+  // novo cliente ADM, Comercial e Coordenador (definição do usuário em 2026-07-27); o
+  // Administrativo deixou de fazer o cadastro (só é avisado por e-mail e segue no passo 2).
+  Comercial: ['ADM', 'Comercial', 'Coordenador'],
   // 'Automatico' não é mais usado por nenhum passo (a entrada virou a consulta ao SICLA);
   // mantido só para não quebrar referências antigas. ADM para reprocessar à mão.
   Automatico: ['ADM'],

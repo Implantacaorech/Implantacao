@@ -15,7 +15,7 @@ export class ModulosSiclaController {
   constructor(private readonly service: ModulosSiclaService) {}
 
   @Get('buscar')
-  @Roles('ADM', 'Comercial', 'Administrativo', 'Coordenador')
+  @Roles('ADM', 'Comercial', 'Coordenador')
   @ApiOperation({
     summary: 'Busca módulos/adicionais no SICLA por código ou descrição',
   })

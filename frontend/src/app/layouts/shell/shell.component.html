@@ -49,10 +49,12 @@
     </a>
     <nav class="side-nav">
       <div class="side-grp">Execução</div>
-      <a class="side-link" routerLink="/clientes/novo" routerLinkActive="on">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg>Novo Cliente
-        <span class="side-tip">Consulta SICLA + cadastro</span>
-      </a>
+      @if (podeNovoCliente()) {
+        <a class="side-link" routerLink="/clientes/novo" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg>Novo Cliente
+          <span class="side-tip">Consulta SICLA + cadastro</span>
+        </a>
+      }
       @if (!soComercial()) {
         <a class="side-link" routerLink="/home" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg>Visão Geral

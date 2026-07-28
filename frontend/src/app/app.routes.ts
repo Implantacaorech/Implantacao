@@ -32,7 +32,7 @@ export const routes: Routes = [
         // a ficha. Substitui a antiga leitura automática de e-mail. Perfis internos também
         // alcançam (podem iniciar por aqui); o backend decide quem realmente cadastra.
         path: 'clientes/novo',
-        canActivate: [perfilGuard('ADM', 'Comercial', 'Administrativo', 'Coordenador')],
+        canActivate: [perfilGuard('ADM', 'Comercial', 'Coordenador')],
         data: { titulo: 'Consulta e Cadastro do Cliente' },
         loadComponent: () =>
           import('./features/clientes-sicla/consulta-cliente.component').then(

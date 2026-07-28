@@ -21,14 +21,14 @@ export class ClientesSiclaController {
   constructor(private readonly service: ClientesSiclaService) {}
 
   @Get('buscar')
-  @Roles('ADM', 'Comercial', 'Administrativo', 'Coordenador')
+  @Roles('ADM', 'Comercial', 'Coordenador')
   @ApiOperation({ summary: 'Busca clientes no SICLA por código ou descrição' })
   async buscar(@Query('termo') termo: string) {
     return new ApiEnvelope(await this.service.buscar(termo ?? ''));
   }
 
   @Post()
-  @Roles('ADM', 'Comercial')
+  @Roles('ADM', 'Comercial', 'Coordenador')
   @ApiOperation({
     summary: 'Cadastra o cliente (cria a ficha e conclui o passo 1)',
   })
