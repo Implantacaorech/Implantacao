@@ -13,6 +13,8 @@ import { ApiEnvelope } from '../common/dto/api-envelope';
 import { PassosService } from './passos.service';
 import { PASSOS } from './passos.constants';
 import { PERFIS, Perfil } from '../common/constants/perfis';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { UsersService } from '../users/users.service';
 
 /** Dados do PROCESSO para a carteira (quadro por fase), não de um projeto específico.
@@ -69,7 +71,7 @@ export class PassosPainelController {
     summary:
       'Grade Cliente × fases: status de cada passo por projeto (realizado/andamento/não)',
   })
-  async grade() {
-    return new ApiEnvelope(await this.passos.gradeDeTodos());
+  async grade(@CurrentUser() user: AuthUser) {
+    return new ApiEnvelope(await this.passos.gradeDeTodos(user));
   }
 }

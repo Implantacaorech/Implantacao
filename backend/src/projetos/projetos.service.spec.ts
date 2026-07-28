@@ -109,6 +109,16 @@ describe('ProjetosService', () => {
     );
   });
 
+  it('Comercial vê TODOS os clientes — não aplica filtro por nome', async () => {
+    qb.getCount.mockResolvedValue(0);
+    qb.getMany.mockResolvedValue([]);
+    await service.listar({ page: 1, limit: 20 }, user('Comercial', 'Vendas'));
+    expect(qb.andWhere).not.toHaveBeenCalledWith(
+      expect.stringContaining('projeto_pessoas'),
+      expect.anything(),
+    );
+  });
+
   it('calcula paginação corretamente', async () => {
     qb.getCount.mockResolvedValue(45);
     qb.getMany.mockResolvedValue([]);

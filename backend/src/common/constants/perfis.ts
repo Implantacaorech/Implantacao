@@ -104,6 +104,16 @@ export const PERFIS_VEEM_TODOS_PROJETOS: Perfil[] = [
   'Coordenador',
   'Administrativo',
 ];
+// Hierarquia de visibilidade de CLIENTES na Carteira (definição do usuário em 2026-07-28):
+// ADM/Coordenador/Administrativo/Comercial veem TODOS; GCI/Consultor/Levantador só os
+// projetos em que foram designados. Igual a PERFIS_VEEM_TODOS_PROJETOS + Comercial — mantida
+// separada porque o Comercial vê a Carteira mas NÃO entra em outras telas (ex.: Matriz).
+export const PERFIS_CARTEIRA_VE_TODOS: Perfil[] = [
+  'ADM',
+  'Coordenador',
+  'Administrativo',
+  'Comercial',
+];
 // pode_gerar("cronograma") no Flask — todos os perfis exceto GCI.
 export const PERFIS_GERA_CRONOGRAMA: Perfil[] = [
   'ADM',

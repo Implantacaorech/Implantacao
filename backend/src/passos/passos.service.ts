@@ -18,6 +18,8 @@ import { Evento } from '../database/entities/evento.entity';
 import { Documento } from '../database/entities/documento.entity';
 import { DocumentosService } from '../documentos/documentos.service';
 import { Etapa, Perfil, temPapel } from '../common/constants/perfis';
+import type { AuthUser } from '../common/decorators/current-user.decorator';
+import { filtrarCarteiraPorPerfil } from '../common/carteira-visibilidade';
 import { hojeIso } from '../cronograma/datas.util';
 import { PassosNotificacaoService } from './passos-notificacao.service';
 import {
@@ -374,11 +376,16 @@ export class PassosService {
   /** Grade Cliente × fases para a carteira: cada projeto vira uma linha com o status de CADA
    * um dos passos. Realizado = concluído; Em andamento = liberado (dependências prontas) mas
    * ainda não concluído; Não realizado = ainda bloqueado. Também em DUAS consultas. */
-  async gradeDeTodos(): Promise<GradeView> {
-    const projetos = await this.projetos.find({
-      select: ['id', 'cliente'],
-      order: { cliente: 'ASC', id: 'ASC' },
-    });
+  async gradeDeTodos(user: AuthUser): Promise<GradeView> {
+    // Mesma hierarquia da lista: ADM/Coordenador/Administrativo/Comercial veem todos;
+    // GCI/Consultor/Levantador só os projetos em que estão designados.
+    const qb = this.projetos
+      .createQueryBuilder('p')
+      .select(['p.id', 'p.cliente'])
+      .orderBy('p.cliente', 'ASC')
+      .addOrderBy('p.id', 'ASC');
+    filtrarCarteiraPorPerfil(qb, 'p', user);
+    const projetos = await qb.getMany();
     const feitos = await this.passos.find({
       select: ['projetoId', 'passo', 'conferido'],
     });
