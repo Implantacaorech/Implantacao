@@ -79,9 +79,10 @@ export class PassosComponent {
    * sozinho (o backend liga a geração ao passo). É o que mantém o fluxo contínuo e num
    * ponto só: você sempre parte do passo. */
   private static readonly TELA_POR_PASSO: Record<number, string[]> = {
-    // 9 e 11 geram o documento na tela e o backend conclui o passo sozinho. 12 (check-list)
-    // só salva as linhas — não gera documento —, então lá o passo é concluído à mão depois
-    // de abrir e trabalhar. Por isso os passos de documento mostram "Abrir" E "Concluir".
+    // 3 (levantamento) e 12 (check-list) abrem a tela para PREENCHER e são concluídos à mão
+    // depois. 9 e 11 GERAM o documento e o backend conclui o passo sozinho. Por isso todos
+    // mostram "Abrir" E "Concluir".
+    3: ['levantamento'],
     9: ['projeto', 'origem'],
     11: ['cronograma'],
     12: ['checklist'],

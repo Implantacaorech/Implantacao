@@ -25,38 +25,36 @@ export class LevantamentoRespostaService {
     await this.seed(projetoId, projeto.modulos || '');
   }
 
-  /** Idempotente — não recria nem apaga respostas já digitadas. Devolve o total. */
+  /** Idempotente — não recria nem apaga respostas já digitadas. Devolve o total.
+   *
+   * `modulosStr` é a lista de CÓDIGOS contratados (o seletor do SICLA grava o código efetivo
+   * em `Projeto.modulos`: do adicional quando há, senão do módulo). O Índice é filtrado por
+   * esse código (`modulo_num` base ou `adicional_num`), trazendo só as perguntas da
+   * contratação — módulo e/ou adicional, conforme o fechamento. */
   async seed(projetoId: number, modulosStr: string): Promise<number> {
     const ja = await this.repo.count({ where: { projetoId } });
     if (ja > 0) return ja;
 
-    const siglas = [
+    const codigos = [
       ...new Set(
         (modulosStr || '')
           .split(/[,;\n]+/)
-          .map((m) => m.trim().toUpperCase())
+          .map((m) => m.trim())
           .filter(Boolean),
       ),
     ];
-    const modulos = await this.indice.modulos();
-    const nomes = new Map(modulos.map((m) => [m.sigla.toUpperCase(), m.nome]));
+    const topicos = await this.indice.porCodigos(codigos);
 
-    const linhas: LevantamentoResposta[] = [];
-    for (const sig of siglas) {
-      const { linhas: topicos } = await this.indice.listar({ modulo: sig });
-      for (const t of topicos) {
-        linhas.push(
-          this.repo.create({
-            projetoId,
-            ordem: linhas.length,
-            moduloSigla: sig,
-            modulo: nomes.get(sig) ?? t.modulo,
-            adicional: t.adicional,
-            topico: t.topico,
-          }),
-        );
-      }
-    }
+    const linhas = topicos.map((t, i) =>
+      this.repo.create({
+        projetoId,
+        ordem: i,
+        moduloSigla: t.moduloSigla,
+        modulo: t.modulo,
+        adicional: t.adicional,
+        topico: t.topico,
+      }),
+    );
     if (linhas.length > 0) await this.repo.save(linhas);
     return linhas.length;
   }

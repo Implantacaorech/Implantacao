@@ -88,4 +88,26 @@ describe('IndiceTopicoService — importação do YAML', () => {
     expect(repo.clear).toHaveBeenCalled();
     expect(n).toBe(1);
   });
+
+  it('porCodigos devolve vazio, sem consultar, quando não há códigos', async () => {
+    const r = await service.porCodigos(['', '  ']);
+    expect(r).toEqual([]);
+  });
+
+  it('porCodigos consulta pelos códigos (módulo base OU adicional), sem duplicar', async () => {
+    const getMany = jest.fn().mockResolvedValue([{ id: 1 }]);
+    const qb = {
+      where: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      getMany,
+    };
+    (repo as unknown as { createQueryBuilder: jest.Mock }).createQueryBuilder =
+      jest.fn().mockReturnValue(qb);
+    const r = await service.porCodigos(['5', '5', '29']);
+    expect(r).toEqual([{ id: 1 }]);
+    expect(qb.where).toHaveBeenCalledWith(expect.stringContaining('moduloNum IN'), {
+      cods: ['5', '29'],
+    });
+  });
 });

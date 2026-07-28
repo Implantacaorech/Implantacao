@@ -64,7 +64,7 @@ export const routes: Routes = [
       },
       {
         path: 'projetos/:id/levantamento',
-        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'GCI')],
+        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'GCI', 'Levantador')],
         data: { titulo: 'Levantamento' },
         loadComponent: () =>
           import('./features/levantamento/levantamento.component').then((m) => m.LevantamentoComponent),

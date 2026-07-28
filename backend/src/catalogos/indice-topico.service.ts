@@ -69,6 +69,26 @@ export class IndiceTopicoService implements OnModuleInit {
     return { linhas, total };
   }
 
+  /** Tópicos do Índice que correspondem aos CÓDIGOS contratados — a MESMA numeração do
+   * SICLA (LISTA_SISTEMAS) que o seletor de módulos grava em `Projeto.modulos`. Para um
+   * código de MÓDULO traz os tópicos BASE do módulo (sem adicional); para um código de
+   * ADICIONAL traz os tópicos daquele adicional. Traz exatamente o que foi contratado —
+   * se vier módulo e adicional, os dois conjuntos; se vier só um, só o dele. */
+  async porCodigos(codigos: string[]): Promise<IndiceTopico[]> {
+    const cods = [...new Set(codigos.map((c) => (c ?? '').trim()).filter(Boolean))];
+    if (cods.length === 0) return [];
+    return this.repo
+      .createQueryBuilder('t')
+      .where(
+        "(t.moduloNum IN (:...cods) AND (t.adicionalNum = '' OR t.adicionalNum IS NULL)) " +
+          'OR t.adicionalNum IN (:...cods)',
+        { cods },
+      )
+      .orderBy('t.ordem', 'ASC')
+      .addOrderBy('t.id', 'ASC')
+      .getMany();
+  }
+
   /** (sigla, nome) distintos dos módulos principais, na ordem em que aparecem no catálogo. */
   async modulos(): Promise<ModuloIndice[]> {
     const linhas = await this.repo.find({ order: { ordem: 'ASC', id: 'ASC' } });

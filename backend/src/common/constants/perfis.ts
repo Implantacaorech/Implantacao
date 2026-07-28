@@ -84,12 +84,14 @@ export const PERFIS_GERA_CRONOGRAMA: Perfil[] = [
   'Administrativo',
   'Consultor',
 ];
-// pode_gerar("levantamento") no Flask — todos os perfis exceto Consultor.
+// pode_gerar("levantamento") — quem preenche/gera o Levantamento. Inclui o Levantador, que é
+// o responsável pelo passo 3 "Realizar o Levantamento" (2026-07-28).
 export const PERFIS_GERA_LEVANTAMENTO: Perfil[] = [
   'ADM',
   'Coordenador',
   'Administrativo',
   'GCI',
+  'Levantador',
 ];
 // Agendar o Levantamento é do Administrativo — passo 2 do processo (`PASSOS` em
 // passos/passos.constants.ts). Coordenador fica de fora de propósito, apesar de estar em
