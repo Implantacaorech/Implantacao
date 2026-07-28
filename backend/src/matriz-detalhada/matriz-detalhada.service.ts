@@ -83,6 +83,44 @@ export class MatrizDetalhadaService {
     return { modulos, resumo };
   }
 
+  /** Média GERAL (todos os técnicos) por módulo/adicional: para cada técnico calcula a média
+   * dele no módulo (dos menus que avaliou) e tira a média dessas médias — cada técnico pesa
+   * igual, independente de quantos menus avaliou. `tecnicos` = quantos contribuíram. */
+  async mediasGerais(): Promise<
+    {
+      sigla: string;
+      tipo: 'modulo' | 'adicional';
+      titulo: string;
+      media: number | null;
+      tecnicos: number;
+      total: number;
+    }[]
+  > {
+    const tax = await this.menus.taxonomia();
+    const todos = await this.tecnicos.find();
+    const notasPorTecnico = todos.map((t) => this.notasMenu(t));
+    return tax.map((m) => {
+      const chaves = m.menus.map((menu) => `${m.sigla}|${menu.codigo}`);
+      const mediasTecnico: number[] = [];
+      for (const notas of notasPorTecnico) {
+        const vals = chaves
+          .map((c) => (c in notas ? notas[c] : null))
+          .filter((n): n is number => n != null);
+        if (vals.length) {
+          mediasTecnico.push(vals.reduce((a, b) => a + b, 0) / vals.length);
+        }
+      }
+      return {
+        sigla: m.sigla,
+        tipo: m.tipo,
+        titulo: m.titulo,
+        media: this.media(mediasTecnico),
+        tecnicos: mediasTecnico.length,
+        total: m.menus.length,
+      };
+    });
+  }
+
   /** Grava notas por menu (0-10; vazio remove). Chaves são "SIGLA|codigo". */
   async salvar(
     id: number,

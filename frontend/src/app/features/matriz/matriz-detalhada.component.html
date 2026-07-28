@@ -59,21 +59,41 @@
       veja a cobertura em cada módulo. Módulos sem menus mapeados no Dicionário aparecem vazios.
     </div>
 
-    <!-- Módulos -->
-    <div class="md-grp">Módulos</div>
-    <div class="md-lista">
-      @for (m of modulosLista(); track m.sigla) {
-        <ng-container [ngTemplateOutlet]="card" [ngTemplateOutletContext]="{ m: m }"></ng-container>
+    <div class="md-filtro">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>
+      <input type="search" [ngModel]="filtro()" (ngModelChange)="filtro.set($event)"
+             placeholder="Buscar módulo ou adicional (sigla ou nome)…"
+             aria-label="Buscar módulo ou adicional" />
+      @if (filtro()) {
+        <button type="button" class="md-filtro-x" (click)="filtro.set('')" aria-label="Limpar busca">✕</button>
       }
     </div>
 
+    @if (semResultado()) {
+      <div class="painel" style="text-align:center;color:var(--muted)">
+        Nenhum módulo ou adicional encontrado para “{{ filtro() }}”.
+      </div>
+    }
+
+    <!-- Módulos -->
+    @if (modulosFiltrados().length) {
+      <div class="md-grp">Módulos</div>
+      <div class="md-lista">
+        @for (m of modulosFiltrados(); track m.sigla) {
+          <ng-container [ngTemplateOutlet]="card" [ngTemplateOutletContext]="{ m: m }"></ng-container>
+        }
+      </div>
+    }
+
     <!-- Adicionais -->
-    <div class="md-grp">Adicionais</div>
-    <div class="md-lista">
-      @for (m of adicionaisLista(); track m.sigla) {
-        <ng-container [ngTemplateOutlet]="card" [ngTemplateOutletContext]="{ m: m }"></ng-container>
-      }
-    </div>
+    @if (adicionaisFiltrados().length) {
+      <div class="md-grp">Adicionais</div>
+      <div class="md-lista">
+        @for (m of adicionaisFiltrados(); track m.sigla) {
+          <ng-container [ngTemplateOutlet]="card" [ngTemplateOutletContext]="{ m: m }"></ng-container>
+        }
+      </div>
+    }
 
     <div class="md-legend">
       <span class="lg"><span class="sw" style="background:var(--ok,#16a34a)"></span> Domina (8–10)</span>
@@ -91,11 +111,13 @@
       <div class="md-modal-head">
         <div>
           <h3>Média por módulo</h3>
-          <span class="sub">{{ tecnico()?.nome }} · média dos menus avaliados de cada módulo/adicional</span>
+          <span class="sub">Média de <b>todos os técnicos</b> por módulo/adicional</span>
         </div>
         <button class="md-x" type="button" (click)="fecharGrafico()" aria-label="Fechar">✕</button>
       </div>
-      @if (graficoConfig()) {
+      @if (graficoCarregando()) {
+        <p class="dica" style="padding:24px;text-align:center">Carregando…</p>
+      } @else if (graficoConfig()) {
         <div class="md-modal-body">
           <div class="md-chart" [style.height.px]="graficoAltura()">
             <canvas [appChart]="graficoConfig()"></canvas>
@@ -103,7 +125,7 @@
         </div>
       } @else {
         <p class="dica" style="padding:24px;text-align:center">
-          Avalie ao menos um menu para ver o gráfico.
+          Ainda não há notas avaliadas para gerar o gráfico.
         </p>
       }
     </div>
@@ -133,14 +155,13 @@
 
     @if (aberto(m.sigla)) {
       <div class="menus">
-        <div class="mtitle"><span>Menu (código de acesso)</span><span>Programa</span><span>Nota</span></div>
+        <div class="mtitle"><span>Menu (código de acesso)</span><span>Nota</span></div>
         @for (mn of m.menus; track mn.chave) {
           <div class="mrow">
             <span class="mn">
               <b class="cod">{{ mn.codigo }}</b> {{ mn.opcao }}
               @if (mn.funcao) { <span class="fun">{{ mn.funcao }}</span> }
             </span>
-            <span class="prog">{{ mn.programa || '—' }}</span>
             <span class="setnota">
               <input type="text" inputmode="numeric" [value]="mn.nota == null ? '' : mn.nota"
                      placeholder="—" [disabled]="!editavel()" [attr.aria-label]="'Nota de ' + mn.codigo"

@@ -39,6 +39,14 @@ interface ListaResp {
   podeVerTodos: boolean;
   podeAdmin: boolean;
 }
+interface GeralItem {
+  sigla: string;
+  tipo: 'modulo' | 'adicional';
+  titulo: string;
+  media: number | null;
+  tecnicos: number;
+  total: number;
+}
 
 /** Matriz de Conhecimento — DETALHADA (por menu do SIGER). Notas por menu (código de acesso);
  * a nota do módulo é a média dos menus avaliados. Taxonomia vem do Dicionário. Mesmas regras
@@ -80,15 +88,45 @@ export class MatrizDetalhadaComponent {
     this.modulos().filter((m) => m.tipo === 'adicional'),
   );
 
-  // ── Gráfico "Média por módulo" ──────────────────────────────────────
-  readonly mostrarGrafico = signal(false);
-
-  /** Itens (módulos primeiro, depois adicionais) que já têm alguma nota — os que entram no gráfico. */
-  private readonly itensGrafico = computed(() =>
-    [...this.modulosLista(), ...this.adicionaisLista()].filter(
-      (m) => m.media != null,
-    ),
+  // ── Busca de módulos/adicionais ─────────────────────────────────────
+  readonly filtro = signal('');
+  private norm(s: string): string {
+    return (s || '')
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase();
+  }
+  private casa(m: ModuloComNotas): boolean {
+    const q = this.norm(this.filtro().trim());
+    if (!q) return true;
+    return this.norm(m.sigla).includes(q) || this.norm(m.titulo).includes(q);
+  }
+  readonly modulosFiltrados = computed(() =>
+    this.modulosLista().filter((m) => this.casa(m)),
   );
+  readonly adicionaisFiltrados = computed(() =>
+    this.adicionaisLista().filter((m) => this.casa(m)),
+  );
+  readonly semResultado = computed(
+    () =>
+      !!this.filtro().trim() &&
+      this.modulosFiltrados().length === 0 &&
+      this.adicionaisFiltrados().length === 0,
+  );
+
+  // ── Gráfico "Média por módulo" (GERAL: todos os técnicos) ───────────
+  readonly mostrarGrafico = signal(false);
+  readonly graficoCarregando = signal(false);
+  readonly mediasGerais = signal<GeralItem[]>([]);
+
+  /** Itens (módulos primeiro, depois adicionais) com média geral — os que entram no gráfico. */
+  private readonly itensGrafico = computed(() => {
+    const g = this.mediasGerais();
+    return [
+      ...g.filter((m) => m.tipo === 'modulo'),
+      ...g.filter((m) => m.tipo === 'adicional'),
+    ].filter((m) => m.media != null);
+  });
   readonly graficoAltura = computed(() =>
     Math.max(300, this.itensGrafico().length * 30 + 40),
   );
@@ -106,7 +144,7 @@ export class MatrizDetalhadaComponent {
         ),
         datasets: [
           {
-            label: 'Média',
+            label: 'Média geral',
             data: itens.map((m) => m.media as number),
             backgroundColor: itens.map((m) => cor(m.media as number)),
             borderRadius: 5,
@@ -123,7 +161,7 @@ export class MatrizDetalhadaComponent {
           tooltip: {
             callbacks: {
               label: (c) =>
-                ` ${itens[c.dataIndex].titulo}: ${c.parsed.x} (${itens[c.dataIndex].avaliadas}/${itens[c.dataIndex].total})`,
+                ` ${itens[c.dataIndex].titulo}: ${c.parsed.x} (${itens[c.dataIndex].tecnicos} técnico(s))`,
             },
           },
         },
@@ -140,8 +178,21 @@ export class MatrizDetalhadaComponent {
     };
   });
 
-  abrirGrafico(): void {
+  async abrirGrafico(): Promise<void> {
     this.mostrarGrafico.set(true);
+    this.graficoCarregando.set(true);
+    try {
+      const res = await firstValueFrom(
+        this.http.get<ApiEnvelope<{ modulos: GeralItem[] }>>(
+          `${this.base}/medias-gerais`,
+        ),
+      );
+      this.mediasGerais.set(res.data.modulos);
+    } catch {
+      this.mediasGerais.set([]);
+    } finally {
+      this.graficoCarregando.set(false);
+    }
   }
   fecharGrafico(): void {
     this.mostrarGrafico.set(false);
