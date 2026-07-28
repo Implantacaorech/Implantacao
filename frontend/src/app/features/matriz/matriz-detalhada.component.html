@@ -36,6 +36,10 @@
         @if (tecnico()!.dias) { <span>Disp.: <b>{{ tecnico()!.dias }}</b></span> }
       </div>
       <div class="md-spacer"></div>
+      <button type="button" class="btn btn-sec md-graf" (click)="abrirGrafico()"
+              title="Ver o gráfico de média por módulo/adicional">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-chart"/></svg> Média por módulo
+      </button>
       <div class="md-kpi">
         <div class="k"><div class="v tnum" [class]="'v tnum ' + cls(resumo().media)">{{ fmt(resumo().media) }}</div><div class="l">Média geral</div></div>
         <div class="k"><div class="v tnum">{{ pct(resumo().avaliadas, resumo().total) }}%</div><div class="l">Menus avaliados</div></div>
@@ -57,15 +61,19 @@
 
     <!-- Módulos -->
     <div class="md-grp">Módulos</div>
-    @for (m of modulosLista(); track m.sigla) {
-      <ng-container [ngTemplateOutlet]="card" [ngTemplateOutletContext]="{ m: m }"></ng-container>
-    }
+    <div class="md-lista">
+      @for (m of modulosLista(); track m.sigla) {
+        <ng-container [ngTemplateOutlet]="card" [ngTemplateOutletContext]="{ m: m }"></ng-container>
+      }
+    </div>
 
     <!-- Adicionais -->
     <div class="md-grp">Adicionais</div>
-    @for (m of adicionaisLista(); track m.sigla) {
-      <ng-container [ngTemplateOutlet]="card" [ngTemplateOutletContext]="{ m: m }"></ng-container>
-    }
+    <div class="md-lista">
+      @for (m of adicionaisLista(); track m.sigla) {
+        <ng-container [ngTemplateOutlet]="card" [ngTemplateOutletContext]="{ m: m }"></ng-container>
+      }
+    </div>
 
     <div class="md-legend">
       <span class="lg"><span class="sw" style="background:var(--ok,#16a34a)"></span> Domina (8–10)</span>
@@ -75,6 +83,32 @@
     </div>
   }
 </div>
+
+<!-- Gráfico: média por módulo/adicional -->
+@if (mostrarGrafico()) {
+  <div class="md-modal" (click)="fecharGrafico()">
+    <div class="md-modal-box" (click)="$event.stopPropagation()">
+      <div class="md-modal-head">
+        <div>
+          <h3>Média por módulo</h3>
+          <span class="sub">{{ tecnico()?.nome }} · média dos menus avaliados de cada módulo/adicional</span>
+        </div>
+        <button class="md-x" type="button" (click)="fecharGrafico()" aria-label="Fechar">✕</button>
+      </div>
+      @if (graficoConfig()) {
+        <div class="md-modal-body">
+          <div class="md-chart" [style.height.px]="graficoAltura()">
+            <canvas [appChart]="graficoConfig()"></canvas>
+          </div>
+        </div>
+      } @else {
+        <p class="dica" style="padding:24px;text-align:center">
+          Avalie ao menos um menu para ver o gráfico.
+        </p>
+      }
+    </div>
+  </div>
+}
 
 <!-- Card de módulo/adicional (reutilizado) -->
 <ng-template #card let-m="m">

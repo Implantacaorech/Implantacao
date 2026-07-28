@@ -3,9 +3,11 @@ import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { ChartConfiguration } from 'chart.js/auto';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiEnvelope } from '../../core/models/api-envelope.model';
+import { ChartDirective } from '../../core/directives/chart.directive';
 
 interface MenuComNota {
   codigo: string;
@@ -44,7 +46,7 @@ interface ListaResp {
 @Component({
   selector: 'app-matriz-detalhada',
   standalone: true,
-  imports: [FormsModule, RouterLink, NgTemplateOutlet],
+  imports: [FormsModule, RouterLink, NgTemplateOutlet, ChartDirective],
   templateUrl: './matriz-detalhada.component.html',
   styleUrl: './matriz-detalhada.component.css',
 })
@@ -77,6 +79,73 @@ export class MatrizDetalhadaComponent {
   readonly adicionaisLista = computed(() =>
     this.modulos().filter((m) => m.tipo === 'adicional'),
   );
+
+  // ── Gráfico "Média por módulo" ──────────────────────────────────────
+  readonly mostrarGrafico = signal(false);
+
+  /** Itens (módulos primeiro, depois adicionais) que já têm alguma nota — os que entram no gráfico. */
+  private readonly itensGrafico = computed(() =>
+    [...this.modulosLista(), ...this.adicionaisLista()].filter(
+      (m) => m.media != null,
+    ),
+  );
+  readonly graficoAltura = computed(() =>
+    Math.max(300, this.itensGrafico().length * 30 + 40),
+  );
+
+  readonly graficoConfig = computed<ChartConfiguration | null>(() => {
+    const itens = this.itensGrafico();
+    if (!itens.length) return null;
+    const cor = (n: number) =>
+      n >= 8 ? '#16a34a' : n >= 5 ? '#d97706' : '#dc2626';
+    return {
+      type: 'bar',
+      data: {
+        labels: itens.map(
+          (m) => `${m.sigla}${m.tipo === 'adicional' ? ' ·adic' : ''}`,
+        ),
+        datasets: [
+          {
+            label: 'Média',
+            data: itens.map((m) => m.media as number),
+            backgroundColor: itens.map((m) => cor(m.media as number)),
+            borderRadius: 5,
+            borderSkipped: false,
+          },
+        ],
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (c) =>
+                ` ${itens[c.dataIndex].titulo}: ${c.parsed.x} (${itens[c.dataIndex].avaliadas}/${itens[c.dataIndex].total})`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            min: 0,
+            max: 10,
+            ticks: { stepSize: 2 },
+            grid: { color: '#E2E8F0' },
+          },
+          y: { grid: { display: false } },
+        },
+      },
+    };
+  });
+
+  abrirGrafico(): void {
+    this.mostrarGrafico.set(true);
+  }
+  fecharGrafico(): void {
+    this.mostrarGrafico.set(false);
+  }
 
   constructor() {
     void this.iniciar();

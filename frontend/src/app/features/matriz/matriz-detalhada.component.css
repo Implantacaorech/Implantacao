@@ -1,5 +1,11 @@
-.md-wrap { max-width: 1040px; }
+.md-wrap { max-width: none; width: 100%; }
 .tnum { font-variant-numeric: tabular-nums; }
+
+/* Lista em grade: usa a largura toda; card aberto ocupa a linha inteira. */
+.md-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(480px, 1fr)); gap: 10px; align-items: start; }
+.md-lista .md-card { margin-bottom: 0; }
+.md-lista .md-card.open { grid-column: 1 / -1; }
+@media (max-width: 560px) { .md-lista { grid-template-columns: 1fr; } }
 
 .md-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
 .md-top h1 { margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
@@ -27,6 +33,22 @@
 .md-kpi .l { font-size: .64rem; text-transform: uppercase; letter-spacing: .06em; color: var(--faint,#9aa3b2); font-weight: 700; margin-top: 3px; }
 .md-ro { font-size: .8rem; color: var(--muted); font-style: italic; }
 .md-ok { color: #16a34a; font-weight: 600; margin: 6px 2px 0; }
+.md-graf { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+
+/* Modal do gráfico */
+.md-modal { position: fixed; inset: 0; z-index: 60; background: rgba(15,23,42,.5);
+  display: flex; align-items: center; justify-content: center; padding: 24px; }
+.md-modal-box { background: var(--surface,#fff); border-radius: 14px; width: min(760px, 100%);
+  max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 24px 60px -20px rgba(0,0,0,.5); overflow: hidden; }
+.md-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 16px 18px; border-bottom: 1px solid var(--line,#e4e8ef); }
+.md-modal-head h3 { margin: 0; color: var(--navy,#1f3b73); font-size: 1.05rem; }
+.md-modal-head .sub { font-size: .8rem; color: var(--muted); }
+.md-x { border: 0; background: transparent; font-size: 1.1rem; color: var(--muted); cursor: pointer;
+  line-height: 1; padding: 4px 6px; border-radius: 6px; }
+.md-x:hover { background: var(--surface-2,#f1f4f8); color: var(--ink,#1f2937); }
+.md-modal-body { padding: 14px 16px 18px; overflow-y: auto; }
+.md-chart { position: relative; min-height: 300px; }
 
 .md-rule { font-size: .85rem; color: var(--muted); background: var(--surface-2,#f1f4f8);
   border: 1px dashed var(--line,#d9dee6); border-radius: 10px; padding: 10px 14px; margin: 14px 0 20px; }
