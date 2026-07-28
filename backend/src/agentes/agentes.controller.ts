@@ -13,7 +13,8 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
-import { PERFIS_MENU_GESTAO } from '../common/constants/perfis';
+import { PermissaoGuard } from '../permissoes/permissao.guard';
+import { Permissao } from '../common/decorators/permissao.decorator';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { AgentesService } from './agentes.service';
 import { IniciarExecucaoDto } from './dto/iniciar-execucao.dto';
@@ -25,8 +26,7 @@ import { ListarExecucoesDto } from './dto/listar-execucoes.dto';
  * de fato chamou `POST`/`PATCH` — nunca simulado. Ver vault/14 - IA/. */
 @ApiTags('agentes')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(...PERFIS_MENU_GESTAO)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissaoGuard)
 @Controller('agentes')
 export class AgentesController {
   constructor(private readonly service: AgentesService) {}
@@ -53,6 +53,7 @@ export class AgentesController {
   }
 
   @Get('execucoes')
+  @Permissao('centro_operacional')
   @ApiOperation({
     summary: 'Lista execuções recentes (dashboard de Monitoramento)',
   })
@@ -63,6 +64,7 @@ export class AgentesController {
   }
 
   @Get('grafo')
+  @Permissao('centro_operacional')
   @ApiOperation({
     summary:
       'Topologia dos 13 agentes (.claude/agents/) + status real das últimas 24h',

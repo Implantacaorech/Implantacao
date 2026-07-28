@@ -1,8 +1,8 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
+import { PermissaoGuard } from '../permissoes/permissao.guard';
+import { Permissao } from '../common/decorators/permissao.decorator';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { DashboardsService } from './dashboards.service';
 import { QueryDashboardDto } from './dto/query-dashboard.dto';
@@ -11,8 +11,8 @@ import { QueryDashboardDto } from './dto/query-dashboard.dto';
  * 2026-07-28: inclui Comercial). Ver DashboardsService. */
 @ApiTags('dashboards')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles()
+@UseGuards(JwtAuthGuard, PermissaoGuard)
+@Permissao('dashboards')
 @Controller('dashboards')
 export class DashboardsController {
   constructor(private readonly dashboards: DashboardsService) {}

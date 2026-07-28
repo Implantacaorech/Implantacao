@@ -1,0 +1,88 @@
+.perm-wrap {
+  padding: 0;
+  overflow-x: auto;
+}
+.perm-tab {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.85rem;
+}
+.perm-tab th,
+.perm-tab td {
+  border-bottom: 1px solid var(--line, #eceff3);
+  padding: 6px 8px;
+  text-align: center;
+}
+.perm-tab thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-2, #f1f4f8);
+  font-weight: 600;
+  color: var(--muted, #6b7280);
+  white-space: nowrap;
+}
+.perm-menu {
+  text-align: left !important;
+  position: sticky;
+  left: 0;
+  background: var(--surface, #fff);
+  font-weight: 600;
+  min-width: 190px;
+}
+thead .perm-menu {
+  z-index: 2;
+  background: var(--surface-2, #f1f4f8);
+}
+.perm-grp td {
+  text-align: left;
+  background: var(--surface-2, #f1f4f8);
+  font-weight: 700;
+  color: var(--navy, #1f3b73);
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  padding: 6px 8px;
+}
+.perm-fixa {
+  color: var(--faint, #9aa3b2);
+  font-weight: 400;
+  margin-left: 6px;
+}
+.perm-cel select {
+  width: 100%;
+  min-width: 92px;
+  padding: 3px 4px;
+  border-radius: 6px;
+  border: 1px solid var(--line, #d9dee6);
+  font-size: 0.8rem;
+  background: var(--surface, #fff);
+}
+/* Cor por nível — pista visual rápida. */
+.perm-cel select[data-n='alteracao'],
+.perm-badge[data-n='alteracao'] {
+  background: rgba(22, 163, 74, 0.12);
+  border-color: #16a34a;
+}
+.perm-cel select[data-n='consulta'],
+.perm-badge[data-n='consulta'] {
+  background: rgba(217, 119, 6, 0.12);
+  border-color: #d97706;
+}
+.perm-cel select[data-n='nada'],
+.perm-badge[data-n='nada'] {
+  background: var(--surface-2, #f1f4f8);
+  color: var(--faint, #9aa3b2);
+}
+.perm-cel select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.perm-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 99px;
+  border: 1px solid var(--line, #d9dee6);
+  font-size: 0.78rem;
+  font-weight: 600;
+}

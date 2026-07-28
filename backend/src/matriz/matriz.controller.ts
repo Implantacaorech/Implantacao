@@ -15,10 +15,12 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { PermissaoGuard } from '../permissoes/permissao.guard';
+import { Permissao } from '../common/decorators/permissao.decorator';
+import { PermissoesService } from '../permissoes/permissoes.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import {
-  PERFIS_MENU_MATRIZ,
   PERFIS_SISTEMA,
   PERFIS_VEEM_TODOS_PROJETOS,
 } from '../common/constants/perfis';
@@ -52,11 +54,14 @@ function podeEditar(
  * login = acesso total" do Flask — `JwtAuthGuard` já exige login sempre. */
 @ApiTags('matriz')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(...PERFIS_MENU_MATRIZ)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissaoGuard)
+@Permissao('matriz')
 @Controller('matriz')
 export class MatrizController {
-  constructor(private readonly service: MatrizService) {}
+  constructor(
+    private readonly service: MatrizService,
+    private readonly permissoes: PermissoesService,
+  ) {}
 
   @Get()
   @ApiOperation({
@@ -109,7 +114,10 @@ export class MatrizController {
       tecnico: t,
       areas: await this.service.areasComCompetencias(),
       notas: this.service.notas(t),
-      editavel: podeEditar(user, t, minha),
+      // Editável = regra de linha (podeEditar) E o painel liberar Alteração na Matriz.
+      editavel:
+        podeEditar(user, t, minha) &&
+        this.permissoes.podeAlterar(user, 'matriz'),
       volta: veTudo(user.perfil),
     });
   }
@@ -125,7 +133,10 @@ export class MatrizController {
     const t = await this.service.buscar(id);
     if (!t) throw new NotFoundException('Técnico não encontrado.');
     const minha = await this.service.linhaDoUsuario(user.nome, user.codigoSicla);
-    if (!podeEditar(user, t, minha)) {
+    if (
+      !podeEditar(user, t, minha) ||
+      !this.permissoes.podeAlterar(user, 'matriz')
+    ) {
       throw new ForbiddenException('Sem permissão para alterar esta ficha.');
     }
     await this.service.salvarNotas(id, dto, user.nome);

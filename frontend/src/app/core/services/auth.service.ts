@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiEnvelope } from '../models/api-envelope.model';
 import { AuthUser, LoginResponse } from '../models/auth-user.model';
+import { PermissoesService } from './permissoes.service';
 
 const CHAVE_ACCESS = 'painel.accessToken';
 const CHAVE_REFRESH = 'painel.refreshToken';
@@ -14,6 +15,7 @@ const CHAVE_USUARIO = 'painel.usuario';
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly permissoes = inject(PermissoesService);
 
   readonly usuario = signal<AuthUser | null>(this.lerUsuarioSalvo());
   readonly autenticado = computed(() => this.usuario() !== null);
@@ -83,6 +85,9 @@ export class AuthService {
     localStorage.setItem(CHAVE_REFRESH, dados.refreshToken);
     localStorage.setItem(CHAVE_USUARIO, JSON.stringify(dados.usuario));
     this.usuario.set(dados.usuario);
+    // Permissões são por usuário — descarta o mapa antigo; o shell recarrega o do novo
+    // ao (re)montar depois do login (evita disparar HTTP dentro do fluxo de auth).
+    this.permissoes.limpar();
   }
 
   limparSessao(): void {
@@ -90,5 +95,6 @@ export class AuthService {
     localStorage.removeItem(CHAVE_REFRESH);
     localStorage.removeItem(CHAVE_USUARIO);
     this.usuario.set(null);
+    this.permissoes.limpar();
   }
 }

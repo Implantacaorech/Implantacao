@@ -36,7 +36,8 @@ import { extname, join, resolve, sep } from 'path';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
-import { PERFIS_MENU_PROTOCOLOS } from '../common/constants/perfis';
+import { PermissaoGuard } from '../permissoes/permissao.guard';
+import { Permissao } from '../common/decorators/permissao.decorator';
 import {
   CurrentUser,
   type AuthUser,
@@ -64,8 +65,8 @@ const PERFIS_APROVA_PROTOCOLO = ['ADM', 'Coordenador'] as const;
  * (definição do usuário em 2026-07-28). Aprovar/reprovar é mais restrito (ver métodos). */
 @ApiTags('protocolos')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(...PERFIS_MENU_PROTOCOLOS)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissaoGuard)
+@Permissao('protocolos')
 @Controller('protocolos')
 export class ProtocolosController {
   constructor(

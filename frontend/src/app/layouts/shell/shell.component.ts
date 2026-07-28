@@ -4,15 +4,7 @@ import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, Ro
 import { FormsModule } from '@angular/forms';
 import { filter, map, startWith } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
-import { Perfil } from '../../core/models/auth-user.model';
-import {
-  MENU_DICIONARIO,
-  MENU_GESTAO,
-  MENU_MATRIZ,
-  MENU_NOVO_CLIENTE,
-  MENU_PROTOCOLOS,
-  MENU_SISTEMA,
-} from '../../core/constants/perfis';
+import { PermissoesService } from '../../core/services/permissoes.service';
 
 @Component({
   selector: 'app-shell',
@@ -23,8 +15,14 @@ import {
 })
 export class ShellComponent {
   readonly auth = inject(AuthService);
+  private readonly perm = inject(PermissoesService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+
+  constructor() {
+    // Carrega o mapa de permissões do usuário logado (menu só existe autenticado).
+    void this.perm.garantirCarregado();
+  }
 
   readonly busca = signal('');
   readonly sideAberta = signal(false);
@@ -44,23 +42,34 @@ export class ShellComponent {
     { initialValue: 'Painel de Implantação' },
   );
 
-  /** Liberação por item de menu (definição do usuário em 2026-07-28). Carteira, Matriz e
-   * Dashboards são de TODOS os perfis, então aparecem sempre (menu só existe autenticado). */
-  private tem(perfis: Perfil[]): boolean {
-    const p = this.auth.usuario()?.perfil;
-    return !!p && perfis.includes(p);
-  }
-
+  /** Visibilidade dos itens de menu — vinda do painel de Permissões (backend), por menu.
+   * A Visão Geral (home) não é um menu controlado; segue a regra antiga (todos menos o
+   * Comercial). Os demais consultam o nível efetivo do usuário. */
   readonly soComercial = computed(
     () => this.auth.usuario()?.perfil === 'Comercial',
   );
-  readonly podeNovoCliente = computed(() => this.tem(MENU_NOVO_CLIENTE));
-  readonly podeProtocolos = computed(() => this.tem(MENU_PROTOCOLOS));
-  readonly podeMatriz = computed(() => this.tem(MENU_MATRIZ));
-  readonly podeDicionario = computed(() => this.tem(MENU_DICIONARIO));
-  /** Coordenação, Centro Operacional e Atividade. */
-  readonly podeGestao = computed(() => this.tem(MENU_GESTAO));
-  readonly veSistema = computed(() => this.tem(MENU_SISTEMA));
+  readonly podeNovoCliente = computed(() => this.perm.podeVer('novo_cliente'));
+  readonly podeCarteira = computed(() => this.perm.podeVer('carteira'));
+  readonly podeProtocolos = computed(() => this.perm.podeVer('protocolos'));
+  readonly podeMatriz = computed(() => this.perm.podeVer('matriz'));
+  readonly podeDicionario = computed(() => this.perm.podeVer('dicionario'));
+  readonly podeCoordenacao = computed(() => this.perm.podeVer('coordenacao'));
+  readonly podeCentroOp = computed(() =>
+    this.perm.podeVer('centro_operacional'),
+  );
+  readonly podeAtividade = computed(() => this.perm.podeVer('atividade'));
+  readonly podeDashboards = computed(() => this.perm.podeVer('dashboards'));
+  readonly podePermissoes = computed(() => this.perm.podeVer('permissoes'));
+  readonly veSistema = computed(() => this.perm.podeVer('usuarios'));
+  /** Mostra o cabeçalho do grupo Gestão se houver ao menos um item visível nele. */
+  readonly temGestao = computed(
+    () =>
+      this.podeCoordenacao() ||
+      this.podeCentroOp() ||
+      this.podeAtividade() ||
+      this.podeDashboards() ||
+      this.podePermissoes(),
+  );
 
   readonly iniciais = computed(() => (this.auth.usuario()?.nome ?? 'P').slice(0, 2).toUpperCase());
 

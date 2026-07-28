@@ -17,6 +17,8 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { PermissaoGuard } from '../permissoes/permissao.guard';
+import { Permissao } from '../common/decorators/permissao.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { PERFIS_AGENDAMENTO } from '../common/constants/perfis';
@@ -38,7 +40,8 @@ import {
  * autenticado alcança a rota, e o serviço recusa quem não é o responsável. */
 @ApiTags('passos')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissaoGuard)
+@Permissao('carteira')
 @Controller('projetos/:id')
 export class PassosController {
   constructor(
@@ -60,6 +63,7 @@ export class PassosController {
 
   @Post('passos/:numero/concluir')
   @Roles()
+  @Permissao('carteira', 'alteracao')
   @ApiOperation({ summary: 'Conclui um passo (só o responsável consegue)' })
   async concluir(
     @Param('id', ParseIntPipe) id: number,
@@ -79,6 +83,7 @@ export class PassosController {
 
   @Post('passos/:numero/conferir')
   @Roles()
+  @Permissao('carteira', 'alteracao')
   @ApiOperation({
     summary: 'Marca a conferência (passos 9 e 16) e libera o passo seguinte',
   })
@@ -97,6 +102,7 @@ export class PassosController {
 
   @Delete('passos/:numero')
   @Roles()
+  @Permissao('carteira', 'alteracao')
   @ApiOperation({
     summary: 'Reabre um passo REVERSÍVEL (do 11 em diante é definitivo)',
   })
@@ -115,6 +121,7 @@ export class PassosController {
 
   @Post('passos/:numero/anexar-email')
   @Roles()
+  @Permissao('carteira', 'alteracao')
   @UseInterceptors(FileInterceptor('arquivo'))
   @ApiOperation({
     summary:

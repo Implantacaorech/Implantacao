@@ -60,10 +60,12 @@
           <svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg>Visão Geral
         </a>
       }
-      <a class="side-link" routerLink="/projetos" routerLinkActive="on">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-folder"/></svg>Carteira
-        <span class="side-tip">Projetos</span>
-      </a>
+      @if (podeCarteira()) {
+        <a class="side-link" routerLink="/projetos" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-folder"/></svg>Carteira
+          <span class="side-tip">Projetos</span>
+        </a>
+      }
       @if (podeProtocolos()) {
         <a class="side-link" routerLink="/protocolos" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-bulb"/></svg>Protocolos
@@ -82,21 +84,35 @@
           <span class="side-tip">Consulta técnica do SIGER</span>
         </a>
       }
-      <div class="side-grp">Gestão</div>
-      @if (podeGestao()) {
-        <a class="side-link" routerLink="/coordenacao" routerLinkActive="on">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-chart"/></svg>Coordenação
-        </a>
-        <a class="side-link" routerLink="/monitoramento" routerLinkActive="on">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-activity"/></svg>Centro Operacional
-        </a>
-        <a class="side-link" routerLink="/atividade" routerLinkActive="on">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-activity"/></svg>Atividade
-        </a>
+      @if (temGestao()) {
+        <div class="side-grp">Gestão</div>
+        @if (podeCoordenacao()) {
+          <a class="side-link" routerLink="/coordenacao" routerLinkActive="on">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-chart"/></svg>Coordenação
+          </a>
+        }
+        @if (podeCentroOp()) {
+          <a class="side-link" routerLink="/monitoramento" routerLinkActive="on">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-activity"/></svg>Centro Operacional
+          </a>
+        }
+        @if (podeAtividade()) {
+          <a class="side-link" routerLink="/atividade" routerLinkActive="on">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-activity"/></svg>Atividade
+          </a>
+        }
+        @if (podeDashboards()) {
+          <a class="side-link" routerLink="/dashboards" routerLinkActive="on">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg>Dashboards
+          </a>
+        }
+        @if (podePermissoes()) {
+          <a class="side-link" routerLink="/permissoes" routerLinkActive="on">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg>Permissões
+            <span class="side-tip">Liberação por papel/menu</span>
+          </a>
+        }
       }
-      <a class="side-link" routerLink="/dashboards" routerLinkActive="on">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg>Dashboards
-      </a>
       @if (veSistema()) {
         <div class="side-grp">Sistema</div>
         <a class="side-link" routerLink="/home" fragment="ferramentas">

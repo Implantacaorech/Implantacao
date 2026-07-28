@@ -9,9 +9,8 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
-import { PERFIS_MENU_DICIONARIO } from '../common/constants/perfis';
+import { PermissaoGuard } from '../permissoes/permissao.guard';
+import { Permissao } from '../common/decorators/permissao.decorator';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { DicionarioService } from './dicionario.service';
 import { DicionarioIaService } from './dicionario-ia.service';
@@ -24,8 +23,8 @@ import { PerguntarDicionarioDto } from './dto/perguntar-dicionario.dto';
  * a partir dos documentos, sempre citando as fontes. */
 @ApiTags('dicionario')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(...PERFIS_MENU_DICIONARIO)
+@UseGuards(JwtAuthGuard, PermissaoGuard)
+@Permissao('dicionario')
 @Controller('dicionario')
 export class DicionarioController {
   constructor(

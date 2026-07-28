@@ -1,0 +1,127 @@
+<div style="max-width:1200px">
+  <h1 style="margin-bottom:4px">Permissões</h1>
+  <p class="sub" style="margin:0 0 14px">
+    Liberação por <strong>papel × menu</strong> (nível Nada / Consulta / Alteração) e
+    <strong>exceções por usuário</strong>. A regra vale de imediato — o Administrador tem
+    tudo sempre (trava de segurança). Menus de <em>Sistema</em> são fixos do Administrador.
+  </p>
+
+  @if (erro()) { <p class="erro">{{ erro() }}</p> }
+
+  @if (carregando()) {
+    <div class="painel" style="text-align:center;color:var(--muted)">Carregando…</div>
+  } @else {
+
+    <!-- ===== Matriz por papel ===== -->
+    <div class="painel perm-wrap">
+      <table class="perm-tab">
+        <thead>
+          <tr>
+            <th class="perm-menu">Menu / Tela</th>
+            @for (p of papeis(); track p) { <th>{{ p }}</th> }
+          </tr>
+        </thead>
+        <tbody>
+          @for (g of grupos(); track g.grupo) {
+            <tr class="perm-grp"><td [attr.colspan]="papeis().length + 1">{{ g.grupo }}</td></tr>
+            @for (m of g.menus; track m.chave) {
+              <tr>
+                <td class="perm-menu">
+                  {{ m.rotulo }}
+                  @if (m.fixaAdm) { <small class="perm-fixa">fixo ADM</small> }
+                </td>
+                @for (p of papeis(); track p) {
+                  <td class="perm-cel">
+                    <select
+                      [ngModel]="nivelPapel(p, m.chave)"
+                      (ngModelChange)="mudarPapel(p, m.chave, $event)"
+                      [disabled]="m.fixaAdm || salvando() === 'papel:' + p + '|' + m.chave"
+                      [attr.data-n]="nivelPapel(p, m.chave)"
+                    >
+                      @for (n of niveis(); track n) {
+                        <option [value]="n">{{ rotuloNivel[n] }}</option>
+                      }
+                    </select>
+                  </td>
+                }
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ===== Exceções por usuário ===== -->
+    <h2 style="font-size:1rem;margin:22px 0 8px">Exceções por usuário</h2>
+    <p class="dica" style="margin:0 0 12px">
+      Uma exceção sobrepõe o padrão do papel para um usuário específico num menu.
+    </p>
+
+    <div class="painel">
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px">
+        <label class="campo" style="flex:1;min-width:200px">
+          <span>Usuário</span>
+          <select [ngModel]="excUsuario()" (ngModelChange)="excUsuario.set($event)">
+            <option [ngValue]="null">— selecione —</option>
+            @for (u of usuarios(); track u.id) {
+              <option [ngValue]="u.id">{{ u.nome }} ({{ u.perfil }})</option>
+            }
+          </select>
+        </label>
+        <label class="campo" style="flex:1;min-width:180px">
+          <span>Menu</span>
+          <select [ngModel]="excMenu()" (ngModelChange)="excMenu.set($event)">
+            @for (m of menusEditaveis(); track m.chave) {
+              <option [value]="m.chave">{{ m.rotulo }}</option>
+            }
+          </select>
+        </label>
+        <label class="campo" style="flex:none;min-width:150px">
+          <span>Nível</span>
+          <select [ngModel]="excNivel()" (ngModelChange)="excNivel.set($event)">
+            <option value="herdar">Herdar do papel</option>
+            @for (n of niveis(); track n) { <option [value]="n">{{ rotuloNivel[n] }}</option> }
+          </select>
+        </label>
+        <button
+          type="button"
+          class="btn primario"
+          [disabled]="salvando() === 'excecao'"
+          (click)="salvarExcecao()"
+        >Aplicar exceção</button>
+      </div>
+
+      @if (excecoes().length === 0) {
+        <p style="color:var(--muted);margin:0">Nenhuma exceção — todos seguem o padrão do papel.</p>
+      } @else {
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="text-align:left;font-size:.8rem;color:var(--muted)">
+              <th style="padding:6px 4px">Usuário</th>
+              <th style="padding:6px 4px">Menu</th>
+              <th style="padding:6px 4px">Nível</th>
+              <th style="padding:6px 4px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (e of excecoes(); track e.usuarioId + '|' + e.menu) {
+              <tr style="border-top:1px solid var(--line)">
+                <td style="padding:6px 4px">{{ nomeUsuario(e.usuarioId) }}</td>
+                <td style="padding:6px 4px">{{ rotuloMenu(e.menu) }}</td>
+                <td style="padding:6px 4px"><span class="perm-badge" [attr.data-n]="e.nivel">{{ rotuloNivel[e.nivel] }}</span></td>
+                <td style="padding:6px 4px;text-align:right">
+                  <button
+                    type="button"
+                    class="btn btn-sec"
+                    [disabled]="salvando() === 'exc:' + e.usuarioId + '|' + e.menu"
+                    (click)="removerExcecao(e.usuarioId, e.menu)"
+                  >Remover</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  }
+</div>

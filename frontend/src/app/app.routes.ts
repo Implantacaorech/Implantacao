@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { perfilGuard } from './core/guards/perfil.guard';
-import { MENU_GESTAO, MENU_MATRIZ, MENU_PROTOCOLOS } from './core/constants/perfis';
+import { permissaoGuard } from './core/guards/permissao.guard';
 import { LoginComponent } from './features/login/login.component';
 import { ShellComponent } from './layouts/shell/shell.component';
 
@@ -24,6 +24,7 @@ export const routes: Routes = [
       },
       {
         path: 'projetos',
+        canActivate: [permissaoGuard('carteira')],
         data: { titulo: 'Carteira de Projetos' },
         loadComponent: () =>
           import('./features/projetos/projetos-lista.component').then((m) => m.ProjetosListaComponent),
@@ -33,7 +34,7 @@ export const routes: Routes = [
         // a ficha. Substitui a antiga leitura automática de e-mail. Perfis internos também
         // alcançam (podem iniciar por aqui); o backend decide quem realmente cadastra.
         path: 'clientes/novo',
-        canActivate: [perfilGuard('ADM', 'Comercial', 'Coordenador')],
+        canActivate: [permissaoGuard('novo_cliente')],
         data: { titulo: 'Consulta e Cadastro do Cliente' },
         loadComponent: () =>
           import('./features/clientes-sicla/consulta-cliente.component').then(
@@ -51,6 +52,7 @@ export const routes: Routes = [
         // só. Antes aqui ficava a ficha (projeto-form) com um stepper próprio que competia
         // com os passos — era o "fluxo espaçado" que o usuário reportou (2026-07-24).
         path: 'projetos/:id',
+        canActivate: [permissaoGuard('carteira')],
         data: { titulo: 'Projeto' },
         loadComponent: () =>
           import('./features/passos/passos.component').then((m) => m.PassosComponent),
@@ -141,69 +143,69 @@ export const routes: Routes = [
       },
       {
         path: 'coordenacao',
-        canActivate: [perfilGuard(...MENU_GESTAO)],
+        canActivate: [permissaoGuard('coordenacao')],
         data: { titulo: 'Painel de Coordenação' },
         loadComponent: () =>
           import('./features/coordenacao/coordenacao.component').then((m) => m.CoordenacaoComponent),
       },
       {
         path: 'coordenacao/capacidade',
-        canActivate: [perfilGuard(...MENU_GESTAO)],
+        canActivate: [permissaoGuard('coordenacao')],
         data: { titulo: 'Capacidade da equipe' },
         loadComponent: () =>
           import('./features/coordenacao/capacidade.component').then((m) => m.CapacidadeComponent),
       },
       {
         path: 'atividade',
-        canActivate: [perfilGuard(...MENU_GESTAO)],
+        canActivate: [permissaoGuard('atividade')],
         data: { titulo: 'Atividade' },
         loadComponent: () =>
           import('./features/atividade/atividade.component').then((m) => m.AtividadeComponent),
       },
       {
         path: 'monitoramento',
-        canActivate: [perfilGuard(...MENU_GESTAO)],
+        canActivate: [permissaoGuard('centro_operacional')],
         data: { titulo: 'Centro de Monitoramento' },
         loadComponent: () =>
           import('./features/monitoramento/monitoramento.component').then((m) => m.MonitoramentoComponent),
       },
       {
         path: 'protocolos',
-        canActivate: [perfilGuard(...MENU_PROTOCOLOS)],
+        canActivate: [permissaoGuard('protocolos')],
         data: { titulo: 'Protocolos de Treinamento' },
         loadComponent: () => import('./features/protocolos/protocolos.component').then((m) => m.ProtocolosComponent),
       },
       {
         path: 'dicionario',
-        canActivate: [perfilGuard('ADM')],
+        canActivate: [permissaoGuard('dicionario')],
         data: { titulo: 'Dicionário Inteligente' },
         loadComponent: () =>
           import('./features/dicionario/dicionario.component').then((m) => m.DicionarioComponent),
       },
       {
         path: 'dicionario/:slug',
-        canActivate: [perfilGuard('ADM')],
+        canActivate: [permissaoGuard('dicionario')],
         data: { titulo: 'Documento — Dicionário Inteligente' },
         loadComponent: () =>
           import('./features/dicionario/dicionario-documento.component').then((m) => m.DicionarioDocumentoComponent),
       },
       {
         path: 'protocolos/:id',
-        canActivate: [perfilGuard(...MENU_PROTOCOLOS)],
+        canActivate: [permissaoGuard('protocolos')],
         data: { titulo: 'Protocolo' },
         loadComponent: () =>
           import('./features/protocolos/protocolo-ficha.component').then((m) => m.ProtocoloFichaComponent),
       },
       {
         path: 'matriz',
-        canActivate: [perfilGuard(...MENU_MATRIZ)],
+        canActivate: [permissaoGuard('matriz')],
         data: { titulo: 'Matriz de Conhecimento' },
         loadComponent: () =>
           import('./features/matriz/matriz-lista.component').then((m) => m.MatrizListaComponent),
       },
       {
         path: 'matriz/:id',
-        canActivate: [perfilGuard(...MENU_MATRIZ)],
+        canActivate: [permissaoGuard('matriz')],
         data: { titulo: 'Matriz' },
         loadComponent: () =>
           import('./features/matriz/matriz-ficha.component').then((m) => m.MatrizFichaComponent),
@@ -287,15 +289,24 @@ export const routes: Routes = [
       },
       {
         path: 'dashboards',
+        canActivate: [permissaoGuard('dashboards')],
         data: { titulo: 'Dashboards' },
         loadComponent: () =>
           import('./features/dashboards/dashboard.component').then((m) => m.DashboardComponent),
       },
       {
         path: 'dashboards/:slug',
+        canActivate: [permissaoGuard('dashboards')],
         data: { titulo: 'Dashboards' },
         loadComponent: () =>
           import('./features/dashboards/dashboard.component').then((m) => m.DashboardComponent),
+      },
+      {
+        path: 'permissoes',
+        canActivate: [permissaoGuard('permissoes')],
+        data: { titulo: 'Permissões' },
+        loadComponent: () =>
+          import('./features/permissoes/permissoes.component').then((m) => m.PermissoesComponent),
       },
       {
         path: 'fluxo',

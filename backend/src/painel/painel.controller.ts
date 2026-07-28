@@ -11,9 +11,10 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { PermissaoGuard } from '../permissoes/permissao.guard';
+import { Permissao } from '../common/decorators/permissao.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
-import { PERFIS_MENU_GESTAO } from '../common/constants/perfis';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { CapacidadeService } from './capacidade.service';
 import { CoordenacaoService } from './coordenacao.service';
@@ -28,8 +29,7 @@ import { QueryCapacidadeDto } from './dto/query-capacidade.dto';
  * `home` sobrepõe para todos os autenticados. */
 @ApiTags('painel')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(...PERFIS_MENU_GESTAO)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissaoGuard)
 @Controller('painel')
 export class PainelController {
   constructor(
@@ -51,6 +51,7 @@ export class PainelController {
   }
 
   @Get('coordenacao')
+  @Permissao('coordenacao')
   @ApiOperation({
     summary: 'Painel de Coordenação: KPIs, funil, atrasados, alertas',
   })
@@ -59,6 +60,7 @@ export class PainelController {
   }
 
   @Get('coordenacao/capacidade')
+  @Permissao('coordenacao')
   @ApiOperation({
     summary:
       'Capacidade da equipe p/ receber cliente novo: módulos x matriz x agenda x go-live',
@@ -76,6 +78,7 @@ export class PainelController {
   }
 
   @Get('atividade')
+  @Permissao('atividade')
   @ApiOperation({
     summary: 'Atividade da operação: uso 30 dias, funil macro, feed de eventos',
   })
@@ -84,6 +87,7 @@ export class PainelController {
   }
 
   @Post('coordenacao/digest')
+  @Permissao('coordenacao', 'alteracao')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
@@ -94,6 +98,7 @@ export class PainelController {
   }
 
   @Get('monitoramento')
+  @Permissao('centro_operacional')
   @ApiOperation({
     summary:
       'Centro de Monitoramento Operacional: setores, saúde, carga, entregas e mapa de progresso',

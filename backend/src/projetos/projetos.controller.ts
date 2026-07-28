@@ -20,6 +20,8 @@ import { ListarProjetosDto } from './dto/listar-projetos.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { PermissaoGuard } from '../permissoes/permissao.guard';
+import { Permissao } from '../common/decorators/permissao.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { PERFIS_DESIGNA } from '../common/constants/perfis';
@@ -27,7 +29,8 @@ import { ApiEnvelope } from '../common/dto/api-envelope';
 
 @ApiTags('projetos')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissaoGuard)
+@Permissao('carteira')
 @Controller('projetos')
 export class ProjetosController {
   constructor(private readonly service: ProjetosService) {}
