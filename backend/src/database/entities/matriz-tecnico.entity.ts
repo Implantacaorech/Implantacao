@@ -22,6 +22,12 @@ export class MatrizTecnico {
   @Column({ type: 'text', default: '{}' })
   notas: string;
 
+  /** Notas da Matriz DETALHADA (por menu do SIGER): blob JSON `{ "SIGLA|codigo": 0-10 }`,
+   * ex.: `{ "GIN|2.1-P": 8 }`. Separado de `notas` (Matriz clássica por competência) para
+   * as duas visões coexistirem sem interferência. Taxonomia dos menus vem do Dicionário. */
+  @Column({ name: 'notas_menu', type: 'text', default: '{}' })
+  notasMenu: string;
+
   @Column({ name: 'atualizado_em', nullable: true })
   atualizadoEm: Date;
 

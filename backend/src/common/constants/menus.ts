@@ -38,6 +38,7 @@ export const MENUS: DefinicaoMenu[] = [
   { chave: 'carteira', rotulo: 'Carteira', grupo: 'Execução' },
   { chave: 'protocolos', rotulo: 'Protocolos', grupo: 'Execução' },
   { chave: 'matriz', rotulo: 'Matriz de Conhecimento', grupo: 'Execução' },
+  { chave: 'matriz_detalhada', rotulo: 'Matriz por Menu (SIGER)', grupo: 'Execução' },
   { chave: 'dicionario', rotulo: 'Dicionário Inteligente', grupo: 'Execução' },
   { chave: 'coordenacao', rotulo: 'Coordenação', grupo: 'Gestão' },
   { chave: 'centro_operacional', rotulo: 'Centro Operacional', grupo: 'Gestão' },
@@ -92,6 +93,15 @@ export const PADRAO_PERMISSOES: Record<
     Levantador: 'alteracao',
   },
   matriz: {
+    ADM: 'alteracao',
+    Coordenador: 'alteracao',
+    Administrativo: 'alteracao',
+    GCI: 'alteracao',
+    Consultor: 'alteracao',
+    Levantador: 'alteracao',
+  },
+  // Matriz por Menu (SIGER): mesma liberação da Matriz clássica.
+  matriz_detalhada: {
     ADM: 'alteracao',
     Coordenador: 'alteracao',
     Administrativo: 'alteracao',

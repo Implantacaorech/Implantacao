@@ -29,6 +29,7 @@ import { PassosModule } from './passos/passos.module';
 import { ClientesSiclaModule } from './clientes-sicla/clientes-sicla.module';
 import { ModulosSiclaModule } from './modulos-sicla/modulos-sicla.module';
 import { PermissoesModule } from './permissoes/permissoes.module';
+import { MatrizDetalhadaModule } from './matriz-detalhada/matriz-detalhada.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { PermissoesModule } from './permissoes/permissoes.module';
     ClientesSiclaModule,
     ModulosSiclaModule,
     PermissoesModule,
+    MatrizDetalhadaModule,
   ],
 })
 export class AppModule {}

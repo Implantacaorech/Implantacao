@@ -211,6 +211,13 @@ export const routes: Routes = [
           import('./features/matriz/matriz-ficha.component').then((m) => m.MatrizFichaComponent),
       },
       {
+        path: 'matriz-detalhada',
+        canActivate: [permissaoGuard('matriz_detalhada')],
+        data: { titulo: 'Matriz por Menu (SIGER)' },
+        loadComponent: () =>
+          import('./features/matriz/matriz-detalhada.component').then((m) => m.MatrizDetalhadaComponent),
+      },
+      {
         path: 'config/disponibilidade',
         canActivate: [perfilGuard('ADM')],
         data: { titulo: 'Disponibilidade dos Consultores' },

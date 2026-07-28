@@ -78,6 +78,12 @@
           <span class="side-tip">Matriz de Conhecimento</span>
         </a>
       }
+      @if (podeMatrizDetalhada()) {
+        <a class="side-link" routerLink="/matriz-detalhada" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg>Matriz por Menu
+          <span class="side-tip">Notas por menu do SIGER</span>
+        </a>
+      }
       @if (podeDicionario()) {
         <a class="side-link" routerLink="/dicionario" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>Dicionário Inteligente

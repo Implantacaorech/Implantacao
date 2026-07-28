@@ -1,0 +1,123 @@
+<div class="md-wrap">
+  <div class="md-top">
+    <div>
+      <h1>Matriz por Menu <span class="md-badge">SIGER</span></h1>
+      <p class="sub">
+        Avaliação no nível de <strong>menu</strong> (código de acesso do SIGER). A nota do
+        módulo é a <strong>média dos menus avaliados</strong>. Os menus vêm do
+        <a routerLink="/dicionario">Dicionário Inteligente</a>.
+      </p>
+    </div>
+    <a class="btn btn-sec" routerLink="/matriz">↩ Matriz clássica</a>
+  </div>
+
+  @if (erro()) { <p class="erro">{{ erro() }}</p> }
+
+  @if (carregando()) {
+    <div class="painel" style="text-align:center;color:var(--muted)">Carregando…</div>
+  } @else if (tecnico()) {
+
+    <!-- Barra do técnico -->
+    <div class="md-tec painel">
+      @if (podeVerTodos()) {
+        <label class="md-sel">
+          <span>Técnico</span>
+          <select [ngModel]="tecnicoId()" (ngModelChange)="trocarTecnico($event)">
+            @for (t of tecnicos(); track t.id) {
+              <option [ngValue]="t.id">{{ t.nome }}</option>
+            }
+          </select>
+        </label>
+      } @else {
+        <div class="md-sel"><span>Técnico</span><strong>{{ tecnico()!.nome }}</strong></div>
+      }
+      <div class="md-meta">
+        @if (tecnico()!.setor) { <span>Setor: <b>{{ tecnico()!.setor }}</b></span> }
+        @if (tecnico()!.dias) { <span>Disp.: <b>{{ tecnico()!.dias }}</b></span> }
+      </div>
+      <div class="md-spacer"></div>
+      <div class="md-kpi">
+        <div class="k"><div class="v tnum" [class]="'v tnum ' + cls(resumo().media)">{{ fmt(resumo().media) }}</div><div class="l">Média geral</div></div>
+        <div class="k"><div class="v tnum">{{ pct(resumo().avaliadas, resumo().total) }}%</div><div class="l">Menus avaliados</div></div>
+      </div>
+      @if (editavel()) {
+        <button class="btn primario" [disabled]="!temAlteracao() || salvando()" (click)="salvar()">
+          {{ salvando() ? 'Salvando…' : 'Salvar' }}
+        </button>
+      } @else {
+        <span class="md-ro" title="Você tem acesso de consulta a esta ficha">somente consulta</span>
+      }
+    </div>
+    @if (salvo()) { <p class="md-ok">✓ Notas salvas.</p> }
+
+    <div class="md-rule">
+      <b>Nota do módulo = média dos menus avaliados.</b> Menus sem nota não entram na conta —
+      veja a cobertura em cada módulo. Módulos sem menus mapeados no Dicionário aparecem vazios.
+    </div>
+
+    <!-- Módulos -->
+    <div class="md-grp">Módulos</div>
+    @for (m of modulosLista(); track m.sigla) {
+      <ng-container [ngTemplateOutlet]="card" [ngTemplateOutletContext]="{ m: m }"></ng-container>
+    }
+
+    <!-- Adicionais -->
+    <div class="md-grp">Adicionais</div>
+    @for (m of adicionaisLista(); track m.sigla) {
+      <ng-container [ngTemplateOutlet]="card" [ngTemplateOutletContext]="{ m: m }"></ng-container>
+    }
+
+    <div class="md-legend">
+      <span class="lg"><span class="sw" style="background:var(--ok,#16a34a)"></span> Domina (8–10)</span>
+      <span class="lg"><span class="sw" style="background:#d97706"></span> Parcial (5–7)</span>
+      <span class="lg"><span class="sw" style="background:var(--err,#dc2626)"></span> Lacuna (0–4)</span>
+      <span class="lg"><span class="sw sw-na"></span> Sem avaliação</span>
+    </div>
+  }
+</div>
+
+<!-- Card de módulo/adicional (reutilizado) -->
+<ng-template #card let-m="m">
+  <div class="md-card painel" [class.open]="aberto(m.sigla)">
+    <button class="md-head" [attr.aria-expanded]="aberto(m.sigla)" (click)="toggle(m.sigla)" [disabled]="m.total === 0">
+      <span class="sig">{{ m.sigla }}</span>
+      <span class="name">{{ m.titulo }}
+        <span class="subn">
+          @if (m.total > 0) { {{ m.total }} menus · fonte: Dicionário }
+          @else { sem menus mapeados no Dicionário }
+        </span>
+      </span>
+      <span class="cover" [style.visibility]="m.total ? 'visible' : 'hidden'">
+        <span class="cbar"><i [style.width.%]="pct(m.avaliadas, m.total)"></i></span>
+        <span class="ctxt"><b>{{ m.avaliadas }}</b> de {{ m.total }} avaliados</span>
+      </span>
+      <span class="score">
+        <span class="avg tnum" [class]="'avg tnum ' + cls(m.media)">{{ fmt(m.media) }}</span>
+        @if (m.total > 0) { <span class="chev">›</span> }
+      </span>
+    </button>
+
+    @if (aberto(m.sigla)) {
+      <div class="menus">
+        <div class="mtitle"><span>Menu (código de acesso)</span><span>Programa</span><span>Nota</span></div>
+        @for (mn of m.menus; track mn.chave) {
+          <div class="mrow">
+            <span class="mn">
+              <b class="cod">{{ mn.codigo }}</b> {{ mn.opcao }}
+              @if (mn.funcao) { <span class="fun">{{ mn.funcao }}</span> }
+            </span>
+            <span class="prog">{{ mn.programa || '—' }}</span>
+            <span class="setnota">
+              <input type="text" inputmode="numeric" [value]="mn.nota == null ? '' : mn.nota"
+                     placeholder="—" [disabled]="!editavel()" [attr.aria-label]="'Nota de ' + mn.codigo"
+                     (input)="editar(m, mn, $any($event.target).value)" />
+              <span class="nbar"><i [class]="nb(mn.nota)" [style.width.%]="mn.nota == null ? 0 : mn.nota * 10"></i></span>
+            </span>
+          </div>
+        }
+        <div class="mfoot">Média do módulo <b class="tnum" [class]="'tnum ' + cls(m.media)">{{ fmt(m.media) }}</b>
+          <span>(média de {{ m.avaliadas }} menus)</span></div>
+      </div>
+    }
+  </div>
+</ng-template>
