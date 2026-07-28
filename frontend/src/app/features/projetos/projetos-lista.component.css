@@ -34,6 +34,9 @@
   overflow-x: auto;
 }
 .grade-tab {
+  /* Ocupa toda a largura da janela: Cliente fixo + as fases dividem o resto igualmente. */
+  width: 100%;
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 0.82rem;
@@ -52,8 +55,7 @@
   background: var(--surface, #fff);
   text-align: left;
   padding: 8px 12px;
-  min-width: 190px;
-  max-width: 260px;
+  width: 220px;
 }
 thead .grade-cli {
   z-index: 3;
@@ -88,14 +90,13 @@ thead .grade-cli {
   display: inline-block;
 }
 
-/* Células de status. */
+/* Células de status — sem largura fixa: com table-layout:fixed, as 19 fases dividem
+   igualmente a largura que sobra depois da coluna Cliente. */
 .grade-cel {
-  width: 30px;
-  min-width: 30px;
   text-align: center;
   font-weight: 700;
   color: #fff;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   cursor: default;
 }
 .grade-cel[data-s='realizado'] {
