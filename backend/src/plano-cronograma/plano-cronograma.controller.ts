@@ -121,7 +121,7 @@ export class PlanoCronogramaController {
     @CurrentUser() user: AuthUser,
   ) {
     const projeto = await this.buscarProjeto(id);
-    const linhas = this.cronogramaItens.gerarPlanoAutomatico(projeto);
+    const linhas = await this.cronogramaItens.gerarPlanoAutomatico(projeto);
     const mudancas = await this.cronogramaItens.salvar(id, linhas, user.nome);
     await this.registrarEvento(
       id,

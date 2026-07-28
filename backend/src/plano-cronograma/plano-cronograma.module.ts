@@ -6,6 +6,7 @@ import { CronogramaItem } from '../database/entities/cronograma-item.entity';
 import { ChecklistItem } from '../database/entities/checklist-item.entity';
 import { Modificacao } from '../database/entities/modificacao.entity';
 import { CatalogosModule } from '../catalogos/catalogos.module';
+import { DisponibilidadeModule } from '../disponibilidade/disponibilidade.module';
 import { CronogramaItensService } from './cronograma-itens.service';
 import { ChecklistItensService } from './checklist-itens.service';
 import { ModificacoesService } from './modificacoes.service';
@@ -21,6 +22,7 @@ import { PlanoCronogramaController } from './plano-cronograma.controller';
       Modificacao,
     ]),
     CatalogosModule,
+    DisponibilidadeModule,
   ],
   controllers: [PlanoCronogramaController],
   providers: [

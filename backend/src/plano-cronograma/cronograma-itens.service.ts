@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { CronogramaItem } from '../database/entities/cronograma-item.entity';
 import { Projeto } from '../database/entities/projeto.entity';
 import { ModificacoesService } from './modificacoes.service';
+import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
 import { diffLinhas } from './linhas-diff.util';
 import { resolverModulos } from './catalogo-modulos.util';
 import {
@@ -12,9 +13,20 @@ import {
   proximoUtil,
   somarUteis,
 } from './datas-plano.util';
+import { addDays } from '../cronograma/datas.util';
 import { LinhaCronogramaDto } from './dto/linha-cronograma.dto';
 
 const CAMPOS = ['etapa', 'topicos', 'horas', 'data', 'modalidade', 'status'];
+
+/** Dias úteis entre uma visita e a seguinte (mesma cadência do gerador original). */
+const CADENCIA_UTEIS = 5;
+
+/** Date (UTC) -> 'AAAA-MM-DD', para casar com o formato da Disponibilidade do SICLA. */
+function isoUtc(d: Date): string {
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  return `${d.getUTCFullYear()}-${mm}-${dd}`;
+}
 
 interface EtapaPlano {
   etapa: string;
@@ -132,6 +144,7 @@ export class CronogramaItensService {
     @InjectRepository(CronogramaItem)
     private readonly repo: Repository<CronogramaItem>,
     private readonly modificacoes: ModificacoesService,
+    private readonly disponibilidade: DisponibilidadeService,
   ) {}
 
   async doProjeto(projetoId: number): Promise<CronogramaItem[]> {
@@ -185,9 +198,12 @@ export class CronogramaItensService {
     return diffs.length;
   }
 
-  /** Plano automático (mesma lógica do gerador standalone) como ponto de partida
-   * editável. Espelha webapp/routes_cronograma.py:_seed_cronograma. */
-  gerarPlanoAutomatico(projeto: Projeto): LinhaCronogramaDto[] {
+  /** Plano automático (mesma lógica do gerador standalone) como ponto de partida editável.
+   * As visitas caem nos DIAS ÚTEIS LIVRES do(s) consultor(es) designado(s), segundo a
+   * agenda do SICLA (pula dias ocupados). Sem disponibilidade configurada/ativa, cai no
+   * comportamento antigo (cadência fixa de dias úteis). Espelha
+   * webapp/routes_cronograma.py:_seed_cronograma. */
+  async gerarPlanoAutomatico(projeto: Projeto): Promise<LinhaCronogramaDto[]> {
     const mods = (projeto.modulos || '').split(/[,;\n\s]+/).filter(Boolean);
     const plano = planoAutomatico(mods);
     const horas = pnum(projeto.horasCobradas) + pnum(projeto.horasBonificadas);
@@ -196,13 +212,63 @@ export class CronogramaItensService {
       plano.map((p) => p.peso),
     );
     const dt0 = proximoUtil(parseDataPlano(projeto.dataInicio));
+    const ocupados = await this.diasOcupadosSicla(projeto, dt0, plano.length);
+    const datas = this.distribuirEmDiasLivres(dt0, plano.length, ocupados);
     return plano.map((p, i) => ({
       etapa: p.etapa,
       topicos: p.topicos,
       horas: String(hs[i]),
-      data: formatarBr(i === 0 ? dt0 : somarUteis(dt0, 5 * i)),
+      data: formatarBr(datas[i]),
       modalidade: 'A combinar',
       status: 'Previsto',
     }));
+  }
+
+  /** Dias (AAAA-MM-DD) em que ALGUM consultor designado está ocupado na agenda do SICLA,
+   * numa janela a partir de `dt0`. Melhor esforço: sem consultor, sem disponibilidade ou
+   * com falha na consulta, devolve conjunto vazio (o plano segue pela cadência fixa). */
+  private async diasOcupadosSicla(
+    projeto: Projeto,
+    dt0: Date,
+    nVisitas: number,
+  ): Promise<Set<string>> {
+    const consultores = (projeto.consultor || '')
+      .split(/[,;\n]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (consultores.length === 0) return new Set();
+    // Janela generosa: cobre todas as visitas (cadência) + folga para pular ocupações.
+    const fim = addDays(dt0, Math.max(90, nVisitas * CADENCIA_UTEIS * 3 + 30));
+    try {
+      const linhas = await this.disponibilidade.consultar(
+        isoUtc(dt0),
+        isoUtc(fim),
+        consultores,
+      );
+      return new Set(linhas.map((l) => l.data).filter(Boolean));
+    } catch {
+      return new Set();
+    }
+  }
+
+  /** Datas das visitas: a 1ª no primeiro dia útil livre a partir de `dt0`; as seguintes a
+   * `CADENCIA_UTEIS` dias úteis da anterior, avançando até o próximo dia útil livre. */
+  private distribuirEmDiasLivres(
+    dt0: Date,
+    n: number,
+    ocupados: Set<string>,
+  ): Date[] {
+    const proximoLivre = (d: Date): Date => {
+      let x = proximoUtil(d);
+      while (ocupados.has(isoUtc(x))) x = proximoUtil(addDays(x, 1));
+      return x;
+    };
+    const datas: Date[] = [];
+    let atual = proximoLivre(dt0);
+    for (let i = 0; i < n; i++) {
+      if (i > 0) atual = proximoLivre(somarUteis(atual, CADENCIA_UTEIS));
+      datas.push(atual);
+    }
+    return datas;
   }
 }
