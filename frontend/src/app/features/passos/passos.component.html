@@ -44,9 +44,11 @@
           <div><span style="color:var(--muted)">Comercial</span><br />{{ pr.comercialEmail || '—' }}</div>
           <div><span style="color:var(--muted)">GCI</span><br />{{ pr.gci || '—' }}</div>
           <div><span style="color:var(--muted)">Consultor(es)</span><br />{{ pr.consultor || '—' }}</div>
+          @if (!soConsulta()) {
           <div style="grid-column:1/-1;margin-top:4px">
             <a class="btn btn-sec" [routerLink]="['/projetos', projetoId, 'dados']">Editar dados do cliente</a>
           </div>
+          }
         </div>
       }
     </div>
@@ -96,7 +98,7 @@
             @if (p.email) {
               <p style="margin:4px 0 0;color:var(--muted);font-size:.85rem">✉ {{ p.email }}</p>
             }
-            @if (aceitaAnexoDeEmail(p)) {
+            @if (aceitaAnexoDeEmail(p) && !soConsulta()) {
               <p style="margin:6px 0 0;font-size:.85rem">
                 <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
                   <span style="color:var(--muted)">Registro: anexe o e-mail encaminhado do Outlook (.msg/.eml)</span>
@@ -132,6 +134,7 @@
 
           </div>
 
+          @if (!soConsulta()) {
           <div style="display:flex;flex-direction:column;gap:6px;flex:none;width:130px;align-items:stretch">
             @if (!p.concluido) {
               @if (formDoPasso(p)) {
@@ -190,6 +193,7 @@
               }
             }
           </div>
+          }
         </div>
 
             @if (formAberto() === p.numero) {
@@ -282,7 +286,9 @@
               <td style="padding:6px 4px">{{ r.numero || '—' }}</td>
               <td style="padding:6px 4px">{{ r.descricao || '—' }}</td>
               <td style="padding:6px 4px;text-align:right">
-                <button type="button" class="btn btn-sec" (click)="removerRns(r.id)">Remover</button>
+                @if (!soConsulta()) {
+                  <button type="button" class="btn btn-sec" (click)="removerRns(r.id)">Remover</button>
+                }
               </td>
             </tr>
           }
@@ -290,6 +296,7 @@
       </table>
     }
 
+    @if (!soConsulta()) {
     <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
       <label class="campo" style="flex:none">
         <span>Tipo</span>
@@ -307,6 +314,7 @@
       </label>
       <button type="button" class="btn" (click)="acrescentarRns()">Acrescentar</button>
     </div>
+    }
   </div>
 
   <p style="margin-top:18px">

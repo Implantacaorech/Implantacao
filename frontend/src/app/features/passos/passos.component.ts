@@ -6,6 +6,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { PassosService } from '../../core/services/passos.service';
 import { DesignacaoService } from '../../core/services/designacao.service';
 import { ProjetosService } from '../../core/services/projetos.service';
+import { AuthService } from '../../core/services/auth.service';
 import {
   PASSOS_COM_ANEXO_DE_EMAIL,
   Passo,
@@ -31,9 +32,15 @@ export class PassosComponent {
   private readonly service = inject(PassosService);
   private readonly projetos = inject(ProjetosService);
   private readonly designacao = inject(DesignacaoService);
+  private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
 
   readonly projetoId = Number(this.route.snapshot.paramMap.get('id'));
+
+  /** O Comercial só CONSULTA a Carteira (definição do usuário em 2026-07-28): vê o andamento
+   * do projeto, mas não altera etapas — então nenhum botão de ação aparece pra ele. O backend
+   * também barra (403), isto é só a UX. */
+  readonly soConsulta = computed(() => this.auth.usuario()?.perfil === 'Comercial');
 
   readonly carregando = signal(true);
   readonly erro = signal<string | null>(null);

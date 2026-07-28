@@ -8,14 +8,6 @@
       }
     </p>
   </div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;align-self:center">
-    <a class="btn primario" routerLink="/fluxo">
-      <svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg> Novo projeto
-    </a>
-    <a class="btn" routerLink="/coordenacao">
-      <svg class="svgi" aria-hidden="true"><use href="#ic-chart"/></svg> Coordenação
-    </a>
-  </div>
 </div>
 
 @if (erro()) {
@@ -196,10 +188,6 @@
   <div class="painel" style="text-align:center;padding:40px 24px;margin-top:20px">
     <div style="margin-bottom:12px"><svg class="svgi" style="width:24px;height:24px;color:var(--faint)" aria-hidden="true"><use href="#ic-layers"/></svg></div>
     <h3 style="color:var(--navy);margin:0 0 8px">Nenhum projeto ainda</h3>
-    <p class="dica" style="margin:0 0 20px">Comece criando o primeiro projeto de implantação.</p>
-    <a class="btn primario" routerLink="/fluxo">
-      <svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg> Criar primeiro projeto
-    </a>
-    <a class="btn" routerLink="/projetos/novo" style="margin-left:8px">Cadastro manual</a>
+    <p class="dica" style="margin:0">A entrada do processo é a opção <strong>Novo Cliente</strong> no menu — consulta do cliente no SICLA e cadastro.</p>
   </div>
 }
