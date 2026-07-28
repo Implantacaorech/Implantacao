@@ -36,6 +36,9 @@ export class MonitoramentoComponent {
       },
       options: {
         responsive: true,
+        // Igual aos gráficos de Coordenação/Dashboards: a altura vem do container (wrapper
+        // com height fixo), senão o Chart.js ignora o height do canvas e cresce pela largura.
+        maintainAspectRatio: false,
         plugins: { legend: { position: 'bottom' } },
         scales: {
           x: { stacked: true, grid: { display: false } },
