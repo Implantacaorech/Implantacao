@@ -131,6 +131,37 @@ export class MatrizDetalhadaComponent {
     Math.max(300, this.itensGrafico().length * 30 + 40),
   );
 
+  /** Plugin inline: escreve o valor da média em cada barra (dentro quando cabe; fora, na
+   * cor da barra, quando a barra é curta). Sem dependência externa. */
+  private readonly pluginValores = {
+    id: 'valoresNaBarra',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    afterDatasetsDraw: (chart: any) => {
+      const ctx: CanvasRenderingContext2D = chart.ctx;
+      const ds = chart.data.datasets[0];
+      const meta = chart.getDatasetMeta(0);
+      ctx.save();
+      ctx.font = '700 12px "Segoe UI", system-ui, sans-serif';
+      ctx.textBaseline = 'middle';
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      meta.data.forEach((bar: any, i: number) => {
+        const v = ds.data[i];
+        if (v == null) return;
+        const txt = String(v).replace('.', ',');
+        if (bar.x - bar.base >= 26) {
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'right';
+          ctx.fillText(txt, bar.x - 7, bar.y);
+        } else {
+          ctx.fillStyle = ds.backgroundColor[i] ?? '#475569';
+          ctx.textAlign = 'left';
+          ctx.fillText(txt, bar.x + 5, bar.y);
+        }
+      });
+      ctx.restore();
+    },
+  };
+
   readonly graficoConfig = computed<ChartConfiguration | null>(() => {
     const itens = this.itensGrafico();
     if (!itens.length) return null;
@@ -138,6 +169,7 @@ export class MatrizDetalhadaComponent {
       n >= 8 ? '#16a34a' : n >= 5 ? '#d97706' : '#dc2626';
     return {
       type: 'bar',
+      plugins: [this.pluginValores],
       data: {
         labels: itens.map(
           (m) => `${m.sigla}${m.tipo === 'adicional' ? ' ·adic' : ''}`,

@@ -30,10 +30,13 @@ const u = (
 ): UsuarioPermissao => ({ sub, perfil, perfis });
 
 describe('PermissoesService.nivelEfetivo', () => {
-  it('ADM é sempre alteracao — trava de segurança (nunca se tranca fora)', async () => {
+  it('ADM: trava só nos menus fixos-ADM; nos comuns é configurável', async () => {
     const svc = await montar([{ papel: 'ADM', menu: 'carteira', nivel: 'nada' }]);
-    expect(svc.nivelEfetivo(u('ADM'), 'carteira')).toBe('alteracao');
-    expect(svc.nivelEfetivo(u('ADM'), 'qualquer_menu')).toBe('alteracao');
+    // Fixos-ADM (painel de Permissões, Sistema): sempre alteracao — nunca se tranca fora.
+    expect(svc.nivelEfetivo(u('ADM'), 'permissoes')).toBe('alteracao');
+    expect(svc.nivelEfetivo(u('ADM'), 'usuarios')).toBe('alteracao');
+    // Menu comum: respeita a configuração — o ADM pode até esconder de si mesmo.
+    expect(svc.nivelEfetivo(u('ADM'), 'carteira')).toBe('nada');
   });
 
   it('sem regra para o papel/menu = nada', async () => {

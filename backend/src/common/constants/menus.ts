@@ -58,6 +58,16 @@ export function ehMenuValido(chave: string): boolean {
   return MENU_CHAVES.includes(chave);
 }
 
+/** Menus FIXOS do Administrador — o próprio painel de Permissões + as telas de Sistema.
+ * Nesses, o ADM tem acesso SEMPRE (trava de segurança: nunca se tranca fora de como
+ * consertar permissões). Nos demais menus o ADM é configurável como qualquer papel. */
+const MENUS_FIXA_ADM = new Set(
+  MENUS.filter((m) => m.fixaAdm).map((m) => m.chave),
+);
+export function ehFixaAdm(chave: string): boolean {
+  return MENUS_FIXA_ADM.has(chave);
+}
+
 /** Defaults por papel — espelham as regras que estavam FIXAS no código em 2026-07-28. É o
  * seed inicial da tabela; a partir daí o painel manda. `alteracao` = acesso pleno (regras
  * finas de designação/linha continuam no código); `consulta` = só leitura; ausência = nada. */

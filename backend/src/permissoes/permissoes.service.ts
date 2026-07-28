@@ -10,6 +10,7 @@ import {
   NivelPermissao,
   PADRAO_PERMISSOES,
   PAPEIS_PERMISSAO,
+  ehFixaAdm,
   ehMenuValido,
   nivelMaior,
 } from '../common/constants/menus';
@@ -85,9 +86,13 @@ export class PermissoesService implements OnModuleInit {
     return this.porPapel.get(`${papel}|${menu}`) ?? 'nada';
   }
 
-  /** Nível efetivo do usuário no menu (ADM > exceção do usuário > maior nível dos papéis). */
+  /** Nível efetivo do usuário no menu. Ordem: trava de segurança do ADM (só nos menus
+   * fixos-ADM) > exceção do usuário > maior nível entre os papéis. Nos menus NÃO fixos-ADM
+   * o Administrador é configurável como qualquer papel (pode até esconder de si mesmo). */
   nivelEfetivo(user: UsuarioPermissao, menu: string): NivelPermissao {
-    if (this.perfisDe(user).includes('ADM')) return 'alteracao';
+    if (this.perfisDe(user).includes('ADM') && ehFixaAdm(menu)) {
+      return 'alteracao';
+    }
     const exc = this.porUsuario.get(`${user.sub}|${menu}`);
     if (exc) return exc;
     let n: NivelPermissao = 'nada';
