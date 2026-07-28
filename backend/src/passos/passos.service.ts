@@ -185,14 +185,15 @@ export class PassosService {
     }
     if (papel === 'consultor') {
       await this.projetos.update(projetoId, { consultor: limpos.join(', ') });
-      // Passo 6 é "indicar o GCI E os técnicos". Ele se completa aqui, quando os técnicos
+      // Passo 7 é "indicar o GCI E os técnicos" (era o 6 antes de o passo 3 "Realizar o
+      // Levantamento" entrar, em 2026-07-28). Ele se completa aqui, quando os técnicos
       // entram — desde que o GCI já esteja definido. Ficava pendente para sempre quando a
       // pessoa salvava pelo formulário do passo, que não passa por `designarConsultores`.
       const projeto = await this.projetos.findOne({ where: { id: projetoId } });
       if (limpos.length > 0 && projeto?.gci.trim()) {
         await this.concluirAutomatico(
           projetoId,
-          6,
+          7,
           autor,
           'GCI e técnicos indicados',
         );
