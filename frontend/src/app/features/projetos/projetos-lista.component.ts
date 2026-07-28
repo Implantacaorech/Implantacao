@@ -57,32 +57,61 @@ export class ProjetosListaComponent {
   readonly carregandoGrade = signal(false);
   readonly rotuloStatus = ROTULO_STATUS;
 
-  busca = '';
-  fstatus = '';
-  fetapa = '';
+  // Filtros da página — SIGNALS (não campos comuns): os `computed` abaixo só reagem se as
+  // dependências forem signals. Como campos simples, a busca/status/fase eram ignorados.
+  readonly busca = signal('');
+  readonly fstatus = signal('');
+  readonly fetapa = signal('');
 
   /** Colunas da grade (as fases do processo). */
   readonly gradePassos = computed(() => this.grade()?.passos ?? []);
+
+  /** Fases agrupadas por macro-etapa (colspan do cabeçalho da grade). */
+  readonly gradeGrupos = computed(() => {
+    const grupos: { etapa: string; passos: GradeView['passos'] }[] = [];
+    for (const p of this.gradePassos()) {
+      const ultimo = grupos[grupos.length - 1];
+      if (ultimo && ultimo.etapa === p.etapa) ultimo.passos.push(p);
+      else grupos.push({ etapa: p.etapa, passos: [p] });
+    }
+    return grupos;
+  });
 
   /** Linhas da grade (um projeto cada), respeitando o filtro de busca por cliente. */
   readonly gradeLinhas = computed(() => {
     const g = this.grade();
     if (!g) return [];
-    const q = this.busca.trim().toLowerCase();
+    const q = this.busca().trim().toLowerCase();
     return q
       ? g.linhas.filter((l) => l.cliente.toLowerCase().includes(q))
       : g.linhas;
   });
 
   readonly filtrados = computed(() => {
-    const q = this.busca.trim().toLowerCase();
+    const q = this.busca().trim().toLowerCase();
+    const st = this.fstatus();
+    const et = this.fetapa();
     return this.todos().filter(
       (p) =>
         (!q || p.cliente.toLowerCase().includes(q)) &&
-        (!this.fstatus || p.situacao === this.fstatus) &&
-        (!this.fetapa || p.etapa === this.fetapa),
+        (!st || p.situacao === st) &&
+        (!et || p.etapa === et),
     );
   });
+
+  /** Progresso de um projeto na grade: fases realizadas / total. */
+  gradeProgresso(linha: GradeView['linhas'][number]): {
+    feitos: number;
+    total: number;
+    pct: number;
+  } {
+    const fases = this.gradePassos();
+    const feitos = fases.filter(
+      (f) => linha.status[f.numero] === 'realizado',
+    ).length;
+    const total = fases.length;
+    return { feitos, total, pct: total ? Math.round((feitos / total) * 100) : 0 };
+  }
 
   /** Colunas do quadro: uma por PASSO do processo, na ordem, e SÓ as que têm projeto.
    *
@@ -165,7 +194,7 @@ export class ProjetosListaComponent {
   constructor() {
     const v = (localStorage.getItem('vista_carteira') as Vista | null) ?? 'kanban';
     this.vista.set(v);
-    this.busca = this.route.snapshot.queryParamMap.get('q') ?? '';
+    this.busca.set(this.route.snapshot.queryParamMap.get('q') ?? '');
     void this.carregar();
     if (v === 'grade') void this.carregarGrade();
   }

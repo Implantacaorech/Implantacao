@@ -20,15 +20,15 @@
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center;padding:12px 16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-1)">
     <div style="display:flex;align-items:center;gap:7px;flex:1;min-width:180px;background:var(--surface-2);border:1.5px solid var(--line);border-radius:22px;padding:6px 14px">
       <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>
-      <input placeholder="Buscar cliente…" [(ngModel)]="busca" style="border:none;background:none;padding:2px 0;font:inherit;font-size:.9rem;width:100%" />
+      <input placeholder="Buscar cliente…" [ngModel]="busca()" (ngModelChange)="busca.set($event)" style="border:none;background:none;padding:2px 0;font:inherit;font-size:.9rem;width:100%" />
     </div>
-    <select [(ngModel)]="fstatus" style="padding:8px 12px;border:1.5px solid var(--line-2);border-radius:var(--r-sm);font:inherit;font-size:.88rem;width:auto">
+    <select [ngModel]="fstatus()" (ngModelChange)="fstatus.set($event)" style="padding:8px 12px;border:1.5px solid var(--line-2);border-radius:var(--r-sm);font:inherit;font-size:.88rem;width:auto">
       <option value="">Todos os status</option>
       @for (s of situacoes; track s) {
         <option [value]="s">{{ s }}</option>
       }
     </select>
-    <select [(ngModel)]="fetapa" style="padding:8px 12px;border:1.5px solid var(--line-2);border-radius:var(--r-sm);font:inherit;font-size:.88rem;width:auto">
+    <select [ngModel]="fetapa()" (ngModelChange)="fetapa.set($event)" style="padding:8px 12px;border:1.5px solid var(--line-2);border-radius:var(--r-sm);font:inherit;font-size:.88rem;width:auto">
       <option value="">Todas as fases</option>
       @for (e of etapas; track e) {
         <option [value]="e">{{ e }}</option>
@@ -151,13 +151,23 @@
     } @else {
       <div class="painel grade-wrap">
         <table class="grade-tab">
+          <colgroup>
+            <col class="col-cli" />
+            <col class="col-prog" />
+            @for (f of gradePassos(); track f.numero) { <col /> }
+          </colgroup>
           <thead>
-            <tr>
-              <th class="grade-cli">Cliente</th>
+            <tr class="grade-thgrupo">
+              <th class="grade-cli" rowspan="2">Cliente</th>
+              <th class="grade-prog" rowspan="2">Progresso</th>
+              @for (g of gradeGrupos(); track $index) {
+                <th class="grade-grupo" [attr.colspan]="g.passos.length"
+                    [style.--c]="'var(--' + (faseCls[g.etapa] ?? 'accent') + ')'">{{ g.etapa }}</th>
+              }
+            </tr>
+            <tr class="grade-thnum">
               @for (f of gradePassos(); track f.numero) {
-                <th class="grade-fase" [title]="f.numero + '. ' + f.titulo">
-                  <span>{{ f.numero }}. {{ f.titulo }}</span>
-                </th>
+                <th class="grade-num" [title]="f.numero + '. ' + f.titulo">{{ f.numero }}</th>
               }
             </tr>
           </thead>
@@ -166,6 +176,10 @@
               <tr>
                 <td class="grade-cli">
                   <a [routerLink]="['/projetos', l.projetoId]">{{ l.cliente }}</a>
+                </td>
+                <td class="grade-prog">
+                  <div class="gp-bar"><i [style.width.%]="gradeProgresso(l).pct"></i></div>
+                  <span class="gp-txt tnum">{{ gradeProgresso(l).feitos }}/{{ gradeProgresso(l).total }}</span>
                 </td>
                 @for (f of gradePassos(); track f.numero) {
                   <td
@@ -181,6 +195,18 @@
             }
           </tbody>
         </table>
+      </div>
+
+      <!-- Legenda das fases (número → nome), agrupada por macro-etapa -->
+      <div class="grade-faseleg">
+        @for (g of gradeGrupos(); track $index) {
+          <div class="gfl-col">
+            <div class="gfl-etapa" [style.--c]="'var(--' + (faseCls[g.etapa] ?? 'accent') + ')'">{{ g.etapa }}</div>
+            @for (f of g.passos; track f.numero) {
+              <div class="gfl-item"><b class="tnum">{{ f.numero }}</b> {{ f.titulo }}</div>
+            }
+          </div>
+        }
       </div>
     }
   }

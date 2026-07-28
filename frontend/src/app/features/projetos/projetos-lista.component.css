@@ -34,13 +34,15 @@
   overflow-x: auto;
 }
 .grade-tab {
-  /* Ocupa toda a largura da janela: Cliente fixo + as fases dividem o resto igualmente. */
+  /* Cliente + Progresso fixos; as fases dividem igualmente o resto (colgroup). */
   width: 100%;
   table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 0.82rem;
 }
+.grade-tab .col-cli { width: 190px; }
+.grade-tab .col-prog { width: 132px; }
 .grade-tab th,
 .grade-tab td {
   border-bottom: 1px solid var(--line, #eceff3);
@@ -55,60 +57,52 @@
   background: var(--surface, #fff);
   text-align: left;
   padding: 8px 12px;
-  width: 220px;
 }
-thead .grade-cli {
-  z-index: 3;
-  background: var(--surface-2, #f1f4f8);
+thead .grade-cli { z-index: 3; background: var(--surface-2, #f1f4f8); vertical-align: bottom; }
+.grade-cli a { color: var(--navy, #1f3b73); font-weight: 600; text-decoration: none; }
+.grade-cli a:hover { text-decoration: underline; }
+
+/* Coluna Progresso: barra + contagem (X/N). */
+.grade-prog { background: var(--surface, #fff); padding: 6px 10px; vertical-align: middle; }
+thead .grade-prog {
+  background: var(--surface-2, #f1f4f8); vertical-align: bottom;
+  font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--muted, #6b7280); font-weight: 700;
 }
-.grade-cli a {
-  color: var(--navy, #1f3b73);
-  font-weight: 600;
-  text-decoration: none;
+.gp-bar { height: 6px; border-radius: 99px; background: var(--surface-2, #eef1f6); overflow: hidden; margin-bottom: 4px; }
+.gp-bar i { display: block; height: 100%; background: #16a34a; border-radius: 99px; }
+.gp-txt { font-size: 0.72rem; color: var(--muted, #6b7280); font-weight: 600; }
+
+/* Cabeçalho: grupo por macro-etapa (colorido) + número da fase. */
+.grade-grupo {
+  padding: 5px 4px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: color-mix(in srgb, var(--c, #64748b) 14%, var(--surface-2, #f1f4f8));
+  border-bottom: 2px solid var(--c, #64748b) !important;
+  color: var(--ink, #1f2937); font-size: 0.66rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.04em;
 }
-.grade-cli a:hover {
-  text-decoration: underline;
+.grade-num {
+  padding: 5px 2px; text-align: center; background: var(--surface-2, #f1f4f8);
+  color: var(--muted, #6b7280); font-weight: 700; font-size: 0.74rem;
+  font-variant-numeric: tabular-nums; cursor: default;
 }
 
-/* Cabeçalho das fases: texto vertical, para caber as 19 colunas. */
-.grade-fase {
-  padding: 6px 2px;
-  vertical-align: bottom;
-  height: 140px;
-  background: var(--surface-2, #f1f4f8);
-}
-.grade-fase span {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  white-space: nowrap;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--muted, #6b7280);
-  max-height: 128px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: inline-block;
-}
+/* Células de status. */
+.grade-cel { text-align: center; font-weight: 700; color: #fff; font-size: 0.9rem; cursor: default; height: 30px; }
+.grade-cel[data-s='realizado'] { background: #16a34a; }
+.grade-cel[data-s='andamento'] { background: #d97706; }
+.grade-cel[data-s='nao'] { background: var(--surface, #fff); color: var(--faint, #cbd5e1); }
+.grade-tab tbody tr:hover .grade-cli,
+.grade-tab tbody tr:hover .grade-prog { background: var(--surface-2, #f1f4f8); }
 
-/* Células de status — sem largura fixa: com table-layout:fixed, as 19 fases dividem
-   igualmente a largura que sobra depois da coluna Cliente. */
-.grade-cel {
-  text-align: center;
-  font-weight: 700;
-  color: #fff;
-  font-size: 0.9rem;
-  cursor: default;
+/* Legenda das fases (número → nome), agrupada por macro-etapa. */
+.grade-faseleg {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px 22px; margin: 16px 2px 0;
 }
-.grade-cel[data-s='realizado'] {
-  background: #16a34a;
+.gfl-etapa {
+  font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--c, #64748b); border-left: 3px solid var(--c, #64748b); padding-left: 8px; margin-bottom: 6px;
 }
-.grade-cel[data-s='andamento'] {
-  background: #d97706;
-}
-.grade-cel[data-s='nao'] {
-  background: var(--surface-2, #f1f4f8);
-  color: var(--faint, #9aa3b2);
-}
-.grade-tab tbody tr:hover .grade-cli {
-  background: var(--surface-2, #f1f4f8);
-}
+.gfl-item { font-size: 0.8rem; color: var(--ink-soft, #475569); padding: 2px 0 2px 8px; }
+.gfl-item b { display: inline-block; min-width: 20px; color: var(--navy, #1f3b73); font-weight: 700; }
