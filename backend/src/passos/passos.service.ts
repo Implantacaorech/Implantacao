@@ -564,7 +564,9 @@ export class PassosService {
     projeto: Projeto,
     numero: number,
   ): Promise<void> {
-    if (numero === 14 && !projeto.dataEncerramento.trim()) {
+    // Passo 15 "Sinalizar Projeto concluído" registra a data de encerramento (era o passo 14
+    // antes da inserção do "Realizar o Levantamento" em 2026-07-28).
+    if (numero === 15 && !projeto.dataEncerramento.trim()) {
       projeto.dataEncerramento = hojeIso();
       await this.projetos.save(projeto);
     }

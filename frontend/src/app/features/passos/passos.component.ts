@@ -67,7 +67,7 @@ export class PassosComponent {
   /** Passos que abrem formulário em vez de só concluir. */
   private static readonly FORM_POR_PASSO: Record<number, 'agendar' | 'designar'> = {
     2: 'agendar',
-    6: 'designar',
+    7: 'designar',
   };
 
   formDoPasso(p: Passo): 'agendar' | 'designar' | null {
@@ -79,12 +79,12 @@ export class PassosComponent {
    * sozinho (o backend liga a geração ao passo). É o que mantém o fluxo contínuo e num
    * ponto só: você sempre parte do passo. */
   private static readonly TELA_POR_PASSO: Record<number, string[]> = {
-    // 8 e 10 geram o documento na tela e o backend conclui o passo sozinho. 11 (check-list)
+    // 9 e 11 geram o documento na tela e o backend conclui o passo sozinho. 12 (check-list)
     // só salva as linhas — não gera documento —, então lá o passo é concluído à mão depois
     // de abrir e trabalhar. Por isso os passos de documento mostram "Abrir" E "Concluir".
-    8: ['projeto', 'origem'],
-    10: ['cronograma'],
-    11: ['checklist'],
+    9: ['projeto', 'origem'],
+    11: ['cronograma'],
+    12: ['checklist'],
   };
 
   /** Rota da tela que o passo abre, ou `null` se o passo se resolve aqui mesmo. */
@@ -159,7 +159,7 @@ export class PassosComponent {
     }
   }
 
-  /** Passo 6: grava o GCI e os técnicos. O backend conclui o passo sozinho. */
+  /** Passo 7: grava o GCI e os técnicos. O backend conclui o passo sozinho. */
   async salvarDesignacao(): Promise<void> {
     if (!this.gciSelecionado) {
       this.erro.set('Selecione o GCI.');
@@ -275,16 +275,16 @@ export class PassosComponent {
     );
   }
 
-  /** Passo 9 e 16: concluído mas ainda sem a conferência que libera o seguinte. */
+  /** Passo 10 e 17: concluído mas ainda sem a conferência que libera o seguinte. */
   aguardandoConferencia(p: Passo): boolean {
     return p.concluido && !p.conferido && this.temConferencia(p);
   }
 
   temConferencia(p: Passo): boolean {
-    return p.numero === 9 || p.numero === 16;
+    return p.numero === 10 || p.numero === 17;
   }
 
-  /** Passos 3 e 4: o e-mail sai do Outlook da pessoa; o Painel guarda a PROVA. */
+  /** Passos 4 e 5: o e-mail sai do Outlook da pessoa; o Painel guarda a PROVA. */
   aceitaAnexoDeEmail(p: Passo): boolean {
     return PASSOS_COM_ANEXO_DE_EMAIL.includes(p.numero);
   }

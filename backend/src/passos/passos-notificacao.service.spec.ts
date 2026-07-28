@@ -154,17 +154,17 @@ describe('PassosNotificacaoService', () => {
     expect(email?.assunto).toContain('Indústria Alfa');
   });
 
-  it('passo 3 vai para o Comercial que mandou o fechamento', async () => {
-    const email = await service.montar(projeto(), 3);
+  it('passo 4 vai para o Comercial que mandou o fechamento', async () => {
+    const email = await service.montar(projeto(), 4);
     expect(email?.para).toEqual(['vendedor@rech.com.br']);
   });
 
-  it('passo 6 avisa GCI, consultores e Administrativo de uma vez', async () => {
+  it('passo 7 avisa GCI, consultores e Administrativo de uma vez', async () => {
     pessoasVinculadas = [
       { pessoa: 'Beto Consultor' } as ProjetoPessoa,
       { pessoa: 'Carla Consultora' } as ProjetoPessoa,
     ];
-    const email = await service.montar(projeto(), 6);
+    const email = await service.montar(projeto(), 7);
     expect(email?.para.sort()).toEqual([
       'ana@rech.com.br',
       'beto@rech.com.br',
@@ -196,14 +196,14 @@ describe('PassosNotificacaoService', () => {
   });
 
   it('passos ao cliente vão para o contato do projeto', async () => {
-    for (const n of [10, 12, 18]) {
+    for (const n of [11, 13, 19]) {
       const email = await service.montar(projeto(), n);
       expect(email?.para).toEqual(['contato@cliente.com']);
     }
   });
 
   it('substitui os tokens pelo dado do projeto', async () => {
-    const email = await service.montar(projeto(), 17);
+    const email = await service.montar(projeto(), 18);
     expect(email?.corpo).toContain('Indústria Alfa');
     expect(email?.corpo).toContain('2026-08-01');
     expect(email?.corpo).not.toContain('{{');
@@ -230,7 +230,7 @@ describe('PassosNotificacaoService', () => {
     expect(eventosSalvos[0].descricao).toContain('PENDENTE');
   });
 
-  it('anexa o Termo no passo 18 quando o documento existe', async () => {
+  it('anexa o Termo no passo 19 quando o documento existe', async () => {
     documentoDoProjeto = {
       tipo: 'termo',
       caminho: __filename,
@@ -238,7 +238,7 @@ describe('PassosNotificacaoService', () => {
     };
     await service.notificarPasso(
       projeto(),
-      PASSOS_POR_NUMERO.get(18)!,
+      PASSOS_POR_NUMERO.get(19)!,
       'Consultor',
     );
     expect(enviados).toHaveLength(1);
@@ -257,7 +257,7 @@ describe('PassosNotificacaoService', () => {
     };
     await service.notificarPasso(
       projeto(),
-      PASSOS_POR_NUMERO.get(18)!,
+      PASSOS_POR_NUMERO.get(19)!,
       'Consultor',
     );
     const anexos = enviadosArgs[0][3] as unknown[];
@@ -285,7 +285,7 @@ describe('PassosNotificacaoService', () => {
     // Projeto criado à mão, sem passar pelo robô: não há e-mail do Comercial.
     await service.notificarPasso(
       projeto({ comercialEmail: '' }),
-      PASSOS_POR_NUMERO.get(3)!,
+      PASSOS_POR_NUMERO.get(4)!,
       'Beto Consultor',
     );
     expect(enviados).toHaveLength(0);

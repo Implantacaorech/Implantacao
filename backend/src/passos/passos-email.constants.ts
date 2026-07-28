@@ -46,7 +46,7 @@ export const EMAILS_POR_PASSO: EmailDePasso[] = [
       ASSINATURA,
   },
   {
-    passo: 3,
+    passo: 4,
     para: ['comercial'],
     assunto: 'Levantamento realizado — {{CLIENTE}}',
     corpo:
@@ -56,7 +56,7 @@ export const EMAILS_POR_PASSO: EmailDePasso[] = [
       ASSINATURA,
   },
   {
-    passo: 5,
+    passo: 6,
     para: ['coordenacao'],
     assunto: 'Contrato assinado — indicar responsáveis — {{CLIENTE}}',
     corpo:
@@ -66,7 +66,7 @@ export const EMAILS_POR_PASSO: EmailDePasso[] = [
       ASSINATURA,
   },
   {
-    passo: 6,
+    passo: 7,
     para: ['gci', 'consultores', 'administrativo'],
     assunto: 'Você é responsável pela implantação — {{CLIENTE}}',
     corpo:
@@ -76,7 +76,7 @@ export const EMAILS_POR_PASSO: EmailDePasso[] = [
       ASSINATURA,
   },
   {
-    passo: 7,
+    passo: 8,
     para: ['gci', 'consultores'],
     assunto: 'RNS incluídas — liberado para Projeto e Cronograma — {{CLIENTE}}',
     corpo:
@@ -87,7 +87,7 @@ export const EMAILS_POR_PASSO: EmailDePasso[] = [
       ASSINATURA,
   },
   {
-    passo: 8,
+    passo: 9,
     para: ['administrativo'],
     assunto: 'Projeto elaborado — conferir e encaminhar — {{CLIENTE}}',
     corpo:
@@ -97,7 +97,7 @@ export const EMAILS_POR_PASSO: EmailDePasso[] = [
       ASSINATURA,
   },
   {
-    passo: 10,
+    passo: 11,
     para: ['cliente'],
     assunto: 'Cronograma de Implantação — {{CLIENTE}}',
     corpo:
@@ -107,7 +107,7 @@ export const EMAILS_POR_PASSO: EmailDePasso[] = [
       ASSINATURA,
   },
   {
-    passo: 12,
+    passo: 13,
     para: ['cliente'],
     assunto: 'Boas-vindas à implantação do SIGER® — {{CLIENTE}}',
     corpo:
@@ -118,7 +118,7 @@ export const EMAILS_POR_PASSO: EmailDePasso[] = [
       ASSINATURA,
   },
   {
-    passo: 15,
+    passo: 16,
     para: ['administrativo'],
     assunto: 'Termo de Encerramento gerado — conferir — {{CLIENTE}}',
     corpo:
@@ -128,7 +128,7 @@ export const EMAILS_POR_PASSO: EmailDePasso[] = [
       ASSINATURA,
   },
   {
-    passo: 16,
+    passo: 17,
     para: ['consultores'],
     assunto: 'Termo conferido — seguir com o encerramento — {{CLIENTE}}',
     corpo:
@@ -137,7 +137,7 @@ export const EMAILS_POR_PASSO: EmailDePasso[] = [
       ASSINATURA,
   },
   {
-    passo: 17,
+    passo: 18,
     para: ['coordenacao', 'gci'],
     assunto: 'Encerramento de Implantação — {{CLIENTE}}',
     corpo:
@@ -146,7 +146,7 @@ export const EMAILS_POR_PASSO: EmailDePasso[] = [
       ASSINATURA,
   },
   {
-    passo: 18,
+    passo: 19,
     para: ['cliente'],
     assunto: 'Encerramento da implantação do SIGER® — {{CLIENTE}}',
     corpo:
@@ -165,10 +165,10 @@ export const EMAIL_POR_PASSO = new Map(
 /** Passo → tipo de documento que o e-mail leva EM ANEXO.
  *
  * Só onde o texto promete o arquivo E existe um documento gerado daquele tipo: o Cronograma
- * ("Segue o cronograma…") no passo 10 e o Termo ("segue em anexo") no passo 18. Anexa-se o
+ * ("Segue o cronograma…") no passo 11 e o Termo ("segue em anexo") no passo 19. Anexa-se o
  * documento mais RECENTE daquele tipo no projeto; se não houver, o e-mail sai só com o texto
  * (o envio ignora anexo ausente sem falhar). */
 export const ANEXO_POR_PASSO: Record<number, string> = {
-  10: 'cronograma',
-  18: 'termo',
+  11: 'cronograma',
+  19: 'termo',
 };

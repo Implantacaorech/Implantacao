@@ -146,7 +146,7 @@ describe('PassosComponent', () => {
   it('mostra o motivo quando o passo não está liberado para quem olha', async () => {
     const fixture = await montar([
       passo({
-        numero: 6,
+        numero: 7,
         titulo: 'Indicar o GCI',
         liberado: false,
         motivos: ['Só o responsável (Coordenador) pode concluir.'],
@@ -162,7 +162,7 @@ describe('PassosComponent', () => {
     const fixture = await montar([passo()]);
     const c = fixture.componentInstance;
     expect(c.formDoPasso(passo({ numero: 2 }))).toBe('agendar');
-    expect(c.formDoPasso(passo({ numero: 6 }))).toBe('designar');
+    expect(c.formDoPasso(passo({ numero: 7 }))).toBe('designar');
     expect(c.formDoPasso(passo({ numero: 13 }))).toBeNull();
   });
 
@@ -188,22 +188,22 @@ describe('PassosComponent', () => {
     expect(sel).toEqual(['Bruno']);
   });
 
-  it('só reconhece conferência nos passos 9 e 16', async () => {
+  it('só reconhece conferência nos passos 10 e 17', async () => {
     const fixture = await montar([passo()]);
     const c = fixture.componentInstance;
-    expect(c.temConferencia(passo({ numero: 9 }))).toBe(true);
-    expect(c.temConferencia(passo({ numero: 16 }))).toBe(true);
-    expect(c.temConferencia(passo({ numero: 10 }))).toBe(false);
+    expect(c.temConferencia(passo({ numero: 10 }))).toBe(true);
+    expect(c.temConferencia(passo({ numero: 17 }))).toBe(true);
+    expect(c.temConferencia(passo({ numero: 9 }))).toBe(false);
   });
 
   it('sinaliza quando um passo concluído ainda aguarda conferência', async () => {
     const fixture = await montar([passo()]);
     const c = fixture.componentInstance;
     expect(
-      c.aguardandoConferencia(passo({ numero: 9, concluido: true, conferido: false })),
+      c.aguardandoConferencia(passo({ numero: 10, concluido: true, conferido: false })),
     ).toBe(true);
     expect(
-      c.aguardandoConferencia(passo({ numero: 9, concluido: true, conferido: true })),
+      c.aguardandoConferencia(passo({ numero: 10, concluido: true, conferido: true })),
     ).toBe(false);
   });
 });

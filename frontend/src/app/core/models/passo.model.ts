@@ -61,7 +61,7 @@ export const TIPOS_RNS: TipoRns[] = ['RNI', 'COB', 'Conversão'];
 
 /** Passos cujo registro é o e-mail ENCAMINHADO pelo Outlook — espelha
  * `PASSOS_COM_ANEXO_DE_EMAIL` do backend. */
-export const PASSOS_COM_ANEXO_DE_EMAIL = [3, 4];
+export const PASSOS_COM_ANEXO_DE_EMAIL = [4, 5];
 
 /** Em que passo cada projeto está — alimenta o quadro por fase (Kanban). */
 export interface PassoAtualDoProjeto {
