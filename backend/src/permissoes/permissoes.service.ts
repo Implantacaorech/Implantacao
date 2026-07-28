@@ -44,22 +44,26 @@ export class PermissoesService implements OnModuleInit {
   private porUsuario = new Map<string, NivelPermissao>(); // `${usuarioId}|${menu}`
 
   async onModuleInit(): Promise<void> {
-    await this.seedSeVazio();
+    await this.seedFaltantes();
     await this.recarregar();
   }
 
-  /** Semeia os padrões (espelho das regras fixas) só se a tabela estiver vazia — idempotente. */
-  private async seedSeVazio(): Promise<void> {
-    if ((await this.papelRepo.count()) > 0) return;
-    const linhas: PermissaoPapel[] = [];
+  /** Semeia os padrões dos menus que ainda NÃO têm nenhuma linha — idempotente. Semeia a
+   * tabela vazia na 1ª vez e, em deploys seguintes, apenas os menus novos (ex.: visao_geral),
+   * sem sobrescrever o que o admin já configurou nos menus existentes. */
+  private async seedFaltantes(): Promise<void> {
+    const existentes = await this.papelRepo.find();
+    const menusComRegra = new Set(existentes.map((r) => r.menu));
+    const novas: PermissaoPapel[] = [];
     for (const [menu, mapa] of Object.entries(PADRAO_PERMISSOES)) {
+      if (menusComRegra.has(menu)) continue;
       for (const [papel, nivel] of Object.entries(mapa)) {
-        linhas.push(
+        novas.push(
           this.papelRepo.create({ papel: papel as Perfil, menu, nivel }),
         );
       }
     }
-    if (linhas.length) await this.papelRepo.save(linhas);
+    if (novas.length) await this.papelRepo.save(novas);
   }
 
   private async recarregar(): Promise<void> {

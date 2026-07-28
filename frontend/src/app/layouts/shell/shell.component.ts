@@ -45,9 +45,7 @@ export class ShellComponent {
   /** Visibilidade dos itens de menu — vinda do painel de Permissões (backend), por menu.
    * A Visão Geral (home) não é um menu controlado; segue a regra antiga (todos menos o
    * Comercial). Os demais consultam o nível efetivo do usuário. */
-  readonly soComercial = computed(
-    () => this.auth.usuario()?.perfil === 'Comercial',
-  );
+  readonly podeVisaoGeral = computed(() => this.perm.podeVer('visao_geral'));
   readonly podeNovoCliente = computed(() => this.perm.podeVer('novo_cliente'));
   readonly podeCarteira = computed(() => this.perm.podeVer('carteira'));
   readonly podeProtocolos = computed(() => this.perm.podeVer('protocolos'));

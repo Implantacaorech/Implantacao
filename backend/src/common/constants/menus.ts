@@ -34,6 +34,7 @@ export interface DefinicaoMenu {
  * frontend (shell) e as telas que discutimos em 2026-07-28. */
 export const MENUS: DefinicaoMenu[] = [
   { chave: 'novo_cliente', rotulo: 'Novo Cliente', grupo: 'Execução' },
+  { chave: 'visao_geral', rotulo: 'Visão Geral', grupo: 'Execução' },
   { chave: 'carteira', rotulo: 'Carteira', grupo: 'Execução' },
   { chave: 'protocolos', rotulo: 'Protocolos', grupo: 'Execução' },
   { chave: 'matriz', rotulo: 'Matriz de Conhecimento', grupo: 'Execução' },
@@ -64,6 +65,15 @@ export const PADRAO_PERMISSOES: Record<
   Partial<Record<Perfil, NivelPermissao>>
 > = {
   novo_cliente: { ADM: 'alteracao', Coordenador: 'alteracao', Comercial: 'alteracao' },
+  // Visão Geral (home): todos veem, menos o Comercial — espelha o `!soComercial` antigo.
+  visao_geral: {
+    ADM: 'consulta',
+    Coordenador: 'consulta',
+    Administrativo: 'consulta',
+    Levantador: 'consulta',
+    GCI: 'consulta',
+    Consultor: 'consulta',
+  },
   carteira: {
     ADM: 'alteracao',
     Coordenador: 'alteracao',
