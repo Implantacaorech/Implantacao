@@ -124,24 +124,30 @@ export class ProjetoFormComponent {
   async carregarTudo(id: number): Promise<void> {
     this.carregando.set(true);
     this.erro.set(null);
+    // O DADO PRINCIPAL (a ficha) carrega primeiro e sozinho: nunca deve ficar vazio só
+    // porque uma chamada secundária (cabeçalho/documentos/eventos) falhou.
     try {
-      const [projeto, cabecalho, documentos, eventos, consultoresView] = await Promise.all([
-        this.service.buscar(id),
-        this.documentosService.cabecalho(id),
-        this.documentosService.listar(id),
-        this.documentosService.eventos(id),
-        this.designacaoService.obterConsultores(id).catch(() => ({ modulos: [], consultores: [], atuais: {} })),
-      ]);
+      const projeto = await this.service.buscar(id);
       this.form.patchValue(projeto);
-      this.cabecalho.set(cabecalho);
-      this.documentos.set(documentos);
-      this.eventos.set(eventos);
-      this.designacoesAtuais.set(consultoresView.atuais);
     } catch {
       this.erro.set('Não foi possível carregar o projeto.');
-    } finally {
       this.carregando.set(false);
+      return;
     }
+    // Secundárias: cada uma com fallback próprio — degradam sem derrubar a ficha.
+    const [cabecalho, documentos, eventos, consultoresView] = await Promise.all([
+      this.documentosService.cabecalho(id).catch(() => null),
+      this.documentosService.listar(id).catch(() => []),
+      this.documentosService.eventos(id).catch(() => []),
+      this.designacaoService
+        .obterConsultores(id)
+        .catch(() => ({ modulos: [], consultores: [], atuais: {} })),
+    ]);
+    if (cabecalho) this.cabecalho.set(cabecalho);
+    this.documentos.set(documentos);
+    this.eventos.set(eventos);
+    this.designacoesAtuais.set(consultoresView.atuais);
+    this.carregando.set(false);
   }
 
   irParaAba(aba: Aba): void {
