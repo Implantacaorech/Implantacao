@@ -1,7 +1,7 @@
 import { montarWorkbook } from './gerar-checklist-consultor';
 import { carregarSnapshot, extrairXlsx } from './comparacao';
 import { agruparPorArea, resolverModulos } from './catalogo';
-import { seTiverInsumo } from './insumo-local';
+import { seTiverInsumo } from '../common/insumo-local';
 
 /** Prova de EQUIVALÊNCIA do porte (§4.7 dos Padrões da Rech, passo 4) contra o snapshot
  * extraído do gerador Python (`tools/caracterizacao/gerar_checklist_consultor.json`).

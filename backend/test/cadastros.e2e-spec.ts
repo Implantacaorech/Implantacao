@@ -12,6 +12,7 @@ import { IndiceTopico } from '../src/database/entities/indice-topico.entity';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
 import { ModeloDocumentoService } from '../src/catalogos/modelo-documento.service';
+import { insumoLocalExiste } from '../src/common/insumo-local';
 
 // Suíte end-to-end de Cadastros (pré-requisito da geração de documentos): ChecklistModelo,
 // IndiceTopico, ModeloDocumento e o questionário do Levantamento (LevantamentoResposta +
@@ -112,8 +113,9 @@ describe('Cadastros (e2e)', () => {
     );
 
     // ModeloDocumento: seed manual (auto-seed também pulado em teste) usando os layouts
-    // fiéis reais do repositório (tools/templates/layouts/) — não é dado sensível, só o
-    // esqueleto do documento, já versionado no git.
+    // fiéis de `tools/templates/layouts/`. ATENÇÃO: eles NÃO estão no git — a pasta é
+    // ignorada (.gitignore, linha 63). O seed cria os registros de qualquer jeito; onde os
+    // arquivos não existem, só o caso que baixa o arquivo fica sem o que provar.
     const modeloDocumentoService = moduleFixture.get(ModeloDocumentoService);
     await modeloDocumentoService.seedDefaults();
   });
@@ -267,7 +269,12 @@ describe('Cadastros (e2e)', () => {
       ).toBe(false);
     });
 
-    it('baixa o arquivo vigente', async () => {
+    // Baixar exige o ARQUIVO do layout em disco, e `tools/templates/layouts/` é ignorado no
+    // .gitignore — no CI o seed cria o registro sem arquivo e a rota responde 404. Os demais
+    // casos deste bloco só olham metadados e rodam em qualquer ambiente.
+    (insumoLocalExiste('tools', 'templates', 'layouts', 'cronograma.xlsx')
+      ? it
+      : it.skip)('baixa o arquivo vigente', async () => {
       const lista = (
         await auth(request(server()).get('/api/cadastros/modelos'))
       ).body.data;

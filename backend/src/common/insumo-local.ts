@@ -3,13 +3,15 @@ import { join } from 'path';
 
 /** Um insumo que mora na máquina, não no git, está disponível aqui?
  *
- * As provas de EQUIVALÊNCIA dos geradores (§4.7 dos Padrões da Rech) comparam a saída do
- * porte com o snapshot do gerador Python. Para produzir essa saída, alguns deles precisam de
- * insumos que o repositório NÃO versiona de propósito:
+ * Parte dos testes só tem o que provar quando o insumo real está presente — as provas de
+ * EQUIVALÊNCIA dos geradores (§4.7 dos Padrões da Rech, que comparam a saída do porte com o
+ * snapshot do gerador Python) e a geração fiel de documentos ponta a ponta. Esses insumos o
+ * repositório NÃO versiona, de propósito:
  *
  *   - os modelos oficiais da Rech em `tools/templates/*.docx` — binários de layout, com o
  *     timbre da empresa (só o README de lá é versionado);
- *   - `tools/data/checklist_modulos.yaml` — 220 KB de catálogo, ignorado no .gitignore.
+ *   - os layouts fiéis em `tools/templates/layouts/` — ignorados no .gitignore (linha 63);
+ *   - `tools/data/checklist_modulos.yaml` — 220 KB de catálogo, também ignorado.
  *
  * Onde o insumo existe (a máquina de quem desenvolve), a prova roda inteira. Onde não existe
  * — o CI clona só o que está no git —, a suíte é PULADA em vez de falhar. Duas razões: um

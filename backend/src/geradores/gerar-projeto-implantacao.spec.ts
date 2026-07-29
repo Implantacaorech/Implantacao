@@ -9,7 +9,7 @@ import {
   carregarSnapshotDocx,
   extrairDocx,
 } from './comparacao-docx';
-import { seTiverInsumo } from './insumo-local';
+import { seTiverInsumo } from '../common/insumo-local';
 
 /** Prova de EQUIVALÊNCIA do porte (§4.7 dos Padrões da Rech, passo 4) contra o snapshot
  * extraído do gerador Python (`tools/caracterizacao/gerar_projeto_implantacao.json`).
