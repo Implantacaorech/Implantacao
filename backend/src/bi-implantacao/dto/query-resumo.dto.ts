@@ -4,9 +4,17 @@ import { Transform } from 'class-transformer';
 
 /** Aceita tanto `?status=a&status=b` quanto `?status=a` (valor único) — o Angular manda os
  * dois formatos dependendo da quantidade selecionada. */
+/** Só converte o que a query string de fato produz (texto e número). Qualquer outra coisa
+ * vira string vazia em vez de "[object Object]" — `String(objeto)` daria isso, e o valor
+ * inútil seguiria adiante como se fosse filtro válido. */
+const comoTexto = (v: unknown): string =>
+  typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'
+    ? String(v)
+    : '';
+
 const comoLista = ({ value }: { value: unknown }): string[] | undefined => {
   if (value === undefined || value === null || value === '') return undefined;
-  return Array.isArray(value) ? value.map(String) : [String(value)];
+  return Array.isArray(value) ? value.map(comoTexto) : [comoTexto(value)];
 };
 
 export class QueryResumoDto {
@@ -27,21 +35,30 @@ export class QueryResumoDto {
   @IsString({ each: true })
   grupo?: string[];
 
-  @ApiPropertyOptional({ type: [String], description: 'Status da RNS (TIPOSTATUS)' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Status da RNS (TIPOSTATUS)',
+  })
   @IsOptional()
   @Transform(comoLista)
   @IsArray()
   @IsString({ each: true })
   status?: string[];
 
-  @ApiPropertyOptional({ type: [String], description: 'Consultores responsáveis' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Consultores responsáveis',
+  })
   @IsOptional()
   @Transform(comoLista)
   @IsArray()
   @IsString({ each: true })
   tecnico?: string[];
 
-  @ApiPropertyOptional({ type: [String], description: 'Cliente ativo (Sim/Não)' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Cliente ativo (Sim/Não)',
+  })
   @IsOptional()
   @Transform(comoLista)
   @IsArray()
@@ -55,7 +72,10 @@ export class QueryResumoDto {
   @IsString({ each: true })
   tipoCliente?: string[];
 
-  @ApiPropertyOptional({ type: [String], description: 'Códigos de RNS de implantação' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Códigos de RNS de implantação',
+  })
   @IsOptional()
   @Transform(comoLista)
   @IsArray()
@@ -81,35 +101,50 @@ export class QueryExtratoDto {
   @IsString({ each: true })
   grupo?: string[];
 
-  @ApiPropertyOptional({ type: [String], description: 'Consultores (LIS_TECNICODESCRICAO)' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Consultores (LIS_TECNICODESCRICAO)',
+  })
   @IsOptional()
   @Transform(comoLista)
   @IsArray()
   @IsString({ each: true })
   tecnico?: string[];
 
-  @ApiPropertyOptional({ type: [String], description: 'Siglas de módulo do SIGER' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Siglas de módulo do SIGER',
+  })
   @IsOptional()
   @Transform(comoLista)
   @IsArray()
   @IsString({ each: true })
   sigla?: string[];
 
-  @ApiPropertyOptional({ type: [String], description: 'Clientes (nome fantasia)' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Clientes (nome fantasia)',
+  })
   @IsOptional()
   @Transform(comoLista)
   @IsArray()
   @IsString({ each: true })
   cliente?: string[];
 
-  @ApiPropertyOptional({ type: [String], description: 'Códigos de RNS de implantação' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Códigos de RNS de implantação',
+  })
   @IsOptional()
   @Transform(comoLista)
   @IsArray()
   @IsString({ each: true })
   rns?: string[];
 
-  @ApiPropertyOptional({ type: [String], description: 'Status da RNS de implantação' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Status da RNS de implantação',
+  })
   @IsOptional()
   @Transform(comoLista)
   @IsArray()
@@ -142,7 +177,10 @@ export class QueryRnsDto {
   @IsString({ each: true })
   status?: string[];
 
-  @ApiPropertyOptional({ type: [String], description: 'Consultores da implantação' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Consultores da implantação',
+  })
   @IsOptional()
   @Transform(comoLista)
   @IsArray()
@@ -163,21 +201,29 @@ export class QueryRnsDto {
   @IsString({ each: true })
   tipo?: string[];
 
-  @ApiPropertyOptional({ type: [String], description: 'Status da RNS de implantação' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Status da RNS de implantação',
+  })
   @IsOptional()
   @Transform(comoLista)
   @IsArray()
   @IsString({ each: true })
   statusImplantacao?: string[];
 
-  @ApiPropertyOptional({ type: [String], description: 'Códigos de RNS de implantação' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Códigos de RNS de implantação',
+  })
   @IsOptional()
   @Transform(comoLista)
   @IsArray()
   @IsString({ each: true })
   rns?: string[];
 
-  @ApiPropertyOptional({ description: "Validada pelo cliente: 'sim', 'nao' ou vazio" })
+  @ApiPropertyOptional({
+    description: "Validada pelo cliente: 'sim', 'nao' ou vazio",
+  })
   @IsOptional()
   @IsString()
   validada?: string;
@@ -196,7 +242,10 @@ export class QueryAgendasDto {
   @IsString({ each: true })
   grupo?: string[];
 
-  @ApiPropertyOptional({ type: [String], description: 'Participantes (consultores)' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Participantes (consultores)',
+  })
   @IsOptional()
   @Transform(comoLista)
   @IsArray()
@@ -210,14 +259,20 @@ export class QueryAgendasDto {
   @IsString({ each: true })
   status?: string[];
 
-  @ApiPropertyOptional({ type: [String], description: 'Status da RNS de implantação' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Status da RNS de implantação',
+  })
   @IsOptional()
   @Transform(comoLista)
   @IsArray()
   @IsString({ each: true })
   statusImplantacao?: string[];
 
-  @ApiPropertyOptional({ type: [String], description: 'Códigos de RNS de implantação' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Códigos de RNS de implantação',
+  })
   @IsOptional()
   @Transform(comoLista)
   @IsArray()
@@ -231,7 +286,9 @@ export class QueryDescricaoDto {
   @IsString()
   protocolo?: string;
 
-  @ApiPropertyOptional({ description: 'Data e hora do lançamento (AAAA-MM-DD HH:MM)' })
+  @ApiPropertyOptional({
+    description: 'Data e hora do lançamento (AAAA-MM-DD HH:MM)',
+  })
   @IsOptional()
   @IsString()
   datahora?: string;

@@ -12,7 +12,11 @@ import { PermissaoGuard } from '../permissoes/permissao.guard';
  * não declara derruba a tela inteira com 400 — sem aparecer em nenhum teste de serviço. */
 describe('BiImplantacaoController (HTTP)', () => {
   let app: INestApplication;
-  const bi = { resumo: jest.fn(), extrato: jest.fn(), descricaoCompleta: jest.fn() };
+  const bi = {
+    resumo: jest.fn(),
+    extrato: jest.fn(),
+    descricaoCompleta: jest.fn(),
+  };
 
   beforeAll(async () => {
     const modulo = await Test.createTestingModule({
@@ -46,12 +50,18 @@ describe('BiImplantacaoController (HTTP)', () => {
     jest.clearAllMocks();
     bi.resumo.mockResolvedValue({ linhas: [] });
     bi.extrato.mockResolvedValue({ linhas: [] });
-    bi.descricaoCompleta.mockResolvedValue({ descricao: 'x', tamanho: 1, erro: null });
+    bi.descricaoCompleta.mockResolvedValue({
+      descricao: 'x',
+      tamanho: 1,
+      erro: null,
+    });
   });
 
   describe('GET /bi-implantacao/extrato', () => {
     it('aceita a chamada sem filtro nenhum', async () => {
-      await request(app.getHttpServer()).get('/bi-implantacao/extrato').expect(200);
+      await request(app.getHttpServer())
+        .get('/bi-implantacao/extrato')
+        .expect(200);
       expect(bi.extrato).toHaveBeenCalled();
     });
 
@@ -99,7 +109,10 @@ describe('BiImplantacaoController (HTTP)', () => {
         .get('/bi-implantacao/extrato/descricao')
         .query({ protocolo: '1435877', datahora: '2026-07-29 10:35' })
         .expect(200);
-      expect(bi.descricaoCompleta).toHaveBeenCalledWith(1435877, '2026-07-29 10:35');
+      expect(bi.descricaoCompleta).toHaveBeenCalledWith(
+        1435877,
+        '2026-07-29 10:35',
+      );
       expect(bi.extrato).not.toHaveBeenCalled();
     });
 

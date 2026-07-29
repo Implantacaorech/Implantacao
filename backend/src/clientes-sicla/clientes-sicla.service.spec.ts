@@ -194,7 +194,11 @@ describe('ClientesSiclaService', () => {
       {
         cliente: 'Nova Indústria',
         conversoesSelecionadas: [
-          { nome: 'Importação Cad. produtos', horas: '8', obs: 'sem preço de custo' },
+          {
+            nome: 'Importação Cad. produtos',
+            horas: '8',
+            obs: 'sem preço de custo',
+          },
           { nome: 'Conversão sob medida', horas: '' },
           { nome: '', horas: '5' },
         ],
@@ -203,7 +207,11 @@ describe('ClientesSiclaService', () => {
     );
     const salvo = projetoSave.mock.calls[0][0] as { conversoes: string };
     expect(JSON.parse(salvo.conversoes)).toEqual([
-      { nome: 'Importação Cad. produtos', horas: '8', obs: 'sem preço de custo' },
+      {
+        nome: 'Importação Cad. produtos',
+        horas: '8',
+        obs: 'sem preço de custo',
+      },
       { nome: 'Conversão sob medida', horas: '', obs: '' },
     ]);
   });

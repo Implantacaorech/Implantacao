@@ -73,6 +73,8 @@ export class BiImplantacaoController {
         erro: 'Informe protocolo e datahora (AAAA-MM-DD HH:MM).',
       });
     }
-    return new ApiEnvelope(await this.bi.descricaoCompleta(protocolo, datahora));
+    return new ApiEnvelope(
+      await this.bi.descricaoCompleta(protocolo, datahora),
+    );
   }
 }

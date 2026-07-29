@@ -225,7 +225,10 @@ export class BiImplantacaoService {
   }
 
   /** Período efetivo: o que a tela mandou, ou os últimos `meses` meses. */
-  periodo(query: QueryResumo, meses = MESES_PADRAO): { inicio: string; fim: string } {
+  periodo(
+    query: QueryResumo,
+    meses = MESES_PADRAO,
+  ): { inicio: string; fim: string } {
     const fim = this.ehDataIso(query.dataFim)
       ? (query.dataFim as string).trim()
       : hojeIso();
@@ -249,12 +252,16 @@ export class BiImplantacaoService {
     for (const [k, v] of Object.entries(bruta)) l[(k || '').toUpperCase()] = v;
     return {
       codigo: this.numero(l.CODIGO),
-      cliente: l.CLIENTE === null || l.CLIENTE === undefined ? null : this.numero(l.CLIENTE),
+      cliente:
+        l.CLIENTE === null || l.CLIENTE === undefined
+          ? null
+          : this.numero(l.CLIENTE),
       descricao: this.texto(l.DESCRICAO),
       fantasia: this.texto(l.FANTASIA),
       tecnico: this.texto(l.TECNICO),
       statusRns: this.texto(l.STATUS_RNS),
-      tipo: l.TIPO === null || l.TIPO === undefined ? null : this.numero(l.TIPO),
+      tipo:
+        l.TIPO === null || l.TIPO === undefined ? null : this.numero(l.TIPO),
       dataContratacao: this.texto(l.DATA_CONTRATACAO).slice(0, 10),
       dataPrevUso: this.texto(l.DATA_PREV_USO).slice(0, 10),
       dataEncerramento: this.texto(l.DATA_ENCERRAMENTO).slice(0, 10),
@@ -266,7 +273,8 @@ export class BiImplantacaoService {
       horasCobradas:
         this.numero(l.HORASCOBRADAS) + this.numero(l.HORASCOBRADASADICIONAIS),
       horasBonificadas:
-        this.numero(l.HORABONIFICADAS) + this.numero(l.HORABONIFICADASADICIONAIS),
+        this.numero(l.HORABONIFICADAS) +
+        this.numero(l.HORABONIFICADASADICIONAIS),
       grupoEconomico: this.texto(l.GRUPO_ECONOMICO),
       ativoDes: this.texto(l.ATIVODES),
       tipoDes: this.texto(l.TIPODES),
@@ -334,7 +342,11 @@ export class BiImplantacaoService {
     }));
     return ordenarPorChave
       ? out.sort((x, y) => x.chave.localeCompare(y.chave))
-      : out.sort((x, y) => y.horasRealizadas - x.horasRealizadas || y.quantidade - x.quantidade);
+      : out.sort(
+          (x, y) =>
+            y.horasRealizadas - x.horasRealizadas ||
+            y.quantidade - x.quantidade,
+        );
   }
 
   private arredondar(n: number): number {
@@ -365,7 +377,9 @@ export class BiImplantacaoService {
       horasPrevistas: this.arredondar(t.horasPrevistas),
       horasRealizadas: this.arredondar(t.horasRealizadas),
       horasSaldo: this.arredondar(t.horasSaldo),
-      horasSaldoCalculado: this.arredondar(t.horasPrevistas - t.horasRealizadas),
+      horasSaldoCalculado: this.arredondar(
+        t.horasPrevistas - t.horasRealizadas,
+      ),
       horasCobradas: this.arredondar(t.horasCobradas),
       horasBonificadas: this.arredondar(t.horasBonificadas),
       percentualUtilizacao:
@@ -386,10 +400,20 @@ export class BiImplantacaoService {
       porStatus: [],
       porTecnico: [],
       filtros: {
-        grupos: [], status: [], tecnicos: [], ativos: [], tiposCliente: [], rns: [],
+        grupos: [],
+        status: [],
+        tecnicos: [],
+        ativos: [],
+        tiposCliente: [],
+        rns: [],
       },
       selecionados: {
-        grupos: [], status: [], tecnicos: [], ativos: [], tiposCliente: [], rns: [],
+        grupos: [],
+        status: [],
+        tecnicos: [],
+        ativos: [],
+        tiposCliente: [],
+        rns: [],
       },
       erro,
     };
@@ -416,12 +440,30 @@ export class BiImplantacaoService {
 
     // Filtros em CASCATA: cada lista de opções considera os DEMAIS filtros já marcados.
     const preds = [
-      { dimensao: 'grupo', ok: (l: LinhaResumo) => this.passa(query.grupo, l.grupoEconomico) },
-      { dimensao: 'status', ok: (l: LinhaResumo) => this.passa(query.status, l.statusRns) },
-      { dimensao: 'tecnico', ok: (l: LinhaResumo) => this.passa(query.tecnico, l.tecnico) },
-      { dimensao: 'ativo', ok: (l: LinhaResumo) => this.passa(query.ativo, l.ativoDes) },
-      { dimensao: 'tipoCliente', ok: (l: LinhaResumo) => this.passa(query.tipoCliente, l.tipoDes) },
-      { dimensao: 'rns', ok: (l: LinhaResumo) => this.passa(query.rns, String(l.codigo)) },
+      {
+        dimensao: 'grupo',
+        ok: (l: LinhaResumo) => this.passa(query.grupo, l.grupoEconomico),
+      },
+      {
+        dimensao: 'status',
+        ok: (l: LinhaResumo) => this.passa(query.status, l.statusRns),
+      },
+      {
+        dimensao: 'tecnico',
+        ok: (l: LinhaResumo) => this.passa(query.tecnico, l.tecnico),
+      },
+      {
+        dimensao: 'ativo',
+        ok: (l: LinhaResumo) => this.passa(query.ativo, l.ativoDes),
+      },
+      {
+        dimensao: 'tipoCliente',
+        ok: (l: LinhaResumo) => this.passa(query.tipoCliente, l.tipoDes),
+      },
+      {
+        dimensao: 'rns',
+        ok: (l: LinhaResumo) => this.passa(query.rns, String(l.codigo)),
+      },
     ];
     const paraDim = (d: string) => this.emCascata(todas, preds, d);
 
@@ -524,9 +566,21 @@ export class BiImplantacaoService {
       periodo,
       linhas: [],
       totais: { lancamentos: 0, horasUtilizadas: 0, saldoAtual: null },
-      filtros: { grupos: [], tecnicos: [], siglas: [], clientes: [], status: [], rns: [] },
+      filtros: {
+        grupos: [],
+        tecnicos: [],
+        siglas: [],
+        clientes: [],
+        status: [],
+        rns: [],
+      },
       selecionados: {
-        grupos: [], tecnicos: [], siglas: [], clientes: [], status: [], rns: [],
+        grupos: [],
+        tecnicos: [],
+        siglas: [],
+        clientes: [],
+        status: [],
+        rns: [],
       },
       truncado: false,
       erro,
@@ -553,12 +607,30 @@ export class BiImplantacaoService {
     const todas = r.linhas.map((l) => this.normalizarExtrato(l));
 
     const preds = [
-      { dimensao: 'grupo', ok: (l: LinhaExtrato) => this.passa(query.grupo, l.grupoEconomico) },
-      { dimensao: 'tecnico', ok: (l: LinhaExtrato) => this.passa(query.tecnico, l.tecnico) },
-      { dimensao: 'sigla', ok: (l: LinhaExtrato) => this.passa(query.sigla, l.sigla) },
-      { dimensao: 'cliente', ok: (l: LinhaExtrato) => this.passa(query.cliente, l.fantasia) },
-      { dimensao: 'status', ok: (l: LinhaExtrato) => this.passa(query.status, l.statusRns) },
-      { dimensao: 'rns', ok: (l: LinhaExtrato) => this.passa(query.rns, String(l.rns)) },
+      {
+        dimensao: 'grupo',
+        ok: (l: LinhaExtrato) => this.passa(query.grupo, l.grupoEconomico),
+      },
+      {
+        dimensao: 'tecnico',
+        ok: (l: LinhaExtrato) => this.passa(query.tecnico, l.tecnico),
+      },
+      {
+        dimensao: 'sigla',
+        ok: (l: LinhaExtrato) => this.passa(query.sigla, l.sigla),
+      },
+      {
+        dimensao: 'cliente',
+        ok: (l: LinhaExtrato) => this.passa(query.cliente, l.fantasia),
+      },
+      {
+        dimensao: 'status',
+        ok: (l: LinhaExtrato) => this.passa(query.status, l.statusRns),
+      },
+      {
+        dimensao: 'rns',
+        ok: (l: LinhaExtrato) => this.passa(query.rns, String(l.rns)),
+      },
     ];
     const paraDim = (d: string) => this.emCascata(todas, preds, d);
 
@@ -622,7 +694,9 @@ export class BiImplantacaoService {
       responsavel: this.texto(l.RESNOME),
       analista: this.texto(l.ANANOME),
       cliente:
-        l.CLIENTE === null || l.CLIENTE === undefined ? null : this.numero(l.CLIENTE),
+        l.CLIENTE === null || l.CLIENTE === undefined
+          ? null
+          : this.numero(l.CLIENTE),
       fantasia: this.texto(l.FANTASIA),
       rnsImplantacao: this.numero(l.IMP_COD),
       descricaoImplantacao: this.texto(l.IMP_DESCRICAO),
@@ -643,19 +717,33 @@ export class BiImplantacaoService {
       porStatus: [],
       porSigla: [],
       filtros: {
-        grupos: [], status: [], tecnicos: [], siglas: [], tipos: [],
-        statusImplantacao: [], rns: [],
+        grupos: [],
+        status: [],
+        tecnicos: [],
+        siglas: [],
+        tipos: [],
+        statusImplantacao: [],
+        rns: [],
       },
       selecionados: {
-        grupos: [], status: [], tecnicos: [], siglas: [], tipos: [],
-        statusImplantacao: [], rns: [], validada: '',
+        grupos: [],
+        status: [],
+        tecnicos: [],
+        siglas: [],
+        tipos: [],
+        statusImplantacao: [],
+        rns: [],
+        validada: '',
       },
       erro,
     };
   }
 
   /** Contagem simples por dimensão — os painéis desta tela são de quantidade, não de horas. */
-  private contarPor(linhas: LinhaRns[], chave: (l: LinhaRns) => string): ContagemRns[] {
+  private contarPor(
+    linhas: LinhaRns[],
+    chave: (l: LinhaRns) => string,
+  ): ContagemRns[] {
     const mapa = new Map<string, number>();
     for (const l of linhas) {
       const k = chave(l) || '(sem informação)';
@@ -663,7 +751,9 @@ export class BiImplantacaoService {
     }
     return [...mapa.entries()]
       .map(([chave, quantidade]) => ({ chave, quantidade }))
-      .sort((a, b) => b.quantidade - a.quantidade || a.chave.localeCompare(b.chave));
+      .sort(
+        (a, b) => b.quantidade - a.quantidade || a.chave.localeCompare(b.chave),
+      );
   }
 
   async rnsVinculadas(query: QueryRns): Promise<ResultadoRns> {
@@ -688,20 +778,40 @@ export class BiImplantacaoService {
     // "Validação Cliente" é tri-estado: sem seleção = todas.
     const validada = (query.validada ?? '').trim();
     const preds = [
-      { dimensao: 'grupo', ok: (l: LinhaRns) => this.passa(query.grupo, l.grupoEconomico) },
-      { dimensao: 'status', ok: (l: LinhaRns) => this.passa(query.status, l.statusRns) },
-      { dimensao: 'tecnico', ok: (l: LinhaRns) => this.passa(query.tecnico, l.tecnico) },
-      { dimensao: 'sigla', ok: (l: LinhaRns) => this.passa(query.sigla, l.sigla) },
+      {
+        dimensao: 'grupo',
+        ok: (l: LinhaRns) => this.passa(query.grupo, l.grupoEconomico),
+      },
+      {
+        dimensao: 'status',
+        ok: (l: LinhaRns) => this.passa(query.status, l.statusRns),
+      },
+      {
+        dimensao: 'tecnico',
+        ok: (l: LinhaRns) => this.passa(query.tecnico, l.tecnico),
+      },
+      {
+        dimensao: 'sigla',
+        ok: (l: LinhaRns) => this.passa(query.sigla, l.sigla),
+      },
       { dimensao: 'tipo', ok: (l: LinhaRns) => this.passa(query.tipo, l.tipo) },
       {
         dimensao: 'statusImplantacao',
-        ok: (l: LinhaRns) => this.passa(query.statusImplantacao, l.statusImplantacao),
+        ok: (l: LinhaRns) =>
+          this.passa(query.statusImplantacao, l.statusImplantacao),
       },
-      { dimensao: 'rns', ok: (l: LinhaRns) => this.passa(query.rns, String(l.rnsImplantacao)) },
+      {
+        dimensao: 'rns',
+        ok: (l: LinhaRns) => this.passa(query.rns, String(l.rnsImplantacao)),
+      },
       {
         dimensao: 'validada',
         ok: (l: LinhaRns) =>
-          validada === '' ? true : validada === 'sim' ? l.validadaCliente : !l.validadaCliente,
+          validada === ''
+            ? true
+            : validada === 'sim'
+              ? l.validadaCliente
+              : !l.validadaCliente,
       },
     ];
     const paraDim = (d: string) => this.emCascata(todas, preds, d);
@@ -712,7 +822,10 @@ export class BiImplantacaoService {
       tecnicos: this.distintosDe(paraDim('tecnico'), (l) => l.tecnico),
       siglas: this.distintosDe(paraDim('sigla'), (l) => l.sigla),
       tipos: this.distintosDe(paraDim('tipo'), (l) => l.tipo),
-      statusImplantacao: this.distintosDe(paraDim('statusImplantacao'), (l) => l.statusImplantacao),
+      statusImplantacao: this.distintosDe(
+        paraDim('statusImplantacao'),
+        (l) => l.statusImplantacao,
+      ),
       rns: this.opcoesRns(
         paraDim('rns').map((l) => ({
           rns: l.rnsImplantacao,
@@ -753,14 +866,20 @@ export class BiImplantacaoService {
   // ── Página "Agendas" (calendário mensal) ─────────────────────────────────────────────
 
   /** Mês de referência (AAAA-MM) e as fronteiras para o SQL. */
-  private mesReferencia(mes?: string): { mes: string; ini: string; fim: string } {
+  private mesReferencia(mes?: string): {
+    mes: string;
+    ini: string;
+    fim: string;
+  } {
     const m = /^\d{4}-\d{2}$/.test((mes ?? '').trim())
       ? (mes as string).trim()
       : hojeIso().slice(0, 7);
     const [ano, num] = m.split('-').map(Number);
     const ini = `${m}-01`;
     const proximo =
-      num === 12 ? `${ano + 1}-01-01` : `${ano}-${String(num + 1).padStart(2, '0')}-01`;
+      num === 12
+        ? `${ano + 1}-01-01`
+        : `${ano}-${String(num + 1).padStart(2, '0')}-01`;
     return { mes: m, ini, fim: proximo };
   }
 
@@ -771,7 +890,10 @@ export class BiImplantacaoService {
     const statusOriginal = this.texto(l.STATUSDES);
     // Regra do DAX: visita apontada manda no status, seja qual for o STATUSDES.
     // (Na view a coluna é nula ou preenchida — nunca 0, apesar do `VISITA <> 0` do original.)
-    const temVisita = l.VISITA !== null && l.VISITA !== undefined && this.numero(l.VISITA) !== 0;
+    const temVisita =
+      l.VISITA !== null &&
+      l.VISITA !== undefined &&
+      this.numero(l.VISITA) !== 0;
     const status = temVisita ? '6-Realizada' : statusOriginal;
 
     const horaIni = this.texto(l.HORAINI).slice(0, 5);
@@ -796,7 +918,10 @@ export class BiImplantacaoService {
         .map((p) => p.trim())
         .filter(Boolean),
       responsavel: this.texto(l.RESPONSAVELDES),
-      cliente: l.CLIENTE === null || l.CLIENTE === undefined ? null : this.numero(l.CLIENTE),
+      cliente:
+        l.CLIENTE === null || l.CLIENTE === undefined
+          ? null
+          : this.numero(l.CLIENTE),
       clienteFantasia: this.texto(l.CLIENTEFAN),
       assunto: this.texto(l.ASSUNTO),
       horasDuracao: this.numero(l.HORASDURACAO),
@@ -835,8 +960,20 @@ export class BiImplantacaoService {
       dias: [],
       resumo: [],
       totalAgendas: 0,
-      filtros: { grupos: [], tecnicos: [], statusImplantacao: [], status: [], rns: [] },
-      selecionados: { grupos: [], tecnicos: [], statusImplantacao: [], status: [], rns: [] },
+      filtros: {
+        grupos: [],
+        tecnicos: [],
+        statusImplantacao: [],
+        status: [],
+        rns: [],
+      },
+      selecionados: {
+        grupos: [],
+        tecnicos: [],
+        statusImplantacao: [],
+        status: [],
+        rns: [],
+      },
       erro,
     };
   }
@@ -861,19 +998,28 @@ export class BiImplantacaoService {
     const todas = r.linhas.map((l) => this.normalizarAgenda(l));
 
     const preds = [
-      { dimensao: 'grupo', ok: (a: LinhaAgenda) => this.passa(query.grupo, a.grupoEconomico) },
+      {
+        dimensao: 'grupo',
+        ok: (a: LinhaAgenda) => this.passa(query.grupo, a.grupoEconomico),
+      },
       {
         dimensao: 'tecnico',
         // Basta UM participante casar — a agenda é de todos eles.
         ok: (a: LinhaAgenda) => {
           const sel = (query.tecnico ?? []).filter(Boolean);
-          return sel.length === 0 || a.participantes.some((p) => sel.includes(p));
+          return (
+            sel.length === 0 || a.participantes.some((p) => sel.includes(p))
+          );
         },
       },
-      { dimensao: 'status', ok: (a: LinhaAgenda) => this.passa(query.status, a.status) },
+      {
+        dimensao: 'status',
+        ok: (a: LinhaAgenda) => this.passa(query.status, a.status),
+      },
       {
         dimensao: 'statusImplantacao',
-        ok: (a: LinhaAgenda) => this.passa(query.statusImplantacao, a.statusImplantacao),
+        ok: (a: LinhaAgenda) =>
+          this.passa(query.statusImplantacao, a.statusImplantacao),
       },
       {
         dimensao: 'rns',
@@ -887,7 +1033,10 @@ export class BiImplantacaoService {
       tecnicos: [
         ...new Set(paraDim('tecnico').flatMap((a) => a.participantes)),
       ].sort((a, b) => a.localeCompare(b, 'pt-BR')),
-      statusImplantacao: this.distintosDe(paraDim('statusImplantacao'), (a) => a.statusImplantacao),
+      statusImplantacao: this.distintosDe(
+        paraDim('statusImplantacao'),
+        (a) => a.statusImplantacao,
+      ),
       status: this.distintosDe(paraDim('status'), (a) => a.status),
       rns: this.opcoesRns(
         paraDim('rns').map((a) => ({
@@ -930,13 +1079,15 @@ export class BiImplantacaoService {
     // cards diriam um número e a grade mostraria outro.
     const visiveis = dias.flatMap((d) => d.agendas);
     const contagem = new Map<string, number>();
-    for (const a of visiveis) contagem.set(a.status, (contagem.get(a.status) ?? 0) + 1);
+    for (const a of visiveis)
+      contagem.set(a.status, (contagem.get(a.status) ?? 0) + 1);
     const total = visiveis.length;
     const resumo: ResumoStatusAgenda[] = [...contagem.entries()]
       .map(([status, quantidade]) => ({
         status,
         quantidade,
-        percentual: total > 0 ? Math.round((quantidade / total) * 1000) / 10 : 0,
+        percentual:
+          total > 0 ? Math.round((quantidade / total) * 1000) / 10 : 0,
         cor: COR_STATUS_AGENDA[status] ?? '#CCCCCC',
       }))
       .sort((a, b) => a.status.localeCompare(b.status));
@@ -965,7 +1116,11 @@ export class BiImplantacaoService {
     datahora: string,
   ): Promise<{ descricao: string; tamanho: number; erro: string | null }> {
     if (!this.disponibilidade.configurado()) {
-      return { descricao: '', tamanho: 0, erro: 'Conexão com o SICLA não configurada.' };
+      return {
+        descricao: '',
+        tamanho: 0,
+        erro: 'Conexão com o SICLA não configurada.',
+      };
     }
     const r = await this.disponibilidade.executarSql(
       SQL_EXTRATO_DESCRICAO,
@@ -978,7 +1133,8 @@ export class BiImplantacaoService {
       return { descricao: '', tamanho: 0, erro: 'Lançamento não encontrado.' };
     }
     const l: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(r.linhas[0])) l[(k || '').toUpperCase()] = v;
+    for (const [k, v] of Object.entries(r.linhas[0]))
+      l[(k || '').toUpperCase()] = v;
     return {
       descricao: this.texto(l.DESCRICAO),
       tamanho: this.numero(l.DESCRICAO_TAMANHO),
