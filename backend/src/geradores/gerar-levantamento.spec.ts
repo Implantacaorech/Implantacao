@@ -9,6 +9,7 @@ import {
   carregarSnapshotDocx,
   extrairDocx,
 } from './comparacao-docx';
+import { seTiverInsumo } from './insumo-local';
 
 /** Prova de EQUIVALÊNCIA do porte (§4.7 dos Padrões da Rech, passo 4) contra o snapshot
  * extraído do gerador Python (`tools/caracterizacao/gerar_levantamento.json`).
@@ -16,7 +17,11 @@ import {
  * Este gerador não constrói documento: ele PREENCHE o modelo oficial da Rech, alterando
  * elementos no lugar. Por isso o teste cobre o documento inteiro — corpo, tabelas, cabeçalhos
  * e rodapés: o que importa é que nada além dos campos dinâmicos tenha mudado. */
-describe('gerar-levantamento (porte de tools/gerar_levantamento.py)', () => {
+seTiverInsumo(
+  'tools',
+  'templates',
+  'base_levantamento_modelo.docx',
+)('gerar-levantamento (porte de tools/gerar_levantamento.py)', () => {
   const esperado = carregarSnapshotDocx('gerar_levantamento');
   let atual: SnapshotDocx;
 

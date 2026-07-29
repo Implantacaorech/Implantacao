@@ -41,6 +41,12 @@ jobs:
         run: npm ci
       - name: Testes (Jest)
         run: npm test -- --ci
+      # Ponta a ponta: sobe o AppModule inteiro com SQLite em memoria e exercita guards,
+      # banco e servico via HTTP. Passa a rodar aqui porque, fora do CI, ninguem lembrava de
+      # chamar `npm run test:e2e` — o arquivo de passos ficou uma revisao de processo atras
+      # e 13 casos falhavam ha dias sem ninguem ver (corrigido em 2026-07-29).
+      - name: Testes de ponta a ponta (e2e)
+        run: npm run test:e2e -- --ci
       # Passa a BLOQUEAR: a divida de ~1200 achados pre-existentes foi zerada. Enquanto o
       # passo era best-effort, achado novo se perdia no meio dos velhos e ninguem lia.
       - name: Lint

@@ -1,22 +1,30 @@
 import { montarWorkbook } from './gerar-checklist-consultor';
 import { carregarSnapshot, extrairXlsx } from './comparacao';
 import { agruparPorArea, resolverModulos } from './catalogo';
+import { seTiverInsumo } from './insumo-local';
 
 /** Prova de EQUIVALÊNCIA do porte (§4.7 dos Padrões da Rech, passo 4) contra o snapshot
  * extraído do gerador Python (`tools/caracterizacao/gerar_checklist_consultor.json`).
  * Cobre também o catálogo, portado junto (`tools/catalogo.py` + `tools/checklist.py`). */
-describe('gerar-checklist-consultor (porte de tools/gerar_checklist_consultor.py)', () => {
-  const esperado = carregarSnapshot('gerar_checklist_consultor');
-  const atual = extrairXlsx(montarWorkbook());
+seTiverInsumo(
+  'tools',
+  'data',
+  'checklist_modulos.yaml',
+)(
+  'gerar-checklist-consultor (porte de tools/gerar_checklist_consultor.py)',
+  () => {
+    const esperado = carregarSnapshot('gerar_checklist_consultor');
+    const atual = extrairXlsx(montarWorkbook());
 
-  it('produz as mesmas abas, na mesma ordem, que o gerador Python', () => {
-    expect(atual.abas_ordem).toEqual(esperado.abas_ordem);
-  });
+    it('produz as mesmas abas, na mesma ordem, que o gerador Python', () => {
+      expect(atual.abas_ordem).toEqual(esperado.abas_ordem);
+    });
 
-  it.each(esperado.abas_ordem)('reproduz o conteúdo da aba %s', (nome) => {
-    expect(atual.abas[nome]).toEqual(esperado.abas[nome]);
-  });
-});
+    it.each(esperado.abas_ordem)('reproduz o conteúdo da aba %s', (nome) => {
+      expect(atual.abas[nome]).toEqual(esperado.abas[nome]);
+    });
+  },
+);
 
 describe('catalogo (porte de tools/catalogo.py e tools/checklist.py)', () => {
   it('resolve módulos tanto por código quanto por abreviação', () => {
