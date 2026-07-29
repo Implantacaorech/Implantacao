@@ -74,14 +74,26 @@ export class AuthService {
     // Rotaciona: revoga o antigo e emite um par novo — reduz a janela de replay.
     registro.revogado = true;
     await this.refreshRepo.save(registro);
+
+    // Papéis, nome e código SICLA saem do CADASTRO, não do token que veio. Enquanto eram
+    // recopiados do payload, uma mudança feita em Gestão → Usuários nunca alcançava quem já
+    // estava logado: a pessoa ganhava o papel de Levantador, o token continuava sem ele e o
+    // Painel dizia "só o responsável (Levantador) pode concluir" — só saindo e entrando de
+    // novo resolvia (diagnóstico de 2026-07-29). O `nome` importa pelo mesmo motivo: é por
+    // ele que se confere a designação da pessoa no projeto.
+    // `buscarPorId` lança 404 quando o cadastro sumiu; aqui a resposta certa é 401 — quem
+    // renova token não devia saber se o id existe.
+    const usuario = await this.users.buscarPorId(payload.sub).catch(() => null);
+    if (!usuario?.ativo) {
+      throw new UnauthorizedException('Usuário inativo ou removido.');
+    }
     return this.emitirTokens({
-      sub: payload.sub,
-      login: payload.login,
-      nome: payload.nome,
-      perfil: payload.perfil,
-      // Cadastros antigos (token emitido antes dos papéis múltiplos) não trazem `perfis`.
-      perfis: payload.perfis?.length ? payload.perfis : [payload.perfil],
-      codigoSicla: payload.codigoSicla,
+      sub: usuario.id,
+      login: usuario.login,
+      nome: usuario.nome,
+      perfil: usuario.perfil,
+      perfis: papeisDoUsuario(usuario),
+      codigoSicla: usuario.codigoSicla,
     });
   }
 

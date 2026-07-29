@@ -1,5 +1,5 @@
-<h1 style="display:flex;align-items:center;gap:10px">
-  <svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+<h1 class="pagina-titulo">
+  <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-check-circle"/></svg>
   @if (cliente()) { {{ cliente() }} } @else { Projeto }
 </h1>
 <p class="sub">
@@ -8,8 +8,8 @@
 </p>
 
 @if (erro()) {
-  <div class="resultado erro" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
-    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
+  <div class="resultado erro linha">
+    <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
   </div>
 }
 
@@ -19,7 +19,7 @@
   <!-- Dados do cliente: recolhidos por padrão. O foco é o fluxo; o cadastro fica à mão,
        mas não disputa a atenção. -->
   @if (projeto(); as pr) {
-    <div class="painel" style="margin-bottom:12px;padding:0">
+    <div class="painel sem-padding" style="margin-bottom:var(--sp-3)">
       <button
         type="button"
         (click)="dadosAbertos.set(!dadosAbertos())"
@@ -36,14 +36,14 @@
       </button>
       @if (dadosAbertos()) {
         <div style="padding:0 14px 14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px 18px;font-size:.85rem">
-          <div><span style="color:var(--muted)">CNPJ</span><br />{{ pr.cnpj || '—' }}</div>
-          <div><span style="color:var(--muted)">Ramo</span><br />{{ pr.ramo || '—' }}</div>
-          <div><span style="color:var(--muted)">Módulos</span><br />{{ pr.modulos || '—' }}</div>
-          <div><span style="color:var(--muted)">Horas</span><br />{{ pr.horasCobradas || '—' }} + {{ pr.horasBonificadas || '0' }}</div>
-          <div><span style="color:var(--muted)">Contato</span><br />{{ pr.contatoNome || '—' }} {{ pr.contatoEmail ? '· ' + pr.contatoEmail : '' }}</div>
-          <div><span style="color:var(--muted)">Comercial</span><br />{{ pr.comercialEmail || '—' }}</div>
-          <div><span style="color:var(--muted)">GCI</span><br />{{ pr.gci || '—' }}</div>
-          <div><span style="color:var(--muted)">Consultor(es)</span><br />{{ pr.consultor || '—' }}</div>
+          <div><span class="txt-muted">CNPJ</span><br />{{ pr.cnpj || '—' }}</div>
+          <div><span class="txt-muted">Ramo</span><br />{{ pr.ramo || '—' }}</div>
+          <div><span class="txt-muted">Módulos</span><br />{{ pr.modulos || '—' }}</div>
+          <div><span class="txt-muted">Horas</span><br />{{ pr.horasCobradas || '—' }} + {{ pr.horasBonificadas || '0' }}</div>
+          <div><span class="txt-muted">Contato</span><br />{{ pr.contatoNome || '—' }} {{ pr.contatoEmail ? '· ' + pr.contatoEmail : '' }}</div>
+          <div><span class="txt-muted">Comercial</span><br />{{ pr.comercialEmail || '—' }}</div>
+          <div><span class="txt-muted">GCI</span><br />{{ pr.gci || '—' }}</div>
+          <div><span class="txt-muted">Consultor(es)</span><br />{{ pr.consultor || '—' }}</div>
           @if (!soConsulta()) {
           <div style="grid-column:1/-1;margin-top:4px">
             <a class="btn btn-sec" [routerLink]="['/projetos', projetoId, 'dados']">Editar dados do cliente</a>
@@ -54,7 +54,7 @@
     </div>
   }
 
-  <div class="painel" style="margin-bottom:16px">
+  <div class="painel" style="margin-bottom:var(--sp-4)">
     <div style="display:flex;align-items:center;gap:12px">
       <strong>{{ concluidos() }} de {{ passos().length }} passos</strong>
       <div style="flex:1;height:8px;background:var(--surface);border:1px solid var(--line);border-radius:99px;overflow:hidden">
@@ -71,12 +71,12 @@
       <div
         class="painel"
         style="margin-bottom:10px;padding:12px 14px;border-left-width:4px"
-        [style.border-left-color]="p.concluido ? 'var(--ok, #16a34a)' : 'var(--err, #dc2626)'"
+        [style.border-left-color]="p.concluido ? 'var(--ok, var(--ok))' : 'var(--err, var(--err))'"
         [style.background]="p.concluido ? 'rgba(22,163,74,.05)' : 'rgba(220,38,38,.04)'"
       >
         <div style="display:flex;align-items:flex-start;gap:12px">
           <span
-            [style.background]="p.concluido ? 'var(--ok, #16a34a)' : 'var(--err, #dc2626)'"
+            [style.background]="p.concluido ? 'var(--ok, var(--ok))' : 'var(--err, var(--err))'"
             style="border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none;font-size:.8rem;color:#fff"
             [title]="p.concluido ? 'Concluído' : 'Ainda falta fazer'"
           >{{ p.numero }}</span>
@@ -101,7 +101,7 @@
             @if (aceitaAnexoDeEmail(p) && !soConsulta()) {
               <p style="margin:6px 0 0;font-size:.85rem">
                 <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
-                  <span style="color:var(--muted)">Registro: anexe o e-mail encaminhado do Outlook (.msg/.eml)</span>
+                  <span class="txt-muted">Registro: anexe o e-mail encaminhado do Outlook (.msg/.eml)</span>
                   <input
                     type="file"
                     accept=".msg,.eml"
@@ -136,6 +136,20 @@
 
           @if (!soConsulta()) {
           <div style="display:flex;flex-direction:column;gap:6px;flex:none;width:130px;align-items:stretch">
+            <!-- Passo de documento: o fluxo leva à tela de trabalho. ABRIR segue a permissão
+                 da TELA (`podeAbrir`), NÃO a de concluir o passo — quem preenche o
+                 Levantamento não é só o Levantador designado que responde pela conclusão.
+                 Fica visível também depois de concluído, para rever o que foi preenchido. -->
+            @if (telaDoPasso(p); as tela) {
+              <a
+                class="btn"
+                style="width:100%;text-align:center"
+                [class.btn-sec]="!p.podeAbrir"
+                [attr.aria-disabled]="p.podeAbrir ? null : 'true'"
+                [title]="p.podeAbrir ? '' : 'Seu perfil não tem acesso a esta tela.'"
+                [routerLink]="p.podeAbrir ? tela : null"
+              >Abrir</a>
+            }
             @if (!p.concluido) {
               @if (formDoPasso(p)) {
                 <button
@@ -145,29 +159,12 @@
                   [disabled]="!p.liberado || ocupado() === p.numero"
                   (click)="abrirForm(p)"
                 >Preencher</button>
-              } @else if (telaDoPasso(p); as tela) {
-                <!-- Passo de documento: o fluxo leva à tela de trabalho. Onde a geração
-                     produz o documento (Projeto, Cronograma), o backend conclui o passo
-                     sozinho; onde não (Check-list só salva linhas), conclui-se aqui depois
-                     de abrir. Por isso os dois botões — mas num lugar só, dentro do passo. -->
-                <a
-                  class="btn"
-                  style="width:100%;text-align:center"
-                  [class.btn-sec]="!p.liberado"
-                  [routerLink]="p.liberado ? tela : null"
-                >Abrir</a>
-                <button
-                  type="button"
-                  class="btn btn-sec"
-                  style="width:100%"
-                  [disabled]="!p.liberado || ocupado() === p.numero"
-                  (click)="concluir(p)"
-                >Concluir</button>
               } @else {
               <button
                 type="button"
                 class="btn"
                 style="width:100%"
+                [class.btn-sec]="!!telaDoPasso(p)"
                 [disabled]="!p.liberado || ocupado() === p.numero"
                 (click)="concluir(p)"
               >Concluir</button>
@@ -223,7 +220,7 @@
                     }
                   </div>
                 </div>
-                <div style="display:flex;gap:8px;margin-top:12px">
+                <div class="acoes" style="margin-top:var(--sp-3)">
                   <button type="button" class="btn primario" [disabled]="ocupado() === p.numero" (click)="salvarAgendamento()">Salvar e concluir</button>
                   <button type="button" class="btn btn-sec" (click)="fecharForm()">Cancelar</button>
                 </div>
@@ -250,7 +247,7 @@
                     }
                   </div>
                 </div>
-                <div style="display:flex;gap:8px;margin-top:12px">
+                <div class="acoes" style="margin-top:var(--sp-3)">
                   <button type="button" class="btn primario" [disabled]="ocupado() === p.numero" (click)="salvarDesignacao()">Salvar e concluir</button>
                   <button type="button" class="btn btn-sec" (click)="fecharForm()">Cancelar</button>
                 </div>
@@ -270,34 +267,38 @@
     @if (rns().length === 0) {
       <p style="color:var(--muted);margin:0 0 10px">Nenhuma RNS registrada.</p>
     } @else {
-      <table style="width:100%;border-collapse:collapse;margin-bottom:12px">
-        <thead>
-          <tr style="text-align:left;font-size:.8rem;color:var(--muted)">
-            <th style="padding:6px 4px">Tipo</th>
-            <th style="padding:6px 4px">Número</th>
-            <th style="padding:6px 4px">Descrição</th>
-            <th style="padding:6px 4px"></th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (r of rns(); track r.id) {
-            <tr style="border-top:1px solid var(--line)">
-              <td style="padding:6px 4px">{{ r.tipo }}</td>
-              <td style="padding:6px 4px">{{ r.numero || '—' }}</td>
-              <td style="padding:6px 4px">{{ r.descricao || '—' }}</td>
-              <td style="padding:6px 4px;text-align:right">
-                @if (!soConsulta()) {
-                  <button type="button" class="btn btn-sec" (click)="removerRns(r.id)">Remover</button>
-                }
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
+      <div class="tabela-wrap" style="margin-bottom:12px">
+        <div class="tabela-wrap">
+          <table class="tabela">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Número</th>
+                <th>Descrição</th>
+                <th class="col-acoes"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of rns(); track r.id) {
+                <tr>
+                  <td>{{ r.tipo }}</td>
+                  <td>{{ r.numero || '—' }}</td>
+                  <td>{{ r.descricao || '—' }}</td>
+                  <td class="col-acoes">
+                    @if (!soConsulta()) {
+                      <button type="button" class="btn pequeno perigo" (click)="removerRns(r.id)">Remover</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
     }
 
     @if (!soConsulta()) {
-    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+    <div class="filtros-linha">
       <label class="campo" style="flex:none">
         <span>Tipo</span>
         <select [(ngModel)]="novoTipo" name="novoTipo">
@@ -308,7 +309,7 @@
         <span>Número</span>
         <input type="text" [(ngModel)]="novoNumero" name="novoNumero" placeholder="654321" />
       </label>
-      <label class="campo" style="flex:1;min-width:220px">
+      <label class="campo largo">
         <span>Descrição</span>
         <input type="text" [(ngModel)]="novaDescricao" name="novaDescricao" placeholder="Conversão — Clientes/Fornecedores" />
       </label>
@@ -318,6 +319,6 @@
   </div>
 
   <p style="margin-top:18px">
-    <a class="btn btn-sec" [routerLink]="['/projetos', projetoId]">Voltar ao projeto</a>
+    <a class="btn btn-voltar" [routerLink]="['/projetos', projetoId]">← Voltar ao projeto</a>
   </p>
 }
