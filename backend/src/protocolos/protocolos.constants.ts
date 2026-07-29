@@ -27,7 +27,8 @@ export const PROTO_MODULOS = [
 ] as const;
 
 // Campos de conteúdo editáveis na tela de revisão (nome da coluna = nome do input) —
-// também as chaves esperadas no JSON devolvido pela análise de IA.
+// também as chaves esperadas no JSON devolvido pela análise de IA. A ordem segue as 10
+// seções obrigatórias do prompt de protocolo de treinamento (ver protocolo-ia.service.ts).
 export const PROTO_CAMPOS_TEXTO = [
   'titulo',
   'modulo',
@@ -37,12 +38,20 @@ export const PROTO_CAMPOS_TEXTO = [
   'objetivo',
   'quandoUtilizar',
   'preRequisitos',
+  'menusAbordados',
+  'funcionalidades',
   'passoAPasso',
+  'processos',
+  'definicoes',
+  'regrasNegocio',
   'configuracoes',
   'dependencias',
-  'regrasNegocio',
   'pontosAtencao',
   'exemplos',
+  'duvidas',
+  'pendenciasTreinamento',
+  'proximosPassos',
+  'resumoTecnico',
   'assuntosRemovidos',
   'pendencias',
 ] as const;

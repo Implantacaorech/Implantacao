@@ -384,6 +384,7 @@ Populado por seed a partir de `tools/data/checklist_modulos.yaml` (dado local, f
 | id | serial PK | |
 | titulo, modulo, menu, assunto | varchar | |
 | resumo, objetivo, quando_utilizar, pre_requisitos, passo_a_passo, configuracoes, dependencias, regras_negocio, pontos_atencao, exemplos | text | |
+| menus_abordados, funcionalidades, processos, definicoes, duvidas, pendencias_treinamento, proximos_passos, resumo_tecnico | text | seções do protocolo de treinamento (prompt de 2026-07-29 — migration `ProtocoloSecoesTreinamento`) |
 | assuntos_removidos, pendencias | text | auditoria do que a IA descartou / pontos p/ revisão humana |
 | video_nome, video_caminho, video_origem | varchar/text | `sharepoint`\|`upload` |
 | video_hash | varchar(40), indexado | dedup (nome+tamanho+1MB) |

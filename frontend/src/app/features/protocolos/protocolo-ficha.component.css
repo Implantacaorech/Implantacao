@@ -1,3 +1,12 @@
+/* Separador dos blocos do formulário de revisão (grupos de PROTO_CAMPOS_EDICAO). */
+.pt-grupo {
+  margin: var(--sp-4, 20px) 0 var(--sp-2, 8px);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line, #e2e8f0);
+  color: var(--navy, #1e293b);
+  font-size: 0.95rem;
+}
+
 .pt-steps {
   display: flex;
   align-items: center;

@@ -44,12 +44,20 @@ export interface Protocolo {
   objetivo: string;
   quandoUtilizar: string;
   preRequisitos: string;
+  menusAbordados: string;
+  funcionalidades: string;
   passoAPasso: string;
+  processos: string;
+  definicoes: string;
+  regrasNegocio: string;
   configuracoes: string;
   dependencias: string;
-  regrasNegocio: string;
   pontosAtencao: string;
   exemplos: string;
+  duvidas: string;
+  pendenciasTreinamento: string;
+  proximosPassos: string;
+  resumoTecnico: string;
   assuntosRemovidos: string;
   pendencias: string;
   videoNome: string;
@@ -105,26 +113,44 @@ export type CampoTextoProtocolo =
   | 'objetivo'
   | 'quandoUtilizar'
   | 'preRequisitos'
+  | 'menusAbordados'
+  | 'funcionalidades'
   | 'passoAPasso'
+  | 'processos'
+  | 'definicoes'
+  | 'regrasNegocio'
   | 'configuracoes'
   | 'dependencias'
-  | 'regrasNegocio'
   | 'pontosAtencao'
   | 'exemplos'
+  | 'duvidas'
+  | 'pendenciasTreinamento'
+  | 'proximosPassos'
+  | 'resumoTecnico'
   | 'assuntosRemovidos'
   | 'pendencias';
 
-export const PROTO_CAMPOS_EDICAO: { chave: CampoTextoProtocolo; rotulo: string; linhas: number }[] = [
-  { chave: 'resumo', rotulo: 'Resumo do treinamento', linhas: 4 },
+/** Campos de texto da revisão, na ordem das seções do protocolo de treinamento. `grupo`
+ * só marca o início de um bloco na tela (o formulário é uma lista só). */
+export const PROTO_CAMPOS_EDICAO: { chave: CampoTextoProtocolo; rotulo: string; linhas: number; grupo?: string }[] = [
+  { chave: 'resumo', rotulo: 'Resumo geral (executivo)', linhas: 5, grupo: '1. Resumo' },
   { chave: 'objetivo', rotulo: 'Objetivo da rotina', linhas: 3 },
   { chave: 'quandoUtilizar', rotulo: 'Quando utilizar', linhas: 3 },
-  { chave: 'preRequisitos', rotulo: 'Pré-requisitos', linhas: 4 },
-  { chave: 'passoAPasso', rotulo: 'Passo a passo', linhas: 8 },
-  { chave: 'configuracoes', rotulo: 'Configurações envolvidas', linhas: 4 },
-  { chave: 'dependencias', rotulo: 'Dependências', linhas: 3 },
+  { chave: 'preRequisitos', rotulo: 'Pré-requisitos', linhas: 3 },
+  { chave: 'menusAbordados', rotulo: 'Menus do sistema abordados (menu · objetivo · atividades)', linhas: 10, grupo: '2. Conteúdo do treinamento' },
+  { chave: 'funcionalidades', rotulo: 'Funcionalidades demonstradas', linhas: 8 },
+  { chave: 'passoAPasso', rotulo: 'Passo a passo consolidado', linhas: 8 },
+  { chave: 'processos', rotulo: 'Processos executados', linhas: 5 },
+  { chave: 'definicoes', rotulo: 'Definições explicadas no treinamento', linhas: 6, grupo: '3. Conceitos, regras e configurações' },
   { chave: 'regrasNegocio', rotulo: 'Regras de negócio', linhas: 4 },
+  { chave: 'configuracoes', rotulo: 'Configurações e parametrizações', linhas: 5 },
+  { chave: 'dependencias', rotulo: 'Dependências', linhas: 3 },
   { chave: 'pontosAtencao', rotulo: 'Pontos de atenção', linhas: 3 },
   { chave: 'exemplos', rotulo: 'Exemplos citados', linhas: 3 },
-  { chave: 'assuntosRemovidos', rotulo: 'Assuntos removidos (auditoria)', linhas: 3 },
-  { chave: 'pendencias', rotulo: 'Pendências de validação', linhas: 3 },
+  { chave: 'duvidas', rotulo: 'Dúvidas respondidas (P / R)', linhas: 5, grupo: '4. Fechamento' },
+  { chave: 'pendenciasTreinamento', rotulo: 'Pendências do treinamento (com o cliente)', linhas: 4 },
+  { chave: 'proximosPassos', rotulo: 'Próximos passos', linhas: 4 },
+  { chave: 'resumoTecnico', rotulo: 'Resumo técnico final (tópicos)', linhas: 5 },
+  { chave: 'assuntosRemovidos', rotulo: 'Assuntos removidos pela filtragem', linhas: 3, grupo: '5. Auditoria da análise' },
+  { chave: 'pendencias', rotulo: 'Pontos a validar na revisão (levantados pela IA)', linhas: 3 },
 ];

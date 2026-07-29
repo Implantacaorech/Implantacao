@@ -42,12 +42,20 @@ describe('ProtocoloIaService', () => {
         objetivo: 'Objetivo',
         quando_utilizar: 'Quando',
         pre_requisitos: '- nenhum',
+        menus_abordados: '### 1.4-I — Cadastro de Produtos',
+        funcionalidades: '- F8: explorar arquivos',
         passo_a_passo: '1. Abrir o menu',
+        processos: '- Cadastro de produto',
+        definicoes: '- Matriz de Integração: regras de contrapartida',
         configuracoes: '',
         dependencias: '',
         regras_negocio: '',
         pontos_atencao: '',
         exemplos: '',
+        duvidas: '- P: e se não houver matriz?\n  R: partida dobrada simples',
+        pendencias_treinamento: '- validar a conta 99',
+        proximos_passos: '- nova sessão na próxima semana',
+        resumo_tecnico: '- conciliação automática por data e valor',
         assuntos_removidos: '- conversa paralela',
         pendencias: '',
       }),
@@ -64,8 +72,46 @@ describe('ProtocoloIaService', () => {
     expect(campos.modulo).toBe('Estoque');
     expect(campos.menu).toBe('1.4-I');
     expect(campos.passoAPasso).toBe('1. Abrir o menu');
+    expect(campos.menusAbordados).toBe('### 1.4-I — Cadastro de Produtos');
+    expect(campos.funcionalidades).toBe('- F8: explorar arquivos');
+    expect(campos.definicoes).toContain('Matriz de Integração');
+    expect(campos.processos).toBe('- Cadastro de produto');
+    expect(campos.duvidas).toContain('partida dobrada simples');
+    expect(campos.pendenciasTreinamento).toBe('- validar a conta 99');
+    expect(campos.proximosPassos).toBe('- nova sessão na próxima semana');
+    expect(campos.resumoTecnico).toContain('conciliação automática');
     expect(campos.assuntosRemovidos).toBe('- conversa paralela');
     expect(bruto).toContain('Cadastro de Produtos');
+  });
+
+  it('declara a ausência de pendências do treinamento quando a IA devolve vazio', async () => {
+    ia.completar.mockResolvedValue(
+      JSON.stringify({ pendencias_treinamento: '' }),
+    );
+    const { campos } = await service.analisar('transcrição');
+    expect(campos.pendenciasTreinamento).toBe(
+      'Nenhuma pendência identificada.',
+    );
+  });
+
+  it('o prompt cobre as 10 seções obrigatórias do protocolo de treinamento', async () => {
+    ia.completar.mockResolvedValue(JSON.stringify({}));
+    await service.analisar('transcrição');
+    const system = (ia.completar.mock.calls[0][1] as { system: string }).system;
+    for (const chave of [
+      'menus_abordados',
+      'funcionalidades',
+      'definicoes',
+      'configuracoes',
+      'processos',
+      'duvidas',
+      'pendencias_treinamento',
+      'proximos_passos',
+      'resumo_tecnico',
+    ]) {
+      expect(system).toContain(chave);
+    }
+    expect(system).toContain('NUNCA invente');
   });
 
   it('força módulo para "Módulo a validar" se a IA devolver algo fora da lista', async () => {

@@ -117,7 +117,10 @@ export class ProtocolosService {
       qb.andWhere(
         '(LOWER(p.titulo) LIKE :q OR LOWER(p.assunto) LIKE :q OR LOWER(p.resumo) LIKE :q ' +
           'OR LOWER(p.passoAPasso) LIKE :q OR LOWER(p.configuracoes) LIKE :q ' +
-          'OR LOWER(p.regrasNegocio) LIKE :q OR LOWER(p.dependencias) LIKE :q)',
+          'OR LOWER(p.regrasNegocio) LIKE :q OR LOWER(p.dependencias) LIKE :q ' +
+          'OR LOWER(p.menusAbordados) LIKE :q OR LOWER(p.funcionalidades) LIKE :q ' +
+          'OR LOWER(p.definicoes) LIKE :q OR LOWER(p.processos) LIKE :q ' +
+          'OR LOWER(p.resumoTecnico) LIKE :q)',
         { q: `%${filtro.q.toLowerCase()}%` },
       );
     }
