@@ -11,13 +11,22 @@ import { DicionarioDocumento } from '../src/database/entities/dicionario-documen
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
 
-/** Prova ponta a ponta do Dicionário Inteligente: qualquer perfil autenticado pesquisa,
- * abre o documento com seções/fonte, filtra por sigla, e a rota /perguntar responde de forma
- * honesta (sem chave de IA no ambiente de teste, devolve as fontes sem inventar). */
+/** Prova ponta a ponta do Dicionário Inteligente: pesquisa, abre o documento com
+ * seções/fonte, filtra por sigla, e a rota /perguntar responde de forma honesta (sem chave
+ * de IA no ambiente de teste, devolve as fontes sem inventar).
+ *
+ * Atualizado em 2026-07-29: o Dicionário deixou de ser aberto a qualquer autenticado e virou
+ * ADM-only na definição de menus de 2026-07-28 (`@Permissao('dicionario')` no controller,
+ * `dicionario: { ADM: 'alteracao' }` em PADRAO_PERMISSOES). Este arquivo ainda rodava tudo
+ * com token de Consultor e levava 403 em seis casos. */
 describe('Dicionário Inteligente (e2e)', () => {
   let app: INestApplication<App>;
   let usuarios: Repository<Usuario>;
   let docs: Repository<DicionarioDocumento>;
+  /** O Dicionário é ADM-only (`dicionario: { ADM: 'alteracao' }` em PADRAO_PERMISSOES e
+   * MENU_DICIONARIO no frontend, definição de 2026-07-28). Os cenários funcionais correm
+   * com o ADM; o Consultor fica só para provar que a porta está fechada. */
+  let tokenAdm: string;
   let tokenConsultor: string;
 
   const server = () => app.getHttpServer();
@@ -47,7 +56,7 @@ describe('Dicionário Inteligente (e2e)', () => {
     usuarios = moduleFixture.get(getRepositoryToken(Usuario));
     docs = moduleFixture.get(getRepositoryToken(DicionarioDocumento));
 
-    await usuarios.save(
+    await usuarios.save([
       usuarios.create({
         login: 'consultor1',
         nome: 'Consultor Um',
@@ -56,11 +65,24 @@ describe('Dicionário Inteligente (e2e)', () => {
         perfil: 'Consultor',
         ativo: true,
       }),
-    );
+      usuarios.create({
+        login: 'admin1',
+        nome: 'Administradora',
+        email: 'admin1@teste.com',
+        senhaHash: await bcrypt.hash('senha-adm-123', 4),
+        perfil: 'ADM',
+        ativo: true,
+      }),
+    ]);
     tokenConsultor = (
       await request(server())
         .post('/api/auth/login')
         .send({ login: 'consultor1', senha: 'senha-cons-123' })
+    ).body.data.accessToken;
+    tokenAdm = (
+      await request(server())
+        .post('/api/auth/login')
+        .send({ login: 'admin1', senha: 'senha-adm-123' })
     ).body.data.accessToken;
 
     await docs.save(
@@ -105,7 +127,7 @@ describe('Dicionário Inteligente (e2e)', () => {
     const res = await request(server())
       .get('/api/dicionario/pesquisar')
       .query({ q: 'CTB101' })
-      .set('Authorization', `Bearer ${tokenConsultor}`);
+      .set('Authorization', `Bearer ${tokenAdm}`);
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(1);
     expect(res.body.data[0].sigla).toBe('CTB');
@@ -116,7 +138,7 @@ describe('Dicionário Inteligente (e2e)', () => {
     const res = await request(server())
       .get('/api/dicionario/pesquisar')
       .query({ tipo: 'adicional' })
-      .set('Authorization', `Bearer ${tokenConsultor}`);
+      .set('Authorization', `Bearer ${tokenAdm}`);
     expect(res.status).toBe(200);
     expect(
       res.body.data.every((d: { tipo: string }) => d.tipo === 'adicional'),
@@ -126,7 +148,7 @@ describe('Dicionário Inteligente (e2e)', () => {
   it('abre um documento pelo slug com seções e fonte', async () => {
     const res = await request(server())
       .get('/api/dicionario/01-ctb-contabilidade')
-      .set('Authorization', `Bearer ${tokenConsultor}`);
+      .set('Authorization', `Bearer ${tokenAdm}`);
     expect(res.status).toBe(200);
     expect(res.body.data.titulo).toBe('CTB - Contabilidade');
     expect(res.body.data.secoes[0].categoria).toBe('configuracao');
@@ -138,14 +160,14 @@ describe('Dicionário Inteligente (e2e)', () => {
   it('slug inexistente devolve 404', async () => {
     const res = await request(server())
       .get('/api/dicionario/nao-existe')
-      .set('Authorization', `Bearer ${tokenConsultor}`);
+      .set('Authorization', `Bearer ${tokenAdm}`);
     expect(res.status).toBe(404);
   });
 
   it('status reflete a base ingerida', async () => {
     const res = await request(server())
       .get('/api/dicionario/status')
-      .set('Authorization', `Bearer ${tokenConsultor}`);
+      .set('Authorization', `Bearer ${tokenAdm}`);
     expect(res.status).toBe(200);
     expect(res.body.data.totalDocumentos).toBe(2);
     expect(res.body.data.totalModulos).toBe(1);
@@ -156,11 +178,19 @@ describe('Dicionário Inteligente (e2e)', () => {
     const res = await request(server())
       .post('/api/dicionario/perguntar')
       .send({ pergunta: 'como configuro o CTB101' })
-      .set('Authorization', `Bearer ${tokenConsultor}`);
+      .set('Authorization', `Bearer ${tokenAdm}`);
     expect(res.status).toBe(201);
     expect(res.body.data.iaDisponivel).toBe(false);
     expect(res.body.data.fontes.length).toBeGreaterThan(0);
     expect(res.body.data.fontes[0].slug).toBe('01-ctb-contabilidade');
+  });
+
+  it('Consultor não entra no Dicionário — a tela é ADM-only', async () => {
+    const res = await request(server())
+      .get('/api/dicionario/pesquisar')
+      .query({ q: 'CTB101' })
+      .set('Authorization', `Bearer ${tokenConsultor}`);
+    expect(res.status).toBe(403);
   });
 
   it('sem autenticação é rejeitado', async () => {

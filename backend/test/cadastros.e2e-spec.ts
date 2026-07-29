@@ -81,21 +81,28 @@ describe('Cadastros (e2e)', () => {
     tokenConsultor = loginConsultor.body.data.accessToken;
 
     // Catálogo sintético do Índice de Tópicos (NODE_ENV=test pula o auto-seed do YAML real).
+    // `moduloNum` é o CÓDIGO do módulo no SICLA (LISTA_SISTEMAS) — é por ele que o seed do
+    // Levantamento casa as perguntas, não pela sigla: o seletor de módulos grava em
+    // `Projeto.modulos` o código efetivo (do adicional quando há, senão do módulo). A
+    // fixture só tinha a sigla e, desde essa mudança, semeava zero pergunta.
     await indiceRepo.save(
       [
         {
+          moduloNum: '01',
           moduloSigla: 'FAT',
           modulo: 'Faturamento',
           adicional: '',
           topico: 'Emissão de NF',
         },
         {
+          moduloNum: '01',
           moduloSigla: 'FAT',
           modulo: 'Faturamento',
           adicional: '',
           topico: 'Devolução',
         },
         {
+          moduloNum: '02',
           moduloSigla: 'EST',
           modulo: 'Estoque',
           adicional: '',
@@ -278,6 +285,7 @@ describe('Cadastros (e2e)', () => {
   describe('Levantamento (respostas) e DocConteudo', () => {
     async function novoProjeto(
       cliente: string,
+      /** CÓDIGOS do SICLA, como o seletor de módulos grava (01=FAT, 02=EST). */
       modulos: string,
     ): Promise<number> {
       const p = await projetos.save(
@@ -287,7 +295,7 @@ describe('Cadastros (e2e)', () => {
     }
 
     it('semeia as respostas a partir do Índice de Tópicos dos módulos contratados', async () => {
-      const pid = await novoProjeto('Cliente Levantamento LTDA', 'FAT,EST');
+      const pid = await novoProjeto('Cliente Levantamento LTDA', '01,02');
       const res = await auth(
         request(server()).get(`/api/projetos/${pid}/levantamento`),
       );
@@ -297,7 +305,7 @@ describe('Cadastros (e2e)', () => {
     });
 
     it('salva respostas e atualiza o resumo', async () => {
-      const pid = await novoProjeto('Cliente Respostas LTDA', 'EST');
+      const pid = await novoProjeto('Cliente Respostas LTDA', '02');
       const antes = await auth(
         request(server()).get(`/api/projetos/${pid}/levantamento`),
       );
@@ -318,7 +326,7 @@ describe('Cadastros (e2e)', () => {
     });
 
     it('Consultor não pode acessar o Levantamento (pode_gerar("levantamento") exclui Consultor)', async () => {
-      const pid = await novoProjeto('Cliente SemAcesso LTDA', 'EST');
+      const pid = await novoProjeto('Cliente SemAcesso LTDA', '02');
       const res = await request(server())
         .get(`/api/projetos/${pid}/levantamento`)
         .set('Authorization', `Bearer ${tokenConsultor}`);
@@ -326,7 +334,7 @@ describe('Cadastros (e2e)', () => {
     });
 
     it('DocConteudo salva e devolve campos estruturados por documento', async () => {
-      const pid = await novoProjeto('Cliente DocConteudo LTDA', 'EST');
+      const pid = await novoProjeto('Cliente DocConteudo LTDA', '02');
       const salvar = await auth(
         request(server()).put(`/api/projetos/${pid}/doc-conteudo/levantamento`),
       ).send({

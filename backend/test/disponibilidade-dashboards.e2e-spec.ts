@@ -266,12 +266,15 @@ describe('Disponibilidade / Consultas BD / Dashboards (e2e)', () => {
   });
 
   describe('Dashboards', () => {
-    it('Consultor não acessa (só gestão: ADM/Coordenador/Administrativo/GCI)', async () => {
+    it('Consultor acessa — Dashboards é liberado a todo o time pelo painel de Permissões', async () => {
+      // Mudou em 2026-07-28, quando as liberações saíram do código e foram para o banco:
+      // `dashboards` tem `alteracao` para todos os papéis internos (só o Comercial fica em
+      // `consulta`) em PADRAO_PERMISSOES. O teste afirmava a regra fixa anterior, de gestão.
       const res = await auth(
         request(server()).get('/api/dashboards'),
         tokenConsultor,
       );
-      expect(res.status).toBe(403);
+      expect(res.status).toBe(200);
     });
 
     it('GCI acessa a listagem de dashboards disponíveis', async () => {
