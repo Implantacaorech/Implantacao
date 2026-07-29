@@ -11,11 +11,17 @@ const ORDEM: Record<NivelPermissao, number> = {
   consulta: 1,
   alteracao: 2,
 };
-export function nivelMaior(a: NivelPermissao, b: NivelPermissao): NivelPermissao {
+export function nivelMaior(
+  a: NivelPermissao,
+  b: NivelPermissao,
+): NivelPermissao {
   return ORDEM[a] >= ORDEM[b] ? a : b;
 }
 /** `nivel` satisfaz o mínimo exigido? (alteracao ⊇ consulta ⊇ nada). */
-export function atendeNivel(nivel: NivelPermissao, minimo: NivelPermissao): boolean {
+export function atendeNivel(
+  nivel: NivelPermissao,
+  minimo: NivelPermissao,
+): boolean {
   return ORDEM[nivel] >= ORDEM[minimo];
 }
 
@@ -38,7 +44,11 @@ export const MENUS: DefinicaoMenu[] = [
   { chave: 'carteira', rotulo: 'Carteira', grupo: 'Execução' },
   { chave: 'protocolos', rotulo: 'Protocolos', grupo: 'Execução' },
   { chave: 'matriz', rotulo: 'Matriz de Conhecimento', grupo: 'Execução' },
-  { chave: 'matriz_detalhada', rotulo: 'Matriz por Menu (SIGER)', grupo: 'Execução' },
+  {
+    chave: 'matriz_detalhada',
+    rotulo: 'Matriz por Menu (SIGER)',
+    grupo: 'Execução',
+  },
   {
     chave: 'matriz_funcoes',
     rotulo: 'Matriz por Menu - Funções SICLA',
@@ -46,20 +56,58 @@ export const MENUS: DefinicaoMenu[] = [
   },
   { chave: 'dicionario', rotulo: 'Dicionário Inteligente', grupo: 'Execução' },
   { chave: 'coordenacao', rotulo: 'Coordenação', grupo: 'Gestão' },
-  { chave: 'centro_operacional', rotulo: 'Centro Operacional', grupo: 'Gestão' },
+  {
+    chave: 'centro_operacional',
+    rotulo: 'Centro Operacional',
+    grupo: 'Gestão',
+  },
   { chave: 'atividade', rotulo: 'Atividade', grupo: 'Gestão' },
   // Área BI: uma entrada só no menu lateral, duas abas dentro. As DUAS chaves continuam
   // separadas de propósito — o Administrador libera cada BI independentemente.
   { chave: 'dashboards', rotulo: 'BI · BI Implantação', grupo: 'Gestão' },
-  { chave: 'bi_implantacao', rotulo: 'BI · Implantação Clientes SIGER', grupo: 'Gestão' },
+  {
+    chave: 'bi_implantacao',
+    rotulo: 'BI · Implantação Clientes SIGER',
+    grupo: 'Gestão',
+  },
   { chave: 'permissoes', rotulo: 'Permissões', grupo: 'Gestão', fixaAdm: true },
-  { chave: 'ferramentas', rotulo: 'Ferramentas', grupo: 'Sistema', fixaAdm: true },
+  {
+    chave: 'ferramentas',
+    rotulo: 'Ferramentas',
+    grupo: 'Sistema',
+    fixaAdm: true,
+  },
   { chave: 'usuarios', rotulo: 'Usuários', grupo: 'Sistema', fixaAdm: true },
-  { chave: 'checklist', rotulo: 'Cad. Checklist', grupo: 'Sistema', fixaAdm: true },
-  { chave: 'indice_topicos', rotulo: 'Índice de Tópicos', grupo: 'Sistema', fixaAdm: true },
-  { chave: 'modelos_docs', rotulo: 'Modelos de Docs', grupo: 'Sistema', fixaAdm: true },
-  { chave: 'consulta_bd', rotulo: 'Consulta BD', grupo: 'Sistema', fixaAdm: true },
-  { chave: 'assistente_legado', rotulo: 'Assistente Legado', grupo: 'Sistema', fixaAdm: true },
+  {
+    chave: 'checklist',
+    rotulo: 'Cad. Checklist',
+    grupo: 'Sistema',
+    fixaAdm: true,
+  },
+  {
+    chave: 'indice_topicos',
+    rotulo: 'Índice de Tópicos',
+    grupo: 'Sistema',
+    fixaAdm: true,
+  },
+  {
+    chave: 'modelos_docs',
+    rotulo: 'Modelos de Docs',
+    grupo: 'Sistema',
+    fixaAdm: true,
+  },
+  {
+    chave: 'consulta_bd',
+    rotulo: 'Consulta BD',
+    grupo: 'Sistema',
+    fixaAdm: true,
+  },
+  {
+    chave: 'assistente_legado',
+    rotulo: 'Assistente Legado',
+    grupo: 'Sistema',
+    fixaAdm: true,
+  },
 ];
 export const MENU_CHAVES = MENUS.map((m) => m.chave);
 export function ehMenuValido(chave: string): boolean {
@@ -83,7 +131,11 @@ export const PADRAO_PERMISSOES: Record<
   string,
   Partial<Record<Perfil, NivelPermissao>>
 > = {
-  novo_cliente: { ADM: 'alteracao', Coordenador: 'alteracao', Comercial: 'alteracao' },
+  novo_cliente: {
+    ADM: 'alteracao',
+    Coordenador: 'alteracao',
+    Comercial: 'alteracao',
+  },
   // Visão Geral (home): todos veem, menos o Comercial — espelha o `!soComercial` antigo.
   visao_geral: {
     ADM: 'consulta',
@@ -138,7 +190,11 @@ export const PADRAO_PERMISSOES: Record<
   },
   dicionario: { ADM: 'alteracao' },
   coordenacao: { ADM: 'alteracao', Coordenador: 'alteracao', GCI: 'alteracao' },
-  centro_operacional: { ADM: 'alteracao', Coordenador: 'alteracao', GCI: 'alteracao' },
+  centro_operacional: {
+    ADM: 'alteracao',
+    Coordenador: 'alteracao',
+    GCI: 'alteracao',
+  },
   atividade: { ADM: 'alteracao', Coordenador: 'alteracao', GCI: 'alteracao' },
   dashboards: {
     ADM: 'alteracao',

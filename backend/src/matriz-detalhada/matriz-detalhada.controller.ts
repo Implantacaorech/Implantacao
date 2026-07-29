@@ -83,7 +83,9 @@ export class MatrizDetalhadaController {
     }
     // Só a própria linha.
     return new ApiEnvelope({
-      tecnicos: minha ? [{ id: minha.id, nome: minha.nome, setor: minha.setor }] : [],
+      tecnicos: minha
+        ? [{ id: minha.id, nome: minha.nome, setor: minha.setor }]
+        : [],
       meuId: minha?.id ?? null,
       podeVerTodos: false,
       podeAdmin: false,
@@ -92,7 +94,8 @@ export class MatrizDetalhadaController {
 
   @Get('medias-gerais')
   @ApiOperation({
-    summary: 'Média GERAL (todos os técnicos) por módulo/adicional — alimenta o gráfico',
+    summary:
+      'Média GERAL (todos os técnicos) por módulo/adicional — alimenta o gráfico',
   })
   async mediasGerais() {
     return new ApiEnvelope({ modulos: await this.service.mediasGerais() });

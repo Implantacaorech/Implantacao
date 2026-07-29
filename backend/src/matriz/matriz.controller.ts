@@ -108,7 +108,10 @@ export class MatrizController {
     if (!t) throw new NotFoundException('Técnico não encontrado.');
     // Calcula a própria linha SEMPRE — até quem vê tudo precisa dela para saber se pode
     // editar a sua (não só consultar).
-    const minha = await this.service.linhaDoUsuario(user.nome, user.codigoSicla);
+    const minha = await this.service.linhaDoUsuario(
+      user.nome,
+      user.codigoSicla,
+    );
     if (!veTudo(user) && !(minha && minha.id === t.id)) {
       throw new ForbiddenException('Sem acesso à ficha de outro técnico.');
     }
@@ -134,7 +137,10 @@ export class MatrizController {
   ) {
     const t = await this.service.buscar(id);
     if (!t) throw new NotFoundException('Técnico não encontrado.');
-    const minha = await this.service.linhaDoUsuario(user.nome, user.codigoSicla);
+    const minha = await this.service.linhaDoUsuario(
+      user.nome,
+      user.codigoSicla,
+    );
     if (
       !podeEditar(user, t, minha) ||
       !this.permissoes.podeAlterar(user, 'matriz')

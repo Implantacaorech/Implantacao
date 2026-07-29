@@ -181,18 +181,16 @@ describe('Painel (e2e)', () => {
       expect(res.body.data.etapas).toContain('Encerramento');
     });
 
-    // ATENÇÃO ao mexer aqui: a mudança que transforma a Coordenação em PORTFÓLIO (o GCI
-    // passa a ver a carteira inteira, porque o gate vira o menu no painel de Permissões)
-    // existe na árvore de trabalho, mas ainda NÃO foi commitada. Enquanto não for, o
-    // comportamento válido é este — o filtro por designação. Quando ela entrar, este teste
-    // e o do monitoramento abaixo passam a esperar 2, não 1.
-    it('GCI só vê os próprios projetos', async () => {
+    it('GCI vê a carteira INTEIRA — a Coordenação é portfólio', async () => {
+      // Quem chega aqui já passou pelo gate do menu `coordenacao` no painel de Permissões, e
+      // o serviço não filtra mais por designação. Enquanto filtrava, o GCI (que tem o menu
+      // por padrão) abria a tela vazia. Mesma regra afirmada em coordenacao.service.spec.
       const res = await auth(
         request(server()).get('/api/painel/coordenacao'),
         tokenGci,
       );
       expect(res.status).toBe(200);
-      expect(res.body.data.m.total).toBe(1);
+      expect(res.body.data.m.total).toBe(2);
     });
   });
 
@@ -284,16 +282,19 @@ describe('Painel (e2e)', () => {
       expect(res.body.data.mapa).toHaveLength(2); // os 2 projetos ativos vistos pelo ADM
     });
 
-    // Mesma ressalva do teste da Coordenação: o Centro Operacional também vira portfólio na
-    // mudança ainda não commitada. Enquanto ela não entra, vale o filtro por designação.
-    it('GCI só vê o próprio projeto no mapa', async () => {
+    it('GCI vê o mapa INTEIRO — o Centro Operacional também é portfólio', async () => {
+      // Mesma regra da Coordenação: o gate é o menu `centro_operacional` no painel de
+      // Permissões, não a designação. Com o filtro, quem tinha o menu liberado e não era
+      // ADM/Coordenador/Administrativo via os 8 setores zerados.
       const res = await auth(
         request(server()).get('/api/painel/monitoramento'),
         tokenGci,
       );
       expect(res.status).toBe(200);
-      expect(res.body.data.mapa).toHaveLength(1);
-      expect(res.body.data.mapa[0].cliente).toBe('Cliente Visível ao GCI');
+      expect(res.body.data.mapa).toHaveLength(2);
+      expect(
+        (res.body.data.mapa as { cliente: string }[]).map((p) => p.cliente),
+      ).toContain('Cliente Visível ao GCI');
     });
   });
 });
