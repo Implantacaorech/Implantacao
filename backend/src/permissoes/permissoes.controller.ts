@@ -36,7 +36,9 @@ export class PermissoesController {
   ) {}
 
   @Get('me')
-  @ApiOperation({ summary: 'Mapa menu→nível do usuário logado (menu/guards do Angular)' })
+  @ApiOperation({
+    summary: 'Mapa menu→nível do usuário logado (menu/guards do Angular)',
+  })
   me(@CurrentUser() user: AuthUser) {
     return new ApiEnvelope({ niveis: this.permissoes.mapaDoUsuario(user) });
   }
@@ -71,7 +73,8 @@ export class PermissoesController {
   @Permissao('permissoes', 'alteracao')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Define (ou remove, com "herdar") a exceção de um USUÁRIO num menu',
+    summary:
+      'Define (ou remove, com "herdar") a exceção de um USUÁRIO num menu',
   })
   async salvarUsuario(@Body() dto: SalvarPermissaoUsuarioDto) {
     await this.permissoes.salvarUsuario(

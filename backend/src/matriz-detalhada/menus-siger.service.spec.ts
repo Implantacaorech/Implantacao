@@ -27,7 +27,14 @@ function svc(docs: any[]) {
 
 describe('MenusSigerService (parser de menus do SIGER)', () => {
   it('extrai código de acesso, opção, programa e função da tabela Caminho', async () => {
-    const s = svc([{ sigla: 'GIN', tipo: 'modulo', titulo: 'GIN - GIN Industrial', conteudo: DOC_GIN }]);
+    const s = svc([
+      {
+        sigla: 'GIN',
+        tipo: 'modulo',
+        titulo: 'GIN - GIN Industrial',
+        conteudo: DOC_GIN,
+      },
+    ]);
     const tax = await s.taxonomia();
     expect(tax).toHaveLength(1);
     const gin = tax[0];
@@ -40,17 +47,30 @@ describe('MenusSigerService (parser de menus do SIGER)', () => {
   });
 
   it('não inventa menus quando o doc não tem tabela Caminho', async () => {
-    const s = svc([{ sigla: 'CNV', tipo: 'adicional', titulo: 'CNV', conteudo: DOC_SEM_TABELA }]);
+    const s = svc([
+      {
+        sigla: 'CNV',
+        tipo: 'adicional',
+        titulo: 'CNV',
+        conteudo: DOC_SEM_TABELA,
+      },
+    ]);
     const tax = await s.taxonomia();
     expect(tax[0].menus).toEqual([]);
   });
 
   it('ignora docs sem sigla e usa cache (só lê o repo uma vez)', async () => {
-    const repo = { find: jest.fn().mockResolvedValue([{ sigla: '', tipo: 'adicional', titulo: '', conteudo: '' }]) } as any;
+    const repo = {
+      find: jest
+        .fn()
+        .mockResolvedValue([
+          { sigla: '', tipo: 'adicional', titulo: '', conteudo: '' },
+        ]),
+    } as any;
     const s = new MenusSigerService(repo);
     await s.taxonomia();
     await s.taxonomia();
     expect(repo.find).toHaveBeenCalledTimes(1);
-    expect((await s.taxonomia())).toHaveLength(0);
+    expect(await s.taxonomia()).toHaveLength(0);
   });
 });

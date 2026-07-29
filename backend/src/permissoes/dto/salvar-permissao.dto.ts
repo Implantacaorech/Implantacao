@@ -5,7 +5,7 @@ import { NIVEIS } from '../../common/constants/menus';
 import type { NivelPermissao } from '../../common/constants/menus';
 
 export class SalvarPermissaoPapelDto {
-  @IsIn(PERFIS as unknown as string[])
+  @IsIn(PERFIS)
   papel: Perfil;
 
   @IsString()

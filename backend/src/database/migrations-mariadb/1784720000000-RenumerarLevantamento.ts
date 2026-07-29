@@ -15,7 +15,7 @@ export class RenumerarLevantamento1784720000000 implements MigrationInterface {
       'UPDATE `projeto_passos` SET `passo` = `passo` + 1 WHERE `passo` >= 3 ORDER BY `passo` DESC',
     );
     await queryRunner.query(
-      "INSERT INTO `projeto_passos` (`projeto_id`, `passo`, `concluido_por`, `conferido`, `observacao`) " +
+      'INSERT INTO `projeto_passos` (`projeto_id`, `passo`, `concluido_por`, `conferido`, `observacao`) ' +
         "SELECT DISTINCT `projeto_id`, 3, 'sistema (renumeração)', 0, " +
         "'Passo inserido retroativamente na renumeração do processo (2026-07-28).' " +
         'FROM `projeto_passos` WHERE `passo` >= 4',

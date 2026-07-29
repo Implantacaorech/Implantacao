@@ -13,4 +13,4 @@ export interface PermissaoMeta {
  * (PermissaoGuard). `nivel` default 'consulta' (basta ver a tela); use 'alteracao' para
  * rotas de escrita. Sobrepõe o antigo @Roles nas telas controladas pelo painel. */
 export const Permissao = (menu: string, nivel: NivelPermissao = 'consulta') =>
-  SetMetadata(PERMISSAO_KEY, { menu, nivel } as PermissaoMeta);
+  SetMetadata(PERMISSAO_KEY, { menu, nivel });

@@ -24,14 +24,18 @@ export class PermissaoGuard implements CanActivate {
   ) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const meta = this.reflector.getAllAndOverride<PermissaoMeta>(PERMISSAO_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const meta = this.reflector.getAllAndOverride<PermissaoMeta>(
+      PERMISSAO_KEY,
+      [context.getHandler(), context.getClass()],
+    );
     if (!meta) return true;
 
-    const req = context.switchToHttp().getRequest();
-    const user: UsuarioPermissao | undefined = req.user;
+    // Tipa o request na leitura, como o RolesGuard já faz: sem isso `getRequest()` devolve
+    // `any` e o acesso a `.user` passa despercebido pelo compilador.
+    const req = context
+      .switchToHttp()
+      .getRequest<{ user?: UsuarioPermissao }>();
+    const user = req.user;
     if (!user) throw new UnauthorizedException();
 
     const nivel = this.permissoes.nivelEfetivo(user, meta.menu);

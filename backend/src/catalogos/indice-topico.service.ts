@@ -75,7 +75,9 @@ export class IndiceTopicoService implements OnModuleInit {
    * ADICIONAL traz os tópicos daquele adicional. Traz exatamente o que foi contratado —
    * se vier módulo e adicional, os dois conjuntos; se vier só um, só o dele. */
   async porCodigos(codigos: string[]): Promise<IndiceTopico[]> {
-    const cods = [...new Set(codigos.map((c) => (c ?? '').trim()).filter(Boolean))];
+    const cods = [
+      ...new Set(codigos.map((c) => (c ?? '').trim()).filter(Boolean)),
+    ];
     if (cods.length === 0) return [];
     return this.repo
       .createQueryBuilder('t')

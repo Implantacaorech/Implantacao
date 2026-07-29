@@ -20,11 +20,7 @@ export interface ModuloMenus {
 }
 
 const norm = (s: string): string =>
-  (s || '')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .trim();
+  (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
 /**
  * Taxonomia de MENUS do SIGER, derivada do DICIONÁRIO (fonte única). Cada documento
