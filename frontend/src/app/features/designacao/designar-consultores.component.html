@@ -1,13 +1,13 @@
-<h1 style="display:flex;align-items:center;gap:8px">
-  <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-users"/></svg>
+<h1 class="pagina-titulo">
+  <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-users"/></svg>
   Designar Consultores @if (cliente()) { — {{ cliente() }} }
 </h1>
 <p class="sub">Atribua os Consultores aos módulos. Para <strong>um único técnico em tudo</strong>, use o atalho abaixo;
   para <strong>dividir</strong>, ajuste módulo a módulo. Cada consultor recebe e-mail com os módulos sob sua responsabilidade.</p>
 
 @if (erro()) {
-  <div class="resultado erro" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
-    <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
+  <div class="resultado erro linha">
+    <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
   </div>
 }
 
@@ -19,10 +19,10 @@
   }
 
   @if (modulos().length > 0) {
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;padding:10px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;margin-bottom:12px">
-      <label class="campo" style="min-width:230px;margin:0">
+    <div class="barra-filtros">
+      <label class="campo largo">
         <span>Atribuir todos os módulos a</span>
-        <select [(ngModel)]="aplicarATodos">
+        <select [ngModel]="aplicarATodos()" (ngModelChange)="aplicarATodos.set($event)">
           <option value="">— escolher técnico —</option>
           @for (nome of consultores(); track nome) {
             <option [value]="nome">{{ nome }}</option>
@@ -35,7 +35,7 @@
       <button class="btn" type="button" (click)="limparTodos()">Limpar</button>
     </div>
 
-    <div style="overflow-x:auto">
+    <div class="tabela-wrap">
       <table class="form-tab">
         <thead><tr><th>Módulo</th><th>Consultor responsável</th></tr></thead>
         <tbody>
@@ -59,7 +59,7 @@
     <p class="dica">O projeto não tem módulos definidos — preencha o campo "Módulos" na ficha.</p>
   }
 
-  <div style="display:flex;gap:8px;margin-top:12px">
+  <div class="acoes" style="margin-top:var(--sp-3)">
     <button class="btn primario" type="button" [disabled]="salvando() || modulos().length === 0" (click)="salvar()">
       <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
       {{ salvando() ? 'Salvando…' : 'Designar e avisar os consultores' }}

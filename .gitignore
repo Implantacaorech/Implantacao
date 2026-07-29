@@ -77,3 +77,16 @@ tools/data/upload_*.yaml
 build/
 dist/
 *.spec
+
+# Arquivos do Power BI usados como REFERÊNCIA para portar os relatórios para o Painel
+# (BI/BI_clientes.pbix tem ~134 MB — acima do limite de 100 MB por arquivo do GitHub).
+# O que vale é o porte em backend/src/bi-implantacao + frontend/.../bi-implantacao.
+BI/
+*.pbix
+*.pbit
+
+# Prévias em PDF geradas pelos geradores de documento (artefato reproduzível, ~6 MB)
+tools/data/_preview/
+
+# Vault Obsidian e banco locais da máquina do desenvolvedor (dados/painel.db já cai no *.db)
+dados/

@@ -1,24 +1,24 @@
 @if (!role) {
-  <div class="resultado erro" style="padding:10px 16px">Papel não encontrado.</div>
+  <div class="resultado erro">Papel não encontrado.</div>
 } @else {
-  <h1>Criação dos Templates</h1>
+  <h1 class="pagina-titulo">Criação dos Templates</h1>
 
   @if (resultado(); as r) {
     @if (r.ok) {
       <div class="resultado ok">
-        <h3 style="display:flex;align-items:center;gap:8px"><svg class="svgi" style="width:16px;height:16px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg> Documentos gerados</h3>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <h3 class="flex-linha"><svg class="svgi svgi-md ic-ok" aria-hidden="true"><use href="#ic-check-circle"/></svg> Documentos gerados</h3>
+        <div class="acoes">
           @for (a of r.arquivos; track a.token) {
             <button class="btn primario" type="button" (click)="baixar(a)"><svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> {{ a.rotulo }}</button>
           }
         </div>
       </div>
     } @else {
-      <div class="resultado erro"><h3 style="display:flex;align-items:center;gap:8px"><svg class="svgi" style="width:16px;height:16px" aria-hidden="true"><use href="#ic-bell"/></svg> Não deu certo</h3><p>{{ r.erro }}</p></div>
+      <div class="resultado erro"><h3 class="flex-linha"><svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-bell"/></svg> Não deu certo</h3><p>{{ r.erro }}</p></div>
     }
   }
   @if (erro()) {
-    <div class="resultado erro" style="padding:10px 16px">{{ erro() }}</div>
+    <div class="resultado erro">{{ erro() }}</div>
   }
 
   <form class="painel" (ngSubmit)="gerar()">
@@ -46,52 +46,58 @@
       <label class="campo"><span>Data de validação/assinatura do projeto</span><input [(ngModel)]="dataValidacao" name="dataValidacao" placeholder="ex.: 10/03/2026" /></label>
 
       <h3>Alterações fora do escopo original</h3>
-      <table class="form-tab"><thead><tr><th>Módulo</th><th>Rotina</th><th>Descrição</th><th></th></tr></thead>
-        <tbody>
-          @for (l of alteracoes; track $index) {
-            <tr>
-              <td><input [(ngModel)]="l.modulo" [name]="'alt_modulo_' + $index" /></td>
-              <td><input [(ngModel)]="l.rotina" [name]="'alt_rotina_' + $index" /></td>
-              <td><input [(ngModel)]="l.desc" [name]="'alt_desc_' + $index" /></td>
-              <td><button type="button" (click)="remover(alteracoes, $index)">✕</button></td>
-            </tr>
-          }
-        </tbody>
-      </table>
+      <div class="tabela-wrap">
+        <table class="form-tab"><thead><tr><th>Módulo</th><th>Rotina</th><th>Descrição</th><th></th></tr></thead>
+          <tbody>
+            @for (l of alteracoes; track $index) {
+              <tr>
+                <td><input [(ngModel)]="l.modulo" [name]="'alt_modulo_' + $index" /></td>
+                <td><input [(ngModel)]="l.rotina" [name]="'alt_rotina_' + $index" /></td>
+                <td><input [(ngModel)]="l.desc" [name]="'alt_desc_' + $index" /></td>
+                <td><button type="button" (click)="remover(alteracoes, $index)"><svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-x"/></svg></button></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
       <button type="button" class="btn" (click)="adicionar(alteracoes, { modulo: '', rotina: '', desc: '' })">+ Adicionar alteração</button>
 
       <h3>Resumo geral da implantação</h3>
-      <table class="form-tab"><thead><tr><th>Módulo</th><th>Adicional</th><th>Processo</th><th>Status de Uso</th><th>Obs.</th><th></th></tr></thead>
-        <tbody>
-          @for (l of resumoModulos; track $index) {
-            <tr>
-              <td><input [(ngModel)]="l.modulo" [name]="'tr_modulo_' + $index" /></td>
-              <td><input [(ngModel)]="l.adicional" [name]="'tr_adic_' + $index" /></td>
-              <td><input [(ngModel)]="l.processo" [name]="'tr_proc_' + $index" placeholder="Implantado" /></td>
-              <td><input [(ngModel)]="l.status" [name]="'tr_status_' + $index" placeholder="Sim" /></td>
-              <td><input [(ngModel)]="l.obs" [name]="'tr_obs_' + $index" /></td>
-              <td><button type="button" (click)="remover(resumoModulos, $index)">✕</button></td>
-            </tr>
-          }
-        </tbody>
-      </table>
+      <div class="tabela-wrap">
+        <table class="form-tab"><thead><tr><th>Módulo</th><th>Adicional</th><th>Processo</th><th>Status de Uso</th><th>Obs.</th><th></th></tr></thead>
+          <tbody>
+            @for (l of resumoModulos; track $index) {
+              <tr>
+                <td><input [(ngModel)]="l.modulo" [name]="'tr_modulo_' + $index" /></td>
+                <td><input [(ngModel)]="l.adicional" [name]="'tr_adic_' + $index" /></td>
+                <td><input [(ngModel)]="l.processo" [name]="'tr_proc_' + $index" placeholder="Implantado" /></td>
+                <td><input [(ngModel)]="l.status" [name]="'tr_status_' + $index" placeholder="Sim" /></td>
+                <td><input [(ngModel)]="l.obs" [name]="'tr_obs_' + $index" /></td>
+                <td><button type="button" (click)="remover(resumoModulos, $index)"><svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-x"/></svg></button></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
       <button type="button" class="btn" (click)="adicionar(resumoModulos, { modulo: '', adicional: '', processo: '', status: '', obs: '' })">+ Adicionar módulo</button>
 
       <label class="campo" style="margin-top:14px"><span>Observações (uma por linha)</span><textarea rows="3" [(ngModel)]="termoObs" name="termoObs"></textarea></label>
 
       <h3>Pendências sequenciadas após o encerramento</h3>
-      <table class="form-tab"><thead><tr><th>Pendência</th><th>Técnico responsável</th><th>Detalhamento</th><th></th></tr></thead>
-        <tbody>
-          @for (l of pendencias; track $index) {
-            <tr>
-              <td><input [(ngModel)]="l.pendencia" [name]="'pend_p_' + $index" /></td>
-              <td><input [(ngModel)]="l.tecnico" [name]="'pend_t_' + $index" /></td>
-              <td><input [(ngModel)]="l.detalhamento" [name]="'pend_d_' + $index" /></td>
-              <td><button type="button" (click)="remover(pendencias, $index)">✕</button></td>
-            </tr>
-          }
-        </tbody>
-      </table>
+      <div class="tabela-wrap">
+        <table class="form-tab"><thead><tr><th>Pendência</th><th>Técnico responsável</th><th>Detalhamento</th><th></th></tr></thead>
+          <tbody>
+            @for (l of pendencias; track $index) {
+              <tr>
+                <td><input [(ngModel)]="l.pendencia" [name]="'pend_p_' + $index" /></td>
+                <td><input [(ngModel)]="l.tecnico" [name]="'pend_t_' + $index" /></td>
+                <td><input [(ngModel)]="l.detalhamento" [name]="'pend_d_' + $index" /></td>
+                <td><button type="button" (click)="remover(pendencias, $index)"><svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-x"/></svg></button></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
       <button type="button" class="btn" (click)="adicionar(pendencias, { pendencia: '', tecnico: '', detalhamento: '' })">+ Adicionar pendência</button>
     </section>
 
@@ -107,24 +113,26 @@
       </div>
 
       <h3>Usuários <small style="font-weight:400">— Total: <input [(ngModel)]="totalUsuarios" name="totalUsuarios" style="width:60px" /> usuários</small></h3>
-      <table class="form-tab"><thead><tr><th>Nome</th><th>E-mail</th><th>Atribuições</th><th></th></tr></thead>
-        <tbody>
-          @for (l of usuarios; track $index) {
-            <tr>
-              <td><input [(ngModel)]="l.nome" [name]="'u_nome_' + $index" /></td>
-              <td><input [(ngModel)]="l.email" [name]="'u_email_' + $index" /></td>
-              <td><input [(ngModel)]="l.atrib" [name]="'u_atrib_' + $index" /></td>
-              <td><button type="button" (click)="remover(usuarios, $index)">✕</button></td>
-            </tr>
-          }
-        </tbody>
-      </table>
+      <div class="tabela-wrap">
+        <table class="form-tab"><thead><tr><th>Nome</th><th>E-mail</th><th>Atribuições</th><th></th></tr></thead>
+          <tbody>
+            @for (l of usuarios; track $index) {
+              <tr>
+                <td><input [(ngModel)]="l.nome" [name]="'u_nome_' + $index" /></td>
+                <td><input [(ngModel)]="l.email" [name]="'u_email_' + $index" /></td>
+                <td><input [(ngModel)]="l.atrib" [name]="'u_atrib_' + $index" /></td>
+                <td><button type="button" (click)="remover(usuarios, $index)"><svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-x"/></svg></button></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
       <button type="button" class="btn" (click)="adicionar(usuarios, { nome: '', email: '', atrib: '' })">+ Adicionar usuário</button>
 
       <h3>Módulos/Adicionais (A) — Previstos antes do Levantamento</h3>
       <p class="dica">Marque os módulos contratados. O Resumo (A) e os "Módulos Previstos" por área saem automáticos do catálogo.</p>
       <input type="text" placeholder="Pesquisar módulo (sigla ou descrição)…"
-             style="width:100%;padding:9px;margin:4px 0;border:1px solid #e2e8f0;border-radius:8px;font:inherit;box-sizing:border-box"
+             style="width:100%;margin:var(--sp-2) 0"
              [ngModel]="busca()" (ngModelChange)="busca.set($event)" name="busca" />
       <p class="dica" style="margin-top:2px">@if (busca()) { {{ totalFiltrado() }} módulo(s) encontrado(s) }</p>
       @if (carregandoCatalogo()) {
@@ -146,22 +154,24 @@
       }
 
       <h3>Módulos/Adicionais (B) — Identificados no Levantamento</h3>
-      <table class="form-tab"><thead><tr><th>Módulo/Adicional</th><th>Necessidade</th><th>Observações</th><th></th></tr></thead>
-        <tbody>
-          @for (l of modulosIdentificados; track $index) {
-            <tr>
-              <td><input [(ngModel)]="l.modulo" [name]="'mb_mod_' + $index" /></td>
-              <td>
-                <select [(ngModel)]="l.necessidade" [name]="'mb_nec_' + $index">
-                  <option>Sim</option><option>Não</option>
-                </select>
-              </td>
-              <td><input [(ngModel)]="l.obs" [name]="'mb_obs_' + $index" /></td>
-              <td><button type="button" (click)="remover(modulosIdentificados, $index)">✕</button></td>
-            </tr>
-          }
-        </tbody>
-      </table>
+      <div class="tabela-wrap">
+        <table class="form-tab"><thead><tr><th>Módulo/Adicional</th><th>Necessidade</th><th>Observações</th><th></th></tr></thead>
+          <tbody>
+            @for (l of modulosIdentificados; track $index) {
+              <tr>
+                <td><input [(ngModel)]="l.modulo" [name]="'mb_mod_' + $index" /></td>
+                <td>
+                  <select [(ngModel)]="l.necessidade" [name]="'mb_nec_' + $index">
+                    <option>Sim</option><option>Não</option>
+                  </select>
+                </td>
+                <td><input [(ngModel)]="l.obs" [name]="'mb_obs_' + $index" /></td>
+                <td><button type="button" (click)="remover(modulosIdentificados, $index)"><svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-x"/></svg></button></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
       <button type="button" class="btn" (click)="adicionar(modulosIdentificados, { modulo: '', necessidade: 'Sim', obs: '' })">+ Adicionar módulo</button>
 
       <h3>Conversões (horas)</h3>
@@ -201,5 +211,5 @@
     </button>
   </form>
 
-  <a class="voltar" [routerLink]="['/legado', rid]">← Voltar para {{ role.nome }}</a>
+  <a class="btn btn-voltar" [routerLink]="['/legado', rid]">← Voltar para {{ role.nome }}</a>
 }

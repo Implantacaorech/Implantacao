@@ -1,0 +1,208 @@
+/* Específico da página RESUMO. O que é comum às páginas do BI está em bi-comum.css. */
+
+/* ── CONTROLE DE HORAS ─────────────────────────────────────────────────────────
+   Reprodução da medida DAX `Grafico_Horas_HTML` do BI_clientes.pbix: mesmas cores,
+   mesmas faixas e mesmo comportamento de excedente. */
+.ch {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+.ch-tit {
+  text-align: center;
+  color: #1f2937;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  margin: 0 0 22px;
+  position: relative;
+}
+.ch-tit::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  margin-left: -25px;
+  width: 50px;
+  height: 4px;
+  background: #667eea;
+  border-radius: 2px;
+}
+
+.ch-progresso {
+  padding-top: 58px; /* espaço para o balão do marcador */
+  margin-bottom: 18px;
+}
+.ch-regua {
+  position: relative;
+  height: 40px;
+  background: #f1f5f9;
+  border: 1px solid #d1d5db;
+  border-radius: 20px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+.ch-faixa {
+  position: absolute;
+  top: 0;
+  height: 100%;
+}
+.ch-faixa-1 { left: 0; background: #10b981; border-radius: 20px 0 0 20px; }
+.ch-faixa-2 { background: #fbbf24; }
+.ch-faixa-3 { background: #fb923c; }
+.ch-faixa-4 { background: #ef4444; }
+.ch-faixa-fim { border-radius: 0 20px 20px 0; }
+.ch-faixa-excedente { background: #1f2937; border-radius: 0 20px 20px 0; }
+
+.ch-marcador {
+  position: absolute;
+  top: 20px;
+  z-index: 10;
+}
+.ch-balao {
+  position: absolute;
+  top: -62px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f2937;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+.ch-balao::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -6px;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #1f2937;
+}
+.ch-bolinha {
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border: 4px solid #1f2937;
+  border-radius: 50%;
+  margin-left: -10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+.ch-escala {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 8px 0;
+  font-size: 0.78rem;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.ch-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.ch-card {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+.ch-topo {
+  height: 3px;
+  margin: -12px -12px 8px;
+}
+.ch-v {
+  font-size: 1.7rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+.ch-l {
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.ch-status {
+  text-align: center;
+  padding: 14px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #374151;
+}
+.ch-status-ponto {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+.ch-status-qtd {
+  font-weight: 600;
+  color: #6b7280;
+  margin-left: 6px;
+}
+
+.ch-legenda {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: #6b7280;
+}
+.ch-legenda span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  font-weight: 600;
+}
+.ch-legenda i {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.bi-graficos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.bi-canvas {
+  height: 285px;
+  padding: 12px;
+  position: relative;
+}
+.bi-canvas .dica {
+  margin: 0;
+}
+
+.bi-tab td:nth-child(2) {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+

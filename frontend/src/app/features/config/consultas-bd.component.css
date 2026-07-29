@@ -39,12 +39,17 @@
 }
 .cbd-tab th,
 .cbd-tab td {
-  padding: 4px 8px;
+  padding: 6px 10px;
   border: 1px solid var(--line);
   text-align: left;
+  vertical-align: middle;
 }
+/* Cabeçalho igual ao das demais tabelas do sistema (.tabela / .form-tab) */
 .cbd-tab th {
-  background: var(--surface-2, #f3f6fb);
+  background: var(--brand);
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   position: sticky;
   top: 0;
 }

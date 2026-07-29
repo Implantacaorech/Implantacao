@@ -1,0 +1,250 @@
+<app-bi-abas />
+
+@if (erro()) {
+  <div class="resultado erro">{{ erro() }}</div>
+}
+
+<div class="bi-barra">
+  <div class="bi-campo">
+    <label for="rns-ini">De</label>
+    <input id="rns-ini" type="date" [(ngModel)]="dataIni" (change)="carregar()" />
+  </div>
+  <div class="bi-campo">
+    <label for="rns-fim">Até</label>
+    <input id="rns-fim" type="date" [(ngModel)]="dataFim" (change)="carregar()" />
+  </div>
+  <div class="bi-campo bi-campo-busca">
+    <label for="rns-busca">Buscar</label>
+    <input id="rns-busca" type="search" [ngModel]="busca()" (ngModelChange)="busca.set($event)"
+           placeholder="visão geral, cliente, nº da RNS…" />
+  </div>
+  <button type="button" class="bi-btn" (click)="alternarFiltros()"
+          [attr.aria-expanded]="filtrosAbertos()">
+    <span class="bi-btn-seta" [class.aberta]="filtrosAbertos()">&#9656;</span>
+    Filtros@if (qtdFiltrosAtivos() > 0) { <span class="bi-badge">{{ qtdFiltrosAtivos() }}</span> }
+  </button>
+  <button type="button" class="bi-btn" (click)="limparFiltros()">Limpar</button>
+  <button type="button" class="bi-btn" (click)="exportarCsv()" [disabled]="linhas().length === 0">
+    Exportar CSV
+  </button>
+</div>
+
+@if (filtrosAbertos()) {
+  @if (filtros(); as f) {
+    <div class="bi-filtros-cx">
+      <div class="bi-filtros-cab">
+        <span class="bi-filtros-tit">Filtros</span>
+        <button type="button" class="bi-recolher" (click)="alternarFiltros()">Recolher &#9652;</button>
+      </div>
+    <div class="bi-filtros">
+      <!-- Os 4 filtros padrão do BI: grupo econômico, RNS, status da RNS e consultor. -->
+      <div class="bi-filtro-bloco">
+        <span class="bi-filtro-tit">Grupo econômico</span>
+        <input class="bi-filtro-busca" type="search" placeholder="filtrar…"
+               [ngModel]="termoOpcao('grupo')" (ngModelChange)="definirTermoOpcao('grupo', $event)" />
+        <div class="bi-opcoes bi-opcoes-rolagem">
+          @for (g of opcoes('grupo', f.grupos, gruposSel).visiveis; track g) {
+            <label><input type="checkbox" [checked]="marcado(gruposSel, g)"
+                          (change)="alternar(gruposSel, g)" /> {{ g }}</label>
+          } @empty { <span class="dica" style="margin:0">— nada encontrado —</span> }
+        </div>
+        @if (opcoes('grupo', f.grupos, gruposSel).ocultas; as n) {
+          <span class="bi-filtro-mais">+{{ n }} — refine a busca</span>
+        }
+      </div>
+
+      <div class="bi-filtro-bloco">
+        <span class="bi-filtro-tit">RNS de Implantação</span>
+        <input class="bi-filtro-busca" type="search" placeholder="nº ou cliente…"
+               [ngModel]="termoOpcao('rns')" (ngModelChange)="definirTermoOpcao('rns', $event)" />
+        <div class="bi-opcoes bi-opcoes-rolagem">
+          @for (o of opcoesRns('rns', f.rns).visiveis; track o.codigo) {
+            <label><input type="checkbox" [checked]="marcado(rnsSel, o.codigo)"
+                          (change)="alternar(rnsSel, o.codigo)" /> {{ o.rotulo }}</label>
+          } @empty { <span class="dica" style="margin:0">— nada encontrado —</span> }
+        </div>
+        @if (opcoesRns('rns', f.rns).ocultas; as n) {
+          <span class="bi-filtro-mais">+{{ n }} — refine a busca</span>
+        }
+      </div>
+
+      <div class="bi-filtro-bloco">
+        <span class="bi-filtro-tit">Status da RNS de Implantação</span>
+        <div class="bi-opcoes bi-opcoes-rolagem">
+          @for (s of f.statusImplantacao; track s) {
+            <label><input type="checkbox" [checked]="marcado(statusImpSel, s)"
+                          (change)="alternar(statusImpSel, s)" /> {{ s }}</label>
+          } @empty { <span class="dica" style="margin:0">— sem dados no período —</span> }
+        </div>
+      </div>
+
+      <div class="bi-filtro-bloco">
+        <span class="bi-filtro-tit">Consultor</span>
+        <input class="bi-filtro-busca" type="search" placeholder="filtrar…"
+               [ngModel]="termoOpcao('tecnico')" (ngModelChange)="definirTermoOpcao('tecnico', $event)" />
+        <div class="bi-opcoes bi-opcoes-rolagem">
+          @for (t of opcoes('tecnico', f.tecnicos, tecnicosSel).visiveis; track t) {
+            <label><input type="checkbox" [checked]="marcado(tecnicosSel, t)"
+                          (change)="alternar(tecnicosSel, t)" /> {{ t }}</label>
+          } @empty { <span class="dica" style="margin:0">— nada encontrado —</span> }
+        </div>
+      </div>
+
+      <!-- Específicos desta página -->
+      <div class="bi-filtro-bloco">
+        <span class="bi-filtro-tit">Status da RNS</span>
+        <div class="bi-opcoes bi-opcoes-rolagem">
+          @for (s of f.status; track s) {
+            <label>
+              <input type="checkbox" [checked]="marcado(statusSel, s)" (change)="alternar(statusSel, s)" />
+              <span class="bi-ponto" [style.background]="corStatus(s)"></span>{{ s }}
+            </label>
+          } @empty { <span class="dica" style="margin:0">— sem dados no período —</span> }
+        </div>
+      </div>
+
+      <div class="bi-filtro-bloco">
+        <span class="bi-filtro-tit">Validação do Cliente</span>
+        <div class="bi-opcoes">
+          <label><input type="radio" name="val" [checked]="validada() === ''"
+                        (change)="definirValidada('')" /> Todas</label>
+          <label><input type="radio" name="val" [checked]="validada() === 'sim'"
+                        (change)="definirValidada('sim')" /> Validadas</label>
+          <label><input type="radio" name="val" [checked]="validada() === 'nao'"
+                        (change)="definirValidada('nao')" /> Não validadas</label>
+        </div>
+        <span class="bi-filtro-tit" style="margin-top:10px">Tipo</span>
+        <div class="bi-opcoes bi-opcoes-rolagem">
+          @for (t of f.tipos; track t) {
+            <label><input type="checkbox" [checked]="marcado(tiposSel, t)"
+                          (change)="alternar(tiposSel, t)" /> {{ t }}</label>
+          }
+        </div>
+      </div>
+
+      <div class="bi-filtro-bloco">
+        <span class="bi-filtro-tit">Módulo (sigla)</span>
+        <div class="bi-opcoes bi-opcoes-rolagem">
+          @for (s of f.siglas; track s) {
+            <label><input type="checkbox" [checked]="marcado(siglasSel, s)"
+                          (change)="alternar(siglasSel, s)" /> {{ s }}</label>
+          }
+        </div>
+      </div>
+    </div>
+    </div>
+  }
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <div class="rns-kpis">
+    <div class="rns-kpi">
+      <div class="rns-kpi-v">{{ totaisVisiveis().quantidade }}</div>
+      <div class="rns-kpi-l">RNS vinculadas</div>
+    </div>
+    <div class="rns-kpi rns-kpi-ok">
+      <div class="rns-kpi-v">{{ totaisVisiveis().validadas }}</div>
+      <div class="rns-kpi-l">Validadas pelo cliente</div>
+    </div>
+    <div class="rns-kpi rns-kpi-pend">
+      <div class="rns-kpi-v">{{ totaisVisiveis().naoValidadas }}</div>
+      <div class="rns-kpi-l">Não validadas</div>
+    </div>
+    <div class="rns-kpi rns-kpi-imp">
+      <div class="rns-kpi-v">{{ totaisVisiveis().implantacoes }}</div>
+      <div class="rns-kpi-l">Implantações</div>
+    </div>
+    <div class="rns-kpi rns-kpi-cli">
+      <div class="rns-kpi-v">{{ totaisVisiveis().clientes }}</div>
+      <div class="rns-kpi-l">Clientes</div>
+    </div>
+  </div>
+
+  <div class="rns-contagens">
+    <div class="bi-card">
+      <div class="bi-card-tit">Por status</div>
+      <div class="rns-barras">
+        @for (c of porStatusVisivel(); track c.chave) {
+          <div class="rns-barra">
+            <span class="rns-barra-rot">
+              <span class="bi-ponto" [style.background]="corStatus(c.chave)"></span>{{ c.chave }}
+            </span>
+            <span class="rns-barra-tr">
+              <span class="rns-barra-in" [style.background]="corStatus(c.chave)"
+                    [style.width.%]="(c.quantidade / totaisVisiveis().quantidade) * 100"></span>
+            </span>
+            <span class="rns-barra-n">{{ c.quantidade }}</span>
+          </div>
+        } @empty { <p class="dica" style="padding:12px">— sem dados —</p> }
+      </div>
+    </div>
+    <div class="bi-card">
+      <div class="bi-card-tit">Por módulo</div>
+      <div class="rns-barras">
+        @for (c of porSiglaVisivel(); track c.chave) {
+          <div class="rns-barra">
+            <span class="rns-barra-rot">{{ c.chave }}</span>
+            <span class="rns-barra-tr">
+              <span class="rns-barra-in" style="background:var(--brand)"
+                    [style.width.%]="(c.quantidade / totaisVisiveis().quantidade) * 100"></span>
+            </span>
+            <span class="rns-barra-n">{{ c.quantidade }}</span>
+          </div>
+        } @empty { <p class="dica" style="padding:12px">— sem dados —</p> }
+      </div>
+    </div>
+  </div>
+
+  <div class="bi-card">
+    <div class="bi-card-tit">RNS ({{ linhas().length }})</div>
+    <div class="bi-tab-wrap">
+      <table class="bi-tab">
+        <thead>
+          <tr>
+            <th class="clic" (click)="ordenar('pedido')">RNS</th>
+            <th class="clic" (click)="ordenar('dataCriacao')">Criação</th>
+            <th class="clic" (click)="ordenar('statusRns')">Status</th>
+            <th class="clic" (click)="ordenar('tipo')">Tipo</th>
+            <th class="clic" (click)="ordenar('sigla')">Sigla</th>
+            <th>Visão geral</th>
+            <th class="clic" (click)="ordenar('fantasia')">Cliente</th>
+            <th class="clic" (click)="ordenar('rnsImplantacao')">RNS Imp.</th>
+            <th>Consultor</th>
+            <th>Val. cliente</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of linhas(); track l.codigo) {
+            <tr>
+              <td class="rns-num">{{ l.rns }}</td>
+              <td>{{ dataBr(l.dataCriacao) }}</td>
+              <td>
+                <span class="bi-ponto" [style.background]="corStatus(l.statusRns)"></span>{{ l.statusRns || '—' }}
+              </td>
+              <td>{{ l.tipo || '—' }}</td>
+              <td [title]="l.sistema">{{ l.sigla || '—' }}</td>
+              <td class="rns-vg" [title]="l.visaoGeral">{{ l.visaoGeral || '—' }}</td>
+              <td [title]="l.grupoEconomico">{{ l.fantasia || '—' }}</td>
+              <td [title]="l.descricaoImplantacao">
+                {{ l.rnsImplantacao }}
+                <span class="rns-stimp">{{ l.statusImplantacao }}</span>
+              </td>
+              <td>{{ l.tecnico || '—' }}</td>
+              <td>
+                @if (l.validadaCliente) {
+                  <span class="rns-val rns-val-sim">Sim</span>
+                } @else {
+                  <span class="rns-val rns-val-nao">Não</span>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="10" class="dica">— nenhuma RNS com os filtros atuais —</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}

@@ -28,8 +28,11 @@ import { DicionarioModule } from './dicionario/dicionario.module';
 import { PassosModule } from './passos/passos.module';
 import { ClientesSiclaModule } from './clientes-sicla/clientes-sicla.module';
 import { ModulosSiclaModule } from './modulos-sicla/modulos-sicla.module';
+import { TecnicosSiclaModule } from './tecnicos-sicla/tecnicos-sicla.module';
 import { PermissoesModule } from './permissoes/permissoes.module';
 import { MatrizDetalhadaModule } from './matriz-detalhada/matriz-detalhada.module';
+import { MatrizFuncoesModule } from './matriz-funcoes/matriz-funcoes.module';
+import { BiImplantacaoModule } from './bi-implantacao/bi-implantacao.module';
 
 @Module({
   imports: [
@@ -74,8 +77,11 @@ import { MatrizDetalhadaModule } from './matriz-detalhada/matriz-detalhada.modul
     PassosModule,
     ClientesSiclaModule,
     ModulosSiclaModule,
+    TecnicosSiclaModule,
     PermissoesModule,
     MatrizDetalhadaModule,
+    MatrizFuncoesModule,
+    BiImplantacaoModule,
   ],
 })
 export class AppModule {}

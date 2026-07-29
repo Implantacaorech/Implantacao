@@ -1,1 +1,8 @@
 /* Estilos globais em src/styles.css (espelho de webapp/static/style.css). */
+
+/* Linha cuja edição está aberta no formulário — deixa claro de quem são os dados
+   carregados lá em cima. */
+.form-tab tbody tr.em-edicao > td {
+  background: #e8eef8;
+  box-shadow: inset 2px 0 0 var(--brand);
+}

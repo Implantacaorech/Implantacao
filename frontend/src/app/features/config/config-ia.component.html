@@ -1,7 +1,7 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <h1>Modo IA — chaves por finalidade</h1>
+  <h1 class="pagina-titulo">Modo IA — chaves por finalidade</h1>
   <p class="dica">Cada finalidade tem a sua própria chave, provedor e modelo. Provedores aceitos:
     <strong>Anthropic</strong> (chave <code>sk-ant-…</code>) e
     <strong>OpenRouter</strong> (<a href="https://openrouter.ai/" target="_blank" rel="noopener">openrouter.ai</a>,
@@ -9,12 +9,12 @@
     Sem chave, a finalidade funciona no modo básico (sem IA).</p>
 
   @if (aviso()) {
-    <div class="resultado ok" style="padding:10px 16px;display:flex;align-items:center;gap:8px">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+    <div class="resultado ok linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
     </div>
   }
   @if (erro()) {
-    <div class="resultado erro" style="padding:10px 16px;margin-bottom:10px">{{ erro() }}</div>
+    <div class="resultado erro">{{ erro() }}</div>
   }
 
   <form [formGroup]="form">
@@ -22,10 +22,10 @@
       @for (f of finalidades(); track f.finalidade; let i = $index) {
         <div class="painel" [formGroupName]="i" style="margin-bottom:16px">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
-            <h3 style="margin:0">{{ f.rotulo }}</h3>
+            <h3 class="m0">{{ f.rotulo }}</h3>
             @if (f.ativa) {
               <span class="resultado ok" style="padding:2px 10px;font-size:12px;display:inline-flex;align-items:center;gap:6px">
-                <svg class="svgi" style="width:12px;height:12px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+                <svg class="svgi svgi-xs ic-ok" aria-hidden="true"><use href="#ic-check-circle"/></svg>
                 ativa — {{ rotuloProvedor(f.provider) }}@if (f.modelo) { · <code>{{ f.modelo }}</code> }@if (f.viaEnv) { · via variável de ambiente }
               </span>
             } @else {
@@ -38,8 +38,8 @@
             <p class="dica">A chave vem da variável de ambiente <code>MIGRACAO_ANTHROPIC_API_KEY</code> — para
               trocar aqui, remova a variável do ambiente e reinicie o servidor.</p>
           } @else {
-            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
-              <label class="campo" style="min-width:150px">
+            <div class="filtros-linha">
+              <label class="campo estreito">
                 <span>Provedor</span>
                 <select formControlName="provider">
                   @for (p of provedores(); track p) {
@@ -47,11 +47,11 @@
                   }
                 </select>
               </label>
-              <label class="campo" style="flex:2;min-width:220px">
+              <label class="campo largo">
                 <span>Chave de API</span>
                 <input type="password" formControlName="apiKey" placeholder="sk-ant-… ou sk-or-…" autocomplete="off" />
               </label>
-              <label class="campo" style="flex:1;min-width:200px">
+              <label class="campo largo">
                 <span>Modelo</span>
                 <input type="text" formControlName="modelo"
                        [attr.list]="ehOpenRouter(i) ? 'modelos-openrouter' : null"

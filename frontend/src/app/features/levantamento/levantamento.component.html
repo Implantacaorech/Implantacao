@@ -1,29 +1,49 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <h1 style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
-    <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-compass"/></svg>
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-compass"/></svg>
     Levantamento — {{ cliente() }}
   </h1>
   <p class="sub">Responda as perguntas do <strong>Índice de Tópicos</strong> dos módulos contratados.
-    Estas respostas alimentam a geração do <strong>Projeto de Implantação</strong>.</p>
+    Estas respostas alimentam a geração do <strong>Projeto de Implantação</strong>.
+    <strong>Todas as perguntas são obrigatórias</strong> — a que não se aplicar ao cliente,
+    marque <em>“Não será utilizado.”</em>.</p>
 
   @if (erro()) {
-    <div class="resultado erro" style="padding:10px 16px;margin-bottom:10px">{{ erro() }}</div>
+    <div class="resultado erro">{{ erro() }}</div>
+  }
+
+  @if (aviso(); as a) {
+    <div class="lev-conflito">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-bell"/></svg>
+      <span>{{ a }}</span>
+      <button type="button" class="lev-x" (click)="aviso.set(null)" aria-label="Fechar aviso">×</button>
+    </div>
   }
 
   @if (salvo()) {
-    <div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Respostas salvas.
+    <div class="resultado ok linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg> Respostas salvas.
     </div>
   }
 
   @if (grupos().length === 0) {
-    <div class="resultado erro" style="padding:10px 16px;display:flex;align-items:center;gap:8px">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg>
+    <div class="resultado erro linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-bell"/></svg>
       Nenhuma pergunta — confira os <strong>Módulos Contratados</strong> na ficha (devem ser siglas do Índice de Tópicos, ex.: FAT, EST).
     </div>
   } @else {
+    @if (presentes().length > 0) {
+      <div class="lev-presenca">
+        <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-users"/></svg>
+        <span><strong>Edição compartilhada</strong> — também nesta tela agora:
+          @for (p of presentes(); track p.usuarioId) {<span class="lev-quem">{{ p.nome }}</span>}
+        </span>
+        <span class="dica" style="margin:0">Cada resposta é salva sozinha, assim que você sai do campo.</span>
+      </div>
+    }
+
     <div style="display:flex;align-items:center;gap:10px;margin:10px 0 16px">
       <div style="flex:1;max-width:340px;height:10px;background:var(--line);border-radius:6px;overflow:hidden">
         <div style="height:100%;width:{{ progresso() }}%;background:var(--ok)"></div>
@@ -37,6 +57,9 @@
           <summary>
             <svg class="svgi svgi-md" style="color:var(--brand)" aria-hidden="true"><use href="#ic-layers"/></svg>
             <span class="lev-mod-nome">{{ g.area }}</span>
+            @if (g.faltam > 0 && cobrarPendentes()) {
+              <span class="lev-mod-falta">faltam {{ g.faltam }}</span>
+            }
             <span class="lev-mod-cont" [class.ok]="g.resp === g.itens.length && g.itens.length > 0">{{ g.resp }}/{{ g.itens.length }}</span>
           </summary>
           <div class="lev-body">
@@ -47,22 +70,65 @@
               @if (r.mostrarAdicional) {
                 <div class="dica" style="font-weight:700;color:var(--muted);margin:8px 0 2px">{{ r.adicional }}</div>
               }
-              <label class="campo" style="margin-bottom:8px">
-                <span>{{ r.topico }}</span>
-                <textarea rows="2" placeholder="Resposta / observações…"
+              <div class="campo lev-campo" style="margin-bottom:8px">
+                <div class="lev-pergunta">
+                  <span class="lev-topico">
+                    {{ r.topico }}
+                    @if (r.pendente) { <span class="lev-obrig" title="Resposta obrigatória">*</span> }
+                  </span>
+                  <label class="lev-flag" [title]="'Marque quando o cliente não for usar esta funcionalidade'">
+                    <input type="checkbox" [ngModel]="r.naoUtilizado" name="nu_{{ r.id }}"
+                           (ngModelChange)="onNaoUtilizado(r.id, $event)">
+                    <span>Não será utilizado.</span>
+                  </label>
+                </div>
+
+                <textarea rows="2" id="lev-campo-{{ r.id }}" required
+                          [class.faltando]="r.pendente && cobrarPendentes()"
+                          [class.descartado]="r.naoUtilizado"
+                          [placeholder]="r.naoUtilizado ? '' : 'Resposta / observações… (obrigatório)'"
+                          [disabled]="r.naoUtilizado"
                           [ngModel]="r.resposta" name="resposta_{{ r.id }}"
-                          (ngModelChange)="onRespostaChange(r.id, $event)"></textarea>
-              </label>
+                          (ngModelChange)="onRespostaChange(r.id, $event)"
+                          (focus)="onFoco(r.id)" (blur)="onBlur(r.id)"></textarea>
+
+                <div class="lev-rodape">
+                  @if (editores().get(r.id); as quem) {
+                    <span class="lev-editando">
+                      <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-pencil"/></svg>
+                      {{ quem.join(', ') }} está neste campo
+                    </span>
+                  }
+                  @switch (estadoLinha()[r.id]) {
+                    @case ('salvando') { <span class="lev-estado">salvando…</span> }
+                    @case ('salvo') { <span class="lev-estado ok">salvo</span> }
+                    @case ('erro') { <span class="lev-estado erro">não salvo</span> }
+                  }
+                  @if (r.atualizadoPor) {
+                    <span class="lev-autoria">última alteração: {{ r.atualizadoPor }}</span>
+                  }
+                </div>
+              </div>
             }
           </div>
         </details>
       }
 
-      <div style="position:sticky;bottom:0;background:#fff;padding:10px 0;border-top:1px solid var(--line);display:flex;gap:8px;margin-top:10px;z-index:2">
+      <div class="lev-barra">
         <button class="btn primario" type="submit" [disabled]="salvando()">
           <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvar respostas
         </button>
-        <a class="btn" [routerLink]="['/projetos', projetoId]">Voltar à ficha</a>
+        @if (faltam() > 0) {
+          <button class="btn" type="button" (click)="irParaPendente()">
+            Faltam {{ faltam() }} — ir para a próxima
+          </button>
+        } @else {
+          <span class="lev-completo">
+            <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+            Todas as perguntas respondidas
+          </span>
+        }
+        <a class="btn btn-voltar" [routerLink]="['/projetos', projetoId]">← Voltar à ficha</a>
       </div>
     </form>
   }

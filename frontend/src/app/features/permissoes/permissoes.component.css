@@ -11,15 +11,19 @@
 .perm-tab th,
 .perm-tab td {
   border-bottom: 1px solid var(--line, #eceff3);
-  padding: 6px 8px;
+  padding: 8px 10px;
   text-align: center;
+  vertical-align: middle;
 }
+/* Cabeçalho igual ao das demais tabelas do sistema (.tabela / .form-tab) */
 .perm-tab thead th {
   position: sticky;
   top: 0;
-  background: var(--surface-2, #f1f4f8);
+  background: var(--brand);
   font-weight: 600;
-  color: var(--muted, #6b7280);
+  color: #fff;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
   white-space: nowrap;
 }
 .perm-menu {

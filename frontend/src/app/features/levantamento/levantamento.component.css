@@ -44,6 +44,165 @@ details.lev-mod[open] > summary::before {
   color: var(--ok);
   border-color: var(--ok);
 }
+.lev-mod-falta {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--err, #c0392b);
+  background: var(--err-bg, #fdecea);
+  border: 1px solid var(--err-border, #f5c6cb);
+  border-radius: 10px;
+  padding: 1px 8px;
+}
 .lev-body {
   padding: 8px 14px 12px;
+}
+
+/* ===== PERGUNTA: descrição + flag "Não será utilizado." ===== */
+.lev-pergunta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 5px;
+}
+.lev-topico {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink);
+  flex: 1;
+  min-width: 240px;
+}
+.lev-obrig {
+  color: var(--err, #c0392b);
+  font-weight: 700;
+}
+.lev-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+/* `width` explícito porque a regra global `.campo input{width:100%}` (styles.css) também
+   pega esta caixa de seleção e a esticaria pela largura do campo. */
+.lev-flag input {
+  width: auto;
+  flex: none;
+  cursor: pointer;
+  margin: 0;
+}
+.lev-flag:hover {
+  color: var(--ink);
+}
+
+.lev-campo textarea.faltando {
+  border-color: var(--err-border, #f5c6cb);
+  background: var(--err-bg, #fdecea);
+}
+.lev-campo textarea.descartado {
+  font-style: italic;
+  color: var(--muted);
+  background: var(--surface-2, #f3f6fb);
+  cursor: not-allowed;
+}
+
+/* ===== RODAPÉ DO CAMPO: autosave, presença e autoria ===== */
+.lev-rodape {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-height: 15px;
+  margin-top: 3px;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+.lev-editando {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  color: var(--brand);
+}
+.lev-estado.ok {
+  color: var(--ok);
+}
+.lev-estado.erro {
+  color: var(--err, #c0392b);
+  font-weight: 700;
+}
+.lev-autoria {
+  margin-left: auto;
+  opacity: 0.8;
+}
+
+/* ===== EDIÇÃO COMPARTILHADA ===== */
+.lev-presenca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--surface-2, #f3f6fb);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--brand);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 0.83rem;
+  color: var(--ink);
+}
+.lev-quem {
+  display: inline-block;
+  font-weight: 700;
+  color: var(--brand);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 8px;
+  margin-left: 6px;
+}
+.lev-conflito {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--warn-bg, #fff8e1);
+  border: 1.5px solid var(--warn-border, #ffe082);
+  border-radius: 8px;
+  padding: 9px 12px;
+  margin-bottom: 10px;
+  font-size: 0.86rem;
+  color: var(--warn, #8a6d3b);
+}
+.lev-x {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  color: inherit;
+}
+
+.lev-barra {
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  z-index: 2;
+}
+.lev-completo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.83rem;
+  font-weight: 700;
+  color: var(--ok);
 }

@@ -188,13 +188,13 @@ describe('ClientesSiclaService', () => {
     ]);
   });
 
-  it('grava as conversões estimadas (nome + horas) em JSON, ignorando as sem nome', async () => {
+  it('grava as conversões estimadas (nome + horas + observação) em JSON, ignorando as sem nome', async () => {
     const { service, projetoSave } = montar();
     await service.cadastrar(
       {
         cliente: 'Nova Indústria',
         conversoesSelecionadas: [
-          { nome: 'Importação Cad. produtos', horas: '8' },
+          { nome: 'Importação Cad. produtos', horas: '8', obs: 'sem preço de custo' },
           { nome: 'Conversão sob medida', horas: '' },
           { nome: '', horas: '5' },
         ],
@@ -203,8 +203,8 @@ describe('ClientesSiclaService', () => {
     );
     const salvo = projetoSave.mock.calls[0][0] as { conversoes: string };
     expect(JSON.parse(salvo.conversoes)).toEqual([
-      { nome: 'Importação Cad. produtos', horas: '8' },
-      { nome: 'Conversão sob medida', horas: '' },
+      { nome: 'Importação Cad. produtos', horas: '8', obs: 'sem preço de custo' },
+      { nome: 'Conversão sob medida', horas: '', obs: '' },
     ]);
   });
 });

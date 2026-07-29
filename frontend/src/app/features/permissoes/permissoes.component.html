@@ -1,6 +1,6 @@
-<div style="max-width:1200px">
-  <h1 style="margin-bottom:4px">Permissões</h1>
-  <p class="sub" style="margin:0 0 14px">
+<div>
+  <h1 class="pagina-titulo">Permissões</h1>
+  <p class="sub">
     Liberação por <strong>papel × menu</strong> (nível Nada / Consulta / Alteração) e
     <strong>exceções por usuário</strong>. A regra vale de imediato — o Administrador tem
     tudo sempre (trava de segurança). Menus de <em>Sistema</em> são fixos do Administrador.
@@ -9,7 +9,7 @@
   @if (erro()) { <p class="erro">{{ erro() }}</p> }
 
   @if (carregando()) {
-    <div class="painel" style="text-align:center;color:var(--muted)">Carregando…</div>
+    <div class="painel vazio">Carregando…</div>
   } @else {
 
     <!-- ===== Matriz por papel ===== -->
@@ -58,8 +58,8 @@
     </p>
 
     <div class="painel">
-      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px">
-        <label class="campo" style="flex:1;min-width:200px">
+      <div class="filtros-linha" style="margin-bottom:14px">
+        <label class="campo largo">
           <span>Usuário</span>
           <select [ngModel]="excUsuario()" (ngModelChange)="excUsuario.set($event)">
             <option [ngValue]="null">— selecione —</option>
@@ -68,7 +68,7 @@
             }
           </select>
         </label>
-        <label class="campo" style="flex:1;min-width:180px">
+        <label class="campo largo">
           <span>Menu</span>
           <select [ngModel]="excMenu()" (ngModelChange)="excMenu.set($event)">
             @for (m of menusEditaveis(); track m.chave) {
@@ -76,7 +76,7 @@
             }
           </select>
         </label>
-        <label class="campo" style="flex:none;min-width:150px">
+        <label class="campo estreito">
           <span>Nível</span>
           <select [ngModel]="excNivel()" (ngModelChange)="excNivel.set($event)">
             <option value="herdar">Herdar do papel</option>
@@ -94,33 +94,35 @@
       @if (excecoes().length === 0) {
         <p style="color:var(--muted);margin:0">Nenhuma exceção — todos seguem o padrão do papel.</p>
       } @else {
-        <table style="width:100%;border-collapse:collapse">
-          <thead>
-            <tr style="text-align:left;font-size:.8rem;color:var(--muted)">
-              <th style="padding:6px 4px">Usuário</th>
-              <th style="padding:6px 4px">Menu</th>
-              <th style="padding:6px 4px">Nível</th>
-              <th style="padding:6px 4px"></th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (e of excecoes(); track e.usuarioId + '|' + e.menu) {
-              <tr style="border-top:1px solid var(--line)">
-                <td style="padding:6px 4px">{{ nomeUsuario(e.usuarioId) }}</td>
-                <td style="padding:6px 4px">{{ rotuloMenu(e.menu) }}</td>
-                <td style="padding:6px 4px"><span class="perm-badge" [attr.data-n]="e.nivel">{{ rotuloNivel[e.nivel] }}</span></td>
-                <td style="padding:6px 4px;text-align:right">
-                  <button
-                    type="button"
-                    class="btn btn-sec"
-                    [disabled]="salvando() === 'exc:' + e.usuarioId + '|' + e.menu"
-                    (click)="removerExcecao(e.usuarioId, e.menu)"
-                  >Remover</button>
-                </td>
+        <div class="tabela-wrap">
+          <table class="tabela">
+            <thead>
+              <tr>
+                <th>Usuário</th>
+                <th>Menu</th>
+                <th>Nível</th>
+                <th class="col-acoes"></th>
               </tr>
-            }
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              @for (e of excecoes(); track e.usuarioId + '|' + e.menu) {
+                <tr>
+                  <td>{{ nomeUsuario(e.usuarioId) }}</td>
+                  <td>{{ rotuloMenu(e.menu) }}</td>
+                  <td><span class="perm-badge" [attr.data-n]="e.nivel">{{ rotuloNivel[e.nivel] }}</span></td>
+                  <td class="col-acoes">
+                    <button
+                      type="button"
+                      class="btn pequeno perigo"
+                      [disabled]="salvando() === 'exc:' + e.usuarioId + '|' + e.menu"
+                      (click)="removerExcecao(e.usuarioId, e.menu)"
+                    >Remover</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       }
     </div>
   }

@@ -1,25 +1,139 @@
-<h1>👥 Usuários e perfis</h1>
+<h1 class="pagina-titulo"><svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-users"/></svg> Usuários e perfis</h1>
 <p class="dica">Cadastre os responsáveis. A hierarquia define o que cada um vê e pode fazer: <strong>ADM</strong>
   (tudo, inclusive Sistema) · <strong>Coordenador</strong> / <strong>Administrativo</strong> (designam e veem tudo —
   Operação + Gestão, sem Sistema) · <strong>GCI</strong> (Levantamento/Projeto dos seus) ·
   <strong>Consultor</strong> (Cronograma/Check-list/Termo dos seus).</p>
 
 @if (aviso()) {
-  <div class="resultado ok" style="padding:8px 14px">✅ {{ aviso() }}</div>
+  <div class="resultado ok"><svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}</div>
 }
 @if (erro()) {
-  <div class="resultado" style="padding:8px 14px;background:#fdecea;color:#a3261b;border:1px solid #f3c6c0">⚠️ {{ erro() }}</div>
+  <div class="resultado erro">⚠️ {{ erro() }}</div>
 }
 
 <div class="painel">
-  <h3 style="color:var(--navy);margin-top:0">Novo / editar usuário</h3>
+  <h3><svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg> Técnicos do SICLA <small style="color:var(--muted);font-weight:400">— tabela <code>LISTA_TECNICOS</code></small></h3>
+  <p class="dica">Esta é a <strong>fonte do cadastro</strong>. A importação grava
+    <strong>Código SICLA</strong>, <strong>Nome</strong>, <strong>Módulos capacitados</strong>,
+    <strong>E-mail</strong>, <strong>Login</strong> (= o e-mail) e <strong>Setor de atuação</strong>.
+    Quem ainda não tem cadastro entra com a senha padrão <code>Rech&#64;2026</code> e perfil Consultor;
+    quem já existe é <strong>atualizado</strong> — perfil, papéis, situação e senha ficam como estão.
+    O SQL da consulta é editável em <em>Sistema → Consultas BD</em>.</p>
+
+  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
+    <input
+      style="flex:1;min-width:220px"
+      placeholder="filtrar por nome, código, e-mail, setor ou módulo…"
+      [value]="filtroSicla()"
+      (input)="filtroSicla.set($any($event.target).value)"
+      (keyup.enter)="carregarTecnicos()"
+    />
+    <button class="btn" type="button" [disabled]="carregandoTecnicos()" (click)="carregarTecnicos()">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>
+      {{ carregandoTecnicos() ? 'Buscando…' : 'Buscar no SICLA' }}
+    </button>
+    <button class="btn" type="button" [disabled]="carregandoTecnicos()" (click)="buscarNovos()"
+            title="Traz só quem entrou no SICLA e ainda não tem cadastro aqui">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg> Buscar novos
+    </button>
+    @if (tecnicos().length > 0) {
+      <button class="btn primario" type="button" [disabled]="importando()" (click)="importar()">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+        {{ importando()
+            ? 'Importando…'
+            : (selecionados().length > 0
+                ? 'Importar ' + selecionados().length + ' selecionado(s)'
+                : 'Importar os ' + tecnicos().length + ' listado(s)') }}
+      </button>
+    }
+  </div>
+
+  <label style="display:flex;align-items:center;gap:6px;margin-bottom:10px;cursor:pointer;font-weight:500">
+    <input
+      type="checkbox"
+      style="width:auto"
+      [checked]="soNovos()"
+      [disabled]="carregandoTecnicos()"
+      (change)="alternarSoNovos($any($event.target).checked)"
+    />
+    Só os que ainda <strong>não estão cadastrados</strong> no Painel
+  </label>
+
+  @if (erroSicla()) {
+    <div class="resultado erro">⚠️ {{ erroSicla() }}</div>
+  }
+
+  @if (tecnicos().length > 0) {
+    <div class="tabela-wrap">
+      <table class="form-tab">
+        <thead>
+          <tr>
+            <th style="width:34px">
+              <input
+                type="checkbox"
+                style="width:auto"
+                [checked]="selecionados().length === tecnicos().length"
+                (change)="marcarTodos($any($event.target).checked)"
+                title="marcar/desmarcar todos"
+              />
+            </th>
+            <th>Código SICLA</th><th>Nome</th><th>E-mail / Login</th>
+            <th>Setor Atuação</th><th>Módulos capacitados</th><th>No Painel</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (t of tecnicos(); track t.codigo) {
+            <tr>
+              <td>
+                <input
+                  type="checkbox"
+                  style="width:auto"
+                  [checked]="selecionado(t.codigo)"
+                  (change)="alternarSelecao(t.codigo, $any($event.target).checked)"
+                />
+              </td>
+              <td>{{ t.codigo }}</td>
+              <td>{{ t.nome }}</td>
+              <td>{{ t.email || '—' }}</td>
+              <td>{{ t.setorAtuacao }}</td>
+              <td>{{ t.modulosCapacitados }}</td>
+              <td style="white-space:nowrap">
+                @if (usuarioDoTecnico(t.codigo); as u) {
+                  🟢 já existe
+                  <button class="btn" type="button" style="margin-left:6px" (click)="editar(u)"
+                          title="Abrir o cadastro deste técnico no Painel">
+                    <svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Editar
+                  </button>
+                } @else {
+                  {{ t.jaCadastrado ? '🟢 já existe' : '＋ novo' }}
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+<div class="acoes" style="margin:var(--sp-4) 0 var(--sp-3)">
+  <button class="btn primario" type="button" (click)="novo()" title="Cadastrar um usuário manualmente">
+    <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg> Novo usuário
+  </button>
+</div>
+
+@if (formAberto()) {
+<div class="painel" id="form-usuario">
+  <h3>{{ usuarioId() ? 'Editar usuário' : 'Novo usuário' }}</h3>
   <form [formGroup]="form" (ngSubmit)="salvar()">
     <div class="grade2">
       <label class="campo"><span>Nome</span><input formControlName="nome" /></label>
       <label class="campo"><span>E-mail</span><input type="email" formControlName="email" /></label>
       <label class="campo"><span>Login</span><input formControlName="login" placeholder="(em branco usa o e-mail)" /></label>
       <label class="campo"><span>Código SICLA *</span><input formControlName="codigoSicla" placeholder="código do técnico no SICLA" /></label>
-      <div class="campo" style="grid-column:1/-1">
+      <label class="campo"><span>Setor Atuação</span><input formControlName="setorAtuacao" placeholder="SETORDES (SICLA)" /></label>
+      <label class="campo largura-total"><span>Módulos capacitados</span><input formControlName="modulosCapacitados" placeholder="MODULOCAPACITADO (SICLA)" /></label>
+      <div class="campo largura-total">
         <span>Papéis <small style="color:var(--muted);font-weight:400">— pode marcar mais de um; a mesma pessoa costuma ser GCI e Levantador</small></span>
         <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:6px">
           @for (p of perfis; track p) {
@@ -38,30 +152,70 @@
       <label class="campo"><span>Senha</span><input type="password" formControlName="senha" placeholder="(em branco mantém a atual)" /></label>
       <label class="campo" style="align-self:center"><span><input type="checkbox" style="width:auto" formControlName="ativo" /> Ativo</span></label>
     </div>
-    <button class="btn primario" type="submit" [disabled]="form.invalid || salvando()">💾 {{ salvando() ? 'Salvando…' : 'Salvar' }}</button>
+    <button class="btn primario" type="submit" [disabled]="form.invalid || salvando()"><svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ salvando() ? 'Salvando…' : 'Salvar' }}</button>
     <button class="btn" type="button" (click)="limpar()">Limpar</button>
+    <button class="btn" type="button" (click)="fechar()"><svg class="svgi" aria-hidden="true"><use href="#ic-x"/></svg> Cancelar</button>
   </form>
 </div>
+}
 
 @if (carregando()) {
   <p>Carregando…</p>
 } @else if (usuarios().length > 0) {
-  <table class="form-tab">
-    <thead><tr><th>Nome</th><th>E-mail</th><th>Login</th><th>Cód. SICLA</th><th>Hierarquia</th><th>Ativo</th><th></th></tr></thead>
-    <tbody>
-      @for (u of usuarios(); track u.id) {
-        <tr>
-          <td>{{ u.nome }}</td>
-          <td>{{ u.email }}</td>
-          <td>{{ u.login }}</td>
-          <td>{{ u.codigoSicla }}</td>
-          <td>{{ u.perfis || u.perfil }}</td>
-          <td>{{ u.ativo ? '🟢' : '⚪' }}</td>
-          <td><button class="btn" type="button" (click)="editar(u)">✏️ Editar</button></td>
-        </tr>
-      }
-    </tbody>
-  </table>
+  <div class="barra-filtros">
+    <label class="campo">
+      <span>Setor Atuação</span>
+      <select [value]="filtroSetor()" (change)="filtroSetor.set($any($event.target).value)">
+        <option value="">Todos os setores ({{ usuarios().length }})</option>
+        @for (s of setores(); track s.setor) {
+          <option [value]="s.setor">{{ s.setor }} ({{ s.total }})</option>
+        }
+        @if (semSetor() > 0) {
+          <option value="__sem__">— sem setor ({{ semSetor() }})</option>
+        }
+      </select>
+    </label>
+    <label class="campo largo">
+      <span>Buscar</span>
+      <input
+        placeholder="nome, e-mail, login, cód. SICLA ou módulo…"
+        [value]="filtroNome()"
+        (input)="filtroNome.set($any($event.target).value)"
+      />
+    </label>
+    @if (filtroSetor() || filtroNome()) {
+      <button class="btn" type="button" (click)="limparFiltros()">Limpar filtros</button>
+    }
+  </div>
+
+  <p class="dica" style="margin-bottom:8px">
+    Mostrando <strong>{{ usuariosFiltrados().length }}</strong> de {{ usuarios().length }} usuário(s).
+  </p>
+
+  @if (usuariosFiltrados().length === 0) {
+    <p class="dica">Nenhum usuário com esses filtros.</p>
+  }
+
+  <div class="tabela-wrap">
+    <table class="form-tab">
+      <thead><tr><th>Nome</th><th>E-mail</th><th>Login</th><th>Cód. SICLA</th><th>Setor Atuação</th><th>Módulos capacitados</th><th>Hierarquia</th><th>Ativo</th><th></th></tr></thead>
+      <tbody>
+        @for (u of usuariosFiltrados(); track u.id) {
+          <tr [class.em-edicao]="usuarioId() === u.id">
+            <td>{{ u.nome }}</td>
+            <td>{{ u.email }}</td>
+            <td>{{ u.login }}</td>
+            <td>{{ u.codigoSicla }}</td>
+            <td>{{ u.setorAtuacao }}</td>
+            <td>{{ u.modulosCapacitados }}</td>
+            <td>{{ u.perfis || u.perfil }}</td>
+            <td>{{ u.ativo ? '🟢' : '⚪' }}</td>
+            <td><button class="btn" type="button" (click)="editar(u)"><svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Editar</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
 } @else {
-  <p class="dica">Nenhum usuário ainda — cadastre o primeiro acima (use seu e-mail e perfil ADM).</p>
+  <p class="dica">Nenhum usuário ainda — clique em <strong>＋ Novo usuário</strong> e cadastre o primeiro (use seu e-mail e perfil ADM).</p>
 }

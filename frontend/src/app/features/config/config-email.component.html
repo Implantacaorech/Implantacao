@@ -1,18 +1,18 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <h1 style="display:flex;align-items:center;gap:10px">
-    <svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-mail"/></svg> E-mail interno (SMTP)
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-mail"/></svg> E-mail interno (SMTP)
   </h1>
   <p class="dica">Conta de envio da Rech. A senha fica salva só nesta máquina (não é versionada).</p>
 
   @if (aviso()) {
-    <div class="resultado ok" style="padding:10px 16px;display:flex;align-items:center;gap:8px">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+    <div class="resultado ok linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
     </div>
   }
   @if (erro()) {
-    <div class="resultado erro" style="padding:10px 16px;margin-bottom:10px">{{ erro() }}</div>
+    <div class="resultado erro">{{ erro() }}</div>
   }
 
   <form class="painel" [formGroup]="form" (ngSubmit)="salvar()">
@@ -29,12 +29,12 @@
     </button>
   </form>
 
-  <p class="dica" style="display:flex;align-items:center;gap:6px">
+  <p class="dica flex-linha compacta">
     @if (configurado()) {
-      <svg class="svgi" style="width:12px;height:12px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg> Configurado
+      <svg class="svgi svgi-xs ic-ok" aria-hidden="true"><use href="#ic-check-circle"/></svg> Configurado
     } @else {
-      <svg class="svgi" style="width:12px;height:12px;color:var(--err)" aria-hidden="true"><use href="#ic-bell"/></svg> Incompleto (informe host e remetente)
+      <svg class="svgi svgi-xs ic-err" aria-hidden="true"><use href="#ic-bell"/></svg> Incompleto (informe host e remetente)
     }
   </p>
-  <a class="btn" routerLink="/projetos">← Voltar</a>
+  <a class="btn btn-voltar" routerLink="/projetos">← Voltar</a>
 }

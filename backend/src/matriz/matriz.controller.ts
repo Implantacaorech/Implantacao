@@ -23,6 +23,7 @@ import type { AuthUser } from '../common/decorators/current-user.decorator';
 import {
   PERFIS_SISTEMA,
   PERFIS_VEEM_TODOS_PROJETOS,
+  temPapel,
 } from '../common/constants/perfis';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { MatrizTecnico } from '../database/entities/matriz-tecnico.entity';
@@ -31,8 +32,9 @@ import { SalvarNotasMatrizDto } from './dto/salvar-notas-matriz.dto';
 
 // Quem vê TODAS as linhas da matriz (consulta): PERFIS_VEEM_TODOS_PROJETOS
 // (ADM/Coordenador/Administrativo). O Comercial não entra nesta tela (gate de classe).
-function veTudo(perfil: string): boolean {
-  return (PERFIS_VEEM_TODOS_PROJETOS as string[]).includes(perfil);
+// Avalia TODOS os papéis do usuário, não só o principal (correção de 2026-07-28).
+function veTudo(user: AuthUser): boolean {
+  return temPapel(user, ...PERFIS_VEEM_TODOS_PROJETOS);
 }
 
 function podeEditar(
@@ -40,7 +42,7 @@ function podeEditar(
   t: MatrizTecnico,
   minha: MatrizTecnico | null,
 ): boolean {
-  if (user.perfil === 'ADM') return true;
+  if (temPapel(user, 'ADM')) return true;
   // Qualquer outro perfil — inclusive Coordenador/Administrativo, que veem todas as linhas —
   // edita SOMENTE a própria (definição do usuário em 2026-07-28: "vê de todos, mas a própria
   // pode alterar"). A linha é casada por Código SICLA/nome.
@@ -69,7 +71,7 @@ export class MatrizController {
       'Lista a Matriz (ADM/Coordenador/Administrativo veem todos; Consultor/GCI só a própria linha)',
   })
   async listar(@CurrentUser() user: AuthUser) {
-    if (veTudo(user.perfil)) {
+    if (veTudo(user)) {
       // `notas()` é síncrono: o `Promise.all` com callback `async` só criava uma Promise
       // por técnico para resolver de imediato, sem nada assíncrono dentro.
       const itens = (await this.service.listar()).map((t) => ({
@@ -79,7 +81,7 @@ export class MatrizController {
       return new ApiEnvelope({
         itens,
         restrito: false,
-        podeAdmin: user.perfil === 'ADM',
+        podeAdmin: temPapel(user, 'ADM'),
       });
     }
     const minha = await this.service.linhaDoUsuario(
@@ -107,7 +109,7 @@ export class MatrizController {
     // Calcula a própria linha SEMPRE — até quem vê tudo precisa dela para saber se pode
     // editar a sua (não só consultar).
     const minha = await this.service.linhaDoUsuario(user.nome, user.codigoSicla);
-    if (!veTudo(user.perfil) && !(minha && minha.id === t.id)) {
+    if (!veTudo(user) && !(minha && minha.id === t.id)) {
       throw new ForbiddenException('Sem acesso à ficha de outro técnico.');
     }
     return new ApiEnvelope({
@@ -118,7 +120,7 @@ export class MatrizController {
       editavel:
         podeEditar(user, t, minha) &&
         this.permissoes.podeAlterar(user, 'matriz'),
-      volta: veTudo(user.perfil),
+      volta: veTudo(user),
     });
   }
 

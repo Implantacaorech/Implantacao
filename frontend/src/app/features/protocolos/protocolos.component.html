@@ -1,20 +1,20 @@
-<h1>🎬 Protocolos de Treinamento</h1>
+<h1 class="pagina-titulo"><svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-bulb"/></svg> Protocolos de Treinamento</h1>
 <p class="sub">Base de conhecimento gerada a partir de <strong>vídeos ou áudios</strong>: o robô lê a pasta do SharePoint
   (<code>{{ pasta() }}</code>), transcreve, a IA organiza por módulo/menu e você revisa antes de aprovar.</p>
 
 @if (erro()) {
-  <div class="resultado erro" style="padding:8px 14px">{{ erro() }}</div>
+  <div class="resultado erro">{{ erro() }}</div>
 }
 @if (aviso()) {
-  <div class="resultado" style="padding:8px 14px">ℹ️ {{ aviso() }}</div>
+  <div class="resultado">ℹ️ {{ aviso() }}</div>
 }
 @if (!carregando() && !roboOk()) {
-  <div class="resultado erro" style="padding:8px 14px">⚠️ Pasta não encontrada — o robô está inativo. Verifique <code>{{ pasta() }}</code>.</div>
+  <div class="resultado erro">⚠️ Pasta não encontrada — o robô está inativo. Verifique <code>{{ pasta() }}</code>.</div>
 }
 
 <div class="painel">
-  <h3 style="color:var(--navy);margin-top:0">Enviar vídeo ou áudio (upload manual)</h3>
-  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+  <h3>Enviar vídeo ou áudio (upload manual)</h3>
+  <div class="acoes">
     <input #arquivo type="file" accept="video/*,audio/*" [disabled]="enviando()" />
     <button class="btn primario" type="button" [disabled]="enviando()" (click)="enviarArquivo(arquivo)">
       📤 {{ enviando() ? 'Enviando…' : 'Enviar e processar' }}
@@ -23,52 +23,54 @@
   </div>
 </div>
 
-<form class="painel" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap" (ngSubmit)="carregar()">
-  <label class="campo" style="min-width:160px"><span>Módulo</span>
+<form class="barra-filtros" (ngSubmit)="carregar()">
+  <label class="campo estreito"><span>Módulo</span>
     <select [(ngModel)]="fModulo" name="fModulo">
       <option value="">(todos)</option>
       @for (m of modulos; track m) { <option [value]="m">{{ m }}</option> }
     </select>
   </label>
-  <label class="campo" style="min-width:130px"><span>Menu</span><input [(ngModel)]="fMenu" name="fMenu" /></label>
-  <label class="campo" style="min-width:150px"><span>Status</span>
+  <label class="campo estreito"><span>Menu</span><input [(ngModel)]="fMenu" name="fMenu" /></label>
+  <label class="campo estreito"><span>Status</span>
     <select [(ngModel)]="fStatus" name="fStatus">
       <option value="">(todos)</option>
       @for (st of statusOpcoes; track st) { <option [value]="st">{{ st }}</option> }
     </select>
   </label>
-  <label class="campo" style="min-width:130px"><span>Origem</span>
+  <label class="campo estreito"><span>Origem</span>
     <select [(ngModel)]="fOrigem" name="fOrigem">
       <option value="">(todas)</option>
       <option value="sharepoint">SharePoint</option>
       <option value="upload">Upload</option>
     </select>
   </label>
-  <label class="campo" style="flex:1;min-width:180px"><span>Palavra-chave</span>
+  <label class="campo largo"><span>Palavra-chave</span>
     <input [(ngModel)]="fQ" name="fQ" placeholder="configuração, regra, rotina, menu..." />
   </label>
-  <button class="btn" type="submit">🔍 Filtrar</button>
+  <button class="btn" type="submit"><svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg> Filtrar</button>
 </form>
 
 @if (carregando()) {
   <p>Carregando…</p>
 } @else if (itens().length > 0) {
-  <table class="form-tab">
-    <thead><tr><th>Título</th><th>Módulo</th><th>Menu</th><th>Status</th><th>Origem</th><th>Data</th><th></th></tr></thead>
-    <tbody>
-      @for (p of itens(); track p.id) {
-        <tr>
-          <td>{{ p.titulo || p.videoNome }}</td>
-          <td>{{ p.modulo }}</td>
-          <td>{{ p.menu }}</td>
-          <td>{{ p.status }}</td>
-          <td>{{ p.videoOrigem === 'sharepoint' ? 'SharePoint' : 'Upload' }}</td>
-          <td>{{ formatarData(p.criadoEm) }}</td>
-          <td><a class="btn" [routerLink]="['/protocolos', p.id]">Abrir</a></td>
-        </tr>
-      }
-    </tbody>
-  </table>
+  <div class="tabela-wrap">
+    <table class="form-tab">
+      <thead><tr><th>Título</th><th>Módulo</th><th>Menu</th><th>Status</th><th>Origem</th><th>Data</th><th></th></tr></thead>
+      <tbody>
+        @for (p of itens(); track p.id) {
+          <tr>
+            <td>{{ p.titulo || p.videoNome }}</td>
+            <td>{{ p.modulo }}</td>
+            <td>{{ p.menu }}</td>
+            <td>{{ p.status }}</td>
+            <td>{{ p.videoOrigem === 'sharepoint' ? 'SharePoint' : 'Upload' }}</td>
+            <td>{{ formatarData(p.criadoEm) }}</td>
+            <td><a class="btn" [routerLink]="['/protocolos', p.id]">Abrir</a></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
 } @else {
   <p class="dica">Nenhum protocolo ainda — envie um vídeo ou áudio acima ou coloque na pasta do SharePoint.</p>
 }

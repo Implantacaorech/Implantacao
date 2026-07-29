@@ -10,6 +10,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../../core/services/auth.service';
+import { soComercial } from '../../core/constants/perfis';
 import {
   ClienteSicla,
   ClientesSiclaService,
@@ -37,6 +38,8 @@ interface ItemConversao {
   fixo: boolean;
   marcado: boolean;
   horas: string;
+  /** Observação livre do item, no mesmo espírito da dos módulos contratados. */
+  obs: string;
 }
 
 function conversoesIniciais(): ItemConversao[] {
@@ -45,6 +48,7 @@ function conversoesIniciais(): ItemConversao[] {
     fixo: true,
     marcado: false,
     horas: '',
+    obs: '',
   }));
 }
 
@@ -96,11 +100,10 @@ export class ConsultaClienteComponent implements OnDestroy {
     null,
   );
 
-  /** O Comercial não enxerga a carteira; para ele, o sucesso é só a confirmação. Perfis
-   * internos ganham o link para abrir o projeto no fluxo. */
-  readonly podeAbrirProjeto = computed(
-    () => this.auth.usuario()?.perfil !== 'Comercial',
-  );
+  /** Quem é SÓ Comercial não enxerga a carteira; para ele, o sucesso é só a confirmação.
+   * Perfis internos (inclusive quem acumula Comercial + outro papel) ganham o link para
+   * abrir o projeto no fluxo. */
+  readonly podeAbrirProjeto = computed(() => !soComercial(this.auth.usuario()));
 
   readonly form = this.fb.nonNullable.group({
     cliente: ['', Validators.required],
@@ -289,13 +292,20 @@ export class ConsultaClienteComponent implements OnDestroy {
     );
   }
 
+  /** Atualiza a observação de uma conversão marcada. */
+  setObsConversao(i: number, obs: string): void {
+    this.conversoes.update((lista) =>
+      lista.map((c, idx) => (idx === i ? { ...c, obs } : c)),
+    );
+  }
+
   /** Acrescenta um item de conversão digitado pelo Comercial (já marcado). */
   adicionarConversao(): void {
     const nome = this.novaConversao().trim();
     if (!nome) return;
     this.conversoes.update((lista) => [
       ...lista,
-      { nome, fixo: false, marcado: true, horas: '' },
+      { nome, fixo: false, marcado: true, horas: '', obs: '' },
     ]);
     this.novaConversao.set('');
   }
@@ -321,7 +331,7 @@ export class ConsultaClienteComponent implements OnDestroy {
       const dados = this.form.getRawValue();
       const conversoesSelecionadas: ConversaoSelecionada[] = this.conversoes()
         .filter((c) => c.marcado)
-        .map((c) => ({ nome: c.nome, horas: c.horas }));
+        .map((c) => ({ nome: c.nome, horas: c.horas, obs: c.obs }));
       const r = await this.service.cadastrar({
         ...dados,
         modulosSelecionados: this.modulosSelecionados(),

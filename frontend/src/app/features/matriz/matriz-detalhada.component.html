@@ -1,20 +1,20 @@
 <div class="md-wrap">
   <div class="md-top">
     <div>
-      <h1>Matriz por Menu <span class="md-badge">SIGER</span></h1>
+      <h1 class="pagina-titulo">Matriz por Menu <span class="md-badge">SIGER</span></h1>
       <p class="sub">
         Avaliação no nível de <strong>menu</strong> (código de acesso do SIGER). A nota do
         módulo é a <strong>média dos menus avaliados</strong>. Os menus vêm do
         <a routerLink="/dicionario">Dicionário Inteligente</a>.
       </p>
     </div>
-    <a class="btn btn-sec" routerLink="/matriz">↩ Matriz clássica</a>
+    <a class="btn btn-sec" routerLink="/matriz">← Matriz clássica</a>
   </div>
 
   @if (erro()) { <p class="erro">{{ erro() }}</p> }
 
   @if (carregando()) {
-    <div class="painel" style="text-align:center;color:var(--muted)">Carregando…</div>
+    <div class="painel vazio">Carregando…</div>
   } @else if (tecnico()) {
 
     <!-- Barra do técnico -->
@@ -37,11 +37,11 @@
       </div>
       <div class="md-spacer"></div>
       <button type="button" class="btn btn-sec md-graf" (click)="abrirGrafico()"
-              title="Ver o gráfico de média por módulo/adicional">
+              title="Ver o gráfico de média por módulo/adicional do técnico selecionado">
         <svg class="svgi" aria-hidden="true"><use href="#ic-chart"/></svg> Média por módulo
       </button>
       <div class="md-kpi">
-        <div class="k"><div class="v tnum" [class]="'v tnum ' + cls(resumo().media)">{{ fmt(resumo().media) }}</div><div class="l">Média geral</div></div>
+        <div class="k"><div class="v tnum" [class]="'v tnum ' + cls(resumo().media)">{{ fmt(resumo().media) }}</div><div class="l">Média do técnico</div></div>
         <div class="k"><div class="v tnum">{{ pct(resumo().avaliadas, resumo().total) }}%</div><div class="l">Menus avaliados</div></div>
       </div>
       @if (editavel()) {
@@ -65,12 +65,12 @@
              placeholder="Buscar módulo ou adicional (sigla ou nome)…"
              aria-label="Buscar módulo ou adicional" />
       @if (filtro()) {
-        <button type="button" class="md-filtro-x" (click)="filtro.set('')" aria-label="Limpar busca">✕</button>
+        <button type="button" class="md-filtro-x" (click)="filtro.set('')" aria-label="Limpar busca"><svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-x"/></svg></button>
       }
     </div>
 
     @if (semResultado()) {
-      <div class="painel" style="text-align:center;color:var(--muted)">
+      <div class="painel vazio">
         Nenhum módulo ou adicional encontrado para “{{ filtro() }}”.
       </div>
     }
@@ -96,9 +96,9 @@
     }
 
     <div class="md-legend">
-      <span class="lg"><span class="sw" style="background:var(--ok,#16a34a)"></span> Domina (8–10)</span>
-      <span class="lg"><span class="sw" style="background:#d97706"></span> Parcial (5–7)</span>
-      <span class="lg"><span class="sw" style="background:var(--err,#dc2626)"></span> Lacuna (0–4)</span>
+      <span class="lg"><span class="sw" style="background:var(--ok,var(--ok))"></span> Domina (8–10)</span>
+      <span class="lg"><span class="sw" style="background:var(--warn)"></span> Parcial (5–7)</span>
+      <span class="lg"><span class="sw" style="background:var(--err,var(--err))"></span> Lacuna (0–4)</span>
       <span class="lg"><span class="sw sw-na"></span> Sem avaliação</span>
     </div>
   }
@@ -106,28 +106,28 @@
 
 <!-- Gráfico: média por módulo/adicional -->
 @if (mostrarGrafico()) {
-  <div class="md-modal" (click)="fecharGrafico()">
-    <div class="md-modal-box" (click)="$event.stopPropagation()">
-      <div class="md-modal-head">
+  <div class="modal-fundo" (click)="fecharGrafico()">
+    <div class="modal-cx" (click)="$event.stopPropagation()">
+      <div class="modal-cab">
         <div>
           <h3>Média por módulo</h3>
-          <span class="sub">Média de <b>todos os técnicos</b> por módulo/adicional</span>
+          <span class="sub">Média de <b>{{ tecnico()?.nome }}</b> por módulo/adicional</span>
         </div>
-        <button class="md-x" type="button" (click)="fecharGrafico()" aria-label="Fechar">✕</button>
+        <button class="modal-fechar" type="button" (click)="fecharGrafico()" aria-label="Fechar">
+          <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-x"/></svg>
+        </button>
       </div>
-      @if (graficoCarregando()) {
-        <p class="dica" style="padding:24px;text-align:center">Carregando…</p>
-      } @else if (graficoConfig()) {
-        <div class="md-modal-body">
+      <div class="modal-corpo">
+        @if (graficoConfig()) {
           <div class="md-chart" [style.height.px]="graficoAltura()">
             <canvas [appChart]="graficoConfig()"></canvas>
           </div>
-        </div>
-      } @else {
-        <p class="dica" style="padding:24px;text-align:center">
-          Ainda não há notas avaliadas para gerar o gráfico.
-        </p>
-      }
+        } @else {
+          <p class="dica" style="text-align:center;margin:0">
+            {{ tecnico()?.nome }} ainda não tem notas avaliadas para gerar o gráfico.
+          </p>
+        }
+      </div>
     </div>
   </div>
 }

@@ -1,10 +1,10 @@
 @if (semOrigem()) {
-  <div class="resultado erro" style="padding:10px 16px">
+  <div class="resultado erro">
     Nenhum dado extraído ainda. <a routerLink="/fluxo">Volte ao início do fluxo</a> e traga o e-mail de fechamento.
   </div>
 } @else if (resultado(); as r) {
-  <h1 style="display:flex;align-items:center;gap:10px">
-    <svg class="svgi" style="width:24px;height:24px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-ok" aria-hidden="true"><use href="#ic-check-circle"/></svg>
     {{ r.duplicado ? 'Projeto já existia' : 'Fluxo criado' }}
   </h1>
   <div class="painel">
@@ -25,14 +25,14 @@
     </button>
   </div>
 } @else {
-  <h1 style="display:flex;align-items:center;gap:10px">
-    <svg class="svgi" style="width:24px;height:24px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-ok" aria-hidden="true"><use href="#ic-check-circle"/></svg>
     Confirmar e criar o fluxo
   </h1>
   <p class="sub">Extraído de: <strong>{{ fonte() }}</strong>@if (assunto()) { — "{{ assunto() }}" }. Confira os dados, designe os responsáveis e crie.</p>
 
   @if (erro()) {
-    <div class="resultado erro" style="padding:10px 16px;margin-bottom:10px">{{ erro() }}</div>
+    <div class="resultado erro">{{ erro() }}</div>
   }
 
   <form class="painel" (ngSubmit)="criar()">
@@ -103,7 +103,7 @@
       </label>
     </div>
     <p class="dica" style="margin-top:8px">
-      <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-bulb"/></svg>
+      <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-bulb"/></svg>
       Ao criar: cria a ficha, gera o pacote, registra tudo na timeline e envia o e-mail aos responsáveis com os anexos + resumo do projeto.
     </p>
 

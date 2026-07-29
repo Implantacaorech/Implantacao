@@ -1,31 +1,31 @@
-<h1>🧭 Capacidade da equipe</h1>
+<h1 class="pagina-titulo"><svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-compass"/></svg> Capacidade da equipe</h1>
 <p class="dica">Cruza <strong>módulos do cliente novo</strong> × <strong>Matriz de Conhecimento</strong> ×
   <strong>agenda</strong> (alocações do Painel + SICLA) × <strong>go-live previsto</strong> —
   para responder ao Comercial <em>quem pode receber</em> e <em>a partir de quando</em>.</p>
 
-<form class="painel" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap" (ngSubmit)="carregar()">
-  <label class="campo" style="flex:1;min-width:240px">
+<form class="barra-filtros" (ngSubmit)="carregar()">
+  <label class="campo largo">
     <span>Módulos do cliente novo (siglas, separadas por vírgula)</span>
     <input type="text" [(ngModel)]="modulos" name="modulos" placeholder="Ex.: FAT, CTB, FIN, EST" />
   </label>
-  <label class="campo" style="min-width:120px">
+  <label class="campo estreito">
     <span>Janela (semanas)</span>
     <select [(ngModel)]="semanas" name="semanas">
       @for (n of janelasSemanas; track n) { <option [value]="n">{{ n }}</option> }
     </select>
   </label>
-  <button class="btn primario" type="submit">🔍 Avaliar</button>
+  <button class="btn primario" type="submit"><svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg> Avaliar</button>
 </form>
 
 @if (erro()) {
-  <div class="resultado erro" style="padding:10px 16px;margin:10px 0">{{ erro() }}</div>
+  <div class="resultado erro">{{ erro() }}</div>
 }
 
 @if (carregando()) {
   <p>Carregando…</p>
 } @else if (resultado(); as r) {
   @if (filtro() && r.equipe.length > 0) {
-    <div class="painel" [style.border-left]="'4px solid ' + (aptos().length > 0 ? 'var(--ok,#1e8e5a)' : 'var(--warn,#c77a11)')">
+    <div class="painel" [style.border-left]="'4px solid ' + (aptos().length > 0 ? 'var(--ok,var(--ok))' : 'var(--warn,var(--warn))')">
       <h3 style="margin:0 0 6px;color:var(--navy)">Resposta ao Comercial — módulos: {{ filtro() }}</h3>
       @if (aptos().length > 0) {
         <p style="margin:0">
@@ -52,7 +52,7 @@
         cadastre a equipe (com Código SICLA) para avaliar a capacidade.</p>
     </div>
   } @else {
-    <div style="overflow-x:auto">
+    <div class="tabela-wrap">
       <table class="form-tab">
         <thead>
           <tr>
@@ -71,16 +71,16 @@
             <tr>
               <td>
                 <strong>{{ t.nome }}</strong> <span class="dica">{{ t.perfil }}</span>
-                @if (!t.temMatriz) { <br /><span class="dica" style="color:var(--warn,#c77a11)">sem linha na Matriz</span> }
+                @if (!t.temMatriz) { <br /><span class="dica" style="color:var(--warn,var(--warn))">sem linha na Matriz</span> }
               </td>
               <td>
                 @if (filtro()) {
                   @for (nm of notasModulos(t); track nm.modulo) {
                     <span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:.75rem;font-weight:700;margin:1px"
-                          [style.background]="nm.nota >= 9 ? '#dcfce7' : (nm.nota >= 6 ? '#fef9c3' : '#fee2e2')">{{ nm.modulo }} {{ nm.nota }}</span>
+                          [style.background]="nm.nota >= 9 ? 'var(--ok-bg)' : (nm.nota >= 6 ? 'var(--warn-bg)' : 'var(--err-bg)')">{{ nm.modulo }} {{ nm.nota }}</span>
                   }
                   @for (m of t.semNota; track m) {
-                    <span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:.75rem;margin:1px;background:#e2e8f0;color:#64748b" title="Sem nota na matriz">{{ m }} —</span>
+                    <span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:.75rem;margin:1px;background:var(--line);color:var(--muted)" title="Sem nota na matriz">{{ m }} —</span>
                   }
                 } @else {
                   <span class="dica">informe os módulos acima</span>
@@ -94,7 +94,7 @@
                 <div style="display:flex;gap:3px;align-items:flex-end" [title]="t.livresSemana.join(' · ') + ' turnos livres nas próximas semanas'">
                   @for (lv of t.livresSemana; track $index) {
                     <div [style.width.px]="14" [style.height.px]="6 + lv * 3" style="border-radius:2px"
-                         [style.background]="lv >= 6 ? 'var(--ok,#1e8e5a)' : (lv >= 3 ? '#eab308' : 'var(--err,#b3413a)')"
+                         [style.background]="lv >= 6 ? 'var(--ok,var(--ok))' : (lv >= 3 ? 'var(--warn)' : 'var(--err,var(--err))')"
                          [title]="'semana ' + ($index + 1) + ': ' + lv + ' livres'"></div>
                   }
                 </div>
@@ -104,9 +104,9 @@
               <td style="text-align:center"><strong>{{ t.score }}</strong></td>
               <td>
                 @switch (t.veredito) {
-                  @case ('Pronto') { <span style="background:#dcfce7;color:#166534;padding:2px 10px;border-radius:999px;font-size:.76rem;font-weight:700">✅ Pronto</span> }
-                  @case ('Parcial') { <span style="background:#fef9c3;color:#854d0e;padding:2px 10px;border-radius:999px;font-size:.76rem;font-weight:700">🟡 Parcial</span> }
-                  @default { <span style="background:#fee2e2;color:#991b1b;padding:2px 10px;border-radius:999px;font-size:.76rem;font-weight:700">🔴 {{ t.veredito }}</span> }
+                  @case ('Pronto') { <span style="background:var(--ok-bg);color:var(--ok);padding:2px 10px;border-radius:999px;font-size:.76rem;font-weight:700"><svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Pronto</span> }
+                  @case ('Parcial') { <span style="background:var(--warn-bg);color:var(--warn);padding:2px 10px;border-radius:999px;font-size:.76rem;font-weight:700">🟡 Parcial</span> }
+                  @default { <span style="background:var(--err-bg);color:var(--err);padding:2px 10px;border-radius:999px;font-size:.76rem;font-weight:700">🔴 {{ t.veredito }}</span> }
                 }
               </td>
             </tr>
@@ -116,8 +116,8 @@
     </div>
     <p class="dica">Score = 45% conhecimento nos módulos + 35% folga de agenda ({{ semanas }} semanas)
       + 20% carga de clientes (cheia com 3+). "Pode iniciar" = 1ª semana com ≥ 6 turnos livres.
-      Notas: <span style="background:#dcfce7;padding:0 6px;border-radius:4px">9–10 domina</span>
-      <span style="background:#fef9c3;padding:0 6px;border-radius:4px">6–8 conhece bem</span>
-      <span style="background:#fee2e2;padding:0 6px;border-radius:4px">1–5 parcial</span>.</p>
+      Notas: <span style="background:var(--ok-bg);padding:0 6px;border-radius:4px">9–10 domina</span>
+      <span style="background:var(--warn-bg);padding:0 6px;border-radius:4px">6–8 conhece bem</span>
+      <span style="background:var(--err-bg);padding:0 6px;border-radius:4px">1–5 parcial</span>.</p>
   }
 }

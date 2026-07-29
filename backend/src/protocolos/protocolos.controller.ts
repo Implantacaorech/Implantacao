@@ -42,6 +42,7 @@ import {
   CurrentUser,
   type AuthUser,
 } from '../common/decorators/current-user.decorator';
+import { temPapel } from '../common/constants/perfis';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { ProtocolosService } from './protocolos.service';
 import { ProcessamentoProtocolosService } from './processamento-protocolos.service';
@@ -154,9 +155,8 @@ export class ProtocolosController {
     const p = await this.protocolos.buscarPorId(id);
     return new ApiEnvelope({
       protocolo: p,
-      podeAprovar: (PERFIS_APROVA_PROTOCOLO as readonly string[]).includes(
-        user.perfil,
-      ),
+      // Todos os papéis do usuário, não só o principal (correção de 2026-07-28).
+      podeAprovar: temPapel(user, ...PERFIS_APROVA_PROTOCOLO),
       ehAudio: ehAudio(p.videoNome),
     });
   }

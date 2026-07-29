@@ -1,22 +1,22 @@
 <!-- ==================== Check List ==================== -->
 @if (aba() === 'checklist') {
-  <h1 style="display:flex;align-items:center;gap:8px">
-    <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-check-circle"/></svg>
     Cadastro de Checklist
   </h1>
   <p class="dica">Roteiro / Check-list por módulo (todas as colunas da planilha entregue). Total de
     <strong>{{ clTotal() }}</strong> linha(s)@if (clFiltroModulo() || clFiltroBusca()) { no filtro atual }.</p>
 
   @if (aviso()) {
-    <div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+    <div class="resultado ok linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
     </div>
   }
   @if (erro()) {
-    <div class="resultado erro" style="padding:8px 14px;margin-bottom:8px">{{ erro() }}</div>
+    <div class="resultado erro">{{ erro() }}</div>
   }
 
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+  <div class="acoes" style="margin:var(--sp-3) 0">
     <button class="btn primario" type="button" (click)="clNova()">
       <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg> Novo item
     </button>
@@ -26,17 +26,17 @@
     </button>
   </div>
 
-  <form class="painel" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end" (ngSubmit)="clFiltrar()">
-    <label class="campo" style="min-width:180px">
+  <form class="barra-filtros" (ngSubmit)="clFiltrar()">
+    <label class="campo">
       <span>Módulo / Adicional</span>
-      <select [(ngModel)]="clFiltroModulo" name="mod">
+      <select [ngModel]="clFiltroModulo()" (ngModelChange)="clFiltroModulo.set($event)" name="mod">
         <option value="">— Todos —</option>
         @for (m of clModulos(); track m) { <option [value]="m">{{ m }}</option> }
       </select>
     </label>
-    <label class="campo" style="flex:1;min-width:200px">
+    <label class="campo largo">
       <span>Buscar (item / ação / menu)</span>
-      <input type="text" [(ngModel)]="clFiltroBusca" name="q" placeholder="texto…" />
+      <input type="text" [ngModel]="clFiltroBusca()" (ngModelChange)="clFiltroBusca.set($event)" name="q" placeholder="texto…" />
     </label>
     <button class="btn primario" type="submit">
       <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg> Filtrar
@@ -46,7 +46,7 @@
 
   @if (clEmEdicao(); as linha) {
     <div class="painel" id="form-edit">
-      <h3 style="color:var(--navy);margin-top:0">{{ linha.id ? 'Editar linha' : 'Novo item' }}</h3>
+      <h3>{{ linha.id ? 'Editar linha' : 'Novo item' }}</h3>
       <div class="grade2">
         <label class="campo"><span>Módulo</span><input type="text" [(ngModel)]="linha.modulo" /></label>
         <label class="campo"><span>Adicional</span><input type="text" [(ngModel)]="linha.adicional" /></label>
@@ -58,7 +58,7 @@
         <label class="campo campo-larga"><span>Ação / Observação</span><textarea rows="2" [(ngModel)]="linha.acao"></textarea></label>
         <label class="campo"><span>Seq.</span><input type="text" [(ngModel)]="linha.seq" /></label>
       </div>
-      <div style="display:flex;gap:8px;margin-top:6px">
+      <div class="acoes" style="margin-top:var(--sp-3)">
         <button class="btn primario" type="button" [disabled]="clSalvando()" (click)="clSalvar()">
           <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ clSalvando() ? 'Salvando…' : 'Salvar' }}
         </button>
@@ -70,7 +70,7 @@
   @if (clCarregando()) {
     <p>Carregando…</p>
   } @else if (clLinhas().length > 0) {
-    <div style="overflow-x:auto">
+    <div class="tabela-wrap">
       <table class="form-tab" style="font-size:.82rem">
         <thead>
           <tr>
@@ -95,7 +95,7 @@
                 <button class="btn" style="padding:3px 8px" type="button" title="Editar" (click)="clEditar(l)">
                   <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-pencil"/></svg>
                 </button>
-                <button class="btn" style="padding:3px 8px;color:#b91c1c" type="button" title="Excluir" (click)="clExcluir(l.id)">
+                <button class="btn" style="padding:3px 8px;color:var(--err)" type="button" title="Excluir" (click)="clExcluir(l.id)">
                   <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-trash"/></svg>
                 </button>
               </td>
@@ -106,7 +106,7 @@
     </div>
 
     @if (clTotalPaginas() > 1) {
-      <div style="display:flex;gap:6px;align-items:center;margin-top:12px;flex-wrap:wrap">
+      <div class="acoes" style="margin-top:var(--sp-3)">
         @if (clPagina() > 1) {
           <button class="btn" type="button" (click)="clIrParaPagina(clPagina() - 1)">‹ Anterior</button>
         }
@@ -123,23 +123,23 @@
 
 <!-- ==================== Índice de Tópicos ==================== -->
 @if (aba() === 'indice') {
-  <h1 style="display:flex;align-items:center;gap:8px">
-    <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-table"/></svg>
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-table"/></svg>
     Índice de Tópicos para Mapeamento de Processos
   </h1>
   <p class="dica">Todas as colunas da planilha (Nº, Sigla, Módulos, Adicionais, Tópicos). Total de
     <strong>{{ idTotal() }}</strong> tópico(s)@if (idFiltroModulo() || idFiltroBusca()) { no filtro atual }.</p>
 
   @if (aviso()) {
-    <div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+    <div class="resultado ok linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
     </div>
   }
   @if (erro()) {
-    <div class="resultado erro" style="padding:8px 14px;margin-bottom:8px">{{ erro() }}</div>
+    <div class="resultado erro">{{ erro() }}</div>
   }
 
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+  <div class="acoes" style="margin:var(--sp-3) 0">
     <button class="btn primario" type="button" (click)="idNovo()">
       <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg> Novo tópico
     </button>
@@ -149,17 +149,17 @@
     </button>
   </div>
 
-  <form class="painel" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end" (ngSubmit)="carregarIndice()">
-    <label class="campo" style="min-width:240px">
+  <form class="barra-filtros" (ngSubmit)="carregarIndice()">
+    <label class="campo largo">
       <span>Módulo</span>
-      <select [(ngModel)]="idFiltroModulo" name="mod">
+      <select [ngModel]="idFiltroModulo()" (ngModelChange)="idFiltroModulo.set($event)" name="mod">
         <option value="">— Todos —</option>
         @for (m of idModulos(); track m) { <option [value]="m">{{ m }}</option> }
       </select>
     </label>
-    <label class="campo" style="flex:1;min-width:200px">
+    <label class="campo largo">
       <span>Buscar (tópico / adicional / módulo)</span>
-      <input type="text" [(ngModel)]="idFiltroBusca" name="q" placeholder="texto…" />
+      <input type="text" [ngModel]="idFiltroBusca()" (ngModelChange)="idFiltroBusca.set($event)" name="q" placeholder="texto…" />
     </label>
     <button class="btn primario" type="submit">
       <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg> Filtrar
@@ -169,17 +169,17 @@
 
   @if (idEmEdicao(); as linha) {
     <div class="painel" id="form-edit">
-      <h3 style="color:var(--navy);margin-top:0">{{ linha.id ? 'Editar tópico' : 'Novo tópico' }}</h3>
+      <h3>{{ linha.id ? 'Editar tópico' : 'Novo tópico' }}</h3>
       <div class="grade2">
         <label class="campo"><span>Nº Mód.</span><input type="text" [(ngModel)]="linha.moduloNum" /></label>
         <label class="campo"><span>Sigla Mód.</span><input type="text" [(ngModel)]="linha.moduloSigla" /></label>
         <label class="campo campo-larga"><span>Módulo</span><input type="text" [(ngModel)]="linha.modulo" /></label>
         <label class="campo"><span>Nº Adic.</span><input type="text" [(ngModel)]="linha.adicionalNum" /></label>
         <label class="campo"><span>Sigla Adic.</span><input type="text" [(ngModel)]="linha.adicionalSigla" /></label>
-        <label class="campo campo-larga"><span>Adicional <small style="color:var(--muted)">(em branco = tópico do módulo)</small></span><input type="text" [(ngModel)]="linha.adicional" /></label>
+        <label class="campo campo-larga"><span>Adicional <small class="txt-muted">(em branco = tópico do módulo)</small></span><input type="text" [(ngModel)]="linha.adicional" /></label>
         <label class="campo campo-larga"><span>Tópico</span><textarea rows="2" [(ngModel)]="linha.topico"></textarea></label>
       </div>
-      <div style="display:flex;gap:8px;margin-top:6px">
+      <div class="acoes" style="margin-top:var(--sp-3)">
         <button class="btn primario" type="button" [disabled]="idSalvando()" (click)="idSalvar()">
           <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ idSalvando() ? 'Salvando…' : 'Salvar' }}
         </button>
@@ -191,7 +191,7 @@
   @if (idCarregando()) {
     <p>Carregando…</p>
   } @else if (idLinhas().length > 0) {
-    <div style="overflow-x:auto">
+    <div class="tabela-wrap">
       <table class="form-tab" style="font-size:.82rem">
         <thead>
           <tr>
@@ -210,7 +210,7 @@
                 <button class="btn" style="padding:3px 8px" type="button" title="Editar" (click)="idEditar(l)">
                   <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-pencil"/></svg>
                 </button>
-                <button class="btn" style="padding:3px 8px;color:#b91c1c" type="button" title="Excluir" (click)="idExcluir(l.id)">
+                <button class="btn" style="padding:3px 8px;color:var(--err)" type="button" title="Excluir" (click)="idExcluir(l.id)">
                   <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-trash"/></svg>
                 </button>
               </td>
@@ -227,8 +227,8 @@
 <!-- ==================== Modelos de Documentos ==================== -->
 @if (aba() === 'modelos') {
   @if (!mdSelecionado()) {
-    <h1 style="display:flex;align-items:center;gap:8px">
-      <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-file"/></svg>
+    <h1 class="pagina-titulo">
+      <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-file"/></svg>
       Modelos de Documentos
     </h1>
     <p class="dica">Os layouts fiéis usados na geração das documentações de cada fase. Cada modelo guarda o
@@ -236,13 +236,13 @@
       (de onde cada informação vem no projeto).</p>
 
     @if (erro()) {
-      <div class="resultado erro" style="padding:8px 14px;margin-bottom:8px">{{ erro() }}</div>
+      <div class="resultado erro">{{ erro() }}</div>
     }
 
     @if (mdCarregando()) {
       <p>Carregando…</p>
     } @else {
-      <div style="overflow-x:auto">
+      <div class="tabela-wrap">
         <table class="form-tab">
           <thead><tr><th>Modelo</th><th>Fase</th><th>Tipo</th><th>Atualizado</th><th></th></tr></thead>
           <tbody>
@@ -265,21 +265,21 @@
     }
   } @else {
     @let modelo = mdSelecionado()!;
-    <h1 style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
-      <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-file"/></svg>
+    <h1 class="pagina-titulo">
+      <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-file"/></svg>
       {{ modelo.nome }}
     </h1>
     <p class="dica">Fase <strong>{{ modelo.fase }}</strong> · arquivo <strong>.{{ modelo.tipo }}</strong>. {{ modelo.descricao }}</p>
     <button class="btn" type="button" style="margin-bottom:10px" (click)="mdVoltar()">← Modelos de Documentos</button>
 
     @if (aviso()) {
-      <div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
-        <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+      <div class="resultado ok linha">
+        <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
       </div>
     }
     @if (erro()) {
-      <div class="resultado erro" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
-        <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
+      <div class="resultado erro linha">
+        <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
       </div>
     }
 
@@ -287,42 +287,44 @@
       <h3 style="color:var(--navy);margin-top:0;display:flex;align-items:center;gap:8px">
         <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-layers"/></svg> Arquivo do layout (versões)
       </h3>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+      <div class="acoes" style="margin-bottom:var(--sp-3)">
         <button class="btn primario" type="button" (click)="mdBaixar()">
           <svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> Baixar vigente (.{{ modelo.tipo }})
         </button>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;border-top:1px solid var(--line);padding-top:10px">
-        <label class="campo" style="min-width:220px">
+        <label class="campo largo">
           <span>Enviar nova versão (.{{ modelo.tipo }})</span>
           <input type="file" [attr.accept]="'.' + modelo.tipo" [disabled]="mdEnviando()" (change)="mdEnviarVersao($event)" />
         </label>
-        <label class="campo" style="flex:1;min-width:220px">
+        <label class="campo largo">
           <span>Motivo da alteração</span>
-          <input type="text" [(ngModel)]="mdMotivoVersao" placeholder="ex.: ajuste de seção / novo placeholder" />
+          <input type="text" [ngModel]="mdMotivoVersao()" (ngModelChange)="mdMotivoVersao.set($event)" placeholder="ex.: ajuste de seção / novo placeholder" />
         </label>
       </div>
 
       @if (mdVersoes().length > 0) {
-        <table class="form-tab" style="margin-top:12px;font-size:.84rem">
-          <thead><tr><th>Versão</th><th>Data</th><th>Autor</th><th>Motivo</th><th>Vigente</th><th></th></tr></thead>
-          <tbody>
-            @for (v of mdVersoes(); track v.id) {
-              <tr>
-                <td>v{{ v.versao }}</td>
-                <td><small>{{ v.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</small></td>
-                <td>{{ v.autor }}</td>
-                <td>{{ v.motivo }}</td>
-                <td>{{ v.vigente ? '✅' : '' }}</td>
-                <td>
-                  <button class="btn" style="padding:3px 8px" type="button" title="Baixar esta versão" (click)="mdBaixar(v.id)">
-                    <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-download"/></svg>
-                  </button>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
+        <div class="tabela-wrap">
+          <table class="form-tab" style="margin-top:12px;font-size:.84rem">
+            <thead><tr><th>Versão</th><th>Data</th><th>Autor</th><th>Motivo</th><th>Vigente</th><th></th></tr></thead>
+            <tbody>
+              @for (v of mdVersoes(); track v.id) {
+                <tr>
+                  <td>v{{ v.versao }}</td>
+                  <td><small>{{ v.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</small></td>
+                  <td>{{ v.autor }}</td>
+                  <td>{{ v.motivo }}</td>
+                  <td>{{ v.vigente ? '✅' : '' }}</td>
+                  <td>
+                    <button class="btn" style="padding:3px 8px" type="button" title="Baixar esta versão" (click)="mdBaixar(v.id)">
+                      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-download"/></svg>
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       }
     </div>
 
@@ -339,7 +341,7 @@
 
     @if (mdCampoEmEdicao(); as campo) {
       <div class="painel" id="form-campo">
-        <h3 style="color:var(--navy);margin-top:0">{{ campo.id ? 'Editar campo' : 'Novo campo' }}</h3>
+        <h3>{{ campo.id ? 'Editar campo' : 'Novo campo' }}</h3>
         <div class="grade2">
           <label class="campo"><span>Seção</span><input type="text" [(ngModel)]="campo.secao" /></label>
           <label class="campo"><span>Campo</span><input type="text" [(ngModel)]="campo.rotulo" /></label>
@@ -348,7 +350,7 @@
           <label class="campo" style="align-self:center"><span><input type="checkbox" style="width:auto" [(ngModel)]="campo.obrigatorio" /> Obrigatório</span></label>
           <label class="campo campo-larga"><span>Observação</span><textarea rows="2" [(ngModel)]="campo.observacao"></textarea></label>
         </div>
-        <div style="display:flex;gap:8px;margin-top:6px">
+        <div class="acoes" style="margin-top:var(--sp-3)">
           <button class="btn primario" type="button" [disabled]="mdCampoSalvando()" (click)="mdCampoSalvar()">
             <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ mdCampoSalvando() ? 'Salvando…' : 'Salvar' }}
           </button>
@@ -358,7 +360,7 @@
     }
 
     @if (mdCampos().length > 0) {
-      <div style="overflow-x:auto">
+      <div class="tabela-wrap">
         <table class="form-tab" style="font-size:.82rem">
           <thead>
             <tr>
@@ -376,7 +378,7 @@
                   <button class="btn" style="padding:3px 8px" type="button" title="Editar" (click)="mdCampoEditar(c)">
                     <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-pencil"/></svg>
                   </button>
-                  <button class="btn" style="padding:3px 8px;color:#b91c1c" type="button" title="Excluir" (click)="mdCampoExcluir(c.id)">
+                  <button class="btn" style="padding:3px 8px;color:var(--err)" type="button" title="Excluir" (click)="mdCampoExcluir(c.id)">
                     <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-trash"/></svg>
                   </button>
                 </td>

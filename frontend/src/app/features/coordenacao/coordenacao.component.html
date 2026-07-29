@@ -1,9 +1,9 @@
-<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:4px">
-  <div>
-    <h1 style="margin-bottom:4px">Painel de Coordenação</h1>
-    <p class="dica" style="margin:0">Visão de portfólio em tempo real — KPIs, alertas e ocupação da equipe.</p>
+<div class="pagina-head">
+  <div class="pagina-head-info">
+    <h1 class="pagina-titulo">Painel de Coordenação</h1>
+    <p class="sub">Visão de portfólio em tempo real — KPIs, alertas e ocupação da equipe.</p>
   </div>
-  <div style="display:flex;gap:8px;align-self:center;flex-wrap:wrap">
+  <div class="pagina-acoes">
     <a class="btn primario" routerLink="/coordenacao/capacidade" title="Quem pode receber um cliente novo e a partir de quando">
       <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg> Capacidade da equipe
     </a>
@@ -17,17 +17,17 @@
 </div>
 
 @if (aviso()) {
-  <div class="resultado ok" style="padding:10px 16px;margin:10px 0">✅ {{ aviso() }}</div>
+  <div class="resultado ok"><svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}</div>
 }
 @if (erro()) {
-  <div class="resultado erro" style="padding:10px 16px;margin:10px 0">⚠️ {{ erro() }}</div>
+  <div class="resultado erro">⚠️ {{ erro() }}</div>
 }
 
 @if (carregando()) {
   <p>Carregando…</p>
 } @else if (dados(); as d) {
   @if (d.alertas.length > 0) {
-    <div class="painel" style="border-left:4px solid var(--err);margin-bottom:16px">
+    <div class="painel alerta">
       <h3 style="color:var(--err);margin-top:0;display:flex;align-items:center;gap:8px">
         <svg class="svgi" aria-hidden="true"><use href="#ic-bell"/></svg>
         Alertas proativos ({{ d.alertas.length }})
@@ -45,7 +45,7 @@
   }
 
   @if (d.m.total === 0) {
-    <div class="painel" style="text-align:center;padding:40px 24px">
+    <div class="painel vazio">
       <div style="font-size:3rem;margin-bottom:12px">📊</div>
       <h3 style="color:var(--navy);margin:0 0 8px">Nenhum projeto cadastrado ainda</h3>
       <p class="dica" style="margin:0 0 20px">Comece criando o primeiro projeto de implantação.</p>
@@ -83,12 +83,12 @@
     </div>
 
     @if (d.m.atrasados.length > 0) {
-      <div class="painel" style="border-left:4px solid var(--err)">
+      <div class="painel alerta">
         <h3 style="color:var(--err);margin-top:0;display:flex;align-items:center;gap:8px">
           <svg class="svgi" aria-hidden="true"><use href="#ic-clock"/></svg>
           Atrasados — go-live previsto vencido
         </h3>
-        <div style="overflow-x:auto">
+        <div class="tabela-wrap">
           <table class="form-tab">
             <thead>
               <tr><th>Cliente</th><th>Fase</th><th>Consultor</th><th>Dias de atraso</th></tr>
@@ -114,18 +114,20 @@
         Ocupação por consultor (projetos ativos)
       </h3>
       @if (d.m.consultores.length > 0) {
-        <table class="form-tab">
-          <thead><tr><th>Consultor</th><th>Projetos ativos</th><th>Horas na carteira</th></tr></thead>
-          <tbody>
-            @for (c of d.m.consultores; track c.consultor) {
-              <tr>
-                <td><strong>{{ c.consultor }}</strong></td>
-                <td>{{ c.projetos }}</td>
-                <td>{{ c.horas | number: '1.0-0' }} h</td>
-              </tr>
-            }
-          </tbody>
-        </table>
+        <div class="tabela-wrap">
+          <table class="form-tab">
+            <thead><tr><th>Consultor</th><th>Projetos ativos</th><th>Horas na carteira</th></tr></thead>
+            <tbody>
+              @for (c of d.m.consultores; track c.consultor) {
+                <tr>
+                  <td><strong>{{ c.consultor }}</strong></td>
+                  <td>{{ c.projetos }}</td>
+                  <td>{{ c.horas | number: '1.0-0' }} h</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       } @else {
         <p class="dica" style="margin:0">Sem projetos ativos no momento.</p>
       }

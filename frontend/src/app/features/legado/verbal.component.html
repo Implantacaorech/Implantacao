@@ -1,11 +1,11 @@
 @if (!role || !acao) {
-  <div class="resultado erro" style="padding:10px 16px">Ação não encontrada.</div>
+  <div class="resultado erro">Ação não encontrada.</div>
 } @else {
-  <h1>{{ acao.nome }}</h1>
+  <h1 class="pagina-titulo">{{ acao.nome }}</h1>
   <p class="sub">Converte verbos do Presente para o Futuro (utiliza→utilizará, é→será) e aplica
     correção ortográfica. Preserva termos técnicos (Formulação/Estrutura, SIGER, NF-e…).</p>
 
-  <div class="resultado" [class.ok]="iaAtiva()" style="padding:10px 16px">
+  <div class="resultado" [class.ok]="iaAtiva()">
     @if (iaAtiva()) {
       🟢 <strong>Reconferência por IA ativa</strong> (modelo <code>{{ iaModelo() }}</code>) — futuro do presente do indicativo.
     } @else {
@@ -14,17 +14,17 @@
   </div>
 
   @if (erro()) {
-    <div class="resultado erro" style="padding:10px 16px">{{ erro() }}</div>
+    <div class="resultado erro">{{ erro() }}</div>
   }
 
   @if (arquivoCorrigido(); as arq) {
     <div class="resultado ok">
-      <h3>✅ Documento corrigido</h3>
-      <button class="btn primario" type="button" (click)="baixar()">⬇️ Baixar .docx corrigido</button>
+      <h3><svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Documento corrigido</h3>
+      <button class="btn primario" type="button" (click)="baixar()"><svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> Baixar .docx corrigido</button>
     </div>
   }
 
-  <h3 style="color:#1F4E78">Verificar um documento (.docx)</h3>
+  <h3>Verificar um documento (.docx)</h3>
   <div class="painel">
     <label class="campo">
       <span>Envie o documento</span>
@@ -33,7 +33,7 @@
     </label>
   </div>
 
-  <h3 style="color:#1F4E78">Ou cole um texto</h3>
+  <h3>Ou cole um texto</h3>
   <div class="painel">
     <label class="campo">
       <span>Texto</span>
@@ -56,5 +56,5 @@
     </div>
   }
 
-  <a class="voltar" [routerLink]="['/legado', rid]">← Voltar para {{ role.nome }}</a>
+  <a class="btn btn-voltar" [routerLink]="['/legado', rid]">← Voltar para {{ role.nome }}</a>
 }

@@ -48,7 +48,7 @@ export class CronogramaPlanoComponent {
   readonly historico = signal<Modificacao[]>([]);
   readonly mostrarHistorico = signal(false);
 
-  readonly podeGerarDocumento = computed(() => podeGerar('cronograma', this.auth.usuario()?.perfil));
+  readonly podeGerarDocumento = computed(() => podeGerar('cronograma', this.auth.usuario()));
 
   constructor() {
     void this.carregar();

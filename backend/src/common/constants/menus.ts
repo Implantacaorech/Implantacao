@@ -39,11 +39,19 @@ export const MENUS: DefinicaoMenu[] = [
   { chave: 'protocolos', rotulo: 'Protocolos', grupo: 'Execução' },
   { chave: 'matriz', rotulo: 'Matriz de Conhecimento', grupo: 'Execução' },
   { chave: 'matriz_detalhada', rotulo: 'Matriz por Menu (SIGER)', grupo: 'Execução' },
+  {
+    chave: 'matriz_funcoes',
+    rotulo: 'Matriz por Menu - Funções SICLA',
+    grupo: 'Execução',
+  },
   { chave: 'dicionario', rotulo: 'Dicionário Inteligente', grupo: 'Execução' },
   { chave: 'coordenacao', rotulo: 'Coordenação', grupo: 'Gestão' },
   { chave: 'centro_operacional', rotulo: 'Centro Operacional', grupo: 'Gestão' },
   { chave: 'atividade', rotulo: 'Atividade', grupo: 'Gestão' },
-  { chave: 'dashboards', rotulo: 'Dashboards', grupo: 'Gestão' },
+  // Área BI: uma entrada só no menu lateral, duas abas dentro. As DUAS chaves continuam
+  // separadas de propósito — o Administrador libera cada BI independentemente.
+  { chave: 'dashboards', rotulo: 'BI · BI Implantação', grupo: 'Gestão' },
+  { chave: 'bi_implantacao', rotulo: 'BI · Implantação Clientes SIGER', grupo: 'Gestão' },
   { chave: 'permissoes', rotulo: 'Permissões', grupo: 'Gestão', fixaAdm: true },
   { chave: 'ferramentas', rotulo: 'Ferramentas', grupo: 'Sistema', fixaAdm: true },
   { chave: 'usuarios', rotulo: 'Usuários', grupo: 'Sistema', fixaAdm: true },
@@ -119,6 +127,15 @@ export const PADRAO_PERMISSOES: Record<
     Consultor: 'alteracao',
     Levantador: 'alteracao',
   },
+  // Matriz por Menu - Funções SICLA: mesma liberação das outras duas matrizes.
+  matriz_funcoes: {
+    ADM: 'alteracao',
+    Coordenador: 'alteracao',
+    Administrativo: 'alteracao',
+    GCI: 'alteracao',
+    Consultor: 'alteracao',
+    Levantador: 'alteracao',
+  },
   dicionario: { ADM: 'alteracao' },
   coordenacao: { ADM: 'alteracao', Coordenador: 'alteracao', GCI: 'alteracao' },
   centro_operacional: { ADM: 'alteracao', Coordenador: 'alteracao', GCI: 'alteracao' },
@@ -131,6 +148,16 @@ export const PADRAO_PERMISSOES: Record<
     Consultor: 'alteracao',
     Levantador: 'alteracao',
     Comercial: 'consulta',
+  },
+  // BI de Implantação: leitura de dado do SICLA (horas, status, grupo econômico). Mesma
+  // liberação dos Dashboards, mas sem o Comercial — a tela expõe saldo de horas por cliente.
+  bi_implantacao: {
+    ADM: 'alteracao',
+    Coordenador: 'alteracao',
+    Administrativo: 'consulta',
+    GCI: 'alteracao',
+    Consultor: 'consulta',
+    Levantador: 'consulta',
   },
   permissoes: { ADM: 'alteracao' },
   ferramentas: { ADM: 'alteracao' },

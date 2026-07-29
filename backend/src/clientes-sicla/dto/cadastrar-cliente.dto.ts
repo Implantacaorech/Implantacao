@@ -23,8 +23,9 @@ export class ModuloContratadoDto {
   obs?: string;
 }
 
-/** Uma conversão de dados estimada no passo 1: o nome (item fixo ou digitado) e a estimativa
- * de horas de conversão. */
+/** Uma conversão de dados estimada no passo 1: o nome (item fixo ou digitado), a estimativa
+ * de horas de conversão e a observação que o Comercial escreveu ao lado do item (mesmo
+ * formato da observação dos módulos contratados). */
 export class ConversaoDto {
   @ApiPropertyOptional()
   @IsOptional()
@@ -35,6 +36,11 @@ export class ConversaoDto {
   @IsOptional()
   @IsString()
   horas?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  obs?: string;
 }
 
 /** Cadastro do cliente no passo 1 (Comercial). É a ficha do projeto (CreateProjetoDto) mais

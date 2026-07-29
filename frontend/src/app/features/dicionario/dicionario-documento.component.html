@@ -1,13 +1,13 @@
-<a class="dica" routerLink="/dicionario">← Voltar ao Dicionário</a>
+<a class="btn btn-voltar" routerLink="/dicionario">← Voltar ao Dicionário</a>
 
 @if (carregando()) {
   <p>Carregando…</p>
 } @else if (erro()) {
-  <div class="resultado erro" style="padding:10px 16px;margin:10px 0">{{ erro() }}</div>
+  <div class="resultado erro">{{ erro() }}</div>
 } @else if (doc(); as d) {
   <div class="doc-head">
     <span class="b" [class.mod]="d.tipo === 'modulo'">{{ d.sigla }}</span>
-    <h1>{{ d.titulo }}</h1>
+    <h1 class="pagina-titulo">{{ d.titulo }}</h1>
   </div>
   <p class="dica">
     {{ d.tipo === 'modulo' ? 'Módulo' : 'Adicional' }} ·

@@ -218,6 +218,13 @@ export const routes: Routes = [
           import('./features/matriz/matriz-detalhada.component').then((m) => m.MatrizDetalhadaComponent),
       },
       {
+        path: 'matriz-funcoes',
+        canActivate: [permissaoGuard('matriz_funcoes')],
+        data: { titulo: 'Matriz por Menu - Funções SICLA' },
+        loadComponent: () =>
+          import('./features/matriz/matriz-funcoes.component').then((m) => m.MatrizFuncoesComponent),
+      },
+      {
         path: 'config/disponibilidade',
         canActivate: [perfilGuard('ADM')],
         data: { titulo: 'Disponibilidade dos Consultores' },
@@ -294,19 +301,83 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/config/consultas-bd.component').then((m) => m.ConsultasBdComponent),
       },
+      // ── Área BI ─────────────────────────────────────────────────────────────────
+      // Uma entrada só no menu ("BI"), com duas abas de 1º nível — cada uma um BI — e
+      // subabas dentro delas. O RBAC continua separado: `dashboards` libera o BI
+      // Implantação; `bi_implantacao`, o Implantação Clientes SIGER.
+      { path: 'bi', pathMatch: 'full', redirectTo: 'bi/implantacao' },
       {
-        path: 'dashboards',
+        path: 'bi/implantacao',
         canActivate: [permissaoGuard('dashboards')],
-        data: { titulo: 'Dashboards' },
+        data: { titulo: 'BI Implantação' },
         loadComponent: () =>
           import('./features/dashboards/dashboard.component').then((m) => m.DashboardComponent),
       },
       {
-        path: 'dashboards/:slug',
+        path: 'bi/implantacao/:slug',
         canActivate: [permissaoGuard('dashboards')],
-        data: { titulo: 'Dashboards' },
+        data: { titulo: 'BI Implantação' },
         loadComponent: () =>
           import('./features/dashboards/dashboard.component').then((m) => m.DashboardComponent),
+      },
+      {
+        path: 'bi/clientes-siger',
+        pathMatch: 'full',
+        redirectTo: 'bi/clientes-siger/resumo',
+      },
+      {
+        // Porte das 4 páginas do BI_clientes.pbix (Power BI), lendo as views do schema
+        // POWERBI do SICLA pela conexão Oracle da Disponibilidade.
+        path: 'bi/clientes-siger/resumo',
+        canActivate: [permissaoGuard('bi_implantacao')],
+        data: { titulo: 'BI — Resumo de Implantação' },
+        loadComponent: () =>
+          import('./features/bi-implantacao/bi-implantacao.component').then(
+            (m) => m.BiImplantacaoComponent,
+          ),
+      },
+      {
+        path: 'bi/clientes-siger/extrato',
+        canActivate: [permissaoGuard('bi_implantacao')],
+        data: { titulo: 'BI — Extrato de Protocolo/Horas' },
+        loadComponent: () =>
+          import('./features/bi-implantacao/bi-extrato.component').then(
+            (m) => m.BiExtratoComponent,
+          ),
+      },
+      {
+        path: 'bi/clientes-siger/rns',
+        canActivate: [permissaoGuard('bi_implantacao')],
+        data: { titulo: 'BI — RNS vinculadas' },
+        loadComponent: () =>
+          import('./features/bi-implantacao/bi-rns.component').then((m) => m.BiRnsComponent),
+      },
+      {
+        path: 'bi/clientes-siger/agendas',
+        canActivate: [permissaoGuard('bi_implantacao')],
+        data: { titulo: 'BI — Agendas' },
+        loadComponent: () =>
+          import('./features/bi-implantacao/bi-agendas.component').then(
+            (m) => m.BiAgendasComponent,
+          ),
+      },
+      // Endereços antigos — mantidos como redirect para não quebrar link salvo/favorito.
+      { path: 'dashboards', pathMatch: 'full', redirectTo: 'bi/implantacao' },
+      { path: 'dashboards/:slug', redirectTo: 'bi/implantacao/:slug' },
+      { path: 'bi-implantacao', pathMatch: 'full', redirectTo: 'bi/clientes-siger/resumo' },
+      { path: 'bi-implantacao/extrato', redirectTo: 'bi/clientes-siger/extrato' },
+      { path: 'bi-implantacao/rns', redirectTo: 'bi/clientes-siger/rns' },
+      { path: 'bi-implantacao/agendas', redirectTo: 'bi/clientes-siger/agendas' },
+      {
+        // Hub das telas de configuração — era a seção "Configurações e saúde" da Visão
+        // Geral (movida para cá em 2026-07-28). Gate pelo menu `ferramentas` (fixo-ADM).
+        path: 'ferramentas',
+        canActivate: [permissaoGuard('ferramentas')],
+        data: { titulo: 'Ferramentas' },
+        loadComponent: () =>
+          import('./features/ferramentas/ferramentas.component').then(
+            (m) => m.FerramentasComponent,
+          ),
       },
       {
         path: 'permissoes',

@@ -1,11 +1,11 @@
-<h1>👤 Dados do Cliente</h1>
+<h1 class="pagina-titulo"><svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-user"/></svg> Dados do Cliente</h1>
 <p class="sub">Preencha uma vez. Estes dados alimentam todos os documentos de escritório
   (KPIs, RAID, Dossiê, Kit de Mudança, Roteiros, Reconciliação, Hypercare, Fit/Gap).</p>
 @if (atual(); as c) {
   <div class="resultado ok"><strong>Cliente atual:</strong> {{ c.nome }}</div>
 }
 @if (erro()) {
-  <div class="resultado erro" style="padding:10px 16px">{{ erro() }}</div>
+  <div class="resultado erro">{{ erro() }}</div>
 }
 
 <form class="painel" (ngSubmit)="salvar()">

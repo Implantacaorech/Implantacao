@@ -1,6 +1,6 @@
 import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 import type { AuthUser } from './decorators/current-user.decorator';
-import { PERFIS_CARTEIRA_VE_TODOS } from './constants/perfis';
+import { PERFIS_CARTEIRA_VE_TODOS, temPapel } from './constants/perfis';
 
 /**
  * Regra ÚNICA de visibilidade de clientes na Carteira (definição do usuário em 2026-07-28):
@@ -21,7 +21,9 @@ export function filtrarCarteiraPorPerfil<T extends ObjectLiteral>(
   alias: string,
   user: AuthUser,
 ): SelectQueryBuilder<T> {
-  if (PERFIS_CARTEIRA_VE_TODOS.includes(user.perfil)) return qb;
+  // `temPapel` (não `user.perfil`): a mesma pessoa acumula cargos, então quem é Coordenador
+  // com perfil PRINCIPAL "Consultor" também vê a carteira inteira (correção de 2026-07-28).
+  if (temPapel(user, ...PERFIS_CARTEIRA_VE_TODOS)) return qb;
   qb.andWhere(
     `(EXISTS (SELECT 1 FROM projeto_pessoas pp
                 WHERE pp.projeto_id = ${alias}.id AND pp.pessoa = :nome)

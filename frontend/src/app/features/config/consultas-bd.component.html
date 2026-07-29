@@ -1,8 +1,8 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <h1 style="display:flex;align-items:center;gap:8px">
-    <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-table"/></svg>
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-table"/></svg>
     Consultas BD (Administrador)
   </h1>
   <p class="dica">Uma conexão externa (banco interno/SICLA) e várias consultas SQL nomeadas por assunto — a aba
@@ -20,12 +20,12 @@
   </div>
 
   @if (aviso()) {
-    <div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px;margin-bottom:10px">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+    <div class="resultado ok linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
     </div>
   }
   @if (erro()) {
-    <div class="resultado erro" style="padding:8px 14px;margin-bottom:10px">{{ erro() }}</div>
+    <div class="resultado erro">{{ erro() }}</div>
   }
   @if (amostra(); as a) {
     @if (a.length > 0) {
@@ -38,7 +38,7 @@
     }
   }
   @if (resultadoTeste(); as r) {
-    <div class="resultado {{ r.ok ? 'ok' : 'erro' }}" style="padding:10px 14px;margin-bottom:10px">
+    <div class="resultado {{ r.ok ? 'ok' : 'erro' }}">
       <strong>{{ r.ok ? 'Teste OK' : 'Falha no teste' }}:</strong> {{ r.mensagem }}
       @if (r.ok && r.colunas.length > 0) {
         <div class="cbd-resultado">
@@ -57,12 +57,12 @@
 
   @if (aba() === 'disponibilidade') {
     <form class="painel" [formGroup]="formDisponibilidade" (ngSubmit)="salvarDisponibilidade(false)">
-      <label class="campo" style="display:flex;align-items:center;gap:8px">
+      <label class="campo flex-linha">
         <input type="checkbox" formControlName="ativo" style="width:auto" />
         <span style="margin:0">Ativar consulta de disponibilidade</span>
       </label>
 
-      <h3 style="color:var(--navy);margin:14px 0 6px">Conexão</h3>
+      <h3>Conexão</h3>
       <p class="dica" style="margin:0 0 8px">Preencha os campos <strong>ou</strong> cole uma URL SQLAlchemy completa (a URL tem prioridade).
         Essa conexão é compartilhada por todas as consultas desta tela.</p>
       <div class="grade2">
@@ -85,7 +85,7 @@
       </label>
 
       <div class="grade2">
-        <label class="campo" style="display:flex;align-items:center;gap:8px">
+        <label class="campo flex-linha">
           <input type="checkbox" formControlName="oracleThick" style="width:auto" />
           <span style="margin:0">Oracle — modo <strong>thick</strong> (Instant Client): use para senha com verificador antigo (DPY-3015)</span>
         </label>
@@ -95,16 +95,16 @@
         </label>
       </div>
 
-      <h3 style="color:var(--navy);margin:14px 0 6px">Consulta (SELECT) — Disponibilidade dos consultores</h3>
+      <h3>Consulta (SELECT) — Disponibilidade dos consultores</h3>
       <p class="dica" style="margin:0 0 6px">Parâmetros disponíveis: <code>:data_ini</code>, <code>:data_fim</code>
         e <code>:tecnicos</code> (lista de códigos dos consultores). Devolva as colunas <code>tecnico</code>,
         <code>data</code> e (opcional) <code>turno</code>.</p>
       <label class="campo">
-        <textarea formControlName="select" rows="6" style="font-family:monospace;font-size:.85rem"
+        <textarea formControlName="select" rows="6" class="txt-mono"
           placeholder="SELECT cod AS tecnico, data_visita AS data, periodo AS turno&#10;FROM agenda_tecnicos&#10;WHERE data_visita BETWEEN :data_ini AND :data_fim AND cod IN :tecnicos"></textarea>
       </label>
 
-      <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+      <div class="acoes" style="margin-top:var(--sp-3)">
         <button class="btn primario" type="submit" [disabled]="salvando()">
           <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ salvando() ? 'Salvando…' : 'Salvar' }}
         </button>
@@ -121,7 +121,7 @@
       <label class="campo"><span>Identificador (opcional — gerado do nome se vazio)</span>
         <input formControlName="slug" placeholder="ex.: previsao_inicio_oficial" /></label>
       <label class="campo"><span>SQL (SELECT)</span>
-        <textarea formControlName="sql" rows="8" style="font-family:monospace;font-size:.85rem"
+        <textarea formControlName="sql" rows="8" class="txt-mono"
           placeholder="SELECT ... FROM ... WHERE data BETWEEN :data_ini AND :data_fim"></textarea></label>
       <button class="btn primario" type="submit" [disabled]="formNova.invalid || salvando()">
         <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg> {{ salvando() ? 'Criando…' : 'Criar consulta' }}
@@ -131,27 +131,27 @@
     <form class="painel" [formGroup]="formConsulta" (ngSubmit)="salvarConsulta(false)">
       <label class="campo"><span>Nome</span><input formControlName="nome" /></label>
       <label class="campo"><span>SQL (SELECT) — mesma conexão da aba Disponibilidade</span>
-        <textarea formControlName="sql" rows="12" style="font-family:monospace;font-size:.85rem"></textarea></label>
+        <textarea formControlName="sql" rows="12" class="txt-mono"></textarea></label>
 
-      <h3 style="color:var(--navy);margin:14px 0 6px">Dashboard (opcional)</h3>
+      <h3>Dashboard (opcional)</h3>
       <p class="dica" style="margin:0 0 8px">Preencha a coluna de data para esta consulta aparecer como uma aba em Dashboards.</p>
       <div class="grade2">
         <label class="campo"><span>Coluna de data</span><input formControlName="colunaData" placeholder="ex.: PREVISAO_INICIO_OFICIAL" /></label>
         <label class="campo"><span>Coluna de situação</span><input formControlName="colunaSituacao" placeholder="ex.: SITUACAO" /></label>
       </div>
-      <label class="campo" style="display:flex;align-items:center;gap:8px">
+      <label class="campo flex-linha">
         <input type="checkbox" formControlName="mostrarGrafico" style="width:auto" />
         <span style="margin:0">Mostrar gráfico no dashboard</span>
       </label>
 
-      <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+      <div class="acoes" style="margin-top:var(--sp-3)">
         <button class="btn primario" type="submit" [disabled]="formConsulta.invalid || salvando()">
           <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ salvando() ? 'Salvando…' : 'Salvar' }}
         </button>
         <button class="btn" type="button" [disabled]="salvando()" (click)="salvarConsulta(true)">
           <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> {{ testando() ? 'Testando…' : 'Salvar e testar (mostra até 500 linhas)' }}
         </button>
-        <button class="btn" type="button" [disabled]="excluindo()" (click)="excluirConsulta()" style="margin-left:auto;color:var(--err,#d33)">
+        <button class="btn" type="button" [disabled]="excluindo()" (click)="excluirConsulta()" style="margin-left:auto;color:var(--err,var(--err))">
           <svg class="svgi" aria-hidden="true"><use href="#ic-trash"/></svg> {{ excluindo() ? 'Excluindo…' : 'Excluir' }}
         </button>
       </div>

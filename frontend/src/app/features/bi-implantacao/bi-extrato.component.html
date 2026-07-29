@@ -1,0 +1,216 @@
+<app-bi-abas />
+
+@if (erro()) {
+  <div class="resultado erro">{{ erro() }}</div>
+}
+
+<div class="bi-barra">
+  <div class="bi-campo">
+    <label for="ex-ini">De</label>
+    <input id="ex-ini" type="date" [(ngModel)]="dataIni" (change)="carregar()" />
+  </div>
+  <div class="bi-campo">
+    <label for="ex-fim">Até</label>
+    <input id="ex-fim" type="date" [(ngModel)]="dataFim" (change)="carregar()" />
+  </div>
+  <div class="bi-campo bi-campo-busca">
+    <label for="ex-busca">Buscar</label>
+    <input id="ex-busca" type="search" [ngModel]="busca()" (ngModelChange)="busca.set($event)"
+           placeholder="cliente, consultor, assunto, protocolo…" />
+  </div>
+  <button type="button" class="bi-btn" (click)="alternarFiltros()"
+          [attr.aria-expanded]="filtrosAbertos()">
+    <span class="bi-btn-seta" [class.aberta]="filtrosAbertos()">&#9656;</span>
+    Filtros@if (qtdFiltrosAtivos() > 0) { <span class="bi-badge">{{ qtdFiltrosAtivos() }}</span> }
+  </button>
+  <button type="button" class="bi-btn" (click)="limparFiltros()">Limpar</button>
+  <button type="button" class="bi-btn" (click)="exportarCsv()" [disabled]="linhas().length === 0">
+    Exportar CSV
+  </button>
+</div>
+
+@if (truncado()) {
+  <div class="resultado aviso">
+    O período trouxe o máximo de lançamentos que a tela carrega de uma vez. Estreite as datas
+    para não perder registros mais antigos.
+  </div>
+}
+
+@if (filtrosAbertos()) {
+  @if (filtros(); as f) {
+    <div class="bi-filtros-cx">
+      <div class="bi-filtros-cab">
+        <span class="bi-filtros-tit">Filtros</span>
+        <button type="button" class="bi-recolher" (click)="alternarFiltros()">Recolher &#9652;</button>
+      </div>
+    <div class="bi-filtros">
+      <!-- Os 4 filtros padrão do BI: grupo econômico, RNS, status da RNS e consultor. -->
+      <div class="bi-filtro-bloco">
+        <span class="bi-filtro-tit">Grupo econômico</span>
+        <input class="bi-filtro-busca" type="search" placeholder="filtrar…"
+               [ngModel]="termoOpcao('grupo')" (ngModelChange)="definirTermoOpcao('grupo', $event)" />
+        <div class="bi-opcoes bi-opcoes-rolagem">
+          @for (g of opcoes('grupo', f.grupos, gruposSel).visiveis; track g) {
+            <label>
+              <input type="checkbox" [checked]="marcado(gruposSel, g)" (change)="alternar(gruposSel, g)" /> {{ g }}
+            </label>
+          } @empty { <span class="dica" style="margin:0">— nada encontrado —</span> }
+        </div>
+        @if (opcoes('grupo', f.grupos, gruposSel).ocultas; as n) {
+          <span class="bi-filtro-mais">+{{ n }} — refine a busca</span>
+        }
+      </div>
+
+      <div class="bi-filtro-bloco">
+        <span class="bi-filtro-tit">RNS de Implantação</span>
+        <input class="bi-filtro-busca" type="search" placeholder="nº ou cliente…"
+               [ngModel]="termoOpcao('rns')" (ngModelChange)="definirTermoOpcao('rns', $event)" />
+        <div class="bi-opcoes bi-opcoes-rolagem">
+          @for (o of opcoesRns('rns', f.rns).visiveis; track o.codigo) {
+            <label>
+              <input type="checkbox" [checked]="marcado(rnsSel, o.codigo)"
+                     (change)="alternar(rnsSel, o.codigo)" /> {{ o.rotulo }}
+            </label>
+          } @empty { <span class="dica" style="margin:0">— nada encontrado —</span> }
+        </div>
+        @if (opcoesRns('rns', f.rns).ocultas; as n) {
+          <span class="bi-filtro-mais">+{{ n }} — refine a busca</span>
+        }
+      </div>
+
+      <div class="bi-filtro-bloco">
+        <span class="bi-filtro-tit">Status da RNS</span>
+        <div class="bi-opcoes bi-opcoes-rolagem">
+          @for (s of f.status; track s) {
+            <label>
+              <input type="checkbox" [checked]="marcado(statusSel, s)" (change)="alternar(statusSel, s)" /> {{ s }}
+            </label>
+          } @empty { <span class="dica" style="margin:0">— sem dados no período —</span> }
+        </div>
+      </div>
+
+      <div class="bi-filtro-bloco">
+        <span class="bi-filtro-tit">Consultor</span>
+        <input class="bi-filtro-busca" type="search" placeholder="filtrar…"
+               [ngModel]="termoOpcao('tecnico')" (ngModelChange)="definirTermoOpcao('tecnico', $event)" />
+        <div class="bi-opcoes bi-opcoes-rolagem">
+          @for (t of opcoes('tecnico', f.tecnicos, tecnicosSel).visiveis; track t) {
+            <label>
+              <input type="checkbox" [checked]="marcado(tecnicosSel, t)" (change)="alternar(tecnicosSel, t)" /> {{ t }}
+            </label>
+          } @empty { <span class="dica" style="margin:0">— nada encontrado —</span> }
+        </div>
+      </div>
+
+      <div class="bi-filtro-bloco">
+        <span class="bi-filtro-tit">Cliente</span>
+        <input class="bi-filtro-busca" type="search" placeholder="filtrar…"
+               [ngModel]="termoOpcao('cliente')" (ngModelChange)="definirTermoOpcao('cliente', $event)" />
+        <div class="bi-opcoes bi-opcoes-rolagem">
+          @for (c of opcoes('cliente', f.clientes, clientesSel).visiveis; track c) {
+            <label>
+              <input type="checkbox" [checked]="marcado(clientesSel, c)" (change)="alternar(clientesSel, c)" /> {{ c }}
+            </label>
+          } @empty { <span class="dica" style="margin:0">— nada encontrado —</span> }
+        </div>
+        @if (opcoes('cliente', f.clientes, clientesSel).ocultas; as n) {
+          <span class="bi-filtro-mais">+{{ n }} — refine a busca</span>
+        }
+      </div>
+
+      <div class="bi-filtro-bloco">
+        <span class="bi-filtro-tit">Módulo (sigla)</span>
+        <input class="bi-filtro-busca" type="search" placeholder="filtrar…"
+               [ngModel]="termoOpcao('sigla')" (ngModelChange)="definirTermoOpcao('sigla', $event)" />
+        <div class="bi-opcoes bi-opcoes-rolagem">
+          @for (s of opcoes('sigla', f.siglas, siglasSel).visiveis; track s) {
+            <label>
+              <input type="checkbox" [checked]="marcado(siglasSel, s)" (change)="alternar(siglasSel, s)" /> {{ s }}
+            </label>
+          } @empty { <span class="dica" style="margin:0">— nada encontrado —</span> }
+        </div>
+      </div>
+    </div>
+    </div>
+  }
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <div class="ex-kpis">
+    <div class="ex-kpi">
+      <div class="ex-kpi-v">{{ totaisVisiveis().lancamentos.toLocaleString('pt-BR') }}</div>
+      <div class="ex-kpi-l">Lançamentos</div>
+    </div>
+    <div class="ex-kpi ex-kpi-horas">
+      <div class="ex-kpi-v">{{ horas(totaisVisiveis().horasUtilizadas) }}h</div>
+      <div class="ex-kpi-l">Horas utilizadas</div>
+    </div>
+    <div class="ex-kpi ex-kpi-saldo">
+      <div class="ex-kpi-v">
+        {{ totaisVisiveis().saldoAtual === null ? '—' : horas(totaisVisiveis().saldoAtual!) + 'h' }}
+      </div>
+      <div class="ex-kpi-l">Saldo no último lançamento</div>
+    </div>
+    <div class="ex-kpi ex-kpi-cli">
+      <div class="ex-kpi-v">{{ totaisVisiveis().clientes }}</div>
+      <div class="ex-kpi-l">Clientes</div>
+    </div>
+    <div class="ex-kpi ex-kpi-tec">
+      <div class="ex-kpi-v">{{ totaisVisiveis().consultores }}</div>
+      <div class="ex-kpi-l">Consultores</div>
+    </div>
+  </div>
+
+  <div class="bi-card">
+    <div class="bi-card-tit">Lançamentos ({{ linhas().length }})</div>
+    <div class="ex-lista">
+      @for (l of linhas(); track chaveDe(l)) {
+        <article class="ex-item">
+          <header class="ex-item-topo">
+            <span class="ex-data">{{ dataBr(l.data) }} <span class="ex-hora">{{ l.hora }}</span></span>
+            <span class="ex-sigla" [title]="l.sistema">{{ l.sigla || '—' }}</span>
+            <span class="ex-tec">{{ l.tecnico || '—' }}</span>
+            <span class="ex-cli" [title]="l.grupoEconomico">{{ l.fantasia || '—' }}</span>
+            <span class="ex-espaco"></span>
+            <span class="ex-horas">{{ horas(l.horasUtilizadas) }}h</span>
+            <span class="ex-saldo" [class.neg]="l.saldoAcumulado < 0">
+              saldo {{ horas(l.saldoAcumulado) }}h
+            </span>
+          </header>
+
+          <div class="ex-assunto">{{ l.assunto || '—' }}</div>
+
+          @if (l.descricao) {
+            <div class="ex-desc">
+              @if (abertoId() === chaveDe(l)) {
+                @if (carregandoTexto()) {
+                  <span class="dica">Carregando descrição…</span>
+                } @else {
+                  <pre class="ex-desc-full">{{ textoAberto() }}</pre>
+                }
+                <button type="button" class="ex-link" (click)="alternarDescricao(l)">ver menos</button>
+              } @else {
+                <span class="ex-desc-previa">{{ previa(l) }}</span>
+                @if (temMaisTexto(l)) {
+                  <button type="button" class="ex-link" (click)="alternarDescricao(l)">
+                    ver mais@if (l.descricaoTruncada) { <span class="ex-tam">({{ l.descricaoTamanho.toLocaleString('pt-BR') }} car.)</span> }
+                  </button>
+                }
+              }
+            </div>
+          }
+
+          <footer class="ex-item-rodape">
+            <span>RNS {{ l.rns }}</span>
+            @if (l.protocolo) { <span>· protocolo {{ l.protocolo }}</span> }
+            @if (l.sistema) { <span>· {{ l.sistema }}</span> }
+          </footer>
+        </article>
+      } @empty {
+        <p class="dica" style="padding:14px">— nenhum lançamento com os filtros atuais —</p>
+      }
+    </div>
+  </div>
+}

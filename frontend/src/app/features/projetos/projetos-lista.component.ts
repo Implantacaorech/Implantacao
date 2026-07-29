@@ -11,6 +11,7 @@ import {
   StatusFase,
 } from '../../core/models/passo.model';
 import { AuthService } from '../../core/services/auth.service';
+import { temPapel } from '../../core/constants/perfis';
 
 type Vista = 'kanban' | 'tabela' | 'grade';
 
@@ -188,7 +189,7 @@ export class ProjetosListaComponent {
 
   readonly perfilNomeConsultor = computed(() => {
     const u = this.auth.usuario();
-    return u?.perfil === 'Consultor' ? u.nome : null;
+    return temPapel(u, 'Consultor') ? (u?.nome ?? null) : null;
   });
 
   constructor() {

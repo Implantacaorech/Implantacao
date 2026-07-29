@@ -1,21 +1,21 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <h1 style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
-    <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-calendar"/></svg>
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-calendar"/></svg>
     Agenda de Visitas
   </h1>
   <p class="dica">Arraste cada atividade da <strong>Visita</strong> para um <strong>dia e turno</strong>. Os horários valem
     para todas as visitas; o técnico pode ser definido por módulo (abaixo) ou por cartão.</p>
 
   @if (aviso()) {
-    <div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px;margin-bottom:10px">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+    <div class="resultado ok linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
     </div>
   }
   @if (erro()) {
-    <div class="resultado erro" style="padding:8px 14px;display:flex;align-items:center;gap:8px;margin-bottom:10px">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
+    <div class="resultado erro linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
     </div>
   }
 
@@ -31,7 +31,7 @@
     </span>
     <span style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       @if (prontidao().faltantes.length > 0) {
-        <span class="dica" style="margin:0;color:var(--err,#d33)"
+        <span class="dica" style="margin:0;color:var(--err,var(--err))"
               [title]="'Defina o técnico em \'Técnico por módulo\' para: ' + prontidao().faltantes.join(', ')">
           Defina o técnico de {{ prontidao().faltantes.length }} módulo(s) para liberar a distribuição automática
         </span>
@@ -276,22 +276,30 @@
     </main>
   </div>
 
-  <div style="margin-top:14px"><a class="btn" [routerLink]="['/projetos', projetoId]">Voltar à ficha</a></div>
+  <div style="margin-top:14px"><a class="btn btn-voltar" [routerLink]="['/projetos', projetoId]">← Voltar à ficha</a></div>
 
   @if (modalPostergar(); as modal) {
-    <div class="ag-modal-backdrop" (click)="fecharModalPostergar()"></div>
-    <div class="ag-modal">
-      <h3 style="margin:0 0 8px">Postergar para…</h3>
-      <label class="campo"><span>Nova data</span>
-        <input type="date" [(ngModel)]="novaDataPostergar" required /></label>
-      <label class="campo"><span>Novo turno</span>
-        <select [(ngModel)]="novoTurnoPostergar">
-          <option value="manha">Manhã</option>
-          <option value="tarde">Tarde</option>
-        </select></label>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
-        <button type="button" class="btn" (click)="fecharModalPostergar()">Cancelar</button>
-        <button type="button" class="btn primario" [disabled]="!novaDataPostergar" (click)="confirmarPostergar()">Postergar</button>
+    <div class="modal-fundo" (click)="fecharModalPostergar()">
+      <div class="modal-cx estreito" (click)="$event.stopPropagation()">
+        <div class="modal-cab">
+          <h3>Postergar para…</h3>
+          <button class="modal-fechar" type="button" (click)="fecharModalPostergar()" aria-label="Fechar">
+            <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-x"/></svg>
+          </button>
+        </div>
+        <div class="modal-corpo">
+          <label class="campo"><span>Nova data</span>
+            <input type="date" [(ngModel)]="novaDataPostergar" required /></label>
+          <label class="campo" style="margin-bottom:0"><span>Novo turno</span>
+            <select [(ngModel)]="novoTurnoPostergar">
+              <option value="manha">Manhã</option>
+              <option value="tarde">Tarde</option>
+            </select></label>
+        </div>
+        <div class="modal-rod">
+          <button type="button" class="btn primario" [disabled]="!novaDataPostergar" (click)="confirmarPostergar()">Postergar</button>
+          <button type="button" class="btn" (click)="fecharModalPostergar()">Cancelar</button>
+        </div>
       </div>
     </div>
   }

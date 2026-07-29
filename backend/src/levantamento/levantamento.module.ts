@@ -5,6 +5,7 @@ import { DocConteudo } from '../database/entities/doc-conteudo.entity';
 import { Projeto } from '../database/entities/projeto.entity';
 import { CatalogosModule } from '../catalogos/catalogos.module';
 import { LevantamentoRespostaService } from './levantamento-resposta.service';
+import { LevantamentoPresencaService } from './levantamento-presenca.service';
 import { DocConteudoService } from './doc-conteudo.service';
 import { LevantamentoController } from './levantamento.controller';
 
@@ -14,7 +15,11 @@ import { LevantamentoController } from './levantamento.controller';
     CatalogosModule,
   ],
   controllers: [LevantamentoController],
-  providers: [LevantamentoRespostaService, DocConteudoService],
+  providers: [
+    LevantamentoRespostaService,
+    LevantamentoPresencaService,
+    DocConteudoService,
+  ],
   exports: [LevantamentoRespostaService, DocConteudoService],
 })
 export class LevantamentoModule {}

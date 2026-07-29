@@ -1,14 +1,14 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <h1 style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
-    <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-check-circle"/></svg>
     Acompanhamento das Visitas
   </h1>
   <p class="dica">Acompanhe e atualize o <strong>status</strong> de cada visita. Clique num cartão de status para filtrar.</p>
 
   @if (erro()) {
-    <div class="resultado erro" style="padding:10px 16px;margin-bottom:10px">{{ erro() }}</div>
+    <div class="resultado erro">{{ erro() }}</div>
   }
 
   <div class="ac-chips">
@@ -20,7 +20,7 @@
     }
   </div>
 
-  <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:10px 0 12px">
+  <div class="filtros-linha" style="margin:10px 0 12px">
     <label class="campo" style="margin:0;width:170px">
       <span>Data</span>
       <select [(ngModel)]="fData">
@@ -41,7 +41,7 @@
   </div>
 
   @if (atividadesFiltradas().length > 0) {
-    <div style="overflow-x:auto">
+    <div class="tabela-wrap">
       <table class="ac-tab">
         <thead>
           <tr>
@@ -73,12 +73,12 @@
       </table>
     </div>
   } @else {
-    <div class="resultado" style="padding:10px 16px">Nenhuma atividade alocada ainda. Use a
+    <div class="resultado">Nenhuma atividade alocada ainda. Use a
       <a [routerLink]="['/projetos', projetoId, 'agenda']">Agenda de Visitas</a> para alocar.</div>
   }
 
-  <div style="margin-top:14px;display:flex;gap:8px">
-    <a class="btn" [routerLink]="['/projetos', projetoId, 'agenda']">Voltar à agenda</a>
+  <div class="acoes" style="margin-top:var(--sp-3)">
+    <a class="btn btn-voltar" [routerLink]="['/projetos', projetoId, 'agenda']">← Voltar à agenda</a>
     <a class="btn" [routerLink]="['/projetos', projetoId]">Ficha do projeto</a>
   </div>
 }

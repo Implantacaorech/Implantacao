@@ -6,8 +6,6 @@ import { Documento } from '../database/entities/documento.entity';
 import { CronogramaItem } from '../database/entities/cronograma-item.entity';
 import { ChecklistItem } from '../database/entities/checklist-item.entity';
 import { Designacao } from '../database/entities/designacao.entity';
-import type { AuthUser } from '../common/decorators/current-user.decorator';
-import { soMeus } from '../common/utils/so-meus.util';
 import { ETAPAS } from '../common/constants/perfis';
 import {
   Alerta,
@@ -106,7 +104,11 @@ const DEV_KW = ['desenv', 'custom', 'integra', 'rns', 'orc', 'cob', 'api'];
  * próximas entregas e mapa de progresso. Espelha
  * webapp/routes_painel.py:_monitoramento_operacional/monitoramento — a função mais
  * complexa do Flask original. O parâmetro `eventos` do original nunca era lido dentro da
- * função (parâmetro morto) — não foi portado. */
+ * função (parâmetro morto) — não foi portado.
+ *
+ * ESCOPO (correção de 2026-07-28): carteira INTEIRA, igual à Coordenação/Atividade — o gate
+ * é o menu `centro_operacional` do painel de Permissões. Com o filtro por designação, quem
+ * tinha o menu liberado e não é ADM/Coordenador/Administrativo via os 8 setores zerados. */
 @Injectable()
 export class MonitoramentoService {
   constructor(
@@ -123,10 +125,9 @@ export class MonitoramentoService {
     private readonly users: UsersService,
   ) {}
 
-  async painel(user: AuthUser): Promise<ResultadoMonitoramento> {
+  async painel(): Promise<ResultadoMonitoramento> {
     const todos = await this.projetos.find();
-    const meus = soMeus(todos, user);
-    const ids = meus.map((p) => p.id);
+    const ids = todos.map((p) => p.id);
 
     const [
       documentos,
@@ -166,7 +167,7 @@ export class MonitoramentoService {
     };
 
     return this.avaliar(
-      meus,
+      todos,
       construirDocsMap(documentos),
       cronos,
       checks,

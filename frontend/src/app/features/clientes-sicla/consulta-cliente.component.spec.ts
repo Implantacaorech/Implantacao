@@ -169,16 +169,17 @@ describe('ConsultaClienteComponent', () => {
     expect(comp.conversoes().every((c) => !c.marcado)).toBe(true);
   });
 
-  it('marca conversões, informa horas e adiciona item livre — tudo enviado no cadastro', async () => {
+  it('marca conversões, informa horas/observação e adiciona item livre — tudo enviado no cadastro', async () => {
     const cadastrar = vi
       .fn()
       .mockResolvedValue({ projetoId: 9, duplicado: false });
     const fixture = montar({ cadastrar });
     const comp = fixture.componentInstance;
     comp.selecionar(cliente());
-    // marca a 2ª fixa (produtos) e informa horas
+    // marca a 2ª fixa (produtos) e informa horas + observação
     comp.toggleConversao(1);
     comp.setHorasConversao(1, '8');
+    comp.setObsConversao(1, 'sem preço de custo');
     // adiciona um item livre (entra já marcado)
     comp.novaConversao.set('Conversão de contratos');
     comp.adicionarConversao();
@@ -187,8 +188,8 @@ describe('ConsultaClienteComponent', () => {
     expect(cadastrar).toHaveBeenCalledWith(
       expect.objectContaining({
         conversoesSelecionadas: [
-          { nome: 'Importação Cad. produtos', horas: '8' },
-          { nome: 'Conversão de contratos', horas: '' },
+          { nome: 'Importação Cad. produtos', horas: '8', obs: 'sem preço de custo' },
+          { nome: 'Conversão de contratos', horas: '', obs: '' },
         ],
       }),
     );

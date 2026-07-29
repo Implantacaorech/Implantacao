@@ -4,7 +4,9 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ChartConfiguration } from 'chart.js/auto';
 import { ChartDirective } from '../../core/directives/chart.directive';
 import { AuthService } from '../../core/services/auth.service';
+import { temPapel } from '../../core/constants/perfis';
 import { DashboardsService } from '../../core/services/dashboards.service';
+import { BiAbasPrincipaisComponent } from '../bi-implantacao/bi-abas-principais.component';
 import { DashboardDisponivel, ResultadoDashboard } from '../../core/models/dashboards.model';
 
 const NOMES_MES = [
@@ -15,7 +17,7 @@ const NOMES_MES = [
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [FormsModule, RouterLink, ChartDirective],
+  imports: [FormsModule, RouterLink, ChartDirective, BiAbasPrincipaisComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
 })
@@ -26,7 +28,7 @@ export class DashboardComponent {
   private readonly router = inject(Router);
 
   readonly nomesMes = NOMES_MES;
-  readonly ehAdm = computed(() => this.auth.usuario()?.perfil === 'ADM');
+  readonly ehAdm = computed(() => temPapel(this.auth.usuario(), 'ADM'));
 
   readonly carregando = signal(true);
   readonly erro = signal<string | null>(null);
@@ -116,7 +118,7 @@ export class DashboardComponent {
     this.slugAtivo.set(slug);
     this.mesSel = null;
     this.anoSel = null;
-    await this.router.navigate(['/dashboards', slug]);
+    await this.router.navigate(['/bi/implantacao', slug]);
     await this.carregar();
   }
 

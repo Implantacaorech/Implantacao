@@ -172,7 +172,7 @@ export class ClientesSiclaService implements OnModuleInit {
         )
       : null;
 
-    // Conversões de dados estimadas (nome + horas). Só grava se houver alguma.
+    // Conversões de dados estimadas (nome + horas + observação). Só grava se houver alguma.
     const temConversoes =
       Array.isArray(conversoesSelecionadas) &&
       conversoesSelecionadas.length > 0;
@@ -182,6 +182,7 @@ export class ClientesSiclaService implements OnModuleInit {
             .map((c) => ({
               nome: (c.nome ?? '').trim(),
               horas: (c.horas ?? '').trim(),
+              obs: (c.obs ?? '').trim(),
             }))
             .filter((c) => c.nome !== ''),
         )

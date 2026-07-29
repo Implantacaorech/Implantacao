@@ -8,8 +8,8 @@
 
   @if (sucesso(); as s) {
     @if (s.resultado.duplicado) {
-      <div class="resultado aviso" style="padding:12px 16px;margin:10px 0">
-        <svg class="svgi" style="width:15px;height:15px" aria-hidden="true"><use href="#ic-alert"/></svg>
+      <div class="resultado aviso">
+        <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-alert"/></svg>
         <strong>Atenção:</strong> o cliente <strong>{{ s.cliente }}</strong> já possui um
         cadastro no Painel — nada foi duplicado.
         @if (podeAbrirProjeto()) {
@@ -19,8 +19,8 @@
         }
       </div>
     } @else {
-      <div class="resultado ok" style="padding:12px 16px;margin:10px 0">
-        <svg class="svgi" style="width:15px;height:15px" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+      <div class="resultado ok">
+        <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg>
         Cliente <strong>{{ s.cliente }}</strong> cadastrado. O Administrativo foi avisado para
         agendar o levantamento.
         @if (podeAbrirProjeto()) {
@@ -53,7 +53,7 @@
   </form>
 
   @if (msgBusca(); as m) {
-    <div class="resultado erro" style="padding:8px 14px;margin:10px 0">{{ m }}</div>
+    <div class="resultado erro">{{ m }}</div>
   }
 
   <!-- ===== RESULTADOS ===== -->
@@ -81,8 +81,8 @@
 
 <!-- ===== FICHA (após selecionar) ===== -->
 @if (selecionado(); as sel) {
-  <div class="painel" style="margin-top:14px">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+  <div class="painel" style="margin-top:var(--sp-4)">
+    <div class="acoes espalha">
       <h3 style="margin:0;color:var(--navy)">Cadastro — {{ sel.cliente || sel.fantasia }}</h3>
       <button type="button" class="btn btn-sec" (click)="limparSelecao()">Trocar cliente</button>
     </div>
@@ -92,7 +92,7 @@
     </p>
 
     @if (erro(); as e) {
-      <div class="resultado erro" style="padding:8px 14px;margin-bottom:10px">{{ e }}</div>
+      <div class="resultado erro">{{ e }}</div>
     }
 
     <form [formGroup]="form" (ngSubmit)="salvar()">
@@ -173,7 +173,7 @@
           </div>
 
           @if (msgModulo(); as m) {
-            <div class="resultado erro" style="padding:6px 12px;margin:6px 0">{{ m }}</div>
+            <div class="resultado erro">{{ m }}</div>
           }
 
           <!-- Resultados: marcar os contratados -->
@@ -233,6 +233,15 @@
                 <span>{{ c.nome }}</span>
               </label>
               @if (c.marcado) {
+                <input
+                  class="conv-obs"
+                  type="text"
+                  [ngModelOptions]="{ standalone: true }"
+                  [ngModel]="c.obs"
+                  (ngModelChange)="setObsConversao(i, $event)"
+                  placeholder="observação…"
+                  aria-label="Observação da conversão"
+                />
                 <div class="conv-horas">
                   <input
                     type="text"

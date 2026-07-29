@@ -1,21 +1,21 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <h1 style="margin-bottom:2px">Cronograma</h1>
+  <h1 class="pagina-titulo">Cronograma</h1>
   <p class="dica">Edite as agendas durante a implantação. Cada alteração fica registrada no histórico.</p>
 
   @if (aviso()) {
-    <div class="resultado ok" style="padding:10px 16px;display:flex;align-items:center;gap:8px">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+    <div class="resultado ok linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
     </div>
   }
   @if (erro()) {
-    <div class="resultado erro" style="padding:10px 16px;display:flex;align-items:center;gap:8px">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
+    <div class="resultado erro linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
     </div>
   }
 
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+  <div class="acoes" style="margin:var(--sp-3) 0">
     <button type="button" class="btn" [disabled]="semeando()" (click)="carregarPlanoAutomatico()">
       <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg>
       {{ semeando() ? 'Carregando…' : 'Gerar plano automático' }}
@@ -32,7 +32,7 @@
     </a>
   </div>
 
-  <div style="overflow-x:auto">
+  <div class="tabela-wrap">
     <table class="editavel">
       <thead>
         <tr>
@@ -60,18 +60,18 @@
                 @for (s of statusOpcoes; track s) { <option [value]="s">{{ s }}</option> }
               </select>
             </td>
-            <td><button class="btn-x" type="button" (click)="removerLinha($index)" title="Remover">✕</button></td>
+            <td><button class="btn-x" type="button" (click)="removerLinha($index)" title="Remover"><svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-x"/></svg></button></td>
           </tr>
         } @empty {
           <tr>
-            <td colspan="8" class="dica" style="text-align:center;padding:14px">Nenhuma linha cadastrada. Use "Gerar plano automático" ou "Adicionar linha".</td>
+            <td colspan="8" class="tabela-vazia">Nenhuma linha cadastrada. Use "Gerar plano automático" ou "Adicionar linha".</td>
           </tr>
         }
       </tbody>
     </table>
   </div>
 
-  <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+  <div class="acoes" style="margin-top:var(--sp-3)">
     <button class="btn" type="button" (click)="adicionarLinha()">
       <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg>
       Adicionar linha
@@ -85,13 +85,13 @@
   @if (historico().length > 0) {
     <details style="margin-top:18px">
       <summary style="cursor:pointer;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:6px">
-        <svg class="svgi svgi-md" style="color:var(--muted)" aria-hidden="true"><use href="#ic-activity"/></svg>
+        <svg class="svgi svgi-md txt-muted" aria-hidden="true"><use href="#ic-activity"/></svg>
         Histórico de modificações ({{ historico().length }})
       </summary>
       <ul class="timeline" style="margin-top:10px">
         @for (h of historico(); track h.id) {
           <li>
-            <span class="tl-ico"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-pencil"/></svg></span>
+            <span class="tl-ico"><svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-pencil"/></svg></span>
             <div>
               <div><strong>{{ h.ref }}</strong> — {{ h.campo }}: {{ h.de }} → {{ h.para }}</div>
               <small class="dica" style="margin:0">{{ h.criadoEm | date: 'dd/MM/yyyy HH:mm' }}@if (h.autor) { · {{ h.autor }} }</small>

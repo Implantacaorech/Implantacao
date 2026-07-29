@@ -31,6 +31,10 @@ export interface Usuario {
   /** Todos os papéis, separados por vírgula. Uma pessoa acumula cargos. */
   perfis?: string;
   codigoSicla: string;
+  /** SICLA.LISTA_TECNICOS.MODULOCAPACITADO */
+  modulosCapacitados: string;
+  /** SICLA.LISTA_TECNICOS.SETORDES */
+  setorAtuacao: string;
   ativo: boolean;
   criadoEm: string;
 }
@@ -43,7 +47,35 @@ export interface CriarUsuarioPayload {
   perfil?: Perfil;
   perfis?: Perfil[];
   codigoSicla: string;
+  modulosCapacitados?: string;
+  setorAtuacao?: string;
   ativo?: boolean;
 }
 
 export type AtualizarUsuarioPayload = Partial<CriarUsuarioPayload>;
+
+/** Um técnico como vem de `SICLA.LISTA_TECNICOS` — a fonte do cadastro de Usuários. */
+export interface TecnicoSicla {
+  codigo: string;
+  nome: string;
+  modulosCapacitados: string;
+  email: string;
+  setorAtuacao: string;
+  /** Já tem usuário no Painel (casado por código SICLA ou e-mail). */
+  jaCadastrado: boolean;
+  bruto: Record<string, unknown>;
+}
+
+export interface ListaTecnicosSicla {
+  ok: boolean;
+  mensagem: string;
+  tecnicos: TecnicoSicla[];
+}
+
+export interface ResultadoImportacaoTecnicos {
+  ok: boolean;
+  mensagem: string;
+  criados: number;
+  atualizados: number;
+  ignorados: { codigo: string; nome: string; motivo: string }[];
+}

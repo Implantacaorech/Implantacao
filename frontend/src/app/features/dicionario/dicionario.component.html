@@ -1,6 +1,6 @@
 <div class="dic-head">
   <div>
-    <h1>Dicionário Inteligente <small>SIGER®</small></h1>
+    <h1 class="pagina-titulo">Dicionário Inteligente <small>SIGER®</small></h1>
     <p class="dica">Consulta técnica de módulos e adicionais — busque um assunto ou pergunte em linguagem natural.</p>
   </div>
   @if (status(); as s) {
@@ -13,22 +13,22 @@
 </div>
 
 <div class="dic-abas">
-  <button class="dic-aba" [class.on]="aba() === 'buscar'" (click)="trocarAba('buscar')">🔍 Buscar</button>
+  <button class="dic-aba" [class.on]="aba() === 'buscar'" (click)="trocarAba('buscar')"><svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg> Buscar</button>
   <button class="dic-aba" [class.on]="aba() === 'perguntar'" (click)="trocarAba('perguntar')">💬 Perguntar</button>
 </div>
 
 @if (erro()) {
-  <div class="resultado erro" style="padding:10px 16px;margin:10px 0">{{ erro() }}</div>
+  <div class="resultado erro">{{ erro() }}</div>
 }
 
 @if (aba() === 'buscar') {
   <div class="dic-filtros">
-    <label class="campo" style="flex:2;min-width:240px">
+    <label class="campo largo">
       <span>Pesquisar</span>
       <input [ngModel]="termo()" (ngModelChange)="onTermoAlterado($event)" name="termo"
              placeholder="assunto, programa (CTB106), menu (1.6-T), tabela, erro..." autocomplete="off" />
     </label>
-    <label class="campo" style="min-width:150px">
+    <label class="campo estreito">
       <span>Tipo</span>
       <select [ngModel]="filtroTipo()" (ngModelChange)="onFiltroTipo($event)" name="tipo">
         <option value="">(todos)</option>
@@ -36,7 +36,7 @@
         <option value="adicional">Adicionais</option>
       </select>
     </label>
-    <label class="campo" style="min-width:180px">
+    <label class="campo">
       <span>Módulo/Adicional</span>
       <select [ngModel]="filtroSigla()" (ngModelChange)="onFiltroSigla($event)" name="sigla">
         <option value="">(todos)</option>
@@ -83,7 +83,7 @@
 
   @if (resposta(); as r) {
     @if (!r.iaDisponivel) {
-      <div class="resultado erro" style="padding:10px 16px;margin:10px 0">
+      <div class="resultado erro">
         A síntese por IA não está configurada (Config → IA). Mostrando os documentos relacionados abaixo.
       </div>
     }

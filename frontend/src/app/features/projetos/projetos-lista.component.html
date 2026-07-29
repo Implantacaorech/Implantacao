@@ -1,7 +1,7 @@
-<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:4px">
-  <div>
-    <h1 style="margin-bottom:4px">Carteira de Projetos</h1>
-    <p class="sub" style="margin:0">
+<div class="pagina-head">
+  <div class="pagina-head-info">
+    <h1 class="pagina-titulo">Carteira de Projetos</h1>
+    <p class="sub">
       {{ filtrados().length }} projeto(s) na carteira
       @if (perfilNomeConsultor(); as nome) {
         · mostrando apenas os seus ({{ nome }})
@@ -17,18 +17,18 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else if (todos().length > 0) {
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center;padding:12px 16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-1)">
-    <div style="display:flex;align-items:center;gap:7px;flex:1;min-width:180px;background:var(--surface-2);border:1.5px solid var(--line);border-radius:22px;padding:6px 14px">
+  <div class="barra-filtros">
+    <div class="busca-campo">
       <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>
-      <input placeholder="Buscar cliente…" [ngModel]="busca()" (ngModelChange)="busca.set($event)" style="border:none;background:none;padding:2px 0;font:inherit;font-size:.9rem;width:100%" />
+      <input placeholder="Buscar cliente…" [ngModel]="busca()" (ngModelChange)="busca.set($event)" />
     </div>
-    <select [ngModel]="fstatus()" (ngModelChange)="fstatus.set($event)" style="padding:8px 12px;border:1.5px solid var(--line-2);border-radius:var(--r-sm);font:inherit;font-size:.88rem;width:auto">
+    <select [ngModel]="fstatus()" (ngModelChange)="fstatus.set($event)">
       <option value="">Todos os status</option>
       @for (s of situacoes; track s) {
         <option [value]="s">{{ s }}</option>
       }
     </select>
-    <select [ngModel]="fetapa()" (ngModelChange)="fetapa.set($event)" style="padding:8px 12px;border:1.5px solid var(--line-2);border-radius:var(--r-sm);font:inherit;font-size:.88rem;width:auto">
+    <select [ngModel]="fetapa()" (ngModelChange)="fetapa.set($event)">
       <option value="">Todas as fases</option>
       @for (e of etapas; track e) {
         <option [value]="e">{{ e }}</option>
@@ -49,7 +49,7 @@
 
   @if (vista() === 'kanban') {
     @if (colunas().length === 0) {
-      <div class="painel" style="text-align:center;color:var(--muted)">
+      <div class="painel vazio">
         Nenhum projeto no quadro com os filtros atuais.
       </div>
     }
@@ -89,7 +89,7 @@
                 <span>{{ p.consultor || '— sem consultor —' }}</span>
                 <span>
                   @if (p.dataUsoOficial) {
-                    <svg class="svgi" style="width:11px;height:11px;color:var(--muted)" aria-hidden="true"><use href="#ic-clock"/></svg> {{ p.dataUsoOficial }}
+                    <svg class="svgi svgi-xs ic-muted" aria-hidden="true"><use href="#ic-clock"/></svg> {{ p.dataUsoOficial }}
                   }
                 </span>
               </div>
@@ -99,43 +99,45 @@
       }
     </div>
   } @else if (vista() === 'tabela') {
-    <div class="painel" style="padding:0;overflow:hidden">
-      <table class="form-tab" style="margin:0">
-        <thead>
-          <tr>
-            <th>Cliente</th>
-            <th>Fase</th>
-            <th>Status</th>
-            <th>Consultor / GCI</th>
-            <th>Go-live</th>
-            <th>Atualizado</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (p of filtrados(); track p.id) {
-            <tr class="linha-proj" [routerLink]="['/projetos', p.id]">
-              <td>
-                <strong>{{ p.cliente }}</strong>
-                @if (p.numeroProjeto) { <small style="color:var(--muted)"> ({{ p.numeroProjeto }})</small> }
-              </td>
-              <td><span style="font-size:.8rem;font-weight:600;color:var(--muted)">{{ p.etapa }}</span></td>
-              <td><span class="badge-sit" [attr.data-s]="p.situacao">{{ p.situacao }}</span></td>
-              <td>
-                <span style="font-size:.88rem">{{ p.consultor || '—' }}</span>
-                @if (p.gci && p.gci !== p.consultor) { <br /><small style="color:var(--muted)">GCI: {{ p.gci }}</small> }
-              </td>
-              <td>
-                @if (p.dataUsoOficial) {
-                  <span style="font-size:.85rem;font-variant-numeric:tabular-nums">{{ p.dataUsoOficial }}</span>
-                } @else { — }
-              </td>
-              <td><small style="color:var(--muted)">{{ p.atualizadoEm | date: 'dd/MM/yyyy' }}</small></td>
+    <div class="painel sem-padding">
+      <div class="tabela-wrap">
+        <table class="form-tab" style="margin:0">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Fase</th>
+              <th>Status</th>
+              <th>Consultor / GCI</th>
+              <th>Go-live</th>
+              <th>Atualizado</th>
             </tr>
-          } @empty {
-            <tr><td colspan="6" class="dica" style="text-align:center;padding:20px">Nenhum projeto corresponde ao filtro.</td></tr>
-          }
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            @for (p of filtrados(); track p.id) {
+              <tr class="linha-proj" [routerLink]="['/projetos', p.id]">
+                <td>
+                  <strong>{{ p.cliente }}</strong>
+                  @if (p.numeroProjeto) { <small class="txt-muted"> ({{ p.numeroProjeto }})</small> }
+                </td>
+                <td><span style="font-size:.8rem;font-weight:600;color:var(--muted)">{{ p.etapa }}</span></td>
+                <td><span class="badge-sit" [attr.data-s]="p.situacao">{{ p.situacao }}</span></td>
+                <td>
+                  <span style="font-size:.88rem">{{ p.consultor || '—' }}</span>
+                  @if (p.gci && p.gci !== p.consultor) { <br /><small class="txt-muted">GCI: {{ p.gci }}</small> }
+                </td>
+                <td>
+                  @if (p.dataUsoOficial) {
+                    <span style="font-size:.85rem;font-variant-numeric:tabular-nums">{{ p.dataUsoOficial }}</span>
+                  } @else { — }
+                </td>
+                <td><small class="txt-muted">{{ p.atualizadoEm | date: 'dd/MM/yyyy' }}</small></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="tabela-vazia">Nenhum projeto corresponde ao filtro.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
     </div>
   } @else {
     <!-- ===== VISTA: GRADE (Cliente × fases) ===== -->
@@ -145,9 +147,9 @@
       <span><i class="gl gl-nao"></i> Não realizado</span>
     </div>
     @if (carregandoGrade()) {
-      <div class="painel" style="text-align:center;color:var(--muted)">Carregando a grade…</div>
+      <div class="painel vazio">Carregando a grade…</div>
     } @else if (gradeLinhas().length === 0) {
-      <div class="painel" style="text-align:center;color:var(--muted)">Nenhum projeto na grade com os filtros atuais.</div>
+      <div class="painel vazio">Nenhum projeto na grade com os filtros atuais.</div>
     } @else {
       <div class="painel grade-wrap">
         <table class="grade-tab">
@@ -211,8 +213,8 @@
     }
   }
 } @else {
-  <div class="painel" style="text-align:center;padding:40px 24px;margin-top:20px">
-    <div style="margin-bottom:12px"><svg class="svgi" style="width:24px;height:24px;color:var(--faint)" aria-hidden="true"><use href="#ic-layers"/></svg></div>
+  <div class="painel vazio">
+    <div style="margin-bottom:12px"><svg class="svgi svgi-xl ic-faint" aria-hidden="true"><use href="#ic-layers"/></svg></div>
     <h3 style="color:var(--navy);margin:0 0 8px">Nenhum projeto ainda</h3>
     <p class="dica" style="margin:0">A entrada do processo é a opção <strong>Novo Cliente</strong> no menu — consulta do cliente no SICLA e cadastro.</p>
   </div>

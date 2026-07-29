@@ -1,11 +1,14 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <h1 style="display:flex;align-items:center;gap:8px">
-    <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-dashboard"/></svg>
-    Dashboards
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-dashboard"/></svg>
+    BI
   </h1>
 
+  <app-bi-abas-principais />
+
+  <!-- Subabas do BI Implantação: uma por consulta salva (Consultas BD). -->
   <div class="dsh-abas">
     @for (d of dashboards(); track d.slug) {
       <button type="button" class="dsh-aba" [class.on]="d.slug === slugAtivo()" (click)="trocarAba(d.slug)">{{ d.nome }}</button>
@@ -13,12 +16,12 @@
   </div>
 
   @if (erro()) {
-    <div class="resultado erro" style="padding:10px 14px;margin-bottom:10px">{{ erro() }}</div>
+    <div class="resultado erro">{{ erro() }}</div>
   }
 
   @if (resultado(); as r) {
     @if (r.erro) {
-      <div class="resultado erro" style="padding:10px 14px;margin-bottom:10px">
+      <div class="resultado erro">
         <strong>Não foi possível carregar:</strong> {{ r.erro }}
         @if (ehAdm()) {
           <div style="margin-top:4px"><a routerLink="/config/consultas-bd">Ajustar em Consultas BD</a></div>
@@ -87,7 +90,7 @@
                   <td>{{ l.responsavel }}</td>
                 </tr>
               } @empty {
-                <tr><td colspan="5" class="dica" style="text-align:center;padding:16px">Nenhum projeto no período/filtro selecionado.</td></tr>
+                <tr><td colspan="5" class="tabela-vazia">Nenhum projeto no período/filtro selecionado.</td></tr>
               }
             </tbody>
           </table>
@@ -98,7 +101,7 @@
               @for (linha of r.linhasTabela; track $index) {
                 <tr>@for (col of colunas(); track col) { <td>{{ linha[col] }}</td> }</tr>
               } @empty {
-                <tr><td [attr.colspan]="colunas().length || 1" class="dica" style="text-align:center;padding:16px">Nenhum projeto no período/filtro selecionado.</td></tr>
+                <tr><td [attr.colspan]="colunas().length || 1" class="tabela-vazia">Nenhum projeto no período/filtro selecionado.</td></tr>
               }
             </tbody>
           </table>

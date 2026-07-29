@@ -50,6 +50,7 @@ import {
   Perfil,
   PERFIS_GERA_CRONOGRAMA,
   PERFIS_GERA_LEVANTAMENTO,
+  temPapel,
 } from '../common/constants/perfis';
 
 const _SLUGS_DOCX: readonly SlugDocumentoFiel[] = [
@@ -240,7 +241,7 @@ export class DocumentosController {
     @CurrentUser() user: AuthUser,
     @Res() res: Response,
   ) {
-    if (!_PERFIS_GERA.projeto.includes(user.perfil)) {
+    if (!temPapel(user, ..._PERFIS_GERA.projeto)) {
       throw new ForbiddenException(
         'Seu perfil não pode gerar o Projeto de Implantação.',
       );
@@ -339,7 +340,7 @@ export class DocumentosController {
         'slug inválido — use levantamento, projeto, cronograma ou termo.',
       );
     }
-    if (!_PERFIS_GERA[slug as SlugDocumentoFiel].includes(user.perfil)) {
+    if (!temPapel(user, ..._PERFIS_GERA[slug as SlugDocumentoFiel])) {
       throw new ForbiddenException('Seu perfil não pode gerar este documento.');
     }
     const arquivo = await this.geracaoLayout.gerar(
