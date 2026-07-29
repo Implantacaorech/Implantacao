@@ -8,25 +8,27 @@ import {
   weekdaySegunda0,
 } from './datas.util';
 
+/** Este arquivo exige que o PROCESSO esteja no fuso de Brasília — o de quem usa o Painel.
+ *
+ * Fixar `process.env.TZ` aqui dentro não funciona: quando a atribuição executa, o Node já
+ * formatou datas, e reprogramar o fuso em tempo de execução não é suportado no Windows, onde
+ * o time desenvolve. Por isso o fuso vem de fora: na máquina de quem desenvolve ele já é o de
+ * Brasília, e no CI (que roda em UTC, onde o defeito não aparece) o job `backend-test` define
+ * `TZ: America/Sao_Paulo`. Rodando de um fuso diferente, use `TZ=America/Sao_Paulo npm test`. */
 describe('hojeIso — dia de hoje no fuso de quem usa o Painel', () => {
-  const tzOriginal = process.env.TZ;
-
   afterEach(() => {
     jest.useRealTimers();
-    process.env.TZ = tzOriginal;
   });
 
   it('devolve o dia LOCAL, não o dia em UTC, na virada noturna', () => {
     // 22/07 às 02:04 UTC é ainda 21/07 às 23:04 em Brasília. Com `toISOString()` o sistema
     // dizia "hoje = 22/07" para quem estava trabalhando no dia 21 — todo dia, das 21h à
-    // meia-noite. O fuso é fixado aqui porque o CI roda em UTC, onde o defeito não aparece.
-    process.env.TZ = 'America/Sao_Paulo';
+    // meia-noite.
     jest.useFakeTimers().setSystemTime(new Date('2026-07-22T02:04:00Z'));
     expect(hojeIso()).toBe('2026-07-21');
   });
 
   it('coincide com o dia em UTC quando não há virada envolvida', () => {
-    process.env.TZ = 'America/Sao_Paulo';
     jest.useFakeTimers().setSystemTime(new Date('2026-07-22T15:00:00Z'));
     expect(hojeIso()).toBe('2026-07-22');
   });
