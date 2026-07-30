@@ -6,16 +6,27 @@
 <form class="barra-filtros" (ngSubmit)="carregar()">
   <label class="campo largo">
     <span>Módulos do cliente novo (siglas, separadas por vírgula)</span>
-    <input type="text" [(ngModel)]="modulos" name="modulos" placeholder="Ex.: FAT, CTB, FIN, EST" />
+    <input type="text" [ngModel]="modulos()" (ngModelChange)="modulos.set($event)" name="modulos"
+           placeholder="Ex.: FAT, CTB, FIN, EST" />
+  </label>
+  <label class="campo">
+    <span>Setor</span>
+    <select [ngModel]="setor()" (ngModelChange)="trocarSetor($event)" name="setor">
+      <option value="">Todos os setores</option>
+      @for (s of setores(); track s) { <option [value]="s">{{ s }}</option> }
+      @if (temSemSetor()) { <option [value]="setorSem">(sem setor)</option> }
+    </select>
   </label>
   <label class="campo estreito">
     <span>Janela (semanas)</span>
-    <select [(ngModel)]="semanas" name="semanas">
+    <select [ngModel]="semanas()" (ngModelChange)="trocarSemanas($event)" name="semanas">
       @for (n of janelasSemanas; track n) { <option [value]="n">{{ n }}</option> }
     </select>
   </label>
   <button class="btn primario" type="submit"><svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg> Avaliar</button>
 </form>
+<p class="dica">O recorte escolhido aqui fica <strong>salvo no seu usuário</strong> — ao voltar,
+  a tela reabre com os mesmos módulos, setor e janela.</p>
 
 @if (erro()) {
   <div class="resultado erro">{{ erro() }}</div>
@@ -26,7 +37,7 @@
 } @else if (resultado(); as r) {
   @if (filtro() && r.equipe.length > 0) {
     <div class="painel" [style.border-left]="'4px solid ' + (aptos().length > 0 ? 'var(--ok,var(--ok))' : 'var(--warn,var(--warn))')">
-      <h3 style="margin:0 0 6px;color:var(--navy)">Resposta ao Comercial — módulos: {{ filtro() }}</h3>
+      <h3 style="margin:0 0 6px;color:var(--navy)">Resposta ao Comercial — módulos: {{ filtro() }}@if (setorAtivo()) { · setor: {{ setorAtivo() }} }</h3>
       @if (aptos().length > 0) {
         <p style="margin:0">
           ✅ <strong>Sim, dá para receber.</strong>
@@ -48,8 +59,14 @@
 
   @if (r.equipe.length === 0) {
     <div class="painel">
-      <p class="dica" style="margin:0">Nenhum Consultor/GCI ativo no cadastro de usuários —
-        cadastre a equipe (com Código SICLA) para avaliar a capacidade.</p>
+      @if (setorAtivo()) {
+        <p class="dica" style="margin:0">Nenhum Consultor/GCI ativo no setor
+          <strong>{{ setorAtivo() }}</strong> — escolha outro setor ou volte para
+          "Todos os setores".</p>
+      } @else {
+        <p class="dica" style="margin:0">Nenhum Consultor/GCI ativo no cadastro de usuários —
+          cadastre a equipe (com Código SICLA) para avaliar a capacidade.</p>
+      }
     </div>
   } @else {
     <div class="tabela-wrap">
@@ -114,7 +131,7 @@
         </tbody>
       </table>
     </div>
-    <p class="dica">Score = 45% conhecimento nos módulos + 35% folga de agenda ({{ semanas }} semanas)
+    <p class="dica">Score = 45% conhecimento nos módulos + 35% folga de agenda ({{ semanas() }} semanas)
       + 20% carga de clientes (cheia com 3+). "Pode iniciar" = 1ª semana com ≥ 6 turnos livres.
       Notas: <span style="background:var(--ok-bg);padding:0 6px;border-radius:4px">9–10 domina</span>
       <span style="background:var(--warn-bg);padding:0 6px;border-radius:4px">6–8 conhece bem</span>

@@ -19,6 +19,11 @@ const TURNOS_SEMANA = 10; // 5 dias úteis x 2 turnos — ver webapp/capacidade.
 const LIVRE_MIN = 6; // turnos livres na semana p/ considerá-la "janela de início"
 const CARGA_CHEIA = 3; // nº de clientes ativos que zera a parcela de carga do score
 
+/** Valor do filtro de setor que significa "só quem está SEM setor no cadastro". Mesma
+ * convenção da tela de Usuários — o setor vem do SICLA e falta em conta de serviço, ADM e
+ * cadastro feito à mão, então esse grupo precisa ser alcançável pelo filtro. */
+export const SETOR_SEM = '__sem__';
+
 export interface ProjetoCapacidade {
   cliente: string;
   golive: string;
@@ -46,6 +51,14 @@ export interface ResultadoCapacidade {
   semanas: string[];
   modulos: string[];
   turnosSemana: number;
+  /** Setor filtrado ('' = todos, `__sem__` = sem setor no cadastro). */
+  setor: string;
+  /** Setores existentes na equipe (Consultor/GCI ativos) — alimenta o select da tela. É a
+   * lista COMPLETA, calculada antes de aplicar o filtro; senão, escolher um setor apagaria
+   * as outras opções e prenderia o usuário na escolha. */
+  setoresDisponiveis: string[];
+  /** Quantos técnicos da equipe estão sem setor — a tela só oferece "(sem setor)" se > 0. */
+  semSetor: number;
 }
 
 function tokens(txt: string): string[] {
@@ -87,6 +100,7 @@ export class CapacidadeService {
   async avaliarEquipe(
     modulosBrutos: string[] = [],
     semanasQtd = 6,
+    setorBruto = '',
   ): Promise<ResultadoCapacidade> {
     const modulos = modulosBrutos
       .map((m) => m.trim().toUpperCase())
@@ -96,10 +110,34 @@ export class CapacidadeService {
     const ini = jan[0][0];
     const fim = jan[jan.length - 1][1];
 
-    const usuarios = await this.usuarios.find({
+    const equipeToda = await this.usuarios.find({
       where: { perfil: In(['Consultor', 'GCI'] as Perfil[]), ativo: true },
       order: { nome: 'ASC' },
     });
+    const setoresDisponiveis = [
+      ...new Set(
+        equipeToda.map((u) => (u.setorAtuacao || '').trim()).filter(Boolean),
+      ),
+    ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const semSetor = equipeToda.filter(
+      (u) => !(u.setorAtuacao || '').trim(),
+    ).length;
+
+    // O recorte por setor vem ANTES de tudo: além de ser o que a tela pede, poda a consulta
+    // de agenda no SICLA (só os códigos que sobraram) em vez de avaliar a equipe inteira.
+    const setor = (setorBruto || '').trim();
+    const usuarios = !setor
+      ? equipeToda
+      : equipeToda.filter((u) => {
+          const s = (u.setorAtuacao || '').trim();
+          // `sensitivity: 'base'` ignora caixa E acento: o setor guardado como preferência
+          // do usuário precisa continuar valendo se o SETORDES do SICLA for reescrito com
+          // outra grafia ("GRM-Implantacao" x "GRM-Implantação").
+          return setor === SETOR_SEM
+            ? s === ''
+            : s.localeCompare(setor, 'pt-BR', { sensitivity: 'base' }) === 0;
+        });
+
     const projetos = await this.projetos.find({
       where: { etapa: Not('Encerramento') },
     });
@@ -255,6 +293,9 @@ export class CapacidadeService {
       semanas: jan.map(([s]) => s),
       modulos,
       turnosSemana: TURNOS_SEMANA,
+      setor,
+      setoresDisponiveis,
+      semSetor,
     };
   }
 }

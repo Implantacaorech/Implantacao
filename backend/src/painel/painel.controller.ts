@@ -64,7 +64,7 @@ export class PainelController {
   @Permissao('coordenacao')
   @ApiOperation({
     summary:
-      'Capacidade da equipe p/ receber cliente novo: módulos x matriz x agenda x go-live',
+      'Capacidade da equipe p/ receber cliente novo: módulos x matriz x agenda x go-live, com recorte por setor',
   })
   async avaliarCapacidade(@Query() filtro: QueryCapacidadeDto) {
     const modulos = (filtro.modulos || '')
@@ -74,7 +74,11 @@ export class PainelController {
     let semanas = 6;
     const bruto = parseInt(filtro.semanas ?? '', 10);
     if (!Number.isNaN(bruto)) semanas = Math.max(2, Math.min(12, bruto));
-    const r = await this.capacidade.avaliarEquipe(modulos, semanas);
+    const r = await this.capacidade.avaliarEquipe(
+      modulos,
+      semanas,
+      filtro.setor ?? '',
+    );
     return new ApiEnvelope(r);
   }
 

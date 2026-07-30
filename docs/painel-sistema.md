@@ -299,6 +299,12 @@ score explicável (45% conhecimento + 35% folga de agenda + 20% carga de cliente
 **"Resposta ao Comercial"** pronto (quem + data de início). Acesso: perfis de gestão, pelo
 botão **Capacidade da equipe** na Coordenação.
 
+Tem **filtro por setor** (`usuarios.setor_atuacao`, vindo de `SICLA.LISTA_TECNICOS.SETORDES`):
+o select lista os setores existentes na equipe, mais **"(sem setor)"** quando há técnico sem
+setor no cadastro. O recorte reduz também a consulta de agenda ao SICLA (só os códigos que
+sobraram). Os **selects filtram na hora**; o campo de módulos, por ser texto, espera o
+**Avaliar**. Módulos, setor e janela ficam **salvos no usuário** (ver 5.21).
+
 ### 5.20 Autocadastro e usuários
 - **Autocadastro** (`/cadastro`) com **validação por código enviado por e-mail**.
 - **Usuários** (`/usuarios`, só ADM) — gestão de perfis, e-mail e hierarquia.
