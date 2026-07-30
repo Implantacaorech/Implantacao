@@ -201,14 +201,13 @@ export class DocumentosService {
    * Todo caminho de geração passa por aqui, então este é o único lugar que precisa saber a
    * correspondência. Tipo que não estiver no mapa (por exemplo `email_passo_3`, do anexo do
    * Outlook) simplesmente não conclui passo nenhum. */
-  // Números conforme os 19 passos (o passo 3 "Realizar o Levantamento" entrou em 2026-07-28,
-  // deslocando +1 tudo a partir do 3): Criação do Projeto = 9, Cronograma = 11,
-  // Check-list = 12, Termo = 16.
+  // Números conforme os 21 passos (revisão de 2026-07-30, que inseriu os passos 5 e 12):
+  // Criação do Projeto = 10, Cronograma = 13, Check-list = 14, Termo = 18.
   private static readonly PASSO_POR_TIPO: Record<string, number> = {
-    projeto: 9,
-    cronograma: 11,
-    checklist: 12,
-    termo: 16,
+    projeto: 10,
+    cronograma: 13,
+    checklist: 14,
+    termo: 18,
   };
 
   async registrarDocumento(

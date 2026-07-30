@@ -1,0 +1,126 @@
+<h1 class="pagina-titulo">
+  <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-users"/></svg>
+  Destinatários por Passo
+</h1>
+<p class="sub">
+  Quem recebe o e-mail de cada passo do processo. Os grupos dinâmicos (GCI, consultores,
+  contato no cliente) o sistema resolve sozinho a partir do projeto; os endereços fixos —
+  como os grupos de e-mail da Rech avisados no passo 1 — você informa aqui.
+  O <strong>texto</strong> de cada e-mail fica em
+  <a routerLink="/config/modelos-email">Modelos de E-mail</a>.
+</p>
+
+@if (erro()) {
+  <div class="resultado erro linha">
+    <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-alert"/></svg> {{ erro() }}
+  </div>
+}
+@if (aviso()) {
+  <div class="resultado ok linha">
+    <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check"/></svg> {{ aviso() }}
+  </div>
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  @for (p of passos(); track p.passo) {
+    <div class="painel" style="margin-bottom:10px;padding:12px 14px">
+      <!-- Cabeçalho e formulário em blocos SEPARADOS de propósito: uma linha flex que
+           misture .campo e .btn desalinha o botão (as duas classes trazem margens
+           diferentes) — é o que `padroes-layout.spec.ts` proíbe. -->
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <span
+          style="border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none;font-size:.8rem;color:#fff;background:var(--brand)"
+        >{{ p.passo }}</span>
+
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <strong>{{ p.titulo }}</strong>
+            <span style="font-size:.75rem;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:1px 8px">
+              {{ p.responsavel }}
+            </span>
+            @if (!p.configurado) {
+              <span style="font-size:.75rem;color:var(--muted)" title="Nunca configurado — vale o padrão do sistema">padrão</span>
+            }
+            @if (!p.ativo) {
+              <span style="font-size:.75rem;color:var(--err);font-weight:600">e-mail desligado</span>
+            }
+          </div>
+
+          @if (editando() !== p.passo) {
+            <p style="margin:4px 0 0;font-size:.85rem;color:var(--muted)">
+              @if (p.grupos.length === 0 && p.extras.length === 0) {
+                Nenhum destinatário — este passo não envia e-mail hoje.
+              } @else {
+                @for (g of p.grupos; track g) { {{ rotuloGrupo(g) }} · }
+                @for (e of p.extras; track e) { {{ e }} · }
+              }
+            </p>
+          }
+        </div>
+
+        @if (editando() !== p.passo) {
+          <button type="button" class="btn" style="flex:none" (click)="abrir(p)">Editar</button>
+        }
+      </div>
+
+      @if (editando() === p.passo) {
+        <div style="margin-top:10px;padding-left:38px">
+            <div class="campo" style="margin-top:8px">
+              <span>Grupos do sistema</span>
+              <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">
+                @for (g of grupos(); track g.valor) {
+                  <label style="display:flex;align-items:center;gap:6px;font-weight:500;cursor:pointer">
+                    <input
+                      type="checkbox"
+                      [checked]="gruposSelecionados.includes(g.valor)"
+                      (change)="alternarGrupo(g.valor, $any($event.target).checked)"
+                    />
+                    {{ g.rotulo }}
+                  </label>
+                }
+              </div>
+            </div>
+
+            <label class="campo" style="margin-top:10px">
+              <span>Endereços fixos <small style="color:var(--muted);font-weight:400">— um por linha (ou separados por vírgula)</small></span>
+              <textarea
+                rows="3"
+                [(ngModel)]="extrasTexto"
+                name="extras{{ p.passo }}"
+                placeholder="grupo.comercial@rech.com.br&#10;grupo.implantacao@rech.com.br"
+              ></textarea>
+            </label>
+
+            <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-weight:500">
+              <input type="checkbox" [(ngModel)]="ativo" name="ativo{{ p.passo }}" />
+              Enviar o e-mail deste passo
+            </label>
+
+            <div class="acoes" style="margin-top:var(--sp-3)">
+              <button
+                type="button"
+                class="btn primario"
+                [disabled]="ocupado() === p.passo"
+                (click)="salvar(p)"
+              >Salvar</button>
+              @if (p.configurado) {
+                <button
+                  type="button"
+                  class="btn btn-sec"
+                  [disabled]="ocupado() === p.passo"
+                  (click)="restaurar(p)"
+                >Voltar ao padrão</button>
+              }
+              <button type="button" class="btn btn-sec" (click)="fechar()">Cancelar</button>
+            </div>
+        </div>
+      }
+    </div>
+  }
+
+  <p style="margin-top:18px">
+    <a class="btn btn-voltar" routerLink="/ferramentas">← Voltar às Ferramentas</a>
+  </p>
+}

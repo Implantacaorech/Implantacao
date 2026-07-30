@@ -5,24 +5,42 @@ import { existsSync } from 'fs';
 import { Projeto } from '../database/entities/projeto.entity';
 import { Evento } from '../database/entities/evento.entity';
 import { ProjetoPessoa } from '../database/entities/projeto-pessoa.entity';
+import { ProjetoPasso } from '../database/entities/projeto-passo.entity';
 import { Documento } from '../database/entities/documento.entity';
+import { EmailPasso } from '../database/entities/email-passo.entity';
+import { ModeloEmail } from '../database/entities/modelo-email.entity';
 import { UsersService } from '../users/users.service';
 import { MailerService } from '../email/mailer.service';
 import { Anexo } from '../email/anexo';
 import { DefinicaoPasso } from './passos.constants';
+import { DestinatariosPassoService } from './destinatarios-passo.service';
 import {
   ANEXO_POR_PASSO,
   DestinatarioPasso,
   EMAIL_POR_PASSO,
-  EmailDePasso,
   TOKENS_PASSO,
 } from './passos-email.constants';
 
-/** Dispara o e-mail de cada passo do processo e registra na timeline do projeto.
+/** E-mail de um passo já montado, pronto para revisão ou envio. */
+export interface EmailMontado {
+  para: string[];
+  assunto: string;
+  corpo: string;
+  /** Nome do arquivo que irá em anexo, se houver. */
+  anexo: string;
+}
+
+/** Dispara o e-mail de cada passo do processo e registra o que saiu.
  *
  * Não bloqueia quem concluiu o passo: o envio roda em segundo plano (`void`), do mesmo jeito
  * que `NotificacaoService` já fazia. Falha de e-mail NÃO desfaz a conclusão do passo — o
- * passo aconteceu de verdade; o que fica registrado é a notificação pendente. */
+ * passo aconteceu de verdade; o que fica registrado é a notificação pendente.
+ *
+ * O texto vem, em ordem de precedência:
+ *   1. o que a pessoa redigiu na tela (passos de `PASSOS_COM_REDACAO_DE_EMAIL`);
+ *   2. o modelo editável de slug `passo-N` (Sistema → Ferramentas → Modelos de E-mail);
+ *   3. o padrão do código (`EMAILS_POR_PASSO`).
+ * Os destinatários seguem a mesma ideia, via `DestinatariosPassoService`. */
 @Injectable()
 export class PassosNotificacaoService {
   private readonly logger = new Logger('PassosNotificacaoService');
@@ -31,11 +49,24 @@ export class PassosNotificacaoService {
     @InjectRepository(Evento) private readonly eventos: Repository<Evento>,
     @InjectRepository(ProjetoPessoa)
     private readonly pessoas: Repository<ProjetoPessoa>,
+    @InjectRepository(ProjetoPasso)
+    private readonly passos: Repository<ProjetoPasso>,
     @InjectRepository(Documento)
     private readonly documentos: Repository<Documento>,
+    @InjectRepository(EmailPasso)
+    private readonly emails: Repository<EmailPasso>,
+    @InjectRepository(ModeloEmail)
+    private readonly modelos: Repository<ModeloEmail>,
+    private readonly destinatarios: DestinatariosPassoService,
     private readonly mailer: MailerService,
     private readonly users: UsersService,
   ) {}
+
+  /** Slug do modelo editável de um passo. Convenção estável: quem criar `passo-7` em
+   * Modelos de E-mail passa a mandar naquele passo, sem release. */
+  static slugDoPasso(passo: number): string {
+    return `passo-${passo}`;
+  }
 
   /** Documento mais RECENTE do tipo pedido, como anexo — ou nada se não houver. O arquivo
    * pode ter sumido do disco; nesse caso o próprio envio ignora o anexo em silêncio, mas
@@ -76,6 +107,15 @@ export class PassosNotificacaoService {
       .filter(Boolean);
   }
 
+  /** Nomes designados em um papel do projeto. */
+  private async nomesDoPapel(
+    projetoId: number,
+    papel: 'consultor' | 'levantador',
+  ): Promise<string[]> {
+    const vinculos = await this.pessoas.find({ where: { projetoId, papel } });
+    return vinculos.map((v) => v.pessoa);
+  }
+
   /** Resolve um grupo de destinatário em endereços de e-mail. */
   async resolverDestino(
     grupo: DestinatarioPasso,
@@ -95,15 +135,15 @@ export class PassosNotificacaoService {
         return this.emailsDeNomes([projeto.gci]);
       case 'consultores': {
         // A fonte da verdade são os vínculos por papel; `Projeto.consultor` é só o espelho.
-        const vinculos = await this.pessoas.find({
-          where: { projetoId: projeto.id, papel: 'consultor' },
-        });
-        const nomes =
-          vinculos.length > 0
-            ? vinculos.map((v) => v.pessoa)
-            : projeto.consultor.split(',');
-        return this.emailsDeNomes(nomes);
+        const nomes = await this.nomesDoPapel(projeto.id, 'consultor');
+        return this.emailsDeNomes(
+          nomes.length > 0 ? nomes : projeto.consultor.split(','),
+        );
       }
+      case 'levantadores':
+        return this.emailsDeNomes(
+          await this.nomesDoPapel(projeto.id, 'levantador'),
+        );
       case 'comercial':
         return [projeto.comercialEmail].map((e) => e.trim()).filter(Boolean);
       case 'cliente':
@@ -111,46 +151,113 @@ export class PassosNotificacaoService {
     }
   }
 
-  private aplicarTokens(texto: string, projeto: Projeto): string {
+  /** Valores dos tokens que NÃO são colunas do projeto: o que a pessoa escreveu ao concluir
+   * o passo, a data de assinatura que ela marcou e os levantadores designados.
+   *
+   * A descrição vem do passo ANTERIOR quando o passo atual não tem uma própria — é o caso do
+   * passo 5, cuja descrição é justamente o que o e-mail do passo seguinte tem de carregar. */
+  private async valoresDoPasso(
+    projeto: Projeto,
+    passo: number,
+  ): Promise<Record<string, string>> {
+    const [registro, anterior, levantadores] = await Promise.all([
+      this.passos.findOne({ where: { projetoId: projeto.id, passo } }),
+      this.passos.findOne({
+        where: { projetoId: projeto.id, passo: passo - 1 },
+      }),
+      this.nomesDoPapel(projeto.id, 'levantador'),
+    ]);
+    return {
+      _descricaoPasso: (
+        registro?.observacao ||
+        anterior?.observacao ||
+        ''
+      ).trim(),
+      _dataMarcada: registro?.dataMarcada || '',
+      _levantadores: levantadores.join(', '),
+    };
+  }
+
+  private aplicarTokens(
+    texto: string,
+    projeto: Projeto,
+    extras: Record<string, string>,
+  ): string {
+    const valores: Record<string, unknown> = {
+      ...(projeto as unknown as Record<string, unknown>),
+      ...extras,
+    };
     let saida = texto;
     for (const [token, campo] of Object.entries(TOKENS_PASSO)) {
-      const valor = (projeto as unknown as Record<string, unknown>)[campo];
+      const valor = valores[campo];
       saida = saida.split(token).join(typeof valor === 'string' ? valor : '');
     }
     return saida;
   }
 
-  /** Monta o e-mail do passo sem enviar — usado pelo teste e pela pré-visualização. */
-  async montar(
-    projeto: Projeto,
-    passo: number,
-  ): Promise<{ para: string[]; assunto: string; corpo: string } | null> {
-    const modelo: EmailDePasso | undefined = EMAIL_POR_PASSO.get(passo);
-    if (!modelo) return null;
+  /** Monta o e-mail do passo sem enviar — usado pela pré-visualização, pela tela de redação
+   * e pelo próprio envio. `null` quando o passo não tem e-mail. */
+  async montar(projeto: Projeto, passo: number): Promise<EmailMontado | null> {
+    const padrao = EMAIL_POR_PASSO.get(passo);
+    if (!padrao) return null;
+
+    // Modelo editável vence o padrão do código, quando existe e está ativo.
+    const modelo = await this.modelos.findOne({
+      where: { slug: PassosNotificacaoService.slugDoPasso(passo), ativo: true },
+    });
+
+    const config = await this.destinatarios.paraOPasso(passo);
     const listas = await Promise.all(
-      modelo.para.map((g) => this.resolverDestino(g, projeto)),
+      config.grupos.map((g) => this.resolverDestino(g, projeto)),
     );
-    const para = [...new Set(listas.flat())];
+    const para = [...new Set([...listas.flat(), ...config.extras])];
+
+    const extras = await this.valoresDoPasso(projeto, passo);
+    const anexos = await this.anexoDoPasso(projeto.id, passo);
+
     return {
       para,
-      assunto: this.aplicarTokens(modelo.assunto, projeto),
-      corpo: this.aplicarTokens(modelo.corpo, projeto),
+      assunto: this.aplicarTokens(
+        modelo?.assunto || padrao.assunto,
+        projeto,
+        extras,
+      ),
+      corpo: this.aplicarTokens(modelo?.corpo || padrao.corpo, projeto, extras),
+      anexo: anexos[0]?.nomeArquivo ?? '',
     };
   }
 
-  /** Envia o e-mail do passo, se houver, e registra o resultado na timeline. */
+  /** Envia o e-mail do passo, se houver, e registra o que saiu.
+   *
+   * `redigido` chega dos passos em que a pessoa revisa o texto na tela antes de mandar; sem
+   * ele, vale o que `montar` produziu. */
   async notificarPasso(
     projeto: Projeto,
     def: DefinicaoPasso,
     autor: string,
+    redigido?: Partial<EmailMontado>,
   ): Promise<void> {
     try {
-      const email = await this.montar(projeto, def.numero);
-      if (!email) return;
+      const config = await this.destinatarios.paraOPasso(def.numero);
+      if (!config.ativo) return;
+
+      const base = await this.montar(projeto, def.numero);
+      if (!base) return;
+
+      const email: EmailMontado = {
+        para: redigido?.para?.length ? redigido.para : base.para,
+        assunto: redigido?.assunto || base.assunto,
+        corpo: redigido?.corpo || base.corpo,
+        anexo: base.anexo,
+      };
 
       if (email.para.length === 0) {
         // Sem destinatário não há o que enviar, mas o processo previa um e-mail aqui —
-        // fica registrado para alguém resolver (ex.: passo 3 sem o e-mail do Comercial).
+        // fica registrado para alguém resolver (ex.: passo 4 sem o e-mail do Comercial).
+        await this.registrarEmail(projeto.id, def, email, autor, {
+          status: 'sem_destinatario',
+          erro: 'Nenhum destinatário resolvido.',
+        });
         await this.registrar(
           projeto.id,
           `Passo ${def.numero}: e-mail não enviado — nenhum destinatário resolvido (${def.titulo}).`,
@@ -173,10 +280,13 @@ export class PassosNotificacaoService {
         ok = r.ok;
         erro = r.erro ?? '';
       }
-      const comAnexo =
-        anexos.length > 0
-          ? ` (anexo: ${anexos[0].nomeArquivo ?? 'documento'})`
-          : '';
+
+      await this.registrarEmail(projeto.id, def, email, autor, {
+        status: ok ? 'enviado' : 'falhou',
+        erro: ok ? '' : erro || 'Falha desconhecida no envio.',
+      });
+
+      const comAnexo = email.anexo ? ` (anexo: ${email.anexo})` : '';
       await this.registrar(
         projeto.id,
         ok
@@ -190,6 +300,41 @@ export class PassosNotificacaoService {
         e instanceof Error ? e.stack : String(e),
       );
     }
+  }
+
+  /** Guarda o e-mail por inteiro, para a consulta por passo. */
+  private async registrarEmail(
+    projetoId: number,
+    def: DefinicaoPasso,
+    email: EmailMontado,
+    autor: string,
+    resultado: {
+      status: 'enviado' | 'falhou' | 'sem_destinatario';
+      erro: string;
+    },
+  ): Promise<void> {
+    await this.emails.save(
+      this.emails.create({
+        projetoId,
+        passo: def.numero,
+        para: email.para.join(', '),
+        assunto: email.assunto,
+        corpo: email.corpo,
+        anexo: email.anexo,
+        status: resultado.status,
+        erro: resultado.erro,
+        autor,
+      }),
+    );
+  }
+
+  /** Os e-mails já gerados num projeto — a consulta que qualquer pessoa com acesso ao menu
+   * pode fazer. Mais recentes primeiro. */
+  async historico(projetoId: number): Promise<EmailPasso[]> {
+    return this.emails.find({
+      where: { projetoId },
+      order: { criadoEm: 'DESC' },
+    });
   }
 
   private async registrar(

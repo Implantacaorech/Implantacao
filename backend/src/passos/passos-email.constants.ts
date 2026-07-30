@@ -2,16 +2,36 @@
  *
  * O mapa dos passos (`passos.constants.ts`) descreve o e-mail em linguagem de negócio; aqui
  * está o contrato executável: destinatários e texto. Separado de propósito — o processo
- * (quem faz o quê) muda por decisão de negócio; o texto do e-mail muda por redação. */
+ * (quem faz o quê) muda por decisão de negócio; o texto do e-mail muda por redação.
+ *
+ * O que está aqui é o PADRÃO. Dois pontos de configuração ficam por cima dele, e ambos
+ * vencem quando existem:
+ *   - texto — modelo de e-mail do passo (slug `passo-N`), editável em Sistema → Ferramentas
+ *     → Modelos de E-mail;
+ *   - destinatários — `destinatarios_passo`, editável em Sistema → Ferramentas →
+ *     Destinatários por Passo. É lá que entram, por exemplo, os dois grupos avisados no
+ *     passo 1, que são endereços da Rech e não cabem no código. */
 
-/** Grupos de destinatário que o sistema sabe resolver. */
+/** Grupos de destinatário que o sistema sabe resolver sozinho, a partir do projeto. */
 export type DestinatarioPasso =
   | 'administrativo'
   | 'coordenacao'
   | 'gci'
   | 'consultores'
+  | 'levantadores'
   | 'comercial'
   | 'cliente';
+
+/** Rótulo de cada grupo para a tela de configuração — o ADM escolhe por nome, não por slug. */
+export const ROTULO_DESTINATARIO: Record<DestinatarioPasso, string> = {
+  administrativo: 'Administrativo (perfil)',
+  coordenacao: 'Coordenação e ADM (perfil)',
+  gci: 'GCI do projeto',
+  consultores: 'Consultores designados',
+  levantadores: 'Levantadores designados',
+  comercial: 'Comercial do projeto',
+  cliente: 'Contato no cliente',
+};
 
 export interface EmailDePasso {
   passo: number;
@@ -20,15 +40,25 @@ export interface EmailDePasso {
   corpo: string;
 }
 
-/** Tokens disponíveis no assunto e no corpo — os mesmos da tela de modelos de e-mail. */
+/** Tokens disponíveis no assunto e no corpo — os mesmos da tela de modelos de e-mail.
+ *
+ * `_descricaoPasso`, `_dataMarcada` e `_levantadores` não são colunas do projeto: vêm do
+ * registro do passo (a descrição que a pessoa escreveu, a data de assinatura que ela marcou)
+ * e dos vínculos por papel. São resolvidos em runtime pelo serviço de notificação. */
 export const TOKENS_PASSO: Record<string, string> = {
   '{{CLIENTE}}': 'cliente',
+  '{{CNPJ}}': 'cnpj',
   '{{NUMERO_PROJETO}}': 'numeroProjeto',
   '{{GCI}}': 'gci',
   '{{CONSULTOR}}': 'consultor',
   '{{CONTATO_NOME}}': 'contatoNome',
+  '{{CONTATO_EMAIL}}': 'contatoEmail',
   '{{DATA_LEVANTAMENTO}}': 'dataLevantamento',
   '{{DATA_ENCERRAMENTO}}': 'dataEncerramento',
+  '{{MODULOS}}': 'modulos',
+  '{{LEVANTADOR}}': '_levantadores',
+  '{{DESCRICAO_PASSO}}': '_descricaoPasso',
+  '{{DATA_ASSINATURA}}': '_dataMarcada',
 };
 
 const ASSINATURA =
@@ -37,6 +67,9 @@ const ASSINATURA =
 export const EMAILS_POR_PASSO: EmailDePasso[] = [
   {
     passo: 1,
+    // Além do Administrativo, o passo 1 avisa DOIS grupos de e-mail da Rech. Como são
+    // endereços internos (e mudam sem mexer em código), eles entram pela tela de
+    // Destinatários por Passo, não aqui.
     para: ['administrativo'],
     assunto: 'Novo cliente cadastrado — {{CLIENTE}}',
     corpo:
@@ -46,58 +79,82 @@ export const EMAILS_POR_PASSO: EmailDePasso[] = [
       ASSINATURA,
   },
   {
+    passo: 2,
+    para: ['levantadores'],
+    assunto: 'Levantamento agendado — {{CLIENTE}} — {{DATA_LEVANTAMENTO}}',
+    corpo:
+      'Olá, {{LEVANTADOR}}!\n\nVocê foi designado(a) para o levantamento de processos da ' +
+      '{{CLIENTE}} (projeto nº {{NUMERO_PROJETO}}).\n\n' +
+      'Data e horário: {{DATA_LEVANTAMENTO}}\n' +
+      'Contato no cliente: {{CONTATO_NOME}}\n\n' +
+      'Ao concluir, registre o levantamento no Painel e repasse as informações ao Comercial.' +
+      ASSINATURA,
+  },
+  {
     passo: 4,
     para: ['comercial'],
     assunto: 'Levantamento realizado — {{CLIENTE}}',
     corpo:
-      'O levantamento de processos da {{CLIENTE}} foi realizado.\n\nSeguem abaixo as ' +
-      'informações relevantes identificadas, para a continuidade da negociação:\n\n' +
-      '(descreva aqui o que foi encontrado)' +
+      'O levantamento de processos da {{CLIENTE}} foi realizado por {{LEVANTADOR}}.\n\n' +
+      'Seguem as informações relevantes identificadas, para a continuidade da negociação:\n\n' +
+      '{{DESCRICAO_PASSO}}' +
       ASSINATURA,
   },
   {
-    passo: 6,
-    para: ['coordenacao'],
-    assunto: 'Contrato assinado — indicar responsáveis — {{CLIENTE}}',
+    passo: 5,
+    para: ['administrativo'],
+    assunto: 'Negociação liberada para fechamento — {{CLIENTE}}',
     corpo:
-      'O contrato da {{CLIENTE}} (projeto nº {{NUMERO_PROJETO}}) foi assinado e a ' +
-      'implantação está liberada.\n\nPróximo passo: indicar o GCI e os técnicos ' +
-      'responsáveis pela implantação.' +
+      'O Comercial concluiu a análise do levantamento da {{CLIENTE}} (projeto nº ' +
+      '{{NUMERO_PROJETO}}) e liberou a negociação para finalização.\n\n' +
+      'Descrição do Comercial:\n\n{{DESCRICAO_PASSO}}\n\n' +
+      'Próximo passo: finalizar a negociação e enviar o fechamento ao cliente.' +
       ASSINATURA,
   },
   {
     passo: 7,
-    para: ['gci', 'consultores', 'administrativo'],
-    assunto: 'Você é responsável pela implantação — {{CLIENTE}}',
+    para: ['coordenacao'],
+    assunto: 'Contrato assinado — indicar responsáveis — {{CLIENTE}}',
     corpo:
-      'A implantação da {{CLIENTE}} (projeto nº {{NUMERO_PROJETO}}) foi atribuída à ' +
-      'equipe.\n\nGCI: {{GCI}}\nConsultor(es): {{CONSULTOR}}\n\n' +
-      'Administrativo: seguir com a inclusão da RNI e das RNS de COB e Conversão.' +
+      'O contrato da {{CLIENTE}} (projeto nº {{NUMERO_PROJETO}}) foi assinado em ' +
+      '{{DATA_ASSINATURA}} e a implantação está liberada.\n\n' +
+      'A implantação aguarda a sinalização do GCI e dos técnicos responsáveis.' +
       ASSINATURA,
   },
   {
     passo: 8,
-    para: ['gci', 'consultores'],
-    assunto: 'RNS incluídas — liberado para Projeto e Cronograma — {{CLIENTE}}',
+    para: ['gci', 'consultores', 'administrativo'],
+    assunto: 'Você é responsável pela implantação — {{CLIENTE}}',
     corpo:
-      'As RNS da {{CLIENTE}} (projeto nº {{NUMERO_PROJETO}}) foram incluídas.\n\n' +
+      'A implantação da {{CLIENTE}} (projeto nº {{NUMERO_PROJETO}}) foi atribuída à ' +
+      'equipe.\n\nGCI: {{GCI}}\nTécnico(s): {{CONSULTOR}}\nMódulos: {{MODULOS}}\n\n' +
       'GCI: liberado para elaborar o Projeto de Implantação.\n' +
-      'Consultor(es): liberado para elaborar o Cronograma e incluir as agendas no SICLA.\n\n' +
-      'As duas frentes correm em paralelo.' +
+      'Técnico(s): liberado para elaborar o Cronograma e incluir as agendas no SICLA.\n' +
+      'Administrativo: seguir com a inclusão da RNI e das RNS de COB e Conversão.\n\n' +
+      'As frentes correm em paralelo.' +
       ASSINATURA,
   },
   {
-    passo: 9,
+    passo: 10,
     para: ['administrativo'],
-    assunto: 'Projeto elaborado — conferir e encaminhar — {{CLIENTE}}',
+    assunto: 'Projeto finalizado — pronto para revisão — {{CLIENTE}}',
     corpo:
       'O Projeto de Implantação da {{CLIENTE}} (projeto nº {{NUMERO_PROJETO}}) foi ' +
-      'elaborado pelo GCI {{GCI}}.\n\nPróximo passo: conferir, validar com o GCI ou o ' +
-      'Coordenador e encaminhar para assinatura.' +
+      'finalizado pelo GCI {{GCI}} e está pronto para a revisão e o envio ao cliente.\n\n' +
+      'Próximo passo: conferir o Projeto e encaminhar para assinatura.' +
       ASSINATURA,
   },
   {
     passo: 11,
+    para: ['coordenacao'],
+    assunto: 'Projeto enviado para assinatura — {{CLIENTE}}',
+    corpo:
+      'O Projeto de Implantação da {{CLIENTE}} (projeto nº {{NUMERO_PROJETO}}) foi ' +
+      'conferido pelo Administrativo e enviado ao cliente para assinatura.' +
+      ASSINATURA,
+  },
+  {
+    passo: 13,
     para: ['cliente'],
     assunto: 'Cronograma de Implantação — {{CLIENTE}}',
     corpo:
@@ -107,7 +164,7 @@ export const EMAILS_POR_PASSO: EmailDePasso[] = [
       ASSINATURA,
   },
   {
-    passo: 13,
+    passo: 15,
     para: ['cliente'],
     assunto: 'Boas-vindas à implantação do SIGER® — {{CLIENTE}}',
     corpo:
@@ -119,16 +176,37 @@ export const EMAILS_POR_PASSO: EmailDePasso[] = [
   },
   {
     passo: 16,
+    para: ['cliente'],
+    assunto: 'Cronograma de visitas — {{CLIENTE}}',
+    corpo:
+      'Prezado(a) {{CONTATO_NOME}},\n\nSegue o cronograma de visitas da implantação do ' +
+      'SIGER®, com as datas e os temas de cada encontro.\n\n' +
+      'Qualquer necessidade de ajuste, fale com {{CONSULTOR}}.' +
+      ASSINATURA,
+  },
+  {
+    passo: 17,
+    para: ['coordenacao', 'gci', 'administrativo'],
+    assunto: 'Projeto concluído — {{CLIENTE}}',
+    corpo:
+      'O projeto de implantação da {{CLIENTE}} (projeto nº {{NUMERO_PROJETO}}) foi ' +
+      'concluído em {{DATA_ENCERRAMENTO}}.\n\n' +
+      'Próximo passo: gerar o Termo de Encerramento.' +
+      ASSINATURA,
+  },
+  {
+    passo: 18,
     para: ['administrativo'],
     assunto: 'Termo de Encerramento gerado — conferir — {{CLIENTE}}',
     corpo:
-      'O Termo de Encerramento da {{CLIENTE}} (projeto nº {{NUMERO_PROJETO}}) foi gerado.\n\n' +
+      'O Termo de Encerramento da {{CLIENTE}} (projeto nº {{NUMERO_PROJETO}}) foi gerado ' +
+      'e segue em anexo.\n\n' +
       'Próximo passo: conferir, validar com o GCI ou o Coordenador e encaminhar para ' +
       'assinatura.' +
       ASSINATURA,
   },
   {
-    passo: 17,
+    passo: 19,
     para: ['consultores'],
     assunto: 'Termo conferido — seguir com o encerramento — {{CLIENTE}}',
     corpo:
@@ -137,7 +215,7 @@ export const EMAILS_POR_PASSO: EmailDePasso[] = [
       ASSINATURA,
   },
   {
-    passo: 18,
+    passo: 20,
     para: ['coordenacao', 'gci'],
     assunto: 'Encerramento de Implantação — {{CLIENTE}}',
     corpo:
@@ -146,7 +224,7 @@ export const EMAILS_POR_PASSO: EmailDePasso[] = [
       ASSINATURA,
   },
   {
-    passo: 19,
+    passo: 21,
     para: ['cliente'],
     assunto: 'Encerramento da implantação do SIGER® — {{CLIENTE}}',
     corpo:
@@ -164,11 +242,13 @@ export const EMAIL_POR_PASSO = new Map(
 
 /** Passo → tipo de documento que o e-mail leva EM ANEXO.
  *
- * Só onde o texto promete o arquivo E existe um documento gerado daquele tipo: o Cronograma
- * ("Segue o cronograma…") no passo 11 e o Termo ("segue em anexo") no passo 19. Anexa-se o
+ * Só onde o texto promete o arquivo E existe um documento gerado daquele tipo. Anexa-se o
  * documento mais RECENTE daquele tipo no projeto; se não houver, o e-mail sai só com o texto
  * (o envio ignora anexo ausente sem falhar). */
 export const ANEXO_POR_PASSO: Record<number, string> = {
-  11: 'cronograma',
-  19: 'termo',
+  11: 'projeto',
+  13: 'cronograma',
+  16: 'cronograma',
+  18: 'termo',
+  21: 'termo',
 };

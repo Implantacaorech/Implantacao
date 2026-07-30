@@ -206,7 +206,7 @@ export class ClientesSiclaService implements OnModuleInit {
       projeto.id,
       1,
       { nome: usuario.nome, perfil: usuario.perfil, perfis: usuario.perfis },
-      'Cliente cadastrado a partir da consulta ao SICLA',
+      { observacao: 'Cliente cadastrado a partir da consulta ao SICLA' },
     );
 
     return { projetoId: projeto.id, duplicado: false };

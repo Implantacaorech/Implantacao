@@ -28,6 +28,7 @@ não edite regra a regra à mão.
 - [[RN - Dicionário Inteligente]] — busca/pergunta sobre a documentação do SIGER®; RAG que nunca inventa; qualquer autenticado.
 - [[RN - Fluxo de Projetos (Onboarding)]] — cria o projeto a partir do e-mail de fechamento (parse, dedup, pacote inicial, e-mail-resumo).
 - [[RN - Protocolos de Treinamento]] — vídeo → transcrição → IA → revisão → publicação; aprovar/reprovar só ADM/Coordenador.
+- [[RN - Passos do Processo de Implantação]] — os **21 passos** (responsável, dependências, e-mail), a consulta de e-mails/documentos por passo e a configuração em Ferramentas.
 
 ## Relacionados no Vault
 

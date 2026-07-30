@@ -29,10 +29,20 @@ import {
   PASSOS,
   PASSOS_COM_ANEXO_DE_EMAIL,
   PASSOS_COM_CONFERENCIA,
+  PASSOS_COM_MARCACAO,
+  PASSOS_COM_REDACAO_DE_EMAIL,
   PASSOS_POR_NUMERO,
   PERFIS_POR_RESPONSAVEL,
   PERFIS_TELA_DO_PASSO,
 } from './passos.constants';
+
+/** O que a tela manda ao concluir um passo, além do simples "concluí". */
+export interface DadosConclusao {
+  observacao?: string;
+  marcado?: boolean;
+  dataMarcada?: string;
+  email?: { para?: string[]; assunto?: string; corpo?: string };
+}
 
 /** Onde cada projeto está no processo — uma linha por projeto, para o quadro por fase. */
 export interface PassoAtualDoProjeto {
@@ -66,6 +76,19 @@ export interface PassoView extends DefinicaoPasso {
   concluidoEm: string | null;
   concluidoPor: string;
   conferido: boolean;
+  /** Marcação exigida pelo passo (contrato/projeto assinado) e a data informada. */
+  marcado: boolean;
+  dataMarcada: string;
+  /** Texto que a PESSOA escreveu ao concluir — a descrição da negociação, no passo 5.
+   *
+   * Nome diferente de `observacao` de propósito: aquele é a descrição ESTÁTICA do passo, que
+   * vem de `DefinicaoPasso` e explica o que a etapa é. Chamar os dois de `observacao` fazia o
+   * spread de `...def` ser sobrescrito e a tela perdia a explicação do passo. */
+  observacaoRegistrada: string;
+  /** Rótulo da marcação que o passo cobra, ou vazio quando não cobra nenhuma. */
+  rotuloMarcacao: string;
+  /** A pessoa redige o e-mail na tela antes de o Painel enviar. */
+  redigeEmail: boolean;
   /** Passos que faltam concluir antes deste. */
   bloqueadoPor: number[];
   /** Pode ser concluído AGORA por quem está pedindo. */
@@ -225,15 +248,15 @@ export class PassosService {
     }
     if (papel === 'consultor') {
       await this.projetos.update(projetoId, { consultor: limpos.join(', ') });
-      // Passo 7 é "indicar o GCI E os técnicos" (era o 6 antes de o passo 3 "Realizar o
-      // Levantamento" entrar, em 2026-07-28). Ele se completa aqui, quando os técnicos
-      // entram — desde que o GCI já esteja definido. Ficava pendente para sempre quando a
-      // pessoa salvava pelo formulário do passo, que não passa por `designarConsultores`.
+      // Passo 8 é "indicar o GCI E os técnicos" (era o 7 antes da revisão de 2026-07-30).
+      // Ele se completa aqui, quando os técnicos entram — desde que o GCI já esteja
+      // definido. Ficava pendente para sempre quando a pessoa salvava pelo formulário do
+      // passo, que não passa por `designarConsultores`.
       const projeto = await this.projetos.findOne({ where: { id: projetoId } });
       if (limpos.length > 0 && projeto?.gci.trim()) {
         await this.concluirAutomatico(
           projetoId,
-          7,
+          8,
           autor,
           'GCI e técnicos indicados',
         );
@@ -283,6 +306,11 @@ export class PassosService {
         concluidoEm: feito ? feito.concluidoEm.toISOString() : null,
         concluidoPor: feito?.concluidoPor ?? '',
         conferido: feito?.conferido ?? false,
+        marcado: feito?.marcado ?? false,
+        dataMarcada: feito?.dataMarcada ?? '',
+        observacaoRegistrada: feito?.observacao ?? '',
+        rotuloMarcacao: PASSOS_COM_MARCACAO[def.numero] ?? '',
+        redigeEmail: PASSOS_COM_REDACAO_DE_EMAIL.has(def.numero),
         bloqueadoPor,
         liberado: motivos.length === 0,
         motivos,
@@ -297,11 +325,27 @@ export class PassosService {
     projetoId: number,
     numero: number,
     usuario: { nome: string; perfil: Perfil; perfis?: Perfil[] },
-    observacao = '',
+    dados: DadosConclusao = {},
   ): Promise<PassoView[]> {
     const def = this.definicao(numero);
     const projeto = await this.projetos.findOne({ where: { id: projetoId } });
     if (!projeto) throw new NotFoundException('Projeto não encontrado.');
+
+    // Passos 7 e 12 não fecham sem a assinatura marcada E a data — é o dado que o processo
+    // cobra, e um passo "concluído" sem ele não prova nada.
+    const rotulo = PASSOS_COM_MARCACAO[numero];
+    if (rotulo) {
+      if (!dados.marcado) {
+        throw new BadRequestException(
+          `Marque "${rotulo}" antes de concluir o passo ${numero}.`,
+        );
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test((dados.dataMarcada ?? '').trim())) {
+        throw new BadRequestException(
+          `Informe a data da assinatura (${rotulo}) para concluir o passo ${numero}.`,
+        );
+      }
+    }
 
     if (
       !this.podeExecutar(
@@ -346,22 +390,47 @@ export class PassosService {
         projetoId,
         passo: numero,
         concluidoPor: usuario.nome,
-        observacao,
+        observacao: dados.observacao ?? '',
+        marcado: dados.marcado ?? false,
+        dataMarcada: (dados.dataMarcada ?? '').trim(),
       }),
     );
     await this.eventos.save(
       this.eventos.create({
         projetoId,
         tipo: 'passo',
-        descricao: `Passo ${numero} concluído: ${def.titulo}`,
+        descricao: rotulo
+          ? `Passo ${numero} concluído: ${def.titulo} (${rotulo} em ${dados.dataMarcada})`
+          : `Passo ${numero} concluído: ${def.titulo}`,
         autor: usuario.nome,
       }),
     );
 
     await this.registrarEfeitosNoProjeto(projeto, numero);
     await this.sincronizarEtapa(projeto);
-    void this.notificacao.notificarPasso(projeto, def, usuario.nome);
+    // O e-mail redigido na tela só vale nos passos que preveem redação — nos demais, mandar
+    // um corpo pela API contornaria o modelo aprovado.
+    const redigido = PASSOS_COM_REDACAO_DE_EMAIL.has(numero)
+      ? dados.email
+      : undefined;
+    void this.notificacao.notificarPasso(projeto, def, usuario.nome, redigido);
     return this.listar(projetoId, usuario);
+  }
+
+  /** Pré-visualização do e-mail de um passo, para a tela de redação abrir preenchida.
+   *
+   * Não exige a permissão de CONCLUIR: quem tem acesso à carteira pode ver o que o Painel
+   * mandaria — é a mesma transparência da consulta ao histórico. `null` = passo sem e-mail. */
+  async previaEmail(projetoId: number, numero: number) {
+    this.definicao(numero);
+    const projeto = await this.projetos.findOne({ where: { id: projetoId } });
+    if (!projeto) throw new NotFoundException('Projeto não encontrado.');
+    return this.notificacao.montar(projeto, numero);
+  }
+
+  /** Os e-mails já gerados no projeto, para consulta. */
+  async historicoDeEmails(projetoId: number) {
+    return this.notificacao.historico(projetoId);
   }
 
   /** Em que passo cada projeto está, para montar o quadro (Kanban) por fase.
@@ -459,7 +528,7 @@ export class PassosService {
   /** Conclui um passo porque a AÇÃO CORRESPONDENTE aconteceu no sistema — o robô criou a
    * ficha, o Administrativo agendou o levantamento, o GCI gerou o Projeto.
    *
-   * Sem isto, os 18 passos seriam um checklist manual rodando em paralelo ao sistema: a
+   * Sem isto, os 21 passos seriam um checklist manual rodando em paralelo ao sistema: a
    * pessoa faria o trabalho numa tela e teria de ir marcar a caixinha em outra.
    *
    * Diferenças em relação a `concluir()`, ambas deliberadas:
@@ -535,7 +604,7 @@ export class PassosService {
     return true;
   }
 
-  /** Marca a conferência dos passos 9 e 16 (Administrativo, validado com GCI ou
+  /** Marca a conferência dos passos 11 e 19 (Administrativo, validado com GCI ou
    * Coordenador). É o que libera o passo seguinte. */
   async conferir(
     projetoId: number,
@@ -570,7 +639,7 @@ export class PassosService {
 
   /** Desfaz a conclusão de um passo REVERSÍVEL.
    *
-   * A partir do passo 11 a conclusão é definitiva: são atos já formalizados com o cliente
+   * A partir do passo 14 a conclusão é definitiva: são atos já formalizados com o cliente
    * (check-list gerado, boas-vindas enviadas, termo assinado). Reabrir daria ao Painel um
    * histórico que não corresponde ao que o cliente recebeu. */
   async reabrir(
@@ -615,7 +684,7 @@ export class PassosService {
     return this.listar(projetoId, usuario);
   }
 
-  /** Anexa ao projeto o e-mail ENCAMINHADO pelo Outlook, como registro dos passos 3 e 4.
+  /** Anexa ao projeto o e-mail ENCAMINHADO pelo Outlook, como registro dos passos 4 e 6.
    *
    * O e-mail desses passos sai do Outlook da própria pessoa, não do Painel; o que o sistema
    * guarda é a prova de que aconteceu. Aceita `.msg` (nativo do Outlook) e `.eml`. */
@@ -658,16 +727,16 @@ export class PassosService {
 
   /** Efeitos que a conclusão de um passo tem sobre os campos do projeto.
    *
-   * Passo 14 ("Sinalizar Projeto concluído + Data de conclusão") grava a data em
-   * `dataEncerramento` — decisão do usuário em 2026-07-22. Só grava se ainda estiver vazio,
-   * para não sobrescrever uma data que alguém já tenha informado à mão. */
+   * "Sinalizar Projeto concluído" grava a data em `dataEncerramento` — decisão do usuário em
+   * 2026-07-22. Só grava se ainda estiver vazio, para não sobrescrever uma data que alguém já
+   * tenha informado à mão. */
   private async registrarEfeitosNoProjeto(
     projeto: Projeto,
     numero: number,
   ): Promise<void> {
-    // Passo 15 "Sinalizar Projeto concluído" registra a data de encerramento (era o passo 14
-    // antes da inserção do "Realizar o Levantamento" em 2026-07-28).
-    if (numero === 15 && !projeto.dataEncerramento.trim()) {
+    // Passo 17 "Sinalizar Projeto concluído" registra a data de encerramento (era o 15 antes
+    // da revisão de 2026-07-30, que inseriu os passos 5 e 12).
+    if (numero === 17 && !projeto.dataEncerramento.trim()) {
       projeto.dataEncerramento = hojeIso();
       await this.projetos.save(projeto);
     }

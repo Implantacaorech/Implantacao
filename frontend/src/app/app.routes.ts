@@ -288,6 +288,15 @@ export const routes: Routes = [
           import('./features/config/modelo-email-form.component').then((m) => m.ModeloEmailFormComponent),
       },
       {
+        path: 'config/destinatarios-passo',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Destinatários por Passo' },
+        loadComponent: () =>
+          import('./features/config/destinatarios-passo.component').then(
+            (m) => m.DestinatariosPassoComponent,
+          ),
+      },
+      {
         path: 'config/consultas-bd',
         canActivate: [perfilGuard('ADM')],
         data: { titulo: 'Consultas BD' },

@@ -13,6 +13,8 @@ import { Projeto } from '../src/database/entities/projeto.entity';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
 import { ModeloEmailService } from '../src/email/modelo-email.service';
+import { MODELOS_EMAIL_PADRAO } from '../src/email/modelo-email.constants';
+import { EMAILS_POR_PASSO } from '../src/passos/passos-email.constants';
 
 // dados/email_test_<JEST_WORKER_ID>/ guarda smtp.json/imap.json/gmail_client.json/
 // gmail_token.json entre execuções — limpo no início E no fim para não vazar estado de
@@ -234,14 +236,24 @@ describe('E-mail / Fluxo (e2e)', () => {
   });
 
   describe('Config → Modelos de e-mail', () => {
-    it('lista os 7 modelos padrão semeados', async () => {
+    // Duas famílias semeadas: os modelos avulsos herdados do Flask e um `passo-N` por passo
+    // que dispara e-mail. Os números saem das constantes de propósito — a revisão do processo
+    // (19 → 21 passos) quebrou este teste quando ele fixava "7", e o próximo passo novo
+    // quebraria de novo.
+    it('semeia os modelos avulsos e um por passo que envia e-mail', async () => {
       const res = await auth(
         request(server()).get('/api/config/modelos-email'),
       );
-      expect(res.body.data.itens).toHaveLength(7);
-      expect(
-        res.body.data.itens.map((m: { slug: string }) => m.slug),
-      ).toContain('boas-vindas');
+      const slugs = (res.body.data.itens as { slug: string }[]).map(
+        (m) => m.slug,
+      );
+      expect(slugs).toContain('boas-vindas');
+      for (const e of EMAILS_POR_PASSO) {
+        expect(slugs).toContain(`passo-${e.passo}`);
+      }
+      expect(slugs).toHaveLength(
+        MODELOS_EMAIL_PADRAO.length + EMAILS_POR_PASSO.length,
+      );
     });
 
     it('cria, edita e não deixa excluir um modelo padrão', async () => {

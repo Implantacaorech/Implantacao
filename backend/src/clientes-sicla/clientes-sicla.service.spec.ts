@@ -161,7 +161,7 @@ describe('ClientesSiclaService', () => {
       7,
       1,
       expect.objectContaining({ nome: 'Vendedor', perfil: 'Comercial' }),
-      expect.any(String),
+      expect.objectContaining({ observacao: expect.any(String) }),
     );
   });
 
