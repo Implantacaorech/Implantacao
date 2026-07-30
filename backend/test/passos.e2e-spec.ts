@@ -153,13 +153,13 @@ describe('Passos do processo (e2e)', () => {
     await app.close();
   });
 
-  it('lista os 19 passos com responsável e estado', async () => {
+  it('lista os 21 passos com responsável e estado', async () => {
     const res = await auth(
       request(server()).get(`/api/projetos/${projetoId}/passos`),
       tokens.administrativo,
     ).expect(200);
     const dados = (res.body as { data: { numero: number }[] }).data;
-    expect(dados.length).toBe(19);
+    expect(dados.length).toBe(21);
     expect(dados[0].numero).toBe(1);
   });
 
@@ -185,53 +185,53 @@ describe('Passos do processo (e2e)', () => {
     expect(JSON.stringify(res.body)).toContain('depende do passo 1');
   });
 
-  it('deixa o Coordenador indicar GCI e técnicos (passo 7)', async () => {
-    await jaConcluido([1, 2, 3, 4, 5, 6]);
+  it('deixa o Coordenador indicar GCI e técnicos (passo 8)', async () => {
+    await jaConcluido([1, 2, 3, 4, 5, 6, 7]);
     await auth(
-      request(server()).post(`/api/projetos/${projetoId}/passos/7/concluir`),
+      request(server()).post(`/api/projetos/${projetoId}/passos/8/concluir`),
       tokens.coordenador,
     )
       .send({})
       .expect(201);
   });
 
-  it('não deixa o Administrativo fazer o passo 7 (mudou na revisão do processo)', async () => {
-    await jaConcluido([1, 2, 3, 4, 5, 6]);
+  it('não deixa o Administrativo fazer o passo 8 (mudou na revisão do processo)', async () => {
+    await jaConcluido([1, 2, 3, 4, 5, 6, 7]);
     await auth(
-      request(server()).post(`/api/projetos/${projetoId}/passos/7/concluir`),
+      request(server()).post(`/api/projetos/${projetoId}/passos/8/concluir`),
       tokens.administrativo,
     )
       .send({})
       .expect(403);
   });
 
-  it('permite o Cronograma (11) sem o Projeto (9) — trilhas paralelas', async () => {
+  it('permite o Cronograma (13) sem o Projeto (10) — trilhas paralelas', async () => {
     await jaConcluido([1, 2, 3, 4, 5, 6, 7, 8]);
     await designar('consultor', ['Consultor Um']);
-    // O passo 11 sai direto do 8; não espera o 9 nem o 10.
+    // O passo 13 sai direto do 8; não espera a RNS (9) nem o Projeto (10).
     await auth(
-      request(server()).post(`/api/projetos/${projetoId}/passos/11/concluir`),
+      request(server()).post(`/api/projetos/${projetoId}/passos/13/concluir`),
       tokens.consultor,
     )
       .send({})
       .expect(201);
   });
 
-  it('segura o passo 11 enquanto o passo 8 não foi concluído', async () => {
+  it('segura o passo 13 enquanto o passo 8 não foi concluído', async () => {
     await jaConcluido([1, 2, 3, 4, 5, 6, 7]);
     await designar('consultor', ['Consultor Um']);
     await auth(
-      request(server()).post(`/api/projetos/${projetoId}/passos/11/concluir`),
+      request(server()).post(`/api/projetos/${projetoId}/passos/13/concluir`),
       tokens.consultor,
     )
       .send({})
       .expect(400);
   });
 
-  it('exige a conferência do passo 10 antes de liberar o seguinte', async () => {
-    await jaConcluido([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  it('exige a conferência do passo 11 antes de liberar o seguinte', async () => {
+    await jaConcluido([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     await auth(
-      request(server()).post(`/api/projetos/${projetoId}/passos/10/concluir`),
+      request(server()).post(`/api/projetos/${projetoId}/passos/11/concluir`),
       tokens.administrativo,
     )
       .send({})
@@ -241,13 +241,13 @@ describe('Passos do processo (e2e)', () => {
       request(server()).get(`/api/projetos/${projetoId}/passos`),
       tokens.administrativo,
     ).expect(200);
-    const passo10 = (
+    const passo11 = (
       lista.body as { data: { numero: number; conferido: boolean }[] }
-    ).data.find((p) => p.numero === 10);
-    expect(passo10?.conferido).toBe(false);
+    ).data.find((p) => p.numero === 11);
+    expect(passo11?.conferido).toBe(false);
 
     await auth(
-      request(server()).post(`/api/projetos/${projetoId}/passos/10/conferir`),
+      request(server()).post(`/api/projetos/${projetoId}/passos/11/conferir`),
       tokens.administrativo,
     ).expect(201);
 
@@ -255,16 +255,16 @@ describe('Passos do processo (e2e)', () => {
       request(server()).get(`/api/projetos/${projetoId}/passos`),
       tokens.administrativo,
     ).expect(200);
-    const passo10Depois = (
+    const passo11Depois = (
       depois.body as { data: { numero: number; conferido: boolean }[] }
-    ).data.find((p) => p.numero === 10);
-    expect(passo10Depois?.conferido).toBe(true);
+    ).data.find((p) => p.numero === 11);
+    expect(passo11Depois?.conferido).toBe(true);
   });
 
-  it('não deixa desmarcar passo definitivo (12 em diante)', async () => {
-    await jaConcluido([1, 2, 3, 4, 5, 6, 7, 8, 11, 12]);
+  it('não deixa desmarcar passo definitivo (14 em diante)', async () => {
+    await jaConcluido([1, 2, 3, 4, 5, 6, 7, 8, 13, 14]);
     const res = await auth(
-      request(server()).delete(`/api/projetos/${projetoId}/passos/12`),
+      request(server()).delete(`/api/projetos/${projetoId}/passos/14`),
       tokens.consultor,
     ).expect(400);
     expect(JSON.stringify(res.body)).toContain('definitivo');
@@ -309,7 +309,7 @@ describe('Passos do processo (e2e)', () => {
     it('Consultor NÃO designado no projeto é recusado', async () => {
       await jaConcluido([1, 2, 3, 4, 5, 6, 7, 8]);
       const res = await auth(
-        request(server()).post(`/api/projetos/${projetoId}/passos/11/concluir`),
+        request(server()).post(`/api/projetos/${projetoId}/passos/13/concluir`),
         tokens.consultor,
       )
         .send({})
@@ -321,7 +321,7 @@ describe('Passos do processo (e2e)', () => {
       await jaConcluido([1, 2, 3, 4, 5, 6, 7, 8]);
       await designar('consultor', ['Consultor Um']);
       await auth(
-        request(server()).post(`/api/projetos/${projetoId}/passos/11/concluir`),
+        request(server()).post(`/api/projetos/${projetoId}/passos/13/concluir`),
         tokens.consultor,
       )
         .send({})
@@ -330,9 +330,9 @@ describe('Passos do processo (e2e)', () => {
 
     it('GCI só age no projeto em que é o GCI', async () => {
       await jaConcluido([1, 2, 3, 4, 5, 6, 7, 8]);
-      // Sem `Projeto.gci` apontando para ele, o passo 9 é recusado.
+      // Sem `Projeto.gci` apontando para ele, o passo 10 é recusado.
       await auth(
-        request(server()).post(`/api/projetos/${projetoId}/passos/9/concluir`),
+        request(server()).post(`/api/projetos/${projetoId}/passos/10/concluir`),
         tokens.gci,
       )
         .send({})
@@ -345,7 +345,7 @@ describe('Passos do processo (e2e)', () => {
         .send({ gcis: ['GCI Um'] })
         .expect(200);
       await auth(
-        request(server()).post(`/api/projetos/${projetoId}/passos/9/concluir`),
+        request(server()).post(`/api/projetos/${projetoId}/passos/10/concluir`),
         tokens.gci,
       )
         .send({})
@@ -355,7 +355,7 @@ describe('Passos do processo (e2e)', () => {
     it('ADM faz tudo, mesmo sem estar designado', async () => {
       await jaConcluido([1, 2, 3, 4, 5, 6, 7, 8]);
       await auth(
-        request(server()).post(`/api/projetos/${projetoId}/passos/11/concluir`),
+        request(server()).post(`/api/projetos/${projetoId}/passos/13/concluir`),
         tokens.adm,
       )
         .send({})
@@ -368,10 +368,10 @@ describe('Passos do processo (e2e)', () => {
         request(server()).get(`/api/projetos/${projetoId}/passos`),
         tokens.consultor,
       ).expect(200);
-      const passo11 = (
+      const passo13 = (
         res.body as { data: { numero: number; motivos: string[] }[] }
-      ).data.find((p) => p.numero === 11);
-      expect(passo11?.motivos.join(' ')).toContain('não está designado');
+      ).data.find((p) => p.numero === 13);
+      expect(passo13?.motivos.join(' ')).toContain('não está designado');
     });
   });
 
@@ -433,9 +433,9 @@ describe('Passos do processo (e2e)', () => {
   });
 
   describe('alinhamento com o processo revisado (bugs reportados)', () => {
-    it('agendar o levantamento (passo 2) NÃO exige GCI — ele só entra no passo 6', async () => {
+    it('agendar o levantamento (passo 2) NÃO exige GCI — ele só entra no passo 8', async () => {
       // Era o bug: `agendar` herdou do fluxo antigo a exigência de GCI definido, mas no
-      // processo novo o GCI é indicado só no passo 6. O passo 2 nunca gravava.
+      // processo novo o GCI é indicado só no passo 8. O passo 2 nunca gravava.
       await jaConcluido([1]);
       const futuro = new Date();
       futuro.setDate(futuro.getDate() + 10);
@@ -481,10 +481,10 @@ describe('Passos do processo (e2e)', () => {
       expect(dados.levantadores.map((l) => l.pessoa)).toEqual(['GCI Um']);
     });
 
-    it('o passo 7 conclui ao salvar GCI + técnicos pelo formulário do passo', async () => {
+    it('o passo 8 conclui ao salvar GCI + técnicos pelo formulário do passo', async () => {
       // O formulário do passo grava por `definir-gci` + `pessoas`; antes só
       // `designarConsultores` (a tela antiga) concluía o passo, então ele ficava pendente.
-      await jaConcluido([1, 2, 3, 4, 5, 6]);
+      await jaConcluido([1, 2, 3, 4, 5, 6, 7]);
       await auth(
         request(server()).post(`/api/projetos/${projetoId}/definir-gci`),
         tokens.coordenador,
@@ -499,11 +499,11 @@ describe('Passos do processo (e2e)', () => {
         .expect(200);
 
       const feitos = await passosRepo.find({ where: { projetoId } });
-      expect(feitos.map((f) => f.passo)).toContain(7);
+      expect(feitos.map((f) => f.passo)).toContain(8);
     });
 
-    it('não conclui o passo 7 se ainda não há GCI', async () => {
-      await jaConcluido([1, 2, 3, 4, 5, 6]);
+    it('não conclui o passo 8 se ainda não há GCI', async () => {
+      await jaConcluido([1, 2, 3, 4, 5, 6, 7]);
       await auth(
         request(server()).patch(`/api/projetos/${projetoId}/pessoas`),
         tokens.coordenador,
@@ -511,12 +511,12 @@ describe('Passos do processo (e2e)', () => {
         .send({ papel: 'consultor', pessoas: ['Consultor Um'] })
         .expect(200);
       const feitos = await passosRepo.find({ where: { projetoId } });
-      expect(feitos.map((f) => f.passo)).not.toContain(7);
+      expect(feitos.map((f) => f.passo)).not.toContain(8);
     });
   });
 
   describe('ligação com as ações reais do sistema', () => {
-    // Sem estas ligações, os 19 passos seriam um checklist manual em paralelo ao sistema:
+    // Sem estas ligações, os 21 passos seriam um checklist manual em paralelo ao sistema:
     // a pessoa faria o trabalho numa tela e teria de marcar a caixinha em outra.
 
     it('o passo 1 é concluído quando a ficha nasce do e-mail de fechamento', async () => {
@@ -661,7 +661,7 @@ describe('Passos do processo (e2e)', () => {
     });
   });
 
-  describe('RNS do projeto (passo 8)', () => {
+  describe('RNS do projeto (passo 9)', () => {
     it('aceita quantidade livre de RNS, de tipos diferentes', async () => {
       for (const rns of [
         { tipo: 'RNI', numero: '654321' },
