@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BiImplantacaoService } from './bi-implantacao.service';
 import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
-import { SQL_AGENDAS } from './bi-implantacao.constants';
+import { ESPECIES_CALENDARIO, SQL_AGENDAS } from './bi-implantacao.constants';
 
 /** Linhas no formato CRU que o driver Oracle devolve (colunas MAIÚSCULAS), como em
  * POWERBI.POWERBI_IMPLANTACAO_RESUMO. */
@@ -98,7 +98,10 @@ describe('BiImplantacaoService', () => {
 
   describe('periodo', () => {
     it('usa as datas informadas quando são ISO válidas', () => {
-      const p = service.periodo({ dataIni: '2026-01-01', dataFim: '2026-03-31' });
+      const p = service.periodo({
+        dataIni: '2026-01-01',
+        dataFim: '2026-03-31',
+      });
       expect(p).toEqual({ inicio: '2026-01-01', fim: '2026-03-31' });
     });
 
@@ -109,12 +112,18 @@ describe('BiImplantacaoService', () => {
     });
 
     it('inverte quando o início vem depois do fim', () => {
-      const p = service.periodo({ dataIni: '2026-12-01', dataFim: '2026-01-01' });
+      const p = service.periodo({
+        dataIni: '2026-12-01',
+        dataFim: '2026-01-01',
+      });
       expect(p).toEqual({ inicio: '2026-01-01', fim: '2026-12-01' });
     });
 
     it('ignora data em formato inválido e cai no padrão', () => {
-      const p = service.periodo({ dataIni: '29/07/2026', dataFim: '2026-07-29' });
+      const p = service.periodo({
+        dataIni: '29/07/2026',
+        dataFim: '2026-07-29',
+      });
       expect(p.inicio).toBe('2025-07-29');
     });
 
@@ -186,7 +195,14 @@ describe('BiImplantacaoService', () => {
         mensagem: '1 linha(s).',
         colunas: [],
         // HORASALDO propositalmente divergente de previstas - realizadas
-        linhas: [{ ...LINHAS_ORACLE[0], HORASPREVISTAS: 10, HORASREALIZADAS: 4, HORASALDO: 99 }],
+        linhas: [
+          {
+            ...LINHAS_ORACLE[0],
+            HORASPREVISTAS: 10,
+            HORASREALIZADAS: 4,
+            HORASALDO: 99,
+          },
+        ],
       });
       const r = await service.resumo({});
       expect(r.totais.horasSaldo).toBe(99); // coluna do SICLA
@@ -198,7 +214,9 @@ describe('BiImplantacaoService', () => {
         ok: true,
         mensagem: '1 linha(s).',
         colunas: [],
-        linhas: [{ ...LINHAS_ORACLE[0], HORASPREVISTAS: 10, HORASREALIZADAS: 25 }],
+        linhas: [
+          { ...LINHAS_ORACLE[0], HORASPREVISTAS: 10, HORASREALIZADAS: 25 },
+        ],
       });
       const r = await service.resumo({});
       expect(r.totais.horasSaldoCalculado).toBe(-15);
@@ -252,7 +270,11 @@ describe('BiImplantacaoService', () => {
       expect(r.filtros.status).toEqual(['6-Concluída']);
       expect(r.filtros.tecnicos).toEqual(['Kailan']);
       // a própria dimensão continua completa
-      expect(r.filtros.grupos).toEqual(['DEG / DALCERO', 'JES-MAHI', 'MANTAS BRASIL']);
+      expect(r.filtros.grupos).toEqual([
+        'DEG / DALCERO',
+        'JES-MAHI',
+        'MANTAS BRASIL',
+      ]);
     });
 
     it('filtra por RNS de implantação e rotula a opção com o cliente', async () => {
@@ -386,7 +408,10 @@ describe('BiImplantacaoService', () => {
 
     it('saldo atual é null quando o recorte não devolve nada', async () => {
       disponibilidade.executarSql.mockResolvedValue({
-        ok: true, mensagem: '0', colunas: [], linhas: [],
+        ok: true,
+        mensagem: '0',
+        colunas: [],
+        linhas: [],
       });
       const r = await service.extrato({});
       expect(r.totais.saldoAtual).toBeNull();
@@ -454,10 +479,14 @@ describe('BiImplantacaoService', () => {
 
     it('filtra por grupo econômico e por técnico', async () => {
       expect(
-        (await service.extrato({ grupo: ['COCOLANDIA / DRM'] })).linhas.map((l) => l.rns),
+        (await service.extrato({ grupo: ['COCOLANDIA / DRM'] })).linhas.map(
+          (l) => l.rns,
+        ),
       ).toEqual([138900]);
       expect(
-        (await service.extrato({ tecnico: ['Ramon'] })).linhas.map((l) => l.rns),
+        (await service.extrato({ tecnico: ['Ramon'] })).linhas.map(
+          (l) => l.rns,
+        ),
       ).toEqual([138935]);
     });
 
@@ -474,7 +503,10 @@ describe('BiImplantacaoService', () => {
 
     it('propaga erro do banco sem quebrar', async () => {
       disponibilidade.executarSql.mockResolvedValue({
-        ok: false, mensagem: 'ORA-01652', colunas: [], linhas: [],
+        ok: false,
+        mensagem: 'ORA-01652',
+        colunas: [],
+        linhas: [],
       });
       const r = await service.extrato({});
       expect(r.erro).toContain('ORA-01652');
@@ -486,30 +518,57 @@ describe('BiImplantacaoService', () => {
   describe('rnsVinculadas', () => {
     const LINHAS_RNS = [
       {
-        CODIGO: 56461001, PEDIDO: 564610, ITEM: 1, DATA_CRIACAO: '2026-07-28',
-        STATUSDES: '1-Redigida', SIGLA: 'CNV', SISDESCRI: 'Conversão',
-        VISAOGERAL: '[BON] Conversão de histórico de vendas', VERSOESGERACAO: null,
-        VALIDADOCLI: 0, TIPODES: '6-Conversão', RESNOME: 'Kailan', ANANOME: 'Ana',
-        CLIENTE: 3729, FANTASIA: 'PLAQUES RS', IMP_COD: 138937,
+        CODIGO: 56461001,
+        PEDIDO: 564610,
+        ITEM: 1,
+        DATA_CRIACAO: '2026-07-28',
+        STATUSDES: '1-Redigida',
+        SIGLA: 'CNV',
+        SISDESCRI: 'Conversão',
+        VISAOGERAL: '[BON] Conversão de histórico de vendas',
+        VERSOESGERACAO: null,
+        VALIDADOCLI: 0,
+        TIPODES: '6-Conversão',
+        RESNOME: 'Kailan',
+        ANANOME: 'Ana',
+        CLIENTE: 3729,
+        FANTASIA: 'PLAQUES RS',
+        IMP_COD: 138937,
         IMP_DESCRICAO: 'PLAQUES RS - Controladoria',
-        STATUS_IMPLANTACAO: '1-Não inciado', TECNICO: 'Kailan',
+        STATUS_IMPLANTACAO: '1-Não inciado',
+        TECNICO: 'Kailan',
         GRUPO_ECONOMICO: 'MANTAS BRASIL',
       },
       {
-        CODIGO: 56460001, PEDIDO: 564600, ITEM: 2, DATA_CRIACAO: '2026-07-20',
-        STATUSDES: '10-Entregue', SIGLA: 'FAT', SISDESCRI: 'Faturamento',
-        VISAOGERAL: 'Ajuste no faturamento', VERSOESGERACAO: '2.8.1',
-        VALIDADOCLI: 1, TIPODES: '5-Implementação', RESNOME: 'Eder', ANANOME: 'Bia',
-        CLIENTE: 982, FANTASIA: 'JES-MAHI', IMP_COD: 138900,
+        CODIGO: 56460001,
+        PEDIDO: 564600,
+        ITEM: 2,
+        DATA_CRIACAO: '2026-07-20',
+        STATUSDES: '10-Entregue',
+        SIGLA: 'FAT',
+        SISDESCRI: 'Faturamento',
+        VISAOGERAL: 'Ajuste no faturamento',
+        VERSOESGERACAO: '2.8.1',
+        VALIDADOCLI: 1,
+        TIPODES: '5-Implementação',
+        RESNOME: 'Eder',
+        ANANOME: 'Bia',
+        CLIENTE: 982,
+        FANTASIA: 'JES-MAHI',
+        IMP_COD: 138900,
         IMP_DESCRICAO: 'JES-MAHI - PWE',
-        STATUS_IMPLANTACAO: '6-Concluída', TECNICO: 'Jolemar',
+        STATUS_IMPLANTACAO: '6-Concluída',
+        TECNICO: 'Jolemar',
         GRUPO_ECONOMICO: 'JES-MAHI',
       },
     ];
 
     beforeEach(() => {
       disponibilidade.executarSql.mockResolvedValue({
-        ok: true, mensagem: '2 linha(s).', colunas: [], linhas: LINHAS_RNS,
+        ok: true,
+        mensagem: '2 linha(s).',
+        colunas: [],
+        linhas: LINHAS_RNS,
       });
     });
 
@@ -524,36 +583,64 @@ describe('BiImplantacaoService', () => {
       expect(r.linhas[0].validadaCliente).toBe(false);
       expect(r.linhas[1].validadaCliente).toBe(true);
       expect(r.totais).toEqual({
-        quantidade: 2, validadas: 1, naoValidadas: 1, implantacoes: 2,
+        quantidade: 2,
+        validadas: 1,
+        naoValidadas: 1,
+        implantacoes: 2,
       });
     });
 
     it('filtra por validação do cliente (tri-estado)', async () => {
-      expect((await service.rnsVinculadas({ validada: 'sim' })).linhas.map((l) => l.rns))
-        .toEqual(['564600-2']);
-      expect((await service.rnsVinculadas({ validada: 'nao' })).linhas.map((l) => l.rns))
-        .toEqual(['564610-1']);
+      expect(
+        (await service.rnsVinculadas({ validada: 'sim' })).linhas.map(
+          (l) => l.rns,
+        ),
+      ).toEqual(['564600-2']);
+      expect(
+        (await service.rnsVinculadas({ validada: 'nao' })).linhas.map(
+          (l) => l.rns,
+        ),
+      ).toEqual(['564610-1']);
       // vazio = todas
-      expect((await service.rnsVinculadas({ validada: '' })).linhas).toHaveLength(2);
+      expect(
+        (await service.rnsVinculadas({ validada: '' })).linhas,
+      ).toHaveLength(2);
       expect((await service.rnsVinculadas({})).linhas).toHaveLength(2);
     });
 
     it('aplica os filtros padrão (grupo, RNS de implantação, status e consultor)', async () => {
-      expect((await service.rnsVinculadas({ rns: ['138937'] })).linhas.map((l) => l.rns))
-        .toEqual(['564610-1']);
-      expect((await service.rnsVinculadas({ tecnico: ['Jolemar'] })).linhas.map((l) => l.rns))
-        .toEqual(['564600-2']);
-      expect((await service.rnsVinculadas({ grupo: ['JES-MAHI'] })).linhas.map((l) => l.rns))
-        .toEqual(['564600-2']);
       expect(
-        (await service.rnsVinculadas({ statusImplantacao: ['6-Concluída'] })).linhas.map((l) => l.rns),
+        (await service.rnsVinculadas({ rns: ['138937'] })).linhas.map(
+          (l) => l.rns,
+        ),
+      ).toEqual(['564610-1']);
+      expect(
+        (await service.rnsVinculadas({ tecnico: ['Jolemar'] })).linhas.map(
+          (l) => l.rns,
+        ),
+      ).toEqual(['564600-2']);
+      expect(
+        (await service.rnsVinculadas({ grupo: ['JES-MAHI'] })).linhas.map(
+          (l) => l.rns,
+        ),
+      ).toEqual(['564600-2']);
+      expect(
+        (
+          await service.rnsVinculadas({ statusImplantacao: ['6-Concluída'] })
+        ).linhas.map((l) => l.rns),
       ).toEqual(['564600-2']);
     });
 
     it('filtra por status da RNS, sigla e tipo', async () => {
-      expect((await service.rnsVinculadas({ status: ['1-Redigida'] })).linhas).toHaveLength(1);
-      expect((await service.rnsVinculadas({ sigla: ['FAT'] })).linhas).toHaveLength(1);
-      expect((await service.rnsVinculadas({ tipo: ['6-Conversão'] })).linhas).toHaveLength(1);
+      expect(
+        (await service.rnsVinculadas({ status: ['1-Redigida'] })).linhas,
+      ).toHaveLength(1);
+      expect(
+        (await service.rnsVinculadas({ sigla: ['FAT'] })).linhas,
+      ).toHaveLength(1);
+      expect(
+        (await service.rnsVinculadas({ tipo: ['6-Conversão'] })).linhas,
+      ).toHaveLength(1);
     });
 
     it('conta por status e por sigla, do maior para o menor', async () => {
@@ -568,7 +655,8 @@ describe('BiImplantacaoService', () => {
     it('rotula a RNS de implantação com o cliente', async () => {
       const r = await service.rnsVinculadas({});
       expect(r.filtros.rns).toContainEqual({
-        codigo: '138937', rotulo: '138937 — PLAQUES RS',
+        codigo: '138937',
+        rotulo: '138937 — PLAQUES RS',
       });
     });
 
@@ -579,7 +667,10 @@ describe('BiImplantacaoService', () => {
 
     it('propaga erro do banco sem quebrar', async () => {
       disponibilidade.executarSql.mockResolvedValue({
-        ok: false, mensagem: 'ORA-00942', colunas: [], linhas: [],
+        ok: false,
+        mensagem: 'ORA-00942',
+        colunas: [],
+        linhas: [],
       });
       const r = await service.rnsVinculadas({});
       expect(r.erro).toContain('ORA-00942');
@@ -599,28 +690,49 @@ describe('BiImplantacaoService', () => {
   describe('agendas', () => {
     function agenda(over: Record<string, unknown> = {}) {
       return {
-        CODIGO: 1, RNSIMP: 138571, DIA: '2026-07-06', HORAINI: '09:00:00',
-        HORAFIM: '11:30:00', STATUSDES: '3-Agendada', ESPECIE: 92,
+        CODIGO: 1,
+        RNSIMP: 138571,
+        DIA: '2026-07-06',
+        HORAINI: '09:00:00',
+        HORAFIM: '11:30:00',
+        STATUSDES: '3-Agendada',
+        ESPECIE: 92,
         ESPECIEDES: 'Atendimento Externo NÃO COBRADO',
-        PARTICIPANTES: 'Liliana,Medeiros', RESPONSAVELDES: 'Paim',
-        CLIENTE: 3627, CLIENTEFAN: 'RAMADA', ASSUNTO: 'Treinamento',
-        HORASDURACAO: 2.5, VISITA: null, OBSERVACAO: 'obs',
-        STATUS_IMPLANTACAO: '3-Em Treinamento', TECNICO: 'Paim',
-        RNS_DESCRICAO: 'RAMADA - implantação', GRUPO_ECONOMICO: 'RAMADA',
+        PARTICIPANTES: 'Liliana,Medeiros',
+        RESPONSAVELDES: 'Paim',
+        CLIENTE: 3627,
+        CLIENTEFAN: 'RAMADA',
+        ASSUNTO: 'Treinamento',
+        HORASDURACAO: 2.5,
+        VISITA: null,
+        OBSERVACAO: 'obs',
+        STATUS_IMPLANTACAO: '3-Em Treinamento',
+        TECNICO: 'Paim',
+        RNS_DESCRICAO: 'RAMADA - implantação',
+        GRUPO_ECONOMICO: 'RAMADA',
         ...over,
       };
     }
 
     beforeEach(() => {
       disponibilidade.executarSql.mockResolvedValue({
-        ok: true, mensagem: '1', colunas: [], linhas: [agenda()],
+        ok: true,
+        mensagem: '1',
+        colunas: [],
+        linhas: [agenda()],
       });
     });
 
-    // O relatório mostrava só as espécies 84/90/92 (as que a medida `Calendario` rotula e o
-    // slicer da página deixava passar). Sem isso entram férias, reuniões e posto flex.
-    it('o SQL restringe às espécies do calendário', () => {
-      expect(SQL_AGENDAS).toContain('a.ESPECIE IN (84, 90, 92)');
+    // As espécies vêm do FILTRO gravado no visual do calendário dentro do .pbix
+    // (`ESPECIE In ('92','84')`) — e NÃO do SWITCH da medida, que rotula um código a mais
+    // (90 = Produção Interna Normal Apontada) que o visual nunca exibiu.
+    it('o SQL restringe às espécies 84 e 92 do calendário', () => {
+      expect(SQL_AGENDAS).toContain('a.ESPECIE IN (84, 92)');
+    });
+
+    it('não inclui a espécie 90 (produção interna, fora do calendário)', () => {
+      expect(ESPECIES_CALENDARIO).toEqual([84, 92]);
+      expect(ESPECIES_CALENDARIO).not.toContain(90);
     });
 
     it('usa o mês corrente quando não informado e monta todos os dias', async () => {
@@ -653,7 +765,9 @@ describe('BiImplantacaoService', () => {
     // Regra do DAX: visita apontada sobrepõe o STATUSDES.
     it('VISITA preenchida força o status para Realizada', async () => {
       disponibilidade.executarSql.mockResolvedValue({
-        ok: true, mensagem: '1', colunas: [],
+        ok: true,
+        mensagem: '1',
+        colunas: [],
         linhas: [agenda({ STATUSDES: '8-Postergada', VISITA: 987 })],
       });
       const r = await service.agendas({ mes: '2026-07' });
@@ -670,13 +784,16 @@ describe('BiImplantacaoService', () => {
     it('divide PARTICIPANTES por vírgula (a view guarda todos numa coluna só)', async () => {
       const r = await service.agendas({ mes: '2026-07' });
       expect(r.dias.flatMap((d) => d.agendas)[0].participantes).toEqual([
-        'Liliana', 'Medeiros',
+        'Liliana',
+        'Medeiros',
       ]);
     });
 
     it('classifica o turno pelo horário de início', async () => {
       disponibilidade.executarSql.mockResolvedValue({
-        ok: true, mensagem: '3', colunas: [],
+        ok: true,
+        mensagem: '3',
+        colunas: [],
         linhas: [
           agenda({ CODIGO: 1, HORAINI: '08:00:00' }),
           agenda({ CODIGO: 2, HORAINI: '14:00:00' }),
@@ -685,14 +802,18 @@ describe('BiImplantacaoService', () => {
       });
       const r = await service.agendas({ mes: '2026-07' });
       expect(r.dias.flatMap((d) => d.agendas).map((a) => a.turno)).toEqual([
-        'Manhã', 'Tarde', 'Noite',
+        'Manhã',
+        'Tarde',
+        'Noite',
       ]);
     });
 
     describe('prioridade do dia (regra do DAX)', () => {
       it('havendo agendada, o dia mostra SÓ as agendadas', async () => {
         disponibilidade.executarSql.mockResolvedValue({
-          ok: true, mensagem: '3', colunas: [],
+          ok: true,
+          mensagem: '3',
+          colunas: [],
           linhas: [
             agenda({ CODIGO: 1, STATUSDES: '3-Agendada' }),
             agenda({ CODIGO: 2, STATUSDES: '9-Cancelada' }),
@@ -708,7 +829,9 @@ describe('BiImplantacaoService', () => {
 
       it('sem agendada mas com solicitada, oculta apenas as canceladas', async () => {
         disponibilidade.executarSql.mockResolvedValue({
-          ok: true, mensagem: '3', colunas: [],
+          ok: true,
+          mensagem: '3',
+          colunas: [],
           linhas: [
             agenda({ CODIGO: 1, STATUSDES: '1-Solicitada' }),
             agenda({ CODIGO: 2, STATUSDES: '9-Cancelada' }),
@@ -722,7 +845,9 @@ describe('BiImplantacaoService', () => {
 
       it('sem agendada nem solicitada, mostra tudo (inclusive canceladas)', async () => {
         disponibilidade.executarSql.mockResolvedValue({
-          ok: true, mensagem: '2', colunas: [],
+          ok: true,
+          mensagem: '2',
+          colunas: [],
           linhas: [
             agenda({ CODIGO: 1, STATUSDES: '9-Cancelada' }),
             agenda({ CODIGO: 2, STATUSDES: '6-Realizada' }),
@@ -736,7 +861,9 @@ describe('BiImplantacaoService', () => {
 
     it('ordena o dia por turno e horário', async () => {
       disponibilidade.executarSql.mockResolvedValue({
-        ok: true, mensagem: '3', colunas: [],
+        ok: true,
+        mensagem: '3',
+        colunas: [],
         linhas: [
           agenda({ CODIGO: 1, HORAINI: '15:00:00', STATUSDES: '6-Realizada' }),
           agenda({ CODIGO: 2, HORAINI: '08:30:00', STATUSDES: '6-Realizada' }),
@@ -749,9 +876,15 @@ describe('BiImplantacaoService', () => {
     });
 
     it('filtra por participante quando UM dos nomes casa', async () => {
-      const r = await service.agendas({ mes: '2026-07', tecnico: ['Medeiros'] });
+      const r = await service.agendas({
+        mes: '2026-07',
+        tecnico: ['Medeiros'],
+      });
       expect(r.dias.flatMap((d) => d.agendas)).toHaveLength(1);
-      const vazio = await service.agendas({ mes: '2026-07', tecnico: ['Ninguém'] });
+      const vazio = await service.agendas({
+        mes: '2026-07',
+        tecnico: ['Ninguém'],
+      });
       expect(vazio.dias.flatMap((d) => d.agendas)).toHaveLength(0);
     });
 
@@ -762,7 +895,9 @@ describe('BiImplantacaoService', () => {
 
     it('resume por status com percentual e cor pastel do relatório', async () => {
       disponibilidade.executarSql.mockResolvedValue({
-        ok: true, mensagem: '4', colunas: [],
+        ok: true,
+        mensagem: '4',
+        colunas: [],
         linhas: [
           agenda({ CODIGO: 1, DIA: '2026-07-06', STATUSDES: '6-Realizada' }),
           agenda({ CODIGO: 2, DIA: '2026-07-07', STATUSDES: '6-Realizada' }),
@@ -773,14 +908,26 @@ describe('BiImplantacaoService', () => {
       const r = await service.agendas({ mes: '2026-07' });
       expect(r.totalAgendas).toBe(4);
       expect(r.resumo).toEqual([
-        { status: '6-Realizada', quantidade: 3, percentual: 75, cor: '#FFF5E0' },
-        { status: '9-Cancelada', quantidade: 1, percentual: 25, cor: '#FFE0E0' },
+        {
+          status: '6-Realizada',
+          quantidade: 3,
+          percentual: 75,
+          cor: '#FFF5E0',
+        },
+        {
+          status: '9-Cancelada',
+          quantidade: 1,
+          percentual: 25,
+          cor: '#FFE0E0',
+        },
       ]);
     });
 
     it('o resumo conta o VISÍVEL, não o bruto (senão diverge da grade)', async () => {
       disponibilidade.executarSql.mockResolvedValue({
-        ok: true, mensagem: '2', colunas: [],
+        ok: true,
+        mensagem: '2',
+        colunas: [],
         linhas: [
           agenda({ CODIGO: 1, STATUSDES: '3-Agendada' }),
           agenda({ CODIGO: 2, STATUSDES: '9-Cancelada' }), // escondida pela prioridade
@@ -793,9 +940,14 @@ describe('BiImplantacaoService', () => {
 
     it('propaga erro do banco e avisa se o SICLA não está configurado', async () => {
       disponibilidade.executarSql.mockResolvedValue({
-        ok: false, mensagem: 'ORA-00942', colunas: [], linhas: [],
+        ok: false,
+        mensagem: 'ORA-00942',
+        colunas: [],
+        linhas: [],
       });
-      expect((await service.agendas({ mes: '2026-07' })).erro).toContain('ORA-00942');
+      expect((await service.agendas({ mes: '2026-07' })).erro).toContain(
+        'ORA-00942',
+      );
 
       disponibilidade.configurado.mockReturnValue(false);
       const r = await service.agendas({ mes: '2026-07' });
@@ -816,12 +968,18 @@ describe('BiImplantacaoService', () => {
       expect(r.descricao).toBe('texto completo');
       expect(r.erro).toBeNull();
       const [, binds] = disponibilidade.executarSql.mock.calls[0];
-      expect(binds).toEqual({ protocolo: 1435877, datahora: '2026-07-29 10:35' });
+      expect(binds).toEqual({
+        protocolo: 1435877,
+        datahora: '2026-07-29 10:35',
+      });
     });
 
     it('avisa quando o lançamento não existe', async () => {
       disponibilidade.executarSql.mockResolvedValue({
-        ok: true, mensagem: '0', colunas: [], linhas: [],
+        ok: true,
+        mensagem: '0',
+        colunas: [],
+        linhas: [],
       });
       const r = await service.descricaoCompleta(1, '2026-01-01 00:00');
       expect(r.erro).toContain('não encontrado');

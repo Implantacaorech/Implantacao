@@ -1,0 +1,184 @@
+<app-bi-indicadores-abas />
+
+@if (erro()) {
+  <div class="resultado erro">{{ erro() }}</div>
+}
+
+<div class="bi-barra">
+  <div class="ag-nav">
+    <button type="button" class="bi-btn" (click)="navegarMes(-1)" title="Mês anterior">&#9664;</button>
+    <span class="ag-mes">{{ rotuloMes() }}</span>
+    <button type="button" class="bi-btn" (click)="navegarMes(1)" title="Próximo mês">&#9654;</button>
+  </div>
+  <div class="bi-campo">
+    <label for="al-mes">Mês</label>
+    <input id="al-mes" type="month" [(ngModel)]="mes" (change)="carregar()" />
+  </div>
+  <div class="bi-campo bi-campo-busca">
+    <label for="al-busca">Buscar</label>
+    <input id="al-busca" type="search" [ngModel]="busca()" (ngModelChange)="busca.set($event)"
+           placeholder="cliente, técnico, assunto…" />
+  </div>
+  <button type="button" class="bi-btn" (click)="alternarFiltros()"
+          [attr.aria-expanded]="filtrosAbertos()">
+    <span class="bi-btn-seta" [class.aberta]="filtrosAbertos()">&#9656;</span>
+    Filtros@if (qtdFiltrosAtivos() > 0) { <span class="bi-badge">{{ qtdFiltrosAtivos() }}</span> }
+  </button>
+  <button type="button" class="bi-btn" (click)="limparFiltros()">Limpar</button>
+  <button type="button" class="bi-btn" (click)="exportarCsv()" [disabled]="totalVisivel() === 0">
+    Exportar CSV
+  </button>
+</div>
+
+@if (filtrosAbertos()) {
+  @if (filtros(); as f) {
+    <div class="bi-filtros-cx">
+      <div class="bi-filtros-cab">
+        <span class="bi-filtros-tit">Filtros</span>
+        <button type="button" class="bi-recolher" (click)="alternarFiltros()">Recolher &#9652;</button>
+      </div>
+      <div class="bi-filtros">
+        <div class="bi-filtro-bloco">
+          <span class="bi-filtro-tit">Grupo econômico</span>
+          <input class="bi-filtro-busca" type="search" placeholder="filtrar…"
+                 [ngModel]="termoOpcao('grupo')" (ngModelChange)="definirTermoOpcao('grupo', $event)" />
+          <div class="bi-opcoes bi-opcoes-rolagem">
+            @for (g of opcoes('grupo', f.grupos, gruposSel).visiveis; track g) {
+              <label><input type="checkbox" [checked]="marcado(gruposSel, g)"
+                            (change)="alternar(gruposSel, g)" /> {{ g }}</label>
+            } @empty { <span class="dica" style="margin:0">— nada encontrado —</span> }
+          </div>
+          @if (opcoes('grupo', f.grupos, gruposSel).ocultas; as n) {
+            <span class="bi-filtro-mais">+{{ n }} — refine a busca</span>
+          }
+        </div>
+
+        <div class="bi-filtro-bloco">
+          <span class="bi-filtro-tit">Técnico</span>
+          <input class="bi-filtro-busca" type="search" placeholder="filtrar…"
+                 [ngModel]="termoOpcao('tecnico')" (ngModelChange)="definirTermoOpcao('tecnico', $event)" />
+          <div class="bi-opcoes bi-opcoes-rolagem">
+            @for (t of opcoes('tecnico', f.responsaveis, tecnicosSel).visiveis; track t) {
+              <label><input type="checkbox" [checked]="marcado(tecnicosSel, t)"
+                            (change)="alternar(tecnicosSel, t)" /> {{ t }}</label>
+            } @empty { <span class="dica" style="margin:0">— nada encontrado —</span> }
+          </div>
+        </div>
+
+        <div class="bi-filtro-bloco">
+          <span class="bi-filtro-tit">Tipo de suporte</span>
+          <div class="bi-opcoes">
+            @for (t of f.tiposSuporte; track t) {
+              <label><input type="checkbox" [checked]="marcado(tipoSuporteSel, t)"
+                            (change)="alternar(tipoSuporteSel, t)" /> {{ t }}</label>
+            } @empty { <span class="dica" style="margin:0">— sem dados no mês —</span> }
+          </div>
+        </div>
+
+        <div class="bi-filtro-bloco">
+          <span class="bi-filtro-tit">Status do compromisso</span>
+          <div class="bi-opcoes bi-opcoes-rolagem">
+            @for (s of f.status; track s) {
+              <label>
+                <input type="checkbox" [checked]="marcado(statusSel, s)"
+                       (change)="alternar(statusSel, s)" />
+                <span class="bi-ponto" [style.background]="corBorda(s)"></span>{{ s }}
+              </label>
+            } @empty { <span class="dica" style="margin:0">— sem dados no mês —</span> }
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <div class="ag-kpis">
+    <div class="ag-kpi">
+      <div class="ag-kpi-v">{{ totalVisivel() }}</div>
+      <div class="ag-kpi-l">Compromissos no mês</div>
+    </div>
+    <div class="ag-kpi ag-kpi-h">
+      <div class="ag-kpi-v">{{ horasVisiveis().toLocaleString('pt-BR') }}h</div>
+      <div class="ag-kpi-l">Horas</div>
+    </div>
+    <div class="ag-kpi ag-kpi-t">
+      <div class="ag-kpi-v">{{ tecnicosVisiveis() }}</div>
+      <div class="ag-kpi-l">Técnicos</div>
+    </div>
+    @for (r of resumo(); track r.status) {
+      <div class="ag-kpi ag-kpi-st" [style.border-left-color]="corBorda(r.status)">
+        <div class="ag-kpi-v">{{ r.quantidade }}</div>
+        <div class="ag-kpi-l">{{ rotuloStatus(r.status) }} · {{ r.percentual }}%</div>
+      </div>
+    }
+  </div>
+
+  <div class="bi-card">
+    <div class="bi-card-tit">Calendário — {{ rotuloMes() }}</div>
+    <div class="ag-grade-wrap">
+      <div class="ag-cab">
+        <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span>
+        <span>Qui</span><span>Sex</span><span>Sáb</span>
+      </div>
+      @for (semana of semanas(); track $index) {
+        <div class="ag-semana">
+          @for (d of semana; track $index) {
+            @if (d) {
+              <div class="ag-dia" [class.hoje]="ehHoje(d.dia)"
+                   [class.clicavel]="d.compromissos.length > 0"
+                   [class.aberto]="diaAberto() === d.dia" (click)="abrirDia(d)">
+                <div class="ag-dia-n">{{ d.numero }}</div>
+                @for (c of d.compromissos.slice(0, 4); track c.codigo + '-' + c.tecnico) {
+                  <div class="ag-item" [style.background]="'#fff'"
+                       [style.border-left-color]="corBorda(c.status)"
+                       [title]="c.horaIni + '–' + c.horaFim + ' · ' + (c.fantasia || c.assunto) + ' · ' + rotuloStatus(c.status)">
+                    <span class="ag-hora">{{ c.horaIni }}</span>
+                    <span class="ag-cli">{{ c.fantasia || c.assunto || c.tecnico }}</span>
+                  </div>
+                }
+                @if (d.compromissos.length > 4) {
+                  <div class="ag-mais">+{{ d.compromissos.length - 4 }} compromisso(s)</div>
+                }
+              </div>
+            } @else {
+              <div class="ag-dia vazio"></div>
+            }
+          }
+        </div>
+      } @empty {
+        <p class="dica" style="padding:14px">— sem compromissos no mês —</p>
+      }
+    </div>
+  </div>
+
+  @if (detalheDoDia(); as d) {
+    <div class="bi-card">
+      <div class="bi-card-tit">{{ dataBr(d.dia) }} — {{ d.compromissos.length }} compromisso(s)</div>
+      <div class="ag-detalhe">
+        @for (c of d.compromissos; track c.codigo + '-' + c.tecnico) {
+          <article class="ag-card" [style.border-left-color]="corBorda(c.status)">
+            <header class="ag-card-topo">
+              <span class="ag-badge" [style.background]="corBorda(c.status)">
+                {{ rotuloStatus(c.status) }}
+              </span>
+              <span class="ag-card-h">{{ c.horaIni }} – {{ c.horaFim }}</span>
+              <span class="ag-dur">{{ (c.minutos / 60).toFixed(1) }}h</span>
+              <span class="ag-turno">{{ c.tipoSuporte }}</span>
+            </header>
+            <div class="ag-card-cli">{{ c.fantasia || '— sem RNS ligada —' }}</div>
+            @if (c.assunto) { <div class="ag-card-as">{{ c.assunto }}</div> }
+            <div class="ag-card-meta">
+              <span>👤 {{ c.tecnico || 'Não informado' }}</span>
+              @if (c.especieDes) { <span>· {{ c.especie }} — {{ c.especieDes }}</span> }
+              @if (c.rns) { <span>· RNS {{ c.rns }}</span> }
+              @if (c.grupoEconomico) { <span>· {{ c.grupoEconomico }}</span> }
+            </div>
+          </article>
+        }
+      </div>
+    </div>
+  }
+}

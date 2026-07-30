@@ -269,17 +269,25 @@ export interface TotaisRns {
 
 // ── Página "Agendas" (calendário mensal) ──────────────────────────────────────────────
 
-/** Espécies de compromisso que o calendário mostra.
+/** Espécies de compromisso que o calendário mostra: **84 e 92**.
  *
- * O relatório exibia SÓ estas três — é o que a medida `Calendario` rotula (`SWITCH` sobre 84,
- * 92 e 90) e o que o slicer de `ESPECIE` da página deixava passar. O resto da agenda do SICLA
- * (férias, reuniões táticas/estratégicas, posto flex, atendimentos COBRADOS) não é da
- * implantação e polui a grade: em julho/2026, das 706 agendas do mês, **607 são destas três**
- * e 99 ficam de fora.
+ * Não é inferência — é o filtro gravado no próprio visual do calendário dentro do
+ * `BI_clientes.pbix` (`Report/Layout`, filtro `Categorical` do visual htmlContent da página
+ * Agendas):
  *
- * ⚠️ Os códigos vêm do DAX, mas os rótulos dele estavam errados (dizia 92 = "Agenda
- * Presencial"; a view diz "Atendimento Externo NÃO COBRADO"). A tela mostra o `ESPECIEDES`. */
-export const ESPECIES_CALENDARIO = [84, 90, 92];
+ *     ESPECIE In ('92', '84')
+ *
+ * ⚠️ NÃO usar o `SWITCH` da medida `Calendario` como fonte: ele rotula **três** códigos
+ * (84, 92 e 90), mas 90 é só rotulagem remanescente — o filtro do visual nunca deixou o 90
+ * passar. Guiar-se pelo SWITCH traz "Produção Interna Normal Apontada", que não é agenda de
+ * implantação (194 das 706 agendas de julho/2026).
+ *
+ * O que fica de fora, portanto: produção interna (90), férias, reuniões tática/estratégica,
+ * posto flex e os atendimentos COBRADOS. Em julho/2026 sobram 413 das 706 agendas do mês.
+ *
+ * Os rótulos do DAX também divergem da view (ele dizia 92 = "Agenda Presencial"; o
+ * `ESPECIEDES` diz "Atendimento Externo NÃO COBRADO") — a tela mostra o `ESPECIEDES`. */
+export const ESPECIES_CALENDARIO = [84, 92];
 
 /** Agendas do mês. Porte da medida DAX `Calendario` do BI.
  *

@@ -18,54 +18,16 @@
   color: var(--brand);
   border-bottom: 2px solid var(--brand);
 }
-.dsh-filtros {
-  background: var(--surface, #fff);
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  padding: 10px 14px;
-  margin-bottom: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.dsh-filtro-grupo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.dsh-filtro-l {
-  font-weight: 700;
-  color: var(--navy);
+/* A barra de período e o painel de filtros usam as classes compartilhadas de bi-comum.css
+   (.bi-barra/.bi-campo/.bi-btn/.bi-filtros-cx/…) — mesmo padrão das demais telas do BI.
+   Aqui ficam só os estilos específicos desta tela: as abas de consultas salvas, os atalhos
+   de mês e a tabela/gráfico da Previsão de Início Oficial. */
+.bi-barra select {
   font-size: 0.82rem;
-  width: 140px;
-  flex: none;
-}
-.dsh-situacoes {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  font-size: 0.82rem;
-}
-.dsh-situacoes label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.dsh-filtros select,
-.dsh-filtros input[type='number'],
-.dsh-filtros input[type='month'] {
-  font-size: 0.8rem;
-  padding: 3px 6px;
+  padding: 4px 7px;
   border: 1px solid var(--line);
   border-radius: 5px;
-}
-.dsh-periodo-txt {
-  font-size: 0.8rem;
-  color: var(--muted);
-  margin-left: 6px;
+  font-family: inherit;
 }
 .dsh-meses {
   display: flex;
@@ -92,53 +54,12 @@
   background: var(--surface-2, #f3f6fb);
   cursor: default;
 }
-.dsh-card {
-  background: var(--surface, #fff);
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  margin-bottom: 14px;
-  overflow: hidden;
-}
-.dsh-card-tit {
-  background: var(--navy);
-  color: #fff;
-  font-weight: 700;
-  padding: 8px 14px;
-  font-size: 0.9rem;
-}
-.dsh-tab-wrap {
-  overflow-x: auto;
-  max-height: 420px;
-  overflow-y: auto;
-}
-.dsh-tab {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.82rem;
-}
-/* Cabeçalho igual ao das demais tabelas do sistema (.tabela / .form-tab) */
-.dsh-tab th {
-  background: var(--brand);
-  color: #fff;
-  font-weight: 600;
-  font-size: 0.8rem;
-  letter-spacing: 0.02em;
-  text-align: left;
-  padding: 8px 10px;
-  position: sticky;
-  top: 0;
-  border-bottom: 1px solid var(--line);
-}
-.dsh-tab td {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--line);
-  vertical-align: middle;
-}
-.dsh-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--ok, #2e7d32);
-  margin-right: 4px;
+/* Cards, tabela e status usam as classes de bi-comum.css (.bi-card/.bi-tab/.bi-ponto) — as
+   antigas .dsh-card/.dsh-tab/.dsh-dot foram removidas daqui para não haver DUAS folhas de
+   estilo quase-iguais divergindo com o tempo. Só o container do gráfico é local mesmo: cada
+   tela do BI define sua própria altura de canvas (aqui, 300px). */
+.bi-canvas {
+  height: 300px;
+  padding: 14px;
+  position: relative;
 }

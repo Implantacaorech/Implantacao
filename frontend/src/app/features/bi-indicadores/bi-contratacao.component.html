@@ -1,0 +1,119 @@
+<app-bi-indicadores-abas />
+
+@if (erro()) {
+  <div class="resultado erro">{{ erro() }}</div>
+}
+
+<app-bi-indicadores-filtros [filtros]="filtros()" [podeExportar]="linhas().length > 0"
+  placeholderBusca="cliente, RNS, responsável…"
+  (mudou)="carregar()" (exportar)="exportarCsv()" />
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <div class="ind-kpis">
+    <div class="ind-kpi">
+      <div class="ind-kpi-v">{{ totais().projetos }}</div>
+      <div class="ind-kpi-l">Projetos contratados</div>
+    </div>
+    <div class="ind-kpi ind-kpi-b">
+      <div class="ind-kpi-v">{{ totais().clientes }}</div>
+      <div class="ind-kpi-l">Clientes</div>
+    </div>
+    <div class="ind-kpi ind-kpi-a">
+      <div class="ind-kpi-v">{{ horas(totais().horasContratadas) }}</div>
+      <div class="ind-kpi-l">Horas contratadas</div>
+    </div>
+    <div class="ind-kpi ind-kpi-c">
+      <div class="ind-kpi-v">{{ horas(totais().horasCobradas) }}</div>
+      <div class="ind-kpi-l">Cobradas</div>
+    </div>
+    <div class="ind-kpi ind-kpi-d">
+      <div class="ind-kpi-v">{{ horas(totais().horasBonificadas) }}</div>
+      <div class="ind-kpi-l">Bonificadas</div>
+    </div>
+  </div>
+
+  <div class="ind-graficos">
+    <div class="bi-card">
+      <div class="bi-card-tit">Projetos e clientes por mês de contratação</div>
+      <div class="ind-canvas">
+        @if (graficoVolume(); as cfg) { <canvas [appChart]="cfg"></canvas> }
+        @else { <p class="dica">— sem dados no período —</p> }
+      </div>
+    </div>
+    <div class="bi-card">
+      <div class="bi-card-tit">Horas contratadas: cobradas × bonificadas</div>
+      <div class="ind-canvas">
+        @if (graficoHoras(); as cfg) { <canvas [appChart]="cfg"></canvas> }
+        @else { <p class="dica">— sem dados no período —</p> }
+      </div>
+    </div>
+  </div>
+
+  <div class="ind-graficos">
+    <div class="bi-card">
+      <div class="bi-card-tit">Por tipo de implantação</div>
+      <div class="ind-barras">
+        @for (c of porTipo(); track c.chave) {
+          <div class="ind-barra">
+            <span class="ind-barra-rot">{{ c.chave }}</span>
+            <span class="ind-barra-tr">
+              <span class="ind-barra-in"
+                    [style.width.%]="(c.quantidade / totais().projetos) * 100"></span>
+            </span>
+            <span class="ind-barra-n">{{ c.quantidade }}</span>
+          </div>
+        } @empty { <p class="dica" style="padding:8px">— sem dados —</p> }
+      </div>
+    </div>
+    <div class="bi-card">
+      <div class="bi-card-tit">Responsáveis (top 10)</div>
+      <div class="ind-barras">
+        @for (c of porResponsavel(); track c.chave) {
+          <div class="ind-barra">
+            <span class="ind-barra-rot">{{ c.chave }}</span>
+            <span class="ind-barra-tr">
+              <span class="ind-barra-in"
+                    [style.width.%]="(c.quantidade / totais().projetos) * 100"></span>
+            </span>
+            <span class="ind-barra-n">{{ c.quantidade }}</span>
+          </div>
+        } @empty { <p class="dica" style="padding:8px">— sem dados —</p> }
+      </div>
+    </div>
+  </div>
+
+  <div class="bi-card">
+    <div class="bi-card-tit">Projetos de implantação ({{ linhas().length }})</div>
+    <div class="bi-tab-wrap">
+      <table class="bi-tab">
+        <thead>
+          <tr>
+            <th>RNS</th><th>Cliente</th><th>Grupo econômico</th><th>Responsável</th>
+            <th>Contratação</th><th>Posição</th><th>Tipo</th>
+            <th class="num">Contratadas</th><th class="num">Cobradas</th><th class="num">Bonificadas</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of linhas(); track l.codigo) {
+            <tr>
+              <td>{{ l.codigo }}</td>
+              <td [title]="l.descricao">{{ l.fantasia || '—' }}</td>
+              <td>{{ l.grupoEconomico || '—' }}</td>
+              <td>{{ l.responsavel || '—' }}</td>
+              <td>{{ dataBr(l.dataContratacao) }}</td>
+              <td>{{ l.posicao || '—' }}</td>
+              <td>{{ l.tipoImplantacao || '—' }}</td>
+              <td class="num">{{ horas(l.horasContratadas) }}</td>
+              <td class="num">{{ horas(l.horasCobradas) }}</td>
+              <td class="num">{{ horas(l.horasBonificadas) }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="10" class="dica">— nenhum projeto com os filtros atuais —</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}

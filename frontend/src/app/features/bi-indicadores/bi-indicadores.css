@@ -1,0 +1,91 @@
+/* Comum às três telas de Indicadores (aba BI Implantação). */
+.ind-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.ind-kpi {
+  background: var(--surface, #fff);
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--brand);
+  border-radius: 9px;
+  padding: 12px 14px;
+}
+.ind-kpi-v {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1.15;
+}
+.ind-kpi-l {
+  font-size: 0.74rem;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.ind-kpi-a { border-left-color: #3b82f6; }
+.ind-kpi-b { border-left-color: #8b5cf6; }
+.ind-kpi-c { border-left-color: #2e7d32; }
+.ind-kpi-d { border-left-color: #ef6c00; }
+
+.ind-graficos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.ind-canvas {
+  height: 290px;
+  padding: 12px;
+  position: relative;
+}
+.ind-canvas .dica { margin: 0; }
+
+/* Barras simples em CSS para contagens (evita carregar chart.js onde não precisa). */
+.ind-barras {
+  padding: 10px 14px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.ind-barra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 0.78rem;
+}
+.ind-barra-rot {
+  width: 170px;
+  flex: none;
+  color: var(--navy);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ind-barra-tr {
+  flex: 1;
+  height: 12px;
+  background: var(--surface-2, #f3f6fb);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.ind-barra-in {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  min-width: 2px;
+  background: var(--brand);
+}
+.ind-barra-n {
+  width: 44px;
+  flex: none;
+  text-align: right;
+  font-weight: 700;
+  color: var(--navy);
+}
+.ind-pct {
+  font-weight: 700;
+}
+.ind-pct.alto { color: #c62828; }
+.ind-pct.medio { color: #ef6c00; }
+.ind-pct.baixo { color: #2e7d32; }

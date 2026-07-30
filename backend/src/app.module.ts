@@ -34,6 +34,9 @@ import { PreferenciasModule } from './preferencias/preferencias.module';
 import { MatrizDetalhadaModule } from './matriz-detalhada/matriz-detalhada.module';
 import { MatrizFuncoesModule } from './matriz-funcoes/matriz-funcoes.module';
 import { BiImplantacaoModule } from './bi-implantacao/bi-implantacao.module';
+import { BiIndicadoresModule } from './bi-indicadores/bi-indicadores.module';
+import { BiAgendaAlocacaoModule } from './bi-agenda-alocacao/bi-agenda-alocacao.module';
+import { BiMovimentosModule } from './bi-movimentos/bi-movimentos.module';
 
 @Module({
   imports: [
@@ -84,6 +87,9 @@ import { BiImplantacaoModule } from './bi-implantacao/bi-implantacao.module';
     MatrizDetalhadaModule,
     MatrizFuncoesModule,
     BiImplantacaoModule,
+    BiIndicadoresModule,
+    BiAgendaAlocacaoModule,
+    BiMovimentosModule,
   ],
 })
 export class AppModule {}

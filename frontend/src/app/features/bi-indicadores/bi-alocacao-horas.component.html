@@ -1,0 +1,152 @@
+<app-bi-indicadores-abas />
+
+@if (erro()) {
+  <div class="resultado erro">{{ erro() }}</div>
+}
+
+<div class="bi-barra">
+  <div class="bi-campo">
+    <label for="ha-ini">De</label>
+    <input id="ha-ini" type="month" [(ngModel)]="compIni" (change)="carregar()" />
+  </div>
+  <div class="bi-campo">
+    <label for="ha-fim">Até</label>
+    <input id="ha-fim" type="month" [(ngModel)]="compFim" (change)="carregar()" />
+  </div>
+  <div class="bi-campo bi-campo-busca">
+    <label for="ha-busca">Buscar</label>
+    <input id="ha-busca" type="search" [ngModel]="store.busca()"
+           (ngModelChange)="store.busca.set($event)" placeholder="cliente, RNS, responsável…" />
+  </div>
+  <button type="button" class="bi-btn" (click)="alternarFiltros()"
+          [attr.aria-expanded]="store.filtrosAbertos()">
+    <span class="bi-btn-seta" [class.aberta]="store.filtrosAbertos()">&#9656;</span>
+    Filtros@if (store.qtdAtivos() > 0) { <span class="bi-badge">{{ store.qtdAtivos() }}</span> }
+  </button>
+  <button type="button" class="bi-btn" (click)="limparFiltros()">Limpar</button>
+  <button type="button" class="bi-btn" (click)="exportarCsv()" [disabled]="linhas().length === 0">
+    Exportar CSV
+  </button>
+</div>
+
+@if (store.filtrosAbertos()) {
+  @if (filtros(); as f) {
+    <div class="bi-filtros-cx">
+      <div class="bi-filtros-cab">
+        <span class="bi-filtros-tit">Filtros</span>
+        <button type="button" class="bi-recolher" (click)="alternarFiltros()">Recolher &#9652;</button>
+      </div>
+      <div class="bi-filtros">
+        <div class="bi-filtro-bloco">
+          <span class="bi-filtro-tit">Grupo econômico</span>
+          <input class="bi-filtro-busca" type="search" placeholder="filtrar…"
+                 [ngModel]="store.termoOpcao('grupo')"
+                 (ngModelChange)="store.definirTermoOpcao('grupo', $event)" />
+          <div class="bi-opcoes bi-opcoes-rolagem">
+            @for (g of opcoes('grupo', f.grupos, store.grupo).visiveis; track g) {
+              <label><input type="checkbox" [checked]="marcado(store.grupo, g)"
+                            (change)="alternar(store.grupo, g)" /> {{ g }}</label>
+            } @empty { <span class="dica" style="margin:0">— nada encontrado —</span> }
+          </div>
+          @if (opcoes('grupo', f.grupos, store.grupo).ocultas; as n) {
+            <span class="bi-filtro-mais">+{{ n }} — refine a busca</span>
+          }
+        </div>
+
+        <div class="bi-filtro-bloco">
+          <span class="bi-filtro-tit">Responsável</span>
+          <input class="bi-filtro-busca" type="search" placeholder="filtrar…"
+                 [ngModel]="store.termoOpcao('responsavel')"
+                 (ngModelChange)="store.definirTermoOpcao('responsavel', $event)" />
+          <div class="bi-opcoes bi-opcoes-rolagem">
+            @for (r of opcoes('responsavel', f.responsaveis, store.responsavel).visiveis; track r) {
+              <label><input type="checkbox" [checked]="marcado(store.responsavel, r)"
+                            (change)="alternar(store.responsavel, r)" /> {{ r }}</label>
+            } @empty { <span class="dica" style="margin:0">— nada encontrado —</span> }
+          </div>
+        </div>
+
+        <div class="bi-filtro-bloco">
+          <span class="bi-filtro-tit">Tipo de suporte</span>
+          <div class="bi-opcoes">
+            @for (t of f.tiposSuporte; track t) {
+              <label><input type="checkbox" [checked]="marcado(store.tipoSuporte, t)"
+                            (change)="alternar(store.tipoSuporte, t)" /> {{ t }}</label>
+            } @empty { <span class="dica" style="margin:0">— sem dados —</span> }
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <div class="ind-kpis">
+    <div class="ind-kpi">
+      <div class="ind-kpi-v">{{ totais().rnsQuantidade }}</div>
+      <div class="ind-kpi-l">RNS de implantação</div>
+    </div>
+    <div class="ind-kpi ind-kpi-a">
+      <div class="ind-kpi-v">{{ horas(totais().horasRealizada) }}</div>
+      <div class="ind-kpi-l">Realizada</div>
+    </div>
+    <div class="ind-kpi ind-kpi-b">
+      <div class="ind-kpi-v">{{ horas(totais().horasAgendada) }}</div>
+      <div class="ind-kpi-l">Agendada</div>
+    </div>
+    <div class="ind-kpi ind-kpi-d">
+      <div class="ind-kpi-v">{{ horas(totais().horasPostergada) }}</div>
+      <div class="ind-kpi-l">
+        Postergada
+        @if (totais().percentualPostergada !== null) { · {{ totais().percentualPostergada }}% }
+      </div>
+    </div>
+    <div class="ind-kpi ind-kpi-c">
+      <div class="ind-kpi-v">{{ horas(totais().horasCancelada) }}</div>
+      <div class="ind-kpi-l">Cancelada</div>
+    </div>
+  </div>
+
+  <div class="bi-card">
+    <div class="bi-card-tit">Horas aplicadas por RNS de implantação ({{ linhas().length }})</div>
+    <div class="bi-tab-wrap">
+      <table class="bi-tab">
+        <thead>
+          <tr>
+            <th>RNS</th><th>Cliente</th><th>Grupo econômico</th><th>Responsável</th>
+            <th>Tipo de suporte</th>
+            <th class="num">Encaminhada</th><th class="num">Agendada</th>
+            <th class="num">Realizada</th><th class="num">Não realizada</th>
+            <th class="num">Postergada</th><th class="num">Cancelada</th>
+            <th class="num">Total</th><th class="num">% postergada</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of linhas(); track l.rns) {
+            <tr>
+              <td>{{ l.rns }}</td>
+              <td [title]="l.rnsDescricao">{{ l.fantasia || '—' }}</td>
+              <td>{{ l.grupoEconomico || '—' }}</td>
+              <td>{{ l.responsavel || '—' }}</td>
+              <td>{{ l.tipoSuporte || '—' }}</td>
+              <td class="num">{{ horas(l.horasEncaminhada) }}</td>
+              <td class="num">{{ horas(l.horasAgendada) }}</td>
+              <td class="num">{{ horas(l.horasRealizada) }}</td>
+              <td class="num">{{ horas(l.horasNaoRealizada) }}</td>
+              <td class="num">{{ horas(l.horasPostergada) }}</td>
+              <td class="num">{{ horas(l.horasCancelada) }}</td>
+              <td class="num">{{ horas(l.horasTotal) }}</td>
+              <td class="num" [class.neg]="(l.percentualPostergada ?? 0) > 20">
+                {{ l.percentualPostergada !== null ? l.percentualPostergada + '%' : '—' }}
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="13" class="dica">— nenhuma RNS com os filtros atuais —</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}

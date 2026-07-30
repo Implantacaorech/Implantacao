@@ -1,4 +1,136 @@
-# Porte do BI de Implantação (Power BI → Painel)
+# Porte dos BIs de Implantação (Power BI → Painel)
+
+## Área BI do Painel
+
+Um menu só (**BI**), duas abas, cada uma com subabas:
+
+| Aba | Origem | Subabas |
+| --- | --- | --- |
+| **BI Implantação** | `BI_Interno.pbix` | Previsão de Início Oficial ✅ · Indicadores de Contratação ✅ · Indicadores de Conclusão ✅ · % de Utilização das Horas ✅ · Alocação de Agendas — Calendário ✅ · Alocação de Agendas — Horas Aplicadas ✅ · Movimentos de trabalho efetivo ✅ |
+| **Implantação Clientes SIGER** | `BI_clientes.pbix` | Resumo ✅ · Extrato de Protocolo/Horas ✅ · RNS vinculadas ✅ · Agendas ✅ |
+
+RBAC: as duas abas seguem chaves separadas — `dashboards` (BI Implantação) e `bi_implantacao`
+(Implantação Clientes SIGER). O item "BI" aparece se o usuário tiver pelo menos uma.
+
+### Indicadores (BI_Interno) — o que a view exige
+
+As três telas de Indicadores saem de `POWERBI.POWERBI_IMP_RNIMPLANTACAO_2` (2.889 linhas), a
+mesma da consulta "Previsão Início Oficial". Peculiaridades confirmadas no banco:
+
+- **As datas são TEXTO** `DD/MM/YYYY` (VARCHAR2), não DATE — só `DATA PREVISAO DE USO` e
+  `DATATRANSMAN` são TIMESTAMP. Converter no Oracle é arriscado (um valor sujo derruba a
+  query inteira, e o `ON CONVERSION ERROR` do 12c+ não aceita coluna no 19c daqui); a
+  conversão é feita no serviço.
+- **As colunas "HORAS ..." são strings** `"108:00"`. Para cálculo valem as `MINUTOS ... (DEC)`.
+- `COMPETENCIA CONTRATACAO`/`ENCERRAMENTO` vêm como `AAAA/MM` — ordenáveis como texto, o que
+  as torna o filtro de período mais seguro que converter data.
+- Nomes com espaço e acento (`"POSIÇÃO IMPLANTAÇÃO"`) exigem aspas duplas no SQL.
+- **"Concluído" é a POSIÇÃO** (`6-…`), não a existência de data de encerramento: há RNS com
+  encerramento *previsto* preenchido que ainda não concluíram.
+
+### Alocação de Agendas (BI_Interno) — Calendário e Horas Aplicadas
+
+Backend: [`backend/src/bi-agenda-alocacao/`](../backend/src/bi-agenda-alocacao/) —
+`GET /bi-agenda-alocacao/calendario` e `GET /bi-agenda-alocacao/horas-aplicadas`, gate
+`dashboards` (igual às três de Indicadores). Frontend: os dois componentes vivem em
+`frontend/src/app/features/bi-indicadores/` (`bi-alocacao-calendario.*` e
+`bi-alocacao-horas.*`), rotas `/bi/implantacao/alocacao-calendario` e `/alocacao-horas`, na
+mesma `BiIndicadoresStore` das outras três (o mês do calendário ganhou `mesAlocacao`, igual ao
+`mesAgenda` do outro BI — técnico/grupo/tipo de suporte reaproveitam `responsavel`/`grupo`/
+`tipoSuporte`, já existentes).
+
+Ao contrário do calendário do BI_clientes.pbix (que tem `ESPECIE IN (84, 92)` gravado no
+próprio visual), a inspeção do `Report/definition/` do `BI_Interno.pbix` **não achou nenhum
+filtro fixo de página nem de relatório** restringindo espécie ou tipo de suporte nestas duas
+páginas — os slicers (`TIPO_SUPORTE`, técnico, status) são livres, sem seleção padrão. O único
+filtro de relatório encontrado (`Report/definition/report.json`, global, vale para as 7
+páginas) é `LISTA_CLIENTES.TIPO IN ('C')` / `Clientes.TIPO IN ('C')` — cliente de verdade, não
+prospect —, reproduzido aqui pelo JOIN com `PEDIDOIMP`: uma linha só carrega
+FANTASIA/GRUPO_ECONOMICO quando está de fato ligada a uma RNS de implantação
+(`PEDIDOIMP = POWERBI_IMP_RNIMPLANTACAO_2.CODIGO`, confirmado batendo 925 de 929 preenchidos).
+Por isso o **Calendário mostra tudo** por padrão (inclusive Scrum, treinamento, folga, posto
+flex — que não têm `PEDIDOIMP`) e conta com os filtros do usuário para recortar.
+
+**Calendário** — fonte `POWERBI.POWERBI_IMP_LISTACOMPROMISSOS_2` (5.452 linhas, janela rolante
+jul–nov/2026 na inspeção). ⚠️ Uma linha é **por técnico**: um compromisso com 2 participantes
+gera 2 linhas com o mesmo `CODIGO` — contar "compromissos" exige `Set` de códigos distintos
+(`totalCompromissos` já faz isso no serviço), contar "por técnico" usa a linha direto.
+`STATUS` é `NUMBER` puro (1/3/6/7), sem 8-Postergada/9-Cancelada — confirmado em 5.452 linhas;
+os rótulos reaproveitam o vocabulário de `COR_STATUS_AGENDA` (bi-implantacao) por serem o mesmo
+domínio.
+
+**Horas Aplicadas** — fonte `POWERBI.POWERBI_AGENDA_POSTERGACAO_IMP_2` (6.331 linhas, histórico
+desde 2009), uma linha por compromisso com 6 colunas indicador 0/1
+(`ENCAMINHADA`/`AGENDADA`/`REALIZADA`/`NAO__REALIZADA`/`POSTERGADA`/`CANCELADA`, sempre
+exatamente uma marcada). ⚠️ **"Horas" não é contagem de compromissos**, apesar do nome das
+medidas do BI parecer isso — é a **duração** (`DATAFIM − DATAINI`) somada por status. Verificado
+batendo os números antes de escrever qualquer SQL: em julho/2026 a duração média por
+compromisso é 3,02h (mín. 0,17h, máx. 9,5h, zero negativos/zerados em 6.331 linhas) — plausível
+para agenda de atendimento, o que "contar 1 por linha" não seria. Em produção (jan–jul/2026):
+65 RNS, 10.044h somadas, 16,8% postergada no agregado. `RNS` bate com
+`POWERBI_IMP_RNIMPLANTACAO_2.CODIGO` em 97,9% das linhas (6.197 de 6.331) — o resto é RNS fora
+da janela atual daquela view. A duração é calculada no **serviço** (`(fim − ini) / 3.600.000`
+em milissegundos), não no SQL — o Oracle devolve `DATAINI`/`DATAFIM` como `INTERVAL DAY TO
+SECOND` ao subtrair TIMESTAMPs, que dá `ORA-00932` se comparado/agregado direto sem `CAST`.
+
+### Movimentos de trabalho efetivo (BI_Interno) — a página que foge do padrão
+
+Backend: [`backend/src/bi-movimentos/`](../backend/src/bi-movimentos/) — `GET /bi-movimentos`,
+gate `dashboards`. Frontend: `frontend/src/app/features/bi-indicadores/bi-movimentos.*`, rota
+`/bi/implantacao/movimentos`, mesma `BiIndicadoresStore` (só o período — `movDataIni`/
+`movDataFim` — é compartilhado/persistido; técnico, tipo de movimento e "cobra hora" são
+filtros locais da tela, ver abaixo o porquê).
+
+Fonte: `POWERBI.POWERBI_APONTAMENTO_TECNICOS` — **663.969 linhas** em 2026-07-29, de longe a
+maior origem entre as ~11 páginas de BI já portadas (a segunda maior, RNS vinculadas, tem 56,9
+mil). É uma **VIEW sem índice próprio** (confirmado em `ALL_IND_COLUMNS`) — um `COUNT(*)` sem
+filtro **levou ~4 minutos**. Por isso esta é a ÚNICA página do BI cujo SQL já entrega
+**agregado pelo próprio Oracle** (`GROUP BY` técnico × tipo de movimento × cobrança), em vez do
+padrão "busca tudo, filtra/agrega no Node" que todas as outras ~10 páginas usam — buscar as
+210 mil linhas cruas de uma janela de 12 meses para agregar no Node teria o mesmo problema de
+escala, só que pago a cada requisição HTTP.
+
+- **Filtrar por `DTINICIO`** (a única coluna TIMESTAMP real da tabela) é o que torna a consulta
+  viável: 3s numa janela de 30 dias, ~18s numa de 12 meses (210 mil linhas cruas → 431
+  agregadas). `DATA_RECH`/`ANO RECH` (os slicers do relatório original) são texto **sem ano
+  completo** (`"07-Julho"`) e parecem ser data de fechamento/processamento do apontamento, não
+  da atividade — não usados.
+- **Janela padrão de 3 meses, teto de 6** (`MESES_PADRAO_MOVIMENTOS`/
+  `MAX_MESES_JANELA_MOVIMENTOS`) — mais curta que o padrão de 12/24 meses do resto do BI, de
+  propósito: 12 meses já levou ~18s numa consulta agregada; pedir mais que 6 meses é recortado
+  silenciosamente (a tela avisa via `periodoLimitado`). Por essa razão o período desta tela usa
+  campos PRÓPRIOS no store (`movDataIni`/`movDataFim`), não os `compIni`/`compFim`
+  compartilhados com Contratação/Conclusão/Utilização/Horas Aplicadas — usar os mesmos faria
+  esta página herdar (ou impor às outras) uma janela errada para a escala de cada uma.
+- **`MINDURACAO` ≈ `DURACAO_TOTAL`** em praticamente toda amostra observada (a diferença é
+  `SEGDURACAO`, quase sempre 0) — a tela usa `MINDURACAO` como duração total e `MINCOBRADO`
+  como a parte cobrada. `VALOR_COBRADO` é monetário, fora do escopo (a página é de horas, não
+  de faturamento). `CAT`/`TIPOCATDES` são **sempre NULL** nas 663.969 linhas — confirmadas
+  mortas, não usadas.
+- **Técnico não reaproveita o filtro `responsavel` do resto da aba.** `TECNICODES` vem em
+  **MAIÚSCULAS** (`"THOMAZ"`, `"MICAEL"`) — formato diferente do `RESPONSAVELDES` usado nas
+  outras páginas (`"Kailan"`, `"Pereira"`). Reaproveitar o mesmo campo do store misturaria dois
+  formatos que não batem — mesma classe de erro já cometida antes com `statusRns` ×
+  `statusImplantacao`. Por isso técnico, tipo de movimento e "cobra hora" são `signal`s locais
+  do componente, não do `BiIndicadoresStore`.
+
+#### ⚠️ Os 6 tipos de movimento podem não ser somáveis num "total de horas"
+
+`TP_MOVIMENTO` tem 6 valores: **AGENDA** e **VISITAS** (sempre 100% `COBRA_HORA = 'Sim'`) e
+**RNS**, **PENDENCIA**, **ATENDIMENTOS**, **FICHA** (sempre 0%, confirmado em produção). O
+relatório original mostra as 6 medidas `_Total_horas_X_decimais` como barras **separadas** num
+`clusteredBarChart` — nunca somadas numa medida "total geral" confirmada (o DAX está no
+`DataModel` binário, ilegível). Testado em produção (2026-07-29, janela de 3 meses): a média
+geral fica em ~8,5h/técnico/dia (plausível), mas alguns técnicos somam **mais de 13h/dia**
+quando os 6 tipos são somados — sinal de que os tipos podem registrar o **mesmo intervalo de
+relógio por ângulos diferentes do SICLA** (ex.: uma visita que também vira um lançamento de
+RNS), não necessariamente tempo adicional. A tela expõe a soma como "Horas totais (soma dos
+tipos)", com tooltip explicando a ressalva, em vez de apresentá-la como "horas trabalhadas"
+sem qualificação — não havia como confirmar a fórmula original sem o DAX.
+
+---
+
+## Porte do BI_clientes.pbix (Implantação Clientes SIGER)
 
 Registro do que foi extraído do relatório **`BI_clientes.pbix`** e de como cada parte dele
 está sendo reimplementada nativamente no Painel. Iniciado em 2026-07-29.
@@ -170,15 +302,30 @@ Grade mensal de `POWERBI_IMPLANTACAO_AGENDAS` (semana começando no **domingo**)
 - Turno: `<12h` Manhã · `<18h` Tarde · senão Noite. Ordenação por `turno × 10000 + hora × 60 +
   minuto`. No modal do técnico as canceladas nunca aparecem.
 
-#### O calendário mostra SÓ três espécies de compromisso
+#### O calendário mostra SÓ duas espécies de compromisso
 
-`ESPECIE IN (84, 90, 92)` — é o que a medida `Calendario` rotula (o `SWITCH` cobre exatamente
-esses três) e o que o slicer de `ESPECIE` da página deixava passar. O resto da agenda do SICLA
-não é da implantação: férias, reuniões tática/estratégica, posto flex e atendimentos
-**COBRADOS**. Em julho/2026, das 706 agendas do mês, **607 são destas três**.
+`ESPECIE IN (84, 92)`. **A fonte é o filtro gravado no visual dentro do `.pbix`**, não a medida:
+
+```json
+// Report/Layout → página "Agendas" → filtro Categorical do visual htmlContent
+"In": { "Expressions": [ ... "Property": "ESPECIE" ],
+        "Values": [ [{"Literal": {"Value": "'92'"}}], [{"Literal": {"Value": "'84'"}}] ] }
+```
+
+⚠️ **Não se guie pelo `SWITCH` da medida `Calendario`.** Ele rotula **três** códigos (84, 92 e
+90), mas o 90 é rotulagem remanescente — o filtro do visual nunca deixou o 90 passar. Foi
+exatamente esse o erro cometido na 1ª tentativa: incluir o 90 trouxe "Produção Interna Normal
+Apontada", 194 das 706 agendas de julho/2026, que não é agenda de implantação.
+
+Fica de fora: produção interna (90), férias, reuniões tática/estratégica, posto flex e os
+atendimentos **COBRADOS** (87, 98). Em julho/2026 sobram **413 das 706** agendas do mês.
 
 O filtro está em `ESPECIES_CALENDARIO` (`bi-implantacao.constants.ts`) e entra no `WHERE` do
 SQL — não é filtro de tela; incluir uma espécie nova é mexer nessa constante.
+
+> Para conferir filtros de um visual do Power BI sem abrir o Desktop: o `.pbix` é um ZIP; o
+> `Report/Layout` (JSON em UTF-16) traz `filters` por página e por visual, com os literais
+> selecionados. É a fonte mais confiável — a medida DAX pode conter código morto.
 
 #### Duas divergências entre o DAX e o banco, resolvidas a favor do banco
 

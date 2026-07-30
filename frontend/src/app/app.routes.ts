@@ -314,11 +314,68 @@ export const routes: Routes = [
           import('./features/dashboards/dashboard.component').then((m) => m.DashboardComponent),
       },
       {
-        path: 'bi/implantacao/:slug',
+        // O dashboard por slug ganhou o prefixo `painel/` para não colidir com as subabas
+        // fixas de Indicadores (contratacao/conclusao/utilizacao).
+        path: 'bi/implantacao/painel/:slug',
         canActivate: [permissaoGuard('dashboards')],
         data: { titulo: 'BI Implantação' },
         loadComponent: () =>
           import('./features/dashboards/dashboard.component').then((m) => m.DashboardComponent),
+      },
+      {
+        // Indicadores portados do BI_Interno.pbix — as três saem da mesma view.
+        path: 'bi/implantacao/contratacao',
+        canActivate: [permissaoGuard('dashboards')],
+        data: { titulo: 'BI — Indicadores de Contratação' },
+        loadComponent: () =>
+          import('./features/bi-indicadores/bi-contratacao.component').then(
+            (m) => m.BiContratacaoComponent,
+          ),
+      },
+      {
+        path: 'bi/implantacao/conclusao',
+        canActivate: [permissaoGuard('dashboards')],
+        data: { titulo: 'BI — Indicadores de Conclusão' },
+        loadComponent: () =>
+          import('./features/bi-indicadores/bi-conclusao.component').then(
+            (m) => m.BiConclusaoComponent,
+          ),
+      },
+      {
+        path: 'bi/implantacao/utilizacao',
+        canActivate: [permissaoGuard('dashboards')],
+        data: { titulo: 'BI — % de Utilização das Horas' },
+        loadComponent: () =>
+          import('./features/bi-indicadores/bi-utilizacao.component').then(
+            (m) => m.BiUtilizacaoComponent,
+          ),
+      },
+      {
+        path: 'bi/implantacao/alocacao-calendario',
+        canActivate: [permissaoGuard('dashboards')],
+        data: { titulo: 'BI — Alocação de Agendas (Calendário)' },
+        loadComponent: () =>
+          import('./features/bi-indicadores/bi-alocacao-calendario.component').then(
+            (m) => m.BiAlocacaoCalendarioComponent,
+          ),
+      },
+      {
+        path: 'bi/implantacao/alocacao-horas',
+        canActivate: [permissaoGuard('dashboards')],
+        data: { titulo: 'BI — Alocação de Agendas (Horas Aplicadas)' },
+        loadComponent: () =>
+          import('./features/bi-indicadores/bi-alocacao-horas.component').then(
+            (m) => m.BiAlocacaoHorasComponent,
+          ),
+      },
+      {
+        path: 'bi/implantacao/movimentos',
+        canActivate: [permissaoGuard('dashboards')],
+        data: { titulo: 'BI — Movimentos de trabalho efetivo' },
+        loadComponent: () =>
+          import('./features/bi-indicadores/bi-movimentos.component').then(
+            (m) => m.BiMovimentosComponent,
+          ),
       },
       {
         path: 'bi/clientes-siger',
@@ -363,7 +420,7 @@ export const routes: Routes = [
       },
       // Endereços antigos — mantidos como redirect para não quebrar link salvo/favorito.
       { path: 'dashboards', pathMatch: 'full', redirectTo: 'bi/implantacao' },
-      { path: 'dashboards/:slug', redirectTo: 'bi/implantacao/:slug' },
+      { path: 'dashboards/:slug', redirectTo: 'bi/implantacao/painel/:slug' },
       { path: 'bi-implantacao', pathMatch: 'full', redirectTo: 'bi/clientes-siger/resumo' },
       { path: 'bi-implantacao/extrato', redirectTo: 'bi/clientes-siger/extrato' },
       { path: 'bi-implantacao/rns', redirectTo: 'bi/clientes-siger/rns' },

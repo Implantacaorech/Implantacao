@@ -82,6 +82,71 @@ describe('DashboardComponent', () => {
     expect(comp.mesSel).toBeNull();
   });
 
+  // ── Filtros no mesmo padrão das demais telas do BI: nasce fechado, botão alterna,
+  // "Limpar" volta a situação para "todas" e tira o mês, sem mexer no período. ──────────
+  it('o painel de filtros nasce fechado', async () => {
+    const fixture = montar({ rodar: () => Promise.resolve(resultado()) });
+    fixture.detectChanges();
+    await assentar(fixture);
+    expect(fixture.componentInstance.filtrosAbertos()).toBe(false);
+  });
+
+  it('alternarFiltros abre e recolhe o painel', async () => {
+    const fixture = montar({ rodar: () => Promise.resolve(resultado()) });
+    fixture.detectChanges();
+    await assentar(fixture);
+    const comp = fixture.componentInstance;
+    comp.alternarFiltros();
+    expect(comp.filtrosAbertos()).toBe(true);
+    comp.alternarFiltros();
+    expect(comp.filtrosAbertos()).toBe(false);
+  });
+
+  it('qtdFiltrosAtivos conta situações desmarcadas e o mês selecionado', async () => {
+    // Mock DINÂMICO: como o backend real (DashboardsService.rodar), ecoa de volta só a
+    // situação que foi enviada — o mock estático `resultado()` sempre devolve as duas, o que
+    // mascararia a desmarcação assim que `carregar()` recarrega.
+    const rodar = vi.fn((_slug: string, filtro: { situacao?: string[] }) =>
+      Promise.resolve(
+        resultado({
+          situacoesSelecionadas: filtro.situacao ?? ['Confirmado', 'Provisório'],
+        }),
+      ),
+    );
+    const fixture = montar({ rodar });
+    fixture.detectChanges();
+    await assentar(fixture);
+    const comp = fixture.componentInstance;
+    expect(comp.qtdFiltrosAtivos()).toBe(0); // tudo marcado = sem filtro
+
+    comp.alternarSituacao('Provisório', false);
+    await fixture.whenStable();
+    expect(comp.qtdFiltrosAtivos()).toBe(1);
+
+    comp.selecionarMes(7, 2026);
+    await fixture.whenStable();
+    expect(comp.qtdFiltrosAtivos()).toBe(2);
+  });
+
+  it('limparFiltros volta a situação para "todas" e tira o mês, mas mantém o período', async () => {
+    const rodar = vi.fn().mockResolvedValue(resultado());
+    const fixture = montar({ rodar });
+    fixture.detectChanges();
+    await assentar(fixture);
+    const comp = fixture.componentInstance;
+    comp.n = 6;
+    comp.selecionarMes(7, 2026);
+    await fixture.whenStable();
+    rodar.mockClear();
+
+    comp.limparFiltros();
+    await fixture.whenStable();
+    expect(comp.mesSel).toBeNull();
+    expect(comp.qtdFiltrosAtivos()).toBe(0);
+    expect(comp.n).toBe(6); // período preservado
+    expect(rodar).toHaveBeenCalledWith('previsao-inicio', expect.objectContaining({ situacao: undefined, mesSel: undefined }));
+  });
+
   it('lista as abas de dashboards disponíveis', async () => {
     const fixture = montar({
       listar: () => Promise.resolve([disponivel(), disponivel({ id: 2, slug: 'outro', nome: 'Outro Dashboard' })]),
