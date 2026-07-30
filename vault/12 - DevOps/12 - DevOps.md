@@ -107,10 +107,26 @@ protection rule para `main`, marcando as mesmas opções acima pela UI.
 - **Guarda da stack obrigatória:** `backend/src/common/conformidade-stack.spec.ts` roda em
   `npm test` (logo, no job `backend-test`) e reprova driver de banco novo, Python fora das
   pastas declaradas e volta do Postgres ao config.
+- **Migration é passo do deploy, não do boot** (2026-07-30): `migrationsRun` é `false`
+  (`database.module.ts`), então subir o processo NÃO aplica migration. Enquanto isso ficou
+  fora do script de build, o código de `preferencias` passou **um dia em produção sem a
+  tabela `preferencias_usuario`** — e, como o frontend engole o erro de preferência, nada
+  apareceu na tela nem no log. Desde então o `Build_Painel_Novo.bat` roda
+  `npm run migration:run` como passo `[3/3]`, **depois** dos dois builds (build quebrado não
+  encosta no banco) e **antes** do `Iniciar`, com o processo antigo ainda no ar — migration
+  aditiva não atrapalha o código velho. Falha de migration aborta com código 1 e não imprime
+  "BUILD CONCLUIDO". Sem `MIGRACAO_DB_URL` o passo é pulado com aviso, porque o TypeORM
+  cairia no SQLite descartável de desenvolvimento e criaria schema em um banco que ninguém
+  usa. Não fica no `Iniciar_Painel_Novo.bat` de propósito: é o script que o guardião executa
+  a cada queda, e migration em toda recuperação atrasaria a volta do painel.
+- **Falha silenciosa é a pior:** o caso acima só apareceu numa auditoria, não em uso. Quando
+  o cliente do recurso engole o erro por bom motivo (preferência de tela não deve derrubar
+  navegação), a checagem tem de vir do lado do deploy.
 
 ## Aponta para (conteúdo real do repositório)
 
 - `../tools/Painel_Novo_Backup_MariaDB.ps1` (Tarefa Agendada `Painel Novo - Backup MariaDB`, 22h)
+- `../Build_Painel_Novo.bat` (build de produção + `migration:run`; rodar antes do `Iniciar`)
 - `../Iniciar_Painel_Novo.bat` (produção — o `Iniciar_Servidor.bat` do Flask saiu com `projeto_old/` em 2026-07-29)
 - `../.github/workflows/ci.yml`
 
