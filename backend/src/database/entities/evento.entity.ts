@@ -12,7 +12,7 @@ export type TipoEvento =
   | 'documento'
   | 'email'
   | 'alerta'
-  // Conclusão/conferência/reabertura de um dos 18 passos operacionais do processo.
+  // Conclusão/conferência/reabertura de um dos 21 passos operacionais do processo.
   | 'passo';
 
 /** Item da timeline/histórico de um projeto (auditoria + passagem de bastão). Espelha

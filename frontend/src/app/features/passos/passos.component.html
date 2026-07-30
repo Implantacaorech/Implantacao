@@ -3,8 +3,10 @@
   @if (cliente()) { {{ cliente() }} } @else { Projeto }
 </h1>
 <p class="sub">
-  Fluxo da implantação, do e-mail do Comercial ao encerramento — tudo acontece aqui. Cada
-  passo tem um responsável; a partir do passo 11, concluir é definitivo.
+  Fluxo da implantação, do cadastro do cliente ao encerramento — tudo acontece aqui. Cada
+  passo tem um responsável; a partir do passo 14, concluir é definitivo. Os e-mails e os
+  documentos de cada passo ficam guardados em <strong>Registros</strong>, abertos a quem só
+  tem consulta.
 </p>
 
 @if (erro()) {
@@ -120,7 +122,13 @@
               <p style="margin:6px 0 0;font-size:.85rem">
                 Concluído por <strong>{{ p.concluidoPor || '—' }}</strong>
                 @if (p.concluidoEm) { em {{ p.concluidoEm | date: 'dd/MM/yyyy HH:mm' }} }
+                @if (p.marcado && p.dataMarcada) {
+                  · <strong>{{ p.rotuloMarcacao }}</strong> em {{ p.dataMarcada }}
+                }
               </p>
+              @if (p.observacaoRegistrada) {
+                <p style="margin:4px 0 0;font-size:.85rem;white-space:pre-wrap;border-left:3px solid var(--line);padding-left:8px">{{ p.observacaoRegistrada }}</p>
+              }
               @if (aguardandoConferencia(p)) {
                 <p style="margin:4px 0 0;font-size:.85rem;color:var(--muted)">
                   Aguardando a conferência para liberar o passo seguinte.
@@ -130,6 +138,67 @@
               <ul style="margin:6px 0 0;padding-left:18px;color:var(--muted);font-size:.85rem">
                 @for (m of p.motivos; track m) { <li>{{ m }}</li> }
               </ul>
+            }
+
+            <!-- Consulta: o que este passo produziu. Aberto a TODOS que enxergam a tela,
+                 inclusive quem só tem consulta — inclusive o download do documento. -->
+            @if (totalRegistros(p) > 0) {
+              <p style="margin:6px 0 0;font-size:.85rem">
+                <button
+                  type="button"
+                  (click)="alternarRegistros(p)"
+                  style="background:none;border:none;padding:0;cursor:pointer;font:inherit;color:var(--brand);text-decoration:underline"
+                >
+                  {{ registrosAbertos().includes(p.numero) ? '▲ ocultar' : '▼ Registros' }}
+                  ({{ totalRegistros(p) }})
+                </button>
+              </p>
+              @if (registrosAbertos().includes(p.numero)) {
+                <div style="margin-top:8px;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--surface);font-size:.85rem">
+                  @for (e of emailsDoPasso(p); track e.id) {
+                    <div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--line)">
+                      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:baseline">
+                        <span title="E-mail gerado neste passo">✉</span>
+                        <strong>{{ e.assunto || '(sem assunto)' }}</strong>
+                        <span
+                          style="font-size:.75rem;border-radius:99px;padding:1px 8px;border:1px solid var(--line)"
+                          [style.color]="e.status === 'enviado' ? 'var(--ok)' : 'var(--err)'"
+                        >{{ rotuloStatus(e) }}</span>
+                        <span class="txt-muted">{{ e.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</span>
+                      </div>
+                      <div class="txt-muted" style="margin-top:2px">
+                        Para: {{ e.para || '—' }}
+                        @if (e.anexo) { · anexo: {{ e.anexo }} }
+                        @if (e.autor) { · por {{ e.autor }} }
+                      </div>
+                      @if (e.erro) {
+                        <div style="color:var(--err);margin-top:2px">{{ e.erro }}</div>
+                      }
+                      <button
+                        type="button"
+                        (click)="alternarCorpo(e.id)"
+                        style="background:none;border:none;padding:0;margin-top:4px;cursor:pointer;font:inherit;font-size:.8rem;color:var(--brand);text-decoration:underline"
+                      >{{ emailsAbertos().includes(e.id) ? 'ocultar o texto' : 'ver o texto enviado' }}</button>
+                      @if (emailsAbertos().includes(e.id)) {
+                        <pre style="white-space:pre-wrap;margin:6px 0 0;font:inherit;background:var(--bg);padding:8px;border-radius:6px">{{ e.corpo }}</pre>
+                      }
+                    </div>
+                  }
+                  @for (d of documentosDoPasso(p); track d.id) {
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:baseline;margin-bottom:4px">
+                      <span title="Documento produzido neste passo">📄</span>
+                      <strong>{{ d.arquivo }}</strong>
+                      <span class="txt-muted">{{ d.criadoEm | date: 'dd/MM/yyyy HH:mm' }} · {{ d.origem }}</span>
+                      <button
+                        type="button"
+                        (click)="baixarDocumento(d)"
+                        style="background:none;border:none;padding:0;cursor:pointer;font:inherit;color:var(--brand);text-decoration:underline"
+                      >baixar</button>
+                      <a [routerLink]="['/projetos', projetoId, 'documentos', d.id, 'ver']">visualizar</a>
+                    </div>
+                  }
+                </div>
+              }
             }
 
           </div>
@@ -156,9 +225,10 @@
                   type="button"
                   class="btn"
                   style="width:100%"
+                  [class.btn-sec]="!!telaDoPasso(p)"
                   [disabled]="!p.liberado || ocupado() === p.numero"
                   (click)="abrirForm(p)"
-                >Preencher</button>
+                >{{ rotuloAcao(p) }}</button>
               } @else {
               <button
                 type="button"
@@ -195,7 +265,71 @@
 
             @if (formAberto() === p.numero) {
             <div style="margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--surface)">
-              @if (formDoPasso(p) === 'agendar') {
+              @if (formDoPasso(p) === 'registro') {
+                @if (p.rotuloMarcacao) {
+                  <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600">
+                      <input type="checkbox" [(ngModel)]="marcado" name="marcado{{ p.numero }}" />
+                      {{ p.rotuloMarcacao }} *
+                    </label>
+                    <label class="campo" style="max-width:200px">
+                      <span>Data da assinatura *</span>
+                      <input type="date" [(ngModel)]="dataMarcada" name="dataMarcada{{ p.numero }}" />
+                    </label>
+                  </div>
+                }
+
+                <label class="campo" style="margin-top:10px">
+                  <span>
+                    Descrição
+                    @if (p.numero === 5) {
+                      <small style="color:var(--muted);font-weight:400">— vai no corpo do e-mail do responsável pela próxima etapa</small>
+                    } @else {
+                      <small style="color:var(--muted);font-weight:400">— opcional, fica registrada no passo</small>
+                    }
+                  </span>
+                  <textarea rows="3" [(ngModel)]="descricao" name="descricao{{ p.numero }}"></textarea>
+                </label>
+
+                @if (p.redigeEmail) {
+                  <div style="margin-top:12px;border-top:1px dashed var(--line);padding-top:10px">
+                    <strong style="font-size:.9rem">E-mail a enviar</strong>
+                    <p class="txt-muted" style="margin:2px 0 8px;font-size:.8rem">
+                      Vem preenchido pelo modelo do passo (Sistema → Ferramentas → Modelos de
+                      E-mail). Revise antes de enviar.
+                    </p>
+                    @if (carregandoEmail()) {
+                      <p style="color:var(--muted)">Montando o e-mail…</p>
+                    } @else {
+                      <label class="campo">
+                        <span>Para <small style="color:var(--muted);font-weight:400">— separe por vírgula</small></span>
+                        <input type="text" [(ngModel)]="emailPara" name="emailPara{{ p.numero }}" />
+                      </label>
+                      <label class="campo" style="margin-top:8px">
+                        <span>Assunto</span>
+                        <input type="text" [(ngModel)]="emailAssunto" name="emailAssunto{{ p.numero }}" />
+                      </label>
+                      <label class="campo" style="margin-top:8px">
+                        <span>Mensagem</span>
+                        <textarea rows="10" [(ngModel)]="emailCorpo" name="emailCorpo{{ p.numero }}"></textarea>
+                      </label>
+                      @if (emailAnexo()) {
+                        <p style="margin:6px 0 0;font-size:.85rem">📎 Vai com o anexo <strong>{{ emailAnexo() }}</strong></p>
+                      }
+                    }
+                  </div>
+                }
+
+                <div class="acoes" style="margin-top:var(--sp-3)">
+                  <button
+                    type="button"
+                    class="btn primario"
+                    [disabled]="ocupado() === p.numero || carregandoEmail()"
+                    (click)="salvarRegistro(p)"
+                  >{{ p.redigeEmail ? 'Enviar e concluir' : 'Concluir' }}</button>
+                  <button type="button" class="btn btn-sec" (click)="fecharForm()">Cancelar</button>
+                </div>
+              } @else if (formDoPasso(p) === 'agendar') {
                 <label class="campo" style="max-width:220px">
                   <span>Data do levantamento *</span>
                   <input type="date" [(ngModel)]="dataLevantamento" name="dataLev" />

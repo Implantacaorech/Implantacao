@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ModeloEmailService } from './modelo-email.service';
 import { ModeloEmail } from '../database/entities/modelo-email.entity';
 import { MODELOS_EMAIL_PADRAO } from './modelo-email.constants';
+import { EMAILS_POR_PASSO } from '../passos/passos-email.constants';
 
 describe('ModeloEmailService', () => {
   let service: ModeloEmailService;
@@ -30,11 +31,22 @@ describe('ModeloEmailService', () => {
   });
 
   describe('seedPadroes', () => {
-    it('semeia os 7 modelos padrão quando nenhum existe', async () => {
+    it('semeia os modelos avulsos E um por passo do processo quando nenhum existe', async () => {
+      // Desde 2026-07-30 cada passo que envia e-mail ganha um modelo editável de slug
+      // `passo-N` — é ele que o fluxo dispara. Sem isso a tela de Modelos de E-mail não
+      // mostraria os textos que o Painel realmente manda.
+      const total = MODELOS_EMAIL_PADRAO.length + EMAILS_POR_PASSO.length;
       repo.count.mockResolvedValue(0);
       const n = await service.seedPadroes();
-      expect(n).toBe(MODELOS_EMAIL_PADRAO.length);
-      expect(repo.save).toHaveBeenCalledTimes(MODELOS_EMAIL_PADRAO.length);
+      expect(n).toBe(total);
+      expect(repo.save).toHaveBeenCalledTimes(total);
+
+      const slugs = repo.save.mock.calls.map(
+        (c: [{ slug: string }]) => c[0].slug,
+      );
+      for (const e of EMAILS_POR_PASSO) {
+        expect(slugs).toContain(`passo-${e.passo}`);
+      }
     });
 
     it('é idempotente por slug — não recria os que já existem', async () => {

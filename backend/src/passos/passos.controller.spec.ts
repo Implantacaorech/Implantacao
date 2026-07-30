@@ -64,12 +64,12 @@ describe('PassosController — repassa os papéis do usuário', () => {
       176,
       3,
       expect.objectContaining({ perfis: ['GCI', 'Consultor', 'Levantador'] }),
-      '',
+      expect.objectContaining({ observacao: '' }),
     );
   });
 
   it('leva os papéis acumulados ao conferir e ao reabrir', async () => {
-    await controller.conferir(176, 10, user);
+    await controller.conferir(176, 11, user);
     await controller.reabrir(176, 3, user);
     for (const chamada of [passos.conferir, passos.reabrir]) {
       expect(chamada).toHaveBeenCalledWith(

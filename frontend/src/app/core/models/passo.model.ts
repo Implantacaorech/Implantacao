@@ -1,7 +1,8 @@
-/** Os 18 passos operacionais do processo de implantação (revisão de 2026-07-22).
+/** Os 21 passos operacionais do processo de implantação (revisão de 2026-07-30).
  * Espelha `DefinicaoPasso`/`PassoView` do backend (`src/passos/passos.constants.ts`). */
 
 export type ResponsavelPasso =
+  | 'Comercial'
   | 'Automatico'
   | 'Administrativo'
   | 'Levantador'
@@ -25,6 +26,16 @@ export interface Passo {
   concluidoEm: string | null;
   concluidoPor: string;
   conferido: boolean;
+  /** Assinatura marcada (passos 7 e 12) e a data informada. */
+  marcado: boolean;
+  dataMarcada: string;
+  /** Texto que a PESSOA escreveu ao concluir — a descrição da negociação, no passo 5.
+   * Distinto de `observacao`, que é a explicação estática do que o passo é. */
+  observacaoRegistrada: string;
+  /** Rótulo da marcação que o passo cobra ('Contrato assinado'…), ou vazio. */
+  rotuloMarcacao: string;
+  /** A pessoa redige o e-mail na tela antes de o Painel enviar. */
+  redigeEmail: boolean;
   bloqueadoPor: number[];
   /** Pode ser concluído agora por quem está vendo a tela. */
   liberado: boolean;
@@ -65,7 +76,50 @@ export const TIPOS_RNS: TipoRns[] = ['RNI', 'COB', 'Conversão'];
 
 /** Passos cujo registro é o e-mail ENCAMINHADO pelo Outlook — espelha
  * `PASSOS_COM_ANEXO_DE_EMAIL` do backend. */
-export const PASSOS_COM_ANEXO_DE_EMAIL = [4, 5];
+export const PASSOS_COM_ANEXO_DE_EMAIL = [4, 6];
+
+/** E-mail de um passo, já montado pelo backend, para a pessoa revisar antes de enviar. */
+export interface EmailDoPasso {
+  para: string[];
+  assunto: string;
+  corpo: string;
+  /** Nome do arquivo que vai em anexo, quando houver. */
+  anexo: string;
+}
+
+export type StatusEmailPasso = 'enviado' | 'falhou' | 'sem_destinatario';
+
+/** E-mail já gerado num passo — o que a consulta relê. */
+export interface EmailRegistrado {
+  id: number;
+  projetoId: number;
+  passo: number;
+  para: string;
+  assunto: string;
+  corpo: string;
+  anexo: string;
+  status: StatusEmailPasso;
+  erro: string;
+  autor: string;
+  criadoEm: string;
+}
+
+/** Destinatários de um passo, como a tela de Ferramentas os edita. */
+export interface DestinatarioPassoView {
+  passo: number;
+  titulo: string;
+  responsavel: string;
+  grupos: string[];
+  extras: string[];
+  ativo: boolean;
+  /** `false` = nunca configurado; está valendo o padrão do código. */
+  configurado: boolean;
+}
+
+export interface DestinatariosPassoResposta {
+  passos: DestinatarioPassoView[];
+  grupos: { valor: string; rotulo: string }[];
+}
 
 /** Em que passo cada projeto está — alimenta o quadro por fase (Kanban). */
 export interface PassoAtualDoProjeto {

@@ -46,6 +46,30 @@ stack novo.
 - Importação do e-mail de fechamento (IMAP), notificações por e-mail, robô da caixa — agora
   em `backend/src/email/`, `backend/src/fluxo/`.
 
+## Processo de 21 passos (2026-07-30)
+
+O fluxo operacional passou de **19 para 21 passos** (revisão do usuário). Entraram o **passo
+5** ("Avançar para finalização da negociação", do **Comercial**, cuja descrição viaja no
+e-mail do passo seguinte) e o **passo 12** ("Sinalizar Projeto assinado", do Administrativo).
+De/para dos dados: `1–4` iguais · `5–10` → +1 · `11–19` → +2 — migration
+`1784810000000-RenumerarPassos21.ts`. **O número do passo é a identidade no banco**
+(`projeto_passos.passo`): mexer no mapa exige migrar junto.
+
+- Três trilhas paralelas saem do passo 8: RNS (9), Projeto (10→11→12) e **Cronograma (13),
+  que depende do 8** — não do 9 nem do 12.
+- Passos **7 e 12** exigem marcação de assinatura + data (`marcado`/`data_marcada`);
+  **11 e 19** exigem conferência; do **14** em diante é definitivo.
+- Passos **4, 5, 11, 15–21**: a pessoa **redige o e-mail na tela** (chega pronto do modelo) e
+  o Painel envia. Passo **9 não envia e-mail** e não tranca ninguém.
+- **Consulta:** os e-mails ficam inteiros em **`emails_passo`** (inclusive os que falharam) e
+  aparecem por passo junto com os documentos, para **qualquer** pessoa com acesso ao menu —
+  com **download liberado a quem só tem consulta**.
+- **Configurável em Sistema → Ferramentas:** *Modelos de E-mail* (a tela já existia, estava
+  **órfã** — rota sem link; foi religada) agora tem um modelo por passo, slug `passo-N`;
+  *Destinatários por Passo* (`destinatarios_passo`, novo) define grupos + **endereços fixos** —
+  é por onde entram os dois grupos de e-mail da Rech avisados no passo 1.
+- Detalhe completo em `vault/08 - Regras de Negócio/RN - Passos do Processo de Implantação.md`.
+
 ## Filtros salvos por usuário (2026-07-29)
 
 Toda tela com filtro reabre no recorte que o usuário deixou. Base: tabela

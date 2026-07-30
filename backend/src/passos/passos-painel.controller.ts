@@ -35,7 +35,7 @@ export class PassosPainelController {
   @Roles()
   @ApiOperation({
     summary:
-      'Os 18 passos do processo (número, título, macro-etapa, responsável)',
+      'Os 21 passos do processo (número, título, macro-etapa, responsável)',
   })
   definicoes() {
     return new ApiEnvelope(PASSOS);

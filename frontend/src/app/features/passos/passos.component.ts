@@ -7,20 +7,30 @@ import { PassosService } from '../../core/services/passos.service';
 import { DesignacaoService } from '../../core/services/designacao.service';
 import { ProjetosService } from '../../core/services/projetos.service';
 import { PermissoesService } from '../../core/services/permissoes.service';
+import { DocumentosService } from '../../core/services/documentos.service';
 import {
+  EmailRegistrado,
   PASSOS_COM_ANEXO_DE_EMAIL,
   Passo,
   Rns,
   TIPOS_RNS,
   TipoRns,
 } from '../../core/models/passo.model';
+import { Documento } from '../../core/models/documento.model';
 import { Projeto } from '../../core/models/projeto.model';
 
-/** Tela dos 18 passos do processo de implantação de um projeto.
+/** Tipo de formulário que um passo abre antes de concluir. */
+type FormPasso = 'agendar' | 'designar' | 'registro';
+
+/** Tela dos 21 passos do processo de implantação de um projeto.
  *
  * Mostra o que já foi feito, o que está liberado para QUEM ESTÁ OLHANDO e, quando não está,
  * o motivo em linguagem de negócio — quem é o responsável ou qual passo falta. Quem decide
- * tudo isso é o backend; aqui só se apresenta. */
+ * tudo isso é o backend; aqui só se apresenta.
+ *
+ * Também é a tela de CONSULTA do processo: cada passo mostra os e-mails que o Painel gerou e
+ * os documentos produzidos ali, e ambos ficam abertos a quem só tem consulta — inclusive o
+ * download do documento. Ver quem fez o quê não é privilégio de quem pode alterar. */
 @Component({
   selector: 'app-passos',
   standalone: true,
@@ -33,6 +43,7 @@ export class PassosComponent {
   private readonly projetos = inject(ProjetosService);
   private readonly designacao = inject(DesignacaoService);
   private readonly perm = inject(PermissoesService);
+  private readonly docs = inject(DocumentosService);
   private readonly route = inject(ActivatedRoute);
 
   readonly projetoId = Number(this.route.snapshot.paramMap.get('id'));
@@ -71,14 +82,119 @@ export class PassosComponent {
   gciSelecionado = '';
   consultoresSelecionados: string[] = [];
 
-  /** Passos que abrem formulário em vez de só concluir. */
-  private static readonly FORM_POR_PASSO: Record<number, 'agendar' | 'designar'> = {
-    2: 'agendar',
-    7: 'designar',
+  // --- Formulário genérico de registro (descrição, assinatura, e-mail) ---
+  descricao = '';
+  marcado = false;
+  dataMarcada = '';
+  emailPara = '';
+  emailAssunto = '';
+  emailCorpo = '';
+  /** Nome do arquivo que o backend anexará ao e-mail deste passo, se houver. */
+  readonly emailAnexo = signal('');
+  /** `true` enquanto a prévia do e-mail está sendo buscada. */
+  readonly carregandoEmail = signal(false);
+
+  // --- Consulta: o que cada passo produziu ---
+  readonly emailsGerados = signal<EmailRegistrado[]>([]);
+  readonly documentos = signal<Documento[]>([]);
+  /** Passos com o painel de registros aberto. */
+  readonly registrosAbertos = signal<number[]>([]);
+  /** E-mails com o corpo expandido. */
+  readonly emailsAbertos = signal<number[]>([]);
+
+  /** Documentos que pertencem a um passo.
+   *
+   * O vínculo é pelo TIPO do documento — é assim que o backend liga a geração ao passo
+   * (`DocumentosService.PASSO_POR_TIPO`). Os anexos de e-mail do Outlook usam o tipo
+   * `email_passo_N`, que carrega o número no próprio nome. */
+  private static readonly TIPO_DOC_POR_PASSO: Record<number, string> = {
+    3: 'levantamento',
+    10: 'projeto',
+    13: 'cronograma',
+    14: 'checklist',
+    18: 'termo',
   };
 
-  formDoPasso(p: Passo): 'agendar' | 'designar' | null {
-    return PassosComponent.FORM_POR_PASSO[p.numero] ?? null;
+  documentosDoPasso(p: Passo): Documento[] {
+    const tipo = PassosComponent.TIPO_DOC_POR_PASSO[p.numero];
+    const tipoAnexo = `email_passo_${p.numero}`;
+    return this.documentos().filter(
+      (d) => d.tipo === tipo || d.tipo === tipoAnexo,
+    );
+  }
+
+  emailsDoPasso(p: Passo): EmailRegistrado[] {
+    return this.emailsGerados().filter((e) => e.passo === p.numero);
+  }
+
+  /** Quantos registros o passo tem — o que o cabeçalho do painel de consulta anuncia. */
+  totalRegistros(p: Passo): number {
+    return this.emailsDoPasso(p).length + this.documentosDoPasso(p).length;
+  }
+
+  alternarRegistros(p: Passo): void {
+    this.registrosAbertos.update((atual) =>
+      atual.includes(p.numero)
+        ? atual.filter((n) => n !== p.numero)
+        : [...atual, p.numero],
+    );
+  }
+
+  alternarCorpo(id: number): void {
+    this.emailsAbertos.update((atual) =>
+      atual.includes(id) ? atual.filter((n) => n !== id) : [...atual, id],
+    );
+  }
+
+  rotuloStatus(e: EmailRegistrado): string {
+    if (e.status === 'enviado') return 'enviado';
+    return e.status === 'sem_destinatario'
+      ? 'sem destinatário'
+      : 'falhou no envio';
+  }
+
+  /** Baixa o documento do passo. Liberado a quem só tem consulta — foi o que o processo
+   * pediu: ver o documento gerado e poder levá-lo, mesmo sem poder alterar nada. */
+  async baixarDocumento(doc: Documento): Promise<void> {
+    this.erro.set(null);
+    try {
+      const { blob, filename } = await this.docs.baixar(doc.id, doc.arquivo);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      this.erro.set(this.mensagem(e));
+    }
+  }
+
+  /** Passos que abrem um formulário PRÓPRIO em vez de só concluir — os que gravam dados em
+   * outra estrutura (agenda do levantamento, designação da equipe). */
+  private static readonly FORM_POR_PASSO: Record<number, FormPasso> = {
+    2: 'agendar',
+    8: 'designar',
+  };
+
+  /** Que formulário o passo abre antes de concluir.
+   *
+   * Além dos dois formulários próprios, qualquer passo que exija uma marcação de assinatura
+   * (7 e 12) ou que mande a pessoa redigir o e-mail cai no formulário genérico de
+   * 'registro'. Passo que não pede nada disso continua sendo um botão "Concluir" direto —
+   * abrir um formulário vazio só para clicar "salvar" seria atrito à toa. */
+  formDoPasso(p: Passo): FormPasso | null {
+    const proprio = PassosComponent.FORM_POR_PASSO[p.numero];
+    if (proprio) return proprio;
+    return p.rotuloMarcacao || p.redigeEmail ? 'registro' : null;
+  }
+
+  /** O que o botão do passo promete. Dizer "Preencher" num passo cuja ação é mandar um
+   * e-mail ao cliente esconde o que vai acontecer ao clicar. */
+  rotuloAcao(p: Passo): string {
+    if (p.redigeEmail) return 'Redigir e-mail';
+    if (p.rotuloMarcacao) return 'Registrar';
+    return 'Preencher';
   }
 
   /** Passos cuja ação é GERAR um documento em outra tela. O fluxo leva a pessoa até lá em
@@ -88,14 +204,16 @@ export class PassosComponent {
   private static readonly TELA_POR_PASSO: Record<number, string[]> = {
     // Quem pode ABRIR cada uma vem do backend em `p.podeAbrir` — é a permissão da TELA, não
     // a de concluir o passo (ver PERFIS_TELA_DO_PASSO no backend).
-    // 3 (levantamento) e 12 (check-list) abrem a tela para PREENCHER. 9 gera o Projeto. 11
-    // "Elaborar o cronograma e incluir as agendas no SICLA" abre a AGENDA de Visitas
-    // (calendário com a distribuição pelos turnos LIVRES do técnico no SICLA — a "janela de
-    // criação de cronograma"). Todos mostram "Abrir" E "Concluir".
+    // 3 (levantamento) e 14 (check-list) abrem a tela para PREENCHER. 10 gera o Projeto.
+    // 11 é a Conferência: o Administrativo abre o Projeto no layout da Rech para revisar e
+    // baixar antes de mandar ao cliente. 13 "Elaborar o cronograma e incluir as agendas no
+    // SICLA" abre a AGENDA de Visitas (calendário com a distribuição pelos turnos LIVRES do
+    // técnico no SICLA). Todos mostram "Abrir" E "Concluir".
     3: ['levantamento'],
-    9: ['projeto', 'origem'],
-    11: ['agenda'],
-    12: ['checklist'],
+    10: ['projeto', 'origem'],
+    11: ['projeto', 'origem'],
+    13: ['agenda'],
+    14: ['checklist'],
   };
 
   /** Rota da tela que o passo abre, ou `null` se o passo se resolve aqui mesmo. */
@@ -110,6 +228,36 @@ export class PassosComponent {
     if (!tipo) return;
     this.formAberto.set(p.numero);
     try {
+      if (tipo === 'registro') {
+        this.descricao = '';
+        this.marcado = false;
+        this.dataMarcada = new Date().toISOString().slice(0, 10);
+        this.emailPara = '';
+        this.emailAssunto = '';
+        this.emailCorpo = '';
+        this.emailAnexo.set('');
+        if (p.redigeEmail) {
+          // O e-mail chega PRONTO do backend (modelo do passo + tokens do projeto já
+          // aplicados) e a pessoa revisa. Escrever do zero toda vez seria retrabalho, e um
+          // campo vazio convidaria a improvisar o texto institucional.
+          this.carregandoEmail.set(true);
+          try {
+            const previa = await this.service.previaEmail(
+              this.projetoId,
+              p.numero,
+            );
+            if (previa) {
+              this.emailPara = previa.para.join(', ');
+              this.emailAssunto = previa.assunto;
+              this.emailCorpo = previa.corpo;
+              this.emailAnexo.set(previa.anexo);
+            }
+          } finally {
+            this.carregandoEmail.set(false);
+          }
+        }
+        return;
+      }
       if (tipo === 'agendar') {
         const [view, pessoas] = await Promise.all([
           this.designacao.obterAgendar(this.projetoId),
@@ -170,7 +318,55 @@ export class PassosComponent {
     }
   }
 
-  /** Passo 7: grava o GCI e os técnicos. O backend conclui o passo sozinho. */
+  /** Conclui um passo pelo formulário genérico: descrição, assinatura e/ou e-mail revisado.
+   *
+   * Só manda o que o passo realmente pede — um `email` num passo que não redige seria
+   * recusado pelo backend, e mandar `marcado` onde não há marcação polui o registro. */
+  async salvarRegistro(p: Passo): Promise<void> {
+    if (p.rotuloMarcacao && !this.marcado) {
+      this.erro.set(`Marque "${p.rotuloMarcacao}" para concluir.`);
+      return;
+    }
+    if (p.rotuloMarcacao && !this.dataMarcada) {
+      this.erro.set('Informe a data da assinatura.');
+      return;
+    }
+    const dados: Parameters<PassosService['concluir']>[2] = {
+      observacao: this.descricao.trim(),
+    };
+    if (p.rotuloMarcacao) {
+      dados.marcado = this.marcado;
+      dados.dataMarcada = this.dataMarcada;
+    }
+    if (p.redigeEmail) {
+      dados.email = {
+        para: this.emailPara
+          .split(/[,;]+/)
+          .map((e) => e.trim())
+          .filter(Boolean),
+        assunto: this.emailAssunto.trim(),
+        corpo: this.emailCorpo,
+      };
+    }
+    this.ocupado.set(p.numero);
+    this.erro.set(null);
+    try {
+      this.passos.set(
+        await this.service.concluir(this.projetoId, p.numero, dados),
+      );
+      this.formAberto.set(null);
+      // O e-mail sai em segundo plano no backend; recarregar a consulta aqui mostraria uma
+      // lista possivelmente sem ele. Quem quiser conferir abre o painel de registros, que
+      // busca na hora.
+      await this.recarregarRegistros();
+    } catch (e) {
+      this.erro.set(this.mensagem(e));
+    } finally {
+      this.ocupado.set(null);
+    }
+  }
+
+  /** Passo 8: grava o GCI e os técnicos. O backend conclui o passo sozinho. */
   async salvarDesignacao(): Promise<void> {
     if (!this.gciSelecionado) {
       this.erro.set('Selecione o GCI.');
@@ -180,7 +376,9 @@ export class PassosComponent {
       this.erro.set('Selecione ao menos um técnico.');
       return;
     }
-    this.ocupado.set(6);
+    // Número do passo da designação — 8 desde a revisão de 2026-07-30. Ficava em 6 (a
+    // numeração de duas revisões atrás), então o botão certo nunca era desabilitado.
+    this.ocupado.set(8);
     this.erro.set(null);
     try {
       await this.designacao.definirGci(this.projetoId, [this.gciSelecionado]);
@@ -238,10 +436,29 @@ export class PassosComponent {
       this.projeto.set(projeto);
       this.cliente.set(projeto.cliente);
       this.rns.set(rns);
+      await this.recarregarRegistros();
     } catch (e) {
       this.erro.set(this.mensagem(e));
     } finally {
       this.carregando.set(false);
+    }
+  }
+
+  /** E-mails gerados e documentos do projeto — a camada de CONSULTA da tela.
+   *
+   * Falha aqui não derruba o fluxo: os passos já estão na tela e continuam operáveis. O
+   * histórico é informativo, e trocar a tela inteira por uma mensagem de erro porque a
+   * consulta não veio seria desproporcional. */
+  private async recarregarRegistros(): Promise<void> {
+    try {
+      const [emails, documentos] = await Promise.all([
+        this.service.emailsGerados(this.projetoId),
+        this.docs.listar(this.projetoId),
+      ]);
+      this.emailsGerados.set(emails);
+      this.documentos.set(documentos);
+    } catch {
+      // Silencioso de propósito — ver o comentário acima.
     }
   }
 
@@ -274,6 +491,7 @@ export class PassosComponent {
     );
   }
 
+
   conferir(p: Passo): Promise<void> {
     return this.executar(p.numero, () =>
       this.service.conferir(this.projetoId, p.numero),
@@ -286,16 +504,16 @@ export class PassosComponent {
     );
   }
 
-  /** Passo 10 e 17: concluído mas ainda sem a conferência que libera o seguinte. */
+  /** Passos 11 e 19: concluído mas ainda sem a conferência que libera o seguinte. */
   aguardandoConferencia(p: Passo): boolean {
     return p.concluido && !p.conferido && this.temConferencia(p);
   }
 
   temConferencia(p: Passo): boolean {
-    return p.numero === 10 || p.numero === 17;
+    return p.numero === 11 || p.numero === 19;
   }
 
-  /** Passos 4 e 5: o e-mail sai do Outlook da pessoa; o Painel guarda a PROVA. */
+  /** Passos 4 e 6: o e-mail sai do Outlook da pessoa; o Painel guarda a PROVA. */
   aceitaAnexoDeEmail(p: Passo): boolean {
     return PASSOS_COM_ANEXO_DE_EMAIL.includes(p.numero);
   }

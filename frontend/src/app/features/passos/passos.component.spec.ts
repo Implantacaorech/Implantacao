@@ -5,8 +5,36 @@ import { PassosService } from '../../core/services/passos.service';
 import { ProjetosService } from '../../core/services/projetos.service';
 import { DesignacaoService } from '../../core/services/designacao.service';
 import { PermissoesService } from '../../core/services/permissoes.service';
-import { Passo } from '../../core/models/passo.model';
+import { DocumentosService } from '../../core/services/documentos.service';
+import { EmailRegistrado, Passo } from '../../core/models/passo.model';
+import { Documento } from '../../core/models/documento.model';
 import { Projeto } from '../../core/models/projeto.model';
+
+/** E-mail já gerado no passo 10, para a consulta. */
+const EMAIL_GERADO: EmailRegistrado = {
+  id: 1,
+  projetoId: 5,
+  passo: 10,
+  para: 'dora@rech.com.br',
+  assunto: 'Projeto finalizado — pronto para revisão',
+  corpo: 'Texto do e-mail.',
+  anexo: '',
+  status: 'enviado',
+  erro: '',
+  autor: 'Ana GCI',
+  criadoEm: '2026-07-30T12:00:00.000Z',
+};
+
+/** Documento do passo 10 (tipo `projeto`) — o vínculo passo↔documento é pelo tipo. */
+const DOCUMENTO: Documento = {
+  id: 9,
+  projetoId: 5,
+  tipo: 'projeto',
+  arquivo: 'Projeto.docx',
+  caminho: 'C:/docs/Projeto.docx',
+  origem: 'gerado',
+  criadoEm: '2026-07-30T12:00:00.000Z',
+};
 
 function projeto(): Projeto {
   return {
@@ -51,6 +79,11 @@ function passo(over: Partial<Passo> = {}): Passo {
     concluidoEm: null,
     concluidoPor: '',
     conferido: false,
+    marcado: false,
+    dataMarcada: '',
+    observacaoRegistrada: '',
+    rotuloMarcacao: '',
+    redigeEmail: false,
     bloqueadoPor: [],
     liberado: true,
     motivos: [],
@@ -79,6 +112,8 @@ describe('PassosComponent', () => {
     concluir: (id: number, numero: number) => Promise<Passo[]>;
     conferir: () => Promise<Passo[]>;
     reabrir: () => Promise<Passo[]>;
+    previaEmail: (id: number, numero: number) => Promise<unknown>;
+    emailsGerados: () => Promise<EmailRegistrado[]>;
     concluidos: number[];
   };
 
@@ -98,6 +133,15 @@ describe('PassosComponent', () => {
       },
       conferir: () => Promise.resolve(passos),
       reabrir: () => Promise.resolve(passos),
+      // O backend monta o e-mail (modelo do passo + tokens do projeto) e a tela só revisa.
+      previaEmail: () =>
+        Promise.resolve({
+          para: ['contato@cliente.com'],
+          assunto: 'Encerramento da implantação do SIGER® — Cliente Teste',
+          corpo: 'Prezado(a) Camila,',
+          anexo: 'Termo.docx',
+        }),
+      emailsGerados: () => Promise.resolve([EMAIL_GERADO]),
     };
 
     TestBed.configureTestingModule({
@@ -117,6 +161,14 @@ describe('PassosComponent', () => {
           },
         },
         { provide: ProjetosService, useValue: { buscar: () => Promise.resolve(projeto()) } },
+        {
+          provide: DocumentosService,
+          useValue: {
+            listar: () => Promise.resolve([DOCUMENTO]),
+            baixar: () =>
+              Promise.resolve({ blob: new Blob(), filename: 'Projeto.docx' }),
+          },
+        },
         // Sem Alteração na Carteira a tela vira SÓ CONSULTA e esconde a coluna de ações —
         // os testes de botão precisam do nível que o painel de Permissões daria.
         {
@@ -180,8 +232,72 @@ describe('PassosComponent', () => {
     const fixture = await montar([passo()]);
     const c = fixture.componentInstance;
     expect(c.formDoPasso(passo({ numero: 2 }))).toBe('agendar');
-    expect(c.formDoPasso(passo({ numero: 7 }))).toBe('designar');
-    expect(c.formDoPasso(passo({ numero: 13 }))).toBeNull();
+    expect(c.formDoPasso(passo({ numero: 8 }))).toBe('designar');
+    // Passo que não pede nada continua sendo um "Concluir" direto.
+    expect(c.formDoPasso(passo({ numero: 9 }))).toBeNull();
+  });
+
+  it('abre o formulário de registro quando o passo cobra assinatura ou e-mail', async () => {
+    // Revisão de 2026-07-30: o 7 e o 12 exigem a marcação da assinatura + data; os passos de
+    // e-mail ("enviar por aqui") mandam a pessoa redigir antes de concluir.
+    const fixture = await montar([passo()]);
+    const c = fixture.componentInstance;
+    expect(
+      c.formDoPasso(passo({ numero: 7, rotuloMarcacao: 'Contrato assinado' })),
+    ).toBe('registro');
+    expect(
+      c.formDoPasso(passo({ numero: 12, rotuloMarcacao: 'Projeto assinado' })),
+    ).toBe('registro');
+    expect(c.formDoPasso(passo({ numero: 21, redigeEmail: true }))).toBe(
+      'registro',
+    );
+  });
+
+  it('o botão diz o que vai acontecer ao clicar', async () => {
+    const fixture = await montar([passo()]);
+    const c = fixture.componentInstance;
+    expect(c.rotuloAcao(passo({ numero: 21, redigeEmail: true }))).toBe(
+      'Redigir e-mail',
+    );
+    expect(
+      c.rotuloAcao(passo({ numero: 7, rotuloMarcacao: 'Contrato assinado' })),
+    ).toBe('Registrar');
+    expect(c.rotuloAcao(passo({ numero: 2 }))).toBe('Preencher');
+  });
+
+  it('recusa concluir o passo de assinatura sem a marcação e a data', async () => {
+    const p = passo({
+      numero: 7,
+      rotuloMarcacao: 'Contrato assinado',
+      liberado: true,
+    });
+    const fixture = await montar([p]);
+    const c = fixture.componentInstance;
+
+    await c.salvarRegistro(p);
+    expect(c.erro()).toContain('Contrato assinado');
+    expect(servicoFake.concluidos).toEqual([]);
+
+    c.marcado = true;
+    c.dataMarcada = '';
+    await c.salvarRegistro(p);
+    expect(c.erro()).toContain('data da assinatura');
+    expect(servicoFake.concluidos).toEqual([]);
+
+    c.dataMarcada = '2026-08-03';
+    await c.salvarRegistro(p);
+    expect(servicoFake.concluidos).toEqual([7]);
+  });
+
+  it('abre o e-mail já preenchido pelo modelo do passo', async () => {
+    // A pessoa REVISA o texto institucional; não o escreve do zero a cada envio.
+    const p = passo({ numero: 21, redigeEmail: true });
+    const fixture = await montar([p]);
+    const c = fixture.componentInstance;
+    await c.abrirForm(p);
+    expect(c.emailPara).toBe('contato@cliente.com');
+    expect(c.emailAssunto).toContain('Encerramento');
+    expect(c.emailAnexo()).toBe('Termo.docx');
   });
 
   it('lista como levantador SÓ quem tem o papel Levantador', async () => {
@@ -249,22 +365,50 @@ describe('PassosComponent', () => {
     expect(linkAbrir(fixture)?.getAttribute('href')).toBe('/projetos/5/levantamento');
   });
 
-  it('só reconhece conferência nos passos 10 e 17', async () => {
+  it('só reconhece conferência nos passos 11 e 19', async () => {
     const fixture = await montar([passo()]);
     const c = fixture.componentInstance;
-    expect(c.temConferencia(passo({ numero: 10 }))).toBe(true);
-    expect(c.temConferencia(passo({ numero: 17 }))).toBe(true);
-    expect(c.temConferencia(passo({ numero: 9 }))).toBe(false);
+    expect(c.temConferencia(passo({ numero: 11 }))).toBe(true);
+    expect(c.temConferencia(passo({ numero: 19 }))).toBe(true);
+    expect(c.temConferencia(passo({ numero: 10 }))).toBe(false);
   });
 
   it('sinaliza quando um passo concluído ainda aguarda conferência', async () => {
     const fixture = await montar([passo()]);
     const c = fixture.componentInstance;
     expect(
-      c.aguardandoConferencia(passo({ numero: 10, concluido: true, conferido: false })),
+      c.aguardandoConferencia(passo({ numero: 11, concluido: true, conferido: false })),
     ).toBe(true);
     expect(
-      c.aguardandoConferencia(passo({ numero: 10, concluido: true, conferido: true })),
+      c.aguardandoConferencia(passo({ numero: 11, concluido: true, conferido: true })),
     ).toBe(false);
+  });
+
+  it('mostra os e-mails e documentos do passo a quem só tem consulta', async () => {
+    // Exigência do processo: qualquer pessoa com acesso ao menu vê os e-mails gerados e os
+    // documentos de cada etapa — e pode BAIXAR o documento mesmo sem poder alterar nada.
+    const fixture = await montar([passo({ numero: 10, concluido: true })]);
+    const c = fixture.componentInstance;
+    const p = passo({ numero: 10 });
+    expect(c.emailsDoPasso(p).map((e) => e.id)).toEqual([1]);
+    expect(c.documentosDoPasso(p).map((d) => d.arquivo)).toEqual([
+      'Projeto.docx',
+    ]);
+    expect(c.totalRegistros(p)).toBe(2);
+    // Passo sem nada produzido não anuncia registro nenhum.
+    expect(c.totalRegistros(passo({ numero: 2 }))).toBe(0);
+  });
+
+  it('traduz o status do e-mail para linguagem de quem lê', async () => {
+    const fixture = await montar([passo()]);
+    const c = fixture.componentInstance;
+    const base = { id: 1, projetoId: 5, passo: 1 } as EmailRegistrado;
+    expect(c.rotuloStatus({ ...base, status: 'enviado' })).toBe('enviado');
+    expect(c.rotuloStatus({ ...base, status: 'sem_destinatario' })).toBe(
+      'sem destinatário',
+    );
+    expect(c.rotuloStatus({ ...base, status: 'falhou' })).toBe(
+      'falhou no envio',
+    );
   });
 });

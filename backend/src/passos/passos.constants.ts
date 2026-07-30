@@ -5,8 +5,8 @@ import {
   PERFIS_GERA_LEVANTAMENTO,
 } from '../common/constants/perfis';
 
-/** Os 19 passos operacionais do processo de implantação (revisão do usuário em 2026-07-22;
- * o passo 3 "Realizar o Levantamento" foi (re)inserido em 2026-07-28).
+/** Os 21 passos operacionais do processo de implantação (revisão do usuário em 2026-07-30;
+ * antes eram 19 — o passo 3 "Realizar o Levantamento" entrou em 2026-07-28).
  *
  * Eles NÃO substituem as 6 macro-etapas (`ETAPAS` em common/constants/perfis.ts): cada passo
  * pertence a uma macro-etapa, que continua sendo o que aparece no painel, nas métricas e nos
@@ -17,7 +17,15 @@ import {
  *   GCI       = Gerente de Contas de Implantação — é ÚNICO por projeto
  *   LEVANTADOR = quem faz o levantamento de processos; pode ser mais de um
  *   Consultor  = pode ser mais de um por projeto
- */
+ *
+ * REVISÃO DE 2026-07-30 — dois passos novos e a renumeração que eles causaram:
+ *   passo 5  (NOVO, Comercial)      "Avançar para finalização da negociação"
+ *   passo 12 (NOVO, Administrativo) "Sinalizar Projeto assinado"
+ *
+ * O de/para aplicado aos dados já gravados (ver a migration `RenumerarPassos21`):
+ *   1-4 → iguais · 5-10 → +1 (viram 6-11) · 11-19 → +2 (viram 13-21)
+ * Quem mexer nos números daqui PRECISA migrar `projeto_passos.passo` junto — a numeração é
+ * a identidade do passo no banco, não um rótulo de exibição. */
 
 /** Papel responsável por executar o passo. "Comercial" abre o processo consultando o cliente
  * no SICLA e completando o cadastro (passo 1). "Automatico" é o antigo robô da caixa de
@@ -84,11 +92,15 @@ export const PERFIS_POR_RESPONSAVEL: Record<ResponsavelPasso, Perfil[]> = {
 export const PERFIS_TELA_DO_PASSO: Record<number, Perfil[]> = {
   // 3 = Levantamento (LevantamentoController usa PERFIS_GERA_LEVANTAMENTO).
   3: PERFIS_GERA_LEVANTAMENTO,
-  // 9 = Gerar Projeto — mesma lista de `podeGerar('projeto')`.
-  9: PERFIS_GERA_LEVANTAMENTO,
-  // 11 = Agenda de Visitas e 12 = Check-list, ambos da trilha do cronograma.
-  11: PERFIS_GERA_CRONOGRAMA,
-  12: PERFIS_GERA_CRONOGRAMA,
+  // 10 = Gerar Projeto — mesma lista de `podeGerar('projeto')`.
+  10: PERFIS_GERA_LEVANTAMENTO,
+  // 11 = Conferência do Projeto: o Administrativo abre o Projeto no layout da Rech para
+  // revisar e baixar antes de mandar ao cliente. Quem confere é o Administrativo, mas o GCI
+  // e a Coordenação validam junto — mesma lista de quem gera o documento.
+  11: PERFIS_GERA_LEVANTAMENTO,
+  // 13 = Agenda de Visitas e 14 = Check-list, ambos da trilha do cronograma.
+  13: PERFIS_GERA_CRONOGRAMA,
+  14: PERFIS_GERA_CRONOGRAMA,
 };
 
 export const PASSOS: DefinicaoPasso[] = [
@@ -111,6 +123,8 @@ export const PASSOS: DefinicaoPasso[] = [
     responsavel: 'Administrativo',
     depende: [1],
     irreversivel: false,
+    email:
+      'Avisa o(s) levantador(es) designado(s) do cliente, da data e do horário agendados.',
     observacao:
       'Define a data da visita e os levantadores. Pode haver mais de um levantador, mas a data é a MESMA para todos.',
   },
@@ -138,68 +152,94 @@ export const PASSOS: DefinicaoPasso[] = [
   },
   {
     numero: 5,
+    titulo: 'Avançar para finalização da negociação',
+    etapa: 'Levantamento',
+    responsavel: 'Comercial',
+    depende: [4],
+    irreversivel: false,
+    email:
+      'Leva ao Administrativo a descrição escrita aqui, para ele finalizar a negociação e enviar o fechamento.',
+    observacao:
+      'O Comercial descreve o que ficou acertado na negociação; essa descrição vai NO CORPO do e-mail do responsável pelo passo seguinte.',
+  },
+  {
+    numero: 6,
     titulo: 'Finalizar negociação e enviar o fechamento',
     etapa: 'Levantamento',
     responsavel: 'Administrativo',
-    depende: [4],
+    depende: [5],
     irreversivel: false,
     observacao:
       'Conferência manual do Administrativo. O registro é o e-mail encaminhado pelo Outlook, anexado ao projeto.',
   },
   {
-    numero: 6,
+    numero: 7,
     titulo: 'Contrato assinado e liberação para indicar os responsáveis',
     etapa: 'Levantamento',
     responsavel: 'Administrativo',
-    depende: [5],
-    irreversivel: false,
-    email: 'Avisa o Coordenador de que pode indicar os responsáveis.',
-  },
-  {
-    numero: 7,
-    titulo: 'Indicar o GCI e os técnicos responsáveis',
-    etapa: 'Designação',
-    responsavel: 'Coordenador',
     depende: [6],
     irreversivel: false,
     email:
-      'Comunica o GCI e os consultores de que são responsáveis pela implantação, e avisa o Administrativo para seguir.',
-    observacao: 'O GCI é único; os consultores podem ser vários.',
+      'Avisa o Coordenador de que a implantação aguarda a indicação do GCI e dos técnicos.',
+    observacao:
+      'Exige marcar que o contrato foi assinado e informar a data da assinatura.',
   },
   {
     numero: 8,
-    titulo: 'Incluir a RNI e as RNS de COB e Conversão',
+    titulo: 'Indicar o GCI e os técnicos responsáveis',
     etapa: 'Designação',
-    responsavel: 'Administrativo',
+    responsavel: 'Coordenador',
     depende: [7],
     irreversivel: false,
     email:
-      'Libera o GCI para elaborar o Projeto e os consultores para elaborar o Cronograma.',
-    observacao:
-      'A quantidade de RNS é variável — o Administrativo acrescenta quantos registros precisar. Daqui saem DUAS trilhas paralelas: Projeto (9-10) e Cronograma (11-14).',
+      'Comunica o GCI, os técnicos e o Administrativo de que a equipe está definida.',
+    observacao: 'O GCI é único; os consultores podem ser vários.',
   },
   {
     numero: 9,
+    titulo: 'Incluir a RNI e as RNS de COB e Conversão',
+    etapa: 'Designação',
+    responsavel: 'Administrativo',
+    depende: [8],
+    irreversivel: false,
+    observacao:
+      'A quantidade de RNS é variável — o Administrativo acrescenta quantos registros precisar. NÃO envia e-mail e NÃO tranca as próximas: nada depende deste passo.',
+  },
+  {
+    numero: 10,
     titulo: 'Criação do Projeto',
     etapa: 'Projeto',
     responsavel: 'GCI',
     depende: [8],
     irreversivel: false,
     email:
-      'Pede ao Administrativo a conferência e o encaminhamento para assinatura.',
-  },
-  {
-    numero: 10,
-    titulo: 'Conferência do Projeto e envio para assinatura',
-    etapa: 'Projeto',
-    responsavel: 'Administrativo',
-    depende: [9],
-    irreversivel: false,
+      'Avisa o Administrativo de que o Projeto está pronto para revisão e envio ao cliente.',
     observacao:
-      'Exige a marcação de conferido (validada com GCI ou Coordenador) para liberar a etapa seguinte.',
+      'Não depende do passo 9 e não tranca a trilha do cronograma (13+) — só a conferência (11) espera por ele.',
   },
   {
     numero: 11,
+    titulo: 'Conferência do Projeto e envio para assinatura',
+    etapa: 'Projeto',
+    responsavel: 'Administrativo',
+    depende: [10],
+    irreversivel: false,
+    email: 'Sinaliza ao Coordenador que o Projeto foi enviado para assinatura.',
+    observacao:
+      'O Administrativo visualiza o Projeto no layout da Rech, baixa o arquivo e envia ao cliente daqui mesmo. Exige a marcação de conferido para liberar o passo 12.',
+  },
+  {
+    numero: 12,
+    titulo: 'Sinalizar Projeto assinado',
+    etapa: 'Projeto',
+    responsavel: 'Administrativo',
+    depende: [11],
+    irreversivel: false,
+    observacao:
+      'Marca que o Projeto foi assinado e registra a data da assinatura. Não tranca a trilha do cronograma.',
+  },
+  {
+    numero: 13,
     titulo: 'Elaborar o cronograma e incluir as agendas no SICLA',
     etapa: 'Cronograma e Check-list',
     responsavel: 'Consultor',
@@ -207,28 +247,11 @@ export const PASSOS: DefinicaoPasso[] = [
     irreversivel: false,
     email: 'Envia o cronograma ao cliente para validar as datas.',
     observacao:
-      'NÃO depende do passo 9: corre em paralelo com a trilha do Projeto.',
-  },
-  {
-    numero: 12,
-    titulo: 'Gerar o check-list',
-    etapa: 'Cronograma e Check-list',
-    responsavel: 'Consultor',
-    depende: [11],
-    irreversivel: true,
-  },
-  {
-    numero: 13,
-    titulo: 'Encaminhar e-mail de boas-vindas',
-    etapa: 'Cronograma e Check-list',
-    responsavel: 'Consultor',
-    depende: [12],
-    irreversivel: true,
-    email: 'E-mail descritivo ao cliente, com os vídeos e o BI de Implantação.',
+      'Depende só do passo 8: corre em paralelo às trilhas da RNS (9) e do Projeto (10-12). O consultor pode refazer o cronograma quantas vezes quiser — o passo só se conclui quando ele marcar o cronograma como finalizado.',
   },
   {
     numero: 14,
-    titulo: 'Enviar o cronograma de visitas',
+    titulo: 'Gerar o check-list',
     etapa: 'Cronograma e Check-list',
     responsavel: 'Consultor',
     depende: [13],
@@ -236,65 +259,113 @@ export const PASSOS: DefinicaoPasso[] = [
   },
   {
     numero: 15,
-    titulo: 'Sinalizar Projeto concluído',
-    etapa: 'Encerramento',
+    titulo: 'Encaminhar e-mail de boas-vindas',
+    etapa: 'Cronograma e Check-list',
     responsavel: 'Consultor',
     depende: [14],
     irreversivel: true,
-    observacao: 'Registra a data de conclusão do projeto.',
+    email: 'E-mail descritivo ao cliente, com os vídeos e o BI de Implantação.',
   },
   {
     numero: 16,
+    titulo: 'Enviar o cronograma de visitas',
+    etapa: 'Cronograma e Check-list',
+    responsavel: 'Consultor',
+    depende: [15],
+    irreversivel: true,
+    email: 'Envia ao cliente o cronograma de visitas.',
+  },
+  {
+    numero: 17,
+    titulo: 'Sinalizar Projeto concluído',
+    etapa: 'Encerramento',
+    responsavel: 'Consultor',
+    depende: [16],
+    irreversivel: true,
+    email: 'Comunica a conclusão do projeto.',
+    observacao: 'Registra a data de conclusão do projeto.',
+  },
+  {
+    numero: 18,
     titulo: 'Gerar o Termo de Encerramento e enviar ao Administrativo',
     etapa: 'Encerramento',
     responsavel: 'Consultor',
-    depende: [15],
+    depende: [17],
     irreversivel: true,
     email: 'Avisa o Administrativo para conduzir a conferência.',
   },
   {
-    numero: 17,
+    numero: 19,
     titulo: 'Conferir o Termo e encaminhar para assinatura',
     etapa: 'Encerramento',
     responsavel: 'Administrativo',
-    depende: [16],
+    depende: [18],
     irreversivel: true,
     email: 'Avisa o consultor para conduzir o encerramento.',
     observacao:
       'Exige a marcação de conferido, validada com GCI ou Coordenador.',
   },
   {
-    numero: 18,
+    numero: 20,
     titulo: 'E-mail de Encerramento ao Coordenador e ao GCI',
     etapa: 'Encerramento',
     responsavel: 'Consultor',
-    depende: [17],
+    depende: [19],
     irreversivel: true,
+    email: 'Encerramento da implantação ao Coordenador e ao GCI.',
   },
   {
-    numero: 19,
+    numero: 21,
     titulo: 'E-mail de Encerramento ao cliente, com o Termo',
     etapa: 'Encerramento',
     responsavel: 'Consultor',
-    depende: [18],
+    depende: [20],
     irreversivel: true,
+    email: 'Encerramento ao cliente, com o Termo em anexo.',
   },
 ];
 
 export const PASSOS_POR_NUMERO = new Map(PASSOS.map((p) => [p.numero, p]));
 
 /** Passos que exigem a marcação explícita de "conferido" antes de liberar o seguinte:
- * a Conferência do Projeto (10) e a Conferência do Termo (17). */
-export const PASSOS_COM_CONFERENCIA = new Set([10, 17]);
+ * a Conferência do Projeto (11) e a Conferência do Termo (19). */
+export const PASSOS_COM_CONFERENCIA = new Set([11, 19]);
 
 /** Passos em que o registro é o e-mail ENCAMINHADO pelo Outlook, anexado à ficha.
  *
  * Passo 4: o levantador repassa ao Comercial o que encontrou no levantamento.
- * Passo 5: o Administrativo finaliza a negociação e envia o fechamento.
+ * Passo 6: o Administrativo finaliza a negociação e envia o fechamento.
  *
  * Nos dois casos o e-mail sai do Outlook da pessoa, não do Painel — o que o sistema guarda
  * é a PROVA de que aconteceu. */
-export const PASSOS_COM_ANEXO_DE_EMAIL = new Set([4, 5]);
+export const PASSOS_COM_ANEXO_DE_EMAIL = new Set([4, 6]);
+
+/** Passos em que a pessoa REDIGE o e-mail na tela e o Painel envia — em vez de o e-mail sair
+ * pronto de um modelo, sem revisão.
+ *
+ * O modelo do passo continua sendo o ponto de partida (chega pré-preenchido); o que muda é
+ * que a pessoa revisa destinatários, assunto e corpo antes de mandar. São os passos em que
+ * o texto é sempre específico daquele cliente (passo 4, 5) ou em que o e-mail É o entregável
+ * (11 e 15-21, que o usuário descreveu como "enviar o e-mail por aqui"). */
+export const PASSOS_COM_REDACAO_DE_EMAIL = new Set([
+  4, 5, 11, 15, 16, 17, 18, 19, 20, 21,
+]);
+
+/** Passos que exigem uma marcação + data antes de poder ser concluídos.
+ *
+ * O passo 7 só fecha com o contrato marcado como assinado, e o 12 com o Projeto assinado —
+ * nos dois casos a DATA da assinatura é o dado que o processo cobra. Guardados em
+ * `ProjetoPasso.marcado`/`dataMarcada`, genéricos de propósito: são a mesma pergunta feita
+ * duas vezes, e um campo por passo faria a entidade crescer a cada revisão do processo. */
+export const PASSOS_COM_MARCACAO: Record<number, string> = {
+  7: 'Contrato assinado',
+  12: 'Projeto assinado',
+};
+
+/** Passo cuja conclusão exige que o trabalho tenha sido marcado como FINALIZADO na tela de
+ * origem — o cronograma (13) pode ser refeito quantas vezes o consultor quiser, e só fecha
+ * quando ele mesmo declarar que acabou. */
+export const PASSO_CRONOGRAMA = 13;
 
 /** Extensões aceitas no anexo de e-mail: formato nativo do Outlook (.msg) e o padrão
  * de e-mail exportado (.eml). */

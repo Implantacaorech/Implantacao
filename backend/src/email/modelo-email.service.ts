@@ -9,6 +9,8 @@ import { Repository } from 'typeorm';
 import { ModeloEmail } from '../database/entities/modelo-email.entity';
 import { Projeto } from '../database/entities/projeto.entity';
 import { MODELOS_EMAIL_PADRAO, VAR_CAMPO } from './modelo-email.constants';
+import { EMAILS_POR_PASSO } from '../passos/passos-email.constants';
+import { PASSOS_POR_NUMERO } from '../passos/passos.constants';
 
 /** Modelos de e-mail editáveis pelo ADM, com variáveis `{{VAR}}` substituídas no envio.
  * Espelha webapp/db.py (ModeloEmail, listar/obter/salvar/excluir_modelo_email,
@@ -35,10 +37,30 @@ export class ModeloEmailService implements OnModuleInit {
   }
 
   /** Idempotente por slug — não sobrescreve edições feitas pelo ADM em modelos já
-   * existentes. */
+   * existentes.
+   *
+   * Semeia DUAS famílias:
+   *   - os modelos avulsos históricos (`MODELOS_EMAIL_PADRAO`), herdados do Flask;
+   *   - um modelo por PASSO do processo, com slug `passo-N`. Esses são os que o fluxo
+   *     realmente dispara: editar o `passo-15` muda o e-mail de boas-vindas para todos os
+   *     projetos, sem release. Sem semear, a tela de Modelos de E-mail abriria sem os textos
+   *     que o Painel de fato manda — que foi o que o usuário sentiu falta. */
   async seedPadroes(): Promise<number> {
     let criados = 0;
-    for (const m of MODELOS_EMAIL_PADRAO) {
+    const paraSemear = [
+      ...MODELOS_EMAIL_PADRAO,
+      ...EMAILS_POR_PASSO.map((e) => {
+        const def = PASSOS_POR_NUMERO.get(e.passo);
+        return {
+          slug: `passo-${e.passo}`,
+          nome: `Passo ${e.passo} — ${def?.titulo ?? 'Passo do processo'}`,
+          assunto: e.assunto,
+          corpo: e.corpo,
+          etapa: def?.etapa ?? '',
+        };
+      }),
+    ];
+    for (const m of paraSemear) {
       const existe = await this.repo.count({ where: { slug: m.slug } });
       if (existe > 0) continue;
       await this.repo.save(

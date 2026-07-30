@@ -4,6 +4,9 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiEnvelope } from '../models/api-envelope.model';
 import {
+  DestinatariosPassoResposta,
+  EmailDoPasso,
+  EmailRegistrado,
   GradeView,
   PassoAtualDoProjeto,
   PapelProjeto,
@@ -14,7 +17,15 @@ import {
   TipoRns,
 } from '../models/passo.model';
 
-/** Os 18 passos do processo, as pessoas por papel e as RNS do projeto. */
+/** O que a tela manda ao concluir um passo, além do simples "concluí". */
+export interface DadosConclusao {
+  observacao?: string;
+  marcado?: boolean;
+  dataMarcada?: string;
+  email?: { para?: string[]; assunto?: string; corpo?: string };
+}
+
+/** Os 21 passos do processo, as pessoas por papel e as RNS do projeto. */
 @Injectable({ providedIn: 'root' })
 export class PassosService {
   private readonly http = inject(HttpClient);
@@ -58,14 +69,73 @@ export class PassosService {
     return res.data;
   }
 
-  async concluir(projetoId: number, numero: number, observacao = ''): Promise<Passo[]> {
+  async concluir(
+    projetoId: number,
+    numero: number,
+    dados: DadosConclusao = {},
+  ): Promise<Passo[]> {
     const res = await firstValueFrom(
       this.http.post<ApiEnvelope<Passo[]>>(
         `${this.base(projetoId)}/passos/${numero}/concluir`,
-        { observacao },
+        dados,
       ),
     );
     return res.data;
+  }
+
+  /** E-mail do passo já montado pelo backend, para a tela abrir preenchida. `null` quando o
+   * passo não envia e-mail. */
+  async previaEmail(
+    projetoId: number,
+    numero: number,
+  ): Promise<EmailDoPasso | null> {
+    const res = await firstValueFrom(
+      this.http.get<ApiEnvelope<EmailDoPasso | null>>(
+        `${this.base(projetoId)}/passos/${numero}/email`,
+      ),
+    );
+    return res.data;
+  }
+
+  /** Os e-mails já gerados no projeto — consulta liberada a quem enxerga a carteira. */
+  async emailsGerados(projetoId: number): Promise<EmailRegistrado[]> {
+    const res = await firstValueFrom(
+      this.http.get<ApiEnvelope<EmailRegistrado[]>>(
+        `${this.base(projetoId)}/emails`,
+      ),
+    );
+    return res.data;
+  }
+
+  // --- Destinatários por passo (Sistema → Ferramentas, só ADM) ---
+
+  async destinatarios(): Promise<DestinatariosPassoResposta> {
+    const res = await firstValueFrom(
+      this.http.get<ApiEnvelope<DestinatariosPassoResposta>>(
+        `${environment.apiUrl}/config/destinatarios-passo`,
+      ),
+    );
+    return res.data;
+  }
+
+  async salvarDestinatarios(
+    passo: number,
+    dados: { grupos: string[]; extras: string[]; ativo: boolean },
+  ): Promise<void> {
+    await firstValueFrom(
+      this.http.put<ApiEnvelope<unknown>>(
+        `${environment.apiUrl}/config/destinatarios-passo/${passo}`,
+        dados,
+      ),
+    );
+  }
+
+  async restaurarDestinatarios(passo: number): Promise<void> {
+    await firstValueFrom(
+      this.http.delete<ApiEnvelope<unknown>>(
+        `${environment.apiUrl}/config/destinatarios-passo/${passo}`,
+      ),
+    );
   }
 
   async conferir(projetoId: number, numero: number): Promise<Passo[]> {

@@ -32,7 +32,7 @@ import {
   RnsDto,
 } from './dto/passos.dto';
 
-/** Os 18 passos operacionais do processo, por projeto.
+/** Os 21 passos operacionais do processo, por projeto.
  *
  * O gate de QUEM pode concluir cada passo não fica aqui: é do próprio passo (ver
  * `PERFIS_POR_RESPONSAVEL` em passos.constants.ts) e é verificado no serviço, porque varia
@@ -51,7 +51,7 @@ export class PassosController {
 
   @Get('passos')
   @Roles()
-  @ApiOperation({ summary: 'Os 18 passos do projeto e o estado de cada um' })
+  @ApiOperation({ summary: 'Os 21 passos do projeto e o estado de cada um' })
   async listar(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: AuthUser,
@@ -74,15 +74,42 @@ export class PassosController {
     @CurrentUser() user: AuthUser,
   ) {
     return new ApiEnvelope(
-      await this.passos.concluir(id, numero, user, dto.observacao ?? ''),
+      await this.passos.concluir(id, numero, user, {
+        observacao: dto.observacao,
+        marcado: dto.marcado,
+        dataMarcada: dto.dataMarcada,
+        email: dto.email,
+      }),
     );
+  }
+
+  @Get('passos/:numero/email')
+  @Roles()
+  @ApiOperation({
+    summary: 'Pré-visualiza o e-mail do passo, para revisar antes de enviar',
+  })
+  async previaEmail(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('numero', ParseIntPipe) numero: number,
+  ) {
+    return new ApiEnvelope(await this.passos.previaEmail(id, numero));
+  }
+
+  @Get('emails')
+  @Roles()
+  @ApiOperation({
+    summary:
+      'E-mails já gerados no projeto, por passo — consulta liberada a quem vê a carteira',
+  })
+  async emails(@Param('id', ParseIntPipe) id: number) {
+    return new ApiEnvelope(await this.passos.historicoDeEmails(id));
   }
 
   @Post('passos/:numero/conferir')
   @Roles()
   @Permissao('carteira', 'alteracao')
   @ApiOperation({
-    summary: 'Marca a conferência (passos 9 e 16) e libera o passo seguinte',
+    summary: 'Marca a conferência (passos 11 e 19) e libera o passo seguinte',
   })
   async conferir(
     @Param('id', ParseIntPipe) id: number,
@@ -112,7 +139,7 @@ export class PassosController {
   @UseInterceptors(FileInterceptor('arquivo'))
   @ApiOperation({
     summary:
-      'Anexa o e-mail encaminhado do Outlook (.msg/.eml) — registro dos passos 3 e 4',
+      'Anexa o e-mail encaminhado do Outlook (.msg/.eml) — registro dos passos 4 e 6',
   })
   async anexarEmail(
     @Param('id', ParseIntPipe) id: number,
