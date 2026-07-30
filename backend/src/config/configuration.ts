@@ -7,8 +7,10 @@ export interface AppConfig {
   jwtExpiresIn: string;
   jwtRefreshSecret: string;
   jwtRefreshExpiresIn: string;
+  // Banco obrigatório pela §4.8 do Padrão Rech: MariaDB. `better-sqlite3` existe só como
+  // banco DESCARTÁVEL de teste/dev (sem MIGRACAO_DB_URL) — nenhum outro dialeto é aceito.
   db: {
-    type: 'postgres' | 'mariadb' | 'better-sqlite3';
+    type: 'mariadb' | 'better-sqlite3';
     url?: string;
     sqlitePath?: string;
   };
@@ -57,6 +59,22 @@ function exigirEmProducao(
   return fallback;
 }
 
+/** MariaDB é o banco obrigatório do padrão (§4.8) — qualquer outro dialeto é recusado no
+ * boot, com a mensagem dizendo o que fazer. `mysql://` é aceito porque é o prefixo que o
+ * driver mysql2 usa para falar com o MariaDB. */
+function exigirMariaDb(dbUrl: string): 'mariadb' {
+  if (!/^(mysql|mariadb):\/\//i.test(dbUrl)) {
+    const prefixo = /^([a-z0-9+.-]+):\/\//i.exec(dbUrl)?.[1] ?? '(sem prefixo)';
+    throw new Error(
+      `MIGRACAO_DB_URL aponta para "${prefixo}", mas o banco obrigatório do Padrão Rech ` +
+        '(§4.8) é o MariaDB. Use uma URL mysql:// ou mariadb:// (ex.: ' +
+        'mysql://usuario:senha@host:3306/painel_novo). Sem MIGRACAO_DB_URL, o backend usa ' +
+        'SQLite descartável — só para desenvolvimento e teste.',
+    );
+  }
+  return 'mariadb';
+}
+
 export default (): AppConfig => {
   const env = process.env.NODE_ENV ?? 'development';
   const dbUrl = process.env.MIGRACAO_DB_URL;
@@ -77,12 +95,12 @@ export default (): AppConfig => {
       'dev-only-refresh-secret-troque-em-producao',
     ),
     jwtRefreshExpiresIn: process.env.MIGRACAO_JWT_REFRESH_EXPIRES_IN ?? '7d',
-    // Dialeto detectado pelo prefixo da própria MIGRACAO_DB_URL — em migração de
-    // postgres->mariadb (2026-07), sem precisar de uma env var nova/separada.
+    // MIGRACAO_DB_URL definida => MariaDB, e o prefixo é EXIGIDO: uma URL de outro dialeto
+    // falha o boot em vez de conectar em um banco fora do padrão (§4.8). Antes, qualquer
+    // prefixo desconhecido virava Postgres silenciosamente — foi assim que se conectou por
+    // acidente no Postgres de produção durante a migração (ver comentário acima).
     db: dbUrl
-      ? /^(mysql|mariadb):\/\//i.test(dbUrl)
-        ? { type: 'mariadb', url: dbUrl }
-        : { type: 'postgres', url: dbUrl }
+      ? { type: exigirMariaDb(dbUrl), url: dbUrl }
       : {
           type: 'better-sqlite3',
           sqlitePath: process.env.MIGRACAO_DB_SQLITE ?? 'dados/painel.sqlite',

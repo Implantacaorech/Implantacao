@@ -13,7 +13,7 @@ Repositório do **time de implantação** da Rech (ERP SIGER®): agentes/skills/
   processo/porta: **5100**, máquina `I7M1700-01-EVE` → `http://I7M1700-01-EVE:5100`.
 - Sobe via `Iniciar_Painel_Novo.bat`; guardião (`Guardiao_Painel_Novo.vbs`) e verificação de
   integridade rodam como Tarefas Agendadas do Windows.
-- Banco: **MariaDB** (container `painel-db-mariadb`, banco `painel_novo`), via
+- Banco: **MariaDB 12.2 — serviço NATIVO do Windows na porta 3306** (banco `painel_novo`), via
   `MIGRACAO_DB_URL`. `/api/health` confirma (`"db":"mariadb"`).
 - **docservice/** (Python, processo próprio) faz a geração fiel de documentos + transcrição
   de vídeos de treinamento — nunca exposto publicamente, chamado só pelo backend.
@@ -25,9 +25,11 @@ Repositório do **time de implantação** da Rech (ERP SIGER®): agentes/skills/
 
 ## O painel Flask legado (`webapp/` original)
 
-**Desligado e arquivado em `projeto_old/`** em 2026-07-19 (processo parado, Tarefas
-Agendadas do guardião/integridade desabilitadas). Não é mais runtime — é histórico/rollback
-de emergência. O Postgres dele (`painel-db`) já estava inacessível há ~2 dias quando a
+**Desligado em 2026-07-19** (processo parado, Tarefas Agendadas do guardião/integridade
+desabilitadas), arquivado em `projeto_old/` e **removido do repositório em 2026-07-29** —
+fica no histórico do git. Deixou de ser rollback: o Postgres dele (`painel-db`) não existe e
+o dump citado no plano de virada saiu na retenção de 14 dias. O Postgres já estava
+inacessível há ~2 dias quando a
 virada aconteceu (achado durante a checagem de segurança pré-virada, não uma decisão
 planejada) — detalhe em `vault/22 - Troubleshooting/` e
 `docs/migracao/05-plano-de-virada.md` §"Registro real da virada". Risco aceito, não
@@ -43,6 +45,17 @@ stack novo.
   `webapp/`) + a ponte `legado_cli` para o assistente administrativo.
 - Importação do e-mail de fechamento (IMAP), notificações por e-mail, robô da caixa — agora
   em `backend/src/email/`, `backend/src/fluxo/`.
+
+## Filtros salvos por usuário (2026-07-29)
+
+Toda tela com filtro reabre no recorte que o usuário deixou. Base: tabela
+**`preferencias_usuario`** (usuário × chave de tela → JSON) + `backend/src/preferencias/`
+(`GET`/`PUT :chave`/`DELETE :chave`, escopo pelo `sub` do token, nunca por parâmetro). No
+Angular, `core/services/preferencias.service.ts` (mapa carregado UMA vez pelo `authGuard`) e o
+helper `core/utils/filtros-salvos.ts`, que as telas chamam no construtor — restauração
+**síncrona**, gravação automática para filtro em signal e `salvar()` explícito para campo
+comum de `ngModel`. 13 telas cobertas; tabela das chaves em `docs/painel-sistema.md` §5.21.
+A Capacidade da equipe ganhou junto o **filtro por setor** (`usuarios.setor_atuacao`).
 
 ## Geradores Office (`tools/`)
 Produzem .xlsx/.docx a partir de `tools/data/*.yaml`; saída em `exemplos/` (não versionado).

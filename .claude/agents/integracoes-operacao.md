@@ -21,9 +21,12 @@ máquina `I7M1700-01-EVE`.
   coluna `tecnico` = **Código SICLA** do cadastro de usuário; modos thin/thick do driver
   `oracledb` continuam relevantes — mesmo comportamento do Flask).
 - Operação: robôs (`backend/src/digest/`, `backend/src/fluxo/robo-caixa.service.ts`),
-  `/api/health`, MariaDB (`painel-db-mariadb`, banco `painel_novo`), backup
+  `/api/health`, MariaDB 12.2 (**serviço NATIVO do Windows na 3306**, banco `painel_novo` —
+  não é mais o container `painel-db-mariadb`), backup
   (`tools/Painel_Novo_Backup_MariaDB.ps1`, Tarefa Agendada `"Painel Novo - Backup MariaDB"`,
-  22h diário), variáveis de ambiente (`MIGRACAO_DB_URL`/`MIGRACAO_JWT_SECRET`/
+  22h diário — usa o cliente local `mariadb-dump` e **valida o dump**; a versão que chamava
+  `docker exec` gerou meses de backup de 0 byte logando "ok", ver docs/pendencias.md),
+  variáveis de ambiente (`MIGRACAO_DB_URL`/`MIGRACAO_JWT_SECRET`/
   `MIGRACAO_JWT_REFRESH_SECRET`, variáveis de **usuário** do Windows, não de máquina/serviço).
 - Guardião/integridade: `Guardiao_Painel_Novo.vbs` + Tarefa Agendada `"Painel Novo -
   Guardiao"` (a cada 5min); `"Painel Novo - Verificacao de Integridade"` (diária, 07:30).

@@ -21,12 +21,24 @@ relacionados:
 > dicionário de dados. Toda alteração estrutural deve atualizar o DER e o dicionário junto
 > com o schema.
 
+## Instância real (conferida em 2026-07-29)
+
+**MariaDB 12.2.2, serviço NATIVO do Windows na porta 3306**, banco `painel_novo`, servidor em
+utf8mb4 — **não é mais o container Docker `painel-db-mariadb`/3307** da documentação antiga
+(saiu de cena após o incidente de 22/07; ver [[12 - DevOps]]). É o único dialeto de produção
+aceito: `MIGRACAO_DB_URL` com prefixo de outro banco **falha o boot**
+(`configuration.ts:exigirMariaDb`), em vez de conectar em silêncio como acontecia até
+2026-07-29. Sem a variável, o backend sobe em SQLite descartável — dev/teste apenas. As
+migrations válidas são as de `migrations-mariadb/`; a pasta `migrations/` (10 arquivos de DDL
+Postgres, era Flask) **foi removida em 2026-07-29**, junto com o seed `migrar-legado.ts`, as
+dependências `pg`/`@types/pg` e o `docker-compose.yml`.
+
 ## Convenções observadas no schema real (levantado em 2026-07-19)
 
-- **26 entidades** em `backend/src/database/entities/`, listadas em `ENTITIES`
-  (`index.ts`) — lista única usada tanto em runtime (`DatabaseModule`) quanto pelo CLI de
-  migrations, de propósito, para as duas nunca divergirem.
-- **10 migrations** em `backend/src/database/migrations/`, escritas em SQL puro via
+- **34 entidades** em `backend/src/database/entities/` (eram 26 em 2026-07-19; recontadas em
+  2026-07-29), listadas em `ENTITIES` (`index.ts`) — lista única usada tanto em runtime
+  (`DatabaseModule`) quanto pelo CLI de migrations, de propósito, para as duas nunca divergirem.
+- **17 migrations** em `backend/src/database/migrations-mariadb/`, escritas em SQL puro via
   `queryRunner.query(...)` (não `migration:generate` — comentário no código explica: sem
   Postgres/MariaDB de homologação disponível no momento).
 - **Sem relação formal do TypeORM** (`@ManyToOne`/`@OneToMany`/`@JoinColumn`) em nenhuma
@@ -117,6 +129,25 @@ referência global ou base de conhecimento própria): `checklist_modelo`, `indic
 | expira_em | timestamp | |
 | revogado | boolean | |
 | criado_em | timestamp | |
+
+**`preferencias_usuario`** — preferência de tela do usuário logado; hoje, a seleção de filtros
+de cada tela (ver `docs/painel-sistema.md` §5.21). Migration
+`1784800000000-PreferenciasUsuario`.
+
+| Coluna | Tipo | Observação |
+| --- | --- | --- |
+| id | int PK auto_increment | |
+| usuario_id | int | → `usuarios.id` (lógico, sem FK — como no resto do schema) |
+| chave | varchar(60) | identifica a tela (`capacidade`, `bi-clientes-siger`…) |
+| valor | text | estado dos filtros em JSON — formato é da TELA, o backend só transporta |
+| atualizado_em | datetime(6) | `ON UPDATE CURRENT_TIMESTAMP` |
+
+Índice **único em (`usuario_id`, `chave`)** — é ele que torna o `upsert` do serviço atômico
+(a tela pode gravar duas vezes em sequência, e um `find`+`insert` perderia a corrida).
+
+> Par chave→JSON de propósito, e não uma coluna por filtro: cada tela tem um conjunto
+> diferente de filtros, e eles mudam junto com a tela. Por isso a leitura no cliente é
+> tolerante — filtro que não existe mais, ou cujo formato mudou, é ignorado.
 
 ### Núcleo do projeto
 
@@ -436,8 +467,8 @@ Migration `1784513666449-AgenteExecucao` (`migrations-mariadb/`, gerada via
 
 ## Aponta para (conteúdo real do repositório)
 
-- `../backend/src/database/entities/` (26 entidades, `index.ts` = lista única)
-- `../backend/src/database/migrations/` (10 migrations, SQL puro)
+- `../backend/src/database/entities/` (34 entidades, `index.ts` = lista única)
+- `../backend/src/database/migrations-mariadb/` (17 migrations, SQL puro)
 
 ## Status
 

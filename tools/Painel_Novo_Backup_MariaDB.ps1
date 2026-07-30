@@ -1,16 +1,24 @@
-# Backup do MariaDB do Painel NOVO (painel-db-mariadb): dump comprimido em C:\PainelBackups.
+# Backup do MariaDB do Painel NOVO: dump comprimido em C:\PainelBackups.
 # Banco de producao do painel novo desde a troca de Postgres->MariaDB em 2026-07-17 (ver
-# docs/migracao/03-documento-conversao.md §21/§22) - mesmo padrao operacional do backup do
-# Postgres (Painel_Novo_Backup.ps1): PowerShell + Tarefa Agendada do Windows, retencao de
-# 14 dias, log em C:\PainelBackups.
+# docs/migracao/03-documento-conversao.md §21/§22) - PowerShell + Tarefa Agendada do
+# Windows, retencao de 14 dias, log em C:\PainelBackups.
 #
-# Senha do MariaDB: NUNCA hardcoded aqui. Defina a variavel de USUARIO do Windows
-# PAINEL_NOVO_MARIADB_SENHA antes de agendar este script (mesmo principio do
-# PAINEL_NOVO_DB_SENHA do backup do Postgres).
+# IMPORTANTE (2026-07-29): o MariaDB NAO roda mais em Docker (container `painel-db-mariadb`)
+# - e um servico NATIVO do Windows (MariaDB 12.2, porta 3306). A versao anterior deste
+# script chamava `docker exec painel-db-mariadb mysqldump`; com o Docker fora do ar o
+# comando falhava, o `Out-File` gravava um arquivo VAZIO e o script ainda logava "ok".
+# Resultado: meses de backups de 0 byte sem ninguem perceber. Por isso agora o script
+# (1) chama o cliente local `mariadb-dump`, (2) usa --result-file (nao passa pelo pipe do
+# PowerShell, que na 5.1 grava BOM) e (3) VALIDA o dump antes de compactar, falhando alto.
+#
+# Conexao: lida da MIGRACAO_DB_URL (a mesma do painel - fonte unica, sem senha duplicada).
+#   Alternativa: PAINEL_NOVO_MARIADB_HOST/PORTA/USUARIO/BANCO + PAINEL_NOVO_MARIADB_SENHA.
+#   Cliente: achado no PATH ou em "C:\Program Files\MariaDB *\bin"; para fixar, defina
+#   PAINEL_NOVO_MARIADB_DUMP com o caminho do mariadb-dump.exe.
 #
 # RESTAURAR um backup:
 #   Expand-Archive C:\PainelBackups\painel_novo_mariadb_AAAAMMDD_HHMMSS.zip -DestinationPath .
-#   Get-Content painel_novo_mariadb_AAAAMMDD_HHMMSS.sql | docker exec -i painel-db-mariadb mariadb -u painel painel_novo
+#   & "C:\Program Files\MariaDB 12.2\bin\mariadb.exe" -u painel -p painel_novo < painel_novo_mariadb_AAAAMMDD_HHMMSS.sql
 
 $ErrorActionPreference = "Stop"
 $dest = "C:\PainelBackups"
@@ -18,35 +26,110 @@ New-Item -ItemType Directory -Force -Path $dest | Out-Null
 $logFile = Join-Path $dest "backup_novo_mariadb.log"
 
 function Log($msg) {
-  "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $msg" | Out-File -Append -FilePath $logFile
+  "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $msg" | Out-File -Append -FilePath $logFile -Encoding utf8
 }
 
-if (-not $env:PAINEL_NOVO_MARIADB_SENHA) {
-  Log "ERRO -> variavel de usuario PAINEL_NOVO_MARIADB_SENHA nao definida"
+function Falhar($msg) {
+  Log "ERRO -> $msg"
   exit 1
 }
 
+# --- 1. Cliente de dump -------------------------------------------------------------
+function Achar-Dump {
+  if ($env:PAINEL_NOVO_MARIADB_DUMP) { return $env:PAINEL_NOVO_MARIADB_DUMP }
+  $noPath = Get-Command "mariadb-dump.exe" -ErrorAction SilentlyContinue
+  if ($noPath) { return $noPath.Source }
+  # Mais novo primeiro, para acompanhar upgrades do MariaDB sem editar o script.
+  $cand = Get-ChildItem "C:\Program Files\MariaDB *\bin\mariadb-dump.exe" -ErrorAction SilentlyContinue |
+    Sort-Object FullName -Descending | Select-Object -First 1
+  if ($cand) { return $cand.FullName }
+  return $null
+}
+
+$dump = Achar-Dump
+if (-not $dump) {
+  Falhar "cliente mariadb-dump.exe nao encontrado (PATH nem 'C:\Program Files\MariaDB *\bin'). Defina PAINEL_NOVO_MARIADB_DUMP."
+}
+
+# --- 2. Dados de conexao ------------------------------------------------------------
+$dbHost = $null; $porta = 3306; $usuario = $null; $banco = $null; $senha = $null
+
+if ($env:MIGRACAO_DB_URL) {
+  try {
+    $u = [uri]$env:MIGRACAO_DB_URL
+    $dbHost = $u.Host
+    if ($u.Port -gt 0) { $porta = $u.Port }
+    $banco = $u.AbsolutePath.TrimStart('/')
+    $partes = $u.UserInfo -split ':', 2
+    $usuario = [uri]::UnescapeDataString($partes[0])
+    if ($partes.Count -eq 2) { $senha = [uri]::UnescapeDataString($partes[1]) }
+  } catch {
+    Falhar "MIGRACAO_DB_URL invalida: $($_.Exception.Message)"
+  }
+}
+
+if ($env:PAINEL_NOVO_MARIADB_HOST) { $dbHost = $env:PAINEL_NOVO_MARIADB_HOST }
+if ($env:PAINEL_NOVO_MARIADB_PORTA) { $porta = [int]$env:PAINEL_NOVO_MARIADB_PORTA }
+if ($env:PAINEL_NOVO_MARIADB_USUARIO) { $usuario = $env:PAINEL_NOVO_MARIADB_USUARIO }
+if ($env:PAINEL_NOVO_MARIADB_BANCO) { $banco = $env:PAINEL_NOVO_MARIADB_BANCO }
+if ($env:PAINEL_NOVO_MARIADB_SENHA) { $senha = $env:PAINEL_NOVO_MARIADB_SENHA }
+
+if (-not $dbHost) { $dbHost = "127.0.0.1" }
+if (-not $usuario) { Falhar "usuario do banco desconhecido - defina MIGRACAO_DB_URL ou PAINEL_NOVO_MARIADB_USUARIO" }
+if (-not $banco) { Falhar "banco desconhecido - defina MIGRACAO_DB_URL ou PAINEL_NOVO_MARIADB_BANCO" }
+if (-not $senha) { Falhar "senha do banco nao definida - deixe-a na MIGRACAO_DB_URL ou em PAINEL_NOVO_MARIADB_SENHA" }
+
+# --- 3. Dump ------------------------------------------------------------------------
+$ts = Get-Date -Format "yyyyMMdd_HHmmss"
+$sqlFile = Join-Path $dest "painel_novo_mariadb_$ts.sql"
+$zipFile = Join-Path $dest "painel_novo_mariadb_$ts.zip"
+
+# MYSQL_PWD em vez de --password=... : a senha nao aparece na linha de comando (visivel na
+# lista de processos). --result-file faz o proprio cliente gravar o arquivo, sem o pipe do
+# PowerShell no meio (na 5.1 o pipe grava UTF-8 com BOM e quebra o restore).
+# --single-transaction: dump consistente sem travar as tabelas (InnoDB). --routines/
+# --triggers nao se aplicam (o schema nao usa nenhum dos dois).
+$env:MYSQL_PWD = $senha
 try {
-  $ts = Get-Date -Format "yyyyMMdd_HHmmss"
-  $sqlFile = Join-Path $dest "painel_novo_mariadb_$ts.sql"
-  $zipFile = Join-Path $dest "painel_novo_mariadb_$ts.zip"
+  & $dump --host=$dbHost --port=$porta --user=$usuario --single-transaction `
+    --default-character-set=utf8mb4 --result-file=$sqlFile $banco
+  $codigo = $LASTEXITCODE
+} finally {
+  Remove-Item Env:MYSQL_PWD -ErrorAction SilentlyContinue
+}
 
-  # --single-transaction: dump consistente sem travar as tabelas (InnoDB, mesmo espirito
-  # do pg_dump padrao usado no script do Postgres). --routines/--triggers nao se aplicam
-  # aqui (schema nao usa nenhum dos dois), omitidos de proposito para o dump ficar simples.
-  docker exec -e MYSQL_PWD=$env:PAINEL_NOVO_MARIADB_SENHA painel-db-mariadb `
-    mysqldump -u painel --single-transaction --default-character-set=utf8mb4 painel_novo | Out-File -FilePath $sqlFile -Encoding utf8
+if ($codigo -ne 0) {
+  Remove-Item $sqlFile -ErrorAction SilentlyContinue
+  Falhar "mariadb-dump saiu com codigo $codigo (nenhum backup gerado)"
+}
 
+# --- 4. Validacao: um dump que "deu certo" mas veio vazio ja passou meses sem alarme ---
+if (-not (Test-Path $sqlFile)) { Falhar "mariadb-dump nao gerou o arquivo $sqlFile" }
+$tamanho = (Get-Item $sqlFile).Length
+if ($tamanho -lt 10240) {
+  Remove-Item $sqlFile -ErrorAction SilentlyContinue
+  Falhar "dump suspeito: apenas $tamanho bytes (esperado >= 10 KB) - backup descartado"
+}
+$fim = Get-Content $sqlFile -Tail 5 -ErrorAction SilentlyContinue
+if (-not ($fim -match "Dump completed")) {
+  Remove-Item $sqlFile -ErrorAction SilentlyContinue
+  Falhar "dump incompleto (sem o rodape 'Dump completed') - backup descartado"
+}
+if (-not (Select-String -Path $sqlFile -Pattern "CREATE TABLE" -SimpleMatch -Quiet)) {
+  Remove-Item $sqlFile -ErrorAction SilentlyContinue
+  Falhar "dump sem nenhum CREATE TABLE - backup descartado"
+}
+
+# --- 5. Compacta, mantem 14 dias ----------------------------------------------------
+try {
   Compress-Archive -Path $sqlFile -DestinationPath $zipFile -Force
   Remove-Item $sqlFile
-
-  # Mantem so os ultimos 14 dias (mesma retencao do backup do Postgres).
   Get-ChildItem $dest -Filter "painel_novo_mariadb_*.zip" |
     Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-14) } |
     Remove-Item -Force
-
-  Log "ok -> painel_novo_mariadb_$ts.zip"
 } catch {
-  Log "ERRO -> $($_.Exception.Message)"
-  exit 1
+  Falhar $_.Exception.Message
 }
+
+$mb = [math]::Round((Get-Item $zipFile).Length / 1MB, 2)
+Log "ok -> painel_novo_mariadb_$ts.zip ($mb MB, dump de $([math]::Round($tamanho/1MB,2)) MB)"

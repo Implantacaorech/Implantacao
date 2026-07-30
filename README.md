@@ -45,7 +45,7 @@ Agendadas do Windows e reiniciam o serviço se `/api/health` não responder.
 | Dependência | Versão / observação |
 |---|---|
 | **Node.js** | LTS ativa (**24.x**) — ver `.nvmrc` e `engines` do `package.json` |
-| **MariaDB** | 11.x — banco `painel_novo` (container `painel-db-mariadb`, porta 3307) |
+| **MariaDB** | **12.2 — serviço NATIVO do Windows, porta 3306**, banco `painel_novo`. Não é mais o container Docker `painel-db-mariadb`/3307 (conferido em 2026-07-29: `12.2.2-MariaDB`) |
 | **Python** | 3.12 — apenas para `docservice/` e `tools/` (ver "Exceções ao padrão") |
 
 **Variáveis de ambiente obrigatórias** (definidas como variáveis de USUÁRIO do Windows;
@@ -70,7 +70,7 @@ Este projeto tem componentes **Python** fora da stack homologada, em processo de
 |---|---|
 | `tools/`, `docservice/gerador/`, ponte `webapp/` | **A portar para Node/TypeScript** (§4.7) — geração de Office tem equivalente na stack; não configura exceção. |
 | `docservice/transcricao/` | **Candidato à exceção da §4.3** (inferência local de modelo, faster-whisper). Pendente de verificação das alternativas em Rust (`whisper-rs`, `candle`, `ort`) e de validação com o **DevTools**. |
-| `projeto_old/` | Arquivo morto do Painel Flask desligado — fora do runtime. |
+| ~~`projeto_old/`~~ | Painel Flask desligado — **removido do repositório em 2026-07-29** (fica no histórico do git). |
 
 **Por que não foi feito no SICLA (§9.1):** o Painel automatiza o processo de implantação
 (fluxo por etapas, geração fiel dos documentos oficiais da Rech, gates de documentos

@@ -27,8 +27,8 @@ relacionados:
 - `tools-smoke` — compileall + smoke dos geradores (`tools/verificar.py`, best-effort).
   Substituiu o antigo `test`/`test-postgres` (pytest do painel Flask), que ficaram sem
   objeto quando `webapp/test_painel.py` e o resto do Flask foram movidos para
-  `projeto_old/`. `tools/` continua vivo (dependência da ponte `legado_cli`), por isso
-  ainda tem smoke.
+  `projeto_old/` — pasta removida do repositório em 2026-07-29. `tools/` continua vivo
+  (dependência da ponte `legado_cli`), por isso ainda tem smoke.
 - `backend-test` — `npm ci` + `npm test -- --ci` (Jest) em `backend/`, mais lint
   best-effort. 44 suítes, 364 testes (validado no Actions real).
 - `frontend-test` — `npm ci` + `npm test` (Vitest, via `@angular/build:unit-test` — não
@@ -85,10 +85,31 @@ protection rule para `main`, marcando as mesmas opções acima pela UI.
 - [[25 - Automações]]
 - [[22 - Troubleshooting]]
 
+## Banco e backup em produção (revisto em 2026-07-29)
+
+- **MariaDB 12.2 é serviço NATIVO do Windows** (porta 3306, banco `painel_novo`) — **não há
+  mais Docker nesta máquina**. O container `painel-db-mariadb` (porta 3307) que aparece na
+  documentação antiga saiu de cena depois do incidente de 22/07 (`restart=no` derrubou o
+  painel por ~13h). `docker-compose.yml`, que ainda descrevia o Postgres do Flask, está
+  pendente de remoção.
+- **O backup estava quebrado desde então, em silêncio.**
+  `tools/Painel_Novo_Backup_MariaDB.ps1` chamava `docker exec painel-db-mariadb mysqldump`;
+  sem Docker o comando falhava, o `Out-File` criava um arquivo **vazio** e o `try/catch` não
+  pegava nada (falha de executável nativo não vira exceção no PowerShell) — o log registrava
+  `ok` com um `.sql` de 0 byte dentro do zip. Corrigido: cliente local `mariadb-dump`,
+  `--result-file` (sem o pipe da PS 5.1, que grava BOM) e **validação obrigatória** do dump
+  (código de saída, ≥ 10 KB, rodapé `Dump completed`, presença de `CREATE TABLE`) antes de
+  compactar; qualquer falha loga `ERRO` e sai com código 1.
+- **Lição para qualquer script de operação:** validar o artefato produzido, não só o "deu
+  certo" do comando. Um backup nunca verificado é um backup que não existe.
+- **Guarda da stack obrigatória:** `backend/src/common/conformidade-stack.spec.ts` roda em
+  `npm test` (logo, no job `backend-test`) e reprova driver de banco novo, Python fora das
+  pastas declaradas e volta do Postgres ao config.
+
 ## Aponta para (conteúdo real do repositório)
 
-- `../docker-compose.yml`
-- `../Iniciar_Painel_Novo.bat` (produção — `../projeto_old/Iniciar_Servidor.bat` é o Flask arquivado)
+- `../tools/Painel_Novo_Backup_MariaDB.ps1` (Tarefa Agendada `Painel Novo - Backup MariaDB`, 22h)
+- `../Iniciar_Painel_Novo.bat` (produção — o `Iniciar_Servidor.bat` do Flask saiu com `projeto_old/` em 2026-07-29)
 - `../.github/workflows/ci.yml`
 
 ## Status
