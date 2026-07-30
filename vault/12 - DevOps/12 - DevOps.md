@@ -90,8 +90,8 @@ protection rule para `main`, marcando as mesmas opções acima pela UI.
 - **MariaDB 12.2 é serviço NATIVO do Windows** (porta 3306, banco `painel_novo`) — **não há
   mais Docker nesta máquina**. O container `painel-db-mariadb` (porta 3307) que aparece na
   documentação antiga saiu de cena depois do incidente de 22/07 (`restart=no` derrubou o
-  painel por ~13h). `docker-compose.yml`, que ainda descrevia o Postgres do Flask, está
-  pendente de remoção.
+  painel por ~13h); a instalação nativa foi feita em 27/07. O `docker-compose.yml`, que ainda
+  descrevia o Postgres do Flask, foi removido em 2026-07-29.
 - **O backup quebrou junto com a migração, em silêncio.**
   `tools/Painel_Novo_Backup_MariaDB.ps1` chamava `docker exec painel-db-mariadb mysqldump`;
   sem Docker o comando falhava, o `Out-File` criava um arquivo **vazio** e o `try/catch` não
