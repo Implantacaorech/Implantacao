@@ -102,7 +102,11 @@ export class BiMovimentosService {
   /** Período com padrão de `MESES_PADRAO_MOVIMENTOS` meses e teto de
    * `MAX_MESES_JANELA_MOVIMENTOS` — ver bi-movimentos.constants.ts para o porquê do teto
    * (não é validação especulativa, é guarda contra uma consulta de minutos já medida). */
-  periodo(query: QueryMovimentos): { inicio: string; fim: string; limitado: boolean } {
+  periodo(query: QueryMovimentos): {
+    inicio: string;
+    fim: string;
+    limitado: boolean;
+  } {
     const fimPedido = this.ehDataIso(query.dataFim)
       ? (query.dataFim as string).trim()
       : hojeIso();
@@ -110,7 +114,9 @@ export class BiMovimentosService {
       ? (query.dataIni as string).trim()
       : this.somaMeses(fimPedido, -MESES_PADRAO_MOVIMENTOS);
     const [inicio, fim] =
-      inicioPedido <= fimPedido ? [inicioPedido, fimPedido] : [fimPedido, inicioPedido];
+      inicioPedido <= fimPedido
+        ? [inicioPedido, fimPedido]
+        : [fimPedido, inicioPedido];
     const minimo = this.somaMeses(fim, -MAX_MESES_JANELA_MOVIMENTOS);
     const limitado = inicio < minimo;
     return { inicio: limitado ? minimo : inicio, fim, limitado };
@@ -155,22 +161,28 @@ export class BiMovimentosService {
           horasTotal: total,
           horasCobradas: cobradas,
           horasNaoCobradas: this.arredondar(total - cobradas),
-          percentualCobradas: total > 0 ? this.arredondar((cobradas / total) * 100) : null,
+          percentualCobradas:
+            total > 0 ? this.arredondar((cobradas / total) * 100) : null,
         };
       })
       .sort((a, b) => b.horasTotal - a.horasTotal);
   }
 
   private totalizar(linhas: LinhaMovimentoAgrupado[]): TotaisMovimentos {
-    const total = this.arredondar(linhas.reduce((a, l) => a + l.minutosTotal, 0) / 60);
-    const cobradas = this.arredondar(linhas.reduce((a, l) => a + l.minutosCobrado, 0) / 60);
+    const total = this.arredondar(
+      linhas.reduce((a, l) => a + l.minutosTotal, 0) / 60,
+    );
+    const cobradas = this.arredondar(
+      linhas.reduce((a, l) => a + l.minutosCobrado, 0) / 60,
+    );
     return {
       quantidade: linhas.reduce((a, l) => a + l.quantidade, 0),
       tecnicos: new Set(linhas.map((l) => l.tecnico).filter(Boolean)).size,
       horasTotal: total,
       horasCobradas: cobradas,
       horasNaoCobradas: this.arredondar(total - cobradas),
-      percentualCobradas: total > 0 ? this.arredondar((cobradas / total) * 100) : null,
+      percentualCobradas:
+        total > 0 ? this.arredondar((cobradas / total) * 100) : null,
     };
   }
 
@@ -216,8 +228,15 @@ export class BiMovimentosService {
     const todas = r.linhas.map((l) => this.normalizar(l));
 
     const preds = [
-      { dimensao: 'tecnico', ok: (l: LinhaMovimentoAgrupado) => this.passa(query.tecnico, l.tecnico) },
-      { dimensao: 'tpMovimento', ok: (l: LinhaMovimentoAgrupado) => this.passa(query.tpMovimento, l.tpMovimento) },
+      {
+        dimensao: 'tecnico',
+        ok: (l: LinhaMovimentoAgrupado) => this.passa(query.tecnico, l.tecnico),
+      },
+      {
+        dimensao: 'tpMovimento',
+        ok: (l: LinhaMovimentoAgrupado) =>
+          this.passa(query.tpMovimento, l.tpMovimento),
+      },
       {
         dimensao: 'cobraHora',
         ok: (l: LinhaMovimentoAgrupado) =>
@@ -228,7 +247,10 @@ export class BiMovimentosService {
 
     const filtros: FiltrosMovimentos = {
       tecnicos: this.distintosDe(paraDim('tecnico'), (l) => l.tecnico),
-      tiposMovimento: this.distintosDe(paraDim('tpMovimento'), (l) => l.tpMovimento),
+      tiposMovimento: this.distintosDe(
+        paraDim('tpMovimento'),
+        (l) => l.tpMovimento,
+      ),
     };
 
     const filtradas = todas.filter((l) => preds.every((p) => p.ok(l)));

@@ -86,9 +86,9 @@ describe('BiAgendaAlocacaoService', () => {
 
     it('converte o STATUS numérico no rótulo do vocabulário de agenda', async () => {
       const r = await service.calendario({ mes: '2026-07' });
-      expect(r.dias.find((d) => d.dia === '2026-07-23')?.compromissos[0].status).toBe(
-        '6-Realizada',
-      );
+      expect(
+        r.dias.find((d) => d.dia === '2026-07-23')?.compromissos[0].status,
+      ).toBe('6-Realizada');
     });
 
     it('liga PEDIDOIMP à RNS, mas não exige — compromisso sem RNS continua na grade', async () => {
@@ -96,7 +96,9 @@ describe('BiAgendaAlocacaoService', () => {
         ok: true,
         mensagem: '1',
         colunas: [],
-        linhas: [compromisso({ PEDIDOIMP: null, FANTASIA: null, RNS_DESCRICAO: null })],
+        linhas: [
+          compromisso({ PEDIDOIMP: null, FANTASIA: null, RNS_DESCRICAO: null }),
+        ],
       });
       const r = await service.calendario({ mes: '2026-07' });
       const c = r.dias.find((d) => d.dia === '2026-07-23')?.compromissos[0];
@@ -128,7 +130,10 @@ describe('BiAgendaAlocacaoService', () => {
           compromisso({ CODIGO: 2, TECNICO: 'Clovis' }),
         ],
       });
-      const r = await service.calendario({ mes: '2026-07', responsavel: ['Alex'] });
+      const r = await service.calendario({
+        mes: '2026-07',
+        responsavel: ['Alex'],
+      });
       expect(r.totalCompromissos).toBe(1);
       // a própria dimensão mantém as duas opções…
       expect(r.filtros.responsaveis).toEqual(['Alex', 'Clovis']);
@@ -136,7 +141,10 @@ describe('BiAgendaAlocacaoService', () => {
 
     it('monta a grade com todos os dias do mês, mesmo sem compromisso', async () => {
       disponibilidade.executarSql.mockResolvedValue({
-        ok: true, mensagem: '0', colunas: [], linhas: [],
+        ok: true,
+        mensagem: '0',
+        colunas: [],
+        linhas: [],
       });
       const r = await service.calendario({ mes: '2026-02' }); // fevereiro/2026, 28 dias
       expect(r.dias).toHaveLength(28);
@@ -185,10 +193,16 @@ describe('BiAgendaAlocacaoService', () => {
         mensagem: '2',
         colunas: [],
         linhas: [
-          agendaHoras({ REALIZADA: 1, DATA_INI: '2026-07-01T08:00:00', DATA_FIM: '2026-07-01T10:00:00' }),
           agendaHoras({
-            REALIZADA: 0, POSTERGADA: 1,
-            DATA_INI: '2026-07-02T08:00:00', DATA_FIM: '2026-07-02T09:00:00',
+            REALIZADA: 1,
+            DATA_INI: '2026-07-01T08:00:00',
+            DATA_FIM: '2026-07-01T10:00:00',
+          }),
+          agendaHoras({
+            REALIZADA: 0,
+            POSTERGADA: 1,
+            DATA_INI: '2026-07-02T08:00:00',
+            DATA_FIM: '2026-07-02T09:00:00',
           }),
         ],
       });
@@ -206,7 +220,11 @@ describe('BiAgendaAlocacaoService', () => {
         colunas: [],
         linhas: [
           agendaHoras({ RNS: 100 }),
-          agendaHoras({ RNS: 100, DATA_INI: '2026-07-16T08:00:00', DATA_FIM: '2026-07-16T09:00:00' }),
+          agendaHoras({
+            RNS: 100,
+            DATA_INI: '2026-07-16T08:00:00',
+            DATA_FIM: '2026-07-16T09:00:00',
+          }),
           agendaHoras({ RNS: 200 }),
         ],
       });
@@ -217,7 +235,10 @@ describe('BiAgendaAlocacaoService', () => {
 
     it('compromisso sem RNS não entra na tabela por projeto', async () => {
       disponibilidade.executarSql.mockResolvedValue({
-        ok: true, mensagem: '1', colunas: [], linhas: [agendaHoras({ RNS: null })],
+        ok: true,
+        mensagem: '1',
+        colunas: [],
+        linhas: [agendaHoras({ RNS: null })],
       });
       const r = await service.horasAplicadas({});
       expect(r.linhas).toHaveLength(0);
@@ -228,7 +249,12 @@ describe('BiAgendaAlocacaoService', () => {
         ok: true,
         mensagem: '1',
         colunas: [],
-        linhas: [agendaHoras({ DATA_INI: '2026-07-15T14:30:00', DATA_FIM: '2026-07-15T11:30:00' })],
+        linhas: [
+          agendaHoras({
+            DATA_INI: '2026-07-15T14:30:00',
+            DATA_FIM: '2026-07-15T11:30:00',
+          }),
+        ],
       });
       const r = await service.horasAplicadas({});
       expect(r.linhas[0].horasRealizada).toBe(0);
@@ -258,13 +284,18 @@ describe('BiAgendaAlocacaoService', () => {
 
     it('propaga erro do banco', async () => {
       disponibilidade.executarSql.mockResolvedValue({
-        ok: false, mensagem: 'ORA-00942', colunas: [], linhas: [],
+        ok: false,
+        mensagem: 'ORA-00942',
+        colunas: [],
+        linhas: [],
       });
       expect((await service.horasAplicadas({})).erro).toContain('ORA-00942');
     });
 
     it('o SQL soma por status a partir de duas datas, não conta 1 por linha', () => {
-      expect(SQL_HORAS_APLICADAS).toContain('POWERBI.POWERBI_AGENDA_POSTERGACAO_IMP_2');
+      expect(SQL_HORAS_APLICADAS).toContain(
+        'POWERBI.POWERBI_AGENDA_POSTERGACAO_IMP_2',
+      );
       expect(SQL_HORAS_APLICADAS).toContain('DATAINI');
       expect(SQL_HORAS_APLICADAS).toContain('DATAFIM');
     });

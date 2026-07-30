@@ -27,7 +27,10 @@ export class BiAgendaAlocacaoController {
   }
 
   @Get('horas-aplicadas')
-  @ApiOperation({ summary: 'Horas previstas por RNS de implantação, por status do compromisso' })
+  @ApiOperation({
+    summary:
+      'Horas previstas por RNS de implantação, por status do compromisso',
+  })
   async horasAplicadas(@Query() query: QueryHorasAplicadasDto) {
     return new ApiEnvelope(await this.servico.horasAplicadas(query));
   }

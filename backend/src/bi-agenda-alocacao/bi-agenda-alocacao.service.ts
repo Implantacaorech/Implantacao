@@ -119,7 +119,11 @@ export class BiAgendaAlocacaoService {
 
   // ── Calendário ────────────────────────────────────────────────────────────────────
 
-  private mesReferencia(mes?: string): { mes: string; ini: string; fim: string } {
+  private mesReferencia(mes?: string): {
+    mes: string;
+    ini: string;
+    fim: string;
+  } {
     const m = /^\d{4}-\d{2}$/.test((mes ?? '').trim())
       ? (mes as string).trim()
       : hojeIso().slice(0, 7);
@@ -144,7 +148,10 @@ export class BiAgendaAlocacaoService {
       status: STATUS_ALOCACAO[this.numero(l.STATUS)] ?? this.texto(l.STATUS),
       assunto: this.texto(l.ASSUNTO),
       minutos: this.numero(l.MINUTOS),
-      rns: l.PEDIDOIMP === null || l.PEDIDOIMP === undefined ? null : this.numero(l.PEDIDOIMP),
+      rns:
+        l.PEDIDOIMP === null || l.PEDIDOIMP === undefined
+          ? null
+          : this.numero(l.PEDIDOIMP),
       especie: this.numero(l.ESPECIE),
       especieDes: this.texto(l.ESPECIEDES),
       tecnico: this.texto(l.TECNICO),
@@ -155,17 +162,30 @@ export class BiAgendaAlocacaoService {
     };
   }
 
-  private vazioCalendario(mes: string, erro: string | null): ResultadoCalendarioAlocacao {
+  private vazioCalendario(
+    mes: string,
+    erro: string | null,
+  ): ResultadoCalendarioAlocacao {
     const semFiltros: FiltrosCalendarioAlocacao = {
-      grupos: [], responsaveis: [], tiposSuporte: [], status: [],
+      grupos: [],
+      responsaveis: [],
+      tiposSuporte: [],
+      status: [],
     };
     return {
-      mes, dias: [], resumo: [], totalCompromissos: 0,
-      filtros: semFiltros, selecionados: semFiltros, erro,
+      mes,
+      dias: [],
+      resumo: [],
+      totalCompromissos: 0,
+      filtros: semFiltros,
+      selecionados: semFiltros,
+      erro,
     };
   }
 
-  async calendario(query: QueryCalendarioAlocacao): Promise<ResultadoCalendarioAlocacao> {
+  async calendario(
+    query: QueryCalendarioAlocacao,
+  ): Promise<ResultadoCalendarioAlocacao> {
     const { mes, ini, fim } = this.mesReferencia(query.mes);
     if (!this.disponibilidade.configurado()) {
       return this.vazioCalendario(
@@ -185,17 +205,32 @@ export class BiAgendaAlocacaoService {
     const todas = r.linhas.map((l) => this.normalizarAlocacao(l));
 
     const preds = [
-      { dimensao: 'grupo', ok: (a: LinhaAlocacao) => this.passa(query.grupo, a.grupoEconomico) },
-      { dimensao: 'responsavel', ok: (a: LinhaAlocacao) => this.passa(query.responsavel, a.tecnico) },
-      { dimensao: 'tipoSuporte', ok: (a: LinhaAlocacao) => this.passa(query.tipoSuporte, a.tipoSuporte) },
-      { dimensao: 'status', ok: (a: LinhaAlocacao) => this.passa(query.status, a.status) },
+      {
+        dimensao: 'grupo',
+        ok: (a: LinhaAlocacao) => this.passa(query.grupo, a.grupoEconomico),
+      },
+      {
+        dimensao: 'responsavel',
+        ok: (a: LinhaAlocacao) => this.passa(query.responsavel, a.tecnico),
+      },
+      {
+        dimensao: 'tipoSuporte',
+        ok: (a: LinhaAlocacao) => this.passa(query.tipoSuporte, a.tipoSuporte),
+      },
+      {
+        dimensao: 'status',
+        ok: (a: LinhaAlocacao) => this.passa(query.status, a.status),
+      },
     ];
     const paraDim = (d: string) => this.emCascata(todas, preds, d);
 
     const filtros: FiltrosCalendarioAlocacao = {
       grupos: this.distintosDe(paraDim('grupo'), (a) => a.grupoEconomico),
       responsaveis: this.distintosDe(paraDim('responsavel'), (a) => a.tecnico),
-      tiposSuporte: this.distintosDe(paraDim('tipoSuporte'), (a) => a.tipoSuporte),
+      tiposSuporte: this.distintosDe(
+        paraDim('tipoSuporte'),
+        (a) => a.tipoSuporte,
+      ),
       status: this.distintosDe(paraDim('status'), (a) => a.status),
     };
 
@@ -213,7 +248,9 @@ export class BiAgendaAlocacaoService {
     const dias: DiaAlocacao[] = [];
     for (let d = 1; d <= diasNoMes; d++) {
       const iso = `${mes}-${String(d).padStart(2, '0')}`;
-      const doDia = (porDia.get(iso) ?? []).sort((x, y) => x.horaIni.localeCompare(y.horaIni));
+      const doDia = (porDia.get(iso) ?? []).sort((x, y) =>
+        x.horaIni.localeCompare(y.horaIni),
+      );
       dias.push({
         dia: iso,
         numero: d,
@@ -223,13 +260,15 @@ export class BiAgendaAlocacaoService {
     }
 
     const contagem = new Map<string, number>();
-    for (const a of filtradas) contagem.set(a.status, (contagem.get(a.status) ?? 0) + 1);
+    for (const a of filtradas)
+      contagem.set(a.status, (contagem.get(a.status) ?? 0) + 1);
     const total = filtradas.length;
     const resumo: ResumoStatusAlocacao[] = [...contagem.entries()]
       .map(([status, quantidade]) => ({
         status,
         quantidade,
-        percentual: total > 0 ? Math.round((quantidade / total) * 1000) / 10 : 0,
+        percentual:
+          total > 0 ? Math.round((quantidade / total) * 1000) / 10 : 0,
         cor: COR_STATUS_ALOCACAO[status] ?? '#CCCCCC',
       }))
       .sort((a, b) => a.status.localeCompare(b.status));
@@ -281,22 +320,33 @@ export class BiAgendaAlocacaoService {
     return (fim - ini) / 3_600_000;
   }
 
-  private normalizarCompromissoHoras(bruta: Record<string, unknown>): CompromissoHoras {
+  private normalizarCompromissoHoras(
+    bruta: Record<string, unknown>,
+  ): CompromissoHoras {
     const l: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(bruta)) l[(k || '').toUpperCase()] = v;
 
-    const horas = this.horasEntre(this.texto(l.DATA_INI), this.texto(l.DATA_FIM));
+    const horas = this.horasEntre(
+      this.texto(l.DATA_INI),
+      this.texto(l.DATA_FIM),
+    );
     // Exatamente UMA das seis colunas vale 1 por linha (confirmado no banco); a ordem abaixo
     // segue a das medidas do BI (Encaminhada/Agendada/Realizada/NãoRealizada/Postergada/
     // Cancelada) e serve de desempate se algum dado vier sujo com mais de uma marcada.
     const flag =
-      this.numero(l.ENCAMINHADA) === 1 ? 'encaminhada'
-      : this.numero(l.AGENDADA) === 1 ? 'agendada'
-      : this.numero(l.REALIZADA) === 1 ? 'realizada'
-      : this.numero(l.NAO_REALIZADA) === 1 ? 'naoRealizada'
-      : this.numero(l.POSTERGADA) === 1 ? 'postergada'
-      : this.numero(l.CANCELADA) === 1 ? 'cancelada'
-      : 'realizada'; // sem nenhuma marcada (não visto nos dados) — não perder a hora
+      this.numero(l.ENCAMINHADA) === 1
+        ? 'encaminhada'
+        : this.numero(l.AGENDADA) === 1
+          ? 'agendada'
+          : this.numero(l.REALIZADA) === 1
+            ? 'realizada'
+            : this.numero(l.NAO_REALIZADA) === 1
+              ? 'naoRealizada'
+              : this.numero(l.POSTERGADA) === 1
+                ? 'postergada'
+                : this.numero(l.CANCELADA) === 1
+                  ? 'cancelada'
+                  : 'realizada'; // sem nenhuma marcada (não visto nos dados) — não perder a hora
 
     return {
       rns: l.RNS === null || l.RNS === undefined ? null : this.numero(l.RNS),
@@ -324,7 +374,8 @@ export class BiAgendaAlocacaoService {
       horasPostergada: postergada,
       horasCancelada: soma((l) => l.horasCancelada),
       horasTotal: total,
-      percentualPostergada: total > 0 ? this.arredondar((postergada / total) * 100) : null,
+      percentualPostergada:
+        total > 0 ? this.arredondar((postergada / total) * 100) : null,
     };
   }
 
@@ -332,7 +383,11 @@ export class BiAgendaAlocacaoService {
     competencias: { inicio: string; fim: string },
     erro: string | null,
   ): ResultadoHorasAplicadas {
-    const semFiltros: FiltrosHorasAplicadas = { grupos: [], responsaveis: [], tiposSuporte: [] };
+    const semFiltros: FiltrosHorasAplicadas = {
+      grupos: [],
+      responsaveis: [],
+      tiposSuporte: [],
+    };
     return {
       competencias,
       linhas: [],
@@ -343,7 +398,9 @@ export class BiAgendaAlocacaoService {
     };
   }
 
-  async horasAplicadas(query: QueryHorasAplicadas): Promise<ResultadoHorasAplicadas> {
+  async horasAplicadas(
+    query: QueryHorasAplicadas,
+  ): Promise<ResultadoHorasAplicadas> {
     const competencias = this.periodo(query);
     if (!this.disponibilidade.configurado()) {
       return this.vazioHoras(
@@ -367,16 +424,33 @@ export class BiAgendaAlocacaoService {
     const todos = r.linhas.map((l) => this.normalizarCompromissoHoras(l));
 
     const preds = [
-      { dimensao: 'grupo', ok: (c: CompromissoHoras) => this.passa(query.grupo, c.grupoEconomico) },
-      { dimensao: 'responsavel', ok: (c: CompromissoHoras) => this.passa(query.responsavel, c.responsavel) },
-      { dimensao: 'tipoSuporte', ok: (c: CompromissoHoras) => this.passa(query.tipoSuporte, c.tipoSuporte) },
+      {
+        dimensao: 'grupo',
+        ok: (c: CompromissoHoras) => this.passa(query.grupo, c.grupoEconomico),
+      },
+      {
+        dimensao: 'responsavel',
+        ok: (c: CompromissoHoras) =>
+          this.passa(query.responsavel, c.responsavel),
+      },
+      {
+        dimensao: 'tipoSuporte',
+        ok: (c: CompromissoHoras) =>
+          this.passa(query.tipoSuporte, c.tipoSuporte),
+      },
     ];
     const paraDim = (d: string) => this.emCascata(todos, preds, d);
 
     const filtros: FiltrosHorasAplicadas = {
       grupos: this.distintosDe(paraDim('grupo'), (c) => c.grupoEconomico),
-      responsaveis: this.distintosDe(paraDim('responsavel'), (c) => c.responsavel),
-      tiposSuporte: this.distintosDe(paraDim('tipoSuporte'), (c) => c.tipoSuporte),
+      responsaveis: this.distintosDe(
+        paraDim('responsavel'),
+        (c) => c.responsavel,
+      ),
+      tiposSuporte: this.distintosDe(
+        paraDim('tipoSuporte'),
+        (c) => c.tipoSuporte,
+      ),
     };
 
     const filtrados = todos.filter((c) => preds.every((p) => p.ok(c)));
@@ -392,7 +466,11 @@ export class BiAgendaAlocacaoService {
     const linhas: LinhaHorasAplicadas[] = [...porRns.entries()]
       .map(([rns, cs]) => {
         const soma = (flag: CompromissoHoras['statusFlag']) =>
-          this.arredondar(cs.filter((c) => c.statusFlag === flag).reduce((a, c) => a + c.horas, 0));
+          this.arredondar(
+            cs
+              .filter((c) => c.statusFlag === flag)
+              .reduce((a, c) => a + c.horas, 0),
+          );
         const encaminhada = soma('encaminhada');
         const agendada = soma('agendada');
         const realizada = soma('realizada');
@@ -400,7 +478,12 @@ export class BiAgendaAlocacaoService {
         const postergada = soma('postergada');
         const cancelada = soma('cancelada');
         const total = this.arredondar(
-          encaminhada + agendada + realizada + naoRealizada + postergada + cancelada,
+          encaminhada +
+            agendada +
+            realizada +
+            naoRealizada +
+            postergada +
+            cancelada,
         );
         return {
           rns,
@@ -417,7 +500,8 @@ export class BiAgendaAlocacaoService {
           horasPostergada: postergada,
           horasCancelada: cancelada,
           horasTotal: total,
-          percentualPostergada: total > 0 ? this.arredondar((postergada / total) * 100) : null,
+          percentualPostergada:
+            total > 0 ? this.arredondar((postergada / total) * 100) : null,
         };
       })
       .sort((a, b) => b.horasTotal - a.horasTotal);

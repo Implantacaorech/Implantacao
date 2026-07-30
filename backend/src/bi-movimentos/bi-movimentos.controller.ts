@@ -18,7 +18,9 @@ export class BiMovimentosController {
   constructor(private readonly servico: BiMovimentosService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Horas de trabalho efetivo por técnico e tipo de movimento' })
+  @ApiOperation({
+    summary: 'Horas de trabalho efetivo por técnico e tipo de movimento',
+  })
   async movimentos(@Query() query: QueryMovimentosDto) {
     return new ApiEnvelope(await this.servico.movimentos(query));
   }

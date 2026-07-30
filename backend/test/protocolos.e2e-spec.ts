@@ -297,9 +297,7 @@ describe('Protocolos de Treinamento (e2e)', () => {
   }, 15000);
 
   it('excluir devolve 404 para protocolo inexistente', async () => {
-    const res = await auth(
-      request(server()).delete('/api/protocolos/999999'),
-    );
+    const res = await auth(request(server()).delete('/api/protocolos/999999'));
     expect(res.status).toBe(404);
   });
 

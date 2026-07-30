@@ -2,10 +2,17 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsArray, IsOptional, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 
+/** Só converte primitivo: `String()` num objeto vindo da query daria "[object Object]".
+ * Mesma guarda de `bi-implantacao/dto/query-resumo.dto.ts`. */
+const comoTexto = (v: unknown): string =>
+  typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'
+    ? String(v)
+    : '';
+
 /** Aceita `?grupo=a&grupo=b` e `?grupo=a` (valor único). */
 const comoLista = ({ value }: { value: unknown }): string[] | undefined => {
   if (value === undefined || value === null || value === '') return undefined;
-  return Array.isArray(value) ? value.map(String) : [String(value)];
+  return Array.isArray(value) ? value.map(comoTexto) : [comoTexto(value)];
 };
 
 export class QueryCalendarioAlocacaoDto {
@@ -21,7 +28,10 @@ export class QueryCalendarioAlocacaoDto {
   @IsString({ each: true })
   grupo?: string[];
 
-  @ApiPropertyOptional({ type: [String], description: 'Técnico do compromisso' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Técnico do compromisso',
+  })
   @IsOptional()
   @Transform(comoLista)
   @IsArray()
@@ -61,7 +71,10 @@ export class QueryHorasAplicadasDto {
   @IsString({ each: true })
   grupo?: string[];
 
-  @ApiPropertyOptional({ type: [String], description: 'Responsável da RNS de implantação' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Responsável da RNS de implantação',
+  })
   @IsOptional()
   @Transform(comoLista)
   @IsArray()

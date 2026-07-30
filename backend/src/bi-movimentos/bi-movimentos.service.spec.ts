@@ -33,7 +33,10 @@ describe('BiMovimentosService', () => {
     service = module.get(BiMovimentosService);
     disponibilidade.configurado.mockReturnValue(true);
     disponibilidade.executarSql.mockResolvedValue({
-      ok: true, mensagem: '1', colunas: [], linhas: [grupo()],
+      ok: true,
+      mensagem: '1',
+      colunas: [],
+      linhas: [grupo()],
     });
   });
 
@@ -46,18 +49,27 @@ describe('BiMovimentosService', () => {
     });
 
     it('recorta janelas maiores que 6 meses e avisa via `limitado`', () => {
-      const p = service.periodo({ dataIni: '2025-01-01', dataFim: '2026-07-29' });
+      const p = service.periodo({
+        dataIni: '2025-01-01',
+        dataFim: '2026-07-29',
+      });
       expect(p.inicio).toBe('2026-01-29'); // 6 meses antes do fim
       expect(p.limitado).toBe(true);
     });
 
     it('inverte quando início vem depois do fim', () => {
-      const p = service.periodo({ dataIni: '2026-07-29', dataFim: '2026-01-01' });
+      const p = service.periodo({
+        dataIni: '2026-07-29',
+        dataFim: '2026-01-01',
+      });
       expect(p.inicio <= p.fim).toBe(true);
     });
 
     it('manda o período ao SQL como data exclusiva (fim + 1 dia)', async () => {
-      await service.movimentos({ dataIni: '2026-01-01', dataFim: '2026-01-31' });
+      await service.movimentos({
+        dataIni: '2026-01-01',
+        dataFim: '2026-01-31',
+      });
       const [, binds] = disponibilidade.executarSql.mock.calls[0];
       expect(binds).toEqual({ data_ini: '2026-01-01', data_fim: '2026-02-01' });
     });
@@ -72,7 +84,10 @@ describe('BiMovimentosService', () => {
 
     it('COBRA_HORA "Sim"/"Não" vira booleano — não confundir com o filtro de status de outra página', async () => {
       disponibilidade.executarSql.mockResolvedValue({
-        ok: true, mensagem: '1', colunas: [], linhas: [grupo({ COBRA_HORA: 'Sim' })],
+        ok: true,
+        mensagem: '1',
+        colunas: [],
+        linhas: [grupo({ COBRA_HORA: 'Sim' })],
       });
       const r = await service.movimentos({});
       expect(r.porTecnico[0].horasCobradas).toBe(52.8);
@@ -83,7 +98,9 @@ describe('BiMovimentosService', () => {
         ok: true,
         mensagem: '1',
         colunas: [],
-        linhas: [grupo({ TP_MOVIMENTO: 'PENDENCIA', MIN_TOTAL: 537, MIN_COBRADO: 0 })],
+        linhas: [
+          grupo({ TP_MOVIMENTO: 'PENDENCIA', MIN_TOTAL: 537, MIN_COBRADO: 0 }),
+        ],
       });
       const r = await service.movimentos({});
       expect(r.porTpMovimento[0].horasTotal).toBe(8.95); // 537/60
@@ -97,8 +114,20 @@ describe('BiMovimentosService', () => {
         mensagem: '2',
         colunas: [],
         linhas: [
-          grupo({ TECNICODES: 'ALAN', TP_MOVIMENTO: 'AGENDA', MIN_TOTAL: 600, MIN_COBRADO: 600, QTD: 5 }),
-          grupo({ TECNICODES: 'ALAN', TP_MOVIMENTO: 'RNS', MIN_TOTAL: 60, MIN_COBRADO: 0, QTD: 2 }),
+          grupo({
+            TECNICODES: 'ALAN',
+            TP_MOVIMENTO: 'AGENDA',
+            MIN_TOTAL: 600,
+            MIN_COBRADO: 600,
+            QTD: 5,
+          }),
+          grupo({
+            TECNICODES: 'ALAN',
+            TP_MOVIMENTO: 'RNS',
+            MIN_TOTAL: 60,
+            MIN_COBRADO: 0,
+            QTD: 2,
+          }),
         ],
       });
       const r = await service.movimentos({});
@@ -106,7 +135,10 @@ describe('BiMovimentosService', () => {
       expect(r.porTecnico[0].chave).toBe('ALAN');
       expect(r.porTecnico[0].horasTotal).toBe(11); // (600+60)/60
       expect(r.porTecnico[0].quantidade).toBe(7);
-      expect(r.porTpMovimento.map((p) => p.chave).sort()).toEqual(['AGENDA', 'RNS']);
+      expect(r.porTpMovimento.map((p) => p.chave).sort()).toEqual([
+        'AGENDA',
+        'RNS',
+      ]);
     });
 
     it('conta técnicos distintos', async () => {
@@ -163,14 +195,19 @@ describe('BiMovimentosService', () => {
 
   it('propaga erro do banco', async () => {
     disponibilidade.executarSql.mockResolvedValue({
-      ok: false, mensagem: 'ORA-00942', colunas: [], linhas: [],
+      ok: false,
+      mensagem: 'ORA-00942',
+      colunas: [],
+      linhas: [],
     });
     expect((await service.movimentos({})).erro).toContain('ORA-00942');
   });
 
   it('o SQL já agrupa no Oracle (GROUP BY), não busca linha crua', () => {
     expect(SQL_MOVIMENTOS_AGRUPADOS).toContain('GROUP BY');
-    expect(SQL_MOVIMENTOS_AGRUPADOS).toContain('POWERBI.POWERBI_APONTAMENTO_TECNICOS');
+    expect(SQL_MOVIMENTOS_AGRUPADOS).toContain(
+      'POWERBI.POWERBI_APONTAMENTO_TECNICOS',
+    );
     expect(SQL_MOVIMENTOS_AGRUPADOS).toContain('a.DTINICIO');
   });
 });
