@@ -1,6 +1,6 @@
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ProtocoloService } from '../../core/services/protocolo.service';
 import {
   CampoTextoProtocolo,
@@ -48,6 +48,7 @@ function fmt(s: number): string {
 export class ProtocoloFichaComponent implements OnDestroy {
   private readonly service = inject(ProtocoloService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private intervalo: ReturnType<typeof setInterval> | null = null;
   private videoUrlAtual: string | null = null;
 
@@ -64,8 +65,17 @@ export class ProtocoloFichaComponent implements OnDestroy {
 
   readonly protocolo = signal<Protocolo | null>(null);
   readonly podeAprovar = signal(false);
+  readonly podeExcluir = signal(false);
+  readonly excluindo = signal(false);
   readonly ehAudio = signal(false);
   readonly videoUrl = signal<string | null>(null);
+
+  /** Estado do player da mídia original. A mídia é baixada inteira (o endpoint exige
+   * Bearer, então não dá para apontar o `src` direto para a URL) — em vídeo de
+   * treinamento isso leva alguns segundos, daí o estado explícito na tela. */
+  readonly midiaCarregando = signal(false);
+  /** 'ver' = player de vídeo · 'escutar' = só o áudio. Arquivo de áudio só tem 'escutar'. */
+  readonly modoMidia = signal<'ver' | 'escutar'>('ver');
 
   readonly pct = signal<number | null>(null);
   readonly pos = signal(0);
@@ -131,12 +141,15 @@ export class ProtocoloFichaComponent implements OnDestroy {
       const r = await this.service.ficha(this.id);
       this.protocolo.set(r.protocolo);
       this.podeAprovar.set(r.podeAprovar);
+      this.podeExcluir.set(r.podeExcluir);
       this.ehAudio.set(r.ehAudio);
+      if (r.ehAudio) this.modoMidia.set('escutar');
       this.edicao.set({
         titulo: r.protocolo.titulo,
         modulo: r.protocolo.modulo,
         menu: r.protocolo.menu,
         assunto: r.protocolo.assunto,
+        resumoCompleto: r.protocolo.resumoCompleto,
         ...Object.fromEntries(this.camposEdicao.map((c) => [c.chave, r.protocolo[c.chave]])),
       });
       if (!this.videoUrlAtual) void this.carregarVideo();
@@ -148,15 +161,28 @@ export class ProtocoloFichaComponent implements OnDestroy {
     }
   }
 
-  private async carregarVideo(): Promise<void> {
+  /** Baixa a mídia original e devolve uma URL de blob para o player. Serve tanto o botão
+   * "Tentar de novo" quanto a carga automática ao abrir a ficha. */
+  async carregarVideo(): Promise<void> {
+    if (this.midiaCarregando()) return;
+    this.midiaCarregando.set(true);
     try {
       const blob = await this.service.video(this.id);
       const url = URL.createObjectURL(blob);
       this.videoUrlAtual = url;
       this.videoUrl.set(url);
     } catch {
-      // player fica vazio — o vídeo pode ter sido movido/removido do disco.
+      // O arquivo pode ter sido movido/removido do disco — a tela avisa e oferece retry
+      // (sem URL e sem carregamento em curso, o template mostra o bloco de erro).
+    } finally {
+      this.midiaCarregando.set(false);
     }
+  }
+
+  /** Alterna entre assistir (vídeo) e só escutar (áudio) — mesma mídia já baixada. */
+  verMidia(modo: 'ver' | 'escutar'): void {
+    if (this.ehAudio()) return; // arquivo de áudio não tem imagem para assistir
+    this.modoMidia.set(modo);
   }
 
   private configurarPolling(status: StatusProtocolo): void {
@@ -245,6 +271,7 @@ export class ProtocoloFichaComponent implements OnDestroy {
         modulo: this.campo('modulo'),
         menu: this.campo('menu'),
         assunto: this.campo('assunto'),
+        resumoCompleto: this.campo('resumoCompleto'),
       };
       for (const c of this.camposEdicao) campos[c.chave] = this.campo(c.chave);
       await this.service.salvar(this.id, campos);
@@ -252,6 +279,27 @@ export class ProtocoloFichaComponent implements OnDestroy {
       await this.carregar();
     } catch {
       this.erro.set('Não foi possível salvar a edição.');
+    }
+  }
+
+  async excluir(): Promise<void> {
+    const p = this.protocolo();
+    if (!p) return;
+    if (
+      !confirm(
+        `Excluir definitivamente "${p.titulo || p.videoNome}"? O registro e o arquivo de vídeo/áudio original serão apagados — não é possível desfazer.`,
+      )
+    ) {
+      return;
+    }
+    this.excluindo.set(true);
+    this.erro.set(null);
+    try {
+      await this.service.excluir(this.id);
+      await this.router.navigateByUrl('/protocolos');
+    } catch {
+      this.erro.set('Não foi possível excluir o protocolo.');
+      this.excluindo.set(false);
     }
   }
 

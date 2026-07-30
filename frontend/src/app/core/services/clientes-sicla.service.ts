@@ -33,10 +33,12 @@ export interface ModuloSelecionado {
   obs: string;
 }
 
-/** Uma conversão de dados estimada: nome (item fixo ou digitado) + horas de conversão. */
+/** Uma conversão de dados estimada: nome (item fixo ou digitado) + horas de conversão + a
+ * observação escrita ao lado do item (igual à dos módulos contratados). */
 export interface ConversaoSelecionada {
   nome: string;
   horas: string;
+  obs: string;
 }
 
 export interface CadastrarClientePayload {

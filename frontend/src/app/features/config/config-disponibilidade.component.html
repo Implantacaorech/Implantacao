@@ -1,20 +1,20 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <h1 style="display:flex;align-items:center;gap:8px">
-    <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-calendar"/></svg>
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-calendar"/></svg>
     Disponibilidade dos Consultores (banco interno)
   </h1>
   <p class="dica">Conecte um banco interno e informe o <strong>SELECT</strong> que devolve os compromissos dos técnicos.
     O agendador usa isso para liberar no calendário só os dias/turnos livres para todos os técnicos envolvidos.</p>
 
   @if (aviso()) {
-    <div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px;margin-bottom:10px">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+    <div class="resultado ok linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
     </div>
   }
   @if (erro()) {
-    <div class="resultado erro" style="padding:10px 14px;margin-bottom:10px">{{ erro() }}</div>
+    <div class="resultado erro">{{ erro() }}</div>
   }
   @if (amostra(); as a) {
     @if (a.length > 0) {
@@ -28,12 +28,12 @@
   }
 
   <form class="painel" [formGroup]="form" (ngSubmit)="salvar()">
-    <label class="campo" style="display:flex;align-items:center;gap:8px">
+    <label class="campo flex-linha">
       <input type="checkbox" formControlName="ativo" style="width:auto" />
       <span style="margin:0">Ativar consulta de disponibilidade</span>
     </label>
 
-    <h3 style="color:var(--navy);margin:14px 0 6px">Conexão</h3>
+    <h3>Conexão</h3>
     <p class="dica" style="margin:0 0 8px">Preencha os campos <strong>ou</strong> cole uma URL SQLAlchemy completa (a URL tem prioridade).</p>
     <div class="grade2">
       <label class="campo">
@@ -55,7 +55,7 @@
     </label>
 
     <div class="grade2">
-      <label class="campo" style="display:flex;align-items:center;gap:8px">
+      <label class="campo flex-linha">
         <input type="checkbox" formControlName="oracleThick" style="width:auto" />
         <span style="margin:0">Oracle — modo <strong>thick</strong> (Instant Client): use para senha com verificador antigo (DPY-3015)</span>
       </label>
@@ -65,14 +65,14 @@
       </label>
     </div>
 
-    <h3 style="color:var(--navy);margin:14px 0 6px">Consulta (SELECT)</h3>
+    <h3>Consulta (SELECT)</h3>
     <p class="dica" style="margin:0 0 6px">Parâmetros disponíveis: <code>:data_ini</code>, <code>:data_fim</code>
       e <code>:tecnicos</code> (lista de códigos dos consultores). <strong>Use <code>… IN :tecnicos</code></strong>
       para o banco já devolver só os consultores da visita — muito mais rápido (o painel consulta
       hoje…+18 meses). Devolva as colunas <code>tecnico</code> (= Código SICLA), <code>data</code> e (opcional)
       <code>turno</code> (<code>manha</code>/<code>tarde</code>; vazio = dia inteiro). Cada linha = um compromisso.</p>
     <label class="campo">
-      <textarea formControlName="select" rows="7" style="font-family:monospace;font-size:.85rem"
+      <textarea formControlName="select" rows="7" class="txt-mono"
         placeholder="SELECT cod AS tecnico, data_visita AS data, periodo AS turno&#10;FROM agenda_tecnicos&#10;WHERE data_visita BETWEEN :data_ini AND :data_fim AND cod IN :tecnicos"></textarea>
     </label>
 
@@ -81,7 +81,7 @@
       <textarea formControlName="selectTecnicos" rows="2"></textarea>
     </label>
 
-    <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+    <div class="acoes" style="margin-top:var(--sp-3)">
       <button class="btn primario" type="submit" [disabled]="salvando()">
         <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ salvando() ? 'Salvando…' : 'Salvar' }}
       </button>
@@ -92,7 +92,7 @@
     </div>
 
     <p style="font-size:.78rem;color:var(--muted);margin-top:10px">
-      <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-info"/></svg>
+      <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-info"/></svg>
       O driver do banco precisa estar instalado no servidor (Postgres: psycopg2 já existe; MySQL: pymysql; SQL Server: pyodbc; Oracle: cx_Oracle).
       As credenciais ficam só na máquina (arquivo local, fora do versionamento).
     </p>

@@ -29,4 +29,24 @@ export class LevantamentoResposta {
 
   @Column({ type: 'text', default: '' })
   resposta: string;
+
+  /** "Não será utilizado." — marcado ao lado da pergunta quando o cliente não usa aquela
+   * funcionalidade. Com a flag ligada a `resposta` é sempre TEXTO_NAO_UTILIZADO (o backend
+   * força, não confia na tela) e o campo fica bloqueado para digitação. */
+  @Column({ name: 'nao_utilizado', default: false })
+  naoUtilizado: boolean;
+
+  /** Concorrência otimista da edição a várias mãos (dois técnicos na mesma tela, cada um no
+   * seu computador). Toda gravação da linha incrementa; o cliente devolve a versão que tinha
+   * em tela e o backend recusa (409) se já mudou, em vez de sobrescrever o colega. */
+  @Column({ default: 0 })
+  versao: number;
+
+  @Column({ name: 'atualizado_por', length: 120, default: '' })
+  atualizadoPor: string;
+
+  /** Marca d'água da última gravação — é o `desde` do polling de sincronização (só as linhas
+   * que mudaram trafegam a cada tique). */
+  @Column({ name: 'atualizado_em', nullable: true })
+  atualizadoEm: Date;
 }

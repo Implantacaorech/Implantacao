@@ -14,6 +14,7 @@ import {
   checklistVazio,
   indiceVazio,
 } from '../../core/models/cadastros.model';
+import { deSignal, filtrosSalvos } from '../../core/utils/filtros-salvos';
 
 type Aba = 'checklist' | 'indice' | 'modelos';
 
@@ -78,6 +79,18 @@ export class CadastrosComponent {
   readonly mdCampoSalvando = signal(false);
 
   constructor() {
+    // Filtros das abas Check List e Índice de Tópicos, salvos por usuário logado. A ABA em si
+    // fica fora: quem manda nela é a rota (`/cadastros/:aba`), que é o link compartilhado.
+    filtrosSalvos(
+      'cadastros',
+      {
+        clFiltroModulo: deSignal(this.clFiltroModulo),
+        clFiltroBusca: deSignal(this.clFiltroBusca),
+        idFiltroModulo: deSignal(this.idFiltroModulo),
+        idFiltroBusca: deSignal(this.idFiltroBusca),
+      },
+      { aoRestaurar: () => this.carregarAbaAtual() },
+    );
     const abaRota = this.route.snapshot.paramMap.get('aba') as Aba | null;
     if (abaRota === 'indice' || abaRota === 'modelos') this.aba.set(abaRota);
     this.carregarAbaAtual();

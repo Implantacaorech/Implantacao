@@ -1,21 +1,21 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else if (dados(); as d) {
-  <h1 style="display:flex;align-items:center;gap:10px">
-    <svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-mail"/></svg>
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-mail"/></svg>
     Enviar E-mail — {{ d.cliente }}
   </h1>
 
   @if (!d.configurado) {
-    <div class="resultado erro" style="padding:10px 16px;display:flex;align-items:center;gap:8px;margin-bottom:12px">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg>
+    <div class="resultado erro linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-bell"/></svg>
       SMTP não configurado. <a routerLink="/config/email" style="margin-left:4px">Configurar agora</a>.
     </div>
   }
 
   @if (erro()) {
-    <div class="resultado erro" style="padding:10px 16px;display:flex;align-items:center;gap:8px;margin-bottom:12px">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg>
+    <div class="resultado erro linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-bell"/></svg>
       {{ erro() }}
     </div>
   }
@@ -42,7 +42,7 @@
         </small>
       </label>
     } @else {
-      <div class="resultado" style="padding:8px 14px;font-size:.85rem;color:var(--muted)">
+      <div class="resultado" style="font-size:.85rem;color:var(--muted)">
         Nenhum modelo ativo cadastrado.
         @if (ehAdm()) { <a routerLink="/config/modelos-email">Cadastrar modelos</a> }
       </div>
@@ -58,7 +58,7 @@
       <textarea name="corpo" rows="14" [(ngModel)]="corpo" required></textarea>
     </label>
 
-    <div style="display:flex;gap:8px;align-items:center">
+    <div class="acoes">
       <button class="btn primario" type="submit" [disabled]="!d.configurado || enviando()">
         <svg class="svgi" aria-hidden="true"><use href="#ic-send"/></svg> {{ enviando() ? 'Enviando…' : 'Enviar e-mail' }}
       </button>

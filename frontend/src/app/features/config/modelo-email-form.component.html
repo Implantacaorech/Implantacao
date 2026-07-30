@@ -1,8 +1,8 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <h1 style="display:flex;align-items:center;gap:10px">
-    <svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-mail"/></svg>
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-mail"/></svg>
     {{ modeloId() ? 'Editar Modelo' : 'Novo Modelo de E-mail' }}
   </h1>
   <p class="dica">
@@ -11,8 +11,8 @@
   </p>
 
   @if (erro()) {
-    <div class="resultado erro" style="padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
+    <div class="resultado erro linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
     </div>
   }
 
@@ -23,7 +23,7 @@
         <input formControlName="nome" placeholder="Ex.: Encaminhamento de Levantamento" />
       </label>
       <label class="campo">
-        <span>Etapa sugerida <small style="color:var(--muted)">(opcional — para filtro)</small></span>
+        <span>Etapa sugerida <small class="txt-muted">(opcional — para filtro)</small></span>
         <select formControlName="etapa">
           <option value="">— qualquer etapa —</option>
           @for (e of etapas; track e) { <option [value]="e">{{ e }}</option> }
@@ -40,7 +40,7 @@
 
       <div style="border:1px solid var(--line);border-radius:var(--r-sm);padding:12px;background:var(--surface)">
         <div style="font-size:.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
-          <svg class="svgi" style="width:11px;height:11px" aria-hidden="true"><use href="#ic-bulb"/></svg>
+          <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-bulb"/></svg>
           Preview (variáveis marcadas)
         </div>
         <div style="font-size:.85rem;font-weight:600;color:var(--text);margin-bottom:6px;word-break:break-word" [innerHTML]="previewAssunto()"></div>
@@ -48,7 +48,7 @@
         <pre style="font-size:.82rem;color:var(--text);white-space:pre-wrap;word-break:break-word;margin:0;font-family:inherit" [innerHTML]="previewCorpo()"></pre>
       </div>
 
-      <div style="display:flex;gap:8px;margin-top:4px">
+      <div class="acoes" style="margin-top:var(--sp-3)">
         <button class="btn primario" type="submit" [disabled]="salvando()">
           <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
           {{ salvando() ? 'Salvando…' : (modeloId() ? 'Salvar alterações' : 'Criar modelo') }}
@@ -58,9 +58,9 @@
     </form>
 
     <aside>
-      <div class="painel" style="padding:14px">
+      <div class="painel compacto">
         <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px">
-          <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-bulb"/></svg>
+          <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-bulb"/></svg>
           Variáveis disponíveis
         </div>
         <p style="font-size:.78rem;color:var(--muted);margin:0 0 10px">Clique em uma variável para inserir no campo ativo (Assunto ou Corpo).</p>

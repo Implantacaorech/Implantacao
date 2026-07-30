@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { CronogramaService } from '../../core/services/cronograma.service';
 import { AuthService } from '../../core/services/auth.service';
+import { temPapel } from '../../core/constants/perfis';
 import {
   AtividadeCronograma,
   CronogramaConfigDto,
@@ -120,7 +121,7 @@ export class AgendaComponent {
   novaDataPostergar = '';
   novoTurnoPostergar = 'manha';
 
-  readonly ehAdm = computed(() => this.auth.usuario()?.perfil === 'ADM');
+  readonly ehAdm = computed(() => temPapel(this.auth.usuario(), 'ADM'));
 
   readonly hojeIso = new Date().toISOString().slice(0, 10);
 

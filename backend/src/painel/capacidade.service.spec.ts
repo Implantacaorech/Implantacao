@@ -264,4 +264,90 @@ describe('CapacidadeService', () => {
 
     expect(r.equipe.map((e) => e.nome)).toEqual(['Ana', 'Beto']);
   });
+
+  describe('filtro por setor', () => {
+    const equipeComSetores = [
+      usuario({
+        id: 1,
+        nome: 'Ana',
+        codigoSicla: '007',
+        setorAtuacao: 'GRM-Implantação',
+      }),
+      usuario({
+        id: 2,
+        nome: 'Beto',
+        codigoSicla: '008',
+        setorAtuacao: 'GRM-Suporte',
+      }),
+      usuario({ id: 3, nome: 'Carla', codigoSicla: '009', setorAtuacao: '' }),
+    ];
+
+    it('sem setor pedido: avalia a equipe toda e devolve os setores disponíveis', async () => {
+      usuarios.find.mockResolvedValue(equipeComSetores);
+
+      const r = await service.avaliarEquipe([], 6);
+
+      expect(r.equipe).toHaveLength(3);
+      expect(r.setor).toBe('');
+      // Ordenado em pt-BR e SEM o vazio — "(sem setor)" é oferecido pela tela via semSetor.
+      expect(r.setoresDisponiveis).toEqual(['GRM-Implantação', 'GRM-Suporte']);
+      expect(r.semSetor).toBe(1);
+    });
+
+    it('com setor pedido: avalia só quem é daquele setor', async () => {
+      usuarios.find.mockResolvedValue(equipeComSetores);
+
+      const r = await service.avaliarEquipe([], 6, 'GRM-Suporte');
+
+      expect(r.equipe.map((e) => e.nome)).toEqual(['Beto']);
+      expect(r.setor).toBe('GRM-Suporte');
+    });
+
+    it('a lista de setores é a COMPLETA mesmo com filtro aplicado (senão o select se fecha)', async () => {
+      usuarios.find.mockResolvedValue(equipeComSetores);
+
+      const r = await service.avaliarEquipe([], 6, 'GRM-Suporte');
+
+      expect(r.setoresDisponiveis).toEqual(['GRM-Implantação', 'GRM-Suporte']);
+      expect(r.semSetor).toBe(1);
+    });
+
+    it('`__sem__` traz só quem está sem setor no cadastro', async () => {
+      usuarios.find.mockResolvedValue(equipeComSetores);
+
+      const r = await service.avaliarEquipe([], 6, '__sem__');
+
+      expect(r.equipe.map((e) => e.nome)).toEqual(['Carla']);
+    });
+
+    it('compara ignorando acento e caixa — o SETORDES do SICLA volta sem padrão', async () => {
+      usuarios.find.mockResolvedValue(equipeComSetores);
+
+      const r = await service.avaliarEquipe([], 6, 'grm-implantacao');
+
+      expect(r.equipe.map((e) => e.nome)).toEqual(['Ana']);
+    });
+
+    it('setor sem ninguém devolve equipe vazia, não a equipe toda', async () => {
+      usuarios.find.mockResolvedValue(equipeComSetores);
+
+      const r = await service.avaliarEquipe([], 6, 'GPD-Desenvolvimento');
+
+      expect(r.equipe).toEqual([]);
+    });
+
+    it('só consulta a agenda externa dos técnicos que passaram pelo filtro', async () => {
+      usuarios.find.mockResolvedValue(equipeComSetores);
+      disponibilidade.configurado.mockReturnValue(true);
+      disponibilidade.ocupacaoPorSlotCache.mockResolvedValue({});
+
+      await service.avaliarEquipe([], 6, 'GRM-Suporte');
+
+      expect(disponibilidade.ocupacaoPorSlotCache).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        ['008'],
+      );
+    });
+  });
 });

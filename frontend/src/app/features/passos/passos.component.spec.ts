@@ -4,6 +4,7 @@ import { PassosComponent } from './passos.component';
 import { PassosService } from '../../core/services/passos.service';
 import { ProjetosService } from '../../core/services/projetos.service';
 import { DesignacaoService } from '../../core/services/designacao.service';
+import { PermissoesService } from '../../core/services/permissoes.service';
 import { Passo } from '../../core/models/passo.model';
 import { Projeto } from '../../core/models/projeto.model';
 
@@ -53,8 +54,19 @@ function passo(over: Partial<Passo> = {}): Passo {
     bloqueadoPor: [],
     liberado: true,
     motivos: [],
+    podeAbrir: false,
     ...over,
   };
+}
+
+/** O link "Abrir" do passo, ou `null` se ele não estiver na tela. */
+function linkAbrir(fixture: { nativeElement: unknown }): HTMLAnchorElement | null {
+  const raiz = fixture.nativeElement as HTMLElement;
+  return (
+    [...raiz.querySelectorAll('a')].find(
+      (a) => (a.textContent ?? '').trim() === 'Abrir',
+    ) ?? null
+  );
 }
 
 describe('PassosComponent', () => {
@@ -105,6 +117,12 @@ describe('PassosComponent', () => {
           },
         },
         { provide: ProjetosService, useValue: { buscar: () => Promise.resolve(projeto()) } },
+        // Sem Alteração na Carteira a tela vira SÓ CONSULTA e esconde a coluna de ações —
+        // os testes de botão precisam do nível que o painel de Permissões daria.
+        {
+          provide: PermissoesService,
+          useValue: { podeAlterar: (menu: string) => menu === 'carteira' },
+        },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: convertToParamMap({ id: '5' }) } },
@@ -186,6 +204,49 @@ describe('PassosComponent', () => {
     expect(sel).toEqual(['Ana', 'Bruno']);
     sel = c.alternarSelecao(sel, 'Ana', false);
     expect(sel).toEqual(['Bruno']);
+  });
+
+  it('abre a tela do Levantamento mesmo sem poder CONCLUIR o passo', async () => {
+    // Bug do usuário (2026-07-29): o passo 3 é concluído pelo Levantador designado, e o
+    // botão "Abrir" seguia essa mesma permissão — quem não era o levantador do projeto via
+    // o botão e não conseguia entrar no preenchimento. Abrir é permissão da TELA.
+    const fixture = await montar([
+      passo({
+        numero: 3,
+        titulo: 'Realizar o Levantamento de Processo',
+        etapa: 'Levantamento',
+        responsavel: 'Levantador',
+        liberado: false,
+        motivos: ['Só o responsável (Levantador) pode concluir.'],
+        podeAbrir: true,
+      }),
+    ]);
+    const link = linkAbrir(fixture);
+    expect(link?.getAttribute('href')).toBe('/projetos/5/levantamento');
+  });
+
+  it('não leva a lugar nenhum quando o perfil não alcança a tela', async () => {
+    const fixture = await montar([
+      passo({ numero: 3, etapa: 'Levantamento', liberado: true, podeAbrir: false }),
+    ]);
+    const link = linkAbrir(fixture);
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute('href')).toBeNull();
+    expect(link?.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('continua permitindo abrir a tela depois de o passo ser concluído', async () => {
+    // Concluir o passo 3 não pode trancar o acesso ao que foi preenchido.
+    const fixture = await montar([
+      passo({
+        numero: 3,
+        etapa: 'Levantamento',
+        concluido: true,
+        concluidoPor: 'Ana',
+        podeAbrir: true,
+      }),
+    ]);
+    expect(linkAbrir(fixture)?.getAttribute('href')).toBe('/projetos/5/levantamento');
   });
 
   it('só reconhece conferência nos passos 10 e 17', async () => {

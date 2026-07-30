@@ -10,7 +10,7 @@ import { DesignacaoService } from '../../core/services/designacao.service';
 import { AuthService } from '../../core/services/auth.service';
 import { Cabecalho } from '../../core/models/painel.model';
 import { Documento, DOC_TIPOS, EventoProjeto, SlugDocumentoFiel } from '../../core/models/documento.model';
-import { podeGerar, PERFIS_DESIGNA_CONSULTORES } from '../../core/constants/perfis';
+import { podeGerar, temPapel, PERFIS_DESIGNA_CONSULTORES } from '../../core/constants/perfis';
 
 type Aba = 'resumo' | 'dados' | 'com' | 'hist';
 
@@ -72,10 +72,9 @@ export class ProjetoFormComponent {
   enviandoAnexo = false;
 
   readonly perfil = computed(() => this.auth.usuario()?.perfil);
-  readonly podeDesignarConsultores = computed(() => {
-    const p = this.perfil();
-    return !!p && PERFIS_DESIGNA_CONSULTORES.includes(p);
-  });
+  readonly podeDesignarConsultores = computed(() =>
+    temPapel(this.auth.usuario(), ...PERFIS_DESIGNA_CONSULTORES),
+  );
 
   readonly designacoesLista = computed(() =>
     Object.entries(this.designacoesAtuais()).map(([modulo, consultor]) => ({ modulo, consultor })),
@@ -180,7 +179,7 @@ export class ProjetoFormComponent {
   }
 
   podeGerar(tipo: string): boolean {
-    return podeGerar(tipo, this.perfil());
+    return podeGerar(tipo, this.auth.usuario());
   }
 
   async gerarDocumento(slug: SlugDocumentoFiel): Promise<void> {

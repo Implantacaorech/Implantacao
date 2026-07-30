@@ -53,8 +53,25 @@ export class Protocolo {
   @Column({ name: 'pre_requisitos', type: 'text', default: '' })
   preRequisitos: string;
 
+  // Seção 2 do prompt: TODOS os menus citados, cada um com objetivo e atividades feitas
+  // (a coluna `menu` acima continua sendo só o menu principal — é ela que filtra a lista).
+  @Column({ name: 'menus_abordados', type: 'text', default: '' })
+  menusAbordados: string;
+
+  // Seção 3: funcionalidades demonstradas (nome, finalidade, como foi usada, observações).
+  @Column({ type: 'text', default: '' })
+  funcionalidades: string;
+
   @Column({ name: 'passo_a_passo', type: 'text', default: '' })
   passoAPasso: string;
+
+  // Seção 6: processos executados (cadastro, faturamento, estoque, integração...).
+  @Column({ type: 'text', default: '' })
+  processos: string;
+
+  // Seção 4: conceitos/termos explicados pelo consultor (glossário do treinamento).
+  @Column({ type: 'text', default: '' })
+  definicoes: string;
 
   @Column({ type: 'text', default: '' })
   configuracoes: string;
@@ -70,6 +87,30 @@ export class Protocolo {
 
   @Column({ type: 'text', default: '' })
   exemplos: string;
+
+  // Seção 7: perguntas do participante e as respostas dadas no treinamento.
+  @Column({ type: 'text', default: '' })
+  duvidas: string;
+
+  // Seção 8: o que ficou pendente COM O CLIENTE (ajustes, cadastros, testes, retornos) —
+  // não confundir com `pendencias`, que é a lista de dúvidas da própria IA p/ o revisor.
+  @Column({ name: 'pendencias_treinamento', type: 'text', default: '' })
+  pendenciasTreinamento: string;
+
+  // Seção 9: ações futuras acordadas durante o treinamento.
+  @Column({ name: 'proximos_passos', type: 'text', default: '' })
+  proximosPassos: string;
+
+  // Seção 10: resumo final em tópicos, só os pontos mais importantes.
+  @Column({ name: 'resumo_tecnico', type: 'text', default: '' })
+  resumoTecnico: string;
+
+  // Resumo COMPLETO da transcrição, em texto corrido/estruturado (registro de atividades
+  // por menu do sistema + definições de configuração). É o que a tela de revisão mostra no
+  // lugar da leitura da transcrição bruta. Gerado por uma chamada de IA PRÓPRIA — ver
+  // ProtocoloIaService.resumirCompleto.
+  @Column({ name: 'resumo_completo', type: 'text', default: '' })
+  resumoCompleto: string;
 
   // Auditoria do que a IA descartou como irrelevante (small talk, ruído...).
   @Column({ name: 'assuntos_removidos', type: 'text', default: '' })

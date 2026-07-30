@@ -18,7 +18,10 @@ import { Permissao } from '../common/decorators/permissao.decorator';
 import { PermissoesService } from '../permissoes/permissoes.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
-import { PERFIS_VEEM_TODOS_PROJETOS } from '../common/constants/perfis';
+import {
+  PERFIS_VEEM_TODOS_PROJETOS,
+  temPapel,
+} from '../common/constants/perfis';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { MatrizTecnico } from '../database/entities/matriz-tecnico.entity';
 import { MatrizService } from '../matriz/matriz.service';
@@ -27,8 +30,9 @@ import { SalvarNotasMenuDto } from './dto/salvar-notas-menu.dto';
 
 // Mesma regra de linha da Matriz clássica (definição do usuário 2026-07-28):
 // ADM/Coordenador/Administrativo veem todos; ADM edita tudo, os demais só a própria linha.
-function veTudo(perfil: string): boolean {
-  return (PERFIS_VEEM_TODOS_PROJETOS as string[]).includes(perfil);
+// Avalia TODOS os papéis do usuário, não só o principal (correção de 2026-07-28).
+function veTudo(user: AuthUser): boolean {
+  return temPapel(user, ...PERFIS_VEEM_TODOS_PROJETOS);
 }
 
 /** Matriz de Conhecimento — DETALHADA (por menu do SIGER). Acesso próprio, ao lado da
@@ -53,7 +57,7 @@ export class MatrizDetalhadaController {
     minha: MatrizTecnico | null,
   ): boolean {
     if (!this.permissoes.podeAlterar(user, 'matriz_detalhada')) return false;
-    if (user.perfil === 'ADM') return true;
+    if (temPapel(user, 'ADM')) return true;
     return !!(minha && minha.id === t.id);
   }
 
@@ -64,7 +68,7 @@ export class MatrizDetalhadaController {
   })
   async listar(@CurrentUser() user: AuthUser) {
     const minha = await this.matriz.linhaDoUsuario(user.nome, user.codigoSicla);
-    if (veTudo(user.perfil)) {
+    if (veTudo(user)) {
       const itens = (await this.matriz.listar()).map((t) => ({
         id: t.id,
         nome: t.nome,
@@ -74,12 +78,14 @@ export class MatrizDetalhadaController {
         tecnicos: itens,
         meuId: minha?.id ?? null,
         podeVerTodos: true,
-        podeAdmin: user.perfil === 'ADM',
+        podeAdmin: temPapel(user, 'ADM'),
       });
     }
     // Só a própria linha.
     return new ApiEnvelope({
-      tecnicos: minha ? [{ id: minha.id, nome: minha.nome, setor: minha.setor }] : [],
+      tecnicos: minha
+        ? [{ id: minha.id, nome: minha.nome, setor: minha.setor }]
+        : [],
       meuId: minha?.id ?? null,
       podeVerTodos: false,
       podeAdmin: false,
@@ -88,7 +94,8 @@ export class MatrizDetalhadaController {
 
   @Get('medias-gerais')
   @ApiOperation({
-    summary: 'Média GERAL (todos os técnicos) por módulo/adicional — alimenta o gráfico',
+    summary:
+      'Média GERAL (todos os técnicos) por módulo/adicional — alimenta o gráfico',
   })
   async mediasGerais() {
     return new ApiEnvelope({ modulos: await this.service.mediasGerais() });
@@ -103,7 +110,7 @@ export class MatrizDetalhadaController {
     const t = await this.matriz.buscar(id);
     if (!t) throw new NotFoundException('Técnico não encontrado.');
     const minha = await this.matriz.linhaDoUsuario(user.nome, user.codigoSicla);
-    if (!veTudo(user.perfil) && !(minha && minha.id === t.id)) {
+    if (!veTudo(user) && !(minha && minha.id === t.id)) {
       throw new ForbiddenException('Sem acesso à ficha de outro técnico.');
     }
     const ficha = await this.service.ficha(t);
@@ -111,7 +118,7 @@ export class MatrizDetalhadaController {
       tecnico: { id: t.id, nome: t.nome, setor: t.setor, dias: t.dias },
       ...ficha,
       editavel: this.podeEditarLinha(user, t, minha),
-      volta: veTudo(user.perfil),
+      volta: veTudo(user),
     });
   }
 

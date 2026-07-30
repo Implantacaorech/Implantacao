@@ -1,0 +1,242 @@
+/* Estilos compartilhados pelas páginas do BI de Implantação (Resumo, Extrato, …).
+   O Angular isola CSS por componente, então este arquivo entra no `styleUrls` de cada uma
+   — é o que mantém barra de filtros, cards e tabelas idênticos entre as páginas. */
+
+.bi-barra {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--surface, #fff);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+}
+.bi-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.bi-campo label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--navy);
+}
+.bi-campo input {
+  font-size: 0.82rem;
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-family: inherit;
+}
+.bi-campo-busca {
+  flex: 1;
+  min-width: 190px;
+}
+.bi-campo-busca input {
+  width: 100%;
+}
+.bi-btn {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 13px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--navy);
+  cursor: pointer;
+  font-family: inherit;
+}
+.bi-btn:hover:not(:disabled) {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+.bi-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.bi-badge {
+  display: inline-block;
+  min-width: 17px;
+  padding: 0 5px;
+  margin-left: 5px;
+  border-radius: 9px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 0.7rem;
+  line-height: 17px;
+  text-align: center;
+}
+
+/* Caixa do painel de filtros: nasce FECHADA (ver BiFiltrosStore.filtrosAbertos) e traz o
+   próprio "Recolher", para não obrigar a subir até o botão do topo. */
+.bi-filtros-cx {
+  background: var(--surface, #fff);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.bi-filtros-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 14px;
+  background: var(--surface-2, #f3f6fb);
+  border-bottom: 1px solid var(--line);
+}
+.bi-filtros-tit {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--navy);
+}
+.bi-recolher {
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--brand);
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.bi-recolher:hover {
+  text-decoration: underline;
+}
+/* Seta do botão "Filtros": aponta para baixo quando o painel está aberto. */
+.bi-btn-seta {
+  display: inline-block;
+  margin-right: 4px;
+  transition: transform 0.15s ease;
+}
+.bi-btn-seta.aberta {
+  transform: rotate(90deg);
+}
+
+.bi-filtros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+  gap: 14px;
+  padding: 12px 14px;
+}
+.bi-filtro-bloco {
+  display: flex;
+  flex-direction: column;
+}
+.bi-filtro-tit {
+  font-weight: 700;
+  color: var(--navy);
+  font-size: 0.8rem;
+  margin-bottom: 6px;
+}
+.bi-opcoes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+}
+.bi-opcoes label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+.bi-opcoes-rolagem {
+  max-height: 168px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+/* Busca dentro do bloco — filtros como RNS e grupo econômico têm centenas de opções. */
+.bi-filtro-busca {
+  font-size: 0.76rem;
+  padding: 3px 6px;
+  margin-bottom: 5px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-family: inherit;
+  width: 100%;
+}
+.bi-filtro-mais {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 4px;
+  font-style: italic;
+}
+.bi-ponto {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+  margin-right: 4px;
+}
+
+.bi-card {
+  background: var(--surface, #fff);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+.bi-card-tit {
+  background: var(--navy);
+  color: #fff;
+  font-weight: 700;
+  padding: 8px 14px;
+  font-size: 0.9rem;
+}
+
+.bi-tab-wrap {
+  overflow-x: auto;
+  max-height: 470px;
+  overflow-y: auto;
+}
+.bi-tab {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.bi-tab th {
+  background: var(--brand);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.79rem;
+  letter-spacing: 0.02em;
+  text-align: left;
+  padding: 8px 10px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.bi-tab th.clic {
+  cursor: pointer;
+  user-select: none;
+}
+.bi-tab th.clic:hover {
+  text-decoration: underline;
+}
+.bi-tab td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+.bi-tab tbody tr:hover {
+  background: var(--surface-2, #f3f6fb);
+}
+.bi-tab .num {
+  text-align: right;
+  white-space: nowrap;
+}
+.bi-tab .neg {
+  color: #c62828;
+  font-weight: 600;
+}
+.bi-tab tfoot td {
+  position: sticky;
+  bottom: 0;
+  background: var(--surface-2, #f3f6fb);
+  border-top: 2px solid var(--line);
+}

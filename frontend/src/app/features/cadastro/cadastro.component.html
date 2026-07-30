@@ -4,38 +4,38 @@
   </div>
 
   @if (etapa() === 'dados') {
-    <h1 style="text-align:center;margin:.1em 0">Criar conta</h1>
+    <h1 class="pagina-titulo centro">Criar conta</h1>
     <p class="dica" style="text-align:center">Informe seus dados — enviaremos um código de validação ao seu e-mail.</p>
     <form class="painel" [formGroup]="formDados" (ngSubmit)="enviarDados()">
       @if (erro()) {
-        <div class="resultado erro" style="padding:8px 14px">⚠️ {{ erro() }}</div>
+        <div class="resultado erro">⚠️ {{ erro() }}</div>
       }
       <label class="campo"><span>Nome completo</span><input formControlName="nome" /></label>
       <label class="campo"><span>E-mail</span><input type="email" formControlName="email" /></label>
       <label class="campo"><span>Código SICLA</span><input formControlName="codigoSicla" placeholder="seu código de técnico no SICLA" /></label>
       <label class="campo"><span>Senha (mín. 6 caracteres)</span><input type="password" formControlName="senha" /></label>
-      <button class="btn primario" type="submit" style="width:100%" [disabled]="formDados.invalid || enviando()">
+      <button class="btn primario bloco" type="submit" [disabled]="formDados.invalid || enviando()">
         {{ enviando() ? 'Enviando…' : 'Receber código →' }}
       </button>
     </form>
     <p class="dica" style="text-align:center">Já tem acesso? <a routerLink="/login">Entrar</a></p>
     <p class="dica" style="text-align:center;margin-top:2px">Rech Sistemas de Gestão</p>
   } @else {
-    <h1 style="text-align:center;margin:.1em 0">Confirmar e-mail</h1>
+    <h1 class="pagina-titulo centro">Confirmar e-mail</h1>
     <p class="dica" style="text-align:center">Enviamos um código de 6 dígitos para <strong>{{ formDados.getRawValue().email }}</strong>. Informe-o abaixo para concluir.</p>
     <form class="painel" style="margin-bottom:10px" [formGroup]="formCodigo" (ngSubmit)="confirmarCodigo()">
       @if (erro()) {
-        <div class="resultado erro" style="padding:8px 14px">⚠️ {{ erro() }}</div>
+        <div class="resultado erro">⚠️ {{ erro() }}</div>
       }
       @if (aviso()) {
-        <div class="resultado ok" style="padding:8px 14px">✅ {{ aviso() }}</div>
+        <div class="resultado ok"><svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}</div>
       }
       <label class="campo">
         <span>Código de validação</span>
         <input formControlName="codigo" inputmode="numeric" maxlength="6"
                style="letter-spacing:.35em;text-align:center;font-size:1.3rem;font-weight:600" />
       </label>
-      <button class="btn primario" type="submit" style="width:100%" [disabled]="formCodigo.invalid || enviando()">
+      <button class="btn primario bloco" type="submit" [disabled]="formCodigo.invalid || enviando()">
         {{ enviando() ? 'Confirmando…' : 'Validar e entrar' }}
       </button>
     </form>

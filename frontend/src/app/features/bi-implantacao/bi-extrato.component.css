@@ -1,0 +1,152 @@
+/* Específico da página EXTRATO DE PROTOCOLO/HORAS. O comum está em bi-comum.css.
+   A lista reproduz o formato de "fichas" da medida `Tabela_Resumo_HTML` do Power BI:
+   cabeçalho com data/sigla/técnico, assunto, descrição recortada com "ver mais" e rodapé
+   com RNS/protocolo. */
+
+.ex-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.ex-kpi {
+  background: var(--surface, #fff);
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--brand);
+  border-radius: 9px;
+  padding: 12px 14px;
+}
+.ex-kpi-v {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1.15;
+}
+.ex-kpi-l {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.ex-kpi-horas { border-left-color: #ef4444; }
+.ex-kpi-saldo { border-left-color: #10b981; }
+.ex-kpi-cli { border-left-color: #3b82f6; }
+.ex-kpi-tec { border-left-color: #8b5cf6; }
+
+.ex-lista {
+  max-height: 660px;
+  overflow-y: auto;
+}
+.ex-item {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.ex-item:hover {
+  background: var(--surface-2, #f3f6fb);
+}
+.ex-item-topo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  margin-bottom: 5px;
+}
+.ex-espaco {
+  flex: 1;
+}
+.ex-data {
+  font-weight: 700;
+  color: var(--navy);
+}
+.ex-hora {
+  font-weight: 400;
+  color: var(--muted);
+}
+.ex-sigla {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+}
+.ex-tec {
+  color: #8b5cf6;
+  font-weight: 600;
+}
+.ex-cli {
+  color: var(--muted);
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ex-horas {
+  font-weight: 700;
+  color: #ef4444;
+  white-space: nowrap;
+}
+.ex-saldo {
+  color: #10b981;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ex-saldo.neg {
+  color: #c62828;
+}
+
+.ex-assunto {
+  font-size: 0.87rem;
+  font-weight: 600;
+  color: var(--navy);
+  margin-bottom: 4px;
+}
+.ex-desc {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.ex-desc-previa {
+  margin-right: 5px;
+}
+.ex-desc-full {
+  /* `pre-wrap` preserva a formatação do SICLA (PARTICIPANTES / ROTINAS / TAREFAS) */
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: #2c2c2c;
+  background: #f8f9fa;
+  border-left: 4px solid var(--brand);
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin: 6px 0;
+  max-height: 380px;
+  overflow-y: auto;
+}
+.ex-link {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--brand);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.ex-tam {
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 3px;
+}
+.ex-item-rodape {
+  margin-top: 5px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}

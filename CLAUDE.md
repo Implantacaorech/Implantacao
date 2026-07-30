@@ -43,12 +43,23 @@ Tudo em **português do Brasil (pt-BR)**, em qualquer arquivo novo.
 ## Stack oficial (em produção desde 2026-07-19)
 
 Backend **NestJS + TypeScript + TypeORM** (`backend/`) · Frontend **Angular + TypeScript**
-(`frontend/`) · Banco **MariaDB** (`painel-db-mariadb`, db `painel_novo`) · **docservice/**
-(Python, geração fiel + transcrição, nunca exposto publicamente). Detalhe em
+(`frontend/`) · Banco **MariaDB 12.2** — **serviço NATIVO do Windows** na porta 3306, db
+`painel_novo` (**não é mais o container Docker `painel-db-mariadb`**; o Docker não roda mais
+nesta máquina — corrigido em 2026-07-29, quando se descobriu que o backup dependia dele) ·
+**docservice/** (Python, geração fiel + transcrição, nunca exposto publicamente). Detalhe em
 [vault/03 - Backend/](<vault/03 - Backend/03 - Backend.md>) e
 [vault/04 - Frontend/](<vault/04 - Frontend/04 - Frontend.md>).
 
-O **painel Flask legado foi desligado e arquivado em `projeto_old/`** (virada executada em
+**MariaDB é o único banco aceito** (§4.8): `MIGRACAO_DB_URL` com prefixo de outro dialeto
+**falha o boot** em vez de conectar (antes, prefixo desconhecido virava Postgres em
+silêncio). Sem a variável, o backend usa SQLite descartável — só dev/teste. A guarda disso é
+o teste `backend/src/common/conformidade-stack.spec.ts`, que roda em todo `npm test`/CI:
+ele recusa driver de banco novo, Python fora das pastas já declaradas e regressão do
+Postgres no config.
+
+O **painel Flask legado foi desligado e, depois de arquivado 10 dias em `projeto_old/`,
+removido do repositório em 2026-07-29** (está no histórico do git; o rollback já era
+impossível — o Postgres dele não existe e o dump saiu na retenção). Virada executada em
 2026-07-19 — ver `docs/migracao/05-plano-de-virada.md` e
 [vault/18 - Histórico/](<vault/18 - Histórico/18 - Histórico.md>)). **`webapp/` continua
 existindo, só que reduzido** a `legado_cli.py`/`runner.py`/`roles.py`/`forms.py` — uma
@@ -83,8 +94,9 @@ NestJS serve o build do Angular direto (`@nestjs/serve-static`) — um único pr
 (`Guardiao_Painel_Novo.vbs`) e verificação de integridade rodam como Tarefas Agendadas.
 Entrega = código no GitHub (commit + push). `docs/runbooks-operacao.md` e
 [vault/12 - DevOps/](<vault/12 - DevOps/12 - DevOps.md>) têm o detalhe operacional.
-**`projeto_old/`** guarda o painel Flask desligado (não é runtime, é arquivo morto —
-histórico/rollback de emergência; ver `docs/migracao/05-plano-de-virada.md` Fase 6).
+**`projeto_old/` não existe mais** — o painel Flask desligado foi removido do repositório em
+2026-07-29 (recuperável pelo histórico do git; contexto em
+`docs/migracao/05-plano-de-virada.md` Fase 6 e em [docs/pendencias.md](docs/pendencias.md)).
 
 ## Painel — agentes de software e fronteiras
 

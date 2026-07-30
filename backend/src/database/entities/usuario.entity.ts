@@ -45,6 +45,16 @@ export class Usuario {
   @Column({ name: 'codigo_sicla', length: 40, default: '' })
   codigoSicla: string;
 
+  /** Módulos em que o técnico é capacitado, como vêm de `SICLA.LISTA_TECNICOS.MODULOCAPACITADO`
+   * (texto livre do SICLA, geralmente uma lista separada por vírgula). Alimentado pela
+   * importação de técnicos — ver `tecnicos-sicla/`. */
+  @Column({ name: 'modulos_capacitados', type: 'text', default: '' })
+  modulosCapacitados: string;
+
+  /** Setor de atuação — `SICLA.LISTA_TECNICOS.SETORDES`. */
+  @Column({ name: 'setor_atuacao', length: 120, default: '' })
+  setorAtuacao: string;
+
   @Column({ default: true })
   ativo: boolean;
 

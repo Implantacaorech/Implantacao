@@ -30,6 +30,10 @@ export interface Passo {
   liberado: boolean;
   /** Por que não está liberado, em linguagem de negócio. */
   motivos: string[];
+  /** Pode ABRIR a tela de trabalho do passo (Levantamento, Projeto, Agenda, Check-list) —
+   * permissão da TELA, diferente da de concluir o passo. `false` nos passos que se
+   * resolvem na própria ficha. */
+  podeAbrir: boolean;
 }
 
 export type PapelProjeto = 'levantador' | 'consultor';

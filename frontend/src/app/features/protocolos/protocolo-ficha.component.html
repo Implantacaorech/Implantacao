@@ -1,20 +1,20 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else if (erro() && !protocolo()) {
-  <div class="resultado erro" style="padding:10px 16px">{{ erro() }}</div>
+  <div class="resultado erro">{{ erro() }}</div>
 } @else if (protocolo(); as p) {
-  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-    <h1 style="margin:0">{{ ehAudio() ? '🎧' : '🎬' }} {{ p.titulo || p.videoNome }}</h1>
-    <span style="background:#eef2ff;color:#1f4e78;padding:3px 10px;border-radius:999px;font-size:.78rem;font-weight:700">{{ p.status }}</span>
+  <div class="acoes" style="margin-bottom:var(--sp-3)">
+    <h1 class="pagina-titulo"><svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-bulb"/></svg> {{ p.titulo || p.videoNome }}</h1>
+    <span class="badge">{{ p.status }}</span>
     <span style="flex:1"></span>
-    <a class="btn" routerLink="/protocolos">← Protocolos</a>
+    <a class="btn" routerLink="/protocolos">← Transcrição Áudio/Vídeo</a>
   </div>
 
-  @if (salvo()) { <div class="resultado ok" style="padding:8px 14px">✅ Salvo.</div> }
-  @if (aviso()) { <div class="resultado" style="padding:8px 14px">ℹ️ {{ aviso() }}</div> }
-  @if (erro()) { <div class="resultado erro" style="padding:8px 14px">{{ erro() }}</div> }
+  @if (salvo()) { <div class="resultado ok"><svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvo.</div> }
+  @if (aviso()) { <div class="resultado">ℹ️ {{ aviso() }}</div> }
+  @if (erro()) { <div class="resultado erro">{{ erro() }}</div> }
   @if (p.status === 'Erro' && p.logErro) {
-    <div class="resultado erro" style="padding:8px 14px">⚠️ <strong>Erro no processamento:</strong> {{ p.logErro }}</div>
+    <div class="resultado erro">⚠️ <strong>Erro no processamento:</strong> {{ p.logErro }}</div>
   }
 
   <div class="painel">
@@ -30,8 +30,8 @@
     <div class="dica" style="margin:10px 0 0;text-align:center">{{ detalheEtapa() }}</div>
     @if (mostrarBarra()) {
       <div style="max-width:520px;margin:8px auto 0">
-        <div style="background:#e2e8f0;border-radius:999px;height:10px;overflow:hidden">
-          <div style="background:var(--brand,#2563eb);height:100%;transition:width .8s" [style.width.%]="pct()"></div>
+        <div style="background:var(--line);border-radius:999px;height:10px;overflow:hidden">
+          <div style="background:var(--brand,var(--fase-2));height:100%;transition:width .8s" [style.width.%]="pct()"></div>
         </div>
         <div class="dica" style="text-align:center;margin:4px 0 0">{{ barraTexto() }}</div>
       </div>
@@ -46,35 +46,75 @@
       @if (p.duracaoSeg) { · <strong>Duração:</strong> {{ formatarDuracao(p.duracaoSeg) }} }
       @if (p.aprovadoEm) { · <strong>Aprovado:</strong> {{ formatarData(p.aprovadoEm) }} por {{ p.aprovador }} }
     </p>
-    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+    <div class="acoes" style="margin-top:var(--sp-3)">
       <button class="btn" type="button" [disabled]="processando()" (click)="processar()">
         🔁 {{ p.status === 'Pendente' || p.status === 'Erro' ? 'Processar agora' : 'Reprocessar' }}
       </button>
       @if (podeAprovar() && p.status === 'Em revisão') {
-        <button class="btn primario" type="button" [disabled]="decidindo()" (click)="aprovar()">✅ Aprovar e publicar</button>
-        <button class="btn perigo" type="button" [disabled]="decidindo()" (click)="reprovar()">✖ Reprovar / Ajustar</button>
+        <button class="btn primario" type="button" [disabled]="decidindo()" (click)="aprovar()"><svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Aprovar e publicar</button>
+        <button class="btn perigo" type="button" [disabled]="decidindo()" (click)="reprovar()"><svg class="svgi" aria-hidden="true"><use href="#ic-x"/></svg> Reprovar / Ajustar</button>
+      }
+      @if (podeExcluir()) {
+        <span style="flex:1"></span>
+        <button class="btn perigo" type="button" [disabled]="excluindo()" (click)="excluir()">
+          🗑 {{ excluindo() ? 'Excluindo…' : 'Excluir' }}
+        </button>
       }
     </div>
   </div>
 
   <div class="painel">
-    <h3 style="color:var(--navy);margin-top:0">{{ ehAudio() ? 'Áudio original' : 'Vídeo original' }}</h3>
-    @if (ehAudio()) {
-      <audio controls preload="metadata" style="width:100%" [src]="videoUrl()"></audio>
+    <h3>{{ ehAudio() ? 'Áudio original' : 'Vídeo original' }}</h3>
+    @if (!ehAudio()) {
+      <div class="acoes" style="margin-bottom:var(--sp-3)">
+        <button class="btn" type="button" [class.primario]="modoMidia() === 'ver'" (click)="verMidia('ver')">▶ Assistir ao vídeo</button>
+        <button class="btn" type="button" [class.primario]="modoMidia() === 'escutar'" (click)="verMidia('escutar')">🎧 Só escutar o áudio</button>
+      </div>
+    }
+
+    @if (videoUrl(); as url) {
+      @if (ehAudio() || modoMidia() === 'escutar') {
+        <audio controls preload="metadata" style="width:100%" [src]="url"></audio>
+      } @else {
+        <video controls preload="metadata" style="width:100%;max-height:420px;background:#000;border-radius:6px" [src]="url"></video>
+      }
+      <p class="dica" style="margin:8px 0 0">
+        <a [href]="url" [download]="p.videoNome">⬇ Baixar {{ ehAudio() ? 'o áudio' : 'o vídeo' }} ({{ p.videoNome }})</a>
+        — para abrir em um player externo.
+      </p>
+    } @else if (midiaCarregando()) {
+      <p class="dica" style="margin:0">Carregando {{ ehAudio() ? 'o áudio' : 'o vídeo' }} original… (arquivos longos demoram alguns segundos)</p>
     } @else {
-      <video controls preload="metadata" style="width:100%;max-height:420px;background:#000;border-radius:6px" [src]="videoUrl()"></video>
+      <div class="resultado erro" style="margin:0">
+        Não foi possível carregar {{ ehAudio() ? 'o áudio' : 'o vídeo' }} — o arquivo pode ter sido movido ou removido de
+        <code>{{ p.videoCaminho }}</code>.
+      </div>
+      <div class="acoes" style="margin-top:var(--sp-3)">
+        <button class="btn" type="button" (click)="carregarVideo()">🔁 Tentar de novo</button>
+      </div>
     }
   </div>
 
   @if (p.pendencias) {
-    <div class="painel" style="border-left:3px solid var(--warn,#c77a11)">
-      <h3 style="color:var(--navy);margin-top:0">⚠ Pendências de validação</h3>
+    <div class="painel atencao">
+      <h3>⚠ Pontos a validar na revisão</h3>
       <pre style="white-space:pre-wrap;font-family:inherit;margin:0">{{ p.pendencias }}</pre>
     </div>
   }
 
+  @if (p.pendenciasTreinamento) {
+    <div class="painel">
+      <h3>📌 Pendências do treinamento</h3>
+      <pre style="white-space:pre-wrap;font-family:inherit;margin:0">{{ p.pendenciasTreinamento }}</pre>
+      @if (p.proximosPassos) {
+        <h3 style="margin-top:var(--sp-3)">➡ Próximos passos</h3>
+        <pre style="white-space:pre-wrap;font-family:inherit;margin:0">{{ p.proximosPassos }}</pre>
+      }
+    </div>
+  }
+
   <form class="painel" (ngSubmit)="salvar()">
-    <h3 style="color:var(--navy);margin-top:0">Registro do protocolo (edite antes de aprovar)</h3>
+    <h3>Registro do protocolo (edite antes de aprovar)</h3>
     <div class="grade2">
       <label class="campo"><span>Título</span>
         <input [ngModel]="campo('titulo')" name="titulo" (ngModelChange)="onCampoChange('titulo', $event)" />
@@ -92,15 +132,32 @@
       </label>
     </div>
     @for (c of camposEdicao; track c.chave) {
+      @if (c.grupo) { <h4 class="pt-grupo">{{ c.grupo }}</h4> }
       <label class="campo"><span>{{ c.rotulo }}</span>
         <textarea [rows]="c.linhas" [ngModel]="campo(c.chave)" [name]="c.chave" (ngModelChange)="onCampoChange(c.chave, $event)"></textarea>
       </label>
     }
-    <button class="btn primario" type="submit">💾 Salvar edição</button>
+    <button class="btn primario" type="submit"><svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvar edição</button>
   </form>
 
+  <div class="painel">
+    <h3>Resumo completo da transcrição</h3>
+    <p class="dica" style="margin:0 0 var(--sp-3)">
+      Registro de todo o conteúdo da gravação, do começo ao fim: as atividades por menu do sistema
+      (ação, finalidade, configuração, recursos) e as definições de configuração explicadas.
+      Editável — corrija o que precisar e salve.
+    </p>
+    <textarea rows="24" aria-label="Resumo completo da transcrição"
+              [ngModel]="campo('resumoCompleto')" [ngModelOptions]="{ standalone: true }"
+              placeholder="(ainda não gerado — use “Processar agora”; a transcrição já feita é aproveitada)"
+              (ngModelChange)="onCampoChange('resumoCompleto', $event)"></textarea>
+    <button class="btn primario" type="button" style="margin-top:var(--sp-3)" (click)="salvar()">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvar edição
+    </button>
+  </div>
+
   <details class="painel">
-    <summary style="cursor:pointer;font-weight:700;color:var(--navy)">Transcrição completa (com tempos)</summary>
+    <summary style="cursor:pointer;font-weight:700;color:var(--navy)">Transcrição bruta, com tempos (auditoria)</summary>
     <pre style="white-space:pre-wrap;font-family:inherit;max-height:420px;overflow:auto;margin:8px 0 0">{{ p.transcricao || '(ainda não transcrito)' }}</pre>
   </details>
 

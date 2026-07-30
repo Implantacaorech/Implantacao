@@ -35,19 +35,7 @@
 .md-ok { color: #16a34a; font-weight: 600; margin: 6px 2px 0; }
 .md-graf { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
 
-/* Modal do gráfico */
-.md-modal { position: fixed; inset: 0; z-index: 60; background: rgba(15,23,42,.5);
-  display: flex; align-items: center; justify-content: center; padding: 24px; }
-.md-modal-box { background: var(--surface,#fff); border-radius: 14px; width: min(760px, 100%);
-  max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 24px 60px -20px rgba(0,0,0,.5); overflow: hidden; }
-.md-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
-  padding: 16px 18px; border-bottom: 1px solid var(--line,#e4e8ef); }
-.md-modal-head h3 { margin: 0; color: var(--navy,#1f3b73); font-size: 1.05rem; }
-.md-modal-head .sub { font-size: .8rem; color: var(--muted); }
-.md-x { border: 0; background: transparent; font-size: 1.1rem; color: var(--muted); cursor: pointer;
-  line-height: 1; padding: 4px 6px; border-radius: 6px; }
-.md-x:hover { background: var(--surface-2,#f1f4f8); color: var(--ink,#1f2937); }
-.md-modal-body { padding: 14px 16px 18px; overflow-y: auto; }
+/* Modal do gráfico — usa as primitivas globais .modal-fundo/.modal-cx (styles.css) */
 .md-chart { position: relative; min-height: 300px; }
 
 .md-rule { font-size: .85rem; color: var(--muted); background: var(--surface-2,#f1f4f8);

@@ -299,12 +299,57 @@ score explicável (45% conhecimento + 35% folga de agenda + 20% carga de cliente
 **"Resposta ao Comercial"** pronto (quem + data de início). Acesso: perfis de gestão, pelo
 botão **Capacidade da equipe** na Coordenação.
 
+Tem **filtro por setor** (`usuarios.setor_atuacao`, vindo de `SICLA.LISTA_TECNICOS.SETORDES`):
+o select lista os setores existentes na equipe, mais **"(sem setor)"** quando há técnico sem
+setor no cadastro. O recorte reduz também a consulta de agenda ao SICLA (só os códigos que
+sobraram). Os **selects filtram na hora**; o campo de módulos, por ser texto, espera o
+**Avaliar**. Módulos, setor e janela ficam **salvos no usuário** (ver 5.21).
+
 ### 5.20 Autocadastro e usuários
 - **Autocadastro** (`/cadastro`) com **validação por código enviado por e-mail**.
 - **Usuários** (`/usuarios`, só ADM) — gestão de perfis, e-mail e hierarquia.
 - **Código SICLA** obrigatório no cadastro (autocadastro e `/usuarios`, todos os perfis) — é o
   elo do usuário com a sua agenda no SICLA, usado pela Disponibilidade (5.9).
 - **Perfil** (`/perfil`) do usuário logado.
+
+### 5.21 Filtros salvos por usuário logado
+
+Toda tela com filtro **reabre no recorte que a pessoa deixou**. A seleção é gravada **no banco,
+por usuário** (`preferencias_usuario`, um registro por usuário × tela, com o estado em JSON) —
+não no `localStorage`: ela segue a PESSOA, não a máquina, então quem entra de outro computador
+encontra a tela como deixou. Nada de botão "salvar": a gravação é automática (agrupada, ~0,4 s
+depois da última mexida) e o **"Limpar"**, onde existe, *esquece* a preferência e devolve a tela
+aos padrões dela.
+
+| Tela | Chave | O que fica salvo |
+|---|---|---|
+| Capacidade da equipe | `capacidade` | módulos, setor, janela (semanas) |
+| Carteira de projetos | `carteira` | vista (quadro/tabela/grade), busca, situação, etapa |
+| Matriz de Conhecimento | `matriz` | busca por nome/setor |
+| Matriz por Menu (SIGER) | `matriz-detalhada` | busca de módulos |
+| Matriz por Menu (Funções SICLA) | `matriz-funcoes` | busca de módulos |
+| Usuários | `usuarios` | setor, nome, filtro do SICLA, "só novos" |
+| Cadastros | `cadastros` | módulo e busca do Check List e do Índice de Tópicos |
+| Dicionário Inteligente | `dicionario` | termo, tipo, sigla (e já traz o resultado ao abrir) |
+| Transcrição Áudio/Vídeo | `protocolos` | módulo, menu, status, origem, busca |
+| Agenda — acompanhamento | `agenda-acompanhamento` | status, data, técnico |
+| BI Implantação (painéis) | `bi-implantacao-painel` | período, situações, atalho de mês |
+| BI Implantação (Indicadores) | `bi-indicadores` | competências, posição, tipo, área, suporte, responsável, grupo, busca |
+| BI Clientes SIGER (4 abas) | `bi-clientes-siger` | período/mês, grupo, RNS, status, técnico, cliente, sigla, ativo, tipo, validada, busca |
+
+**Ficam de fora, de propósito:** a aba/rota aberta (é o link, que se compartilha), o painel de
+filtros aberto/fechado (nasce fechado, mostrando resultado e não configuração), o rascunho de
+busca *dentro* de um bloco de filtro do BI, e o técnico selecionado nas Matrizes (o padrão é
+"eu", e fixar a ficha de outra pessoa seria pior). Na Agenda—acompanhamento, que é **por
+projeto**, data e técnico salvos são descartados quando não existem na agenda do projeto
+aberto — manter deixaria a tabela vazia sem explicação.
+
+Como funciona: `authGuard` pré-carrega o mapa de preferências numa chamada só ao entrar; com
+ele em memória, cada tela restaura os filtros de forma **síncrona** no construtor, e a primeira
+carga de dados já sai filtrada (sem consulta jogada fora nem piscada de conteúdo). A leitura é
+tolerante — filtro que não existe mais, ou cujo formato mudou, é ignorado. Código:
+`frontend/src/app/core/utils/filtros-salvos.ts`, `core/services/preferencias.service.ts` e
+`backend/src/preferencias/`.
 
 ---
 

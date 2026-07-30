@@ -64,6 +64,8 @@ export class UsersController {
       perfil: dto.perfil ?? 'Consultor',
       perfis: dto.perfis,
       codigoSicla: dto.codigoSicla,
+      modulosCapacitados: dto.modulosCapacitados,
+      setorAtuacao: dto.setorAtuacao,
     });
     return new ApiEnvelope(semSenha(usuario));
   }

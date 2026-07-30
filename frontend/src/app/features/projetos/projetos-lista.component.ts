@@ -11,6 +11,8 @@ import {
   StatusFase,
 } from '../../core/models/passo.model';
 import { AuthService } from '../../core/services/auth.service';
+import { temPapel } from '../../core/constants/perfis';
+import { deSignal, filtrosSalvos } from '../../core/utils/filtros-salvos';
 
 type Vista = 'kanban' | 'tabela' | 'grade';
 
@@ -188,15 +190,36 @@ export class ProjetosListaComponent {
 
   readonly perfilNomeConsultor = computed(() => {
     const u = this.auth.usuario();
-    return u?.perfil === 'Consultor' ? u.nome : null;
+    return temPapel(u, 'Consultor') ? (u?.nome ?? null) : null;
   });
 
   constructor() {
-    const v = (localStorage.getItem('vista_carteira') as Vista | null) ?? 'kanban';
-    this.vista.set(v);
-    this.busca.set(this.route.snapshot.queryParamMap.get('q') ?? '');
+    // Vista + filtros salvos por usuário logado (antes ficava só a vista, no localStorage —
+    // que é da MÁQUINA, não da pessoa). Vem antes de tudo: a restauração é síncrona, então a
+    // primeira carga e a escolha de vista já saem no estado que o usuário deixou.
+    filtrosSalvos(
+      'carteira',
+      {
+        vista: deSignal(this.vista),
+        busca: deSignal(this.busca),
+        fstatus: deSignal(this.fstatus),
+        fetapa: deSignal(this.fetapa),
+      },
+      { aoRestaurar: () => this.aoRestaurarFiltros() },
+    );
+    // `?q=` só entra se veio na URL: um link explícito manda mais que o filtro salvo, mas
+    // ausência de `?q=` não é "buscar por nada" — é "não opinou".
+    const q = this.route.snapshot.queryParamMap.get('q');
+    if (q) this.busca.set(q);
     void this.carregar();
-    if (v === 'grade') void this.carregarGrade();
+    if (this.vista() === 'grade') void this.carregarGrade();
+  }
+
+  /** Só roda quando as preferências chegaram DEPOIS do construtor (fora do fluxo do
+   * authGuard): a grade é carregada sob demanda e precisa ser buscada se a vista salva for
+   * ela. Os demais filtros são aplicados em memória, sem nova consulta. */
+  private aoRestaurarFiltros(): void {
+    if (this.vista() === 'grade') void this.carregarGrade();
   }
 
   async carregar(): Promise<void> {
@@ -233,8 +256,7 @@ export class ProjetosListaComponent {
   }
 
   setVista(v: Vista): void {
-    this.vista.set(v);
-    localStorage.setItem('vista_carteira', v);
+    this.vista.set(v); // a gravação da preferência é automática (é signal)
     if (v === 'grade') void this.carregarGrade();
   }
 

@@ -31,6 +31,7 @@ import { ProjetoRns } from './projeto-rns.entity';
 import { ProjetoPasso } from './projeto-passo.entity';
 import { PermissaoPapel } from './permissao-papel.entity';
 import { PermissaoUsuario } from './permissao-usuario.entity';
+import { PreferenciaUsuario } from './preferencia-usuario.entity';
 
 export * from './usuario.entity';
 export * from './projeto.entity';
@@ -65,6 +66,7 @@ export * from './agente-execucao.entity';
 export * from './dicionario-documento.entity';
 export * from './permissao-papel.entity';
 export * from './permissao-usuario.entity';
+export * from './preferencia-usuario.entity';
 
 // Lista única usada por DatabaseModule (runtime) e AppDataSource (CLI de migrations) —
 // evita as duas listas divergirem conforme novas entidades são adicionadas.
@@ -102,4 +104,5 @@ export const ENTITIES = [
   ProjetoPasso,
   PermissaoPapel,
   PermissaoUsuario,
+  PreferenciaUsuario,
 ];

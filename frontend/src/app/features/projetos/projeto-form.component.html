@@ -6,7 +6,7 @@
     <h2 style="margin-top:0;color:var(--navy)">Novo projeto de implantação</h2>
     <p class="dica">Preencha os dados principais. O projeto será criado na fase <strong>Agendamento</strong>.</p>
     @if (erro()) {
-      <div class="resultado erro" style="padding:8px 14px;margin-bottom:10px">{{ erro() }}</div>
+      <div class="resultado erro">{{ erro() }}</div>
     }
     <form [formGroup]="form" (ngSubmit)="salvar()">
       <ng-container [ngTemplateOutlet]="camposForm" />
@@ -21,7 +21,7 @@
   <div class="proj-header">
     <div class="proj-header-info">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <h1 style="margin:0">{{ form.getRawValue().cliente }}</h1>
+        <h1 class="pagina-titulo">{{ form.getRawValue().cliente }}</h1>
         @if (form.getRawValue().numeroProjeto) {
           <span style="font-size:.6em;color:var(--muted);font-weight:400">Proj. {{ form.getRawValue().numeroProjeto }}</span>
         }
@@ -49,16 +49,16 @@
   </div>
 
   @if (salvo()) {
-    <div class="resultado ok" style="padding:10px 16px;margin:10px 0">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Dados salvos com sucesso.
+    <div class="resultado ok">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg> Dados salvos com sucesso.
     </div>
   }
   @if (aviso()) {
-    <div class="resultado ok" style="padding:10px 16px;margin:10px 0">{{ aviso() }}</div>
+    <div class="resultado ok">{{ aviso() }}</div>
   }
   @if (erro()) {
-    <div class="resultado erro" style="padding:10px 16px;margin:10px 0">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
+    <div class="resultado erro">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
     </div>
   }
 
@@ -67,7 +67,7 @@
        passou a ser só o EDITOR de dados do cliente, alcançado a partir do fluxo — mantê-la
        com um stepper próprio recriava o "fluxo espaçado" que o usuário reportou. -->
   <p class="dica" style="margin:6px 0 14px">
-    <a class="btn btn-sec" [routerLink]="['/projetos', projetoId()]">← Voltar ao fluxo do projeto</a>
+    <a class="btn btn-voltar" [routerLink]="['/projetos', projetoId()]">← Voltar ao fluxo do projeto</a>
   </p>
 
   @if (cabecalho(); as cab) {
@@ -169,8 +169,8 @@
             <div style="font-size:.8rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Designações por módulo</div>
             <div style="display:flex;flex-wrap:wrap;gap:6px">
               @for (d of designacoesLista(); track d.modulo) {
-                <span style="background:#E8EEF8;color:var(--brand);border-radius:6px;padding:2px 8px;font-size:.82rem;font-weight:600">
-                  {{ d.modulo }} <svg class="svgi" style="width:10px;height:10px" aria-hidden="true"><use href="#ic-arrow-right"/></svg> {{ d.consultor }}
+                <span style="background:var(--accent-weak);color:var(--brand);border-radius:6px;padding:2px 8px;font-size:.82rem;font-weight:600">
+                  {{ d.modulo }} <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-arrow-right"/></svg> {{ d.consultor }}
                 </span>
               }
             </div>
@@ -198,7 +198,7 @@
         <ul class="timeline">
           @for (ev of eventos().slice(0, 5); track ev.id) {
             <li>
-              <span class="tl-ico"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use [attr.href]="iconeEvento[ev.tipo] ?? '#ic-pencil'"/></svg></span>
+              <span class="tl-ico"><svg class="svgi svgi-xs" aria-hidden="true"><use [attr.href]="iconeEvento[ev.tipo] ?? '#ic-pencil'"/></svg></span>
               <div>
                 <div style="font-size:.9rem">{{ ev.descricao }}</div>
                 <small class="dica" style="margin:0">{{ ev.criadoEm | date: 'dd/MM/yyyy HH:mm' }}@if (ev.autor) { · {{ ev.autor }} }</small>
@@ -239,7 +239,7 @@
           </button>
         </form>
       </div>
-      <div class="painel" style="border-left:3px solid var(--err)">
+      <div class="painel alerta">
         <h3 style="margin-top:0;color:var(--err)">Zona de risco</h3>
         <p class="dica">Esta ação é irreversível. Todo o histórico, documentos e dados do projeto serão excluídos permanentemente.</p>
         <button class="btn perigo" type="button" (click)="excluirProjeto()">
@@ -276,7 +276,7 @@
           <ul class="timeline">
             @for (ev of emails; track ev.id) {
               <li>
-                <span class="tl-ico"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-mail"/></svg></span>
+                <span class="tl-ico"><svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-mail"/></svg></span>
                 <div>
                   <div style="font-size:.9rem">{{ ev.descricao }}</div>
                   <small class="dica" style="margin:0">{{ ev.criadoEm | date: 'dd/MM/yyyy HH:mm' }}@if (ev.autor) { · {{ ev.autor }} }</small>
@@ -295,7 +295,7 @@
   @if (aba() === 'hist') {
     <section class="painel-aba ativa">
       <div class="painel">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+        <div class="acoes espalha" style="margin-bottom:var(--sp-3)">
           <h3 style="margin:0;color:var(--navy);display:flex;align-items:center;gap:7px">
             <svg class="svgi svgi-lg" aria-hidden="true"><use href="#ic-activity"/></svg> Histórico completo
           </h3>
@@ -310,7 +310,7 @@
           <ul class="timeline">
             @for (ev of eventos(); track ev.id) {
               <li>
-                <span class="tl-ico"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use [attr.href]="iconeEvento[ev.tipo] ?? '#ic-pencil'"/></svg></span>
+                <span class="tl-ico"><svg class="svgi svgi-xs" aria-hidden="true"><use [attr.href]="iconeEvento[ev.tipo] ?? '#ic-pencil'"/></svg></span>
                 <div>
                   <div style="font-size:.9rem">{{ ev.descricao }}</div>
                   <small class="dica" style="margin:0">{{ ev.criadoEm | date: 'dd/MM/yyyy HH:mm' }}@if (ev.autor) { · {{ ev.autor }} }</small>
@@ -326,8 +326,14 @@
   }
 }
 
-<!-- ===== TEMPLATE COMPARTILHADO: CAMPOS DO FORMULÁRIO ===== -->
+<!-- ===== TEMPLATE COMPARTILHADO: CAMPOS DO FORMULÁRIO =====
+     O [formGroup] tem de ser DENTRO deste ng-template: um template renderizado por
+     ngTemplateOutlet resolve injeção pelo lugar onde é DECLARADO (aqui, a raiz do
+     componente), não pelo lugar onde é inserido. Sem isto, todo formControlName daqui não
+     achava o formGroup do <form> que o insere — os campos ficavam soltos e a ficha abria
+     em branco mesmo com os dados carregados (bug real, 2026-07-29). -->
 <ng-template #camposForm>
+  <ng-container [formGroup]="form">
   <h4 style="color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px;font-weight:700">Identificação</h4>
   <div class="grade2">
     <label class="campo"><span>Razão Social</span><input formControlName="cliente" placeholder="Nome completo da empresa" /></label>
@@ -343,7 +349,7 @@
     <label class="campo"><span>Consultor(es)</span><input formControlName="consultor" placeholder="Nomes separados por vírgula" /></label>
     <label class="campo">
       <span>Fase da Implantação</span>
-      <span style="display:inline-flex;width:fit-content;padding:6px 12px;border-radius:8px;background:var(--surface-2,#eef2f7);color:var(--navy);font-weight:700;font-size:.85rem">{{ form.getRawValue().etapa }}</span>
+      <span style="display:inline-flex;width:fit-content;padding:6px 12px;border-radius:8px;background:var(--surface-2,var(--surface-2));color:var(--navy);font-weight:700;font-size:.85rem">{{ form.getRawValue().etapa }}</span>
       <small class="dica" style="margin:2px 0 0">Use o botão "Avançar" na ficha para mudar de fase (valida documentos/campos obrigatórios).</small>
     </label>
     <label class="campo">
@@ -369,4 +375,5 @@
   </div>
   <label class="campo"><span>Outros Contatos / Stakeholders</span><textarea formControlName="contatos" rows="2" placeholder="Demais contatos relevantes do projeto"></textarea></label>
   <label class="campo"><span>Observações</span><textarea formControlName="observacoes" rows="3" placeholder="Informações adicionais, restrições, acordos especiais…"></textarea></label>
+  </ng-container>
 </ng-template>

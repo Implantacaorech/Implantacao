@@ -83,7 +83,52 @@
 
 ## 📐 Conformidade com os Padrões de Desenvolvimento da Rech
 > Auditoria de 2026-07-21 contra o `PADRAO-RECH.md` rev. 2.0.0. Ver o relatório completo e o
-> plano de adequação no histórico da sessão.
+> plano de adequação no histórico da sessão. **Revisitado em 2026-07-29** (auditoria da stack
+> obrigatória — linguagens e banco); o que mudou está nos três itens marcados abaixo.
+
+### Banco de dados (§4.8) — conforme, com a documentação corrigida
+- [x] **MariaDB confirmado em produção** (2026-07-29): `12.2.2-MariaDB`, utf8mb4, db
+  `painel_novo`. **Mas não roda em Docker** — é serviço **NATIVO** do Windows na porta 3306.
+  O container `painel-db-mariadb`, citado no CLAUDE.md/Vault/runbooks, não existe mais nesta
+  máquina (o Docker Desktop nem responde). CLAUDE.md e o Vault foram corrigidos.
+- [x] **MariaDB virou o único dialeto aceito** — `MIGRACAO_DB_URL` com prefixo de outro banco
+  agora **falha o boot** (`configuration.ts:exigirMariaDb`), em vez de virar Postgres em
+  silêncio; o caminho Postgres saiu de `configuration.ts`, `data-source.ts` e
+  `database.module.ts`. SQLite fica só como banco descartável de dev/teste.
+- [x] **Guarda automática** — `backend/src/common/conformidade-stack.spec.ts` (10 testes, roda
+  em `npm test` e no CI): recusa driver de banco fora da lista permitida, Python fora das
+  pastas declaradas e regressão do Postgres no config.
+- [x] **Backup do MariaDB consertado** — `tools/Painel_Novo_Backup_MariaDB.ps1` chamava
+  `docker exec painel-db-mariadb mysqldump`; sem Docker, o comando falhava, o `Out-File`
+  gravava **0 byte** e o script ainda logava `ok`. **Janela exata da falha: 27, 28 e 29/07**
+  (zips de 176 bytes), que é quando o MariaDB saiu do Docker para instalação nativa. O
+  **último dump bom é o de 23/07** (1.012.729 bytes); 20/07 e 22/07 também estão lá, mas
+  vencem na retenção de 14 dias em 03/08 e 05/08. Agora usa o cliente local `mariadb-dump`, grava com
+  `--result-file` (sem o pipe da PS 5.1, que mete BOM) e **valida o dump** (código de saída,
+  tamanho mínimo, rodapé `Dump completed`, presença de `CREATE TABLE`) antes de compactar.
+- [ ] **Rodar o backup corrigido uma vez e conferir o tamanho do zip** — não pude executar
+  nesta sessão (a permissão de rodar o script foi negada pelo harness). Comando:
+  `powershell -ExecutionPolicy Bypass -File tools\Painel_Novo_Backup_MariaDB.ps1`.
+- [x] **Sobra do Postgres removida do repositório** (2026-07-29): `migrations/` (10 migrations
+  de DDL Postgres), `seeds/migrar-legado.ts` (+ script `migrar:legado` — migração do Flask,
+  concluída em 2026-07-19, e único consumidor de `pg`), as dependências `pg`/`@types/pg` e o
+  `docker-compose.yml` (Postgres 16, container `painel-db`). A guarda passou a reprovar a
+  volta de qualquer uma.
+- [x] **`projeto_old/` removido** (2026-07-29) — 116 arquivos, 1,4 MB, painel Flask desligado.
+  O rollback que justificava a pasta **já não era possível**: o Postgres do Flask não existe e
+  o dump que o plano de virada citava (`painel_20260717_220001.sql.gz`) saiu na retenção.
+  Recuperável pelo histórico do git.
+
+### Linguagens (§4.2/§4.7) — o porte do Python está pela metade
+- [!] **Achado de 2026-07-29:** os 14 geradores Office em TypeScript (`backend/src/geradores/`,
+  com 104 testes de equivalência) **não são chamados por ninguém** — `grep` por importação
+  em `backend/src` não acha um único consumidor. A geração real de documentos em produção
+  continua 100% em Python: `docservice/` (FastAPI: `/gerar/documento-fiel`,
+  `/gerar/cronograma-visitas`, `/preview`, `/transcrever`) e a ponte `webapp/legado_cli.py`
+  (chamada por `documentos.controller.ts` e `fluxo.service.ts`). Ou seja: o item "14 de 14
+  portados" abaixo é verdade quanto ao **código escrito**, não quanto ao **código em uso**.
+- Python que resta hoje, por pasta: `docservice/` (20 arquivos versionados), `tools/` (29),
+  `webapp/` (4), `ia_admin/` (1 — o mais barato de portar) e `projeto_old/` (39, morto).
 
 - [ ] **Migrar o repositório para o GitLab interno** (`rech/javascript`) — **adiado por decisão
   do usuário em 2026-07-21, a tratar depois.** Hoje o remoto é

@@ -124,7 +124,8 @@ export class PermissoesService implements OnModuleInit {
     porPapel: { papel: Perfil; menu: string; nivel: NivelPermissao }[];
     porUsuario: { usuarioId: number; menu: string; nivel: NivelPermissao }[];
   } {
-    const porPapel: { papel: Perfil; menu: string; nivel: NivelPermissao }[] = [];
+    const porPapel: { papel: Perfil; menu: string; nivel: NivelPermissao }[] =
+      [];
     for (const papel of PAPEIS_PERMISSAO) {
       for (const m of MENU_CHAVES) {
         porPapel.push({ papel, menu: m, nivel: this.nivelDePapel(papel, m) });

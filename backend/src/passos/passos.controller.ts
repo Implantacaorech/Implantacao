@@ -56,9 +56,11 @@ export class PassosController {
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: AuthUser,
   ) {
-    return new ApiEnvelope(
-      await this.passos.listar(id, { nome: user.nome, perfil: user.perfil }),
-    );
+    // `user` INTEIRO, nunca um recorte. Recortar `{ nome, perfil }` descartava `perfis` e
+    // rebaixava todo mundo ao papel PRINCIPAL: o GCI que também é Levantador perdia o papel
+    // de Levantador e o Painel dizia "só o responsável (Levantador) pode concluir" para a
+    // pessoa certa (bug em produção, diagnosticado em 2026-07-29).
+    return new ApiEnvelope(await this.passos.listar(id, user));
   }
 
   @Post('passos/:numero/concluir')
@@ -72,12 +74,7 @@ export class PassosController {
     @CurrentUser() user: AuthUser,
   ) {
     return new ApiEnvelope(
-      await this.passos.concluir(
-        id,
-        numero,
-        { nome: user.nome, perfil: user.perfil },
-        dto.observacao ?? '',
-      ),
+      await this.passos.concluir(id, numero, user, dto.observacao ?? ''),
     );
   }
 
@@ -92,12 +89,7 @@ export class PassosController {
     @Param('numero', ParseIntPipe) numero: number,
     @CurrentUser() user: AuthUser,
   ) {
-    return new ApiEnvelope(
-      await this.passos.conferir(id, numero, {
-        nome: user.nome,
-        perfil: user.perfil,
-      }),
-    );
+    return new ApiEnvelope(await this.passos.conferir(id, numero, user));
   }
 
   @Delete('passos/:numero')
@@ -111,12 +103,7 @@ export class PassosController {
     @Param('numero', ParseIntPipe) numero: number,
     @CurrentUser() user: AuthUser,
   ) {
-    return new ApiEnvelope(
-      await this.passos.reabrir(id, numero, {
-        nome: user.nome,
-        perfil: user.perfil,
-      }),
-    );
+    return new ApiEnvelope(await this.passos.reabrir(id, numero, user));
   }
 
   @Post('passos/:numero/anexar-email')
@@ -139,10 +126,7 @@ export class PassosController {
       );
     }
     return new ApiEnvelope(
-      await this.passos.anexarEmail(id, numero, arquivo, {
-        nome: user.nome,
-        perfil: user.perfil,
-      }),
+      await this.passos.anexarEmail(id, numero, arquivo, user),
     );
   }
 

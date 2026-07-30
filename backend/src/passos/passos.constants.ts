@@ -1,4 +1,9 @@
-import { Etapa, Perfil } from '../common/constants/perfis';
+import {
+  Etapa,
+  Perfil,
+  PERFIS_GERA_CRONOGRAMA,
+  PERFIS_GERA_LEVANTAMENTO,
+} from '../common/constants/perfis';
 
 /** Os 19 passos operacionais do processo de implantação (revisão do usuário em 2026-07-22;
  * o passo 3 "Realizar o Levantamento" foi (re)inserido em 2026-07-28).
@@ -62,6 +67,28 @@ export const PERFIS_POR_RESPONSAVEL: Record<ResponsavelPasso, Perfil[]> = {
   Coordenador: ['ADM', 'Coordenador'],
   GCI: ['ADM', 'GCI'],
   Consultor: ['ADM', 'Consultor'],
+};
+
+/** Passos cuja ação acontece em OUTRA TELA (o passo só leva até lá) e quem pode ABRIR essa
+ * tela.
+ *
+ * ABRIR é permissão DIFERENTE de CONCLUIR, e confundir as duas trancava gente fora do
+ * trabalho (correção de 2026-07-29): concluir o passo 3 é do Levantador DESIGNADO — é ele
+ * quem responde por o levantamento ter sido feito —, mas PREENCHER o questionário é de quem
+ * entra na tela do Levantamento. Enquanto o botão "Abrir" seguia a permissão de concluir,
+ * quem não fosse o levantador designado (o GCI, o Coordenador, o Administrativo) via o
+ * botão e não conseguia entrar.
+ *
+ * As listas são as MESMAS que a tela de destino já aplica — `@Roles` do controller e o
+ * `perfilGuard` da rota no frontend —, para o botão não prometer o que a tela recusa. */
+export const PERFIS_TELA_DO_PASSO: Record<number, Perfil[]> = {
+  // 3 = Levantamento (LevantamentoController usa PERFIS_GERA_LEVANTAMENTO).
+  3: PERFIS_GERA_LEVANTAMENTO,
+  // 9 = Gerar Projeto — mesma lista de `podeGerar('projeto')`.
+  9: PERFIS_GERA_LEVANTAMENTO,
+  // 11 = Agenda de Visitas e 12 = Check-list, ambos da trilha do cronograma.
+  11: PERFIS_GERA_CRONOGRAMA,
+  12: PERFIS_GERA_CRONOGRAMA,
 };
 
 export const PASSOS: DefinicaoPasso[] = [

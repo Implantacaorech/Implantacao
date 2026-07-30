@@ -1,8 +1,9 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { PainelService } from '../../core/services/painel.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ItemPendenciaHome, PainelHome } from '../../core/models/painel.model';
+import { soComercial } from '../../core/constants/perfis';
 
 /** A próxima ação da Home leva ao FLUXO do projeto — desde 2026-07-24 o fluxo vive num
  * lugar só (a tela de Passos, que é a própria página do projeto). Antes cada tipo de ação
@@ -27,12 +28,12 @@ export class HomeComponent {
   readonly dados = signal<PainelHome | null>(null);
   readonly carregando = signal(false);
   readonly erro = signal<string | null>(null);
-  readonly veSistema = computed(() => this.auth.usuario()?.perfil === 'ADM');
 
   constructor() {
-    // O Comercial não tem visão geral: a única tela dele é a consulta/cadastro do cliente.
-    // Se cair aqui (deep link ou redirect de guard), segue direto para ela.
-    if (this.auth.usuario()?.perfil === 'Comercial') {
+    // Quem é SÓ Comercial não tem visão geral: a única tela dele é a consulta/cadastro do
+    // cliente. Se cair aqui (deep link ou redirect de guard), segue direto para ela. Quem
+    // acumula Comercial + outro papel fica na Home (correção de 2026-07-28).
+    if (soComercial(this.auth.usuario())) {
       void this.router.navigateByUrl('/clientes/novo');
       return;
     }

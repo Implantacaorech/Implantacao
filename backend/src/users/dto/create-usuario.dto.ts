@@ -39,6 +39,12 @@ export class CreateUsuarioDto {
   // de webapp/app.py:usuarios ("Informe o Código SICLA do usuário — é obrigatório.").
   @ApiProperty() @IsString() @IsNotEmpty() codigoSicla: string;
 
+  /** Vêm de `SICLA.LISTA_TECNICOS` (MODULOCAPACITADO / SETORDES) na importação de técnicos,
+   * mas continuam editáveis à mão pelo Administrador. */
+  @ApiPropertyOptional() @IsOptional() @IsString() modulosCapacitados?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() setorAtuacao?: string;
+
   @ApiPropertyOptional({ default: true })
   @IsOptional()
   @IsBoolean()

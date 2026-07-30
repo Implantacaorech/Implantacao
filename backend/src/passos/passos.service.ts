@@ -31,6 +31,7 @@ import {
   PASSOS_COM_CONFERENCIA,
   PASSOS_POR_NUMERO,
   PERFIS_POR_RESPONSAVEL,
+  PERFIS_TELA_DO_PASSO,
 } from './passos.constants';
 
 /** Onde cada projeto está no processo — uma linha por projeto, para o quadro por fase. */
@@ -71,6 +72,9 @@ export interface PassoView extends DefinicaoPasso {
   liberado: boolean;
   /** Por que não está liberado, em linguagem de negócio. */
   motivos: string[];
+  /** Pode ABRIR a tela de trabalho do passo — permissão da TELA, não a de concluir (ver
+   * `PERFIS_TELA_DO_PASSO`). Sempre `false` nos passos que se resolvem na própria ficha. */
+  podeAbrir: boolean;
 }
 
 @Injectable()
@@ -144,6 +148,25 @@ export class PassosService {
       default:
         return true;
     }
+  }
+
+  /** Quem pode ABRIR a tela de trabalho de um passo (Levantamento, Projeto, Agenda,
+   * Check-list).
+   *
+   * NÃO é a permissão de concluir: o passo 3 é concluído pelo Levantador designado, mas o
+   * questionário do Levantamento é preenchido por quem tem acesso àquela tela — a mesma
+   * lista que o controller e a rota já exigem (`PERFIS_TELA_DO_PASSO`). O que continua
+   * valendo é a ORDEM do processo: só se abre a tela de um passo cujas dependências já
+   * foram cumpridas. Já concluído continua abrindo, para rever/ajustar o que foi
+   * preenchido. */
+  private podeAbrirTela(
+    numero: number,
+    usuario: { perfil: Perfil; perfis?: Perfil[] },
+    bloqueadoPor: number[],
+  ): boolean {
+    const perfis = PERFIS_TELA_DO_PASSO[numero];
+    if (!perfis || bloqueadoPor.length > 0) return false;
+    return temPapel(usuario, ...perfis);
   }
 
   /** Carrega projeto + designados e verifica a permissão, lançando 403 com o motivo. */
@@ -263,6 +286,7 @@ export class PassosService {
         bloqueadoPor,
         liberado: motivos.length === 0,
         motivos,
+        podeAbrir: this.podeAbrirTela(def.numero, usuario, bloqueadoPor),
       };
     });
   }

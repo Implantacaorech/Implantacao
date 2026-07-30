@@ -27,7 +27,8 @@ export const PROTO_MODULOS = [
 ] as const;
 
 // Campos de conteúdo editáveis na tela de revisão (nome da coluna = nome do input) —
-// também as chaves esperadas no JSON devolvido pela análise de IA.
+// também as chaves esperadas no JSON devolvido pela análise de IA. A ordem segue as 10
+// seções obrigatórias do prompt de protocolo de treinamento (ver protocolo-ia.service.ts).
 export const PROTO_CAMPOS_TEXTO = [
   'titulo',
   'modulo',
@@ -37,15 +38,29 @@ export const PROTO_CAMPOS_TEXTO = [
   'objetivo',
   'quandoUtilizar',
   'preRequisitos',
+  'menusAbordados',
+  'funcionalidades',
   'passoAPasso',
+  'processos',
+  'definicoes',
+  'regrasNegocio',
   'configuracoes',
   'dependencias',
-  'regrasNegocio',
   'pontosAtencao',
   'exemplos',
+  'duvidas',
+  'pendenciasTreinamento',
+  'proximosPassos',
+  'resumoTecnico',
+  // Sai de uma chamada de IA separada (não do JSON da análise) — ver PROTO_CAMPO_RESUMO.
+  'resumoCompleto',
   'assuntosRemovidos',
   'pendencias',
 ] as const;
+
+/** Campo preenchido pela 2ª chamada de IA (resumo completo em texto corrido), fora do
+ * JSON da análise — por isso não entra no mapa CHAVE_IA de protocolo-ia.service.ts. */
+export const PROTO_CAMPO_RESUMO = 'resumoCompleto';
 
 export type CampoTextoProtocolo = (typeof PROTO_CAMPOS_TEXTO)[number];
 

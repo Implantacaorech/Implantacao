@@ -1,5 +1,5 @@
-<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-  <h1 style="margin:0">📊 Matriz de Conhecimento</h1>
+<div class="acoes" style="margin-bottom:var(--sp-3)">
+  <h1 class="pagina-titulo"><svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-chart"/></svg> Matriz de Conhecimento</h1>
   <span style="flex:1"></span>
   @if (podeAdmin()) {
     <button class="btn" type="button" [disabled]="importando()" (click)="importar()">
@@ -12,10 +12,10 @@
   <strong>9–10</strong> domina / referência.</p>
 
 @if (aviso()) {
-  <div class="resultado ok" style="padding:8px 14px">ℹ️ {{ aviso() }}</div>
+  <div class="resultado ok">ℹ️ {{ aviso() }}</div>
 }
 @if (erro()) {
-  <div class="resultado erro" style="padding:8px 14px">{{ erro() }}</div>
+  <div class="resultado erro">{{ erro() }}</div>
 }
 
 @if (carregando()) {
@@ -27,28 +27,30 @@
       (ou ajustar o Código SICLA no seu cadastro de usuário).</p>
   </div>
 } @else {
-  <div class="painel" style="padding:10px 16px">
-    <input placeholder="Filtrar por nome ou setor…" style="width:100%;max-width:360px" [(ngModel)]="filtro" />
+  <div class="painel compacto">
+    <input placeholder="Filtrar por nome ou setor…" style="width:100%;max-width:360px" [ngModel]="filtro()" (ngModelChange)="filtro.set($event)" />
   </div>
-  <table class="form-tab">
-    <thead>
-      <tr><th>Técnico</th><th>Setor</th><th>Notas lançadas</th><th>Última atualização</th><th></th></tr>
-    </thead>
-    <tbody>
-      @for (t of itensFiltrados(); track t.id) {
-        <tr>
-          <td><strong>{{ t.nome }}</strong></td>
-          <td>{{ t.setor }}</td>
-          <td>{{ t.qtdNotas }}</td>
-          <td>
-            {{ t.atualizadoEm ? (t.atualizadoEm | date: 'dd/MM/yyyy HH:mm') : '—' }}
-            @if (t.atualizadoPor) { <span class="dica">por {{ t.atualizadoPor }}</span> }
-          </td>
-          <td><a class="btn" [routerLink]="['/matriz', t.id]">Abrir</a></td>
-        </tr>
-      }
-    </tbody>
-  </table>
+  <div class="tabela-wrap">
+    <table class="form-tab">
+      <thead>
+        <tr><th>Técnico</th><th>Setor</th><th>Notas lançadas</th><th>Última atualização</th><th></th></tr>
+      </thead>
+      <tbody>
+        @for (t of itensFiltrados(); track t.id) {
+          <tr>
+            <td><strong>{{ t.nome }}</strong></td>
+            <td>{{ t.setor }}</td>
+            <td>{{ t.qtdNotas }}</td>
+            <td>
+              {{ t.atualizadoEm ? (t.atualizadoEm | date: 'dd/MM/yyyy HH:mm') : '—' }}
+              @if (t.atualizadoPor) { <span class="dica">por {{ t.atualizadoPor }}</span> }
+            </td>
+            <td><a class="btn" [routerLink]="['/matriz', t.id]">Abrir</a></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
   @if (itens().length === 0) {
     <p class="dica">Nenhum técnico ainda — use "Importar planilha".</p>
   }

@@ -28,6 +28,12 @@ export class MatrizTecnico {
   @Column({ name: 'notas_menu', type: 'text', default: '{}' })
   notasMenu: string;
 
+  /** Notas da Matriz por Menu — FUNÇÕES SICLA: blob JSON `{ "SIGLA|codigoFuncao": 0-10 }`,
+   * ex.: `{ "CTB|3004": 8 }`. Terceira visão, independente das outras duas: a taxonomia vem
+   * de `SICLA.LISTA_FUNCOES` (agrupada pela coluna STRMENUS), não do Dicionário. */
+  @Column({ name: 'notas_funcao', type: 'text', default: '{}' })
+  notasFuncao: string;
+
   @Column({ name: 'atualizado_em', nullable: true })
   atualizadoEm: Date;
 

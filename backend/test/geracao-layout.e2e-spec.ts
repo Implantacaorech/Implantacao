@@ -14,6 +14,7 @@ import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter
 import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
 import { ModeloDocumentoService } from '../src/catalogos/modelo-documento.service';
 import { GeracaoDocumentosService } from '../src/geracao/geracao-documentos.service';
+import { seTiverInsumo } from '../src/common/insumo-local';
 
 // Fake do cliente do serviço Python (docservice/) — a geração .docx em si já é coberta pela
 // suíte pytest do próprio serviço (tests/test_documento_fiel.py); aqui só verificamos que o
@@ -33,7 +34,16 @@ class GeracaoDocumentosServiceFake {
   }
 }
 
-describe('Geração de documentos fiéis — Levantamento/Projeto/Termo (e2e)', () => {
+// Só roda onde os layouts fiéis existem: `tools/templates/layouts/` é ignorado no .gitignore
+// (linha 63), então no CI, que clona apenas o que está no git, `seedDefaults()` não encontra
+// arquivo nenhum e toda geração responde 404. Sem os layouts não há o que provar aqui — a
+// suíte aparece como PULADA em vez de reprovar o commit.
+seTiverInsumo(
+  'tools',
+  'templates',
+  'layouts',
+  'levantamento.docx',
+)('Geração de documentos fiéis — Levantamento/Projeto/Termo (e2e)', () => {
   let app: INestApplication<App>;
   let moduleFixture: TestingModule;
   let usuarios: Repository<Usuario>;

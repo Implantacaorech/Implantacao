@@ -1,15 +1,15 @@
-<h1>🧑‍💼 Meu perfil</h1>
+<h1 class="pagina-titulo"><svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-user"/></svg> Meu perfil</h1>
 <div class="painel">
   <div class="resumo">
     <div class="row"><span class="k">Nome</span><span class="v">{{ usuario()?.nome || '—' }}</span></div>
     <div class="row"><span class="k">Perfil</span><span class="v">{{ usuario()?.perfil || '— (acesso livre)' }}</span></div>
   </div>
-  <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+  <div class="acoes" style="margin-top:var(--sp-3)">
     @if (ehAdm()) {
-      <a class="btn primario" routerLink="/usuarios">👥 Gerenciar usuários</a>
+      <a class="btn primario" routerLink="/usuarios"><svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg> Gerenciar usuários</a>
     }
-    <a class="btn" routerLink="/trocar-senha">🔑 Trocar senha</a>
-    <button class="btn" type="button" (click)="sair()">🚪 Sair</button>
+    <a class="btn" routerLink="/trocar-senha"><svg class="svgi" aria-hidden="true"><use href="#ic-lock"/></svg> Trocar senha</a>
+    <button class="btn" type="button" (click)="sair()"><svg class="svgi" aria-hidden="true"><use href="#ic-logout"/></svg> Sair</button>
   </div>
 </div>
 <a class="btn" routerLink="/home">← Início</a>

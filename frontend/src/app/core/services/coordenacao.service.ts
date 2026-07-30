@@ -18,10 +18,15 @@ export class CoordenacaoService {
     return res.data;
   }
 
-  async capacidade(modulos: string, semanas: number): Promise<ResultadoCapacidade> {
+  async capacidade(
+    modulos: string,
+    semanas: number,
+    setor = '',
+  ): Promise<ResultadoCapacidade> {
     let params = new HttpParams();
     if (modulos) params = params.set('modulos', modulos);
     if (semanas) params = params.set('semanas', String(semanas));
+    if (setor) params = params.set('setor', setor);
     const res = await firstValueFrom(
       this.http.get<ApiEnvelope<ResultadoCapacidade>>(`${this.base}/coordenacao/capacidade`, { params }),
     );

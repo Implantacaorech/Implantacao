@@ -251,7 +251,21 @@
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  flex: 1 1 auto;
+  flex: 1 1 220px;
+}
+.conv-obs {
+  flex: 1 1 160px;
+  min-width: 110px;
+  border: 1px solid var(--linha, #d9dee6);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font: inherit;
+  color: inherit;
+  background: var(--card, #fff);
+}
+.conv-obs:focus {
+  outline: 0;
+  border-color: var(--navy, #1f3b73);
 }
 .conv-check input[type='checkbox'] {
   width: 16px;
@@ -319,5 +333,9 @@
   }
   .conv-item {
     flex-wrap: wrap;
+  }
+  .conv-obs {
+    flex: 1 1 100%;
+    order: 1;
   }
 }

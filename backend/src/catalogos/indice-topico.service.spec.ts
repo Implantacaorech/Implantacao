@@ -106,8 +106,11 @@ describe('IndiceTopicoService — importação do YAML', () => {
       jest.fn().mockReturnValue(qb);
     const r = await service.porCodigos(['5', '5', '29']);
     expect(r).toEqual([{ id: 1 }]);
-    expect(qb.where).toHaveBeenCalledWith(expect.stringContaining('moduloNum IN'), {
-      cods: ['5', '29'],
-    });
+    expect(qb.where).toHaveBeenCalledWith(
+      expect.stringContaining('moduloNum IN'),
+      {
+        cods: ['5', '29'],
+      },
+    );
   });
 });

@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ProjetoEmailService } from '../../core/services/projeto-email.service';
 import { AuthService } from '../../core/services/auth.service';
+import { temPapel } from '../../core/constants/perfis';
 import { TelaEmailProjeto } from '../../core/models/projeto-email.model';
 
 @Component({
@@ -19,7 +20,7 @@ export class ProjetoEmailComponent {
   private readonly router = inject(Router);
 
   readonly projetoId = Number(this.route.snapshot.paramMap.get('id'));
-  readonly ehAdm = computed(() => this.auth.usuario()?.perfil === 'ADM');
+  readonly ehAdm = computed(() => temPapel(this.auth.usuario(), 'ADM'));
 
   readonly carregando = signal(true);
   readonly enviando = signal(false);

@@ -31,7 +31,9 @@ const u = (
 
 describe('PermissoesService.nivelEfetivo', () => {
   it('ADM: trava só nos menus fixos-ADM; nos comuns é configurável', async () => {
-    const svc = await montar([{ papel: 'ADM', menu: 'carteira', nivel: 'nada' }]);
+    const svc = await montar([
+      { papel: 'ADM', menu: 'carteira', nivel: 'nada' },
+    ]);
     // Fixos-ADM (painel de Permissões, Sistema): sempre alteracao — nunca se tranca fora.
     expect(svc.nivelEfetivo(u('ADM'), 'permissoes')).toBe('alteracao');
     expect(svc.nivelEfetivo(u('ADM'), 'usuarios')).toBe('alteracao');
@@ -40,7 +42,9 @@ describe('PermissoesService.nivelEfetivo', () => {
   });
 
   it('sem regra para o papel/menu = nada', async () => {
-    const svc = await montar([{ papel: 'Comercial', menu: 'carteira', nivel: 'consulta' }]);
+    const svc = await montar([
+      { papel: 'Comercial', menu: 'carteira', nivel: 'consulta' },
+    ]);
     expect(svc.nivelEfetivo(u('Comercial'), 'matriz')).toBe('nada');
   });
 

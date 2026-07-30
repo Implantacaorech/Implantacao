@@ -15,10 +15,10 @@ describe('perfilGuard', () => {
 
   afterEach(() => localStorage.clear());
 
-  function logarComo(perfil: string): void {
+  function logarComo(perfil: string, perfis?: string[]): void {
     localStorage.setItem(
       'painel.usuario',
-      JSON.stringify({ sub: 1, login: 'x', nome: 'X', perfil, codigoSicla: '' }),
+      JSON.stringify({ sub: 1, login: 'x', nome: 'X', perfil, perfis, codigoSicla: '' }),
     );
     TestBed.inject(AuthService);
   }
@@ -43,5 +43,21 @@ describe('perfilGuard', () => {
     const guard = perfilGuard('ADM', 'Coordenador');
     const resultado = TestBed.runInInjectionContext(() => guard({} as never, {} as never));
     expect(resultado).toBe(true);
+  });
+
+  // Correção de 2026-07-28: a pessoa acumula cargos — comparar só com o `perfil` principal
+  // trancava fora de rota que o backend (RolesGuard, que usa `perfis`) liberaria.
+  it('libera por papel ACUMULADO, não só pelo perfil principal', () => {
+    logarComo('Consultor', ['Consultor', 'Coordenador']);
+    const guard = perfilGuard('ADM', 'Coordenador');
+    const resultado = TestBed.runInInjectionContext(() => guard({} as never, {} as never));
+    expect(resultado).toBe(true);
+  });
+
+  it('bloqueia quando nenhum dos papéis acumulados está na lista', () => {
+    logarComo('Consultor', ['Consultor', 'Levantador']);
+    const guard = perfilGuard('ADM', 'Coordenador');
+    const resultado = TestBed.runInInjectionContext(() => guard({} as never, {} as never));
+    expect(resultado).toBeInstanceOf(UrlTree);
   });
 });

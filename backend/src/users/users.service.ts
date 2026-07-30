@@ -113,6 +113,8 @@ export class UsersService {
     perfil: Perfil;
     perfis?: Perfil[];
     codigoSicla?: string;
+    modulosCapacitados?: string;
+    setorAtuacao?: string;
   }): Promise<Usuario> {
     const login = (dados.login || '').trim() || dados.email.trim(); // login em branco usa o e-mail
     if (await this.existeUsuario(login, dados.email)) {
@@ -129,6 +131,8 @@ export class UsersService {
       perfil: dados.perfil,
       perfis: normalizarPapeis(dados.perfis ?? [dados.perfil]).join(', '),
       codigoSicla: dados.codigoSicla ?? '',
+      modulosCapacitados: dados.modulosCapacitados ?? '',
+      setorAtuacao: dados.setorAtuacao ?? '',
       ativo: true,
     });
     return this.repo.save(usuario);
@@ -147,6 +151,8 @@ export class UsersService {
       perfil?: Perfil;
       perfis?: Perfil[];
       codigoSicla?: string;
+      modulosCapacitados?: string;
+      setorAtuacao?: string;
       ativo?: boolean;
     },
   ): Promise<Usuario> {
@@ -170,6 +176,10 @@ export class UsersService {
     }
     if (dados.codigoSicla !== undefined)
       usuario.codigoSicla = dados.codigoSicla;
+    if (dados.modulosCapacitados !== undefined)
+      usuario.modulosCapacitados = dados.modulosCapacitados;
+    if (dados.setorAtuacao !== undefined)
+      usuario.setorAtuacao = dados.setorAtuacao;
     if (dados.ativo !== undefined) usuario.ativo = dados.ativo;
     if (dados.senha)
       usuario.senhaHash = await bcrypt.hash(dados.senha, SALT_ROUNDS);

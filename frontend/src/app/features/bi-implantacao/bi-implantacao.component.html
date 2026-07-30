@@ -1,0 +1,286 @@
+<app-bi-abas />
+
+@if (erro()) {
+  <div class="resultado erro">{{ erro() }}</div>
+}
+
+<!-- Período + ações. O recorte de período é o único filtro que vai ao Oracle; os demais
+     são aplicados sobre o conjunto já trazido. -->
+<div class="bi-barra">
+  <div class="bi-campo">
+    <label for="bi-ini">De</label>
+    <input id="bi-ini" type="date" [(ngModel)]="dataIni" (change)="carregar()" />
+  </div>
+  <div class="bi-campo">
+    <label for="bi-fim">Até</label>
+    <input id="bi-fim" type="date" [(ngModel)]="dataFim" (change)="carregar()" />
+  </div>
+  <div class="bi-campo bi-campo-busca">
+    <label for="bi-busca">Buscar</label>
+    <input id="bi-busca" type="search" [ngModel]="busca()" (ngModelChange)="busca.set($event)"
+           placeholder="cliente, RNS, grupo…" />
+  </div>
+  <button type="button" class="bi-btn" (click)="alternarFiltros()"
+          [attr.aria-expanded]="filtrosAbertos()">
+    <span class="bi-btn-seta" [class.aberta]="filtrosAbertos()">&#9656;</span>
+    Filtros@if (qtdFiltrosAtivos() > 0) { <span class="bi-badge">{{ qtdFiltrosAtivos() }}</span> }
+  </button>
+  <button type="button" class="bi-btn" (click)="limparFiltros()">Limpar</button>
+  <button type="button" class="bi-btn" (click)="exportarCsv()" [disabled]="linhas().length === 0">
+    Exportar CSV
+  </button>
+</div>
+
+@if (filtrosAbertos()) {
+  @if (filtros(); as f) {
+    <div class="bi-filtros-cx">
+      <div class="bi-filtros-cab">
+        <span class="bi-filtros-tit">Filtros</span>
+        <button type="button" class="bi-recolher" (click)="alternarFiltros()">Recolher &#9652;</button>
+      </div>
+    <div class="bi-filtros">
+      <!-- Os 4 filtros padrão do BI: grupo econômico, RNS, status da RNS e consultor. -->
+      <div class="bi-filtro-bloco">
+        <span class="bi-filtro-tit">Grupo econômico</span>
+        <input class="bi-filtro-busca" type="search" placeholder="filtrar…"
+               [ngModel]="termoOpcao('grupo')" (ngModelChange)="definirTermoOpcao('grupo', $event)" />
+        <div class="bi-opcoes bi-opcoes-rolagem">
+          @for (g of opcoes('grupo', f.grupos, gruposSel).visiveis; track g) {
+            <label>
+              <input type="checkbox" [checked]="marcado(gruposSel, g)" (change)="alternar(gruposSel, g)" /> {{ g }}
+            </label>
+          } @empty { <span class="dica" style="margin:0">— nada encontrado —</span> }
+        </div>
+        @if (opcoes('grupo', f.grupos, gruposSel).ocultas; as n) {
+          <span class="bi-filtro-mais">+{{ n }} — refine a busca</span>
+        }
+      </div>
+
+      <div class="bi-filtro-bloco">
+        <span class="bi-filtro-tit">RNS de Implantação</span>
+        <input class="bi-filtro-busca" type="search" placeholder="nº ou cliente…"
+               [ngModel]="termoOpcao('rns')" (ngModelChange)="definirTermoOpcao('rns', $event)" />
+        <div class="bi-opcoes bi-opcoes-rolagem">
+          @for (o of opcoesRns('rns', f.rns).visiveis; track o.codigo) {
+            <label>
+              <input type="checkbox" [checked]="marcado(rnsSel, o.codigo)"
+                     (change)="alternar(rnsSel, o.codigo)" /> {{ o.rotulo }}
+            </label>
+          } @empty { <span class="dica" style="margin:0">— nada encontrado —</span> }
+        </div>
+        @if (opcoesRns('rns', f.rns).ocultas; as n) {
+          <span class="bi-filtro-mais">+{{ n }} — refine a busca</span>
+        }
+      </div>
+
+      <div class="bi-filtro-bloco">
+        <span class="bi-filtro-tit">Status da RNS</span>
+        <div class="bi-opcoes bi-opcoes-rolagem">
+          @for (s of f.status; track s) {
+            <label>
+              <input type="checkbox" [checked]="marcado(statusSel, s)" (change)="alternar(statusSel, s)" />
+              <span class="bi-ponto" [style.background]="corStatus(s)"></span>{{ s }}
+            </label>
+          } @empty { <span class="dica" style="margin:0">— sem dados no período —</span> }
+        </div>
+      </div>
+
+      <div class="bi-filtro-bloco">
+        <span class="bi-filtro-tit">Consultor</span>
+        <input class="bi-filtro-busca" type="search" placeholder="filtrar…"
+               [ngModel]="termoOpcao('tecnico')" (ngModelChange)="definirTermoOpcao('tecnico', $event)" />
+        <div class="bi-opcoes bi-opcoes-rolagem">
+          @for (t of opcoes('tecnico', f.tecnicos, tecnicosSel).visiveis; track t) {
+            <label>
+              <input type="checkbox" [checked]="marcado(tecnicosSel, t)" (change)="alternar(tecnicosSel, t)" /> {{ t }}
+            </label>
+          } @empty { <span class="dica" style="margin:0">— nada encontrado —</span> }
+        </div>
+      </div>
+
+      <div class="bi-filtro-bloco">
+        <span class="bi-filtro-tit">Cliente ativo</span>
+        <div class="bi-opcoes">
+          @for (a of f.ativos; track a) {
+            <label>
+              <input type="checkbox" [checked]="marcado(ativosSel, a)" (change)="alternar(ativosSel, a)" /> {{ a }}
+            </label>
+          }
+        </div>
+        <span class="bi-filtro-tit" style="margin-top:10px">Tipo do cliente</span>
+        <div class="bi-opcoes">
+          @for (t of f.tiposCliente; track t) {
+            <label>
+              <input type="checkbox" [checked]="marcado(tiposSel, t)" (change)="alternar(tiposSel, t)" /> {{ t }}
+            </label>
+          }
+        </div>
+      </div>
+    </div>
+    </div>
+  }
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <!-- CONTROLE DE HORAS — porte fiel da medida DAX `Grafico_Horas_HTML` do relatório. -->
+  @if (controleHoras(); as c) {
+    <section class="ch">
+      <h2 class="ch-tit">CONTROLE DE HORAS</h2>
+
+      <div class="ch-progresso">
+        <div class="ch-regua">
+          <div class="ch-faixa ch-faixa-1" [style.width.%]="c.larguraFaixa"></div>
+          <div class="ch-faixa ch-faixa-2"
+               [style.left.%]="c.larguraFaixa" [style.width.%]="c.larguraFaixa"></div>
+          <div class="ch-faixa ch-faixa-3"
+               [style.left.%]="c.larguraFaixa * 2" [style.width.%]="c.larguraFaixa"></div>
+          <div class="ch-faixa ch-faixa-4" [class.ch-faixa-fim]="!c.temExcedente"
+               [style.left.%]="c.larguraFaixa * 3" [style.width.%]="c.larguraFaixa"></div>
+          @if (c.temExcedente) {
+            <div class="ch-faixa ch-faixa-excedente" [style.left.%]="85" [style.width.%]="15"></div>
+          }
+
+          <div class="ch-marcador" [style.left.%]="c.posicaoMarcador">
+            <div class="ch-balao">
+              {{ c.percentual.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) }}%
+            </div>
+            <div class="ch-bolinha"></div>
+          </div>
+        </div>
+        <div class="ch-escala" [style.width.%]="c.temExcedente ? 85 : 100">
+          <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+        </div>
+      </div>
+
+      <div class="ch-cards">
+        <div class="ch-card"><div class="ch-topo" style="background:#10b981"></div>
+          <div class="ch-v" style="color:#6b7280">{{ horasInteiras(c.previstas) }}</div>
+          <div class="ch-l">PREVISTAS</div>
+        </div>
+        <div class="ch-card"><div class="ch-topo" style="background:#ef4444"></div>
+          <div class="ch-v" style="color:#ef4444">{{ horasInteiras(c.realizadas) }}</div>
+          <div class="ch-l">REALIZADAS</div>
+        </div>
+        <div class="ch-card"><div class="ch-topo" [style.background]="c.corSaldo"></div>
+          <div class="ch-v" [style.color]="c.corSaldo">{{ saldoComSinal(c.saldo) }}</div>
+          <div class="ch-l">SALDO</div>
+        </div>
+        <div class="ch-card"><div class="ch-topo" style="background:#3b82f6"></div>
+          <div class="ch-v" style="color:#3b82f6">{{ horasInteiras(c.cobradas) }}</div>
+          <div class="ch-l">COBRADAS</div>
+        </div>
+        <div class="ch-card"><div class="ch-topo" style="background:#8b5cf6"></div>
+          <div class="ch-v" style="color:#8b5cf6">{{ horasInteiras(c.bonificadas) }}</div>
+          <div class="ch-l">BONIFICADAS</div>
+        </div>
+      </div>
+
+      <div class="ch-status">
+        <span class="ch-status-ponto" [style.background]="c.corStatus"></span>
+        {{ c.percentual.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) }}%
+        CONCLUÍDO — {{ c.status }}
+        <span class="ch-status-qtd">({{ totaisVisiveis().quantidade }} RNS)</span>
+      </div>
+
+      <div class="ch-legenda">
+        <span><i style="background:#10b981"></i>0-25%</span>
+        <span><i style="background:#fbbf24"></i>25-50%</span>
+        <span><i style="background:#fb923c"></i>50-75%</span>
+        <span><i style="background:#ef4444"></i>75-100%</span>
+        <span><i style="background:#1f2937"></i>excedente</span>
+      </div>
+    </section>
+  }
+
+  <div class="bi-graficos">
+    <div class="bi-card">
+      <div class="bi-card-tit">Horas por status</div>
+      <div class="bi-canvas">
+        @if (graficoStatus(); as cfg) {
+          <canvas [appChart]="cfg"></canvas>
+        } @else {
+          <p class="dica">— sem dados no período —</p>
+        }
+      </div>
+    </div>
+  </div>
+
+  @if (topTecnicos().length > 0) {
+    <div class="bi-card">
+      <div class="bi-card-tit">Horas por consultor (top 10)</div>
+      <div class="bi-tab-wrap">
+        <table class="bi-tab">
+          <thead>
+            <tr>
+              <th>Consultor</th><th class="num">RNS</th>
+              <th class="num">Previstas</th><th class="num">Realizadas</th><th class="num">Saldo</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (a of topTecnicos(); track a.chave) {
+              <tr>
+                <td>{{ a.chave }}</td>
+                <td class="num">{{ a.quantidade }}</td>
+                <td class="num">{{ horas(a.horasPrevistas) }}</td>
+                <td class="num">{{ horas(a.horasRealizadas) }}</td>
+                <td class="num">{{ horas(a.horasSaldo) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  <div class="bi-card">
+    <div class="bi-card-tit">Implantações ({{ linhas().length }})</div>
+    <div class="bi-tab-wrap">
+      <table class="bi-tab">
+        <thead>
+          <tr>
+            <th class="clic" (click)="ordenar('codigo')">RNS</th>
+            <th class="clic" (click)="ordenar('fantasia')">Cliente</th>
+            <th class="clic" (click)="ordenar('grupoEconomico')">Grupo econômico</th>
+            <th class="clic" (click)="ordenar('tecnico')">Consultor</th>
+            <th class="clic" (click)="ordenar('statusRns')">Status</th>
+            <th class="clic" (click)="ordenar('dataContratacao')">Contratação</th>
+            <th>Prev. uso oficial</th>
+            <th class="num clic" (click)="ordenar('horasPrevistas')">Previstas</th>
+            <th class="num clic" (click)="ordenar('horasRealizadas')">Realizadas</th>
+            <th class="num clic" (click)="ordenar('horasSaldo')">Saldo</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of linhas(); track l.codigo) {
+            <tr>
+              <td>{{ l.codigo }}</td>
+              <td [title]="l.descricao">{{ l.fantasia || '—' }}</td>
+              <td>{{ l.grupoEconomico || '—' }}</td>
+              <td>{{ l.tecnico || '—' }}</td>
+              <td>
+                <span class="bi-ponto" [style.background]="corStatus(l.statusRns)"></span>{{ l.statusRns || '—' }}
+              </td>
+              <td>{{ dataBr(l.dataContratacao) }}</td>
+              <td>{{ dataBr(l.dataPrevUso) }}</td>
+              <td class="num">{{ horas(l.horasPrevistas) }}</td>
+              <td class="num">{{ horas(l.horasRealizadas) }}</td>
+              <td class="num" [class.neg]="l.horasSaldo < 0">{{ horas(l.horasSaldo) }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="10" class="dica">— nenhuma implantação com os filtros atuais —</td></tr>
+          }
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="7"><strong>Total</strong></td>
+            <td class="num"><strong>{{ horas(totaisVisiveis().horasPrevistas) }}</strong></td>
+            <td class="num"><strong>{{ horas(totaisVisiveis().horasRealizadas) }}</strong></td>
+            <td class="num"><strong>{{ horas(totaisVisiveis().horasSaldo) }}</strong></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+}

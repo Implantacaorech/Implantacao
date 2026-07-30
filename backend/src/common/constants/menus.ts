@@ -11,11 +11,17 @@ const ORDEM: Record<NivelPermissao, number> = {
   consulta: 1,
   alteracao: 2,
 };
-export function nivelMaior(a: NivelPermissao, b: NivelPermissao): NivelPermissao {
+export function nivelMaior(
+  a: NivelPermissao,
+  b: NivelPermissao,
+): NivelPermissao {
   return ORDEM[a] >= ORDEM[b] ? a : b;
 }
 /** `nivel` satisfaz o mínimo exigido? (alteracao ⊇ consulta ⊇ nada). */
-export function atendeNivel(nivel: NivelPermissao, minimo: NivelPermissao): boolean {
+export function atendeNivel(
+  nivel: NivelPermissao,
+  minimo: NivelPermissao,
+): boolean {
   return ORDEM[nivel] >= ORDEM[minimo];
 }
 
@@ -36,22 +42,74 @@ export const MENUS: DefinicaoMenu[] = [
   { chave: 'novo_cliente', rotulo: 'Novo Cliente', grupo: 'Execução' },
   { chave: 'visao_geral', rotulo: 'Visão Geral', grupo: 'Execução' },
   { chave: 'carteira', rotulo: 'Carteira', grupo: 'Execução' },
-  { chave: 'protocolos', rotulo: 'Protocolos', grupo: 'Execução' },
+  // Chave mantida como 'protocolos' de propósito: é o que está gravado em
+  // permissoes_menu no banco (renomear a chave quebraria as liberações já configuradas).
+  { chave: 'protocolos', rotulo: 'Transcrição Áudio/Vídeo', grupo: 'Execução' },
   { chave: 'matriz', rotulo: 'Matriz de Conhecimento', grupo: 'Execução' },
-  { chave: 'matriz_detalhada', rotulo: 'Matriz por Menu (SIGER)', grupo: 'Execução' },
+  {
+    chave: 'matriz_detalhada',
+    rotulo: 'Matriz por Menu (SIGER)',
+    grupo: 'Execução',
+  },
+  {
+    chave: 'matriz_funcoes',
+    rotulo: 'Matriz por Menu - Funções SICLA',
+    grupo: 'Execução',
+  },
   { chave: 'dicionario', rotulo: 'Dicionário Inteligente', grupo: 'Execução' },
   { chave: 'coordenacao', rotulo: 'Coordenação', grupo: 'Gestão' },
-  { chave: 'centro_operacional', rotulo: 'Centro Operacional', grupo: 'Gestão' },
+  {
+    chave: 'centro_operacional',
+    rotulo: 'Centro Operacional',
+    grupo: 'Gestão',
+  },
   { chave: 'atividade', rotulo: 'Atividade', grupo: 'Gestão' },
-  { chave: 'dashboards', rotulo: 'Dashboards', grupo: 'Gestão' },
+  // Área BI: uma entrada só no menu lateral, duas abas dentro. As DUAS chaves continuam
+  // separadas de propósito — o Administrador libera cada BI independentemente.
+  { chave: 'dashboards', rotulo: 'BI · BI Implantação', grupo: 'Gestão' },
+  {
+    chave: 'bi_implantacao',
+    rotulo: 'BI · Implantação Clientes SIGER',
+    grupo: 'Gestão',
+  },
   { chave: 'permissoes', rotulo: 'Permissões', grupo: 'Gestão', fixaAdm: true },
-  { chave: 'ferramentas', rotulo: 'Ferramentas', grupo: 'Sistema', fixaAdm: true },
+  {
+    chave: 'ferramentas',
+    rotulo: 'Ferramentas',
+    grupo: 'Sistema',
+    fixaAdm: true,
+  },
   { chave: 'usuarios', rotulo: 'Usuários', grupo: 'Sistema', fixaAdm: true },
-  { chave: 'checklist', rotulo: 'Cad. Checklist', grupo: 'Sistema', fixaAdm: true },
-  { chave: 'indice_topicos', rotulo: 'Índice de Tópicos', grupo: 'Sistema', fixaAdm: true },
-  { chave: 'modelos_docs', rotulo: 'Modelos de Docs', grupo: 'Sistema', fixaAdm: true },
-  { chave: 'consulta_bd', rotulo: 'Consulta BD', grupo: 'Sistema', fixaAdm: true },
-  { chave: 'assistente_legado', rotulo: 'Assistente Legado', grupo: 'Sistema', fixaAdm: true },
+  {
+    chave: 'checklist',
+    rotulo: 'Cad. Checklist',
+    grupo: 'Sistema',
+    fixaAdm: true,
+  },
+  {
+    chave: 'indice_topicos',
+    rotulo: 'Índice de Tópicos',
+    grupo: 'Sistema',
+    fixaAdm: true,
+  },
+  {
+    chave: 'modelos_docs',
+    rotulo: 'Modelos de Docs',
+    grupo: 'Sistema',
+    fixaAdm: true,
+  },
+  {
+    chave: 'consulta_bd',
+    rotulo: 'Consulta BD',
+    grupo: 'Sistema',
+    fixaAdm: true,
+  },
+  {
+    chave: 'assistente_legado',
+    rotulo: 'Assistente Legado',
+    grupo: 'Sistema',
+    fixaAdm: true,
+  },
 ];
 export const MENU_CHAVES = MENUS.map((m) => m.chave);
 export function ehMenuValido(chave: string): boolean {
@@ -75,7 +133,11 @@ export const PADRAO_PERMISSOES: Record<
   string,
   Partial<Record<Perfil, NivelPermissao>>
 > = {
-  novo_cliente: { ADM: 'alteracao', Coordenador: 'alteracao', Comercial: 'alteracao' },
+  novo_cliente: {
+    ADM: 'alteracao',
+    Coordenador: 'alteracao',
+    Comercial: 'alteracao',
+  },
   // Visão Geral (home): todos veem, menos o Comercial — espelha o `!soComercial` antigo.
   visao_geral: {
     ADM: 'consulta',
@@ -119,9 +181,22 @@ export const PADRAO_PERMISSOES: Record<
     Consultor: 'alteracao',
     Levantador: 'alteracao',
   },
+  // Matriz por Menu - Funções SICLA: mesma liberação das outras duas matrizes.
+  matriz_funcoes: {
+    ADM: 'alteracao',
+    Coordenador: 'alteracao',
+    Administrativo: 'alteracao',
+    GCI: 'alteracao',
+    Consultor: 'alteracao',
+    Levantador: 'alteracao',
+  },
   dicionario: { ADM: 'alteracao' },
   coordenacao: { ADM: 'alteracao', Coordenador: 'alteracao', GCI: 'alteracao' },
-  centro_operacional: { ADM: 'alteracao', Coordenador: 'alteracao', GCI: 'alteracao' },
+  centro_operacional: {
+    ADM: 'alteracao',
+    Coordenador: 'alteracao',
+    GCI: 'alteracao',
+  },
   atividade: { ADM: 'alteracao', Coordenador: 'alteracao', GCI: 'alteracao' },
   dashboards: {
     ADM: 'alteracao',
@@ -131,6 +206,16 @@ export const PADRAO_PERMISSOES: Record<
     Consultor: 'alteracao',
     Levantador: 'alteracao',
     Comercial: 'consulta',
+  },
+  // BI de Implantação: leitura de dado do SICLA (horas, status, grupo econômico). Mesma
+  // liberação dos Dashboards, mas sem o Comercial — a tela expõe saldo de horas por cliente.
+  bi_implantacao: {
+    ADM: 'alteracao',
+    Coordenador: 'alteracao',
+    Administrativo: 'consulta',
+    GCI: 'alteracao',
+    Consultor: 'consulta',
+    Levantador: 'consulta',
   },
   permissoes: { ADM: 'alteracao' },
   ferramentas: { ADM: 'alteracao' },

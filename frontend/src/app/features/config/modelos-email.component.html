@@ -1,73 +1,76 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px">
-    <h1 style="display:flex;align-items:center;gap:10px;margin:0">
-      <svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-mail"/></svg>
-      Modelos de E-mail
-    </h1>
-    <a class="btn primario" routerLink="/config/modelos-email/novo">
-      <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg> Novo modelo
-    </a>
+  <div class="pagina-head">
+    <div class="pagina-head-info">
+      <h1 class="pagina-titulo">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-mail"/></svg>
+        Modelos de E-mail
+      </h1>
+    </div>
+    <div class="pagina-acoes">
+      <a class="btn primario" routerLink="/config/modelos-email/novo">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg> Novo modelo
+      </a>
+    </div>
   </div>
   <p class="dica" ngNonBindable>Modelos reutilizáveis com variáveis dinâmicas (ex.: <code>{{CLIENTE}}</code>, <code>{{CONSULTOR}}</code>). Apenas o ADM pode criar, editar ou excluir modelos.</p>
 
   @if (erro()) {
-    <div class="resultado erro" style="padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
+    <div class="resultado erro linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}
     </div>
   }
 
   @if (modelos().length === 0) {
-    <div class="resultado" style="padding:16px;text-align:center;color:var(--muted)">
+    <div class="resultado" style="text-align:center;color:var(--muted)">
       Nenhum modelo cadastrado ainda. <a routerLink="/config/modelos-email/novo">Criar o primeiro modelo</a>.
     </div>
   } @else {
-    <div class="painel" style="padding:0;overflow:hidden">
-      <table style="width:100%;border-collapse:collapse">
+    <div class="tabela-wrap">
+      <table class="tabela">
         <thead>
-          <tr style="background:var(--surface);border-bottom:2px solid var(--line)">
-            <th style="padding:10px 14px;text-align:left;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Nome</th>
-            <th style="padding:10px 14px;text-align:left;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Assunto</th>
-            <th style="padding:10px 14px;text-align:left;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Etapa</th>
-            <th style="padding:10px 14px;text-align:center;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Status</th>
-            <th style="padding:10px 14px;text-align:center;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Tipo</th>
-            <th style="padding:10px 14px;text-align:right;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Ações</th>
+          <tr>
+            <th>Nome</th>
+            <th>Assunto</th>
+            <th>Etapa</th>
+            <th class="col-centro">Status</th>
+            <th class="col-centro">Tipo</th>
+            <th class="col-acoes">Ações</th>
           </tr>
         </thead>
         <tbody>
           @for (m of modelos(); track m.id) {
-            <tr [style.opacity]="m.ativo ? 1 : 0.55" style="border-bottom:1px solid var(--line)">
-              <td style="padding:10px 14px;font-weight:600">{{ m.nome }}</td>
-              <td style="padding:10px 14px;font-size:.85rem;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ m.assunto }}</td>
-              <td style="padding:10px 14px;font-size:.82rem">
+            <tr [style.opacity]="m.ativo ? 1 : 0.55">
+              <td><strong>{{ m.nome }}</strong></td>
+              <td class="celula-truncada">{{ m.assunto }}</td>
+              <td>
                 @if (m.etapa) {
-                  <span style="background:var(--brand-light,#e8f0fe);color:var(--brand);border-radius:4px;padding:2px 7px;font-size:.78rem">{{ m.etapa }}</span>
+                  <span class="badge">{{ m.etapa }}</span>
                 } @else {
-                  <span style="color:var(--muted)">—</span>
+                  <span class="vazio">—</span>
                 }
               </td>
-              <td style="padding:10px 14px;text-align:center">
-                <button type="button" class="btn" style="padding:3px 10px;font-size:.78rem"
-                        [style.background]="m.ativo ? 'var(--ok)' : ''" [style.color]="m.ativo ? '#fff' : ''" [style.border-color]="m.ativo ? 'var(--ok)' : ''"
+              <td class="col-centro">
+                <button type="button" class="btn pequeno" [class.sucesso]="m.ativo"
                         [title]="m.ativo ? 'Desativar' : 'Ativar'" (click)="alternarAtivo(m)">
                   {{ m.ativo ? 'Ativo' : 'Inativo' }}
                 </button>
               </td>
-              <td style="padding:10px 14px;text-align:center;font-size:.78rem">
+              <td class="col-centro">
                 @if (m.padrao) {
-                  <span style="color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:2px 7px">Padrão</span>
+                  <span class="tag tag-gerar">Padrão</span>
                 } @else {
-                  <span style="color:var(--muted)">Personalizado</span>
+                  <span class="vazio">Personalizado</span>
                 }
               </td>
-              <td style="padding:10px 14px;text-align:right;white-space:nowrap">
-                <a class="btn" style="padding:4px 10px;font-size:.82rem" [routerLink]="['/config/modelos-email', m.id]">
-                  <svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-pencil"/></svg> Editar
+              <td class="col-acoes">
+                <a class="btn pequeno" [routerLink]="['/config/modelos-email', m.id]">
+                  <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-pencil"/></svg> Editar
                 </a>
                 @if (!m.padrao) {
-                  <button type="button" class="btn" style="padding:4px 10px;font-size:.82rem;color:var(--err);border-color:var(--err)" (click)="excluir(m)">
-                    <svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use href="#ic-trash"/></svg> Excluir
+                  <button type="button" class="btn pequeno perigo" (click)="excluir(m)">
+                    <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-trash"/></svg> Excluir
                   </button>
                 }
               </td>
@@ -80,11 +83,11 @@
 
   <div style="margin-top:16px;padding:12px 16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm)">
     <p style="margin:0;font-size:.82rem;color:var(--muted)">
-      <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use href="#ic-info"/></svg>
+      <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-info"/></svg>
       <strong>Modelos padrão</strong> são pré-carregados pelo sistema e não podem ser excluídos, apenas editados ou desativados.
       <strong>Modelos personalizados</strong> podem ser criados, editados e excluídos livremente.
     </p>
   </div>
 
-  <a class="btn" routerLink="/home">← Voltar</a>
+  <a class="btn btn-voltar" routerLink="/home">← Voltar</a>
 }

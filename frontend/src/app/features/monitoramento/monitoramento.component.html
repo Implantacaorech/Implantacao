@@ -1,5 +1,5 @@
 @if (erro()) {
-  <div class="resultado erro" style="padding:10px 16px;margin:10px 0">{{ erro() }}</div>
+  <div class="resultado erro">{{ erro() }}</div>
 }
 
 @if (carregando()) {
@@ -7,7 +7,7 @@
 } @else if (dados(); as d) {
   <div class="ops-head">
     <div>
-      <h1>Centro de Monitoramento Operacional</h1>
+      <h1 class="pagina-titulo">Centro de Monitoramento Operacional</h1>
       <p class="dica">Visão executiva da implantação, com setores, gargalos, entregas e carga da equipe.</p>
     </div>
     <div class="ops-live">
@@ -150,23 +150,25 @@
         Próximas entregas
       </div>
       @if (d.entregas.length > 0) {
-        <table class="form-tab ops-table">
-          <thead><tr><th>Entrega</th><th>Cliente</th><th>Setor</th><th>Prazo</th></tr></thead>
-          <tbody>
-            @for (e of d.entregas; track e.projetoId + e.tipo) {
-              <tr class="linha-proj" [routerLink]="['/projetos', e.projetoId]">
-                <td>{{ e.tipo }}</td>
-                <td><strong>{{ e.cliente }}</strong></td>
-                <td>{{ e.setor }}</td>
-                <td>
-                  <strong class="{{ e.dias < 0 ? 'ops-danger' : (e.dias <= 3 ? 'ops-warn' : '') }}">
-                    {{ e.data | date: 'dd/MM/yyyy' }}@if (e.dias < 0) { · {{ -e.dias }}d atraso } @else if (e.dias === 0) { · hoje } @else { · {{ e.dias }}d }
-                  </strong>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
+        <div class="tabela-wrap">
+          <table class="form-tab ops-table">
+            <thead><tr><th>Entrega</th><th>Cliente</th><th>Setor</th><th>Prazo</th></tr></thead>
+            <tbody>
+              @for (e of d.entregas; track e.projetoId + e.tipo) {
+                <tr class="linha-proj" [routerLink]="['/projetos', e.projetoId]">
+                  <td>{{ e.tipo }}</td>
+                  <td><strong>{{ e.cliente }}</strong></td>
+                  <td>{{ e.setor }}</td>
+                  <td>
+                    <strong class="{{ e.dias < 0 ? 'ops-danger' : (e.dias <= 3 ? 'ops-warn' : '') }}">
+                      {{ e.data | date: 'dd/MM/yyyy' }}@if (e.dias < 0) { · {{ -e.dias }}d atraso } @else if (e.dias === 0) { · hoje } @else { · {{ e.dias }}d }
+                    </strong>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       } @else {
         <p class="dica">Sem entregas datadas nos projetos ativos.</p>
       }
@@ -188,19 +190,21 @@
         Carga por colaborador
       </div>
       @if (d.carga.length > 0) {
-        <table class="form-tab ops-table">
-          <thead><tr><th>Colaborador</th><th>Projetos</th><th>Horas</th><th>Alertas</th></tr></thead>
-          <tbody>
-            @for (c of d.carga; track c.nome) {
-              <tr>
-                <td><strong>{{ c.nome }}</strong></td>
-                <td>{{ c.projetos }}</td>
-                <td>{{ c.horas }} h</td>
-                <td>{{ c.alertas }}</td>
-              </tr>
-            }
-          </tbody>
-        </table>
+        <div class="tabela-wrap">
+          <table class="form-tab ops-table">
+            <thead><tr><th>Colaborador</th><th>Projetos</th><th>Horas</th><th>Alertas</th></tr></thead>
+            <tbody>
+              @for (c of d.carga; track c.nome) {
+                <tr>
+                  <td><strong>{{ c.nome }}</strong></td>
+                  <td>{{ c.projetos }}</td>
+                  <td>{{ c.horas }} h</td>
+                  <td>{{ c.alertas }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       } @else {
         <p class="dica">Sem colaboradores vinculados a projetos ativos.</p>
       }

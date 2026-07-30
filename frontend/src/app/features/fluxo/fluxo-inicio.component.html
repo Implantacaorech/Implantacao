@@ -1,15 +1,15 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <h1 style="display:flex;align-items:center;gap:10px">
-    <svg class="svgi" style="width:24px;height:24px;color:var(--brand)" aria-hidden="true"><use href="#ic-flow"/></svg>
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-flow"/></svg>
     Fluxo automático — Onboarding da Implantação
   </h1>
   <p class="sub">Começa pelo e-mail de fechamento do Comercial: extrai os dados e cria o fluxo completo (ficha + pacote de documentos + e-mail aos responsáveis).</p>
 
   @if (erro()) {
-    <div class="resultado erro" style="padding:10px 16px;display:flex;align-items:center;gap:8px">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-alert"/></svg>
+    <div class="resultado erro linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-alert"/></svg>
       {{ erro() }}
     </div>
   }
@@ -19,7 +19,7 @@
          [style.background]="imapOk() ? 'var(--ok-bg)' : 'var(--err-bg)'"
          [style.color]="imapOk() ? 'var(--ok)' : 'var(--err)'"
          [style.border]="'1px solid ' + (imapOk() ? 'var(--ok-border)' : 'var(--err-border)')">
-      <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use [attr.href]="imapOk() ? '#ic-check-circle' : '#ic-bell'"/></svg>
+      <svg class="svgi svgi-xs" aria-hidden="true"><use [attr.href]="imapOk() ? '#ic-check-circle' : '#ic-bell'"/></svg>
       IMAP {{ imapOk() ? 'configurado' : 'não configurado' }}
       <a routerLink="/config/imap" style="font-weight:400;margin-left:4px;color:inherit;text-decoration:underline">configurar</a>
     </div>
@@ -27,7 +27,7 @@
          [style.background]="smtpOk() ? 'var(--ok-bg)' : 'var(--err-bg)'"
          [style.color]="smtpOk() ? 'var(--ok)' : 'var(--err)'"
          [style.border]="'1px solid ' + (smtpOk() ? 'var(--ok-border)' : 'var(--err-border)')">
-      <svg class="svgi" style="width:12px;height:12px" aria-hidden="true"><use [attr.href]="smtpOk() ? '#ic-check-circle' : '#ic-bell'"/></svg>
+      <svg class="svgi svgi-xs" aria-hidden="true"><use [attr.href]="smtpOk() ? '#ic-check-circle' : '#ic-bell'"/></svg>
       SMTP {{ smtpOk() ? 'pronto' : 'pendente' }}
       <a routerLink="/config/email" style="font-weight:400;margin-left:4px;color:inherit;text-decoration:underline">configurar</a>
     </div>
@@ -50,7 +50,7 @@
       <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-inbox"/></svg>
       2) Trazer o e-mail de fechamento
     </h3>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+    <div class="acoes" style="margin-bottom:var(--sp-3)">
       <button class="btn primario" type="button" [disabled]="!imapOk() || checando()" (click)="checarCaixa()">
         <svg class="svgi" aria-hidden="true"><use href="#ic-inbox"/></svg> {{ checando() ? 'Checando…' : 'Checar caixa de entrada' }}
       </button>

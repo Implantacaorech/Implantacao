@@ -43,7 +43,7 @@ base.
 - **Lista de protocolos:** cada linha mostra título, módulo, menu, status, origem e data — origem: `itens()`.
 
 ### Ficha de revisão
-- **Player do vídeo/áudio + transcrição + campos editáveis do protocolo** (título, módulo, menu, passo a passo, pré-requisitos, etc.) — origem: rota `ficha` + `salvar`.
+- **Player do vídeo/áudio + transcrição + campos editáveis do protocolo**, agrupados em blocos (1. Resumo · 2. Conteúdo do treinamento · 3. Conceitos, regras e configurações · 4. Fechamento · 5. Auditoria da análise) — origem: rota `ficha` + `salvar`, lista `PROTO_CAMPOS_EDICAO`.
 - **Ações:** (re)processar, salvar edição, aprovar, reprovar — origem: rotas `processar`/`salvar`/`aprovar`/`reprovar`.
 - **Andamento:** barra de progresso da transcrição, atualizada por consulta periódica — origem: rota `status` (polling).
 
@@ -59,6 +59,9 @@ base.
 - RN-09: Ao concluir a análise, o protocolo passa a "Em revisão" e registra a data de processamento — origem: `atualizarStatus()`, `processadoEm` quando "Em revisão".
 - RN-10: Os status possíveis de um protocolo são: Pendente, Transcrevendo, Analisando, Em revisão, Aprovado, Reprovado / Ajustar, Erro — origem: `PROTO_STATUS`.
 - RN-11: Quando o processamento falha, a mensagem ao usuário é **traduzida para linguagem clara** conforme a causa (créditos de IA esgotados, chave/modelo inválidos, serviço sobrecarregado) — origem: `erroAmigavel()`. Ver [[RN - Modo IA (Config IA)]].
+- RN-12: A análise segue o **protocolo técnico de treinamento em 10 seções**: resumo geral, menus do sistema abordados (todos, cada um com objetivo e atividades), funcionalidades demonstradas, definições explicadas, configurações e parametrizações, processos executados, dúvidas respondidas, pendências, próximos passos e resumo técnico final — origem: prompt `SISTEMA` em `protocolo-ia.service.ts` (homologado fora do painel antes de entrar, 2026-07-29).
+- RN-13: A IA **descarta** conversas paralelas, cumprimentos/despedidas, assuntos pessoais, conversas comerciais, discussões sobre outros clientes, assuntos administrativos, interrupções/pausas e problemas de infraestrutura — estes últimos só entram quando impactam o treinamento; o que foi removido fica registrado em `assuntos_removidos` — origem: bloco "FILTRAGEM" do prompt.
+- RN-14: **"Pendências" tem dois sentidos** e campos distintos: `pendencias_treinamento` é o que ficou pendente com o cliente (vazio vira "Nenhuma pendência identificada.") e `pendencias` é a lista de pontos que a IA levanta para o revisor humano — origem: `analisar()` (fallback) e rótulos de `PROTO_CAMPOS_EDICAO`.
 
 ## Validações e restrições
 - Só são aceitos arquivos de **vídeo ou áudio** em formatos suportados; outro formato é recusado com a lista de extensões válidas — origem: rota `novo`, checagem `EXTS`.

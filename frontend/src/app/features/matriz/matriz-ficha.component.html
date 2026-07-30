@@ -1,13 +1,13 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-    <h1 style="margin:0">📊 {{ tecnico()?.nome }}</h1>
+  <div class="acoes" style="margin-bottom:var(--sp-3)">
+    <h1 class="pagina-titulo"><svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-chart"/></svg> {{ tecnico()?.nome }}</h1>
     @if (tecnico()?.setor) {
-      <span style="background:#eef2ff;color:#1f4e78;padding:3px 10px;border-radius:999px;font-size:.78rem;font-weight:700">{{ tecnico()?.setor }}</span>
+      <span class="badge">{{ tecnico()?.setor }}</span>
     }
     @if (!editavel()) {
-      <span style="background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:999px;font-size:.78rem;font-weight:700">Somente consulta</span>
+      <span style="background:var(--warn-bg);color:var(--warn);padding:3px 10px;border-radius:999px;font-size:.78rem;font-weight:700">Somente consulta</span>
     }
     <span style="flex:1"></span>
     @if (volta()) {
@@ -16,10 +16,10 @@
   </div>
 
   @if (aviso()) {
-    <div class="resultado ok" style="padding:8px 14px">✅ {{ aviso() }}</div>
+    <div class="resultado ok"><svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}</div>
   }
   @if (erro()) {
-    <div class="resultado erro" style="padding:8px 14px">{{ erro() }}</div>
+    <div class="resultado erro">{{ erro() }}</div>
   }
 
   <p class="dica" style="margin-top:0">
@@ -48,7 +48,7 @@
               [ngModel]="nota(comp.sigla)"
               (ngModelChange)="atualizarNota(comp.sigla, $event)"
               [disabled]="!editavel()"
-              [style.background]="notaNum(comp.sigla) === null ? '' : (notaNum(comp.sigla)! >= 9 ? '#dcfce7' : (notaNum(comp.sigla)! >= 6 ? '#fef9c3' : '#fee2e2'))"
+              [style.background]="notaNum(comp.sigla) === null ? '' : (notaNum(comp.sigla)! >= 9 ? 'var(--ok-bg)' : (notaNum(comp.sigla)! >= 6 ? 'var(--warn-bg)' : 'var(--err-bg)'))"
               style="text-align:center"
             />
           </label>

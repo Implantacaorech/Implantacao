@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   HttpCode,
@@ -42,6 +43,7 @@ import {
   CurrentUser,
   type AuthUser,
 } from '../common/decorators/current-user.decorator';
+import { temPapel } from '../common/constants/perfis';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { ProtocolosService } from './protocolos.service';
 import { ProcessamentoProtocolosService } from './processamento-protocolos.service';
@@ -77,12 +79,16 @@ export class ProtocolosController {
 
   @Get()
   @ApiOperation({ summary: 'Consulta da base de conhecimento, com filtros' })
-  async listar(@Query() filtro: ListarProtocolosDto) {
+  async listar(
+    @Query() filtro: ListarProtocolosDto,
+    @CurrentUser() user: AuthUser,
+  ) {
     const itens = await this.protocolos.listar(filtro);
     return new ApiEnvelope({
       itens,
       roboOk: this.processamento.configurado(),
       pasta: this.processamento.pastaRaiz(),
+      podeExcluir: temPapel(user, ...PERFIS_APROVA_PROTOCOLO),
     });
   }
 
@@ -154,9 +160,10 @@ export class ProtocolosController {
     const p = await this.protocolos.buscarPorId(id);
     return new ApiEnvelope({
       protocolo: p,
-      podeAprovar: (PERFIS_APROVA_PROTOCOLO as readonly string[]).includes(
-        user.perfil,
-      ),
+      // Todos os papéis do usuário, não só o principal (correção de 2026-07-28).
+      podeAprovar: temPapel(user, ...PERFIS_APROVA_PROTOCOLO),
+      // Mesma restrição de aprovar/reprovar (decisão do usuário em 2026-07-30).
+      podeExcluir: temPapel(user, ...PERFIS_APROVA_PROTOCOLO),
       ehAudio: ehAudio(p.videoNome),
     });
   }
@@ -223,6 +230,20 @@ export class ProtocolosController {
     const ok = await this.protocolos.decidir(id, false, user.nome);
     if (!ok) throw new NotFoundException('Protocolo não encontrado.');
     return new ApiEnvelope({ salvo: true });
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(RolesGuard)
+  @Roles(...PERFIS_APROVA_PROTOCOLO)
+  @ApiOperation({
+    summary: 'Exclui o registro e o arquivo de vídeo/áudio original',
+  })
+  async excluir(@Param('id', ParseIntPipe) id: number) {
+    const p = await this.protocolos.excluir(id);
+    if (!p) throw new NotFoundException('Protocolo não encontrado.');
+    this.processamento.apagarArquivo(p.videoCaminho);
+    return new ApiEnvelope({ excluido: true });
   }
 
   @Get(':id/status')

@@ -3,6 +3,7 @@ import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../../core/services/auth.service';
+import { soComercial } from '../../core/constants/perfis';
 
 @Component({
   selector: 'app-login',
@@ -31,10 +32,9 @@ export class LoginComponent {
     try {
       const { login, senha } = this.form.getRawValue();
       await this.auth.login(login, senha);
-      // O Comercial só usa a tela de consulta/cadastro do cliente — cai direto nela. Os
-      // demais perfis vão para a visão geral.
-      const destino =
-        this.auth.usuario()?.perfil === 'Comercial' ? '/clientes/novo' : '/home';
+      // Quem é SÓ Comercial usa apenas a tela de consulta/cadastro do cliente — cai direto
+      // nela. Os demais (inclusive quem acumula Comercial + outro papel) vão pra visão geral.
+      const destino = soComercial(this.auth.usuario()) ? '/clientes/novo' : '/home';
       await this.router.navigateByUrl(destino);
     } catch (e) {
       const msg =

@@ -19,9 +19,6 @@ import { ENTITIES } from './entities';
           synchronize: db.type === 'better-sqlite3',
           migrationsRun: false,
         };
-        if (db.type === 'postgres') {
-          return { type: 'postgres' as const, url: db.url, ...common };
-        }
         if (db.type === 'mariadb') {
           // Sem `charset: 'utf8mb4'`, o driver mysql2 negocia utf8mb3 (utf8 legado, 3
           // bytes) na CONEXÃO mesmo com o servidor/tabelas em utf8mb4 — corrompe

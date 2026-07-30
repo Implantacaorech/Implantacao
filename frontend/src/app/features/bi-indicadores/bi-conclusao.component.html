@@ -1,0 +1,120 @@
+<app-bi-indicadores-abas />
+
+@if (erro()) {
+  <div class="resultado erro">{{ erro() }}</div>
+}
+
+<app-bi-indicadores-filtros [filtros]="filtros()" [podeExportar]="concluidos().length > 0"
+  placeholderBusca="cliente, RNS, responsável…"
+  (mudou)="carregar()" (exportar)="exportarCsv()" />
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <div class="ind-kpis">
+    <div class="ind-kpi ind-kpi-c">
+      <div class="ind-kpi-v">{{ totais().concluidos }}</div>
+      <div class="ind-kpi-l">Projetos concluídos</div>
+    </div>
+    <div class="ind-kpi">
+      <div class="ind-kpi-v">{{ totais().projetos }}</div>
+      <div class="ind-kpi-l">Projetos no período</div>
+    </div>
+    <div class="ind-kpi ind-kpi-d">
+      <div class="ind-kpi-v">
+        {{ totais().leadTimeMedio === null ? '—' : totais().leadTimeMedio + ' m' }}
+      </div>
+      <div class="ind-kpi-l">Lead-time médio</div>
+    </div>
+    <div class="ind-kpi ind-kpi-a">
+      <div class="ind-kpi-v">{{ horas(totais().horasContratadas) }}</div>
+      <div class="ind-kpi-l">Horas contratadas</div>
+    </div>
+    <div class="ind-kpi ind-kpi-b">
+      <div class="ind-kpi-v">
+        {{ totais().percentualUtilizacao === null ? '—' : totais().percentualUtilizacao + '%' }}
+      </div>
+      <div class="ind-kpi-l">Utilização das horas</div>
+    </div>
+  </div>
+
+  <div class="ind-graficos">
+    <div class="bi-card">
+      <div class="bi-card-tit">Projetos concluídos por mês de encerramento</div>
+      <div class="ind-canvas">
+        @if (graficoConcluidos(); as cfg) {
+          <canvas [appChart]="cfg"></canvas>
+        } @else {
+          <p class="dica">— nenhum projeto concluído no período —</p>
+        }
+      </div>
+    </div>
+    <div class="bi-card">
+      <div class="bi-card-tit">Previsto × realizado dos concluídos</div>
+      <div class="ind-canvas">
+        @if (graficoPrevistoRealizado(); as cfg) {
+          <canvas [appChart]="cfg"></canvas>
+        } @else {
+          <p class="dica">— sem dados no período —</p>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="bi-card">
+    <div class="bi-card-tit">Tempo até a conclusão</div>
+    <div class="ind-barras">
+      @for (f of faixasLeadTime(); track f.chave) {
+        <div class="ind-barra">
+          <span class="ind-barra-rot">{{ f.chave }}</span>
+          <span class="ind-barra-tr">
+            <span class="ind-barra-in" style="background:#2e7d32"
+                  [style.width.%]="totais().concluidos ? (f.quantidade / totais().concluidos) * 100 : 0"></span>
+          </span>
+          <span class="ind-barra-n">{{ f.quantidade }}</span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="bi-card">
+    <div class="bi-card-tit">Projetos concluídos ({{ concluidos().length }})</div>
+    <div class="bi-tab-wrap">
+      <table class="bi-tab">
+        <thead>
+          <tr>
+            <th>RNS</th><th>Cliente</th><th>Responsável</th>
+            <th>Contratação</th><th>Encerramento</th><th class="num">Lead-time</th>
+            <th class="num">Contratadas</th><th class="num">Realizadas</th><th class="num">Utilização</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of concluidos(); track l.codigo) {
+            <tr>
+              <td>{{ l.codigo }}</td>
+              <td [title]="l.descricao">{{ l.fantasia || '—' }}</td>
+              <td>{{ l.responsavel || '—' }}</td>
+              <td>{{ dataBr(l.dataContratacao) }}</td>
+              <td>{{ dataBr(l.dataEncerramento) }}</td>
+              <td class="num">{{ l.leadTimeMeses === null ? '—' : l.leadTimeMeses + ' m' }}</td>
+              <td class="num">{{ horas(l.horasContratadas) }}</td>
+              <td class="num">{{ horas(l.horasRealizadas) }}</td>
+              <td class="num">
+                @if (l.percentualUtilizacao === null) {
+                  —
+                } @else {
+                  <span class="ind-pct"
+                        [class.alto]="l.percentualUtilizacao > 100"
+                        [class.medio]="l.percentualUtilizacao > 80 && l.percentualUtilizacao <= 100"
+                        [class.baixo]="l.percentualUtilizacao <= 80">{{ l.percentualUtilizacao }}%</span>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="9" class="dica">— nenhum projeto concluído com os filtros atuais —</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}

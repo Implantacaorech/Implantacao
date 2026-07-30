@@ -1,32 +1,32 @@
 @if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <h1 style="display:flex;align-items:center;gap:10px">
-    <svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-send"/></svg> Envio pela API do Gmail (OAuth)
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-send"/></svg> Envio pela API do Gmail (OAuth)
   </h1>
   <p class="dica">Envia e-mails por HTTPS (porta 443), contornando o bloqueio de SMTP da rede. Quando autorizado, todo o envio do painel (digest, pacote, encaminhamentos) passa a usar este caminho.</p>
 
   @if (aviso()) {
-    <div class="resultado ok" style="padding:8px 14px">{{ aviso() }}</div>
+    <div class="resultado ok">{{ aviso() }}</div>
   }
   @if (erro()) {
-    <div class="resultado erro" style="padding:8px 14px">{{ erro() }}</div>
+    <div class="resultado erro">{{ erro() }}</div>
   }
 
   <div class="painel">
-    <p style="display:flex;align-items:center;gap:8px"><strong>Status:</strong>
+    <p class="flex-linha"><strong>Status:</strong>
       @if (autorizado()) {
-        <svg class="svgi" style="width:12px;height:12px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg> Autorizado — pronto para enviar.
+        <svg class="svgi svgi-xs ic-ok" aria-hidden="true"><use href="#ic-check-circle"/></svg> Autorizado — pronto para enviar.
       } @else if (temCliente()) {
-        <svg class="svgi" style="width:12px;height:12px;color:var(--warn)" aria-hidden="true"><use href="#ic-clock"/></svg> Credencial carregada — falta autorizar.
+        <svg class="svgi svgi-xs ic-warn" aria-hidden="true"><use href="#ic-clock"/></svg> Credencial carregada — falta autorizar.
       } @else {
-        <svg class="svgi" style="width:12px;height:12px;color:var(--err)" aria-hidden="true"><use href="#ic-bell"/></svg> Não configurado.
+        <svg class="svgi svgi-xs ic-err" aria-hidden="true"><use href="#ic-bell"/></svg> Não configurado.
       }
     </p>
   </div>
 
   <div class="painel">
-    <h3 style="color:var(--navy);margin-top:0">1) Credencial do Google Cloud</h3>
+    <h3>1) Credencial do Google Cloud</h3>
     <p class="dica" style="margin-top:0">Envie o arquivo <code>client_secret*.json</code> (OAuth Client ID, tipo "App para computador") baixado do Google Cloud Console.</p>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <input type="file" accept=".json" [disabled]="enviando()" (change)="enviarCliente($event)" />
@@ -35,7 +35,7 @@
   </div>
 
   <div class="painel">
-    <h3 style="color:var(--navy);margin-top:0">2) Autorizar</h3>
+    <h3>2) Autorizar</h3>
     <p class="dica" style="margin-top:0">Abre o navegador para você entrar na conta <strong>implantacao.rechsistemas&#64;gmail.com</strong> e permitir o envio. Faça isto <strong>na máquina onde o painel roda</strong>.</p>
     <button class="btn primario" type="button" [disabled]="!temCliente() || autorizando()" (click)="autorizar()">
       <svg class="svgi" aria-hidden="true"><use href="#ic-lock"/></svg> {{ autorizando() ? 'Abrindo…' : 'Autorizar acesso ao Gmail' }}
@@ -43,7 +43,7 @@
   </div>
 
   <div class="painel">
-    <h3 style="color:var(--navy);margin-top:0">Como criar a credencial (uma vez)</h3>
+    <h3>Como criar a credencial (uma vez)</h3>
     <ol class="dica" style="margin:0;padding-left:18px">
       <li>Acesse <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">console.cloud.google.com</a> (logado na conta de implantação) e <strong>crie um projeto</strong>.</li>
       <li>Em <em>APIs e serviços → Biblioteca</em>, habilite a <strong>Gmail API</strong>.</li>

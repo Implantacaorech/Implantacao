@@ -1,0 +1,8 @@
+/* `.tools`/`.tool` e `h2.sec` vêm do sistema de design global (src/styles.css). Só o
+   realce do ícone do título era local da Visão Geral — veio junto com a seção. */
+h2.sec .svgi.hi {
+  width: 17px;
+  height: 17px;
+  vertical-align: -3px;
+  color: var(--accent-700);
+}

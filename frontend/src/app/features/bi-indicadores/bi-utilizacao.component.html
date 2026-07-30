@@ -1,0 +1,133 @@
+<app-bi-indicadores-abas />
+
+@if (erro()) {
+  <div class="resultado erro">{{ erro() }}</div>
+}
+
+<app-bi-indicadores-filtros [filtros]="filtros()" [podeExportar]="comContratacao().length > 0"
+  placeholderBusca="cliente, RNS, responsável…"
+  (mudou)="carregar()" (exportar)="exportarCsv()" />
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <div class="ind-kpis">
+    <div class="ind-kpi ind-kpi-b">
+      <div class="ind-kpi-v">
+        {{ totais().percentualUtilizacao === null ? '—' : totais().percentualUtilizacao + '%' }}
+      </div>
+      <div class="ind-kpi-l">Utilização geral</div>
+    </div>
+    <div class="ind-kpi ind-kpi-a">
+      <div class="ind-kpi-v">{{ horas(totais().horasContratadas) }}</div>
+      <div class="ind-kpi-l">Horas contratadas</div>
+    </div>
+    <div class="ind-kpi ind-kpi-d">
+      <div class="ind-kpi-v">{{ horas(totais().horasRealizadas) }}</div>
+      <div class="ind-kpi-l">Horas realizadas</div>
+    </div>
+    <div class="ind-kpi ind-kpi-c">
+      <div class="ind-kpi-v">{{ horas(totais().horasSaldo) }}</div>
+      <div class="ind-kpi-l">Saldo</div>
+    </div>
+    <div class="ind-kpi" style="border-left-color:#1f2937">
+      <div class="ind-kpi-v">{{ estourados().length }}</div>
+      <div class="ind-kpi-l">Projetos acima de 100%</div>
+    </div>
+  </div>
+
+  <div class="ind-graficos">
+    <div class="bi-card">
+      <div class="bi-card-tit">Contratado × realizado por mês</div>
+      <div class="ind-canvas">
+        @if (graficoUtilizacao(); as cfg) {
+          <canvas [appChart]="cfg"></canvas>
+        } @else {
+          <p class="dica">— sem dados no período —</p>
+        }
+      </div>
+    </div>
+    <div class="bi-card">
+      <div class="bi-card-tit">Projetos por faixa de consumo</div>
+      <div class="ind-barras">
+        @for (f of faixas(); track f.chave) {
+          <div class="ind-barra">
+            <span class="ind-barra-rot">{{ f.chave }}</span>
+            <span class="ind-barra-tr">
+              <span class="ind-barra-in" [style.background]="f.cor"
+                    [style.width.%]="comContratacao().length ? (f.quantidade / comContratacao().length) * 100 : 0"></span>
+            </span>
+            <span class="ind-barra-n">{{ f.quantidade }}</span>
+          </div>
+        } @empty { <p class="dica" style="padding:8px">— sem dados —</p> }
+      </div>
+    </div>
+  </div>
+
+  @if (estourados().length > 0) {
+    <div class="bi-card">
+      <div class="bi-card-tit">Estouraram as horas contratadas ({{ estourados().length }})</div>
+      <div class="bi-tab-wrap">
+        <table class="bi-tab">
+          <thead>
+            <tr>
+              <th>RNS</th><th>Cliente</th><th>Responsável</th><th>Posição</th>
+              <th class="num">Contratadas</th><th class="num">Realizadas</th>
+              <th class="num">Saldo</th><th class="num">Utilização</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (l of estourados(); track l.codigo) {
+              <tr>
+                <td>{{ l.codigo }}</td>
+                <td [title]="l.descricao">{{ l.fantasia || '—' }}</td>
+                <td>{{ l.responsavel || '—' }}</td>
+                <td>{{ l.posicao || '—' }}</td>
+                <td class="num">{{ horas(l.horasContratadas) }}</td>
+                <td class="num">{{ horas(l.horasRealizadas) }}</td>
+                <td class="num neg">{{ horas(l.horasSaldo) }}</td>
+                <td class="num"><span class="ind-pct alto">{{ l.percentualUtilizacao }}%</span></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  <div class="bi-card">
+    <div class="bi-card-tit">Todos os projetos com horas contratadas ({{ comContratacao().length }})</div>
+    <div class="bi-tab-wrap">
+      <table class="bi-tab">
+        <thead>
+          <tr>
+            <th>RNS</th><th>Cliente</th><th>Responsável</th><th>Posição</th>
+            <th class="num">Contratadas</th><th class="num">Realizadas</th>
+            <th class="num">Saldo</th><th class="num">Utilização</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of comContratacao(); track l.codigo) {
+            <tr>
+              <td>{{ l.codigo }}</td>
+              <td [title]="l.descricao">{{ l.fantasia || '—' }}</td>
+              <td>{{ l.responsavel || '—' }}</td>
+              <td>{{ l.posicao || '—' }}</td>
+              <td class="num">{{ horas(l.horasContratadas) }}</td>
+              <td class="num">{{ horas(l.horasRealizadas) }}</td>
+              <td class="num" [class.neg]="l.horasSaldo < 0">{{ horas(l.horasSaldo) }}</td>
+              <td class="num">
+                <span class="ind-pct"
+                      [class.alto]="l.percentualUtilizacao! > 100"
+                      [class.medio]="l.percentualUtilizacao! > 80 && l.percentualUtilizacao! <= 100"
+                      [class.baixo]="l.percentualUtilizacao! <= 80">{{ l.percentualUtilizacao }}%</span>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="8" class="dica">— nenhum projeto com horas contratadas —</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}

@@ -1,5 +1,11 @@
 import { Perfil } from '../models/auth-user.model';
 
+/** O mínimo que estas funções precisam do usuário logado (aceita o `AuthUser` inteiro). */
+export interface UsuarioComPapeis {
+  perfil?: Perfil;
+  perfis?: Perfil[];
+}
+
 // Espelha backend/src/common/constants/perfis.ts (que por sua vez espelha webapp/app.py)
 // — usado só para MOSTRAR/ESCONDER ações na UI; a aplicação real da regra continua no
 // backend (guards), então divergir aqui só afeta UX, nunca segurança.
@@ -47,8 +53,36 @@ export const MENU_MATRIZ: Perfil[] = [
 export const MENU_SISTEMA: Perfil[] = ['ADM'];
 // Carteira e Dashboards = TODOS_PERFIS.
 
-export function podeGerar(tipo: string, perfil: Perfil | undefined): boolean {
-  if (!perfil) return false;
-  if (tipo === 'levantamento' || tipo === 'projeto') return PERFIS_GERA_LEVANTAMENTO.includes(perfil);
-  return PERFIS_GERA_CRONOGRAMA.includes(perfil);
+/** Papéis efetivos do usuário — `perfis` (todos) com fallback no `perfil` principal (token
+ * antigo, emitido antes dos papéis múltiplos). */
+export function papeisDe(usuario: UsuarioComPapeis | undefined | null): Perfil[] {
+  if (!usuario) return [];
+  return usuario.perfis?.length ? usuario.perfis : usuario.perfil ? [usuario.perfil] : [];
+}
+
+/** Espelha `temPapel()` do backend: o usuário TEM o papel se ele está entre os dele. Usar
+ * sempre isto no lugar de comparar com o `perfil` principal — a pessoa acumula cargos
+ * (é GCI e Levantador, por exemplo), e comparar com um só escondia ação legítima. */
+export function temPapel(
+  usuario: UsuarioComPapeis | undefined | null,
+  ...papeis: Perfil[]
+): boolean {
+  const meus = papeisDe(usuario);
+  return papeis.some((p) => meus.includes(p));
+}
+
+/** "É SÓ Comercial" — quem acumula Comercial + outro papel segue o fluxo interno. */
+export function soComercial(usuario: UsuarioComPapeis | undefined | null): boolean {
+  const meus = papeisDe(usuario);
+  return meus.length > 0 && meus.every((p) => p === 'Comercial');
+}
+
+export function podeGerar(
+  tipo: string,
+  usuario: UsuarioComPapeis | undefined | null,
+): boolean {
+  if (tipo === 'levantamento' || tipo === 'projeto') {
+    return temPapel(usuario, ...PERFIS_GERA_LEVANTAMENTO);
+  }
+  return temPapel(usuario, ...PERFIS_GERA_CRONOGRAMA);
 }

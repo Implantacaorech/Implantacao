@@ -3,8 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Projeto } from '../database/entities/projeto.entity';
 import { Evento } from '../database/entities/evento.entity';
-import type { AuthUser } from '../common/decorators/current-user.decorator';
-import { soMeus } from '../common/utils/so-meus.util';
 import {
   FaseFunil,
   MetricasService,
@@ -29,7 +27,11 @@ export interface PainelAtividade {
 
 /** Atividade da operação: uso dos últimos 30 dias (projetos novos, documentos, e-mails,
  * transições de etapa) + funil por macro-fase com idade média + feed cronológico dos
- * últimos 60 eventos. Espelha webapp/routes_painel.py:atividade. */
+ * últimos 60 eventos. Espelha webapp/routes_painel.py:atividade.
+ *
+ * ESCOPO (correção de 2026-07-28): carteira INTEIRA, igual à Coordenação — o gate é o menu
+ * `atividade` do painel de Permissões, não mais o filtro por designação (que devolvia feed
+ * e funil vazios pra quem tinha o menu liberado e não é ADM/Coordenador/Administrativo). */
 @Injectable()
 export class AtividadeService {
   constructor(
@@ -38,11 +40,10 @@ export class AtividadeService {
     private readonly metricas: MetricasService,
   ) {}
 
-  async painel(user: AuthUser): Promise<PainelAtividade> {
+  async painel(): Promise<PainelAtividade> {
     const todos = await this.projetos.find();
-    const meus = soMeus(todos, user);
-    const ids = meus.map((p) => p.id);
-    const cliPorId = new Map(meus.map((p) => [p.id, p.cliente]));
+    const ids = todos.map((p) => p.id);
+    const cliPorId = new Map(todos.map((p) => [p.id, p.cliente]));
 
     const eventos =
       ids.length > 0
@@ -58,8 +59,8 @@ export class AtividadeService {
 
     return {
       feed,
-      uso: this.metricas.metricasUso(eventos, meus),
-      funil: this.metricas.funilMacro(meus),
+      uso: this.metricas.metricasUso(eventos, todos),
+      funil: this.metricas.funilMacro(todos),
     };
   }
 }

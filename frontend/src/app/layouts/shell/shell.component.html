@@ -68,8 +68,8 @@
       }
       @if (podeProtocolos()) {
         <a class="side-link" routerLink="/protocolos" routerLinkActive="on">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-bulb"/></svg>Protocolos
-          <span class="side-tip">Vídeos → conhecimento</span>
+          <svg class="svgi" aria-hidden="true"><use href="#ic-bulb"/></svg>Transcrição Áudio/Vídeo
+          <span class="side-tip">Áudio/vídeo → conhecimento</span>
         </a>
       }
       @if (podeMatriz()) {
@@ -82,6 +82,12 @@
         <a class="side-link" routerLink="/matriz-detalhada" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg>Matriz por Menu
           <span class="side-tip">Notas por menu do SIGER</span>
+        </a>
+      }
+      @if (podeMatrizFuncoes()) {
+        <a class="side-link" routerLink="/matriz-funcoes" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg>Matriz por Menu - Funções
+          <span class="side-tip">Notas por função implantável (LISTA_FUNCOES do SICLA)</span>
         </a>
       }
       @if (podeDicionario()) {
@@ -107,9 +113,10 @@
             <svg class="svgi" aria-hidden="true"><use href="#ic-activity"/></svg>Atividade
           </a>
         }
-        @if (podeDashboards()) {
-          <a class="side-link" routerLink="/dashboards" routerLinkActive="on">
-            <svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg>Dashboards
+        @if (podeBi()) {
+          <a class="side-link" routerLink="/bi" routerLinkActive="on">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg>BI
+            <span class="side-tip">BI Implantação · Implantação Clientes SIGER</span>
           </a>
         }
         @if (podePermissoes()) {
@@ -121,7 +128,7 @@
       }
       @if (veSistema()) {
         <div class="side-grp">Sistema</div>
-        <a class="side-link" routerLink="/home" fragment="ferramentas">
+        <a class="side-link" routerLink="/ferramentas" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-tools"/></svg>Ferramentas
         </a>
         <a class="side-link" routerLink="/usuarios" routerLinkActive="on">
@@ -150,12 +157,12 @@
   <div class="main">
     <header class="topbar">
       <button class="side-toggle" type="button" (click)="toggleSide()" aria-label="Abrir menu">
-        <svg class="svgi" style="width:20px;height:20px" aria-hidden="true"><use href="#ic-menu"/></svg>
+        <svg class="svgi svgi-xl" aria-hidden="true"><use href="#ic-menu"/></svg>
       </button>
       <div class="topbar-title">{{ tituloPagina() }}</div>
       <form class="topbar-busca" (submit)="$event.preventDefault(); buscar()" role="search">
         <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>
-        <input name="busca" placeholder="Buscar cliente…" aria-label="Buscar cliente" [(ngModel)]="busca" />
+        <input name="busca" placeholder="Buscar cliente…" aria-label="Buscar cliente" [ngModel]="busca()" (ngModelChange)="busca.set($event)" />
       </form>
       <a class="topbar-ico" routerLink="/coordenacao" title="Alertas" aria-label="Alertas">
         <svg class="svgi" aria-hidden="true"><use href="#ic-bell"/></svg>

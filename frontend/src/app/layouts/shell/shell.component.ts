@@ -51,6 +51,7 @@ export class ShellComponent {
   readonly podeProtocolos = computed(() => this.perm.podeVer('protocolos'));
   readonly podeMatriz = computed(() => this.perm.podeVer('matriz'));
   readonly podeMatrizDetalhada = computed(() => this.perm.podeVer('matriz_detalhada'));
+  readonly podeMatrizFuncoes = computed(() => this.perm.podeVer('matriz_funcoes'));
   readonly podeDicionario = computed(() => this.perm.podeVer('dicionario'));
   readonly podeCoordenacao = computed(() => this.perm.podeVer('coordenacao'));
   readonly podeCentroOp = computed(() =>
@@ -58,6 +59,9 @@ export class ShellComponent {
   );
   readonly podeAtividade = computed(() => this.perm.podeVer('atividade'));
   readonly podeDashboards = computed(() => this.perm.podeVer('dashboards'));
+  readonly podeClientesSiger = computed(() => this.perm.podeVer('bi_implantacao'));
+  /** A área BI é UMA entrada no menu; basta poder ver um dos dois BIs. */
+  readonly podeBi = computed(() => this.podeDashboards() || this.podeClientesSiger());
   readonly podePermissoes = computed(() => this.perm.podeVer('permissoes'));
   readonly veSistema = computed(() => this.perm.podeVer('usuarios'));
   /** Mostra o cabeçalho do grupo Gestão se houver ao menos um item visível nele. */
@@ -66,7 +70,7 @@ export class ShellComponent {
       this.podeCoordenacao() ||
       this.podeCentroOp() ||
       this.podeAtividade() ||
-      this.podeDashboards() ||
+      this.podeBi() ||
       this.podePermissoes(),
   );
 

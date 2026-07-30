@@ -1,0 +1,169 @@
+<div class="md-wrap">
+  <div class="md-top">
+    <div>
+      <h1 class="pagina-titulo">Matriz por Menu <span class="md-badge">Funções SICLA</span></h1>
+      <p class="sub">
+        Avaliação no nível de <strong>função implantável</strong> do SIGER. A nota do módulo é a
+        <strong>média das funções avaliadas</strong>. As funções vêm da tabela
+        <code>LISTA_FUNCOES</code> do SICLA, agrupadas pela coluna <code>STRMENUS</code> —
+        uma função aparece em <em>todos</em> os módulos citados ali.
+      </p>
+    </div>
+    <a class="btn btn-sec" routerLink="/matriz-detalhada">← Matriz por Menu (SIGER)</a>
+  </div>
+
+  @if (erro()) { <p class="erro">{{ erro() }}</p> }
+
+  @if (carregando()) {
+    <div class="painel vazio">Carregando…</div>
+  } @else if (tecnico()) {
+
+    <!-- Barra do técnico -->
+    <div class="md-tec painel">
+      @if (podeVerTodos()) {
+        <label class="md-sel">
+          <span>Técnico</span>
+          <select [ngModel]="tecnicoId()" (ngModelChange)="trocarTecnico($event)">
+            @for (t of tecnicos(); track t.id) {
+              <option [ngValue]="t.id">{{ t.nome }}</option>
+            }
+          </select>
+        </label>
+      } @else {
+        <div class="md-sel"><span>Técnico</span><strong>{{ tecnico()!.nome }}</strong></div>
+      }
+      <div class="md-meta">
+        @if (tecnico()!.setor) { <span>Setor: <b>{{ tecnico()!.setor }}</b></span> }
+        @if (tecnico()!.dias) { <span>Disp.: <b>{{ tecnico()!.dias }}</b></span> }
+      </div>
+      <div class="md-spacer"></div>
+      <button type="button" class="btn btn-sec md-graf" (click)="abrirGrafico()"
+              title="Ver o gráfico de média por módulo do técnico selecionado">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-chart"/></svg> Média por módulo
+      </button>
+      @if (podeAdmin()) {
+        <button type="button" class="btn btn-sec" [disabled]="recarregando()"
+                (click)="recarregarDoSicla()"
+                title="Relê a LISTA_FUNCOES no SICLA (use depois de cadastrar função nova lá)">
+          {{ recarregando() ? 'Relendo…' : 'Reler do SICLA' }}
+        </button>
+      }
+      <div class="md-kpi">
+        <div class="k"><div class="v tnum" [class]="'v tnum ' + cls(resumo().media)">{{ fmt(resumo().media) }}</div><div class="l">Média do técnico</div></div>
+        <div class="k"><div class="v tnum">{{ pct(resumo().avaliadas, resumo().total) }}%</div><div class="l">Funções avaliadas</div></div>
+      </div>
+      @if (editavel()) {
+        <button class="btn primario" [disabled]="!temAlteracao() || salvando()" (click)="salvar()">
+          {{ salvando() ? 'Salvando…' : 'Salvar' }}
+        </button>
+      } @else {
+        <span class="md-ro" title="Você tem acesso de consulta a esta ficha">somente consulta</span>
+      }
+    </div>
+    @if (salvo()) { <p class="md-ok">✓ Notas salvas.</p> }
+
+    <div class="md-rule">
+      <b>Nota do módulo = média das funções avaliadas.</b> Funções sem nota não entram na conta.
+      A mesma função pode aparecer em vários módulos (é o que o <code>STRMENUS</code> diz) e a
+      nota dela é <b>independente em cada um</b>. As funções sem módulo identificável ficam no
+      grupo <b>Classificar</b>, no fim da lista.
+    </div>
+
+    <div class="md-filtro">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>
+      <input type="search" [ngModel]="filtro()" (ngModelChange)="filtro.set($event)"
+             placeholder="Buscar módulo (sigla)…" aria-label="Buscar módulo" />
+      @if (filtro()) {
+        <button type="button" class="md-filtro-x" (click)="filtro.set('')" aria-label="Limpar busca"><svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-x"/></svg></button>
+      }
+    </div>
+
+    @if (semResultado()) {
+      <div class="painel vazio">Nenhum módulo encontrado para “{{ filtro() }}”.</div>
+    }
+
+    @if (modulosFiltrados().length) {
+      <div class="md-grp">Módulos ({{ modulosFiltrados().length }})</div>
+      <div class="md-lista">
+        @for (m of modulosFiltrados(); track m.sigla) {
+          <div class="md-card painel" [class.open]="aberto(m.sigla)">
+            <button class="md-head" [attr.aria-expanded]="aberto(m.sigla)" (click)="toggle(m.sigla)" [disabled]="m.total === 0">
+              <span class="sig">{{ m.sigla }}</span>
+              <span class="name">{{ m.titulo }}
+                <span class="subn">
+                  @if (ehClassificar(m.sigla)) { {{ m.total }} funções sem módulo no STRMENUS — a classificar }
+                  @else { {{ m.total }} funções · fonte: LISTA_FUNCOES (SICLA) }
+                </span>
+              </span>
+              <span class="cover" [style.visibility]="m.total ? 'visible' : 'hidden'">
+                <span class="cbar"><i [style.width.%]="pct(m.avaliadas, m.total)"></i></span>
+                <span class="ctxt"><b>{{ m.avaliadas }}</b> de {{ m.total }} avaliadas</span>
+              </span>
+              <span class="score">
+                <span class="avg tnum" [class]="'avg tnum ' + cls(m.media)">{{ fmt(m.media) }}</span>
+                @if (m.total > 0) { <span class="chev">›</span> }
+              </span>
+            </button>
+
+            @if (aberto(m.sigla)) {
+              <div class="menus">
+                <div class="mtitle"><span>Função (código no SICLA)</span><span>Nota</span></div>
+                @for (f of m.funcoes; track f.chave) {
+                  <div class="mrow">
+                    <span class="mn">
+                      <b class="cod">{{ f.codigo }}</b> {{ f.descricao }}
+                      @if (f.menus) { <span class="fun">menu: {{ f.menus }}</span> }
+                    </span>
+                    <span class="setnota">
+                      <input type="text" inputmode="numeric" [value]="f.nota == null ? '' : f.nota"
+                             placeholder="—" [disabled]="!editavel()" [attr.aria-label]="'Nota da função ' + f.codigo"
+                             (input)="editar(m, f, $any($event.target).value)" />
+                      <span class="nbar"><i [class]="nb(f.nota)" [style.width.%]="f.nota == null ? 0 : f.nota * 10"></i></span>
+                    </span>
+                  </div>
+                }
+                <div class="mfoot">Média do módulo <b class="tnum" [class]="'tnum ' + cls(m.media)">{{ fmt(m.media) }}</b>
+                  <span>(média de {{ m.avaliadas }} funções)</span></div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <div class="md-legend">
+      <span class="lg"><span class="sw" style="background:var(--ok,var(--ok))"></span> Domina (8–10)</span>
+      <span class="lg"><span class="sw" style="background:var(--warn)"></span> Parcial (5–7)</span>
+      <span class="lg"><span class="sw" style="background:var(--err,var(--err))"></span> Lacuna (0–4)</span>
+      <span class="lg"><span class="sw sw-na"></span> Sem avaliação</span>
+    </div>
+  }
+</div>
+
+<!-- Gráfico: média por módulo -->
+@if (mostrarGrafico()) {
+  <div class="modal-fundo" (click)="fecharGrafico()">
+    <div class="modal-cx" (click)="$event.stopPropagation()">
+      <div class="modal-cab">
+        <div>
+          <h3>Média por módulo</h3>
+          <span class="sub">Média de <b>{{ tecnico()?.nome }}</b> por módulo (funções SICLA)</span>
+        </div>
+        <button class="modal-fechar" type="button" (click)="fecharGrafico()" aria-label="Fechar">
+          <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-x"/></svg>
+        </button>
+      </div>
+      <div class="modal-corpo">
+        @if (graficoConfig()) {
+          <div class="md-chart" [style.height.px]="graficoAltura()">
+            <canvas [appChart]="graficoConfig()"></canvas>
+          </div>
+        } @else {
+          <p class="dica" style="text-align:center;margin:0">
+            {{ tecnico()?.nome }} ainda não tem notas avaliadas para gerar o gráfico.
+          </p>
+        }
+      </div>
+    </div>
+  </div>
+}

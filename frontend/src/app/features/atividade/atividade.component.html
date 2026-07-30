@@ -1,12 +1,12 @@
 @if (erro()) {
-  <div class="resultado erro" style="padding:10px 16px;margin:10px 0">{{ erro() }}</div>
+  <div class="resultado erro">{{ erro() }}</div>
 }
 
 @if (carregando()) {
   <p>Carregando…</p>
 } @else if (dados(); as d) {
-  <h1 style="display:flex;align-items:center;gap:10px">
-    <svg class="svgi" style="width:22px;height:22px;color:var(--brand)" aria-hidden="true"><use href="#ic-activity"/></svg> Atividade da operação
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-activity"/></svg> Atividade da operação
   </h1>
   <p class="dica">Tudo o que está acontecendo na implantação — últimos {{ d.uso.dias }} dias.</p>
 
@@ -19,7 +19,7 @@
   </div>
 
   <div class="painel">
-    <h3 style="color:var(--navy);margin-top:0">Funil por fase</h3>
+    <h3>Funil por fase</h3>
     <div class="barlist">
       @for (f of d.funil; track f.fase) {
         <div class="barrow">
@@ -33,12 +33,12 @@
   </div>
 
   <div class="painel">
-    <h3 style="color:var(--navy);margin-top:0">Feed de atividade</h3>
+    <h3>Feed de atividade</h3>
     @if (d.feed.length > 0) {
       <ul class="timeline">
         @for (ev of d.feed; track ev.id) {
           <li>
-            <span class="tl-ico"><svg class="svgi" style="width:13px;height:13px" aria-hidden="true"><use [attr.href]="iconeEvento[ev.tipo] ?? '#ic-pencil'"/></svg></span>
+            <span class="tl-ico"><svg class="svgi svgi-xs" aria-hidden="true"><use [attr.href]="iconeEvento[ev.tipo] ?? '#ic-pencil'"/></svg></span>
             <div>
               <div><a [routerLink]="['/projetos', ev.projetoId]"><strong>{{ ev.cliente }}</strong></a> — {{ ev.descricao }}</div>
               <small class="dica" style="margin:0">{{ ev.criadoEm | date: 'dd/MM/yyyy HH:mm' }}@if (ev.autor) { · {{ ev.autor }} }</small>

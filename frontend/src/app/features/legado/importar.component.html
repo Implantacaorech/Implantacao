@@ -1,7 +1,7 @@
 @if (!role || !acao) {
-  <div class="resultado erro" style="padding:10px 16px">Ação não encontrada.</div>
+  <div class="resultado erro">Ação não encontrada.</div>
 } @else {
-  <h1>{{ acao.nome }}</h1>
+  <h1 class="pagina-titulo">{{ acao.nome }}</h1>
   <p class="sub">{{ acao.desc }}</p>
 
   <div class="painel">
@@ -15,18 +15,18 @@
   </div>
 
   @if (erro()) {
-    <div class="resultado erro" style="padding:10px 16px">{{ erro() }}</div>
+    <div class="resultado erro">{{ erro() }}</div>
   }
 
   @if (resultado(); as r) {
     @if (r.ok) {
       <div class="resultado ok">
-        <h3>✅ Gerado em sequência</h3>
+        <h3><svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Gerado em sequência</h3>
         <p><strong>Cliente:</strong> {{ r.cliente }} · {{ r.modulos }} módulo(s) detectado(s).
           Texto passado por <strong>tempo verbal + ortografia</strong>.</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="acoes">
           @for (a of r.arquivos; track a.token) {
-            <button class="btn primario" type="button" (click)="baixar(a)">⬇️ {{ a.rotulo }}</button>
+            <button class="btn primario" type="button" (click)="baixar(a)"><svg class="svgi" aria-hidden="true"><use href="#ic-download"/></svg> {{ a.rotulo }}</button>
           }
         </div>
       </div>
@@ -35,5 +35,5 @@
     }
   }
 
-  <a class="voltar" [routerLink]="['/legado', rid]">← Voltar para {{ role.nome }}</a>
+  <a class="btn btn-voltar" [routerLink]="['/legado', rid]">← Voltar para {{ role.nome }}</a>
 }

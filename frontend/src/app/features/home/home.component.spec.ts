@@ -65,12 +65,23 @@ describe('HomeComponent', () => {
     expect(texto).not.toContain('Carregando');
   });
 
-  it('sem foco, não renderiza a seção "Projeto em foco"', async () => {
-    const fixture = montar({ home: () => Promise.resolve(painelVazio()) });
+  // Retirados da Visão Geral a pedido do usuário em 2026-07-28: a tela fica só com KPIs,
+  // "Minhas próximas ações" e "Alertas" (+ Configurações para o ADM). O `foco` continua
+  // vindo da API, mas não é mais renderizado aqui.
+  it('não renderiza "Projeto em foco", "Como o fluxo funciona" nem o botão "Novo projeto"', async () => {
+    const dados = painelVazio();
+    dados.foco = {
+      projeto: { id: 1, cliente: 'Cliente X', situacao: 'Em andamento' },
+      cabecalho: { stepper: [], proxima: null, proxEtapa: null },
+    } as unknown as PainelHome['foco'];
+    const fixture = montar({ home: () => Promise.resolve(dados) });
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).not.toContain('Projeto em foco');
+    const texto = fixture.nativeElement.textContent as string;
+    expect(texto).not.toContain('Projeto em foco');
+    expect(texto).not.toContain('Como o fluxo funciona');
+    expect(texto).not.toContain('Novo projeto');
   });
 
   it('lista as pendências com o rótulo da ação', async () => {
@@ -104,22 +115,16 @@ describe('HomeComponent', () => {
     }
   });
 
-  it('só mostra "Configurações e saúde" para o perfil ADM', async () => {
+  // "Configurações e saúde" saiu da Visão Geral em 2026-07-28 e virou a tela /ferramentas
+  // (ver ferramentas.component.spec.ts) — nem para o ADM ela aparece mais aqui.
+  it('não mostra "Configurações e saúde" nem para o ADM', async () => {
     const fixture = montar(
       { home: () => Promise.resolve(painelVazio()) },
-      { usuario: signal(usuario('Consultor')) },
+      { usuario: signal(usuario('ADM')) },
     );
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).not.toContain('Configurações e saúde');
-  });
-
-  it('mostra "Configurações e saúde" para o perfil ADM', async () => {
-    const fixture = montar({ home: () => Promise.resolve(painelVazio()) }, { usuario: signal(usuario('ADM')) });
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Configurações e saúde');
   });
 });

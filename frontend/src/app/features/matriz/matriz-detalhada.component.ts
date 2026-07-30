@@ -8,6 +8,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiEnvelope } from '../../core/models/api-envelope.model';
 import { ChartDirective } from '../../core/directives/chart.directive';
+import { deSignal, filtrosSalvos } from '../../core/utils/filtros-salvos';
 
 interface MenuComNota {
   codigo: string;
@@ -38,14 +39,6 @@ interface ListaResp {
   meuId: number | null;
   podeVerTodos: boolean;
   podeAdmin: boolean;
-}
-interface GeralItem {
-  sigla: string;
-  tipo: 'modulo' | 'adicional';
-  titulo: string;
-  media: number | null;
-  tecnicos: number;
-  total: number;
 }
 
 /** Matriz de Conhecimento — DETALHADA (por menu do SIGER). Notas por menu (código de acesso);
@@ -114,17 +107,19 @@ export class MatrizDetalhadaComponent {
       this.adicionaisFiltrados().length === 0,
   );
 
-  // ── Gráfico "Média por módulo" (GERAL: todos os técnicos) ───────────
+  // ── Gráfico "Média por módulo" (do TÉCNICO SELECIONADO) ────────────
   readonly mostrarGrafico = signal(false);
-  readonly graficoCarregando = signal(false);
-  readonly mediasGerais = signal<GeralItem[]>([]);
 
-  /** Itens (módulos primeiro, depois adicionais) com média geral — os que entram no gráfico. */
+  /** Itens do gráfico: módulos primeiro, depois adicionais, só os que têm média. Sai de
+   * `modulos()` — a ficha JÁ carregada do técnico selecionado —, então o gráfico segue a
+   * seleção sozinho (trocar de técnico recarrega a ficha) e acompanha em tempo real as
+   * notas editadas na tela, sem uma segunda chamada à API. Era a média GERAL de todos os
+   * técnicos (`/medias-gerais`) até 2026-07-28. */
   private readonly itensGrafico = computed(() => {
-    const g = this.mediasGerais();
+    const mods = this.modulos();
     return [
-      ...g.filter((m) => m.tipo === 'modulo'),
-      ...g.filter((m) => m.tipo === 'adicional'),
+      ...mods.filter((m) => m.tipo === 'modulo'),
+      ...mods.filter((m) => m.tipo === 'adicional'),
     ].filter((m) => m.media != null);
   });
   readonly graficoAltura = computed(() =>
@@ -176,7 +171,7 @@ export class MatrizDetalhadaComponent {
         ),
         datasets: [
           {
-            label: 'Média geral',
+            label: 'Média do técnico',
             data: itens.map((m) => m.media as number),
             backgroundColor: itens.map((m) => cor(m.media as number)),
             borderRadius: 5,
@@ -192,8 +187,10 @@ export class MatrizDetalhadaComponent {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: (c) =>
-                ` ${itens[c.dataIndex].titulo}: ${c.parsed.x} (${itens[c.dataIndex].tecnicos} técnico(s))`,
+              label: (c) => {
+                const m = itens[c.dataIndex];
+                return ` ${m.titulo}: ${c.parsed.x} (${m.avaliadas} de ${m.total} menus avaliados)`;
+              },
             },
           },
         },
@@ -210,27 +207,17 @@ export class MatrizDetalhadaComponent {
     };
   });
 
-  async abrirGrafico(): Promise<void> {
+  /** Só abre o modal: os dados já estão em memória (a ficha do técnico selecionado). */
+  abrirGrafico(): void {
     this.mostrarGrafico.set(true);
-    this.graficoCarregando.set(true);
-    try {
-      const res = await firstValueFrom(
-        this.http.get<ApiEnvelope<{ modulos: GeralItem[] }>>(
-          `${this.base}/medias-gerais`,
-        ),
-      );
-      this.mediasGerais.set(res.data.modulos);
-    } catch {
-      this.mediasGerais.set([]);
-    } finally {
-      this.graficoCarregando.set(false);
-    }
   }
   fecharGrafico(): void {
     this.mostrarGrafico.set(false);
   }
 
   constructor() {
+    // Busca de módulos salva por usuário logado (filtra em memória — nada a recarregar).
+    filtrosSalvos('matriz-detalhada', { filtro: deSignal(this.filtro) });
     void this.iniciar();
   }
 

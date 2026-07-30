@@ -18,6 +18,7 @@ describe('ProtocolosService', () => {
     ),
     createQueryBuilder: jest.fn(),
     update: jest.fn(),
+    delete: jest.fn(),
   };
 
   beforeAll(() => {
@@ -120,5 +121,26 @@ describe('ProtocolosService', () => {
     const grande = 'x'.repeat(3000);
     await service.atualizarStatus(9, 'Erro', grande, 'robô');
     expect(p.logErro).toHaveLength(2000);
+  });
+
+  describe('excluir', () => {
+    it('apaga a linha e devolve o registro (para o controller apagar o arquivo)', async () => {
+      const p = {
+        id: 10,
+        videoCaminho: 'C:\\video.mp4',
+        videoNome: 'video.mp4',
+      } as Protocolo;
+      repo.findOne.mockResolvedValue(p);
+      const r = await service.excluir(10);
+      expect(r).toBe(p);
+      expect(repo.delete).toHaveBeenCalledWith(10);
+    });
+
+    it('devolve null e não chama delete se o protocolo não existir', async () => {
+      repo.findOne.mockResolvedValue(null);
+      const r = await service.excluir(999);
+      expect(r).toBeNull();
+      expect(repo.delete).not.toHaveBeenCalled();
+    });
   });
 });

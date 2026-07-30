@@ -56,6 +56,12 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-call': 'off',
       '@typescript-eslint/no-unsafe-return': 'off',
+      // Mesma razão das quatro acima, para o caso de PASSAR adiante o que veio do supertest
+      // (`.send(res.body.data.campos)`). Ficou de fora quando as outras foram desligadas e
+      // acumulou 14 avisos — acima do orçamento de 10 do CI, que reprovava o passo de lint
+      // mesmo sem erro nenhum. Desligar aqui é o que já valia para as irmãs; o rigor
+      // continua inteiro fora de `test/` e dos `.spec.ts`.
+      '@typescript-eslint/no-unsafe-argument': 'off',
       // Dublê de teste precisa ter a MESMA assinatura do colaborador real: se o de verdade
       // devolve Promise, o falso também devolve, mesmo que o corpo seja síncrono e não tenha
       // o que esperar. Trocar por `Promise.resolve()` só para calar a regra deixaria o teste

@@ -1,11 +1,6 @@
-<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:4px">
-  <div>
-    <h1 style="margin-bottom:4px">Visão Geral</h1>
-    <p class="sub" style="margin:0">Carteira de implantação — o que precisa de atenção agora.</p>
-  </div>
-  <a class="btn primario" routerLink="/fluxo" style="align-self:center">
-    <svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg> Novo projeto
-  </a>
+<div style="margin-bottom:4px">
+  <h1 class="pagina-titulo">Visão Geral</h1>
+  <p class="sub" style="margin:0">Carteira de implantação — o que precisa de atenção agora.</p>
 </div>
 
 @if (erro()) {
@@ -34,57 +29,8 @@
     </div>
   </div>
 
-  @if (d.foco; as f) {
-    <div class="painel" style="margin-top:16px">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-        <svg class="svgi" style="color:var(--accent-700)" aria-hidden="true"><use href="#ic-pin"/></svg>
-        <span class="dica" style="margin:0;font-weight:600;color:var(--muted)">Projeto em foco</span>
-        <a [routerLink]="['/projetos', f.projeto.id]" style="font-weight:700;color:var(--navy);font-size:1.05rem">{{ f.projeto.cliente }}</a>
-        <span class="badge-sit" [attr.data-s]="f.projeto.situacao">{{ f.projeto.situacao }}</span>
-      </div>
-      <div class="stepper" [style.grid-template-columns]="'repeat(' + f.cabecalho.stepper.length + ',1fr)'">
-        @for (etapa of f.cabecalho.stepper; track etapa.nome) {
-          <div>
-            <div class="seg" [class.done]="etapa.estado === 'done'" [class.atual]="etapa.estado === 'atual'"></div>
-            <div class="lbl" [class.atual]="etapa.estado === 'atual'">{{ etapa.nome }}</div>
-          </div>
-        }
-      </div>
-      @if (f.cabecalho.proxima; as proxima) {
-        <div class="proxima" style="margin-bottom:0">
-          <svg class="svgi" style="width:18px;height:18px;color:var(--warn);flex:none" aria-hidden="true"><use href="#ic-bell"/></svg>
-          <div class="txt">
-            <div class="titulo">Próxima ação: {{ proxima.label }}</div>
-            <p class="dica" style="margin:2px 0 0">Acesse a ficha para executar.</p>
-          </div>
-          <a class="btn primario" [routerLink]="['/projetos', f.projeto.id]">
-            <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Abrir ficha
-          </a>
-        </div>
-      } @else if (f.cabecalho.proxEtapa) {
-        <div class="proxima ok" style="margin-bottom:0">
-          <svg class="svgi" style="width:18px;height:18px;color:var(--ok);flex:none" aria-hidden="true"><use href="#ic-check-circle"/></svg>
-          <div class="txt">
-            <div class="titulo">Fase liberada — pronto para avançar para {{ f.cabecalho.proxEtapa }}.</div>
-          </div>
-          <a class="btn primario" [routerLink]="['/projetos', f.projeto.id]">
-            <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Abrir ficha
-          </a>
-        </div>
-      } @else {
-        <div class="proxima ok" style="margin-bottom:0">
-          <svg class="svgi" style="width:18px;height:18px;color:var(--ok);flex:none" aria-hidden="true"><use href="#ic-check-circle"/></svg>
-          <div class="txt"><div class="titulo">Projeto na fase final de encerramento.</div></div>
-          <a class="btn" [routerLink]="['/projetos', f.projeto.id]">
-            <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Abrir ficha
-          </a>
-        </div>
-      }
-    </div>
-  }
-
   <div class="vg-cols">
-    <div class="painel" style="margin:0">
+    <div class="painel sem-margem">
       <h3 style="margin-top:0;display:flex;align-items:center;gap:7px">
         <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> Minhas próximas ações
       </h3>
@@ -108,13 +54,13 @@
         </ul>
         <a class="dica" routerLink="/projetos" style="display:inline-block;margin-top:8px">Ver carteira completa →</a>
       } @else {
-        <p class="dica" style="display:flex;align-items:center;gap:6px">
-          <svg class="svgi" style="width:12px;height:12px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+        <p class="dica flex-linha compacta">
+          <svg class="svgi svgi-xs ic-ok" aria-hidden="true"><use href="#ic-check-circle"/></svg>
           Nenhuma ação pendente. Tudo encaminhado.
         </p>
       }
     </div>
-    <div class="painel" style="margin:0">
+    <div class="painel sem-margem">
       <h3 style="margin-top:0;display:flex;align-items:center;gap:7px">
         <svg class="svgi" aria-hidden="true"><use href="#ic-bell"/></svg> Alertas
       </h3>
@@ -130,65 +76,12 @@
         </ul>
         <a class="dica" routerLink="/coordenacao" style="display:inline-block;margin-top:8px">Ver tudo no Painel de Coordenação →</a>
       } @else {
-        <p class="dica" style="display:flex;align-items:center;gap:6px">
-          <svg class="svgi" style="width:12px;height:12px;color:var(--ok)" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+        <p class="dica flex-linha compacta">
+          <svg class="svgi svgi-xs ic-ok" aria-hidden="true"><use href="#ic-check-circle"/></svg>
           Sem alertas — carteira no prazo.
         </p>
       }
     </div>
   </div>
 
-  <h2 class="sec">
-    <svg class="svgi hi" aria-hidden="true"><use href="#ic-compass"/></svg> Como o fluxo funciona
-  </h2>
-  <div class="hero-fluxo">
-    <a class="passo" routerLink="/fluxo">
-      <span class="num">1</span>
-      <div>
-        <h3>Iniciar pelo fechamento</h3>
-        <p>E-mail do Comercial → extrai os dados, cria o projeto e gera o pacote inicial automaticamente.</p>
-      </div>
-    </a>
-    <span class="seta">→</span>
-    <a class="passo" routerLink="/projetos">
-      <span class="num">2</span>
-      <div>
-        <h3>Conduzir os projetos</h3>
-        <p>Workspace por fase: documentos obrigatórios, designações, comunicação e histórico em um só lugar.</p>
-      </div>
-    </a>
-    <span class="seta">→</span>
-    <a class="passo" routerLink="/coordenacao">
-      <span class="num">3</span>
-      <div>
-        <h3>Acompanhar a carteira</h3>
-        <p>KPIs, funil por etapa, atrasados, alertas proativos e ocupação por consultor.</p>
-      </div>
-    </a>
-  </div>
-
-  @if (veSistema()) {
-    <h2 class="sec" id="ferramentas">
-      <svg class="svgi hi" aria-hidden="true"><use href="#ic-settings"/></svg> Configurações e saúde
-    </h2>
-    <p class="sub" style="margin-bottom:12px">Integrações e utilitários — para usar fora do fluxo principal.</p>
-    <div class="tools">
-      <a class="tool" routerLink="/config/email">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-send"/></svg>
-        <div><strong>E-mail (SMTP)</strong><small>Conta de envio</small></div>
-      </a>
-      <a class="tool" routerLink="/config/imap">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-inbox"/></svg>
-        <div><strong>Caixa de entrada (IMAP)</strong><small>Detecta o e-mail de fechamento</small></div>
-      </a>
-      <a class="tool" routerLink="/config/gmail">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-send"/></svg>
-        <div><strong>Gmail API (envio)</strong><small>Envio por HTTPS (contorna SMTP)</small></div>
-      </a>
-      <a class="tool" routerLink="/config/ia">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-cpu"/></svg>
-        <div><strong>Modo IA</strong><small>Chave da revisão por IA</small></div>
-      </a>
-    </div>
-  }
 }

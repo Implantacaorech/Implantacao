@@ -28,8 +28,15 @@ import { DicionarioModule } from './dicionario/dicionario.module';
 import { PassosModule } from './passos/passos.module';
 import { ClientesSiclaModule } from './clientes-sicla/clientes-sicla.module';
 import { ModulosSiclaModule } from './modulos-sicla/modulos-sicla.module';
+import { TecnicosSiclaModule } from './tecnicos-sicla/tecnicos-sicla.module';
 import { PermissoesModule } from './permissoes/permissoes.module';
+import { PreferenciasModule } from './preferencias/preferencias.module';
 import { MatrizDetalhadaModule } from './matriz-detalhada/matriz-detalhada.module';
+import { MatrizFuncoesModule } from './matriz-funcoes/matriz-funcoes.module';
+import { BiImplantacaoModule } from './bi-implantacao/bi-implantacao.module';
+import { BiIndicadoresModule } from './bi-indicadores/bi-indicadores.module';
+import { BiAgendaAlocacaoModule } from './bi-agenda-alocacao/bi-agenda-alocacao.module';
+import { BiMovimentosModule } from './bi-movimentos/bi-movimentos.module';
 
 @Module({
   imports: [
@@ -74,8 +81,15 @@ import { MatrizDetalhadaModule } from './matriz-detalhada/matriz-detalhada.modul
     PassosModule,
     ClientesSiclaModule,
     ModulosSiclaModule,
+    TecnicosSiclaModule,
     PermissoesModule,
+    PreferenciasModule,
     MatrizDetalhadaModule,
+    MatrizFuncoesModule,
+    BiImplantacaoModule,
+    BiIndicadoresModule,
+    BiAgendaAlocacaoModule,
+    BiMovimentosModule,
   ],
 })
 export class AppModule {}

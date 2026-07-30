@@ -5,7 +5,7 @@ import { App } from 'supertest/types';
 import * as bcrypt from 'bcrypt';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { mkdtempSync, rmSync } from 'fs';
+import { existsSync, mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { AppModule } from '../src/app.module';
@@ -45,6 +45,9 @@ class ProtocoloIaServiceFake {
       },
       bruto: '{"modulo":"Estoque"}',
     };
+  }
+  async resumirCompleto(): Promise<string> {
+    return 'Registro de Atividades por Menu do Sistema\n(resumo de teste)';
   }
 }
 
@@ -251,6 +254,50 @@ describe('Protocolos de Treinamento (e2e)', () => {
     const res = await auth(
       request(server()).get('/api/protocolos/999999/status'),
     );
+    expect(res.status).toBe(404);
+  });
+
+  it('exclui o registro e o arquivo; nega para quem não pode aprovar/reprovar', async () => {
+    const upload = await auth(
+      request(server())
+        .post('/api/protocolos/novo')
+        .attach(
+          'video',
+          Buffer.from('conteudo do video a excluir'),
+          'excluir.mp4',
+        ),
+    );
+    const id = upload.body.data.id as number;
+    let ficha: any;
+    for (let i = 0; i < 50; i++) {
+      ficha = await auth(request(server()).get(`/api/protocolos/${id}`));
+      if (ficha.body.data.protocolo.status === 'Em revisão') break;
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    const caminho = ficha.body.data.protocolo.videoCaminho as string;
+    expect(existsSync(caminho)).toBe(true);
+    expect(ficha.body.data.podeExcluir).toBe(true); // ADM
+
+    const semPermissao = await auth(
+      request(server()).delete(`/api/protocolos/${id}`),
+      tokenConsultor,
+    );
+    expect(semPermissao.status).toBe(403);
+    expect(existsSync(caminho)).toBe(true); // não apagou
+
+    const excluir = await auth(
+      request(server()).delete(`/api/protocolos/${id}`),
+      tokenCoordenador,
+    );
+    expect(excluir.status).toBe(200);
+    expect(existsSync(caminho)).toBe(false); // apagou o arquivo também
+
+    const depois = await auth(request(server()).get(`/api/protocolos/${id}`));
+    expect(depois.status).toBe(404);
+  }, 15000);
+
+  it('excluir devolve 404 para protocolo inexistente', async () => {
+    const res = await auth(request(server()).delete('/api/protocolos/999999'));
     expect(res.status).toBe(404);
   });
 

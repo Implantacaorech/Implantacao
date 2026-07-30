@@ -1,0 +1,161 @@
+<app-bi-indicadores-abas />
+
+@if (erro()) {
+  <div class="resultado erro">{{ erro() }}</div>
+}
+
+<div class="bi-barra">
+  <div class="bi-campo">
+    <label for="mv-ini">De</label>
+    <input id="mv-ini" type="date" [(ngModel)]="dataIni" (change)="carregar()" />
+  </div>
+  <div class="bi-campo">
+    <label for="mv-fim">Até</label>
+    <input id="mv-fim" type="date" [(ngModel)]="dataFim" (change)="carregar()" />
+  </div>
+  <div class="bi-campo bi-campo-busca">
+    <label for="mv-busca">Buscar técnico</label>
+    <input id="mv-busca" type="search" [ngModel]="store.busca()"
+           (ngModelChange)="store.busca.set($event)" placeholder="nome do técnico…" />
+  </div>
+  <button type="button" class="bi-btn" (click)="alternarFiltros()"
+          [attr.aria-expanded]="store.filtrosAbertos()">
+    <span class="bi-btn-seta" [class.aberta]="store.filtrosAbertos()">&#9656;</span>
+    Filtros@if (qtdFiltrosAtivos() > 0) { <span class="bi-badge">{{ qtdFiltrosAtivos() }}</span> }
+  </button>
+  <button type="button" class="bi-btn" (click)="limparFiltros()">Limpar</button>
+  <button type="button" class="bi-btn" (click)="exportarCsv()" [disabled]="porTecnico().length === 0">
+    Exportar CSV
+  </button>
+</div>
+
+@if (resultado()?.periodoLimitado) {
+  <div class="resultado erro" style="background:#fff8e1;color:#8a6100;border-color:#f0d060">
+    O período pedido foi maior que o teto de 6 meses desta tela (a origem tem 663 mil linhas e
+    fica lenta em janelas maiores) — mostrando os últimos 6 meses até {{ dataFim || 'hoje' }}.
+  </div>
+}
+
+@if (store.filtrosAbertos()) {
+  @if (filtros(); as f) {
+    <div class="bi-filtros-cx">
+      <div class="bi-filtros-cab">
+        <span class="bi-filtros-tit">Filtros</span>
+        <button type="button" class="bi-recolher" (click)="alternarFiltros()">Recolher &#9652;</button>
+      </div>
+      <div class="bi-filtros">
+        <div class="bi-filtro-bloco">
+          <span class="bi-filtro-tit">Técnico</span>
+          <input class="bi-filtro-busca" type="search" placeholder="filtrar…"
+                 [ngModel]="store.termoOpcao('mv-tecnico')"
+                 (ngModelChange)="store.definirTermoOpcao('mv-tecnico', $event)" />
+          <div class="bi-opcoes bi-opcoes-rolagem">
+            @for (t of opcoes('mv-tecnico', f.tecnicos, tecnicoSel).visiveis; track t) {
+              <label><input type="checkbox" [checked]="marcado(tecnicoSel, t)"
+                            (change)="alternar(tecnicoSel, t)" /> {{ t }}</label>
+            } @empty { <span class="dica" style="margin:0">— nada encontrado —</span> }
+          </div>
+          @if (opcoes('mv-tecnico', f.tecnicos, tecnicoSel).ocultas; as n) {
+            <span class="bi-filtro-mais">+{{ n }} — refine a busca</span>
+          }
+        </div>
+
+        <div class="bi-filtro-bloco">
+          <span class="bi-filtro-tit">Tipo de movimento</span>
+          <div class="bi-opcoes bi-opcoes-rolagem">
+            @for (t of f.tiposMovimento; track t) {
+              <label><input type="checkbox" [checked]="marcado(tpMovimentoSel, t)"
+                            (change)="alternar(tpMovimentoSel, t)" /> {{ t }}</label>
+            } @empty { <span class="dica" style="margin:0">— sem dados no período —</span> }
+          </div>
+        </div>
+
+        <div class="bi-filtro-bloco">
+          <span class="bi-filtro-tit">Cobra hora</span>
+          <div class="bi-opcoes">
+            @for (v of ['Sim', 'Não']; track v) {
+              <label><input type="checkbox" [checked]="marcado(cobraHoraSel, v)"
+                            (change)="alternar(cobraHoraSel, v)" /> {{ v }}</label>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+}
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <div class="ind-kpis">
+    <div class="ind-kpi">
+      <div class="ind-kpi-v">{{ totais().tecnicos }}</div>
+      <div class="ind-kpi-l">Técnicos</div>
+    </div>
+    <div class="ind-kpi ind-kpi-a"
+         title="Soma dos 6 tipos de movimento (RNS/Pendência/Agenda/Atendimentos/Visitas/Ficha) — eles podem registrar o mesmo intervalo de relógio por ângulos diferentes do SICLA, então esta soma não é necessariamente 'horas trabalhadas' sem sobreposição.">
+      <div class="ind-kpi-v">{{ horas(totais().horasTotal) }}</div>
+      <div class="ind-kpi-l">Horas totais (soma dos tipos)</div>
+    </div>
+    <div class="ind-kpi ind-kpi-c">
+      <div class="ind-kpi-v">{{ horas(totais().horasCobradas) }}</div>
+      <div class="ind-kpi-l">
+        Cobradas
+        @if (totais().percentualCobradas !== null) { · {{ totais().percentualCobradas }}% }
+      </div>
+    </div>
+    <div class="ind-kpi ind-kpi-d">
+      <div class="ind-kpi-v">{{ horas(totais().horasNaoCobradas) }}</div>
+      <div class="ind-kpi-l">Não cobradas</div>
+    </div>
+    <div class="ind-kpi ind-kpi-b">
+      <div class="ind-kpi-v">{{ totais().quantidade }}</div>
+      <div class="ind-kpi-l">Movimentos</div>
+    </div>
+  </div>
+
+  <div class="bi-card">
+    <div class="bi-card-tit">Horas por tipo de movimento</div>
+    <div class="ind-barras">
+      @for (m of porTpMovimento(); track m.chave) {
+        <div class="ind-barra">
+          <span class="ind-barra-rot">{{ m.chave }}</span>
+          <span class="ind-barra-tr">
+            <span class="ind-barra-in"
+                  [style.width.%]="(m.horasTotal / (porTpMovimento()[0].horasTotal || 1)) * 100"></span>
+          </span>
+          <span class="ind-barra-n">{{ horas(m.horasTotal) }}</span>
+        </div>
+      } @empty { <p class="dica" style="padding:8px">— sem dados no período —</p> }
+    </div>
+  </div>
+
+  <div class="bi-card">
+    <div class="bi-card-tit">Horas por técnico ({{ porTecnico().length }})</div>
+    <div class="bi-tab-wrap">
+      <table class="bi-tab">
+        <thead>
+          <tr>
+            <th>Técnico</th><th class="num">Movimentos</th>
+            <th class="num">Horas total</th><th class="num">Cobradas</th>
+            <th class="num">Não cobradas</th><th class="num">% cobradas</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (t of porTecnico(); track t.chave) {
+            <tr>
+              <td>{{ t.chave }}</td>
+              <td class="num">{{ t.quantidade }}</td>
+              <td class="num">{{ horas(t.horasTotal) }}</td>
+              <td class="num">{{ horas(t.horasCobradas) }}</td>
+              <td class="num">{{ horas(t.horasNaoCobradas) }}</td>
+              <td class="num">{{ t.percentualCobradas !== null ? t.percentualCobradas + '%' : '—' }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="dica">— nenhum técnico com os filtros atuais —</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}

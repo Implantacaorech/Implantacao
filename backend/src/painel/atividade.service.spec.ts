@@ -4,7 +4,6 @@ import { AtividadeService } from './atividade.service';
 import { MetricasService } from '../metricas/metricas.service';
 import { Projeto } from '../database/entities/projeto.entity';
 import { Evento } from '../database/entities/evento.entity';
-import type { AuthUser } from '../common/decorators/current-user.decorator';
 
 function projeto(over: Partial<Projeto> = {}): Projeto {
   return {
@@ -18,17 +17,6 @@ function projeto(over: Partial<Projeto> = {}): Projeto {
     atualizadoEm: new Date(),
     ...over,
   } as Projeto;
-}
-
-function usuario(over: Partial<AuthUser> = {}): AuthUser {
-  return {
-    sub: 1,
-    login: 'x',
-    nome: 'Ana',
-    perfil: 'ADM',
-    codigoSicla: '',
-    ...over,
-  };
 }
 
 describe('AtividadeService', () => {
@@ -52,7 +40,7 @@ describe('AtividadeService', () => {
   it('não consulta eventos quando não há projetos visíveis', async () => {
     projetos.find.mockResolvedValue([]);
 
-    const r = await service.painel(usuario());
+    const r = await service.painel();
 
     expect(eventos.find).not.toHaveBeenCalled();
     expect(r.feed).toEqual([]);
@@ -71,7 +59,7 @@ describe('AtividadeService', () => {
       },
     ]);
 
-    const r = await service.painel(usuario());
+    const r = await service.painel();
 
     expect(r.feed).toEqual([
       expect.objectContaining({ id: 1, cliente: 'Cliente X' }),

@@ -4,8 +4,16 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ChartConfiguration } from 'chart.js/auto';
 import { ChartDirective } from '../../core/directives/chart.directive';
 import { AuthService } from '../../core/services/auth.service';
+import { temPapel } from '../../core/constants/perfis';
 import { DashboardsService } from '../../core/services/dashboards.service';
+import { BiIndicadoresAbasComponent } from '../bi-indicadores/bi-indicadores-abas.component';
 import { DashboardDisponivel, ResultadoDashboard } from '../../core/models/dashboards.model';
+import {
+  FiltrosSalvos,
+  deCampo,
+  deSet,
+  filtrosSalvos,
+} from '../../core/utils/filtros-salvos';
 
 const NOMES_MES = [
   '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -15,9 +23,9 @@ const NOMES_MES = [
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [FormsModule, RouterLink, ChartDirective],
+  imports: [FormsModule, RouterLink, ChartDirective, BiIndicadoresAbasComponent],
   templateUrl: './dashboard.component.html',
-  styleUrl: './dashboard.component.css',
+  styleUrls: ['../bi-implantacao/bi-comum.css', './dashboard.component.css'],
 })
 export class DashboardComponent {
   private readonly service = inject(DashboardsService);
@@ -26,7 +34,7 @@ export class DashboardComponent {
   private readonly router = inject(Router);
 
   readonly nomesMes = NOMES_MES;
-  readonly ehAdm = computed(() => this.auth.usuario()?.perfil === 'ADM');
+  readonly ehAdm = computed(() => temPapel(this.auth.usuario(), 'ADM'));
 
   readonly carregando = signal(true);
   readonly erro = signal<string | null>(null);
@@ -40,6 +48,24 @@ export class DashboardComponent {
   situacoesSelecionadas = new Set<string>();
   mesSel: number | null = null;
   anoSel: number | null = null;
+
+  /** Painel de filtros: nasce FECHADO, como nas demais telas do BI — a tela deve abrir
+   * mostrando o resultado, não a configuração. */
+  readonly filtrosAbertos = signal(false);
+
+  alternarFiltros(): void {
+    this.filtrosAbertos.update((v) => !v);
+  }
+
+  /** Quantos filtros estão "ativos" em relação ao padrão (tudo marcado = sem filtro).
+   * Método comum (não `computed`), porque depende de `situacoesSelecionadas` — um Set
+   * mutável, não um signal — e recalcula a cada ciclo de detecção de mudanças, igual a
+   * `atalhoAno()` logo abaixo. */
+  qtdFiltrosAtivos(): number {
+    const total = this.resultado()?.situacoesDisponiveis.length ?? 0;
+    const desmarcadas = Math.max(0, total - this.situacoesSelecionadas.size);
+    return desmarcadas + (this.mesSel !== null ? 1 : 0);
+  }
 
   readonly colunas = computed(() => {
     const linhas = this.resultado()?.linhasTabela ?? [];
@@ -70,6 +96,55 @@ export class DashboardComponent {
     }));
   });
 
+  /** Recorte salvo por usuário logado. São propriedades comuns (e um `Set`), então a gravação
+   * é explícita: acontece no início do `carregar()`, antes de o servidor devolver a seleção
+   * normalizada — o que se guarda é a escolha da PESSOA, não o eco do backend.
+   *
+   * `slugAtivo` fica fora: qual dashboard está aberto é a ROTA, e o link é o que se
+   * compartilha. */
+  private readonly salvos: FiltrosSalvos = filtrosSalvos(
+    'bi-implantacao-painel',
+    {
+      direcao: deCampo(
+        () => this.direcao,
+        (v) => {
+          this.direcao = v;
+        },
+      ),
+      n: deCampo(
+        () => this.n,
+        (v) => {
+          this.n = v;
+        },
+      ),
+      ref: deCampo(
+        () => this.ref,
+        (v) => {
+          this.ref = v;
+        },
+      ),
+      mesSel: deCampo(
+        () => this.mesSel,
+        (v) => {
+          this.mesSel = v;
+        },
+      ),
+      anoSel: deCampo(
+        () => this.anoSel,
+        (v) => {
+          this.anoSel = v;
+        },
+      ),
+      situacoes: deSet(
+        () => this.situacoesSelecionadas,
+        (v) => {
+          this.situacoesSelecionadas = v;
+        },
+      ),
+    },
+    { aoRestaurar: () => void this.carregar() },
+  );
+
   constructor() {
     void this.carregarTudo();
   }
@@ -93,6 +168,7 @@ export class DashboardComponent {
 
   async carregar(): Promise<void> {
     if (!this.slugAtivo()) return;
+    this.salvos.salvar();
     this.erro.set(null);
     try {
       const r = await this.service.rodar(this.slugAtivo(), {
@@ -116,7 +192,7 @@ export class DashboardComponent {
     this.slugAtivo.set(slug);
     this.mesSel = null;
     this.anoSel = null;
-    await this.router.navigate(['/dashboards', slug]);
+    await this.router.navigate(['/bi/implantacao/painel', slug]);
     await this.carregar();
   }
 
@@ -135,6 +211,19 @@ export class DashboardComponent {
   limparFiltroMes(): void {
     this.mesSel = null;
     this.anoSel = null;
+    void this.carregar();
+  }
+
+  /** Botão "Limpar" da barra de filtros: volta a situação para "todas" (o padrão — nada
+   * marcado na URL) e tira o atalho de mês. O PERÍODO fica, como nas demais telas do BI —
+   * é o recorte de trabalho, não um filtro de detalhe. */
+  limparFiltros(): void {
+    this.situacoesSelecionadas = new Set<string>();
+    this.mesSel = null;
+    this.anoSel = null;
+    // Esquece a preferência antes de recarregar: "Limpar" é voltar ao padrão da tela. O
+    // período, preservado de propósito, volta a ser gravado pelo `carregar()` abaixo.
+    void this.salvos.descartar();
     void this.carregar();
   }
 

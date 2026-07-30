@@ -1,10 +1,10 @@
 @if (!docValido) {
-  <div class="resultado erro" style="padding:10px 16px">Documento inválido.</div>
+  <div class="resultado erro">Documento inválido.</div>
 } @else if (carregando()) {
   <p>Carregando…</p>
 } @else {
-  <h1 style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
-    <svg class="svgi" style="width:20px;height:20px;color:var(--brand)" aria-hidden="true"><use href="#ic-file"/></svg>
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-file"/></svg>
     {{ titulo }} — {{ projeto()?.cliente }}
   </h1>
   <p class="sub">As seções abaixo espelham o <strong>layout do documento</strong> que será gerado para o cliente.
@@ -16,20 +16,20 @@
   </p>
 
   @if (erro()) {
-    <div class="resultado erro" style="padding:10px 16px;margin-bottom:10px">{{ erro() }}</div>
+    <div class="resultado erro">{{ erro() }}</div>
   }
   @if (salvo()) {
-    <div class="resultado ok" style="padding:8px 14px;display:flex;align-items:center;gap:8px">
-      <svg class="svgi" style="width:14px;height:14px" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvo.
+    <div class="resultado ok linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvo.
     </div>
   }
 
   <form (ngSubmit)="salvar()">
     @for (sec of secoes(); track sec.titulo) {
       <div class="painel">
-        <h3 style="color:var(--navy);margin-top:0">{{ sec.titulo }}</h3>
+        <h3>{{ sec.titulo }}</h3>
         @if (sec.tipo === 'tabela') {
-          <div style="overflow-x:auto">
+          <div class="tabela-wrap">
             <table class="form-tab">
               <thead>
                 <tr>
@@ -61,7 +61,7 @@
                   <textarea rows="2" [ngModel]="campo(c.chave)" name="{{ c.chave }}"
                             (ngModelChange)="onCampoChange(c.chave, $event)"></textarea>
                 } @else if (c.tipo === 'ro') {
-                  <input [value]="campo(c.chave)" readonly style="background:var(--surface-2,#f3f6fb);color:var(--muted)" />
+                  <input [value]="campo(c.chave)" readonly style="background:var(--surface-2,var(--surface-2));color:var(--muted)" />
                 } @else {
                   <input [ngModel]="campo(c.chave)" name="{{ c.chave }}" (ngModelChange)="onCampoChange(c.chave, $event)" />
                 }
@@ -72,11 +72,11 @@
       </div>
     }
 
-    <div style="display:flex;gap:8px;margin-top:6px">
+    <div class="acoes" style="margin-top:var(--sp-3)">
       <button class="btn primario" type="submit" [disabled]="salvando()">
         <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvar
       </button>
-      <a class="btn" [routerLink]="['/projetos', projetoId]">Voltar à ficha</a>
+      <a class="btn btn-voltar" [routerLink]="['/projetos', projetoId]">← Voltar à ficha</a>
     </div>
   </form>
 }

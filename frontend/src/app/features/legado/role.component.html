@@ -1,7 +1,7 @@
 @if (!role) {
-  <div class="resultado erro" style="padding:10px 16px">Papel não encontrado.</div>
+  <div class="resultado erro">Papel não encontrado.</div>
 } @else {
-  <h1>{{ role.icone }} {{ role.nome }}</h1>
+  <h1 class="pagina-titulo">{{ role.icone }} {{ role.nome }}</h1>
   <p class="sub">{{ role.desc }}</p>
   <div class="grade">
     @for (a of role.acoes; track a.id) {

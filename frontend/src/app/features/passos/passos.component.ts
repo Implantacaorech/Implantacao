@@ -86,6 +86,8 @@ export class PassosComponent {
    * sozinho (o backend liga a geração ao passo). É o que mantém o fluxo contínuo e num
    * ponto só: você sempre parte do passo. */
   private static readonly TELA_POR_PASSO: Record<number, string[]> = {
+    // Quem pode ABRIR cada uma vem do backend em `p.podeAbrir` — é a permissão da TELA, não
+    // a de concluir o passo (ver PERFIS_TELA_DO_PASSO no backend).
     // 3 (levantamento) e 12 (check-list) abrem a tela para PREENCHER. 9 gera o Projeto. 11
     // "Elaborar o cronograma e incluir as agendas no SICLA" abre a AGENDA de Visitas
     // (calendário com a distribuição pelos turnos LIVRES do técnico no SICLA — a "janela de

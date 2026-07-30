@@ -12,6 +12,7 @@ import { IndiceTopico } from '../src/database/entities/indice-topico.entity';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
 import { ModeloDocumentoService } from '../src/catalogos/modelo-documento.service';
+import { insumoLocalExiste } from '../src/common/insumo-local';
 
 // Suíte end-to-end de Cadastros (pré-requisito da geração de documentos): ChecklistModelo,
 // IndiceTopico, ModeloDocumento e o questionário do Levantamento (LevantamentoResposta +
@@ -81,21 +82,28 @@ describe('Cadastros (e2e)', () => {
     tokenConsultor = loginConsultor.body.data.accessToken;
 
     // Catálogo sintético do Índice de Tópicos (NODE_ENV=test pula o auto-seed do YAML real).
+    // `moduloNum` é o CÓDIGO do módulo no SICLA (LISTA_SISTEMAS) — é por ele que o seed do
+    // Levantamento casa as perguntas, não pela sigla: o seletor de módulos grava em
+    // `Projeto.modulos` o código efetivo (do adicional quando há, senão do módulo). A
+    // fixture só tinha a sigla e, desde essa mudança, semeava zero pergunta.
     await indiceRepo.save(
       [
         {
+          moduloNum: '01',
           moduloSigla: 'FAT',
           modulo: 'Faturamento',
           adicional: '',
           topico: 'Emissão de NF',
         },
         {
+          moduloNum: '01',
           moduloSigla: 'FAT',
           modulo: 'Faturamento',
           adicional: '',
           topico: 'Devolução',
         },
         {
+          moduloNum: '02',
           moduloSigla: 'EST',
           modulo: 'Estoque',
           adicional: '',
@@ -105,8 +113,9 @@ describe('Cadastros (e2e)', () => {
     );
 
     // ModeloDocumento: seed manual (auto-seed também pulado em teste) usando os layouts
-    // fiéis reais do repositório (tools/templates/layouts/) — não é dado sensível, só o
-    // esqueleto do documento, já versionado no git.
+    // fiéis de `tools/templates/layouts/`. ATENÇÃO: eles NÃO estão no git — a pasta é
+    // ignorada (.gitignore, linha 63). O seed cria os registros de qualquer jeito; onde os
+    // arquivos não existem, só o caso que baixa o arquivo fica sem o que provar.
     const modeloDocumentoService = moduleFixture.get(ModeloDocumentoService);
     await modeloDocumentoService.seedDefaults();
   });
@@ -260,7 +269,12 @@ describe('Cadastros (e2e)', () => {
       ).toBe(false);
     });
 
-    it('baixa o arquivo vigente', async () => {
+    // Baixar exige o ARQUIVO do layout em disco, e `tools/templates/layouts/` é ignorado no
+    // .gitignore — no CI o seed cria o registro sem arquivo e a rota responde 404. Os demais
+    // casos deste bloco só olham metadados e rodam em qualquer ambiente.
+    (insumoLocalExiste('tools', 'templates', 'layouts', 'cronograma.xlsx')
+      ? it
+      : it.skip)('baixa o arquivo vigente', async () => {
       const lista = (
         await auth(request(server()).get('/api/cadastros/modelos'))
       ).body.data;
@@ -278,6 +292,7 @@ describe('Cadastros (e2e)', () => {
   describe('Levantamento (respostas) e DocConteudo', () => {
     async function novoProjeto(
       cliente: string,
+      /** CÓDIGOS do SICLA, como o seletor de módulos grava (01=FAT, 02=EST). */
       modulos: string,
     ): Promise<number> {
       const p = await projetos.save(
@@ -287,7 +302,7 @@ describe('Cadastros (e2e)', () => {
     }
 
     it('semeia as respostas a partir do Índice de Tópicos dos módulos contratados', async () => {
-      const pid = await novoProjeto('Cliente Levantamento LTDA', 'FAT,EST');
+      const pid = await novoProjeto('Cliente Levantamento LTDA', '01,02');
       const res = await auth(
         request(server()).get(`/api/projetos/${pid}/levantamento`),
       );
@@ -297,7 +312,7 @@ describe('Cadastros (e2e)', () => {
     });
 
     it('salva respostas e atualiza o resumo', async () => {
-      const pid = await novoProjeto('Cliente Respostas LTDA', 'EST');
+      const pid = await novoProjeto('Cliente Respostas LTDA', '02');
       const antes = await auth(
         request(server()).get(`/api/projetos/${pid}/levantamento`),
       );
@@ -318,7 +333,7 @@ describe('Cadastros (e2e)', () => {
     });
 
     it('Consultor não pode acessar o Levantamento (pode_gerar("levantamento") exclui Consultor)', async () => {
-      const pid = await novoProjeto('Cliente SemAcesso LTDA', 'EST');
+      const pid = await novoProjeto('Cliente SemAcesso LTDA', '02');
       const res = await request(server())
         .get(`/api/projetos/${pid}/levantamento`)
         .set('Authorization', `Bearer ${tokenConsultor}`);
@@ -326,7 +341,7 @@ describe('Cadastros (e2e)', () => {
     });
 
     it('DocConteudo salva e devolve campos estruturados por documento', async () => {
-      const pid = await novoProjeto('Cliente DocConteudo LTDA', 'EST');
+      const pid = await novoProjeto('Cliente DocConteudo LTDA', '02');
       const salvar = await auth(
         request(server()).put(`/api/projetos/${pid}/doc-conteudo/levantamento`),
       ).send({
