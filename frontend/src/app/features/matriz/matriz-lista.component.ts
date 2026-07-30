@@ -5,6 +5,7 @@ import { RouterLink, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatrizService } from '../../core/services/matriz.service';
 import { MatrizTecnicoComContagem } from '../../core/models/matriz.model';
+import { deSignal, filtrosSalvos } from '../../core/utils/filtros-salvos';
 
 @Component({
   selector: 'app-matriz-lista',
@@ -33,6 +34,9 @@ export class MatrizListaComponent {
   });
 
   constructor() {
+    // Filtro salvo por usuário logado. Filtra em memória, então não há o que recarregar
+    // quando a preferência chega — o `computed` reage sozinho.
+    filtrosSalvos('matriz', { filtro: deSignal(this.filtro) });
     void this.carregar();
   }
 

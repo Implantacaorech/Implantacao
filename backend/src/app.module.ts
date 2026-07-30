@@ -30,6 +30,7 @@ import { ClientesSiclaModule } from './clientes-sicla/clientes-sicla.module';
 import { ModulosSiclaModule } from './modulos-sicla/modulos-sicla.module';
 import { TecnicosSiclaModule } from './tecnicos-sicla/tecnicos-sicla.module';
 import { PermissoesModule } from './permissoes/permissoes.module';
+import { PreferenciasModule } from './preferencias/preferencias.module';
 import { MatrizDetalhadaModule } from './matriz-detalhada/matriz-detalhada.module';
 import { MatrizFuncoesModule } from './matriz-funcoes/matriz-funcoes.module';
 import { BiImplantacaoModule } from './bi-implantacao/bi-implantacao.module';
@@ -79,6 +80,7 @@ import { BiImplantacaoModule } from './bi-implantacao/bi-implantacao.module';
     ModulosSiclaModule,
     TecnicosSiclaModule,
     PermissoesModule,
+    PreferenciasModule,
     MatrizDetalhadaModule,
     MatrizFuncoesModule,
     BiImplantacaoModule,

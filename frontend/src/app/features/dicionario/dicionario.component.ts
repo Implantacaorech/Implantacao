@@ -9,6 +9,7 @@ import {
   ResultadoPesquisaDicionario,
   StatusDicionario,
 } from '../../core/models/dicionario.model';
+import { deSignal, filtrosSalvos } from '../../core/utils/filtros-salvos';
 
 const DEBOUNCE_MS = 350;
 
@@ -46,10 +47,29 @@ export class DicionarioComponent {
   readonly erro = signal<string | null>(null);
 
   constructor() {
+    // Termo e filtros da busca salvos por usuário logado.
+    filtrosSalvos(
+      'dicionario',
+      {
+        termo: deSignal(this.termo),
+        filtroTipo: deSignal(this.filtroTipo),
+        filtroSigla: deSignal(this.filtroSigla),
+      },
+      { aoRestaurar: () => this.buscarSeTemFiltro() },
+    );
     void this.carregarMeta();
+    // Restaurado o recorte, JÁ traz o resultado: campo preenchido com a lista vazia embaixo
+    // pareceria busca sem resultado, quando na verdade ninguém tinha buscado ainda.
+    this.buscarSeTemFiltro();
     this.destroyRef.onDestroy(() => {
       if (this.debounceId) clearTimeout(this.debounceId);
     });
+  }
+
+  private buscarSeTemFiltro(): void {
+    if (this.termo().trim() || this.filtroTipo() || this.filtroSigla()) {
+      void this.buscar();
+    }
   }
 
   private async carregarMeta(): Promise<void> {

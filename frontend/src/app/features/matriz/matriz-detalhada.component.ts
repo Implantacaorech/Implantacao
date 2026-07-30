@@ -8,6 +8,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiEnvelope } from '../../core/models/api-envelope.model';
 import { ChartDirective } from '../../core/directives/chart.directive';
+import { deSignal, filtrosSalvos } from '../../core/utils/filtros-salvos';
 
 interface MenuComNota {
   codigo: string;
@@ -215,6 +216,8 @@ export class MatrizDetalhadaComponent {
   }
 
   constructor() {
+    // Busca de módulos salva por usuário logado (filtra em memória — nada a recarregar).
+    filtrosSalvos('matriz-detalhada', { filtro: deSignal(this.filtro) });
     void this.iniciar();
   }
 

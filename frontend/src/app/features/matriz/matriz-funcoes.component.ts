@@ -7,6 +7,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiEnvelope } from '../../core/models/api-envelope.model';
 import { ChartDirective } from '../../core/directives/chart.directive';
+import { deSignal, filtrosSalvos } from '../../core/utils/filtros-salvos';
 
 interface FuncaoComNota {
   codigo: string;
@@ -200,6 +201,8 @@ export class MatrizFuncoesComponent {
   }
 
   constructor() {
+    // Busca de módulos salva por usuário logado (filtra em memória — nada a recarregar).
+    filtrosSalvos('matriz-funcoes', { filtro: deSignal(this.filtro) });
     void this.iniciar();
   }
 

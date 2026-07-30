@@ -33,7 +33,30 @@ relacionados:
 - **`layouts/shell`** — layout raiz da aplicação.
 
 Essa organização (`core/` + `features/` por domínio) é um padrão real e reconhecido de
-"feature-based architecture" no ecossistema Angular — não é ad hoc.
+"feature-based architecture" no ecossistema Angular — não é ad hoc. Depois dessa data
+entraram, entre outras, as features `bi-implantacao`, `bi-indicadores`, `clientes-sicla`,
+`dicionario`, `ferramentas`, `passos` e `permissoes`, e a pasta `core/utils/`.
+
+### Filtros salvos por usuário (2026-07-29)
+
+Toda tela com filtro reabre no recorte que o usuário deixou. A mecânica é UMA só, para as 13
+telas: o helper `core/utils/filtros-salvos.ts` (`filtrosSalvos(chave, campos, opções)`), sobre
+`core/services/preferencias.service.ts`. Pontos de projeto que valem lembrar:
+
+- O **`authGuard` pré-carrega** o mapa de preferências numa chamada só. Com ele em memória, a
+  restauração no construtor de cada tela é **síncrona** — a primeira carga de dados já sai
+  filtrada, sem consulta jogada fora nem piscada de conteúdo. `aoRestaurar` cobre o caminho
+  tardio (tela montada fora daquele fluxo, como em teste).
+- **Gravação automática** para filtro em signal (um `effect` observa) e `salvar()` explícito
+  para campo comum de `[(ngModel)]`, que não é observável. Debounce de 400 ms e dedupe contra o
+  último valor sincronizado — filtro se mexe em rajada.
+- **Leitura tolerante:** preferência é dado antigo por natureza (fica meses, a tela muda no
+  meio). Campo que não existe mais é ignorado; valor cujo formato mudou (era texto, virou
+  lista) é recusado comparando com o valor PADRÃO do campo, para não quebrar a renderização.
+- Não grava preferência "nenhum filtro" só porque a pessoa passou pela tela; e o **"Limpar"**
+  *esquece* a preferência (DELETE) em vez de fixar o vazio como escolha.
+
+Detalhe funcional e tabela das chaves por tela: `docs/painel-sistema.md` §5.21.
 
 ### Framework e padrões — confirmados no código, não só no `package.json`
 

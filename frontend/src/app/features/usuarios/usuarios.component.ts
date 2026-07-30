@@ -9,6 +9,11 @@ import {
   Usuario,
 } from '../../core/models/usuario.model';
 import { UsuariosService } from '../../core/services/usuarios.service';
+import {
+  FiltrosSalvos,
+  deSignal,
+  filtrosSalvos,
+} from '../../core/utils/filtros-salvos';
 
 @Component({
   selector: 'app-usuarios',
@@ -96,6 +101,9 @@ export class UsuariosComponent {
   limparFiltros(): void {
     this.filtroSetor.set('');
     this.filtroNome.set('');
+    // Esquece a preferência, em vez de gravar "nenhum filtro": "Limpar" quer dizer voltar ao
+    // padrão da tela, não fixar o vazio como escolha.
+    void this.salvos.descartar();
   }
 
   /** Índice código SICLA → usuário do Painel. É o que liga a lista do SICLA ao cadastro
@@ -142,6 +150,18 @@ export class UsuariosComponent {
   readonly soNovos = signal(false);
   /** Códigos SICLA marcados para importar. Vazio = importa o que está listado. */
   readonly selecionados = signal<string[]>([]);
+
+  /** Filtros da lista salvos por usuário logado. Com 250+ usuários vindos do SICLA, cada um
+   * trabalha sempre no mesmo recorte (o seu setor) — reescolher a cada visita era ruído.
+   *
+   * `soNovos`/`filtroSicla` são do painel do SICLA, que só busca sob demanda: restaurados,
+   * eles ficam prontos para o próximo "Buscar" sem disparar consulta ao Oracle na abertura. */
+  private readonly salvos: FiltrosSalvos = filtrosSalvos('usuarios', {
+    filtroSetor: deSignal(this.filtroSetor),
+    filtroNome: deSignal(this.filtroNome),
+    filtroSicla: deSignal(this.filtroSicla),
+    soNovos: deSignal(this.soNovos),
+  });
 
   constructor() {
     void this.carregar();

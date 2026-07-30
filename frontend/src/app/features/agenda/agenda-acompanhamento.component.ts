@@ -8,6 +8,7 @@ import {
   HorariosPorTurno,
   StatusAgenda,
 } from '../../core/models/cronograma.model';
+import { deCamposDe, filtrosSalvos } from '../../core/utils/filtros-salvos';
 
 function paraIsoData(v: string): string {
   return v.slice(0, 10);
@@ -58,8 +59,20 @@ export class AgendaAcompanhamentoComponent {
       .sort((a, b) => (a.data + a.turno).localeCompare(b.data + b.turno));
   });
 
+  /** Filtros salvos por usuário logado. Propriedades comuns: a gravação é explícita, feita
+   * nos pontos em que o filtro muda (`filtrarPorStatus` e o `ngModelChange` dos selects). */
+  private readonly salvos = filtrosSalvos(
+    'agenda-acompanhamento',
+    deCamposDe(this, 'fStatus', 'fData', 'fTecnico'),
+  );
+
   constructor() {
     void this.carregar();
+  }
+
+  /** Chamado pelos selects: guarda o recorte escolhido. */
+  aplicarFiltros(): void {
+    this.salvos.salvar();
   }
 
   async carregar(): Promise<void> {
@@ -72,11 +85,20 @@ export class AgendaAcompanhamentoComponent {
       ]);
       this.todasAtividades.set(atividades);
       this.horarios.set(horarios);
+      this.descartarFiltrosForaDesteProjeto();
     } catch {
       this.erro.set('Não foi possível carregar o acompanhamento.');
     } finally {
       this.carregando.set(false);
     }
+  }
+
+  /** Esta tela é POR PROJETO, mas a preferência é do usuário: a data e o técnico salvos podem
+   * ser de outro projeto e não existir na agenda deste. Mantê-los deixaria a tabela vazia sem
+   * explicação — então o que não existe aqui é descartado (o status, que é lista fixa, fica). */
+  private descartarFiltrosForaDesteProjeto(): void {
+    if (this.fData && !this.datas().includes(this.fData)) this.fData = '';
+    if (this.fTecnico && !this.tecnicos().includes(this.fTecnico)) this.fTecnico = '';
   }
 
   horarioDe(turno: string): string {
@@ -86,12 +108,15 @@ export class AgendaAcompanhamentoComponent {
 
   filtrarPorStatus(status: string): void {
     this.fStatus = status;
+    this.salvos.salvar();
   }
 
   limparFiltros(): void {
     this.fStatus = '';
     this.fData = '';
     this.fTecnico = '';
+    // "Limpar" é voltar ao padrão da tela, não fixar o vazio como escolha do usuário.
+    void this.salvos.descartar();
   }
 
   classeChip(status: string): string {

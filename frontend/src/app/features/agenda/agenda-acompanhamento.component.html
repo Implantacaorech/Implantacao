@@ -23,14 +23,14 @@
   <div class="filtros-linha" style="margin:10px 0 12px">
     <label class="campo" style="margin:0;width:170px">
       <span>Data</span>
-      <select [(ngModel)]="fData">
+      <select [ngModel]="fData" (ngModelChange)="fData = $event; aplicarFiltros()">
         <option value="">Todas</option>
         @for (d of datas(); track d) { <option [value]="d">{{ formatarData(d) }}</option> }
       </select>
     </label>
     <label class="campo" style="margin:0;width:200px">
       <span>Técnico</span>
-      <select [(ngModel)]="fTecnico">
+      <select [ngModel]="fTecnico" (ngModelChange)="fTecnico = $event; aplicarFiltros()">
         <option value="">Todos</option>
         @for (t of tecnicos(); track t) { <option [value]="t">{{ t }}</option> }
       </select>

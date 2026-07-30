@@ -22,7 +22,8 @@ relacionados:
 
 ## Estrutura real (levantada em 2026-07-19)
 
-**26 módulos de feature** em `src/`: `auth`, `cadastro`, `catalogos`, `config`,
+**26 módulos de feature** em `src/` (contagem de 2026-07-19; ver a lista atualizada abaixo):
+`auth`, `cadastro`, `catalogos`, `config`,
 `cronograma`, `database`, `designacao`, `digest`, `disponibilidade`, `documentos`, `email`,
 `fluxo`, `geracao`, `health`, `ia`, `legado`, `levantamento`, `matriz`, `metricas`,
 `painel`, `plano-cronograma`, `projetos`, `protocolos`, `transcricao`, `users`,
@@ -31,6 +32,16 @@ relacionados:
 Cada módulo segue o padrão `Controller` + `Service` + `Module` + `DTO`, com validação via
 `class-validator` e documentação via decorators `@ApiProperty` (Swagger) — confirmado lendo
 DTOs reais, não só o `package.json`.
+
+Depois dessa data entraram, entre outros, `permissoes` (RBAC pelo painel), `matriz-detalhada`,
+`matriz-funcoes`, `tecnicos-sicla`, `clientes-sicla`, `modulos-sicla`, `bi-implantacao`,
+`bi-indicadores`, `passos`, `dicionario` e **`preferencias`** (2026-07-29 — preferência de tela
+por usuário logado; hoje, os filtros salvos de cada tela).
+
+`preferencias` é o único módulo cujo controller usa **só** `JwtAuthGuard`, sem `@Permissao`:
+não é dado de negócio, é o ajuste de tela de quem está usando o Painel — quem consegue abrir a
+tela consegue guardar como gosta de vê-la. O escopo é garantido pelo `sub` do token; não existe
+parâmetro de usuário que permita apontar para outra pessoa. Ver [[05 - Banco de Dados]].
 
 ### Cross-cutting concerns (`common/`)
 

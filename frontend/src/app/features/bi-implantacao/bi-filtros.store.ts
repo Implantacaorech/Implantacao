@@ -1,4 +1,9 @@
 import { Injectable, WritableSignal, computed, signal } from '@angular/core';
+import {
+  FiltrosSalvos,
+  deSignal,
+  filtrosSalvos,
+} from '../../core/utils/filtros-salvos';
 
 /** Filtros do BI de Implantação, COMPARTILHADOS entre as abas.
  *
@@ -51,6 +56,28 @@ export class BiFiltrosStore {
   /** Termo digitado dentro de cada bloco de filtro. */
   readonly buscaOpcoes = signal<Record<string, string>>({});
 
+  /** Toda a seleção salva por usuário logado — inclusive o PERÍODO, que é o recorte de
+   * trabalho e o que mais dá trabalho remontar. Ficam de fora `filtrosAbertos` (o painel deve
+   * nascer fechado, mostrando resultado e não configuração) e `buscaOpcoes` (é o rascunho de
+   * quem procura uma opção dentro de um bloco, não um filtro). */
+  private readonly salvos: FiltrosSalvos = filtrosSalvos('bi-clientes-siger', {
+    dataIni: deSignal(this.dataIni),
+    dataFim: deSignal(this.dataFim),
+    mesAgenda: deSignal(this.mesAgenda),
+    grupo: deSignal(this.grupo),
+    rns: deSignal(this.rns),
+    statusImplantacao: deSignal(this.statusImplantacao),
+    tecnico: deSignal(this.tecnico),
+    cliente: deSignal(this.cliente),
+    sigla: deSignal(this.sigla),
+    ativo: deSignal(this.ativo),
+    tipoCliente: deSignal(this.tipoCliente),
+    statusRns: deSignal(this.statusRns),
+    tipo: deSignal(this.tipo),
+    validada: deSignal(this.validada),
+    busca: deSignal(this.busca),
+  });
+
   private get selecoes(): WritableSignal<string[]>[] {
     return [
       this.grupo, this.rns, this.statusImplantacao, this.tecnico, this.cliente,
@@ -98,5 +125,8 @@ export class BiFiltrosStore {
     this.validada.set('');
     this.busca.set('');
     this.buscaOpcoes.set({});
+    // Esquece a preferência: "Limpar" é voltar ao padrão do BI. O PERÍODO, que a limpeza
+    // preserva de propósito, volta a ser gravado na sequência pela gravação automática.
+    void this.salvos.descartar();
   }
 }

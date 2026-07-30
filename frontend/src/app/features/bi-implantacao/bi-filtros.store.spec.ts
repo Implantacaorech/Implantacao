@@ -1,5 +1,7 @@
 import { Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { BiFiltrosStore } from './bi-filtros.store';
 import { BiImplantacaoComponent } from './bi-implantacao.component';
@@ -30,8 +32,20 @@ const vazioRns = {
 };
 
 describe('BiFiltrosStore', () => {
+  /** O store agora salva os filtros no usuário logado (`filtrosSalvos`), o que exige contexto
+   * de injeção e HttpClient — daí vir pelo TestBed em vez de `new`. Sem sessão no
+   * localStorage o PreferenciasService não chama o servidor, então não há requisição a
+   * despachar nestes testes. */
+  function novoStore(): BiFiltrosStore {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    return TestBed.inject(BiFiltrosStore);
+  }
+
   it('limpar zera seleções e busca, mas PRESERVA o período', () => {
-    const store = new BiFiltrosStore();
+    const store = novoStore();
     store.dataIni.set('2026-01-01');
     store.dataFim.set('2026-03-31');
     store.grupo.set(['G1']);
@@ -51,11 +65,11 @@ describe('BiFiltrosStore', () => {
   });
 
   it('o painel de filtros nasce FECHADO', () => {
-    expect(new BiFiltrosStore().filtrosAbertos()).toBe(false);
+    expect(novoStore().filtrosAbertos()).toBe(false);
   });
 
   it('alternarFiltros abre e recolhe', () => {
-    const store = new BiFiltrosStore();
+    const store = novoStore();
     store.alternarFiltros();
     expect(store.filtrosAbertos()).toBe(true);
     store.alternarFiltros();
@@ -63,14 +77,14 @@ describe('BiFiltrosStore', () => {
   });
 
   it('limpar não reabre o painel', () => {
-    const store = new BiFiltrosStore();
+    const store = novoStore();
     store.grupo.set(['G1']);
     store.limpar();
     expect(store.filtrosAbertos()).toBe(false);
   });
 
   it('alternar adiciona e remove', () => {
-    const store = new BiFiltrosStore();
+    const store = novoStore();
     store.alternar(store.tecnico, 'Ana');
     store.alternar(store.tecnico, 'Bruno');
     expect(store.tecnico()).toEqual(['Ana', 'Bruno']);
@@ -79,7 +93,7 @@ describe('BiFiltrosStore', () => {
   });
 
   it('conta os filtros ativos sem contar a busca textual', () => {
-    const store = new BiFiltrosStore();
+    const store = novoStore();
     expect(store.qtdAtivos()).toBe(0);
     store.grupo.set(['G1', 'G2']);
     store.validada.set('nao');
