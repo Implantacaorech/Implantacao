@@ -100,9 +100,10 @@
   pastas declaradas e regressão do Postgres no config.
 - [x] **Backup do MariaDB consertado** — `tools/Painel_Novo_Backup_MariaDB.ps1` chamava
   `docker exec painel-db-mariadb mysqldump`; sem Docker, o comando falhava, o `Out-File`
-  gravava **0 byte** e o script ainda logava `ok`. **Havia meses de backup vazio** (o zip de
-  28/07 tem um `.sql` de 0 byte, e a retenção de 14 dias já apagou os anteriores — não existe
-  backup restaurável do painel). Agora usa o cliente local `mariadb-dump`, grava com
+  gravava **0 byte** e o script ainda logava `ok`. **Janela exata da falha: 27, 28 e 29/07**
+  (zips de 176 bytes), que é quando o MariaDB saiu do Docker para instalação nativa. O
+  **último dump bom é o de 23/07** (1.012.729 bytes); 20/07 e 22/07 também estão lá, mas
+  vencem na retenção de 14 dias em 03/08 e 05/08. Agora usa o cliente local `mariadb-dump`, grava com
   `--result-file` (sem o pipe da PS 5.1, que mete BOM) e **valida o dump** (código de saída,
   tamanho mínimo, rodapé `Dump completed`, presença de `CREATE TABLE`) antes de compactar.
 - [ ] **Rodar o backup corrigido uma vez e conferir o tamanho do zip** — não pude executar

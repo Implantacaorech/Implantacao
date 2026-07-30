@@ -92,11 +92,13 @@ protection rule para `main`, marcando as mesmas opções acima pela UI.
   documentação antiga saiu de cena depois do incidente de 22/07 (`restart=no` derrubou o
   painel por ~13h). `docker-compose.yml`, que ainda descrevia o Postgres do Flask, está
   pendente de remoção.
-- **O backup estava quebrado desde então, em silêncio.**
+- **O backup quebrou junto com a migração, em silêncio.**
   `tools/Painel_Novo_Backup_MariaDB.ps1` chamava `docker exec painel-db-mariadb mysqldump`;
   sem Docker o comando falhava, o `Out-File` criava um arquivo **vazio** e o `try/catch` não
   pegava nada (falha de executável nativo não vira exceção no PowerShell) — o log registrava
-  `ok` com um `.sql` de 0 byte dentro do zip. Corrigido: cliente local `mariadb-dump`,
+  `ok` com um `.sql` de 0 byte dentro do zip. **Janela da falha: 27, 28 e 29/07** (zips de 176
+  bytes); o último dump bom é o de **23/07** (~1 MB), e 20/07 e 22/07 vencem na retenção em
+  03/08 e 05/08. Corrigido: cliente local `mariadb-dump`,
   `--result-file` (sem o pipe da PS 5.1, que grava BOM) e **validação obrigatória** do dump
   (código de saída, ≥ 10 KB, rodapé `Dump completed`, presença de `CREATE TABLE`) antes de
   compactar; qualquer falha loga `ERRO` e sai com código 1.

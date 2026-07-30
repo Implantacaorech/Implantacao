@@ -4,12 +4,13 @@
 # Windows, retencao de 14 dias, log em C:\PainelBackups.
 #
 # IMPORTANTE (2026-07-29): o MariaDB NAO roda mais em Docker (container `painel-db-mariadb`)
-# - e um servico NATIVO do Windows (MariaDB 12.2, porta 3306). A versao anterior deste
-# script chamava `docker exec painel-db-mariadb mysqldump`; com o Docker fora do ar o
-# comando falhava, o `Out-File` gravava um arquivo VAZIO e o script ainda logava "ok".
-# Resultado: meses de backups de 0 byte sem ninguem perceber. Por isso agora o script
-# (1) chama o cliente local `mariadb-dump`, (2) usa --result-file (nao passa pelo pipe do
-# PowerShell, que na 5.1 grava BOM) e (3) VALIDA o dump antes de compactar, falhando alto.
+# - e um servico NATIVO do Windows (MariaDB 12.2, porta 3306), migrado em 27/07. A versao
+# anterior deste script chamava `docker exec painel-db-mariadb mysqldump`; a partir dessa
+# migracao o comando passou a falhar, o `Out-File` gravava um arquivo VAZIO e o script ainda
+# logava "ok". Resultado: os backups de 27, 28 e 29/07 sairam com 176 bytes (zip com .sql de
+# 0 byte) sem ninguem perceber - o ultimo dump bom e o de 23/07 (~1 MB). Por isso agora o
+# script (1) chama o cliente local `mariadb-dump`, (2) usa --result-file (nao passa pelo pipe
+# do PowerShell, que na 5.1 grava BOM) e (3) VALIDA o dump antes de compactar, falhando alto.
 #
 # Conexao: lida da MIGRACAO_DB_URL (a mesma do painel - fonte unica, sem senha duplicada).
 #   Alternativa: PAINEL_NOVO_MARIADB_HOST/PORTA/USUARIO/BANCO + PAINEL_NOVO_MARIADB_SENHA.
