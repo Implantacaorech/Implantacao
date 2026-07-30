@@ -120,7 +120,7 @@ export class ProtocolosService {
           'OR LOWER(p.regrasNegocio) LIKE :q OR LOWER(p.dependencias) LIKE :q ' +
           'OR LOWER(p.menusAbordados) LIKE :q OR LOWER(p.funcionalidades) LIKE :q ' +
           'OR LOWER(p.definicoes) LIKE :q OR LOWER(p.processos) LIKE :q ' +
-          'OR LOWER(p.resumoTecnico) LIKE :q)',
+          'OR LOWER(p.resumoTecnico) LIKE :q OR LOWER(p.resumoCompleto) LIKE :q)',
         { q: `%${filtro.q.toLowerCase()}%` },
       );
     }
@@ -186,5 +186,14 @@ export class ProtocolosService {
    * caminho do vídeo após mover de pasta) sem duplicar a lógica de histórico. */
   async atualizar(id: number, dados: Partial<Protocolo>): Promise<void> {
     await this.repo.update(id, dados);
+  }
+
+  /** Exclui o registro. Devolve a linha apagada (para o controller apagar o arquivo
+   * correspondente no disco) ou null se não existia. */
+  async excluir(id: number): Promise<Protocolo | null> {
+    const p = await this.repo.findOne({ where: { id } });
+    if (!p) return null;
+    await this.repo.delete(id);
+    return p;
   }
 }

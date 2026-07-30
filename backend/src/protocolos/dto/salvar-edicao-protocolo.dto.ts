@@ -29,6 +29,7 @@ export class SalvarEdicaoProtocoloDto {
   pendenciasTreinamento?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() proximosPassos?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() resumoTecnico?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() resumoCompleto?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() assuntosRemovidos?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() pendencias?: string;
 }

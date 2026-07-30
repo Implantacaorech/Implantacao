@@ -52,9 +52,15 @@ export const PROTO_CAMPOS_TEXTO = [
   'pendenciasTreinamento',
   'proximosPassos',
   'resumoTecnico',
+  // Sai de uma chamada de IA separada (não do JSON da análise) — ver PROTO_CAMPO_RESUMO.
+  'resumoCompleto',
   'assuntosRemovidos',
   'pendencias',
 ] as const;
+
+/** Campo preenchido pela 2ª chamada de IA (resumo completo em texto corrido), fora do
+ * JSON da análise — por isso não entra no mapa CHAVE_IA de protocolo-ia.service.ts. */
+export const PROTO_CAMPO_RESUMO = 'resumoCompleto';
 
 export type CampoTextoProtocolo = (typeof PROTO_CAMPOS_TEXTO)[number];
 

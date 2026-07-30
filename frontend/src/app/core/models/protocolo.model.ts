@@ -58,6 +58,7 @@ export interface Protocolo {
   pendenciasTreinamento: string;
   proximosPassos: string;
   resumoTecnico: string;
+  resumoCompleto: string;
   assuntosRemovidos: string;
   pendencias: string;
   videoNome: string;
@@ -89,11 +90,13 @@ export interface ListaProtocolos {
   itens: Protocolo[];
   roboOk: boolean;
   pasta: string;
+  podeExcluir: boolean;
 }
 
 export interface FichaProtocolo {
   protocolo: Protocolo;
   podeAprovar: boolean;
+  podeExcluir: boolean;
   ehAudio: boolean;
 }
 
@@ -127,11 +130,14 @@ export type CampoTextoProtocolo =
   | 'pendenciasTreinamento'
   | 'proximosPassos'
   | 'resumoTecnico'
+  | 'resumoCompleto'
   | 'assuntosRemovidos'
   | 'pendencias';
 
 /** Campos de texto da revisão, na ordem das seções do protocolo de treinamento. `grupo`
- * só marca o início de um bloco na tela (o formulário é uma lista só). */
+ * só marca o início de um bloco na tela (o formulário é uma lista só). `resumoCompleto`
+ * fica FORA desta lista de propósito — tem painel próprio no fim da ficha (ver
+ * protocolo-ficha.component.html). */
 export const PROTO_CAMPOS_EDICAO: { chave: CampoTextoProtocolo; rotulo: string; linhas: number; grupo?: string }[] = [
   { chave: 'resumo', rotulo: 'Resumo geral (executivo)', linhas: 5, grupo: '1. Resumo' },
   { chave: 'objetivo', rotulo: 'Objetivo da rotina', linhas: 3 },

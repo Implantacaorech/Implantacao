@@ -172,7 +172,7 @@ export const routes: Routes = [
       {
         path: 'protocolos',
         canActivate: [permissaoGuard('protocolos')],
-        data: { titulo: 'Protocolos de Treinamento' },
+        data: { titulo: 'Transcrição Áudio/Vídeo' },
         loadComponent: () => import('./features/protocolos/protocolos.component').then((m) => m.ProtocolosComponent),
       },
       {
@@ -192,7 +192,7 @@ export const routes: Routes = [
       {
         path: 'protocolos/:id',
         canActivate: [permissaoGuard('protocolos')],
-        data: { titulo: 'Protocolo' },
+        data: { titulo: 'Transcrição Áudio/Vídeo — revisão' },
         loadComponent: () =>
           import('./features/protocolos/protocolo-ficha.component').then((m) => m.ProtocoloFichaComponent),
       },

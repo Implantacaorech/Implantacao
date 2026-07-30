@@ -105,6 +105,13 @@ export class Protocolo {
   @Column({ name: 'resumo_tecnico', type: 'text', default: '' })
   resumoTecnico: string;
 
+  // Resumo COMPLETO da transcrição, em texto corrido/estruturado (registro de atividades
+  // por menu do sistema + definições de configuração). É o que a tela de revisão mostra no
+  // lugar da leitura da transcrição bruta. Gerado por uma chamada de IA PRÓPRIA — ver
+  // ProtocoloIaService.resumirCompleto.
+  @Column({ name: 'resumo_completo', type: 'text', default: '' })
+  resumoCompleto: string;
+
   // Auditoria do que a IA descartou como irrelevante (small talk, ruído...).
   @Column({ name: 'assuntos_removidos', type: 'text', default: '' })
   assuntosRemovidos: string;

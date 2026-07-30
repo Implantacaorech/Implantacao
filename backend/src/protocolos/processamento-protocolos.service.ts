@@ -9,7 +9,7 @@ import {
   statSync,
   unlinkSync,
 } from 'fs';
-import { join } from 'path';
+import { join, resolve, sep } from 'path';
 import { AppConfig } from '../config/configuration';
 import { ProtocolosService } from './protocolos.service';
 import { ProtocoloIaService } from './protocolo-ia.service';
@@ -87,6 +87,31 @@ export class ProcessamentoProtocolosService {
     return novos;
   }
 
+  /** Apaga o arquivo de vídeo/áudio original do disco (chamado pela exclusão do
+   * registro). Best-effort: falha aqui não impede a exclusão do registro no banco, só
+   * fica no log — o registro é o que importa para o usuário, o arquivo é auxiliar. Mesma
+   * trava de segurança do endpoint de streaming (`video()` no controller): só apaga
+   * dentro da pasta raiz configurada. */
+  apagarArquivo(caminho: string): void {
+    if (!caminho) return;
+    const alvo = resolve(caminho);
+    const raiz = resolve(this.pastaRaiz());
+    if (!(alvo === raiz || alvo.startsWith(raiz + sep))) {
+      this.logger.warn(
+        `Exclusão: arquivo fora da pasta permitida, não apagado (${caminho}).`,
+      );
+      return;
+    }
+    try {
+      if (existsSync(alvo)) unlinkSync(alvo);
+    } catch (e) {
+      this.logger.error(
+        `Falha ao apagar arquivo ${caminho}`,
+        e instanceof Error ? e.stack : String(e),
+      );
+    }
+  }
+
   /** Move o vídeo para a pasta de destino (Processados/Com Erro) e atualiza o caminho. */
   private moverVideo(caminhoAtual: string, destinoNome: string): string | null {
     if (!(caminhoAtual && existsSync(caminhoAtual))) return null;
@@ -160,6 +185,25 @@ export class ProcessamentoProtocolosService {
     return txt;
   }
 
+  /** Resumo completo da transcrição (2ª chamada de IA). Falha aqui NÃO derruba o
+   * pipeline: a análise estruturada já está gravada e o protocolo continua revisável —
+   * o revisor vê o aviso no campo e pode usar 'Processar agora' para tentar de novo
+   * (a transcrição já feita é aproveitada). */
+  private async resumoCompleto(
+    transcricao: string,
+    videoNome: string,
+  ): Promise<string> {
+    try {
+      return await this.ia.resumirCompleto(transcricao, videoNome);
+    } catch (e) {
+      this.logger.error(
+        `Resumo completo do protocolo "${videoNome}" falhou`,
+        e instanceof Error ? e.stack : String(e),
+      );
+      return `(resumo completo não gerado — ${this.erroAmigavel(e)})`;
+    }
+  }
+
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
@@ -190,6 +234,17 @@ export class ProcessamentoProtocolosService {
   ): Promise<{ ok: boolean; msg: string }> {
     const p = await this.protocolos.buscar(id);
     if (!p) return { ok: false, msg: 'Protocolo não encontrado.' };
+    if (p.status === 'Transcrevendo' || p.status === 'Analisando') {
+      // Trava contra corrida entre chamadores independentes do pipeline: o robô
+      // (varredura periódica de 'Pendente') e o disparo direto do upload/"Processar
+      // agora" podem, por uma janela de tempo, tentar processar o MESMO id ao mesmo
+      // tempo — sem isso, os dois chamam o docservice e o segundo esbarra na trava dele
+      // (RuntimeError "já há uma transcrição em andamento"), o que aparecia como um
+      // "Erro" confuso na tela. O controller já tinha essa checagem, mas só protegia o
+      // clique manual; aqui protege TODOS os chamadores (caso real: protocolos 12/13 em
+      // 2026-07-30).
+      return { ok: false, msg: 'Já está em processamento.' };
+    }
 
     let texto = (p.transcricao || '').trim();
     if (!texto && !existsSync(p.videoCaminho || '')) {
@@ -229,6 +284,9 @@ export class ProcessamentoProtocolosService {
         p.videoNome || '',
       );
       await this.protocolos.atualizar(id, { ...campos, textoIa: bruto });
+      await this.protocolos.atualizar(id, {
+        resumoCompleto: await this.resumoCompleto(texto, p.videoNome || ''),
+      });
 
       await this.protocolos.atualizarStatus(id, 'Em revisão', undefined, autor);
       if (p.videoOrigem === 'sharepoint') {

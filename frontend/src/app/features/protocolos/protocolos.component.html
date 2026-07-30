@@ -1,4 +1,4 @@
-<h1 class="pagina-titulo"><svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-bulb"/></svg> Protocolos de Treinamento</h1>
+<h1 class="pagina-titulo"><svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-bulb"/></svg> Transcrição Áudio/Vídeo</h1>
 <p class="sub">Base de conhecimento gerada a partir de <strong>vídeos ou áudios</strong>: o robô lê a pasta do SharePoint
   (<code>{{ pasta() }}</code>), transcreve, a IA organiza por módulo/menu e você revisa antes de aprovar.</p>
 
@@ -65,7 +65,14 @@
             <td>{{ p.status }}</td>
             <td>{{ p.videoOrigem === 'sharepoint' ? 'SharePoint' : 'Upload' }}</td>
             <td>{{ formatarData(p.criadoEm) }}</td>
-            <td><a class="btn" [routerLink]="['/protocolos', p.id]">Abrir</a></td>
+            <td class="acoes">
+              <a class="btn" [routerLink]="['/protocolos', p.id]">Abrir</a>
+              @if (podeExcluir()) {
+                <button class="btn perigo" type="button" [disabled]="excluindo() === p.id" (click)="excluir(p)">
+                  {{ excluindo() === p.id ? 'Excluindo…' : '🗑 Excluir' }}
+                </button>
+              }
+            </td>
           </tr>
         }
       </tbody>

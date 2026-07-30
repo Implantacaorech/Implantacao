@@ -17,7 +17,7 @@ export interface DefinicaoFinalidade {
 export const FINALIDADES_IA: DefinicaoFinalidade[] = [
   {
     id: 'protocolos',
-    rotulo: 'Protocolos de Treinamento',
+    rotulo: 'Transcrição Áudio/Vídeo',
     descricao:
       'Reconferência do texto transcrito (2ª revisão) e estruturação do protocolo.',
   },

@@ -78,6 +78,47 @@ const SISTEMA =
   'exemplos, duvidas, pendencias_treinamento, proximos_passos, resumo_tecnico, ' +
   'assuntos_removidos, pendencias.';
 
+/** 2ª chamada de IA: resumo COMPLETO da transcrição em texto corrido/estruturado — é o
+ * que a tela de revisão mostra no lugar da leitura da transcrição bruta. Roda separado da
+ * análise de propósito: o JSON da análise já consome quase todo o orçamento de tokens de
+ * saída, e um campo longo dentro dele sairia truncado (JSON inválido). */
+const SISTEMA_RESUMO =
+  'Você é um consultor especialista em documentação de treinamentos do ERP SIGER (Rech). ' +
+  'Leia INTEGRALMENTE a transcrição de uma gravação de treinamento e escreva o REGISTRO ' +
+  'COMPLETO do que foi feito, em português do Brasil — o texto deve cobrir TODA a ' +
+  'transcrição, do começo ao fim, sem pular assunto técnico.\n\n' +
+  'REGRAS:\n' +
+  '1. NUNCA invente informação — use apenas o que está na transcrição.\n' +
+  "2. Se faltar detalhe, escreva exatamente: 'Informação não detalhada no vídeo'.\n" +
+  '3. Descarte conversa paralela, cumprimentos, assuntos pessoais/comerciais, ' +
+  'interrupções e repetições. Só conteúdo técnico do treinamento.\n' +
+  '4. Linguagem técnica, objetiva, impessoal (sem "o consultor mostrou..."). Destaque ' +
+  'nomes de menus, teclas de atalho, rotinas e conceitos.\n' +
+  '5. Ordem cronológica do treinamento.\n' +
+  '6. Responda SOMENTE com o texto do registro — sem JSON, sem markdown, sem comentários ' +
+  'antes ou depois.\n\n' +
+  'FORMATO EXATO DA RESPOSTA (duas seções, nesta ordem):\n\n' +
+  'Registro de Atividades por Menu do Sistema\n' +
+  '<um bloco por menu/rotina abordada, no formato:>\n' +
+  '<Menu ou rotina> – <nome/descrição>:\n' +
+  'Ação: <o que foi executado>\n' +
+  'Finalidade: <para que serve / o que resolve>\n' +
+  '<e, quando houver, mais linhas rotuladas conforme o caso: Configuração:, ' +
+  'Parâmetros:, Recurso:, Processamento:, Automação:, Correção:, Validação:>\n\n' +
+  'Definições de Configuração\n' +
+  '<um item por conceito, termo, tabela, arquivo ou parâmetro explicado, no formato:>\n' +
+  '<Termo>: <explicação clara e objetiva de como funciona e para que serve>\n\n' +
+  'Exemplo do estilo esperado (conteúdo é ilustrativo, NÃO reaproveite):\n' +
+  'Menu 4 – Movimentos de Caixa / Conta Corrente (Inclusão de Movimento):\n' +
+  'Ação: Execução de lançamentos manuais utilizando a tecla F4 para acionamento de ' +
+  'Matrizes de Integração.\n' +
+  'Finalidade: Registrar movimentos que não possuem origem no Contas a Pagar ou Receber ' +
+  '(ex: juros, tarifas), onde o sistema carrega automaticamente as contas de débito, ' +
+  'crédito e histórico baseando-se na matriz selecionada via F8.\n' +
+  'Matriz de Integração: Conjunto de regras pré-definidas que automatiza o lançamento ' +
+  'contábil (débito/crédito) e o histórico, eliminando a necessidade de conhecimento ' +
+  'contábil técnico por parte do operador financeiro.';
+
 // camelCase (entidade) -> snake_case (chave que a IA devolve, igual ao prompt/ao Flask).
 const CHAVE_IA: Record<string, string> = {
   titulo: 'titulo',
@@ -161,6 +202,9 @@ export class ProtocoloIaService {
     const campos: ResultadoAnaliseIa['campos'] = {};
     for (const campo of PROTO_CAMPOS_TEXTO) {
       const chave = CHAVE_IA[campo];
+      // resumoCompleto vem da 2ª chamada (resumirCompleto) — sem chave aqui, e não pode
+      // ser zerado por este laço.
+      if (!chave) continue;
       const valor = bruto_data[chave];
       campos[campo] = (typeof valor === 'string' ? valor : '').trim();
     }
@@ -180,5 +224,19 @@ export class ProtocoloIaService {
       campos.pendenciasTreinamento = 'Nenhuma pendência identificada.';
     }
     return { campos, bruto };
+  }
+
+  /** Resumo COMPLETO da transcrição, em texto (não JSON): registro de atividades por menu
+   * do sistema + definições de configuração. Chamada separada da `analisar` — ver
+   * SISTEMA_RESUMO. `maxTokens` fica abaixo de 8192 de propósito: é o teto de saída de
+   * vários modelos que o usuário pode configurar em Config → IA. */
+  async resumirCompleto(transcricao: string, videoNome = ''): Promise<string> {
+    const user = `Vídeo: ${videoNome}\n\nTRANSCRIÇÃO (com timestamps):\n${transcricao}`;
+    const texto = await this.ia.completar('protocolos', {
+      system: SISTEMA_RESUMO,
+      messages: [{ role: 'user', content: user }],
+      maxTokens: 6000,
+    });
+    return (texto || '').trim();
   }
 }

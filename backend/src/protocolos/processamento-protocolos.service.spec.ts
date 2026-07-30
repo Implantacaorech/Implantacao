@@ -28,7 +28,7 @@ describe('ProcessamentoProtocolosService', () => {
     atualizar: jest.fn(),
     listar: jest.fn(),
   };
-  const ia = { analisar: jest.fn() };
+  const ia = { analisar: jest.fn(), resumirCompleto: jest.fn() };
   const transcricao = { iniciar: jest.fn(), status: jest.fn() };
 
   beforeAll(() => {
@@ -98,6 +98,9 @@ describe('ProcessamentoProtocolosService', () => {
         campos: { modulo: 'Estoque', menu: '1.4-I' },
         bruto: '{"modulo":"Estoque"}',
       });
+      ia.resumirCompleto.mockResolvedValue(
+        'Registro de Atividades por Menu do Sistema\nMenu 4 – Caixa:\nAção: lançamento manual.',
+      );
 
       const r = await service.processar(1, 'Fulano');
       expect(r.ok).toBe(true);
@@ -131,7 +134,44 @@ describe('ProcessamentoProtocolosService', () => {
         menu: '1.4-I',
         textoIa: '{"modulo":"Estoque"}',
       });
+      expect(ia.resumirCompleto).toHaveBeenCalledWith(
+        '[00:01] fala',
+        'video.mp4',
+      );
+      expect(protocolos.atualizar).toHaveBeenCalledWith(1, {
+        resumoCompleto:
+          'Registro de Atividades por Menu do Sistema\nMenu 4 – Caixa:\nAção: lançamento manual.',
+      });
       expect(existsSync(video)).toBe(true); // upload não é movido
+    });
+
+    it('falha no resumo completo não derruba o pipeline (protocolo segue p/ revisão)', async () => {
+      const video = join(raiz, 'aula-resumo.mp4');
+      writeFileSync(video, 'x');
+      protocolos.buscar.mockResolvedValue(
+        protocolo({ videoCaminho: video, transcricao: 'já transcrito' }),
+      );
+      ia.analisar.mockResolvedValue({
+        campos: { modulo: 'Fiscal' },
+        bruto: '{}',
+      });
+      ia.resumirCompleto.mockRejectedValue(new Error('overloaded (529)'));
+
+      const r = await service.processar(1, 'Fulano');
+      expect(r.ok).toBe(true);
+      expect(protocolos.atualizarStatus).toHaveBeenCalledWith(
+        1,
+        'Em revisão',
+        undefined,
+        'Fulano',
+      );
+      const chamada = protocolos.atualizar.mock.calls.find(
+        (c: unknown[]) =>
+          typeof (c[1] as { resumoCompleto?: string }).resumoCompleto ===
+          'string',
+      ) as [number, { resumoCompleto: string }];
+      expect(chamada[1].resumoCompleto).toContain('resumo completo não gerado');
+      expect(chamada[1].resumoCompleto).toContain('sobrecarregada');
     });
 
     it('transcrição já existente é reaproveitada (não chama a transcrição de novo)', async () => {
@@ -144,6 +184,7 @@ describe('ProcessamentoProtocolosService', () => {
         campos: { modulo: 'Fiscal' },
         bruto: '{}',
       });
+      ia.resumirCompleto.mockResolvedValue('resumo');
 
       const r = await service.processar(1, 'Fulano');
       expect(r.ok).toBe(true);
@@ -155,6 +196,19 @@ describe('ProcessamentoProtocolosService', () => {
         'Fulano',
       );
     });
+
+    it.each(['Transcrevendo', 'Analisando'] as const)(
+      'status já "%s" -> não reprocessa (evita corrida robô x upload)',
+      async (statusAtual) => {
+        protocolos.buscar.mockResolvedValue(protocolo({ status: statusAtual }));
+
+        const r = await service.processar(1, 'robô');
+        expect(r).toEqual({ ok: false, msg: 'Já está em processamento.' });
+        expect(transcricao.iniciar).not.toHaveBeenCalled();
+        expect(ia.analisar).not.toHaveBeenCalled();
+        expect(protocolos.atualizarStatus).not.toHaveBeenCalled();
+      },
+    );
 
     it('falha na transcrição -> Erro com mensagem amigável e move vídeo sharepoint p/ "Videos Com Erro"', async () => {
       const video = join(raiz, 'aula3.mp4');
@@ -224,6 +278,33 @@ describe('ProcessamentoProtocolosService', () => {
     it('false quando não existe', () => {
       config.get.mockReturnValue(join(raiz, 'pasta-inexistente'));
       expect(service.configurado()).toBe(false);
+    });
+  });
+
+  describe('apagarArquivo', () => {
+    it('apaga o arquivo dentro da pasta raiz', () => {
+      const arq = join(raiz, 'apagar.mp4');
+      writeFileSync(arq, 'x');
+      service.apagarArquivo(arq);
+      expect(existsSync(arq)).toBe(false);
+    });
+
+    it('não apaga arquivo fora da pasta raiz (mesma trava do streaming)', () => {
+      const fora = join(tmpdir(), `fora-${Date.now()}.mp4`);
+      writeFileSync(fora, 'x');
+      try {
+        service.apagarArquivo(fora);
+        expect(existsSync(fora)).toBe(true);
+      } finally {
+        rmSync(fora, { force: true });
+      }
+    });
+
+    it('caminho vazio ou arquivo já removido não lança', () => {
+      expect(() => service.apagarArquivo('')).not.toThrow();
+      expect(() =>
+        service.apagarArquivo(join(raiz, 'nao-existe-mais.mp4')),
+      ).not.toThrow();
     });
   });
 });

@@ -141,4 +141,41 @@ describe('ProtocoloIaService', () => {
     const { campos } = await service.analisar('transcrição');
     expect(campos.titulo).toBe('X');
   });
+
+  it('analisar não mexe em resumoCompleto (vem da 2ª chamada)', async () => {
+    ia.completar.mockResolvedValue(JSON.stringify({ titulo: 'X' }));
+    const { campos } = await service.analisar('transcrição');
+    expect(campos.resumoCompleto).toBeUndefined();
+  });
+
+  describe('resumirCompleto', () => {
+    it('devolve o texto do resumo, com as duas seções pedidas no prompt', async () => {
+      ia.completar.mockResolvedValue(
+        '  Registro de Atividades por Menu do Sistema\nMenu 4 – Caixa:\nAção: lançamento.  ',
+      );
+      const texto = await service.resumirCompleto('transcrição', 'aula.mp4');
+      expect(texto).toBe(
+        'Registro de Atividades por Menu do Sistema\nMenu 4 – Caixa:\nAção: lançamento.',
+      );
+      const [finalidade, opcoes] = ia.completar.mock.calls[0] as [
+        string,
+        { system: string; maxTokens: number },
+      ];
+      expect(finalidade).toBe('protocolos');
+      expect(opcoes.system).toContain(
+        'Registro de Atividades por Menu do Sistema',
+      );
+      expect(opcoes.system).toContain('Definições de Configuração');
+      expect(opcoes.system).toContain('NUNCA invente');
+      // Teto de saída de vários modelos configuráveis em Config → IA é 8192.
+      expect(opcoes.maxTokens).toBeLessThanOrEqual(8192);
+    });
+
+    it('propaga o erro da API (o pipeline decide o que fazer)', async () => {
+      ia.completar.mockRejectedValue(new Error('overloaded (529)'));
+      await expect(service.resumirCompleto('transcrição')).rejects.toThrow(
+        'overloaded',
+      );
+    });
+  });
 });

@@ -42,7 +42,9 @@ export const MENUS: DefinicaoMenu[] = [
   { chave: 'novo_cliente', rotulo: 'Novo Cliente', grupo: 'Execução' },
   { chave: 'visao_geral', rotulo: 'Visão Geral', grupo: 'Execução' },
   { chave: 'carteira', rotulo: 'Carteira', grupo: 'Execução' },
-  { chave: 'protocolos', rotulo: 'Protocolos', grupo: 'Execução' },
+  // Chave mantida como 'protocolos' de propósito: é o que está gravado em
+  // permissoes_menu no banco (renomear a chave quebraria as liberações já configuradas).
+  { chave: 'protocolos', rotulo: 'Transcrição Áudio/Vídeo', grupo: 'Execução' },
   { chave: 'matriz', rotulo: 'Matriz de Conhecimento', grupo: 'Execução' },
   {
     chave: 'matriz_detalhada',

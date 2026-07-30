@@ -58,6 +58,10 @@ export class ProtocoloService {
     await firstValueFrom(this.http.post(`${this.base}/${id}/reprovar`, {}));
   }
 
+  async excluir(id: number): Promise<void> {
+    await firstValueFrom(this.http.delete(`${this.base}/${id}`));
+  }
+
   async status(id: number): Promise<StatusProcessamento> {
     const r = await firstValueFrom(this.http.get<ApiEnvelope<StatusProcessamento>>(`${this.base}/${id}/status`));
     return r.data;
