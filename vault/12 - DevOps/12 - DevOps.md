@@ -123,6 +123,39 @@ protection rule para `main`, marcando as mesmas opções acima pela UI.
   o cliente do recurso engole o erro por bom motivo (preferência de tela não deve derrubar
   navegação), a checagem tem de vir do lado do deploy.
 
+## Deploy: produção acompanha a `main` (desde 2026-07-30)
+
+A cópia de trabalho da máquina do painel (`I7M1700-01-EVE`) fica em **`main`**. Antes ficava
+em `feature/migracao-angular-backend-moderno` — nome de uma migração que terminou em 19/07 —
+e, mais grave que o nome, **era o mesmo branch em que se empurrava código direto**: o commit
+ia para produção e o PR/CI acontecia depois, quando acontecia.
+
+O custo disso apareceu no mesmo dia, duas vezes:
+
+- o CI do branch ficou **vermelho por um dia** (lint) sem que isso impedisse nada de rodar;
+- a revisão de 19 → 21 passos foi para produção às 12:32 com **14 testes e2e quebrados**, que
+  só apareceram quando o PR #17 finalmente rodou o CI. O `npm test` passava; o `test:e2e`,
+  que ninguém tinha rodado, não.
+
+Fluxo correto, agora:
+
+1. Trabalho em branch curto → PR → **CI verde** → merge na `main` (merge commit, é a
+   convenção; squash colapsaria o histórico de decisão das mensagens).
+2. Na máquina do painel: `git pull` na `main` → `Build_Painel_Novo.bat` (que já aplica as
+   migrations) → reiniciar.
+
+**Merge não é deploy.** Mergear na `main` não muda o que está no ar; publicar continua
+exigindo o build e o restart explícitos. É proposital: evita que um merge derrube o painel
+no meio do expediente.
+
+> [!warning] Falta a trava
+> Enquanto a branch protection acima não for aplicada, "a `main` é o portão" é combinado, não
+> regra — um push direto na `main` contorna o CI exatamente como antes. Enquanto isso, a
+> disciplina é manual.
+
+O branch `feature/migracao-angular-backend-moderno` foi **preservado** (não apagar no merge):
+é o histórico de tudo que rodou em produção entre 19/07 e 30/07.
+
 ## Aponta para (conteúdo real do repositório)
 
 - `../tools/Painel_Novo_Backup_MariaDB.ps1` (Tarefa Agendada `Painel Novo - Backup MariaDB`, 22h)
@@ -132,5 +165,6 @@ protection rule para `main`, marcando as mesmas opções acima pela UI.
 
 ## Status
 
-CI atualizado para refletir a virada (2026-07-19) — jobs do Flask legado removidos,
-branch protection segue pendente. Ver [[00 - Dashboard]].
+CI atualizado para refletir a virada (2026-07-19) — jobs do Flask legado removidos.
+Produção passou a acompanhar a `main` em 2026-07-30 (seção acima); **branch protection segue
+pendente** e é o que falta para o portão ser regra, e não combinado. Ver [[00 - Dashboard]].
