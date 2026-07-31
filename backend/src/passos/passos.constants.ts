@@ -245,9 +245,12 @@ export const PASSOS: DefinicaoPasso[] = [
     responsavel: 'Consultor',
     depende: [8],
     irreversivel: false,
-    email: 'Envia o cronograma ao cliente para validar as datas.',
+    // SEM e-mail (decisão do usuário em 2026-07-30): elaborar o cronograma é trabalho
+    // INTERNO. Quem leva o cronograma ao cliente é o passo 16 ("Enviar o cronograma de
+    // visitas"), que já sai com o documento em anexo — mandar antes, aqui, entregava ao
+    // cliente uma versão que o consultor ainda podia refazer.
     observacao:
-      'Depende só do passo 8: corre em paralelo às trilhas da RNS (9) e do Projeto (10-12). O consultor pode refazer o cronograma quantas vezes quiser — o passo só se conclui quando ele marcar o cronograma como finalizado.',
+      'Depende só do passo 8: corre em paralelo às trilhas da RNS (9) e do Projeto (10-12). O consultor pode refazer o cronograma quantas vezes quiser — o passo só se conclui quando ele marcar o cronograma como finalizado. Não envia e-mail ao cliente: quem faz isso é o passo 16.',
   },
   {
     numero: 14,
@@ -361,6 +364,17 @@ export const PASSOS_COM_MARCACAO: Record<number, string> = {
   7: 'Contrato assinado',
   12: 'Projeto assinado',
 };
+
+/** Passos em que a pessoa pode ANEXAR arquivos ao e-mail que vai sair.
+ *
+ * Diferente de `PASSOS_COM_ANEXO_DE_EMAIL` (4 e 6), onde o arquivo é a PROVA de um e-mail que
+ * saiu por fora: aqui o arquivo VAI JUNTO no e-mail que o Painel envia.
+ *
+ * Só o passo 16 por enquanto — o consultor manda o cronograma de visitas e quase sempre tem
+ * um material próprio para mandar junto do documento gerado. Acrescentar um número aqui
+ * habilita o anexo naquele passo, desde que ele redija e-mail
+ * (`PASSOS_COM_REDACAO_DE_EMAIL`). */
+export const PASSOS_COM_ANEXO_LIVRE = new Set([16]);
 
 /** Passo cuja conclusão exige que o trabalho tenha sido marcado como FINALIZADO na tela de
  * origem — o cronograma (13) pode ser refeito quantas vezes o consultor quiser, e só fecha

@@ -57,6 +57,8 @@ describe('PassosNotificacaoService', () => {
   let consultoresVinculados: ProjetoPessoa[];
   let levantadoresVinculados: ProjetoPessoa[];
   let documentoDoProjeto: Partial<Documento> | null;
+  /** Arquivos anexados à mão ao e-mail do passo (tipo `anexo_passo_N`). */
+  let anexosManuais: Partial<Documento>[];
   /** Modelo editável do passo (slug `passo-N`); `null` = vale o padrão do código. */
   let modeloDoPasso: Partial<ModeloEmail> | null;
   /** Configuração de destinatários por passo; vazio = vale o padrão do código. */
@@ -112,6 +114,7 @@ describe('PassosNotificacaoService', () => {
     consultoresVinculados = [];
     levantadoresVinculados = [];
     documentoDoProjeto = null;
+    anexosManuais = [];
     modeloDoPasso = null;
     destinatariosSalvos = [];
     registrosDePasso = [];
@@ -153,8 +156,13 @@ describe('PassosNotificacaoService', () => {
           },
         },
         {
+          // `findOne` responde pelo documento GERADO que o passo leva (ANEXO_POR_PASSO);
+          // `find`, pelos arquivos que a pessoa anexou na tela (`anexo_passo_N`).
           provide: getRepositoryToken(Documento),
-          useValue: { findOne: () => Promise.resolve(documentoDoProjeto) },
+          useValue: {
+            findOne: () => Promise.resolve(documentoDoProjeto),
+            find: () => Promise.resolve(anexosManuais),
+          },
         },
         {
           provide: getRepositoryToken(EmailPasso),
@@ -300,10 +308,24 @@ describe('PassosNotificacaoService', () => {
   });
 
   it('passos ao cliente vão para o contato do projeto', async () => {
-    for (const n of [13, 15, 16, 21]) {
+    for (const n of [15, 16, 21]) {
       const email = await service.montar(projeto(), n);
       expect(email?.para).toEqual(['contato@cliente.com']);
     }
+  });
+
+  it('passo 13 NÃO manda e-mail: elaborar o cronograma é trabalho interno', async () => {
+    // Quem leva o cronograma ao cliente é o passo 16 — mandar já no 13 entregava uma versão
+    // que o consultor ainda podia refazer (decisão do usuário em 2026-07-30).
+    expect(await service.montar(projeto(), 13)).toBeNull();
+
+    await service.notificarPasso(
+      projeto(),
+      PASSOS_POR_NUMERO.get(13)!,
+      'Beto Consultor',
+    );
+    expect(enviados).toHaveLength(0);
+    expect(emailsGravados).toHaveLength(0);
   });
 
   it('substitui os tokens pelo dado do projeto', async () => {
@@ -417,6 +439,28 @@ describe('PassosNotificacaoService', () => {
     expect(anexos).toHaveLength(1);
     expect(anexos[0].caminho).toBe(__filename);
     expect(eventosSalvos[0].descricao).toContain('anexo: Termo.docx');
+  });
+
+  it('passo 16 leva os arquivos anexados na tela ANTES do cronograma gerado', async () => {
+    anexosManuais = [
+      { tipo: 'anexo_passo_16', caminho: __filename, arquivo: 'Apresentacao.pdf' },
+    ];
+    documentoDoProjeto = {
+      tipo: 'cronograma',
+      caminho: __filename,
+      arquivo: 'Cronograma.xlsx',
+    };
+    await service.notificarPasso(
+      projeto(),
+      PASSOS_POR_NUMERO.get(16)!,
+      'Beto Consultor',
+    );
+    const anexos = enviadosArgs[0][3] as { nomeArquivo: string }[];
+    expect(anexos.map((a) => a.nomeArquivo)).toEqual([
+      'Apresentacao.pdf',
+      'Cronograma.xlsx',
+    ]);
+    expect(emailsGravados[0].anexo).toBe('Apresentacao.pdf, Cronograma.xlsx');
   });
 
   it('não anexa nada quando o documento não existe em disco', async () => {

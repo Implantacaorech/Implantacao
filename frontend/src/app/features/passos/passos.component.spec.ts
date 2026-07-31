@@ -84,6 +84,7 @@ function passo(over: Partial<Passo> = {}): Passo {
     observacaoRegistrada: '',
     rotuloMarcacao: '',
     redigeEmail: false,
+    aceitaAnexoLivre: false,
     bloqueadoPor: [],
     liberado: true,
     motivos: [],
@@ -233,8 +234,74 @@ describe('PassosComponent', () => {
     const c = fixture.componentInstance;
     expect(c.formDoPasso(passo({ numero: 2 }))).toBe('agendar');
     expect(c.formDoPasso(passo({ numero: 8 }))).toBe('designar');
+    // Mesma reclamação no passo 9: as RNS ficavam num painel no fim da página, e o passo que
+    // as pede só tinha "Concluir" — quem chegava nele não tinha onde digitar.
+    expect(c.formDoPasso(passo({ numero: 9 }))).toBe('rns');
     // Passo que não pede nada continua sendo um "Concluir" direto.
-    expect(c.formDoPasso(passo({ numero: 9 }))).toBeNull();
+    expect(c.formDoPasso(passo({ numero: 3 }))).toBeNull();
+  });
+
+  it('os passos 10 e 11 dão o Projeto para ver e baixar na própria linha', async () => {
+    // Reclamação do usuário: a Criação e a Conferência do Projeto só deixavam chegar ao
+    // documento por dentro de "Registros". Conferir sem poder abrir o arquivo mandava o
+    // Administrativo caçar o Projeto em outra tela.
+    const fixture = await montar([
+      passo({ numero: 10, titulo: 'Criação do Projeto', concluido: true }),
+      passo({ numero: 11, titulo: 'Conferência do Projeto' }),
+    ]);
+    const c = fixture.componentInstance;
+    expect(c.documentoParaVer(passo({ numero: 10 }))?.id).toBe(DOCUMENTO.id);
+    // O 11 confere o MESMO documento gerado no 10 — não um documento próprio.
+    expect(c.documentoParaVer(passo({ numero: 11 }))?.id).toBe(DOCUMENTO.id);
+    // Passo sem documento associado não ganha os botões.
+    expect(c.documentoParaVer(passo({ numero: 2 }))).toBeNull();
+
+    const raiz = fixture.nativeElement as HTMLElement;
+    const visualizar = [...raiz.querySelectorAll('a')].filter(
+      (a) => (a.textContent ?? '').trim() === 'Visualizar',
+    );
+    const baixar = [...raiz.querySelectorAll('button')].filter(
+      (b) => (b.textContent ?? '').trim() === 'Baixar',
+    );
+    expect(visualizar).toHaveLength(2);
+    expect(baixar).toHaveLength(2);
+  });
+
+  it('o passo 9 continua abrindo as RNS depois de concluído', async () => {
+    // A quantidade de RNS é variável ao longo do projeto: trancar a edição na conclusão
+    // obrigaria a reabrir o passo só para incluir mais uma.
+    const fixture = await montar([passo()]);
+    const c = fixture.componentInstance;
+    expect(c.formAindaEditavel(passo({ numero: 9, concluido: true }))).toBe(true);
+    expect(c.formAindaEditavel(passo({ numero: 9 }))).toBe(false);
+    expect(c.formAindaEditavel(passo({ numero: 8, concluido: true }))).toBe(false);
+  });
+
+  it('o passo 16 anexa arquivos ao e-mail e mostra o que vai junto', async () => {
+    const p16 = passo({
+      numero: 16,
+      titulo: 'Enviar o cronograma de visitas',
+      redigeEmail: true,
+      aceitaAnexoLivre: true,
+    });
+    const fixture = await montar([p16]);
+    const c = fixture.componentInstance;
+
+    // O anexo é um documento do projeto de tipo `anexo_passo_16` — sem chamada nova, a tela
+    // filtra a lista de documentos que já carregou.
+    expect(c.anexosDoEmail(p16)).toEqual([]);
+    c.documentos.set([
+      { ...DOCUMENTO, id: 31, tipo: 'anexo_passo_16', arquivo: 'Apoio.pdf' },
+    ]);
+    expect(c.anexosDoEmail(p16).map((d) => d.arquivo)).toEqual(['Apoio.pdf']);
+    // Um anexo do passo 16 não vaza para outro passo.
+    expect(c.anexosDoEmail(passo({ numero: 15 }))).toEqual([]);
+
+    await c.abrirForm(p16);
+    fixture.detectChanges();
+    const raiz = fixture.nativeElement as HTMLElement;
+    expect(raiz.querySelector('input[type="file"][multiple]')).not.toBeNull();
+    expect(raiz.textContent).toContain('Apoio.pdf');
   });
 
   it('abre o formulário de registro quando o passo cobra assinatura ou e-mail', async () => {

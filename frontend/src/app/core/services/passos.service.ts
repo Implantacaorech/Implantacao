@@ -173,6 +173,23 @@ export class PassosService {
     );
   }
 
+  /** Anexa um arquivo AO E-MAIL que o passo vai enviar (passo 16). Diferente de
+   * `anexarEmail`: aqui o arquivo vai JUNTO no e-mail que o Painel manda. */
+  async anexarArquivoDoEmail(
+    projetoId: number,
+    numero: number,
+    arquivo: File,
+  ): Promise<void> {
+    const form = new FormData();
+    form.append('arquivo', arquivo);
+    await firstValueFrom(
+      this.http.post<ApiEnvelope<unknown>>(
+        `${this.base(projetoId)}/passos/${numero}/anexo-email`,
+        form,
+      ),
+    );
+  }
+
   async pessoas(projetoId: number): Promise<PessoasProjeto> {
     const res = await firstValueFrom(
       this.http.get<ApiEnvelope<PessoasProjeto>>(`${this.base(projetoId)}/pessoas`),

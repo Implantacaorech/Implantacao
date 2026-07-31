@@ -57,10 +57,10 @@ levantamento (pode ser mais de um) · Consultor = pode ser mais de um.
 | 10 | Criação do Projeto | GCI | 8 | Administrativo |
 | 11 | Conferência do Projeto e envio para assinatura | Administrativo | 10 | Coordenação (**redigido na tela**) |
 | 12 | Sinalizar Projeto assinado | Administrativo | 11 | — |
-| 13 | Elaborar o cronograma e incluir as agendas no SICLA | Consultor | **8** | Cliente |
+| 13 | Elaborar o cronograma e incluir as agendas no SICLA | Consultor | **8** | **nenhum** |
 | 14 | Gerar o check-list | Consultor | 13 | — |
 | 15 | Encaminhar e-mail de boas-vindas | Consultor | 14 | Cliente (**redigido na tela**) |
-| 16 | Enviar o cronograma de visitas | Consultor | 15 | Cliente (**redigido na tela**) |
+| 16 | Enviar o cronograma de visitas | Consultor | 15 | Cliente (**redigido**, com o cronograma + anexos livres) |
 | 17 | Sinalizar Projeto concluído | Consultor | 16 | Coordenação, GCI e Administrativo (**redigido**) |
 | 18 | Gerar o Termo de Encerramento e enviar ao Administrativo | Consultor | 17 | Administrativo, com o Termo em anexo (**redigido**) |
 | 19 | Conferir o Termo e encaminhar para assinatura | Administrativo | 18 | Consultores (**redigido na tela**) |
@@ -103,6 +103,22 @@ levantamento (pode ser mais de um) · Consultor = pode ser mais de um.
   ADM passa em tudo.
 - **RN-11 — ABRIR a tela ≠ CONCLUIR o passo.** `PERFIS_TELA_DO_PASSO` usa a mesma lista que a
   tela de destino já exige, para o botão não prometer o que a tela recusa.
+- **RN-12 — Elaborar o cronograma (13) não fala com o cliente.** É trabalho interno, e o
+  consultor pode refazer o cronograma quantas vezes quiser antes de fechar o passo. Quem leva
+  o cronograma ao cliente é o **passo 16**, com o documento em anexo. (Revisão de 2026-07-30;
+  até então o 13 disparava um e-mail ao contato do cliente.)
+- **RN-13 — O passo 16 aceita anexos livres.** Além do cronograma gerado, o consultor anexa na
+  tela os arquivos que o cliente precisa receber (`PASSOS_COM_ANEXO_LIVRE`). Eles sobem na
+  hora da escolha, ficam visíveis antes do envio e são guardados como documentos do projeto
+  com o tipo `anexo_passo_N` — o e-mail sai com os anexos livres **na frente** do documento
+  gerado.
+- **RN-14 — O roteiro do check-list (14) casa por SIGLA, não por código.** `Projeto.modulos`
+  guarda os CÓDIGOS do SICLA desde que o passo 1 virou consulta; o catálogo do roteiro é
+  indexado por sigla (FAT, NFE). `siglasContratadas()` faz a tradução por três caminhos, nesta
+  ordem: a descrição gravada em `modulos_detalhe` (onde a sigla vem escrita do SICLA), o
+  `catalogo_modulos.yaml` (código → abreviação) e o token cru, para os projetos antigos em que
+  alguém digitou a sigla à mão. O casamento é pelo **adicional** quando ele existe — quem
+  contratou FAT recebe as linhas do FAT, não também as de NFE e BRO.
 
 ## Consulta: e-mails e documentos de cada passo
 
@@ -113,9 +129,13 @@ documentos produzidos em cada passo — e **pode baixar o documento mesmo tendo 
   corpo, anexo, status, autor). Inclusive os que **falharam** — um e-mail que não saiu é
   justamente o que alguém precisa descobrir ao conferir o andamento.
 - Os documentos vêm de `documentos`, ligados ao passo pelo **tipo**
-  (`DocumentosService.PASSO_POR_TIPO`); os anexos do Outlook usam `email_passo_N`.
+  (`DocumentosService.PASSO_POR_TIPO`); os anexos do Outlook usam `email_passo_N` e os anexos
+  livres do e-mail, `anexo_passo_N`.
 - Na tela de passos, cada passo mostra um bloco **"Registros"** com os dois. O download usa
   `GET /api/documentos/:id/baixar`, que exige apenas autenticação.
+- **Os passos 10 e 11 trazem o Projeto para fora do bloco de Registros**: os dois mostram
+  "Visualizar" e "Baixar" na própria linha, apontando para o MESMO documento gerado no 10 —
+  conferir (11) é ler o arquivo, e obrigar a caçá-lo dentro de "Registros" era atrito puro.
 
 ## Configuração (Sistema → Ferramentas)
 

@@ -47,11 +47,25 @@ export class ChecklistModeloService implements OnModuleInit {
     }
   }
 
+  /** Linhas do roteiro dos módulos/adicionais contratados.
+   *
+   * O catálogo tem DOIS níveis: `modulo` é o módulo-pai (FAT) e `adicional` é o item fino
+   * (NFE, BRO, UFX…). Cada linha traz os dois — nas linhas do próprio módulo, `adicional`
+   * repete o `modulo` (FAT/FAT).
+   *
+   * O contrato é fechado no nível do ADICIONAL quando ele existe (mesma regra do passo 1,
+   * ver `modulos-sicla.constants.ts`), então casar por `adicional` é o que devolve
+   * exatamente o que o cliente comprou: quem contratou FAT recebe as linhas FAT/FAT, e não
+   * também as de NFE e BRO, que ele não tem. O `OR` por `modulo` é só a rede de segurança
+   * para linhas antigas sem `adicional` preenchido. */
   async listarPorModulos(siglas: string[]): Promise<ChecklistModelo[]> {
     if (siglas.length === 0) return [];
     return this.repo
       .createQueryBuilder('c')
-      .where('c.modulo IN (:...siglas)', { siglas })
+      .where(
+        '(c.adicional IN (:...siglas) OR (c.modulo IN (:...siglas) AND (c.adicional IS NULL OR c.adicional = :vazio)))',
+        { siglas, vazio: '' },
+      )
       .orderBy('c.modulo', 'ASC')
       .addOrderBy('c.ordem', 'ASC')
       .addOrderBy('c.id', 'ASC')

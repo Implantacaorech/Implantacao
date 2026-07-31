@@ -21,13 +21,17 @@ import { Etapa, Perfil, temPapel } from '../common/constants/perfis';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { filtrarCarteiraPorPerfil } from '../common/carteira-visibilidade';
 import { hojeIso } from '../cronograma/datas.util';
-import { PassosNotificacaoService } from './passos-notificacao.service';
+import {
+  PassosNotificacaoService,
+  tipoAnexoLivre,
+} from './passos-notificacao.service';
 import {
   DefinicaoPasso,
   EXTENSOES_EMAIL,
   ResponsavelPasso,
   PASSOS,
   PASSOS_COM_ANEXO_DE_EMAIL,
+  PASSOS_COM_ANEXO_LIVRE,
   PASSOS_COM_CONFERENCIA,
   PASSOS_COM_MARCACAO,
   PASSOS_COM_REDACAO_DE_EMAIL,
@@ -89,6 +93,8 @@ export interface PassoView extends DefinicaoPasso {
   rotuloMarcacao: string;
   /** A pessoa redige o e-mail na tela antes de o Painel enviar. */
   redigeEmail: boolean;
+  /** A pessoa pode anexar arquivos ao e-mail que vai sair (passo 16). */
+  aceitaAnexoLivre: boolean;
   /** Passos que faltam concluir antes deste. */
   bloqueadoPor: number[];
   /** Pode ser concluído AGORA por quem está pedindo. */
@@ -311,6 +317,7 @@ export class PassosService {
         observacaoRegistrada: feito?.observacao ?? '',
         rotuloMarcacao: PASSOS_COM_MARCACAO[def.numero] ?? '',
         redigeEmail: PASSOS_COM_REDACAO_DE_EMAIL.has(def.numero),
+        aceitaAnexoLivre: PASSOS_COM_ANEXO_LIVRE.has(def.numero),
         bloqueadoPor,
         liberado: motivos.length === 0,
         motivos,
@@ -719,6 +726,48 @@ export class PassosService {
         projetoId,
         tipo: 'documento',
         descricao: `Passo ${numero}: e-mail encaminhado anexado (${nome})`,
+        autor: usuario.nome,
+      }),
+    );
+    return doc;
+  }
+
+  /** Anexa um arquivo AO E-MAIL que o passo vai enviar (passo 16 — ver
+   * `PASSOS_COM_ANEXO_LIVRE`).
+   *
+   * Diferente de `anexarEmail`: lá o arquivo é a prova de um e-mail que saiu pelo Outlook;
+   * aqui ele VAI JUNTO no e-mail que o Painel manda ao concluir o passo. Por isso não há
+   * lista de extensões — o consultor manda ao cliente o que o cliente precisa receber.
+   *
+   * Fica guardado como documento do projeto (tipo `anexo_passo_N`), então some da tela mas
+   * não do histórico: dá para conferir depois o que foi mandado. */
+  async anexarArquivoDoEmail(
+    projetoId: number,
+    numero: number,
+    arquivo: { originalname: string; buffer: Buffer },
+    usuario: { nome: string; perfil: Perfil; perfis?: Perfil[] },
+  ): Promise<Documento> {
+    const def = this.definicao(numero);
+    if (!PASSOS_COM_ANEXO_LIVRE.has(numero)) {
+      throw new BadRequestException(
+        `Passo ${numero} não aceita anexo no e-mail.`,
+      );
+    }
+    await this.exigirPermissao(projetoId, def, usuario);
+    const nome = (arquivo.originalname || '').trim();
+    if (!nome) throw new BadRequestException('Selecione um arquivo.');
+
+    const doc = await this.documentos.anexarDocumento(
+      projetoId,
+      tipoAnexoLivre(numero),
+      nome,
+      arquivo.buffer,
+    );
+    await this.eventos.save(
+      this.eventos.create({
+        projetoId,
+        tipo: 'documento',
+        descricao: `Passo ${numero}: arquivo anexado ao e-mail (${nome})`,
         autor: usuario.nome,
       }),
     );

@@ -1,1 +1,42 @@
-/* Estilos vêm do tema global (MANUS). Nada específico aqui por enquanto. */
+/* Estilos vêm do tema global (MANUS). Só o que é específico do fluxo fica aqui. */
+
+/* Grade de gente para marcar (técnicos do passo 8, levantadores do passo 2).
+   Era um flex-wrap com gap: cada nome virava um item de largura própria, o navegador
+   quebrava "Éverton Macléber Remeling" em três linhas e a caixa de seleção ficava
+   centralizada no meio do bloco quebrado — o resultado era a bagunça da tela. Colunas de
+   largura fixa resolvem as duas coisas: o nome cabe inteiro e as caixas alinham numa
+   coluna só. */
+.grade-pessoas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 2px 16px;
+  margin-top: 6px;
+}
+
+.grade-pessoas label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  font-weight: 500;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.grade-pessoas label:hover {
+  background: var(--surface);
+}
+
+/* A caixa não encolhe nem sobe junto com um nome de duas linhas. */
+.grade-pessoas input[type='checkbox'] {
+  flex: none;
+  margin: 0;
+}
+
+/* Marcado fica evidente sem precisar conferir a caixinha — com trinta nomes na tela, é o
+   que permite ver a equipe escolhida de relance. */
+.grade-pessoas label:has(input:checked) {
+  background: rgba(37, 99, 235, 0.08);
+  font-weight: 600;
+}

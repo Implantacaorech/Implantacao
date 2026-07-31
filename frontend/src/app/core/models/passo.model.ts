@@ -36,6 +36,8 @@ export interface Passo {
   rotuloMarcacao: string;
   /** A pessoa redige o e-mail na tela antes de o Painel enviar. */
   redigeEmail: boolean;
+  /** A pessoa pode anexar arquivos ao e-mail que vai sair (passo 16). */
+  aceitaAnexoLivre: boolean;
   bloqueadoPor: number[];
   /** Pode ser concluído agora por quem está vendo a tela. */
   liberado: boolean;
