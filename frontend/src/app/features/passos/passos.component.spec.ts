@@ -43,6 +43,7 @@ function projeto(): Projeto {
     cnpj: '',
     numeroProjeto: '',
     numeroProposta: '',
+    tipoDemanda: '',
     ramo: '',
     responsavel: '',
     consultor: '',

@@ -54,6 +54,14 @@ export const SITUACOES = [
 ] as const;
 export type Situacao = (typeof SITUACOES)[number];
 
+/** Natureza da demanda aberta pelo Comercial no passo 1 — "Geração da demanda de
+ * levantamento / demonstração" (docs/processo-implantacao.md §2.1.1). São os dois motivos
+ * pelos quais o Comercial aciona a Implantação na pré-implantação: mapear os processos do
+ * cliente (Levantamento) ou apoiar uma demonstração do SIGER® (Demonstração). Escolha
+ * OBRIGATÓRIA no cadastro do cliente. */
+export const TIPOS_DEMANDA = ['Levantamento', 'Demonstração'] as const;
+export type TipoDemanda = (typeof TIPOS_DEMANDA)[number];
+
 // pode_ver("gestao") no Flask — mantido para telas que ainda incluem o Administrativo.
 export const PERFIS_GESTAO: Perfil[] = [
   'ADM',

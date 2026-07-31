@@ -19,12 +19,22 @@ export const ETAPAS: Etapa[] = [
 
 export const SITUACOES: Situacao[] = ['Em andamento', 'Em risco', 'Pausado', 'Concluído'];
 
+/** Natureza da demanda aberta pelo Comercial no passo 1 — "Geração da demanda de
+ * levantamento / demonstração" (docs/processo-implantacao.md §2.1.1). Espelha
+ * TIPOS_DEMANDA de backend/src/common/constants/perfis.ts. */
+export type TipoDemanda = 'Levantamento' | 'Demonstração';
+
+export const TIPOS_DEMANDA: TipoDemanda[] = ['Levantamento', 'Demonstração'];
+
 export interface Projeto {
   id: number;
   cliente: string;
   cnpj: string;
   numeroProjeto: string;
   numeroProposta: string;
+  /** Levantamento ou Demonstração — escolhido no cadastro do cliente (passo 1). Vazio nos
+   * projetos anteriores ao campo; só o cadastro grava, a ficha apenas exibe. */
+  tipoDemanda: TipoDemanda | '';
   ramo: string;
   responsavel: string;
   consultor: string;

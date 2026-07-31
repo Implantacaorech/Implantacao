@@ -103,6 +103,7 @@ describe('ConsultaClienteComponent', () => {
     const fixture = montar({ cadastrar });
     const comp = fixture.componentInstance;
     comp.selecionar(cliente());
+    comp.form.patchValue({ tipoDemanda: 'Levantamento' });
     await comp.salvar();
     expect(cadastrar).toHaveBeenCalled();
     expect(comp.sucesso()?.resultado.projetoId).toBe(9);
@@ -114,8 +115,51 @@ describe('ConsultaClienteComponent', () => {
     const fixture = montar({ cadastrar });
     const comp = fixture.componentInstance;
     comp.selecionar(cliente({ cliente: '', fantasia: '' }));
+    comp.form.patchValue({ tipoDemanda: 'Levantamento' });
     await comp.salvar();
     expect(cadastrar).not.toHaveBeenCalled();
+  });
+
+  it('o tipo de demanda começa vazio — sem default silencioso', () => {
+    const fixture = montar({});
+    const comp = fixture.componentInstance;
+    comp.selecionar(cliente());
+    expect(comp.form.getRawValue().tipoDemanda).toBe('');
+    expect(comp.form.controls.tipoDemanda.invalid).toBe(true);
+  });
+
+  it('não cadastra sem escolher o tipo de demanda, e diz o que falta', async () => {
+    const cadastrar = vi.fn();
+    const fixture = montar({ cadastrar });
+    const comp = fixture.componentInstance;
+    comp.selecionar(cliente());
+    await comp.salvar();
+    expect(cadastrar).not.toHaveBeenCalled();
+    expect(comp.erro()).toContain('tipo de demanda');
+    expect(comp.form.controls.tipoDemanda.touched).toBe(true);
+  });
+
+  it('envia o tipo de demanda escolhido no cadastro', async () => {
+    const cadastrar = vi
+      .fn()
+      .mockResolvedValue({ projetoId: 9, duplicado: false });
+    const fixture = montar({ cadastrar });
+    const comp = fixture.componentInstance;
+    comp.selecionar(cliente());
+    comp.form.patchValue({ tipoDemanda: 'Demonstração' });
+    await comp.salvar();
+    expect(cadastrar).toHaveBeenCalledWith(
+      expect.objectContaining({ tipoDemanda: 'Demonstração' }),
+    );
+  });
+
+  it('trocar de cliente limpa o tipo de demanda escolhido', () => {
+    const fixture = montar({});
+    const comp = fixture.componentInstance;
+    comp.selecionar(cliente());
+    comp.form.patchValue({ tipoDemanda: 'Demonstração' });
+    comp.limparSelecao();
+    expect(comp.form.getRawValue().tipoDemanda).toBe('');
   });
 
   it('busca módulos e marca/desmarca os contratados', async () => {
@@ -147,6 +191,7 @@ describe('ConsultaClienteComponent', () => {
     const fixture = montar({ cadastrar });
     const comp = fixture.componentInstance;
     comp.selecionar(cliente());
+    comp.form.patchValue({ tipoDemanda: 'Levantamento' });
     comp.toggleModulo(moduloSicla({ codigo: '205', descricao: 'Estoque · Inventário' }));
     comp.setObs('205', 'confirmar layout');
     await comp.salvar();
@@ -176,6 +221,7 @@ describe('ConsultaClienteComponent', () => {
     const fixture = montar({ cadastrar });
     const comp = fixture.componentInstance;
     comp.selecionar(cliente());
+    comp.form.patchValue({ tipoDemanda: 'Levantamento' });
     // marca a 2ª fixa (produtos) e informa horas + observação
     comp.toggleConversao(1);
     comp.setHorasConversao(1, '8');
@@ -246,6 +292,7 @@ describe('ConsultaClienteComponent', () => {
     const fixture = montar({ cadastrar });
     const comp = fixture.componentInstance;
     comp.selecionar(cliente());
+    comp.form.patchValue({ tipoDemanda: 'Levantamento' });
     await comp.salvar();
     expect(comp.sucesso()?.resultado.duplicado).toBe(true);
     expect(comp.sucesso()?.resultado.projetoId).toBe(3);

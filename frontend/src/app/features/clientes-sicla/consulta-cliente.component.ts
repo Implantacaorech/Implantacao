@@ -22,6 +22,7 @@ import {
   ModuloSicla,
   ModulosSiclaService,
 } from '../../core/services/modulos-sicla.service';
+import { TIPOS_DEMANDA, TipoDemanda } from '../../core/models/projeto.model';
 
 /** Conversões de dados oferecidas por padrão no passo 1 (o Comercial marca as necessárias e
  * estima as horas; pode acrescentar itens livres). */
@@ -105,8 +106,15 @@ export class ConsultaClienteComponent implements OnDestroy {
    * abrir o projeto no fluxo. */
   readonly podeAbrirProjeto = computed(() => !soComercial(this.auth.usuario()));
 
+  /** Opções da combo "Tipo de demanda" (§2.1.1 do processo). */
+  readonly tiposDemanda = TIPOS_DEMANDA;
+
   readonly form = this.fb.nonNullable.group({
     cliente: ['', Validators.required],
+    // Sem valor inicial DE PROPÓSITO: a escolha entre Levantamento e Demonstração é
+    // obrigatória, e um default silencioso classificaria a demanda errada quando o Comercial
+    // apenas passasse batido pelo campo.
+    tipoDemanda: ['' as TipoDemanda | '', Validators.required],
     cnpj: [''],
     numeroProjeto: [''],
     numeroProposta: [''],
@@ -321,8 +329,17 @@ export class ConsultaClienteComponent implements OnDestroy {
   }
 
   async salvar(): Promise<void> {
-    if (this.form.invalid || this.salvando()) {
+    if (this.salvando()) return;
+    if (this.form.invalid) {
+      // O botão fica HABILITADO com o formulário inválido de propósito: o tipo de demanda
+      // nasce vazio, e um botão morto sem explicação deixava o Comercial sem saber o que
+      // faltava. Aqui o campo pendente acende e a mensagem aparece.
       this.form.markAllAsTouched();
+      this.erro.set(
+        this.form.controls.tipoDemanda.invalid
+          ? 'Escolha o tipo de demanda: Levantamento ou Demonstração.'
+          : 'Preencha os campos obrigatórios (marcados com *).',
+      );
       return;
     }
     this.salvando.set(true);
@@ -334,6 +351,9 @@ export class ConsultaClienteComponent implements OnDestroy {
         .map((c) => ({ nome: c.nome, horas: c.horas, obs: c.obs }));
       const r = await this.service.cadastrar({
         ...dados,
+        // `form.invalid` acima já garante o preenchimento — o '' só existe como estado
+        // inicial da combo.
+        tipoDemanda: dados.tipoDemanda as TipoDemanda,
         modulosSelecionados: this.modulosSelecionados(),
         conversoesSelecionadas,
       });

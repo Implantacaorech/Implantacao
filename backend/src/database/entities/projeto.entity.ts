@@ -5,7 +5,11 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import type { Etapa, Situacao } from '../../common/constants/perfis';
+import type {
+  Etapa,
+  Situacao,
+  TipoDemanda,
+} from '../../common/constants/perfis';
 
 @Entity({ name: 'projetos' })
 export class Projeto {
@@ -23,6 +27,13 @@ export class Projeto {
 
   @Column({ name: 'numero_proposta', length: 40, default: '' })
   numeroProposta: string;
+
+  /** Natureza da demanda escolhida pelo Comercial no passo 1: 'Levantamento' ou
+   * 'Demonstração' (docs/processo-implantacao.md §2.1.1). Obrigatória no cadastro do cliente;
+   * fica vazia nos projetos anteriores a este campo. type: 'varchar' explícito pelo mesmo
+   * motivo de `etapa`. */
+  @Column({ name: 'tipo_demanda', type: 'varchar', length: 20, default: '' })
+  tipoDemanda: TipoDemanda | '';
 
   @Column({ length: 160, default: '' })
   ramo: string;

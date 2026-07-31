@@ -70,6 +70,47 @@ De/para dos dados: `1–4` iguais · `5–10` → +1 · `11–19` → +2 — mig
   é por onde entram os dois grupos de e-mail da Rech avisados no passo 1.
 - Detalhe completo em `vault/08 - Regras de Negócio/RN - Passos do Processo de Implantação.md`.
 
+## Tipo de demanda no cadastro do cliente (2026-07-31)
+
+O passo 1 (**Novo Cliente** → `/clientes/novo`) passou a exigir a escolha entre
+**Levantamento** e **Demonstração** — os dois motivos pelos quais o Comercial aciona a
+Implantação na pré-implantação (`docs/processo-implantacao.md` §2.1.1).
+
+- Campo `projetos.tipo_demanda` (migration `1784870000000-TipoDemanda.ts`); lista em
+  `TIPOS_DEMANDA` (backend `common/constants/perfis.ts`, frontend `core/models/projeto.model.ts`).
+- **Obrigatório só no CADASTRO** (`CadastrarClienteDto`, `@IsIn`), não em `CreateProjetoDto` —
+  projetos antigos e a edição da ficha não podem ser travados por um campo que nasceu depois.
+  A combo começa **vazia** de propósito: um default classificaria a demanda errada calado.
+  Guardado por `clientes-sicla/dto/cadastrar-cliente.dto.spec.ts` (a herança do DTO faria um
+  `@IsOptional()` no pai revogar a obrigatoriedade aqui, sem ninguém perceber).
+- A ficha do projeto só **exibe** o valor (aba Resumo). Nada no fluxo se ramifica ainda por
+  Levantamento × Demonstração — se isso for desejado, é decisão nova.
+
+## Gravação de reunião com transcrição ao vivo (2026-07-30)
+
+O menu **Transcrição Áudio/Vídeo** ganhou uma terceira entrada, além do upload e do robô:
+**gravar a reunião pelo painel** (`/protocolos/gravar`), presencial (microfone) ou remota
+pelo **Teams** (áudio da aba/tela), ou as duas somadas. Atalho também na tela de
+**Levantamento**, que abre em outra aba já com o cliente do projeto.
+
+- O navegador captura, corta em trechos de 15–30 s **numa pausa da fala** (não no relógio) e
+  envia; o docservice transcreve cada trecho com um worker que mantém o modelo **carregado**
+  durante a reunião (`docservice/transcricao/vivo.py` + `worker_vivo.py`) — separado do
+  pipeline de vídeo, que continua abrindo um subprocesso por transcrição.
+- Ao encerrar: os trechos viram um `.wav` único em `PROTOCOLOS_DIR/Gravacoes/` e a
+  transcrição entra no **mesmo pipeline** (IA + **resumo completo**).
+- **Cliente vem da busca no SICLA** — a MESMA do Novo Cliente (passo 1), delegada ao
+  `ClientesSiclaService` e reexposta em `GET /protocolos/clientes?termo=` sob a permissão
+  'protocolos'. A carteira de projetos não serve: reunião acontece antes da implantação existir.
+- Protocolo agora tem **`projeto_id` + `cliente` + `cliente_codigo`** (migrations
+  `1784840000000` e `1784850000000`), status novo `Gravando` e origem nova `gravacao`.
+- **Visibilidade nova:** a lista mostra **só o material do usuário logado**; ADM vê tudo e os
+  vídeos do robô do SharePoint continuam comuns a todos
+  (`backend/src/protocolos/protocolos.acesso.ts`, vale também nas rotas por id).
+- ⚠️ **Bloqueio conhecido:** captura de áudio só funciona em **contexto seguro** (HTTPS/
+  localhost) — o painel está em `http://I7M1700-01-EVE:5100`. Ver `docs/gravacao-reuniao.md`
+  e `docs/pendencias.md`.
+
 ## Filtros salvos por usuário (2026-07-29)
 
 Toda tela com filtro reabre no recorte que o usuário deixou. Base: tabela

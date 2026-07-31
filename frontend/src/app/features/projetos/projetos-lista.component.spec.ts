@@ -14,6 +14,7 @@ function projeto(id: number, cliente: string): Projeto {
     cnpj: '',
     numeroProjeto: '',
     numeroProposta: '',
+    tipoDemanda: '',
     ramo: '',
     responsavel: '',
     consultor: '',

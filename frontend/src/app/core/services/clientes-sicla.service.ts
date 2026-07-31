@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiEnvelope } from '../models/api-envelope.model';
+import { TipoDemanda } from '../models/projeto.model';
 
 /** Um cliente devolvido pela busca no SICLA, já normalizado para a ficha. `bruto` traz a
  * linha original (todas as colunas), caso a tela precise de algo fora do mapeamento. */
@@ -43,6 +44,8 @@ export interface ConversaoSelecionada {
 
 export interface CadastrarClientePayload {
   cliente: string;
+  /** Natureza da demanda — OBRIGATÓRIA no passo 1 (o backend recusa fora da lista). */
+  tipoDemanda: TipoDemanda;
   cnpj?: string;
   numeroProjeto?: string;
   numeroProposta?: string;
