@@ -157,6 +157,27 @@ export class PassosController {
     );
   }
 
+  @Post('passos/:numero/anexo-email')
+  @Roles()
+  @Permissao('carteira', 'alteracao')
+  @UseInterceptors(FileInterceptor('arquivo'))
+  @ApiOperation({
+    summary:
+      'Anexa um arquivo AO E-MAIL que o passo vai enviar (passo 16) — some do e-mail, não é ' +
+      'prova de envio externo como o /anexar-email dos passos 4 e 6',
+  })
+  async anexarArquivoDoEmail(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('numero', ParseIntPipe) numero: number,
+    @UploadedFile() arquivo: Express.Multer.File | undefined,
+    @CurrentUser() user: AuthUser,
+  ) {
+    if (!arquivo) throw new BadRequestException('Selecione um arquivo.');
+    return new ApiEnvelope(
+      await this.passos.anexarArquivoDoEmail(id, numero, arquivo, user),
+    );
+  }
+
   @Get('pessoas')
   @Roles()
   @ApiOperation({ summary: 'Levantadores e consultores do projeto' })

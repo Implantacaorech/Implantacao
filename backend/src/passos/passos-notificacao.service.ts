@@ -21,12 +21,19 @@ import {
   TOKENS_PASSO,
 } from './passos-email.constants';
 
+/** Nome do tipo com que ficam guardados os arquivos que a PESSOA anexou ao e-mail de um
+ * passo (`PASSOS_COM_ANEXO_LIVRE`). Convenção igual à de `email_passo_N`, usada pelos anexos
+ * de prova dos passos 4 e 6 — o número vai no próprio tipo. */
+export function tipoAnexoLivre(passo: number): string {
+  return `anexo_passo_${passo}`;
+}
+
 /** E-mail de um passo já montado, pronto para revisão ou envio. */
 export interface EmailMontado {
   para: string[];
   assunto: string;
   corpo: string;
-  /** Nome do arquivo que irá em anexo, se houver. */
+  /** Nome do(s) arquivo(s) que irão em anexo, separados por vírgula, se houver. */
   anexo: string;
 }
 
@@ -68,21 +75,49 @@ export class PassosNotificacaoService {
     return `passo-${passo}`;
   }
 
-  /** Documento mais RECENTE do tipo pedido, como anexo — ou nada se não houver. O arquivo
-   * pode ter sumido do disco; nesse caso o próprio envio ignora o anexo em silêncio, mas
-   * conferimos aqui para não anunciar "em anexo" um arquivo que não existe mais. */
+  /** O que vai em anexo no e-mail do passo, na ordem em que a pessoa espera ver:
+   *
+   *   1. os arquivos que ela mesma anexou na tela (`anexo_passo_N`) — TODOS, porque anexar
+   *      dois arquivos e o Painel mandar só um seria pior do que não deixar anexar;
+   *   2. o documento gerado que o passo sempre leva (`ANEXO_POR_PASSO`), o mais RECENTE.
+   *
+   * O arquivo pode ter sumido do disco; nesse caso o próprio envio ignora o anexo em
+   * silêncio, mas conferimos aqui para não anunciar "em anexo" um arquivo que não existe
+   * mais. */
   private async anexoDoPasso(
     projetoId: number,
     passo: number,
   ): Promise<Anexo[]> {
-    const tipo = ANEXO_POR_PASSO[passo];
-    if (!tipo) return [];
-    const doc = await this.documentos.findOne({
-      where: { projetoId, tipo },
-      order: { criadoEm: 'DESC' },
+    const anexos: Anexo[] = [];
+
+    const manuais = await this.documentos.find({
+      where: { projetoId, tipo: tipoAnexoLivre(passo) },
+      order: { criadoEm: 'ASC' },
     });
-    if (!doc || !doc.caminho || !existsSync(doc.caminho)) return [];
-    return [{ caminho: doc.caminho, nomeArquivo: doc.arquivo || undefined }];
+    for (const doc of manuais) {
+      if (doc.caminho && existsSync(doc.caminho)) {
+        anexos.push({
+          caminho: doc.caminho,
+          nomeArquivo: doc.arquivo || undefined,
+        });
+      }
+    }
+
+    const tipo = ANEXO_POR_PASSO[passo];
+    if (tipo) {
+      const doc = await this.documentos.findOne({
+        where: { projetoId, tipo },
+        order: { criadoEm: 'DESC' },
+      });
+      if (doc?.caminho && existsSync(doc.caminho)) {
+        anexos.push({
+          caminho: doc.caminho,
+          nomeArquivo: doc.arquivo || undefined,
+        });
+      }
+    }
+
+    return anexos;
   }
 
   /** Converte nomes de pessoa (como gravados no projeto) nos e-mails do cadastro. O login
@@ -223,7 +258,10 @@ export class PassosNotificacaoService {
         extras,
       ),
       corpo: this.aplicarTokens(modelo?.corpo || padrao.corpo, projeto, extras),
-      anexo: anexos[0]?.nomeArquivo ?? '',
+      anexo: anexos
+        .map((a) => a.nomeArquivo ?? '')
+        .filter(Boolean)
+        .join(', '),
     };
   }
 
@@ -320,7 +358,10 @@ export class PassosNotificacaoService {
         para: email.para.join(', '),
         assunto: email.assunto,
         corpo: email.corpo,
-        anexo: email.anexo,
+        // `anexo` é varchar(255) e agora pode listar VÁRIOS arquivos: com anexo livre, o
+        // nome de dois PDFs longos já estoura a coluna. O registro é informativo (o que
+        // vale é o e-mail que saiu), então cortar é preferível a falhar a gravação.
+        anexo: email.anexo.slice(0, 255),
         status: resultado.status,
         erro: resultado.erro,
         autor,

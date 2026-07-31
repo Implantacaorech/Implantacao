@@ -219,6 +219,24 @@
                 [routerLink]="p.podeAbrir ? tela : null"
               >Abrir</a>
             }
+            <!-- Documento do passo à mão: ver na tela e baixar sem sair do fluxo. O passo 11
+                 (Conferência) confere o MESMO Projeto gerado no 10 — antes o único caminho
+                 até o arquivo era abrir "Registros" e caçar a linha certa. -->
+            @if (documentoParaVer(p); as doc) {
+              <a
+                class="btn btn-sec"
+                style="width:100%;text-align:center"
+                [routerLink]="['/projetos', projetoId, 'documentos', doc.id, 'ver']"
+                [title]="doc.arquivo"
+              >Visualizar</a>
+              <button
+                type="button"
+                class="btn btn-sec"
+                style="width:100%"
+                [title]="doc.arquivo"
+                (click)="baixarDocumento(doc)"
+              >Baixar</button>
+            }
             @if (!p.concluido) {
               @if (formDoPasso(p)) {
                 <button
@@ -240,6 +258,14 @@
               >Concluir</button>
               }
             } @else {
+              @if (formAindaEditavel(p)) {
+                <button
+                  type="button"
+                  class="btn btn-sec"
+                  style="width:100%"
+                  (click)="abrirForm(p)"
+                >Ver as RNS</button>
+              }
               @if (aguardandoConferencia(p)) {
                 <button
                   type="button"
@@ -316,6 +342,34 @@
                       @if (emailAnexo()) {
                         <p style="margin:6px 0 0;font-size:.85rem">📎 Vai com o anexo <strong>{{ emailAnexo() }}</strong></p>
                       }
+
+                      <!-- Passo 16: além do cronograma gerado, o consultor manda o material
+                           que o cliente precisa receber junto. Sobe na hora de escolher, para
+                           dar para conferir (e tirar) antes de enviar. -->
+                      @if (p.aceitaAnexoLivre) {
+                        <div style="margin-top:10px">
+                          <label style="display:block;font-size:.85rem">
+                            <span class="txt-muted">Anexar outros arquivos ao e-mail</span>
+                            <input
+                              type="file"
+                              multiple
+                              (change)="anexarArquivoDoEmail(p, $event)"
+                              [disabled]="ocupado() === p.numero"
+                              style="display:block;margin-top:4px"
+                            />
+                          </label>
+                          @for (a of anexosDoEmail(p); track a.id) {
+                            <p style="margin:4px 0 0;font-size:.85rem">
+                              📎 <strong>{{ a.arquivo }}</strong>
+                              <button
+                                type="button"
+                                (click)="removerAnexoDoEmail(a)"
+                                style="background:none;border:none;padding:0 0 0 8px;cursor:pointer;font:inherit;color:var(--err);text-decoration:underline"
+                              >remover</button>
+                            </p>
+                          }
+                        </div>
+                      }
                     }
                   </div>
                 }
@@ -336,27 +390,95 @@
                 </label>
                 <div class="campo" style="margin-top:8px">
                   <span>Levantador(es) <small style="color:var(--muted);font-weight:400">— a data é a mesma para todos</small></span>
-                  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">
+                  <div class="grade-pessoas">
                     @for (nome of levantadoresDisponiveis(); track nome) {
-                      <label style="display:flex;align-items:center;gap:6px;font-weight:500;cursor:pointer">
+                      <label>
                         <input
                           type="checkbox"
                           [checked]="levantadoresSelecionados.includes(nome)"
                           (change)="levantadoresSelecionados = alternarSelecao(levantadoresSelecionados, nome, $any($event.target).checked)"
                         />
-                        {{ nome }}
+                        <span>{{ nome }}</span>
                       </label>
                     }
-                    @if (levantadoresDisponiveis().length === 0) {
-                      <span style="color:var(--muted);font-size:.85rem">
-                        Nenhum usuário com o papel <strong>Levantador</strong>. Marque o papel no cadastro de usuários.
-                      </span>
-                    }
                   </div>
+                  @if (levantadoresDisponiveis().length === 0) {
+                    <span style="color:var(--muted);font-size:.85rem">
+                      Nenhum usuário com o papel <strong>Levantador</strong>. Marque o papel no cadastro de usuários.
+                    </span>
+                  }
                 </div>
                 <div class="acoes" style="margin-top:var(--sp-3)">
                   <button type="button" class="btn primario" [disabled]="ocupado() === p.numero" (click)="salvarAgendamento()">Salvar e concluir</button>
                   <button type="button" class="btn btn-sec" (click)="fecharForm()">Cancelar</button>
+                </div>
+              } @else if (formDoPasso(p) === 'rns') {
+                <!-- Passo 9: as RNS se incluem AQUI, no passo que as pede. Antes o painel
+                     ficava lá no fim da página e o passo só tinha "Concluir" — quem chegava
+                     nele não tinha onde digitar. -->
+                <strong style="font-size:.9rem">RNS do projeto</strong>
+                <p class="txt-muted" style="margin:2px 0 10px;font-size:.8rem">
+                  RNI, COB e Conversão. A quantidade é livre — acrescente quantos registros o
+                  cliente exigir.
+                </p>
+
+                @if (rns().length === 0) {
+                  <p style="color:var(--muted);margin:0 0 10px">Nenhuma RNS registrada.</p>
+                } @else {
+                  <div style="margin-bottom:12px" class="tabela-wrap">
+                    <table class="tabela">
+                      <thead>
+                        <tr>
+                          <th>Tipo</th>
+                          <th>Número</th>
+                          <th>Descrição</th>
+                          <th class="col-acoes"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (r of rns(); track r.id) {
+                          <tr>
+                            <td>{{ r.tipo }}</td>
+                            <td>{{ r.numero || '—' }}</td>
+                            <td>{{ r.descricao || '—' }}</td>
+                            <td class="col-acoes">
+                              <button type="button" class="btn pequeno perigo" (click)="removerRns(r.id)">Remover</button>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+
+                <div class="filtros-linha">
+                  <label class="campo" style="flex:none">
+                    <span>Tipo</span>
+                    <select [(ngModel)]="novoTipo" name="novoTipo">
+                      @for (t of tiposRns; track t) { <option [value]="t">{{ t }}</option> }
+                    </select>
+                  </label>
+                  <label class="campo" style="flex:none">
+                    <span>Número</span>
+                    <input type="text" [(ngModel)]="novoNumero" name="novoNumero" placeholder="654321" />
+                  </label>
+                  <label class="campo largo">
+                    <span>Descrição</span>
+                    <input type="text" [(ngModel)]="novaDescricao" name="novaDescricao" placeholder="Conversão — Clientes/Fornecedores" />
+                  </label>
+                  <button type="button" class="btn" (click)="acrescentarRns()">Acrescentar</button>
+                </div>
+
+                <div class="acoes" style="margin-top:var(--sp-3)">
+                  @if (!p.concluido) {
+                    <button
+                      type="button"
+                      class="btn primario"
+                      [disabled]="!p.liberado || ocupado() === p.numero"
+                      (click)="concluirDoForm(p)"
+                    >Concluir</button>
+                  }
+                  <button type="button" class="btn btn-sec" (click)="fecharForm()">Fechar</button>
                 </div>
               } @else {
                 <label class="campo" style="max-width:280px">
@@ -368,15 +490,15 @@
                 </label>
                 <div class="campo" style="margin-top:8px">
                   <span>Técnicos (consultores) * <small style="color:var(--muted);font-weight:400">— pode marcar mais de um</small></span>
-                  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">
+                  <div class="grade-pessoas">
                     @for (nome of consultoresDisponiveis(); track nome) {
-                      <label style="display:flex;align-items:center;gap:6px;font-weight:500;cursor:pointer">
+                      <label>
                         <input
                           type="checkbox"
                           [checked]="consultoresSelecionados.includes(nome)"
                           (change)="consultoresSelecionados = alternarSelecao(consultoresSelecionados, nome, $any($event.target).checked)"
                         />
-                        {{ nome }}
+                        <span>{{ nome }}</span>
                       </label>
                     }
                   </div>
@@ -392,16 +514,14 @@
     }
   }
 
-  <h2 style="font-size:1rem;margin:22px 0 8px">RNS do projeto</h2>
-  <p class="sub" style="margin-top:0">
-    RNI, COB e Conversão. A quantidade é livre — acrescente quantos registros o cliente exigir.
-  </p>
-
-  <div class="painel">
-    @if (rns().length === 0) {
-      <p style="color:var(--muted);margin:0 0 10px">Nenhuma RNS registrada.</p>
-    } @else {
-      <div class="tabela-wrap" style="margin-bottom:12px">
+  <!-- As RNS saíram daqui: agora abrem DENTRO do passo 9, que é onde o processo as pede.
+       Para quem só tem consulta (sem os botões de ação), elas continuam visíveis abaixo. -->
+  @if (soConsulta()) {
+    <h2 style="font-size:1rem;margin:22px 0 8px">RNS do projeto</h2>
+    <div class="painel">
+      @if (rns().length === 0) {
+        <p style="color:var(--muted);margin:0">Nenhuma RNS registrada.</p>
+      } @else {
         <div class="tabela-wrap">
           <table class="tabela">
             <thead>
@@ -409,7 +529,6 @@
                 <th>Tipo</th>
                 <th>Número</th>
                 <th>Descrição</th>
-                <th class="col-acoes"></th>
               </tr>
             </thead>
             <tbody>
@@ -418,39 +537,14 @@
                   <td>{{ r.tipo }}</td>
                   <td>{{ r.numero || '—' }}</td>
                   <td>{{ r.descricao || '—' }}</td>
-                  <td class="col-acoes">
-                    @if (!soConsulta()) {
-                      <button type="button" class="btn pequeno perigo" (click)="removerRns(r.id)">Remover</button>
-                    }
-                  </td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
-      </div>
-    }
-
-    @if (!soConsulta()) {
-    <div class="filtros-linha">
-      <label class="campo" style="flex:none">
-        <span>Tipo</span>
-        <select [(ngModel)]="novoTipo" name="novoTipo">
-          @for (t of tiposRns; track t) { <option [value]="t">{{ t }}</option> }
-        </select>
-      </label>
-      <label class="campo" style="flex:none">
-        <span>Número</span>
-        <input type="text" [(ngModel)]="novoNumero" name="novoNumero" placeholder="654321" />
-      </label>
-      <label class="campo largo">
-        <span>Descrição</span>
-        <input type="text" [(ngModel)]="novaDescricao" name="novaDescricao" placeholder="Conversão — Clientes/Fornecedores" />
-      </label>
-      <button type="button" class="btn" (click)="acrescentarRns()">Acrescentar</button>
+      }
     </div>
-    }
-  </div>
+  }
 
   <p style="margin-top:18px">
     <a class="btn btn-voltar" [routerLink]="['/projetos', projetoId]">← Voltar ao projeto</a>

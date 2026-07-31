@@ -20,7 +20,16 @@ import { Documento } from '../../core/models/documento.model';
 import { Projeto } from '../../core/models/projeto.model';
 
 /** Tipo de formulário que um passo abre antes de concluir. */
-type FormPasso = 'agendar' | 'designar' | 'registro';
+type FormPasso = 'agendar' | 'designar' | 'registro' | 'rns';
+
+/** Nomes em ordem alfabética de gente (acento não muda o lugar, maiúscula tampouco).
+ *
+ * As listas de técnicos e levantadores chegam na ordem do cadastro de usuários. Com trinta
+ * nomes numa grade, procurar uma pessoa numa lista fora de ordem é o que fazia a marcação da
+ * equipe virar caça ao tesouro. */
+function ordenarNomes(nomes: string[]): string[] {
+  return [...nomes].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
 
 /** Tela dos 21 passos do processo de implantação de um projeto.
  *
@@ -117,9 +126,13 @@ export class PassosComponent {
 
   documentosDoPasso(p: Passo): Documento[] {
     const tipo = PassosComponent.TIPO_DOC_POR_PASSO[p.numero];
-    const tipoAnexo = `email_passo_${p.numero}`;
+    // `email_passo_N` é a prova do e-mail encaminhado (passos 4 e 6); `anexo_passo_N`, o que
+    // a pessoa mandou junto do e-mail do Painel (passo 16). Os dois carregam o número no
+    // próprio tipo e pertencem ao passo tanto quanto o documento gerado nele.
+    const tipoProva = `email_passo_${p.numero}`;
+    const tipoAnexo = `anexo_passo_${p.numero}`;
     return this.documentos().filter(
-      (d) => d.tipo === tipo || d.tipo === tipoAnexo,
+      (d) => d.tipo === tipo || d.tipo === tipoProva || d.tipo === tipoAnexo,
     );
   }
 
@@ -171,15 +184,16 @@ export class PassosComponent {
   }
 
   /** Passos que abrem um formulário PRÓPRIO em vez de só concluir — os que gravam dados em
-   * outra estrutura (agenda do levantamento, designação da equipe). */
+   * outra estrutura (agenda do levantamento, designação da equipe, RNS do projeto). */
   private static readonly FORM_POR_PASSO: Record<number, FormPasso> = {
     2: 'agendar',
     8: 'designar',
+    9: 'rns',
   };
 
   /** Que formulário o passo abre antes de concluir.
    *
-   * Além dos dois formulários próprios, qualquer passo que exija uma marcação de assinatura
+   * Além dos formulários próprios, qualquer passo que exija uma marcação de assinatura
    * (7 e 12) ou que mande a pessoa redigir o e-mail cai no formulário genérico de
    * 'registro'. Passo que não pede nada disso continua sendo um botão "Concluir" direto —
    * abrir um formulário vazio só para clicar "salvar" seria atrito à toa. */
@@ -194,7 +208,37 @@ export class PassosComponent {
   rotuloAcao(p: Passo): string {
     if (p.redigeEmail) return 'Redigir e-mail';
     if (p.rotuloMarcacao) return 'Registrar';
+    if (this.formDoPasso(p) === 'rns') return 'Incluir as RNS';
     return 'Preencher';
+  }
+
+  /** Passos cujo formulário continua útil DEPOIS de concluído — as RNS são acrescentadas ao
+   * longo do projeto ("a quantidade é variável"), então trancar a edição na conclusão do
+   * passo 9 obrigaria a reabrir o passo só para incluir mais uma. */
+  formAindaEditavel(p: Passo): boolean {
+    return p.concluido && this.formDoPasso(p) === 'rns';
+  }
+
+  /** Tipo do documento que o passo mostra para VER/BAIXAR na própria linha.
+   *
+   * Diferente de `TIPO_DOC_POR_PASSO`, que diz qual documento NASCE no passo: aqui é o que o
+   * passo precisa ter à mão. Por isso o 11 (Conferência) aponta para o mesmo 'projeto'
+   * gerado no 10 — conferir sem poder abrir o arquivo obrigava o Administrativo a caçar o
+   * documento em outra tela. */
+  private static readonly TIPO_DOC_PARA_VER: Record<number, string> = {
+    10: 'projeto',
+    11: 'projeto',
+  };
+
+  /** Documento mais RECENTE que o passo deixa ver/baixar, ou `null` se ainda não existe. */
+  documentoParaVer(p: Passo): Documento | null {
+    const tipo = PassosComponent.TIPO_DOC_PARA_VER[p.numero];
+    if (!tipo) return null;
+    const doTipo = this.documentos().filter((d) => d.tipo === tipo);
+    if (doTipo.length === 0) return null;
+    return doTipo.reduce((maisNovo, d) =>
+      d.criadoEm > maisNovo.criadoEm ? d : maisNovo,
+    );
   }
 
   /** Passos cuja ação é GERAR um documento em outra tela. O fluxo leva a pessoa até lá em
@@ -228,6 +272,12 @@ export class PassosComponent {
     if (!tipo) return;
     this.formAberto.set(p.numero);
     try {
+      if (tipo === 'rns') {
+        // As RNS já vêm carregadas com a tela; abrir o passo só revela o editor. Recarrega
+        // mesmo assim para quem deixou a aba aberta enquanto o Administrativo incluía outra.
+        this.rns.set(await this.service.listarRns(this.projetoId));
+        return;
+      }
       if (tipo === 'registro') {
         this.descricao = '';
         this.marcado = false;
@@ -266,7 +316,7 @@ export class PassosComponent {
         this.dataLevantamento = view.dataLevantamento || '';
         this.levantadoresSelecionados = pessoas.levantadores.map((l) => l.pessoa);
         this.levantadoresDisponiveis.set(
-          await this.service.pessoasPorPapel('Levantador'),
+          ordenarNomes(await this.service.pessoasPorPapel('Levantador')),
         );
       } else {
         const [gciView, cons, pessoas] = await Promise.all([
@@ -274,9 +324,9 @@ export class PassosComponent {
           this.designacao.obterConsultores(this.projetoId),
           this.service.pessoas(this.projetoId),
         ]);
-        this.gcisDisponiveis.set(gciView.gcis);
+        this.gcisDisponiveis.set(ordenarNomes(gciView.gcis));
         this.gciSelecionado = (gciView.gciAtual || '').split(',')[0].trim();
-        this.consultoresDisponiveis.set(cons.consultores);
+        this.consultoresDisponiveis.set(ordenarNomes(cons.consultores));
         this.consultoresSelecionados = pessoas.consultores.map((c) => c.pessoa);
       }
     } catch (e) {
@@ -491,6 +541,13 @@ export class PassosComponent {
     );
   }
 
+  /** Conclui um passo cujo formulário não grava nada por si — o passo 9, em que o trabalho é
+   * incluir as RNS (já salvas uma a uma) e o botão só declara que acabou. */
+  async concluirDoForm(p: Passo): Promise<void> {
+    await this.concluir(p);
+    if (!this.erro()) this.formAberto.set(null);
+  }
+
 
   conferir(p: Passo): Promise<void> {
     return this.executar(p.numero, () =>
@@ -516,6 +573,50 @@ export class PassosComponent {
   /** Passos 4 e 6: o e-mail sai do Outlook da pessoa; o Painel guarda a PROVA. */
   aceitaAnexoDeEmail(p: Passo): boolean {
     return PASSOS_COM_ANEXO_DE_EMAIL.includes(p.numero);
+  }
+
+  /** Arquivos que a pessoa já anexou ao e-mail deste passo (passo 16).
+   *
+   * Vêm da lista de documentos do projeto que a tela já carrega — não há chamada nova: o
+   * backend os guarda com o tipo `anexo_passo_N`, e o número está no próprio tipo. */
+  anexosDoEmail(p: Passo): Documento[] {
+    const tipo = `anexo_passo_${p.numero}`;
+    return this.documentos().filter((d) => d.tipo === tipo);
+  }
+
+  /** Sobe o arquivo na hora de escolher, e não junto do "Enviar": assim a pessoa vê na tela
+   * o que vai anexado antes de mandar, e pode tirar se errou. */
+  async anexarArquivoDoEmail(p: Passo, evento: Event): Promise<void> {
+    const input = evento.target as HTMLInputElement;
+    const arquivos = [...(input.files ?? [])];
+    if (arquivos.length === 0) return;
+    this.ocupado.set(p.numero);
+    this.erro.set(null);
+    try {
+      for (const arquivo of arquivos) {
+        await this.service.anexarArquivoDoEmail(
+          this.projetoId,
+          p.numero,
+          arquivo,
+        );
+      }
+      await this.recarregarRegistros();
+    } catch (e) {
+      this.erro.set(this.mensagem(e));
+    } finally {
+      this.ocupado.set(null);
+      input.value = '';
+    }
+  }
+
+  async removerAnexoDoEmail(doc: Documento): Promise<void> {
+    this.erro.set(null);
+    try {
+      await this.docs.excluirDocumento(doc.id);
+      await this.recarregarRegistros();
+    } catch (e) {
+      this.erro.set(this.mensagem(e));
+    }
   }
 
   async anexarEmail(p: Passo, evento: Event): Promise<void> {

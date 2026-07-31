@@ -153,16 +153,9 @@ export const EMAILS_POR_PASSO: EmailDePasso[] = [
       'conferido pelo Administrativo e enviado ao cliente para assinatura.' +
       ASSINATURA,
   },
-  {
-    passo: 13,
-    para: ['cliente'],
-    assunto: 'Cronograma de Implantação — {{CLIENTE}}',
-    corpo:
-      'Prezado(a) {{CONTATO_NOME}},\n\nSegue o cronograma de implantação do SIGER®, com as ' +
-      'agendas e os macro tópicos de cada visita/treinamento.\n\nPor favor, confirme as ' +
-      'datas ou retorne com ajustes.' +
-      ASSINATURA,
-  },
+  // Passo 13 ("Elaborar o cronograma e incluir as agendas no SICLA") NÃO tem e-mail: é
+  // trabalho interno, e o cronograma que o cliente recebe é o do passo 16 (decisão do usuário
+  // em 2026-07-30). Não recriar a entrada aqui sem mudar a regra em passos.constants.ts.
   {
     passo: 15,
     para: ['cliente'],
@@ -247,7 +240,6 @@ export const EMAIL_POR_PASSO = new Map(
  * (o envio ignora anexo ausente sem falhar). */
 export const ANEXO_POR_PASSO: Record<number, string> = {
   11: 'projeto',
-  13: 'cronograma',
   16: 'cronograma',
   18: 'termo',
   21: 'termo',

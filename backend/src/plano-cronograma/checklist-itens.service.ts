@@ -5,6 +5,7 @@ import { ChecklistItem } from '../database/entities/checklist-item.entity';
 import { Projeto } from '../database/entities/projeto.entity';
 import { ChecklistModeloService } from '../catalogos/checklist-modelo.service';
 import { ModificacoesService } from './modificacoes.service';
+import { siglasContratadas } from './catalogo-modulos.util';
 import { diffLinhas } from './linhas-diff.util';
 import { LinhaChecklistDto } from './dto/linha-checklist.dto';
 
@@ -74,10 +75,15 @@ export class ChecklistItensService {
   }
 
   /** Roteiro dos módulos contratados (catálogo `ChecklistModelo`) como ponto de partida
-   * editável. Espelha webapp/routes_cronograma.py:_seed_checklist. */
+   * editável. Espelha webapp/routes_cronograma.py:_seed_checklist.
+   *
+   * Os módulos do projeto passam por `siglasContratadas` antes da consulta: desde que o
+   * passo 1 virou a consulta ao SICLA, `Projeto.modulos` guarda CÓDIGOS e o catálogo é
+   * indexado por SIGLA — sem a tradução o roteiro vinha vazio. */
   async gerarRoteiroDoCatalogo(projeto: Projeto): Promise<LinhaChecklistDto[]> {
-    const mods = (projeto.modulos || '').split(/[,;\n\s]+/).filter(Boolean);
-    const linhasCatalogo = await this.checklistModelo.listarPorModulos(mods);
+    const linhasCatalogo = await this.checklistModelo.listarPorModulos(
+      siglasContratadas(projeto),
+    );
     return linhasCatalogo.map((l) => {
       const item = (l.item || '').trim();
       const acao = (l.acao || '').trim();
