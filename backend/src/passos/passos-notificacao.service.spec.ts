@@ -443,7 +443,11 @@ describe('PassosNotificacaoService', () => {
 
   it('passo 16 leva os arquivos anexados na tela ANTES do cronograma gerado', async () => {
     anexosManuais = [
-      { tipo: 'anexo_passo_16', caminho: __filename, arquivo: 'Apresentacao.pdf' },
+      {
+        tipo: 'anexo_passo_16',
+        caminho: __filename,
+        arquivo: 'Apresentacao.pdf',
+      },
     ];
     documentoDoProjeto = {
       tipo: 'cronograma',
