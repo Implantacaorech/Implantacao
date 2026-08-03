@@ -1,0 +1,80 @@
+<!-- Barra fixa do topo: a marca à esquerda e, à direita, o botão que leva ao login — pedido
+     do usuário para que dê para entrar de qualquer ponto da leitura. -->
+<header class="ap-topo">
+  <a class="ap-marca" routerLink="/login">
+    <img src="logo-portal-rech-branco.png" alt="Portal Rech" />
+    <span>Painel de Implantação</span>
+  </a>
+  <nav class="ap-atalhos">
+    <a href="#passos">O processo</a>
+    <a href="#documentos">Documentos</a>
+    <a href="#agenda">Visitas</a>
+    <a href="#numeros">Números</a>
+  </nav>
+  <a class="ap-botao" routerLink="/login">Entrar no Painel</a>
+</header>
+
+<main class="ap-corpo">
+  <section class="ap-capa">
+    <p class="ap-etiqueta ap-etiqueta-clara">Rech Sistemas de Gestão · Implantação SIGER®</p>
+    <h1 class="pagina-titulo">Toda a implantação de um cliente em um lugar só</h1>
+    <p class="ap-capa-txt">
+      Do primeiro contato até o Termo de Encerramento assinado, o Painel conduz cada passo,
+      gera os documentos no modelo oficial, organiza as visitas e mostra como está a carteira —
+      sem planilha paralela e sem informação perdida no e-mail.
+    </p>
+    <div class="ap-capa-acoes">
+      <a class="ap-botao ap-botao-grande" routerLink="/login">Entrar no Painel</a>
+      <a class="ap-botao-vazado" href="#visao-geral">Ver os recursos</a>
+    </div>
+    <ul class="ap-destaques">
+      @for (d of destaques; track d.rotulo) {
+        <li><strong>{{ d.valor }}</strong><span>{{ d.rotulo }}</span></li>
+      }
+    </ul>
+  </section>
+
+  @for (r of recursos; track r.id; let i = $index) {
+    <section class="ap-bloco" [class.ap-bloco-invertido]="i % 2 === 1" [id]="r.id">
+      <div class="ap-bloco-txt">
+        <p class="ap-etiqueta">{{ r.etiqueta }}</p>
+        <h2>{{ r.titulo }}</h2>
+        <p>{{ r.texto }}</p>
+        <ul class="ap-lista">
+          @for (item of r.itens; track item) {
+            <li>{{ item }}</li>
+          }
+        </ul>
+      </div>
+      <figure class="ap-bloco-fig">
+        <img [src]="r.imagem" [alt]="r.alt" width="640" height="400" loading="lazy" />
+      </figure>
+    </section>
+  }
+
+  <section class="ap-extras">
+    <h2>E ainda, no dia a dia</h2>
+    <ul class="ap-grade">
+      @for (e of extras; track e.titulo) {
+        <li>
+          <h3>{{ e.titulo }}</h3>
+          <p>{{ e.texto }}</p>
+        </li>
+      }
+    </ul>
+  </section>
+
+  <section class="ap-final">
+    <h2>Pronto para começar?</h2>
+    <p>
+      Use o seu login da Rech. Se ainda não tem acesso, fale com a administração do setor de
+      Implantação — o cadastro é feito por lá.
+    </p>
+    <a class="ap-botao ap-botao-grande" routerLink="/login">Entrar no Painel</a>
+  </section>
+</main>
+
+<footer class="ap-rodape">
+  Painel de Implantação · Rech Sistemas de Gestão
+  <span>As telas desta página são ilustrações do Painel, sem dados reais de cliente.</span>
+</footer>

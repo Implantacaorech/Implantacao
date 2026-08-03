@@ -42,11 +42,39 @@
 
 <div class="app" [class.side-open]="sideAberta()" id="app">
   <div class="side-scrim" (click)="toggleSide(false)"></div>
-  <aside class="side">
-    <a class="side-marca" routerLink="/home">
-      <img src="logo-rech-color.png" alt="Rech Sistemas de Gestão" style="height:32px;width:auto;object-fit:contain;flex:none">
-      <span class="side-name" style="font-size:.78rem">Implantação <small>SIGER®</small></span>
+
+  <!-- Barra superior escura, atravessando a largura toda: a marca vive AQUI (por isso o
+       menu lateral não repete o logo) e à direita ficam o cartão do usuário e o Sair. -->
+  <header class="topbar">
+    <button class="side-toggle" type="button" (click)="toggleSide()" aria-label="Abrir menu">
+      <svg class="svgi svgi-xl" aria-hidden="true"><use href="#ic-menu"/></svg>
+    </button>
+    <a class="topbar-marca" routerLink="/home">
+      <img src="logo-portal-rech-branco.png" alt="Portal Rech" />
+      <small>Implantação SIGER®</small>
     </a>
+    <!-- Sem largura máxima: era o corte do título ("Matriz por Menu - Funç…"). Quem cede
+         espaço quando a janela aperta é a busca, não o nome da tela. -->
+    <div class="topbar-title" [title]="tituloPagina()">{{ tituloPagina() }}</div>
+    <form class="topbar-busca" (submit)="$event.preventDefault(); buscar()" role="search">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>
+      <input name="busca" placeholder="Buscar cliente…" aria-label="Buscar cliente" [ngModel]="busca()" (ngModelChange)="busca.set($event)" />
+    </form>
+    <a class="topbar-ico" routerLink="/coordenacao" title="Alertas" aria-label="Alertas">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-bell"/></svg>
+    </a>
+    <a class="topbar-perfil" routerLink="/perfil">
+      <span class="avatar">{{ iniciais() }}</span>
+      @if (auth.usuario(); as u) {
+        <span class="topbar-perfil-txt">{{ u.nome }}<small>{{ u.login }}</small></span>
+      }
+    </a>
+    <button class="topbar-sair" type="button" (click)="sair()" title="Sair" aria-label="Sair">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-logout"/></svg>
+    </button>
+  </header>
+
+  <aside class="side">
     <nav class="side-nav">
       <div class="side-grp">Execução</div>
       @if (podeNovoCliente()) {
@@ -155,28 +183,9 @@
   </aside>
 
   <div class="main">
-    <header class="topbar">
-      <button class="side-toggle" type="button" (click)="toggleSide()" aria-label="Abrir menu">
-        <svg class="svgi svgi-xl" aria-hidden="true"><use href="#ic-menu"/></svg>
-      </button>
-      <div class="topbar-title">{{ tituloPagina() }}</div>
-      <form class="topbar-busca" (submit)="$event.preventDefault(); buscar()" role="search">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>
-        <input name="busca" placeholder="Buscar cliente…" aria-label="Buscar cliente" [ngModel]="busca()" (ngModelChange)="busca.set($event)" />
-      </form>
-      <a class="topbar-ico" routerLink="/coordenacao" title="Alertas" aria-label="Alertas">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-bell"/></svg>
-      </a>
-      <a class="topbar-perfil" routerLink="/perfil">
-        <span class="avatar">{{ iniciais() }}</span>
-        @if (auth.usuario(); as u) {
-          <span class="topbar-perfil-txt">{{ u.nome }}<small>{{ u.perfil }}</small></span>
-        }
-      </a>
-      <button class="topbar-ico" type="button" (click)="sair()" title="Sair" aria-label="Sair">
-        <svg class="svgi" aria-hidden="true"><use href="#ic-logout"/></svg>
-      </button>
-    </header>
+    <!-- Gravação em andamento: acompanha o usuário por todas as telas, para pausar/encerrar
+         sem precisar voltar à tela de gravação (ver BarraGravacaoComponent). -->
+    <app-barra-gravacao />
     <main class="conteudo">
       <router-outlet />
     </main>

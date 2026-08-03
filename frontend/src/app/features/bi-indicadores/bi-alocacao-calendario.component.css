@@ -1,0 +1,287 @@
+/* Visão "Por técnico" da Alocação de Agendas: mapa de calor mensal por turno à esquerda e
+   as agendas do turno escolhido à direita. O que é comum ao BI está em bi-comum.css e a
+   grade mensal (visão "Calendário") em bi-agendas.component.css. */
+
+.al-visao {
+  display: flex;
+  gap: 6px;
+}
+.al-visao .bi-btn.ativa {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.al-colunas {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .al-colunas {
+    grid-template-columns: 1fr;
+  }
+}
+.al-col {
+  min-width: 0;
+}
+
+/* ── Coluna esquerda: equipe técnica ─────────────────────────────────────────── */
+.al-lista {
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  max-height: 74vh;
+  overflow-y: auto;
+}
+.al-tec {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface, #fff);
+  overflow: hidden;
+}
+.al-tec.aberta {
+  border-color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 7%, #fff);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 22%, transparent);
+}
+.al-tec-cab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  cursor: pointer;
+}
+.al-ini {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.al-tec-id {
+  min-width: 0;
+  flex: 1;
+}
+.al-tec-nome {
+  display: block;
+  font-weight: 700;
+  color: var(--navy);
+  font-size: 0.92rem;
+}
+.al-tec-metas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 0.71rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.al-tec-metas b {
+  color: var(--navy);
+}
+.al-medidor {
+  flex: 0 0 auto;
+  width: 62px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-2, #eef2f7);
+  overflow: hidden;
+}
+.al-medidor-fill {
+  display: block;
+  height: 100%;
+  background: #22c55e;
+}
+
+/* ── Mapa de calor ───────────────────────────────────────────────────────────── */
+.al-mapa {
+  margin: 0 11px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2, #f9fafb);
+  padding: 8px 10px 9px;
+}
+.al-mapa-tit {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 6px;
+}
+.al-grade {
+  display: flex;
+  gap: 3px;
+  overflow-x: auto;
+  padding-bottom: 3px;
+}
+.al-dia {
+  flex: 1 1 0;
+  min-width: 22px;
+  display: grid;
+  gap: 2px;
+  justify-items: stretch;
+  text-align: center;
+}
+.al-dia-n {
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1.1;
+}
+.al-dia-s {
+  font-size: 0.6rem;
+  color: var(--muted);
+  line-height: 1.1;
+  margin-bottom: 1px;
+}
+.al-dia.hoje .al-dia-n {
+  background: var(--brand);
+  color: #fff;
+  border-radius: 3px;
+}
+.al-turno {
+  height: 11px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+.al-turno.livre {
+  background: #e9edf3;
+  cursor: default;
+}
+.al-turno:not(.livre):hover {
+  border-color: var(--navy);
+}
+.al-turno.sel {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+.al-legenda {
+  margin: 7px 0 0;
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* ── Coluna direita: agendas do turno ────────────────────────────────────────── */
+.al-detalhe {
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  max-height: 74vh;
+  overflow-y: auto;
+}
+.al-turno-cab {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border-radius: 9px;
+  padding: 11px 13px;
+  color: #fff;
+  background: linear-gradient(135deg, #f0b429, #d97706);
+}
+.al-turno-cab.tarde {
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+}
+.al-ini-clara {
+  background: rgba(255, 255, 255, 0.28);
+}
+.al-turno-tit {
+  font-weight: 700;
+  font-size: 1rem;
+}
+.al-turno-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 12px;
+  font-size: 0.73rem;
+  margin-top: 3px;
+  opacity: 0.95;
+}
+.al-turno-tec {
+  font-size: 0.73rem;
+  margin-top: 2px;
+  opacity: 0.9;
+}
+.al-item {
+  border: 1px solid var(--line);
+  border-left: 5px solid #9e9e9e;
+  border-radius: 8px;
+  padding: 9px 11px;
+  background: var(--surface, #fff);
+}
+.al-item-topo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.al-item-cli {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  color: var(--navy);
+  font-size: 0.88rem;
+}
+.al-chip {
+  font-size: 0.63rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--surface-2, #f1f5f9);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 1px 7px;
+}
+.al-crit {
+  font-size: 0.63rem;
+  font-weight: 700;
+  color: #fff;
+  border-radius: 9px;
+  padding: 2px 9px;
+}
+.al-item-as {
+  font-size: 0.78rem;
+  color: #555;
+  margin-bottom: 3px;
+}
+.al-item-linha {
+  font-size: 0.76rem;
+  color: #444;
+}
+.al-item-rot {
+  color: var(--muted);
+  margin-right: 3px;
+}
+.al-item-pe {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.al-ponto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.al-data {
+  margin-left: auto;
+  background: var(--surface-2, #eff6ff);
+  color: #2563eb;
+  border-radius: 9px;
+  padding: 1px 8px;
+  font-weight: 600;
+}

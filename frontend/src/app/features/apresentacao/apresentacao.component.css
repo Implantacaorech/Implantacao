@@ -1,0 +1,360 @@
+/* Visual da página pública de apresentação. Component-scoped de propósito: o CSS global
+ * (src/styles.css) é do MANUS — nada aqui vaza para o resto do Painel. As cores saem dos
+ * tokens da marca definidos em :root. */
+
+:host {
+  display: block;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+/* ===== Barra do topo (fixa) ===== */
+.ap-topo {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: 12px 28px;
+  background: #06285F;
+  box-shadow: 0 2px 12px rgba(3, 20, 52, .28);
+}
+
+.ap-marca {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  font-weight: 600;
+  font-size: .95rem;
+  white-space: nowrap;
+}
+
+.ap-marca:hover {
+  text-decoration: none;
+}
+
+.ap-marca img {
+  height: 26px;
+  width: auto;
+}
+
+.ap-atalhos {
+  display: flex;
+  gap: var(--sp-5);
+  margin-left: auto;
+}
+
+.ap-atalhos a {
+  color: #B9CCEF;
+  font-size: .9rem;
+}
+
+.ap-atalhos a:hover {
+  color: #fff;
+  text-decoration: none;
+}
+
+/* ===== Botões ===== */
+.ap-botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 20px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #0B3A92 0%, #1565C0 100%);
+  color: #fff;
+  font-weight: 600;
+  font-size: .94rem;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(5, 42, 107, .35);
+  transition: filter .15s, box-shadow .15s;
+}
+
+.ap-topo .ap-botao {
+  margin-left: var(--sp-5);
+}
+
+.ap-atalhos + .ap-botao {
+  margin-left: 0;
+}
+
+.ap-botao:hover {
+  filter: brightness(1.12);
+  text-decoration: none;
+}
+
+.ap-botao-grande {
+  height: 48px;
+  padding: 0 30px;
+  font-size: 1rem;
+}
+
+.ap-botao-vazado {
+  display: inline-flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 26px;
+  border: 1px solid rgba(255, 255, 255, .55);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.ap-botao-vazado:hover {
+  background: rgba(255, 255, 255, .12);
+  text-decoration: none;
+}
+
+/* ===== Capa ===== */
+.ap-capa {
+  padding: 72px 28px 64px;
+  text-align: center;
+  color: #fff;
+  background: radial-gradient(1100px 640px at 50% 20%, #1B57B5 0%, #0B3A92 46%, #06285F 100%);
+}
+
+/* O h1 carrega .pagina-titulo por padronização do projeto (padroes-layout.spec.ts), mas a
+ * capa é centralizada e sobre fundo escuro — daí o display/cor próprios. */
+.ap-capa h1 {
+  display: block;
+  max-width: 900px;
+  margin: 0 auto var(--sp-5);
+  color: #fff;
+  font-size: 2.4rem;
+  line-height: 1.15;
+}
+
+.ap-capa-txt {
+  max-width: 720px;
+  margin: 0 auto var(--sp-7);
+  font-size: 1.06rem;
+  color: #D7E3F7;
+}
+
+.ap-capa-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  justify-content: center;
+}
+
+.ap-etiqueta {
+  margin: 0 0 var(--sp-3);
+  font-size: .74rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+.ap-etiqueta-clara {
+  color: #8FB0E4;
+}
+
+.ap-destaques {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sp-6);
+  max-width: 940px;
+  margin: 56px auto 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ap-destaques li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 240px;
+  max-width: 300px;
+  padding: 16px 18px;
+  text-align: left;
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: var(--r-md);
+}
+
+.ap-destaques strong {
+  font-size: 2rem;
+  line-height: 1;
+  color: #fff;
+}
+
+.ap-destaques span {
+  font-size: .82rem;
+  color: #C7D8F2;
+}
+
+/* ===== Blocos de recurso ===== */
+.ap-bloco {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: center;
+  gap: 48px;
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 64px 28px;
+  scroll-margin-top: 72px;
+}
+
+.ap-bloco + .ap-bloco {
+  border-top: 1px solid var(--line);
+}
+
+.ap-bloco-invertido .ap-bloco-txt {
+  order: 2;
+}
+
+.ap-bloco h2 {
+  margin: 0 0 var(--sp-4);
+  font-size: 1.62rem;
+  line-height: 1.22;
+}
+
+.ap-bloco-txt p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.ap-lista {
+  margin: var(--sp-5) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ap-lista li {
+  position: relative;
+  padding: 0 0 0 26px;
+  margin-bottom: 10px;
+  font-size: .95rem;
+}
+
+/* O "visto" é desenhado em CSS para não depender de fonte de ícone nesta página pública. */
+.ap-lista li::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 6px;
+  width: 6px;
+  height: 11px;
+  border: solid var(--ok);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.ap-bloco-fig {
+  margin: 0;
+}
+
+.ap-bloco-fig img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-2);
+}
+
+/* ===== Extras ===== */
+.ap-extras {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 56px 28px 8px;
+  border-top: 1px solid var(--line);
+}
+
+.ap-extras h2 {
+  margin: 0 0 var(--sp-6);
+  font-size: 1.4rem;
+}
+
+.ap-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--sp-5);
+  padding: 0;
+  list-style: none;
+}
+
+.ap-grade li {
+  padding: 20px 22px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-1);
+}
+
+.ap-grade h3 {
+  margin: 0 0 var(--sp-2);
+  font-size: 1rem;
+}
+
+.ap-grade p {
+  margin: 0;
+  color: var(--muted);
+  font-size: .92rem;
+}
+
+/* ===== Chamada final e rodapé ===== */
+.ap-final {
+  margin: 64px 0 0;
+  padding: 64px 28px;
+  text-align: center;
+  color: #fff;
+  background: linear-gradient(90deg, #052A6B 0%, #0B3A92 55%, #1565C0 100%);
+}
+
+.ap-final h2 {
+  margin: 0 0 var(--sp-3);
+  color: #fff;
+  font-size: 1.8rem;
+}
+
+.ap-final p {
+  max-width: 620px;
+  margin: 0 auto var(--sp-6);
+  color: #D7E3F7;
+}
+
+.ap-rodape {
+  padding: 22px 28px 30px;
+  text-align: center;
+  font-size: .84rem;
+  color: var(--muted);
+}
+
+.ap-rodape span {
+  display: block;
+  margin-top: 4px;
+  color: var(--faint);
+}
+
+/* ===== Telas estreitas ===== */
+@media (max-width: 900px) {
+  .ap-atalhos {
+    display: none;
+  }
+
+  .ap-bloco {
+    grid-template-columns: 1fr;
+    gap: var(--sp-6);
+    padding: 44px 20px;
+  }
+
+  /* Numa coluna só, a imagem sempre depois do texto que a explica. */
+  .ap-bloco-invertido .ap-bloco-txt {
+    order: 0;
+  }
+
+  .ap-capa {
+    padding: 48px 20px;
+  }
+
+  .ap-capa h1 {
+    font-size: 1.75rem;
+  }
+}

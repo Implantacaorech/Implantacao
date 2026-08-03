@@ -14,6 +14,16 @@
     <label for="al-mes">Mês</label>
     <input id="al-mes" type="month" [(ngModel)]="mes" (change)="carregar()" />
   </div>
+  <div class="al-visao" role="group" aria-label="Visão">
+    <button type="button" class="bi-btn" [class.ativa]="visao() === 'tecnico'"
+            [attr.aria-pressed]="visao() === 'tecnico'" (click)="definirVisao('tecnico')">
+      Por técnico
+    </button>
+    <button type="button" class="bi-btn" [class.ativa]="visao() === 'calendario'"
+            [attr.aria-pressed]="visao() === 'calendario'" (click)="definirVisao('calendario')">
+      Calendário mensal
+    </button>
+  </div>
   <div class="bi-campo bi-campo-busca">
     <label for="al-busca">Buscar</label>
     <input id="al-busca" type="search" [ngModel]="busca()" (ngModelChange)="busca.set($event)"
@@ -116,69 +126,175 @@
     }
   </div>
 
-  <div class="bi-card">
-    <div class="bi-card-tit">Calendário — {{ rotuloMes() }}</div>
-    <div class="ag-grade-wrap">
-      <div class="ag-cab">
-        <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span>
-        <span>Qui</span><span>Sex</span><span>Sáb</span>
-      </div>
-      @for (semana of semanas(); track $index) {
-        <div class="ag-semana">
-          @for (d of semana; track $index) {
-            @if (d) {
-              <div class="ag-dia" [class.hoje]="ehHoje(d.dia)"
-                   [class.clicavel]="d.compromissos.length > 0"
-                   [class.aberto]="diaAberto() === d.dia" (click)="abrirDia(d)">
-                <div class="ag-dia-n">{{ d.numero }}</div>
-                @for (c of d.compromissos.slice(0, 4); track c.codigo + '-' + c.tecnico) {
-                  <div class="ag-item" [style.background]="'#fff'"
-                       [style.border-left-color]="corBorda(c.status)"
-                       [title]="c.horaIni + '–' + c.horaFim + ' · ' + (c.fantasia || c.assunto) + ' · ' + rotuloStatus(c.status)">
-                    <span class="ag-hora">{{ c.horaIni }}</span>
-                    <span class="ag-cli">{{ c.fantasia || c.assunto || c.tecnico }}</span>
+  @if (visao() === 'tecnico') {
+    <div class="al-colunas">
+      <section class="bi-card al-col">
+        <div class="bi-card-tit">👥 Equipe Técnica ({{ tecnicos().length }})</div>
+        <div class="al-lista">
+          @for (t of tecnicos(); track t.nome) {
+            <article class="al-tec" [class.aberta]="tecnicoAberto() === t.nome">
+              <header class="al-tec-cab" role="button" tabindex="0"
+                      [attr.aria-expanded]="tecnicoAberto() === t.nome"
+                      (click)="abrirTecnico(t)" (keyup.enter)="abrirTecnico(t)"
+                      (keyup.space)="abrirTecnico(t)">
+                <span class="al-ini">{{ t.inicial }}</span>
+                <div class="al-tec-id">
+                  <span class="al-tec-nome">{{ t.nome }}</span>
+                  <div class="al-tec-metas">
+                    <span>📅 Mês: <b>{{ rotuloMes() }}</b></span>
+                    <span>📊 Utilização: <b>{{ t.utilizacao }}%</b></span>
+                    <span>⏱ Horas: <b>{{ t.horas.toLocaleString('pt-BR') }}h</b></span>
+                    <span>✅ Turnos: <b>{{ t.turnosOcupados }}/{{ t.turnosUteis }}</b></span>
                   </div>
-                }
-                @if (d.compromissos.length > 4) {
-                  <div class="ag-mais">+{{ d.compromissos.length - 4 }} compromisso(s)</div>
-                }
+                </div>
+                <span class="al-medidor" [title]="t.utilizacao + '% dos turnos úteis do mês'">
+                  <span class="al-medidor-fill" [style.width.%]="t.utilizacao"></span>
+                </span>
+              </header>
+
+              <div class="al-mapa">
+                <div class="al-mapa-tit">🗓 Mapa de Calor Mensal — {{ rotuloMes() }}</div>
+                <div class="al-grade">
+                  @for (d of t.dias; track d.dia) {
+                    <div class="al-dia" [class.hoje]="ehHoje(d.dia)">
+                      <span class="al-dia-n">{{ d.numero }}</span>
+                      <span class="al-dia-s">{{ d.letra }}</span>
+                      <button type="button" class="al-turno" [class.livre]="d.manha.carga === 0"
+                              [class.sel]="turnoSelecionado(d.manha)" [style.background]="d.manha.fundo"
+                              [title]="d.manha.dica" [attr.aria-label]="d.manha.dica"
+                              (click)="abrirTurno(d.manha)"></button>
+                      <button type="button" class="al-turno" [class.livre]="d.tarde.carga === 0"
+                              [class.sel]="turnoSelecionado(d.tarde)" [style.background]="d.tarde.fundo"
+                              [title]="d.tarde.dica" [attr.aria-label]="d.tarde.dica"
+                              (click)="abrirTurno(d.tarde)"></button>
+                    </div>
+                  }
+                </div>
+                <p class="al-legenda">
+                  Cada coluna é um dia; o quadrinho de cima é a <b>manhã</b> e o de baixo a
+                  <b>tarde</b>. A cor vem do status que domina o turno e escurece conforme a
+                  carga. Clique num quadrinho para ver as agendas.
+                </p>
               </div>
-            } @else {
-              <div class="ag-dia vazio"></div>
-            }
+            </article>
+          } @empty {
+            <p class="dica" style="padding:14px">— sem compromissos no mês —</p>
           }
         </div>
-      } @empty {
-        <p class="dica" style="padding:14px">— sem compromissos no mês —</p>
-      }
-    </div>
-  </div>
+      </section>
 
-  @if (detalheDoDia(); as d) {
-    <div class="bi-card">
-      <div class="bi-card-tit">{{ dataBr(d.dia) }} — {{ d.compromissos.length }} compromisso(s)</div>
-      <div class="ag-detalhe">
-        @for (c of d.compromissos; track c.codigo + '-' + c.tecnico) {
-          <article class="ag-card" [style.border-left-color]="corBorda(c.status)">
-            <header class="ag-card-topo">
-              <span class="ag-badge" [style.background]="corBorda(c.status)">
-                {{ rotuloStatus(c.status) }}
-              </span>
-              <span class="ag-card-h">{{ c.horaIni }} – {{ c.horaFim }}</span>
-              <span class="ag-dur">{{ (c.minutos / 60).toFixed(1) }}h</span>
-              <span class="ag-turno">{{ c.tipoSuporte }}</span>
+      <section class="bi-card al-col">
+        <div class="bi-card-tit">📋 Agendas do Técnico</div>
+        @if (detalheTurno(); as t) {
+          <div class="al-detalhe">
+            <header class="al-turno-cab" [class.tarde]="t.turno === 'tarde'">
+              <span class="al-ini al-ini-clara">{{ t.tecnico.charAt(0).toUpperCase() }}</span>
+              <div>
+                <div class="al-turno-tit">🗓 {{ dataBr(t.dia) }} — {{ t.rotulo }}</div>
+                <div class="al-turno-sub">
+                  <span>📄 {{ t.compromissos.length }} agenda(s)</span>
+                  <span>⏱ {{ duracao(t.minutos) }} total alocado</span>
+                  <span>🔋 OCUPADO</span>
+                </div>
+                <div class="al-turno-tec">👤 {{ t.tecnico }}</div>
+              </div>
             </header>
-            <div class="ag-card-cli">{{ c.fantasia || '— sem RNS ligada —' }}</div>
-            @if (c.assunto) { <div class="ag-card-as">{{ c.assunto }}</div> }
-            <div class="ag-card-meta">
-              <span>👤 {{ c.tecnico || 'Não informado' }}</span>
-              @if (c.especieDes) { <span>· {{ c.especie }} — {{ c.especieDes }}</span> }
-              @if (c.rns) { <span>· RNS {{ c.rns }}</span> }
-              @if (c.grupoEconomico) { <span>· {{ c.grupoEconomico }}</span> }
-            </div>
-          </article>
+
+            @for (c of t.compromissos; track c.codigo + '-' + c.horaIni) {
+              <article class="al-item" [style.border-left-color]="corBorda(c.status)">
+                <header class="al-item-topo">
+                  <span class="al-item-cli">{{ c.fantasia || c.assunto || '— sem cliente ligado —' }}</span>
+                  @if (c.especie) { <span class="al-chip">ESPÉCIE {{ c.especie }}</span> }
+                  <span class="al-crit" [style.background]="corCriticidade(c.minutos)">
+                    {{ criticidade(c.minutos) }}
+                  </span>
+                </header>
+                @if (c.fantasia && c.assunto) { <div class="al-item-as">{{ c.assunto }}</div> }
+                <div class="al-item-linha">⏰ <span class="al-item-rot">Horário:</span> {{ c.horaIni }} - {{ c.horaFim }}</div>
+                <div class="al-item-linha">⏱ <span class="al-item-rot">Duração:</span> {{ duracao(c.minutos) }}</div>
+                <div class="al-item-pe">
+                  <span class="al-ponto" [style.background]="corBorda(c.status)"></span>
+                  {{ rotuloStatus(c.status) }}
+                  @if (c.tipoSuporte) { <span>· {{ c.tipoSuporte }}</span> }
+                  @if (c.rns) { <span>· RNS {{ c.rns }}</span> }
+                  <span class="al-data">{{ dataBr(c.dia) }}</span>
+                </div>
+              </article>
+            }
+          </div>
+        } @else {
+          <p class="dica" style="padding:14px">
+            — clique num turno do mapa de calor para ver as agendas do técnico —
+          </p>
+        }
+      </section>
+    </div>
+  } @else {
+    <div class="bi-card">
+      <div class="bi-card-tit">Calendário — {{ rotuloMes() }}</div>
+      <div class="ag-grade-wrap">
+        <div class="ag-cab">
+          <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span>
+          <span>Qui</span><span>Sex</span><span>Sáb</span>
+        </div>
+        @for (semana of semanas(); track $index) {
+          <div class="ag-semana">
+            @for (d of semana; track $index) {
+              @if (d) {
+                <div class="ag-dia" [class.hoje]="ehHoje(d.dia)"
+                     [class.clicavel]="d.compromissos.length > 0"
+                     [class.aberto]="diaAberto() === d.dia" (click)="abrirDia(d)">
+                  <div class="ag-dia-n">{{ d.numero }}</div>
+                  @for (c of d.compromissos.slice(0, 4); track c.codigo + '-' + c.tecnico) {
+                    <div class="ag-item" [style.background]="'#fff'"
+                         [style.border-left-color]="corBorda(c.status)"
+                         [title]="c.horaIni + '–' + c.horaFim + ' · ' + (c.fantasia || c.assunto) + ' · ' + rotuloStatus(c.status)">
+                      <span class="ag-hora">{{ c.horaIni }}</span>
+                      <span class="ag-cli">{{ c.fantasia || c.assunto || c.tecnico }}</span>
+                    </div>
+                  }
+                  @if (d.compromissos.length > 4) {
+                    <div class="ag-mais">+{{ d.compromissos.length - 4 }} compromisso(s)</div>
+                  }
+                </div>
+              } @else {
+                <div class="ag-dia vazio"></div>
+              }
+            }
+          </div>
+        } @empty {
+          <p class="dica" style="padding:14px">— sem compromissos no mês —</p>
         }
       </div>
     </div>
+
+    @if (detalheDoDia(); as d) {
+      <div class="bi-card">
+        <div class="bi-card-tit">{{ dataBr(d.dia) }} — {{ d.compromissos.length }} compromisso(s)</div>
+        <div class="ag-detalhe">
+          @for (c of d.compromissos; track c.codigo + '-' + c.tecnico) {
+            <article class="ag-card" [style.border-left-color]="corBorda(c.status)">
+              <header class="ag-card-topo">
+                <span class="ag-badge" [style.background]="corBorda(c.status)">
+                  {{ rotuloStatus(c.status) }}
+                </span>
+                <span class="ag-card-h">{{ c.horaIni }} – {{ c.horaFim }}</span>
+                <span class="ag-dur">{{ (c.minutos / 60).toFixed(1) }}h</span>
+                <span class="ag-turno">{{ c.tipoSuporte }}</span>
+              </header>
+              <div class="ag-card-cli">{{ c.fantasia || '— sem RNS ligada —' }}</div>
+              @if (c.assunto) { <div class="ag-card-as">{{ c.assunto }}</div> }
+              <div class="ag-card-meta">
+                <span>👤 {{ c.tecnico || 'Não informado' }}</span>
+                @if (c.especieDes) { <span>· {{ c.especie }} — {{ c.especieDes }}</span> }
+                @if (c.rns) { <span>· RNS {{ c.rns }}</span> }
+                @if (c.grupoEconomico) { <span>· {{ c.grupoEconomico }}</span> }
+              </div>
+            </article>
+          }
+        </div>
+      </div>
+    }
+
   }
 }

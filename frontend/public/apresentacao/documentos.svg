@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" width="640" height="400" role="img" aria-label="Do levantamento respondido em tela aos documentos oficiais gerados nos layouts Rech">
+  <style>
+    .t{font-family:Inter,'Segoe UI',system-ui,sans-serif}
+    .h{font-size:10px;font-weight:700;fill:#003399}
+    .q{font-size:8.5px;fill:#0F1B2D}
+    .s{font-size:8px;fill:#5A6B82}
+  </style>
+  <rect width="640" height="400" rx="10" fill="#fff"/>
+  <rect x=".5" y=".5" width="639" height="399" rx="10" fill="none" stroke="#E2E8F0"/>
+  <path d="M0 10a10 10 0 0 1 10-10h620a10 10 0 0 1 10 10v24H0z" fill="#001F66"/>
+  <text class="t" x="18" y="21" style="font-size:10px;font-weight:600;fill:#fff">Levantamento em tela → Documentos oficiais</text>
+
+  <!-- coluna esquerda: formulário -->
+  <rect x="16" y="48" width="272" height="336" rx="10" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text class="t h" x="32" y="70">Levantamento respondido em tela</text>
+  <text class="t s" x="32" y="84">As perguntas do Índice de Tópicos dos módulos</text>
+  <text class="t s" x="32" y="95">contratados viram formulário, agrupado por área.</text>
+
+  <g>
+    <rect x="32" y="106" width="240" height="16" rx="5" fill="#E8EEF8"/>
+    <text class="t" x="40" y="117" style="font-size:8.5px;font-weight:600;fill:#003399">Faturamento</text>
+    <text class="t q" x="32" y="138">Emite nota fiscal de remessa?</text>
+    <rect x="32" y="144" width="240" height="18" rx="5" fill="#fff" stroke="#CBD5E1"/>
+    <text class="t s" x="40" y="156" style="fill:#0F1B2D">Sim — remessa para industrialização</text>
+    <text class="t q" x="32" y="180">Quais séries de NF são utilizadas?</text>
+    <rect x="32" y="186" width="240" height="18" rx="5" fill="#fff" stroke="#CBD5E1"/>
+    <text class="t s" x="40" y="198" style="fill:#0F1B2D">Série 1 (venda) e Série 5 (devolução)</text>
+
+    <rect x="32" y="216" width="240" height="16" rx="5" fill="#E8EEF8"/>
+    <text class="t" x="40" y="227" style="font-size:8.5px;font-weight:600;fill:#003399">Estoque</text>
+    <text class="t q" x="32" y="248">Controla lote e validade?</text>
+    <rect x="32" y="254" width="240" height="18" rx="5" fill="#fff" stroke="#CBD5E1"/>
+    <text class="t s" x="40" y="266" style="fill:#0F1B2D">Sim, com rastreabilidade por lote</text>
+    <text class="t q" x="32" y="290">Quantos depósitos serão migrados?</text>
+    <rect x="32" y="296" width="240" height="18" rx="5" fill="#fff" stroke="#CBD5E1"/>
+    <text class="t s" x="40" y="308" style="fill:#0F1B2D">4 depósitos + 1 de terceiros</text>
+  </g>
+  <rect x="32" y="330" width="240" height="8" rx="4" fill="#E2E8F0"/>
+  <rect x="32" y="330" width="168" height="8" rx="4" fill="#15803D"/>
+  <text class="t s" x="32" y="352">70% respondido · salvo automaticamente</text>
+  <text class="t s" x="32" y="368" style="fill:#15803D">As respostas alimentam o Projeto sem redigitar.</text>
+
+  <!-- seta -->
+  <path d="M296 216h28" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"/>
+  <path d="M318 210l8 6-8 6z" fill="#94A3B8"/>
+
+  <!-- coluna direita: documentos -->
+  <text class="t h" x="336" y="70">Gerados fielmente pelos layouts Rech</text>
+  <text class="t s" x="336" y="84">O template oficial é preservado — o Painel só troca</text>
+  <text class="t s" x="336" y="95">os marcadores pelos dados do projeto.</text>
+
+  <g>
+    <rect x="336" y="108" width="288" height="42" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <rect x="348" y="118" width="22" height="26" rx="3" fill="#EFF4FF" stroke="#2563EB"/>
+    <text class="t" x="359" y="135" text-anchor="middle" style="font-size:7px;fill:#2563EB">Word</text>
+    <text class="t" x="380" y="128" style="font-size:9.5px;font-weight:600;fill:#0F1B2D">Mapeamento (Levantamento)</text>
+    <text class="t s" x="380" y="141">Das respostas em tela ou de um documento do Word</text>
+
+    <rect x="336" y="158" width="288" height="42" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <rect x="348" y="168" width="22" height="26" rx="3" fill="#EFF4FF" stroke="#2563EB"/>
+    <text class="t" x="359" y="185" text-anchor="middle" style="font-size:7px;fill:#2563EB">Word</text>
+    <text class="t" x="380" y="178" style="font-size:9.5px;font-weight:600;fill:#0F1B2D">Projeto de Implantação</text>
+    <text class="t s" x="380" y="191">Documento obrigatório · nasce do levantamento</text>
+
+    <rect x="336" y="208" width="288" height="42" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <rect x="348" y="218" width="22" height="26" rx="3" fill="#ECFDF3" stroke="#15803D"/>
+    <text class="t" x="359" y="235" text-anchor="middle" style="font-size:7px;fill:#15803D">Excel</text>
+    <text class="t" x="380" y="228" style="font-size:9.5px;font-weight:600;fill:#0F1B2D">Cronograma</text>
+    <text class="t s" x="380" y="241">Do plano editável, com as agendas por visita</text>
+
+    <rect x="336" y="258" width="288" height="42" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <rect x="348" y="268" width="22" height="26" rx="3" fill="#ECFDF3" stroke="#15803D"/>
+    <text class="t" x="359" y="285" text-anchor="middle" style="font-size:7px;fill:#15803D">Excel</text>
+    <text class="t" x="380" y="278" style="font-size:9.5px;font-weight:600;fill:#0F1B2D">Check List</text>
+    <text class="t s" x="380" y="291">Roteiro dos módulos contratados</text>
+
+    <rect x="336" y="308" width="288" height="42" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <rect x="348" y="318" width="22" height="26" rx="3" fill="#EFF4FF" stroke="#2563EB"/>
+    <text class="t" x="359" y="335" text-anchor="middle" style="font-size:7px;fill:#2563EB">Word</text>
+    <text class="t" x="380" y="328" style="font-size:9.5px;font-weight:600;fill:#0F1B2D">Termo de Encerramento</text>
+    <text class="t s" x="380" y="341">Fecha a implantação e libera a transição</text>
+  </g>
+  <text class="t s" x="336" y="368">Pré-visualização fiel na tela · download do arquivo oficial</text>
+</svg>

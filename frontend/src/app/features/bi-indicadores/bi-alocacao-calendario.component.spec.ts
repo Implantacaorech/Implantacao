@@ -205,6 +205,110 @@ describe('BiAlocacaoCalendarioComponent', () => {
     expect(comp.statusSel()).toEqual([]);
   });
 
+  describe('visão por técnico (mapa de calor)', () => {
+    it('nasce na visão por técnico', async () => {
+      const comp = await pronto({ calendario: () => Promise.resolve(resultado()) });
+      expect(comp.visao()).toBe('tecnico');
+    });
+
+    it('agrupa por técnico e soma horas, turnos e compromissos distintos', async () => {
+      const dias = diasDeJulho({
+        6: [
+          compromisso({ codigo: 1, tecnico: 'Liliana', minutos: 150 }),
+          compromisso({ codigo: 1, tecnico: 'Zeca', minutos: 150 }),
+        ],
+        7: [compromisso({ codigo: 2, dia: '2026-07-07', tecnico: 'Liliana', minutos: 90 })],
+      });
+      const comp = await pronto({ calendario: () => Promise.resolve(resultado({ dias })) });
+
+      expect(comp.tecnicos().map((t) => t.nome)).toEqual(['Liliana', 'Zeca']);
+      const liliana = comp.tecnicos()[0];
+      expect(liliana.horas).toBe(4); // 150 + 90 min
+      expect(liliana.compromissos).toBe(2);
+      expect(liliana.turnosOcupados).toBe(2);
+      expect(liliana.turnosUteis).toBe(46); // 23 dias úteis em julho/2026 × 2
+    });
+
+    it('o compromisso entra no turno em que COMEÇA — 07:45–17:45 é manhã', async () => {
+      const dias = diasDeJulho({
+        6: [
+          compromisso({ codigo: 1, horaIni: '07:45', horaFim: '17:45', minutos: 600 }),
+          compromisso({ codigo: 2, horaIni: '13:30', horaFim: '16:00', minutos: 150 }),
+        ],
+      });
+      const comp = await pronto({ calendario: () => Promise.resolve(resultado({ dias })) });
+      const dia = comp.tecnicos()[0].dias.find((d) => d.dia === '2026-07-06')!;
+
+      expect(dia.manha.compromissos.map((c) => c.codigo)).toEqual([1]);
+      expect(dia.tarde.compromissos.map((c) => c.codigo)).toEqual([2]);
+      expect(dia.manha.carga).toBe(3); // acima de 4h
+      expect(dia.tarde.carga).toBe(2); // entre 2h e 4h
+    });
+
+    it('a régua traz os dias úteis mais os fins de semana COM agenda', async () => {
+      const dias = diasDeJulho({ 4: [compromisso({ dia: '2026-07-04' })] }); // sábado
+      const comp = await pronto({ calendario: () => Promise.resolve(resultado({ dias })) });
+      const numeros = comp.diasMapa().map((d) => d.numero);
+
+      expect(numeros).toContain(4); // sábado com agenda entra
+      expect(numeros).not.toContain(5); // domingo vazio fica de fora
+      expect(numeros).toHaveLength(24); // 23 úteis + o sábado
+    });
+
+    it('abre e fecha o turno; turno livre não abre', async () => {
+      const comp = await pronto({ calendario: () => Promise.resolve(resultado()) });
+      const dia = comp.tecnicos()[0].dias.find((d) => d.dia === '2026-07-06')!;
+
+      comp.abrirTurno(dia.manha);
+      expect(comp.detalheTurno()?.compromissos).toHaveLength(1);
+      expect(comp.tecnicoAberto()).toBe('Liliana');
+
+      comp.abrirTurno(dia.manha);
+      expect(comp.detalheTurno()).toBeNull();
+
+      comp.abrirTurno(dia.tarde); // livre
+      expect(comp.turnoAberto()).toBeNull();
+    });
+
+    it('clicar no técnico abre o primeiro turno ocupado dele', async () => {
+      const comp = await pronto({ calendario: () => Promise.resolve(resultado()) });
+      comp.abrirTecnico(comp.tecnicos()[0]);
+      expect(comp.turnoAberto()).toEqual({
+        tecnico: 'Liliana',
+        dia: '2026-07-06',
+        turno: 'manha',
+      });
+    });
+
+    it('filtro que esvazia o turno aberto zera o painel da direita', async () => {
+      const comp = await pronto({ calendario: () => Promise.resolve(resultado()) });
+      comp.abrirTurno(comp.tecnicos()[0].dias.find((d) => d.dia === '2026-07-06')!.manha);
+      expect(comp.detalheTurno()).not.toBeNull();
+
+      comp.busca.set('não existe');
+      expect(comp.detalheTurno()).toBeNull();
+      expect(comp.tecnicos()).toEqual([]);
+    });
+
+    it('criticidade sai da duração do compromisso', async () => {
+      const comp = await pronto({ calendario: () => Promise.resolve(resultado()) });
+      expect(comp.criticidade(50)).toBe('NORMAL');
+      expect(comp.criticidade(75)).toBe('MÉDIO');
+      expect(comp.criticidade(120)).toBe('ALTO');
+      expect(comp.criticidade(240)).toBe('CRÍTICO');
+      expect(comp.duracao(150)).toBe('2h 30m');
+      expect(comp.duracao(120)).toBe('2h');
+      expect(comp.duracao(50)).toBe('50m');
+    });
+
+    it('compromisso sem técnico não some da equipe', async () => {
+      const dias = diasDeJulho({ 6: [compromisso({ tecnico: '' })] });
+      const comp = await pronto({ calendario: () => Promise.resolve(resultado({ dias })) });
+      expect(comp.tecnicos().map((t) => t.nome)).toEqual(['Não informado']);
+      expect(comp.tecnicos()[0].inicial).toBe('N');
+    });
+  });
+
   it('mostra erro do backend sem quebrar', async () => {
     const comp = await pronto({
       calendario: () => Promise.resolve(resultado({ erro: 'ORA-00942', dias: [] })),

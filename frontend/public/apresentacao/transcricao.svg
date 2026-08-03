@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" width="640" height="400" role="img" aria-label="Transcrição de áudio e vídeo com análise por IA: da gravação à ficha revisável de conhecimento">
+  <style>
+    .t{font-family:Inter,'Segoe UI',system-ui,sans-serif}
+    .h{font-size:9px;font-weight:700;fill:#003399}
+    .s{font-size:8px;fill:#5A6B82}
+    .c{font-size:8.5px;fill:#0F1B2D}
+  </style>
+  <rect width="640" height="400" rx="10" fill="#fff"/>
+  <rect x=".5" y=".5" width="639" height="399" rx="10" fill="none" stroke="#E2E8F0"/>
+  <path d="M0 10a10 10 0 0 1 10-10h620a10 10 0 0 1 10 10v24H0z" fill="#001F66"/>
+  <text class="t" x="18" y="21" style="font-size:10px;font-weight:600;fill:#fff">Transcrição Áudio/Vídeo · revisão</text>
+  <text class="t" x="622" y="21" text-anchor="end" style="font-size:8.5px;fill:#8FB0E4">o áudio é transcrito aqui dentro — não sai da Rech</text>
+
+  <!-- 3 entradas -->
+  <g>
+    <rect x="16" y="46" width="196" height="46" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+    <circle cx="40" cy="69" r="11" fill="#E8EEF8"/>
+    <path d="M40 63v11M35 69l5 5 5-5" stroke="#003399" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="t" x="60" y="66" style="font-size:9px;font-weight:600;fill:#0F1B2D">Upload na tela</text>
+    <text class="t s" x="60" y="79">o vídeo ou o áudio do treinamento</text>
+
+    <rect x="222" y="46" width="196" height="46" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+    <circle cx="246" cy="69" r="11" fill="#E8EEF8"/>
+    <path d="M241 66h10v8h-10z" stroke="#003399" stroke-width="1.6" fill="none"/>
+    <text class="t" x="266" y="66" style="font-size:9px;font-weight:600;fill:#0F1B2D">Robô da pasta</text>
+    <text class="t s" x="266" y="79">pasta de vídeos do setor</text>
+
+    <rect x="428" y="46" width="196" height="46" rx="8" fill="#E8EEF8" stroke="#003399"/>
+    <circle cx="452" cy="69" r="11" fill="#fff"/>
+    <circle cx="452" cy="69" r="4" fill="#B42318"/>
+    <text class="t" x="472" y="66" style="font-size:9px;font-weight:600;fill:#003399">Gravar reunião</text>
+    <text class="t s" x="472" y="79">presencial · Teams · híbrida</text>
+  </g>
+
+  <!-- player + transcrição -->
+  <rect x="16" y="104" width="292" height="280" rx="10" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <rect x="28" y="116" width="268" height="80" rx="6" fill="#0F1B2D"/>
+  <path d="M154 146l16 10-16 10z" fill="#fff"/>
+  <rect x="28" y="202" width="268" height="4" rx="2" fill="#E2E8F0"/>
+  <rect x="28" y="202" width="96" height="4" rx="2" fill="#02C3F8"/>
+  <text class="t s" x="28" y="220">12:04 / 34:17 · Treinamento — Entrada de notas</text>
+
+  <text class="t h" x="28" y="242">Transcrição com marcação de tempo</text>
+  <g class="t c">
+    <text x="28" y="260"><tspan fill="#94A3B8">00:41</tspan>  Vamos abrir o menu de entrada de</text>
+    <text x="28" y="274">notas e conferir o CFOP antes de gravar…</text>
+    <text x="28" y="292"><tspan fill="#94A3B8">01:15</tspan>  Se o fornecedor for do Simples, o</text>
+    <text x="28" y="306">crédito não é aproveitado — atenção aqui.</text>
+    <text x="28" y="324"><tspan fill="#94A3B8">02:03</tspan>  Depois disso a nota já aparece no</text>
+    <text x="28" y="338">estoque com o lote informado.</text>
+  </g>
+  <rect x="28" y="350" width="268" height="24" rx="6" fill="#FFF7ED" stroke="#FCD34D"/>
+  <text class="t s" x="38" y="366" style="fill:#B45309">Conversa paralela removida — listada para auditoria</text>
+
+  <!-- ficha gerada pela IA -->
+  <rect x="320" y="104" width="304" height="280" rx="10" fill="#fff" stroke="#E2E8F0"/>
+  <rect x="320" y="104" width="304" height="26" rx="10" fill="#E8EEF8"/>
+  <path d="M320 120h304v10H320z" fill="#E8EEF8"/>
+  <text class="t h" x="332" y="122">Ficha estruturada pela IA</text>
+  <rect x="546" y="109" width="66" height="16" rx="8" fill="#FFF7ED" stroke="#FCD34D"/>
+  <text class="t" x="579" y="120" text-anchor="middle" style="font-size:7.5px;fill:#B45309">Em revisão</text>
+
+  <g>
+    <text class="t s" x="332" y="148">Título</text>
+    <rect x="332" y="153" width="280" height="16" rx="4" fill="#F8FAFC" stroke="#E2E8F0"/>
+    <text class="t c" x="340" y="165">Entrada de notas fiscais de compra</text>
+
+    <text class="t s" x="332" y="184">Módulo</text>
+    <rect x="332" y="189" width="134" height="16" rx="4" fill="#F8FAFC" stroke="#E2E8F0"/>
+    <text class="t c" x="340" y="201">Suprimentos</text>
+    <text class="t s" x="478" y="184">Menu</text>
+    <rect x="478" y="189" width="134" height="16" rx="4" fill="#F8FAFC" stroke="#E2E8F0"/>
+    <text class="t c" x="486" y="201">2.3.1 — Entrada NF</text>
+
+    <text class="t s" x="332" y="220">Passo a passo numerado</text>
+    <rect x="332" y="225" width="280" height="62" rx="4" fill="#F8FAFC" stroke="#E2E8F0"/>
+    <text class="t c" x="340" y="239">1. Acessar 2.3.1 e informar o fornecedor</text>
+    <text class="t c" x="340" y="253">2. Conferir CFOP e natureza da operação</text>
+    <text class="t c" x="340" y="267">3. Informar lote e validade quando exigido</text>
+    <text class="t c" x="340" y="281">4. Gravar e conferir o reflexo no estoque</text>
+
+    <text class="t s" x="332" y="302">Pontos de atenção · regras · pré-requisitos</text>
+    <rect x="332" y="307" width="280" height="28" rx="4" fill="#FEF3F2" stroke="#FCA5A5"/>
+    <text class="t c" x="340" y="320" style="fill:#B42318">Fornecedor do Simples: crédito não aproveitado.</text>
+    <text class="t c" x="340" y="331" style="fill:#B42318">Campo não citado no vídeo → marcado para revisar.</text>
+  </g>
+  <rect x="332" y="346" width="120" height="22" rx="11" fill="#15803D"/>
+  <text class="t" x="392" y="361" text-anchor="middle" style="font-size:8.5px;fill:#fff">Aprovar e publicar</text>
+  <rect x="460" y="346" width="120" height="22" rx="11" fill="#fff" stroke="#CBD5E1"/>
+  <text class="t" x="520" y="361" text-anchor="middle" style="font-size:8.5px;fill:#5A6B82">Reprovar / Ajustar</text>
+</svg>

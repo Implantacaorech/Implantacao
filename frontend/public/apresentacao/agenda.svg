@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" width="640" height="400" role="img" aria-label="Agendador de visitas por dia e turno, com arrastar e soltar e bloqueio dos turnos ocupados dos consultores">
+  <style>
+    .t{font-family:Inter,'Segoe UI',system-ui,sans-serif}
+    .d{font-size:9px;font-weight:600;fill:#0F1B2D}
+    .s{font-size:7.5px;fill:#5A6B82}
+    .v{font-size:8px;font-weight:600;fill:#fff}
+  </style>
+  <rect width="640" height="400" rx="10" fill="#fff"/>
+  <rect x=".5" y=".5" width="639" height="399" rx="10" fill="none" stroke="#E2E8F0"/>
+  <path d="M0 10a10 10 0 0 1 10-10h620a10 10 0 0 1 10 10v24H0z" fill="#001F66"/>
+  <text class="t" x="18" y="21" style="font-size:10px;font-weight:600;fill:#fff">Agenda de Visitas · Indústria Gama</text>
+  <text class="t" x="622" y="21" text-anchor="end" style="font-size:8.5px;fill:#8FB0E4">manhã 08:00–12:00 · tarde 13:00–17:00</text>
+
+  <!-- painel de visitas a alocar -->
+  <rect x="16" y="46" width="140" height="338" rx="10" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text class="t" x="28" y="64" style="font-size:9px;font-weight:700;fill:#003399">Visitas a alocar</text>
+  <text class="t s" x="28" y="76">Vêm da sequência do Check-list</text>
+  <g>
+    <rect x="28" y="86" width="116" height="30" rx="6" fill="#fff" stroke="#CBD5E1"/>
+    <text class="t d" x="38" y="99">V7 · EST</text><text class="t s" x="38" y="110">Estoque — 4h</text>
+    <rect x="28" y="122" width="116" height="30" rx="6" fill="#fff" stroke="#CBD5E1"/>
+    <text class="t d" x="38" y="135">V8 · FAT</text><text class="t s" x="38" y="146">Faturamento — 4h</text>
+    <rect x="28" y="158" width="116" height="30" rx="6" fill="#fff" stroke="#CBD5E1" stroke-dasharray="3 2"/>
+    <text class="t d" x="38" y="171">V9 · CTB</text><text class="t s" x="38" y="182">Contabilidade — 8h</text>
+  </g>
+  <text class="t s" x="28" y="208">Arraste para um dia/turno livre —</text>
+  <text class="t s" x="28" y="219">ou aloque o bloco inteiro da visita.</text>
+  <rect x="28" y="230" width="116" height="46" rx="6" fill="#FEF3F2" stroke="#FCA5A5"/>
+  <text class="t" x="38" y="245" style="font-size:8px;font-weight:700;fill:#B42318">Turno recusado</text>
+  <text class="t s" x="38" y="257" style="fill:#B42318">Técnico ocupado no SICLA</text>
+  <text class="t s" x="38" y="268" style="fill:#B42318">ou data já passada.</text>
+  <rect x="28" y="288" width="116" height="20" rx="10" fill="#003399"/>
+  <text class="t" x="86" y="302" text-anchor="middle" style="font-size:8.5px;fill:#fff">Gerar cronograma</text>
+  <text class="t s" x="28" y="326">Status por agenda:</text>
+  <text class="t s" x="28" y="338">Solicitada · Agendada · Realizada</text>
+  <text class="t s" x="28" y="350">Não realizada · Postergada</text>
+  <text class="t s" x="28" y="362">Cancelada</text>
+  <text class="t s" x="28" y="376">Postergar cria nova ocorrência.</text>
+
+  <!-- calendário -->
+  <g class="t" text-anchor="middle" style="font-size:8.5px;fill:#5A6B82">
+    <text x="212" y="60">SEG 08/09</text><text x="302" y="60">TER 09/09</text><text x="392" y="60">QUA 10/09</text>
+    <text x="482" y="60">QUI 11/09</text><text x="572" y="60">SEX 12/09</text>
+  </g>
+  <text class="t s" x="172" y="92" text-anchor="end">manhã</text>
+  <text class="t s" x="172" y="182" text-anchor="end">tarde</text>
+  <text class="t s" x="172" y="272" text-anchor="end">manhã</text>
+  <text class="t s" x="172" y="362" text-anchor="end">tarde</text>
+
+  <!-- linha 1: manhã -->
+  <g>
+    <rect x="178" y="68" width="80" height="80" rx="8" fill="#EFF4FF" stroke="#2563EB"/>
+    <text class="t v" x="188" y="86" style="fill:#2563EB">V4 · FIN</text>
+    <text class="t s" x="188" y="99" style="fill:#2563EB">Carlos Nunes</text>
+    <text class="t s" x="188" y="111" style="fill:#2563EB">08:00–12:00</text>
+    <rect x="188" y="120" width="46" height="12" rx="6" fill="#2563EB"/>
+    <text class="t" x="211" y="129" text-anchor="middle" style="font-size:7px;fill:#fff">Agendada</text>
+
+    <rect x="268" y="68" width="80" height="80" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-dasharray="4 3"/>
+    <text class="t s" x="308" y="112" text-anchor="middle" style="fill:#94A3B8">livre</text>
+
+    <rect x="358" y="68" width="80" height="80" rx="8" fill="#ECFDF3" stroke="#86EFAC"/>
+    <text class="t v" x="368" y="86" style="fill:#15803D">V5 · COM</text>
+    <text class="t s" x="368" y="99" style="fill:#15803D">Ana Prado</text>
+    <rect x="368" y="108" width="50" height="12" rx="6" fill="#15803D"/>
+    <text class="t" x="393" y="117" text-anchor="middle" style="font-size:7px;fill:#fff">Realizada</text>
+
+    <rect x="448" y="68" width="80" height="80" rx="8" fill="#F1F5F9" stroke="#CBD5E1"/>
+    <path d="M448 68h80v80h-80z" fill="url(#hachura)"/>
+    <text class="t s" x="488" y="106" text-anchor="middle" style="fill:#5A6B82">ocupado</text>
+    <text class="t s" x="488" y="118" text-anchor="middle" style="fill:#5A6B82">no SICLA</text>
+
+    <rect x="538" y="68" width="80" height="80" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-dasharray="4 3"/>
+    <text class="t s" x="578" y="112" text-anchor="middle" style="fill:#94A3B8">livre</text>
+  </g>
+
+  <!-- linha 2: tarde -->
+  <g>
+    <rect x="178" y="158" width="80" height="80" rx="8" fill="#EFF4FF" stroke="#2563EB"/>
+    <text class="t v" x="188" y="176" style="fill:#2563EB">V4 · FIN</text>
+    <text class="t s" x="188" y="189" style="fill:#2563EB">13:00–17:00</text>
+    <rect x="268" y="158" width="80" height="80" rx="8" fill="#FFF7ED" stroke="#FCD34D"/>
+    <text class="t v" x="278" y="176" style="fill:#B45309">V6 · PCP</text>
+    <text class="t s" x="278" y="189" style="fill:#B45309">Postergada →</text>
+    <text class="t s" x="278" y="201" style="fill:#B45309">nova em 16/09</text>
+    <rect x="358" y="158" width="80" height="80" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-dasharray="4 3"/>
+    <text class="t s" x="398" y="202" text-anchor="middle" style="fill:#94A3B8">livre</text>
+    <rect x="448" y="158" width="80" height="80" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-dasharray="4 3"/>
+    <text class="t s" x="488" y="202" text-anchor="middle" style="fill:#94A3B8">livre</text>
+    <rect x="538" y="158" width="80" height="80" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-dasharray="4 3"/>
+    <text class="t s" x="578" y="202" text-anchor="middle" style="fill:#94A3B8">livre</text>
+  </g>
+
+  <!-- linha 3 e 4 (semana seguinte, compacta) -->
+  <g class="t" text-anchor="middle" style="font-size:8.5px;fill:#94A3B8">
+    <text x="212" y="262">15/09</text><text x="302" y="262">16/09</text><text x="392" y="262">17/09</text>
+    <text x="482" y="262">18/09</text><text x="572" y="262">19/09</text>
+  </g>
+  <g>
+    <rect x="178" y="268" width="80" height="52" rx="8" fill="#ECFEFF" stroke="#67E8F9"/>
+    <text class="t v" x="188" y="286" style="fill:#0891B2">V7 · EST</text>
+    <text class="t s" x="188" y="299" style="fill:#0891B2">Solicitada</text>
+    <rect x="268" y="268" width="80" height="52" rx="8" fill="#FFF7ED" stroke="#FCD34D"/>
+    <text class="t v" x="278" y="286" style="fill:#B45309">V6 · PCP</text>
+    <text class="t s" x="278" y="299" style="fill:#B45309">reagendada</text>
+    <rect x="358" y="268" width="80" height="52" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-dasharray="4 3"/>
+    <rect x="448" y="268" width="80" height="52" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-dasharray="4 3"/>
+    <rect x="538" y="268" width="80" height="52" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-dasharray="4 3"/>
+
+    <rect x="178" y="330" width="80" height="52" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-dasharray="4 3"/>
+    <rect x="268" y="330" width="80" height="52" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-dasharray="4 3"/>
+    <rect x="358" y="330" width="80" height="52" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-dasharray="4 3"/>
+    <rect x="448" y="330" width="80" height="52" rx="8" fill="#F1F5F9" stroke="#CBD5E1"/>
+    <path d="M448 330h80v52h-80z" fill="url(#hachura)"/>
+    <rect x="538" y="330" width="80" height="52" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-dasharray="4 3"/>
+  </g>
+
+  <defs>
+    <pattern id="hachura" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="8" stroke="#CBD5E1" stroke-width="3"/>
+    </pattern>
+  </defs>
+</svg>

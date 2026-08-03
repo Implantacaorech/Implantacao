@@ -10,6 +10,22 @@
     <strong>Todas as perguntas são obrigatórias</strong> — a que não se aplicar ao cliente,
     marque <em>“Não será utilizado.”</em>.</p>
 
+  <!-- Mesma aba: a gravação virou serviço de aplicação (GravacaoEmAndamentoService), então
+       ela sobrevive à navegação — inicia aqui, volta para o formulário e a barra vermelha do
+       topo continua controlando. -->
+  <div class="acoes lev-gravar">
+    <a class="btn"
+       [routerLink]="['/protocolos', 'gravar']"
+       [queryParams]="{ projetoId: projetoId, cliente: cliente(), titulo: 'Levantamento — ' + cliente() }">
+      ⏺ Gravar reunião
+    </a>
+    <span class="dica" style="margin:0">
+      Grava a reunião de levantamento (presencial ou pelo Teams) e transcreve ao vivo, já
+      arquivada em <strong>{{ cliente() }}</strong>. Depois de iniciar, volte para cá e continue
+      preenchendo — a gravação segue rodando.
+    </span>
+  </div>
+
   @if (erro()) {
     <div class="resultado erro">{{ erro() }}</div>
   }

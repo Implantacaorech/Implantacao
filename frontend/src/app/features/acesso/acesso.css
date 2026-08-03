@@ -1,0 +1,224 @@
+/* Visual das telas de ACESSO — as únicas que ficam FORA do shell (sem menu lateral nem
+ * topbar): login e "Esqueci minha senha".
+ *
+ * Fica aqui, e não em src/styles.css, de propósito: o CSS global é do MANUS. Estes estilos
+ * são component-scoped (styleUrls dos dois componentes) e não vazam para o resto do Painel.
+ * As cores saem dos tokens da marca definidos em :root. */
+
+:host {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px 20px;
+  background: radial-gradient(1100px 640px at 50% 32%, #1B57B5 0%, #0B3A92 46%, #06285F 100%);
+}
+
+.acesso-cartao {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border-radius: var(--r-sm);
+  padding: 40px 36px 34px;
+  box-shadow: 0 24px 60px rgba(3, 20, 52, .32);
+}
+
+/* ===== Logo Portal Rech =====
+ * `logo-portal-rech-azul.png` é o arquivo OFICIAL entregue pelo usuário (Logo/
+ * logo-portais-azul.png), só aparado da margem transparente — a folga quem dá é o layout.
+ * A barra superior usa o mesmo desenho em branco (`logo-portal-rech-branco.png`), gerado
+ * do mesmo original trocando a tinta e preservando o alfa. */
+.acesso-logo {
+  display: block;
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  margin: 0 auto;
+}
+
+/* Subtítulo discreto: o cartão precisa dizer QUAL sistema é, sem competir com a marca. */
+h1.acesso-sub {
+  margin: 14px 0 28px;
+  font-size: .78rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* ===== Campo com rótulo flutuante (recorta a borda quando preenchido/focado) ===== */
+.acesso-campo {
+  display: block;
+  position: relative;
+  margin-bottom: 22px;
+}
+
+.acesso-campo input {
+  width: 100%;
+  height: 52px;
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: .95rem;
+  color: var(--ink);
+  background: #EEF4FD;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.acesso-campo input:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(0, 51, 153, .12);
+}
+
+/* Estado "flutuado" — o padrão, porque o campo abre preenchido ou recebe foco. */
+.acesso-campo span {
+  position: absolute;
+  left: 10px;
+  top: -8px;
+  padding: 0 6px;
+  background: var(--surface);
+  font-size: .76rem;
+  line-height: 1;
+  color: var(--muted);
+  pointer-events: none;
+  transition: top .15s, font-size .15s, color .15s;
+}
+
+.acesso-campo input:focus ~ span {
+  color: var(--brand);
+}
+
+/* Vazio e sem foco: o rótulo desce e vira o placeholder do campo. Depende do
+ * `placeholder=" "` no input — sem ele, :placeholder-shown nunca casa. */
+.acesso-campo input:placeholder-shown:not(:focus) ~ span {
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: .95rem;
+  background: transparent;
+}
+
+.acesso-campo span i {
+  font-style: normal;
+}
+
+/* O autofill do Chrome pinta o campo de amarelo e ignora `background` — só o inset
+ * box-shadow o sobrescreve. */
+.acesso-campo input:-webkit-autofill,
+.acesso-campo input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 40px #EEF4FD inset;
+  -webkit-text-fill-color: var(--ink);
+}
+
+/* ===== Linha "Lembrar-me" × "Esqueci minha senha" ===== */
+.acesso-linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 2px 0 26px;
+}
+
+.acesso-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: var(--ink);
+  font-size: .94rem;
+}
+
+.acesso-check input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+
+.acesso-linha a {
+  font-size: .92rem;
+  color: #1565C0;
+}
+
+/* ===== Botão principal ===== */
+.acesso-botao {
+  display: block;
+  width: 100%;
+  height: 48px;
+  border: 0;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(90deg, #052A6B 0%, var(--brand) 45%, #1565C0 100%);
+  box-shadow: 0 6px 16px rgba(5, 42, 107, .28);
+  transition: filter .15s, box-shadow .15s;
+}
+
+.acesso-botao:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 8px 20px rgba(5, 42, 107, .34);
+}
+
+.acesso-botao:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ===== Apoios (usados pela tela de recuperação de senha) ===== */
+.acesso-nota {
+  margin: 0 0 22px;
+  text-align: center;
+  font-size: .9rem;
+  color: var(--muted);
+}
+
+.acesso-rodape {
+  margin: 20px 0 0;
+  text-align: center;
+  font-size: .9rem;
+}
+
+.acesso-secundario {
+  display: block;
+  width: 100%;
+  height: 42px;
+  margin-top: 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  background: var(--surface);
+  font-family: inherit;
+  font-size: .94rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.acesso-secundario:hover:not(:disabled) {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.acesso-secundario:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+/* O código de 6 dígitos pede leitura dígito a dígito. */
+.acesso-campo input.acesso-codigo {
+  letter-spacing: .35em;
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .acesso-cartao {
+    padding: 32px 22px 28px;
+  }
+}

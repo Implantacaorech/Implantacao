@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" width="640" height="400" role="img" aria-label="Matriz de Conhecimento por técnico e competência, e Dicionário Inteligente de consulta técnica do SIGER">
+  <style>
+    .t{font-family:Inter,'Segoe UI',system-ui,sans-serif}
+    .h{font-size:9px;font-weight:700;fill:#003399}
+    .s{font-size:8px;fill:#5A6B82}
+    .c{font-size:8.5px;fill:#0F1B2D}
+    .no{font-size:8.5px;font-weight:700;text-anchor:middle}
+  </style>
+  <rect width="640" height="400" rx="10" fill="#fff"/>
+  <rect x=".5" y=".5" width="639" height="399" rx="10" fill="none" stroke="#E2E8F0"/>
+  <path d="M0 10a10 10 0 0 1 10-10h620a10 10 0 0 1 10 10v24H0z" fill="#001F66"/>
+  <text class="t" x="18" y="21" style="font-size:10px;font-weight:600;fill:#fff">Matriz de Conhecimento · Dicionário Inteligente</text>
+
+  <!-- matriz -->
+  <rect x="16" y="46" width="356" height="338" rx="10" fill="#fff" stroke="#E2E8F0"/>
+  <text class="t h" x="30" y="66">Matriz de Conhecimento</text>
+  <text class="t s" x="30" y="80">Notas 1–10 por técnico × competência — 153 competências em 8 áreas</text>
+
+  <g class="t s" text-anchor="middle" style="fill:#5A6B82">
+    <text x="222" y="102">CTB</text><text x="252" y="102">FOL</text><text x="282" y="102">FIN</text>
+    <text x="312" y="102">EST</text><text x="342" y="102">PCP</text>
+  </g>
+  <line x1="30" y1="108" x2="358" y2="108" stroke="#E2E8F0"/>
+
+  <g>
+    <text class="t c" x="30" y="128">Ana Prado</text>
+    <rect x="208" y="116" width="28" height="16" rx="4" fill="#ECFDF3"/><text class="t no" x="222" y="128" style="fill:#15803D">9</text>
+    <rect x="238" y="116" width="28" height="16" rx="4" fill="#FFF7ED"/><text class="t no" x="252" y="128" style="fill:#B45309">7</text>
+    <rect x="268" y="116" width="28" height="16" rx="4" fill="#ECFDF3"/><text class="t no" x="282" y="128" style="fill:#15803D">10</text>
+    <rect x="298" y="116" width="28" height="16" rx="4" fill="#ECFDF3"/><text class="t no" x="312" y="128" style="fill:#15803D">9</text>
+    <rect x="328" y="116" width="28" height="16" rx="4" fill="#FFF7ED"/><text class="t no" x="342" y="128" style="fill:#B45309">6</text>
+
+    <text class="t c" x="30" y="154">Carlos Nunes</text>
+    <rect x="208" y="142" width="28" height="16" rx="4" fill="#FFF7ED"/><text class="t no" x="222" y="154" style="fill:#B45309">8</text>
+    <rect x="238" y="142" width="28" height="16" rx="4" fill="#FEF3F2"/><text class="t no" x="252" y="154" style="fill:#B42318">4</text>
+    <rect x="268" y="142" width="28" height="16" rx="4" fill="#ECFDF3"/><text class="t no" x="282" y="154" style="fill:#15803D">9</text>
+    <rect x="298" y="142" width="28" height="16" rx="4" fill="#FFF7ED"/><text class="t no" x="312" y="154" style="fill:#B45309">7</text>
+    <rect x="328" y="142" width="28" height="16" rx="4" fill="#ECFDF3"/><text class="t no" x="342" y="154" style="fill:#15803D">9</text>
+
+    <text class="t c" x="30" y="180">Marina Alves</text>
+    <rect x="208" y="168" width="28" height="16" rx="4" fill="#ECFDF3"/><text class="t no" x="222" y="180" style="fill:#15803D">10</text>
+    <rect x="238" y="168" width="28" height="16" rx="4" fill="#ECFDF3"/><text class="t no" x="252" y="180" style="fill:#15803D">9</text>
+    <rect x="268" y="168" width="28" height="16" rx="4" fill="#FFF7ED"/><text class="t no" x="282" y="180" style="fill:#B45309">6</text>
+    <rect x="298" y="168" width="28" height="16" rx="4" fill="#FEF3F2"/><text class="t no" x="312" y="180" style="fill:#B42318">5</text>
+    <rect x="328" y="168" width="28" height="16" rx="4" fill="#FFF7ED"/><text class="t no" x="342" y="180" style="fill:#B45309">8</text>
+
+    <text class="t c" x="30" y="206">Rafael Dias</text>
+    <rect x="208" y="194" width="28" height="16" rx="4" fill="#FFF7ED"/><text class="t no" x="222" y="206" style="fill:#B45309">7</text>
+    <rect x="238" y="194" width="28" height="16" rx="4" fill="#ECFDF3"/><text class="t no" x="252" y="206" style="fill:#15803D">9</text>
+    <rect x="268" y="194" width="28" height="16" rx="4" fill="#FFF7ED"/><text class="t no" x="282" y="206" style="fill:#B45309">8</text>
+    <rect x="298" y="194" width="28" height="16" rx="4" fill="#ECFDF3"/><text class="t no" x="312" y="206" style="fill:#15803D">10</text>
+    <rect x="328" y="194" width="28" height="16" rx="4" fill="#FEF3F2"/><text class="t no" x="342" y="206" style="fill:#B42318">5</text>
+  </g>
+
+  <g class="t s">
+    <rect x="30" y="228" width="12" height="10" rx="3" fill="#ECFDF3" stroke="#86EFAC"/><text x="48" y="237">9–10 domina</text>
+    <rect x="120" y="228" width="12" height="10" rx="3" fill="#FFF7ED" stroke="#FCD34D"/><text x="138" y="237">6–8 apoia</text>
+    <rect x="204" y="228" width="12" height="10" rx="3" fill="#FEF3F2" stroke="#FCA5A5"/><text x="222" y="237">1–5 precisa de suporte</text>
+  </g>
+  <rect x="30" y="252" width="328" height="52" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text class="t s" x="42" y="270">Consultor e GCI alteram apenas a própria linha;</text>
+  <text class="t s" x="42" y="283">Coordenação e Administrativo veem tudo em consulta;</text>
+  <text class="t s" x="42" y="296">o ADM edita qualquer linha e importa a planilha oficial.</text>
+
+  <rect x="30" y="316" width="328" height="54" rx="8" fill="#E8EEF8"/>
+  <text class="t h" x="42" y="334">Matriz por Menu (SIGER) e por Função (SICLA)</text>
+  <text class="t s" x="42" y="348">As mesmas notas descendo ao nível do menu e da função</text>
+  <text class="t s" x="42" y="361">implantável — para saber quem domina o que, no detalhe.</text>
+
+  <!-- dicionário -->
+  <rect x="384" y="46" width="240" height="338" rx="10" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text class="t h" x="398" y="66">Dicionário Inteligente</text>
+  <text class="t s" x="398" y="80">Consulta técnica do SIGER, em linguagem de negócio</text>
+
+  <rect x="398" y="90" width="212" height="20" rx="10" fill="#fff" stroke="#CBD5E1"/>
+  <circle cx="412" cy="100" r="4" fill="none" stroke="#5A6B82" stroke-width="1.4"/>
+  <path d="M415 103l4 4" stroke="#5A6B82" stroke-width="1.4" stroke-linecap="round"/>
+  <text class="t s" x="424" y="104" style="fill:#0F1B2D">CFOP de remessa</text>
+
+  <g class="t s">
+    <rect x="398" y="118" width="52" height="15" rx="7" fill="#E8EEF8"/><text x="424" y="129" fill="#003399" text-anchor="middle">Tabela</text>
+    <rect x="456" y="118" width="52" height="15" rx="7" fill="#fff" stroke="#CBD5E1"/><text x="482" y="129" text-anchor="middle">Campo</text>
+    <rect x="514" y="118" width="52" height="15" rx="7" fill="#fff" stroke="#CBD5E1"/><text x="540" y="129" text-anchor="middle">Sigla</text>
+  </g>
+
+  <g>
+    <rect x="398" y="142" width="212" height="52" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <text class="t" x="410" y="160" style="font-size:9px;font-weight:600;fill:#003399">CFOP</text>
+    <text class="t s" x="410" y="173">Código Fiscal de Operações e Prestações</text>
+    <text class="t s" x="410" y="185">Define a natureza da operação na nota fiscal.</text>
+
+    <rect x="398" y="202" width="212" height="52" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <text class="t" x="410" y="220" style="font-size:9px;font-weight:600;fill:#003399">Remessa p/ industrialização</text>
+    <text class="t s" x="410" y="233">Saída sem venda, com retorno previsto.</text>
+    <text class="t s" x="410" y="245">Menu 4.2.7 · exige controle de terceiros.</text>
+
+    <rect x="398" y="262" width="212" height="52" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <text class="t" x="410" y="280" style="font-size:9px;font-weight:600;fill:#003399">RNS(I)</text>
+    <text class="t s" x="410" y="293">Requisição de Necessidade de Serviço</text>
+    <text class="t s" x="410" y="305">da Implantação — onde as horas são apontadas.</text>
+  </g>
+  <text class="t s" x="398" y="334">O termo, a sigla e o menu no mesmo lugar —</text>
+  <text class="t s" x="398" y="347">com o filtro salvo e o resultado já na abertura.</text>
+  <text class="t s" x="398" y="368" style="fill:#003399">Alimentado pelas transcrições aprovadas.</text>
+</svg>

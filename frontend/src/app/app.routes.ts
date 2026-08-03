@@ -8,6 +8,23 @@ import { ShellComponent } from './layouts/shell/shell.component';
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
   {
+    // "Esqueci minha senha" — junto do login, é a outra tela que roda FORA do shell (sem
+    // menu/topbar) e sem autenticação, por definição: quem chega aqui não consegue entrar.
+    path: 'esqueci-senha',
+    loadComponent: () =>
+      import('./features/esqueci-senha/esqueci-senha.component').then((m) => m.EsqueciSenhaComponent),
+  },
+  {
+    // Apresentação dos recursos do Painel — página PÚBLICA (sem authGuard), linkada por um
+    // botão no cartão de login: existe justamente para quem ainda não entrou.
+    path: 'apresentacao',
+    loadComponent: () =>
+      import('./features/apresentacao/apresentacao.component').then((m) => m.ApresentacaoComponent),
+  },
+  {
+    // Auto-cadastro: continua registrado, mas SEM porta de entrada no login desde
+    // 2026-07-30 (o "Criar conta" saiu do cartão de acesso a pedido do usuário). Quem
+    // precisa de acesso é cadastrado pelo ADM em Gestão → Usuários.
     path: 'cadastro',
     loadComponent: () => import('./features/cadastro/cadastro.component').then((m) => m.CadastroComponent),
   },
@@ -174,6 +191,13 @@ export const routes: Routes = [
         canActivate: [permissaoGuard('protocolos')],
         data: { titulo: 'Transcrição Áudio/Vídeo' },
         loadComponent: () => import('./features/protocolos/protocolos.component').then((m) => m.ProtocolosComponent),
+      },
+      {
+        // Precisa vir ANTES de 'protocolos/:id' — senão 'gravar' seria lido como um id.
+        path: 'protocolos/gravar',
+        canActivate: [permissaoGuard('protocolos')],
+        data: { titulo: 'Gravar reunião' },
+        loadComponent: () => import('./features/protocolos/gravacao.component').then((m) => m.GravacaoComponent),
       },
       {
         path: 'dicionario',

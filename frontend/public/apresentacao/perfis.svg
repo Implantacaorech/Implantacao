@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" width="640" height="400" role="img" aria-label="Cada pessoa entra e encontra apenas o que é do seu papel: Comercial, Administrativo, Coordenação, GCI e Consultor">
+  <style>
+    .t{font-family:Inter,'Segoe UI',system-ui,sans-serif}
+    .h{font-size:9px;font-weight:700;fill:#003399}
+    .s{font-size:8px;fill:#5A6B82}
+    .p{font-size:9.5px;font-weight:600;fill:#0F1B2D}
+  </style>
+  <rect width="640" height="400" rx="10" fill="#fff"/>
+  <rect x=".5" y=".5" width="639" height="399" rx="10" fill="none" stroke="#E2E8F0"/>
+  <path d="M0 10a10 10 0 0 1 10-10h620a10 10 0 0 1 10 10v24H0z" fill="#001F66"/>
+  <text class="t" x="18" y="21" style="font-size:10px;font-weight:600;fill:#fff">Cada um vê o que é do seu papel</text>
+
+  <text class="t s" x="16" y="52">O menu, as telas e os botões mudam conforme quem entrou — ninguém precisa aprender o que não usa.</text>
+
+  <!-- colunas de papéis -->
+  <g>
+    <rect x="16" y="66" width="118" height="200" rx="10" fill="#F8FAFC" stroke="#E2E8F0"/>
+    <rect x="16" y="66" width="118" height="28" rx="10" fill="#E8EEF8"/>
+    <path d="M16 84h118v10H16z" fill="#E8EEF8"/>
+    <text class="t p" x="30" y="85" style="fill:#003399">Comercial</text>
+    <g class="t s" style="fill:#0F1B2D">
+      <text x="30" y="112">Consulta o cliente</text>
+      <text x="30" y="128">Cadastra a ficha</text>
+      <text x="30" y="144">Pede o levantamento</text>
+      <text x="30" y="160">Recebe a devolutiva</text>
+      <text x="30" y="176">Envia o fechamento</text>
+    </g>
+    <text class="t s" x="30" y="204" style="fill:#94A3B8">Não vê a carteira</text>
+    <text class="t s" x="30" y="217" style="fill:#94A3B8">inteira nem os</text>
+    <text class="t s" x="30" y="230" style="fill:#94A3B8">documentos internos.</text>
+
+    <rect x="142" y="66" width="118" height="200" rx="10" fill="#F8FAFC" stroke="#E2E8F0"/>
+    <rect x="142" y="66" width="118" height="28" rx="10" fill="#E8EEF8"/>
+    <path d="M142 84h118v10h-118z" fill="#E8EEF8"/>
+    <text class="t p" x="156" y="85" style="fill:#003399">Administrativo</text>
+    <g class="t s" style="fill:#0F1B2D">
+      <text x="156" y="112">Agenda levantamentos</text>
+      <text x="156" y="128">Abre as RNS</text>
+      <text x="156" y="144">Confere documentos</text>
+      <text x="156" y="160">Envia p/ assinatura</text>
+      <text x="156" y="176">Arquiva o Termo</text>
+    </g>
+
+    <rect x="268" y="66" width="118" height="200" rx="10" fill="#F8FAFC" stroke="#E2E8F0"/>
+    <rect x="268" y="66" width="118" height="28" rx="10" fill="#E8EEF8"/>
+    <path d="M268 84h118v10H268z" fill="#E8EEF8"/>
+    <text class="t p" x="282" y="85" style="fill:#003399">Coordenação</text>
+    <g class="t s" style="fill:#0F1B2D">
+      <text x="282" y="112">Designa GCI e time</text>
+      <text x="282" y="128">Acompanha a carteira</text>
+      <text x="282" y="144">Vê atrasos e riscos</text>
+      <text x="282" y="160">Consulta capacidade</text>
+      <text x="282" y="176">Decide prioridades</text>
+    </g>
+
+    <rect x="394" y="66" width="118" height="200" rx="10" fill="#F8FAFC" stroke="#E2E8F0"/>
+    <rect x="394" y="66" width="118" height="28" rx="10" fill="#E8EEF8"/>
+    <path d="M394 84h118v10H394z" fill="#E8EEF8"/>
+    <text class="t p" x="408" y="85" style="fill:#003399">GCI</text>
+    <g class="t s" style="fill:#0F1B2D">
+      <text x="408" y="112">Faz o levantamento</text>
+      <text x="408" y="128">Monta o Projeto</text>
+      <text x="408" y="144">Indica os consultores</text>
+      <text x="408" y="160">Acompanha os seus</text>
+      <text x="408" y="176">clientes</text>
+    </g>
+
+    <rect x="520" y="66" width="104" height="200" rx="10" fill="#F8FAFC" stroke="#E2E8F0"/>
+    <rect x="520" y="66" width="104" height="28" rx="10" fill="#E8EEF8"/>
+    <path d="M520 84h104v10H520z" fill="#E8EEF8"/>
+    <text class="t p" x="534" y="85" style="fill:#003399">Consultor</text>
+    <g class="t s" style="fill:#0F1B2D">
+      <text x="534" y="112">Monta o cronograma</text>
+      <text x="534" y="128">Gera o check-list</text>
+      <text x="534" y="144">Conduz as visitas</text>
+      <text x="534" y="160">Fecha a implantação</text>
+      <text x="534" y="176">com o Termo</text>
+    </g>
+  </g>
+
+  <!-- rodapé de garantias -->
+  <rect x="16" y="284" width="196" height="100" rx="10" fill="#fff" stroke="#E2E8F0"/>
+  <circle cx="40" cy="310" r="12" fill="#E8EEF8"/>
+  <path d="M35 310v-3a5 5 0 0 1 10 0v3" stroke="#003399" stroke-width="1.5" fill="none"/>
+  <rect x="34" y="310" width="12" height="8" rx="2" fill="none" stroke="#003399" stroke-width="1.5"/>
+  <text class="t h" x="62" y="308">Acesso por senha</text>
+  <text class="t s" x="62" y="321">com "esqueci minha senha"</text>
+  <text class="t s" x="30" y="346">O acesso é dado pela administração</text>
+  <text class="t s" x="30" y="359">do setor. Cada um tem o seu login e</text>
+  <text class="t s" x="30" y="372">responde pelo que registra.</text>
+
+  <rect x="222" y="284" width="196" height="100" rx="10" fill="#fff" stroke="#E2E8F0"/>
+  <circle cx="246" cy="310" r="12" fill="#E8EEF8"/>
+  <path d="M241 310l4 4 7-8" stroke="#003399" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text class="t h" x="268" y="308">Tudo fica registrado</text>
+  <text class="t s" x="268" y="321">quem fez, o quê e quando</text>
+  <text class="t s" x="236" y="346">Cada passo concluído, documento</text>
+  <text class="t s" x="236" y="359">gerado e e-mail enviado entra na</text>
+  <text class="t s" x="236" y="372">linha do tempo do cliente.</text>
+
+  <rect x="428" y="284" width="196" height="100" rx="10" fill="#fff" stroke="#E2E8F0"/>
+  <circle cx="452" cy="310" r="12" fill="#E8EEF8"/>
+  <path d="M452 304v12M446 310h12" stroke="#003399" stroke-width="1.8" stroke-linecap="round"/>
+  <text class="t h" x="474" y="308">A tela lembra de você</text>
+  <text class="t s" x="474" y="321">os filtros voltam como ficaram</text>
+  <text class="t s" x="442" y="346">O recorte que você deixou numa</text>
+  <text class="t s" x="442" y="359">tela reabre igual, mesmo de outro</text>
+  <text class="t s" x="442" y="372">computador.</text>
+</svg>

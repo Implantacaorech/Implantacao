@@ -1,1 +1,19 @@
-/* Estilos globais em src/styles.css (espelho de webapp/static/style.css). */
+/* O visual do cartão de acesso está em ../acesso/acesso.css, compartilhado com a tela de
+ * "Esqueci minha senha". Aqui ficam só os ajustes próprios do login. */
+
+/* .resultado.erro vem do CSS global (src/styles.css) sem margem própria — dentro do cartão
+ * ele precisa respirar antes do primeiro campo. */
+.resultado.erro {
+  margin-bottom: 18px;
+}
+
+/* O link da apresentação usa o visual do botão secundário do cartão (.acesso-secundario, em
+ * ../acesso/acesso.css), que foi desenhado para <button> — como <a> ele precisa centralizar
+ * o texto por conta própria. */
+a.login-apresentacao {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 14px;
+  text-decoration: none;
+}
