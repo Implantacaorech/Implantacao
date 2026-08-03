@@ -217,11 +217,19 @@
   `frontend/src/app/conformidade-arquitetura.spec.ts` (6) e
   `docservice/tests/test_conformidade_arquitetura.py` (5). O docservice **não tinha nenhum
   teste rodando no CI** até aqui; ganhou job próprio.
-- [x] **Gate de cobertura ligado** no patamar medido, com **1 ponto de folga** (statements 59
-  / branches 52 / functions 62 / lines 59, contra os 60,2 / 53,2 / 63,3 / 60,2 reais). A
-  folga é deliberada: no fio do medido, qualquer commit pequeno derruba o CI por ruído e o
-  time aprende a ignorar o gate. O CI passou a rodar o backend com `--coverage`, porque o
-  `coverageThreshold` só é avaliado quando a cobertura é coletada.
+- [x] **Gate de cobertura ligado** — statements 55 / branches 48 / functions 57 / lines 55,
+  com ~1,5 ponto de folga. A folga é deliberada: no fio do medido, qualquer commit pequeno
+  derruba o CI por ruído e o time aprende a ignorar o gate. O CI passou a rodar o backend
+  com `--coverage`, porque o `coverageThreshold` só é avaliado quando a cobertura é coletada.
+  > **Calibrado pelo CI, não pela máquina** — e isso custou um CI vermelho para aprender. O
+  > gate saiu primeiro em 59/52/62/59, medido localmente (60,2 / 53,2 / 63,3 / 60,2). No
+  > runner a cobertura é **56,5 / 49,9 / 58,6 / 56,5**, e o PR #20 reprovou com os 921
+  > testes PASSANDO. Quem enforce é o CI; é o número dele que vale.
+- [ ] **23 testes (1 suíte) são pulados no CI e não no local** — é a origem da diferença de
+  cobertura acima. Localmente `jest --ci` roda 96 suítes / 925 testes sem nenhum pendente;
+  no runner são 95 / 921 com 23 pulados. São testes que não protegem nada no CI, e ninguém
+  sabia. Descobrir qual suíte é (provável dependência de ambiente: Oracle, Python ou
+  arquivo local) e fazer o skip ser EXPLÍCITO, com motivo, ou consertar a dependência.
 - [x] **Piloto do frontend** — `permissoes.component.ts` deixou de falar HTTP direto (virou
   `PermissoesAdminService`). É a tela de controle de acesso, onde a separação importa mais.
 - [x] **Correção de segurança junto** — uma rota do docservice devolvia `str(e)` num **500**
