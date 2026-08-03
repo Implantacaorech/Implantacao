@@ -87,6 +87,16 @@ export class CronogramaController {
     return this.designacoes.doProjeto(projetoId);
   }
 
+  @Get('tecnicos')
+  @ApiOperation({
+    summary:
+      'Técnicos que podem ser escolhidos na agenda — a equipe indicada no passo 8 ' +
+      '(GCI + técnicos), mais quem já está designado por módulo',
+  })
+  tecnicos(@Param('projetoId', ParseIntPipe) projetoId: number) {
+    return this.designacoes.tecnicosDoProjeto(projetoId);
+  }
+
   @Put('designacoes')
   @ApiOperation({
     summary: 'Define técnico/ordem/analista/"não distribuir" de um módulo',

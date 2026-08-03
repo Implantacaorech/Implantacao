@@ -92,6 +92,9 @@ export class AgendaComponent {
 
   readonly visitas = signal<VisitaAgrupada[]>([]);
   readonly designacoes = signal<Designacao[]>([]);
+  /** Equipe responsável pelo projeto, vinda do passo 8 ("Indicar o GCI e os técnicos
+   * responsáveis"): GCI + técnicos. É a origem das opções de técnico da tela. */
+  readonly equipe = signal<string[]>([]);
   readonly periodos = signal<PeriodoBloqueado[]>([]);
   readonly bloqueios = signal<Record<string, string>>({});
   /** Visão do indicador de disponibilidade no calendário — "em grupo" (bloqueia se
@@ -125,10 +128,15 @@ export class AgendaComponent {
 
   readonly hojeIso = new Date().toISOString().slice(0, 10);
 
+  /** Opções de técnico da tela: a EQUIPE do projeto (passo 8) unida a quem já está designado
+   * por módulo. Antes saía só das designações — circular, porque a designação é justamente o
+   * que este seletor grava: em todo projeto cuja equipe foi indicada pelo passo 8 (que grava
+   * em `projeto_pessoas`, não em `designacoes`) a lista nascia vazia e não havia como
+   * escolher ninguém. */
   readonly tecnicosEnvolvidos = computed(() => {
-    const nomes = new Set<string>();
+    const nomes = new Set<string>(this.equipe());
     for (const d of this.designacoes()) if (d.consultor) nomes.add(d.consultor);
-    return [...nomes].sort();
+    return [...nomes].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   });
 
   readonly semana = computed<DiaSemana[]>(() => {
@@ -191,9 +199,10 @@ export class AgendaComponent {
     this.carregando.set(true);
     this.erro.set(null);
     try {
-      const [visitas, designacoes, periodos, prontidao, horarios, config] = await Promise.all([
+      const [visitas, designacoes, equipe, periodos, prontidao, horarios, config] = await Promise.all([
         this.service.visitas(this.projetoId),
         this.service.designacoes(this.projetoId),
+        this.service.tecnicos(this.projetoId),
         this.service.periodos(this.projetoId),
         this.service.prontidao(this.projetoId),
         this.service.horarios(this.projetoId),
@@ -201,6 +210,7 @@ export class AgendaComponent {
       ]);
       this.visitas.set(visitas);
       this.designacoes.set(designacoes);
+      this.equipe.set(equipe);
       this.periodos.set(periodos);
       this.prontidao.set(prontidao);
       this.horarios.set(horarios);
