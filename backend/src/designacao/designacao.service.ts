@@ -13,6 +13,7 @@ import { UsersService } from '../users/users.service';
 import { MailerService } from '../email/mailer.service';
 import { MetricasService, DocLeve } from '../metricas/metricas.service';
 import { PassosService } from '../passos/passos.service';
+import { siglasContratadas } from '../plano-cronograma/catalogo-modulos.util';
 // Antes havia uma cópia local desta função, em UTC — mesma falha corrigida em datas.util.
 import { hojeIso } from '../cronograma/datas.util';
 
@@ -36,13 +37,6 @@ export interface ConsultoresView {
 function formatBr(iso: string): string {
   const [y, m, d] = iso.split('-');
   return `${d}/${m}/${y}`;
-}
-
-function parseModulos(modulos: string): string[] {
-  return (modulos || '')
-    .split(/[,;\n]+/)
-    .map((m) => m.trim())
-    .filter(Boolean);
 }
 
 /** Fluxo de Designação (GCI/consultor por projeto — distinto do técnico por visita do
@@ -205,10 +199,16 @@ export class DesignacaoService {
   }
 
   // --- Etapa 6 (GCI): designar os Consultores por módulo ---
+  //
+  // Os módulos são listados por SIGLA (`FAT`, `CTB`), nunca pelo código cru: desde que o
+  // passo 1 virou consulta ao SICLA, `Projeto.modulos` guarda CÓDIGOS numéricos. Mostrar o
+  // código teria duas consequências — o GCI escolheria consultor para "8" em vez de "COM",
+  // e a designação seria GRAVADA com essa chave na tabela `designacoes`, que é a mesma que
+  // o Agendador de Visitas lê por sigla. As duas telas nunca se encontrariam.
 
   async obterConsultores(projetoId: number): Promise<ConsultoresView> {
     const projeto = await this.buscarProjeto(projetoId);
-    const modulos = parseModulos(projeto.modulos);
+    const modulos = siglasContratadas(projeto);
     const consultores = await this.users.porPerfil('Consultor');
     const atuaisLista = await this.designacoes.find({ where: { projetoId } });
     const atuais = Object.fromEntries(
@@ -223,7 +223,7 @@ export class DesignacaoService {
     autor: string,
   ): Promise<Projeto> {
     const projeto = await this.buscarProjeto(projetoId);
-    const modulos = parseModulos(projeto.modulos);
+    const modulos = siglasContratadas(projeto);
     const linhas = modulos
       .map((m) => ({
         modulo: m,
