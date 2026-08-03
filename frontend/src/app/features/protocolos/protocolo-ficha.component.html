@@ -40,7 +40,8 @@
 
   <div class="painel">
     <p class="dica" style="margin:0">
-      <strong>Arquivo:</strong> {{ p.videoNome }} · <strong>Origem:</strong> {{ p.videoOrigem === 'sharepoint' ? 'SharePoint' : 'Upload manual' }}
+      @if (p.cliente) { <strong>Cliente:</strong> {{ p.cliente }} · }
+      <strong>Arquivo:</strong> {{ p.videoNome || '—' }} · <strong>Origem:</strong> {{ rotuloOrigem(p.videoOrigem) }}
       · <strong>Registrado:</strong> {{ formatarDataHora(p.criadoEm) || '—' }}
       @if (p.processadoEm) { · <strong>Processado:</strong> {{ formatarDataHora(p.processadoEm) }} }
       @if (p.duracaoSeg) { · <strong>Duração:</strong> {{ formatarDuracao(p.duracaoSeg) }} }
@@ -83,7 +84,7 @@
         — para abrir em um player externo.
       </p>
     } @else if (midiaCarregando()) {
-      <p class="dica" style="margin:0">Carregando {{ ehAudio() ? 'o áudio' : 'o vídeo' }} original… (arquivos longos demoram alguns segundos)</p>
+      <p class="dica" style="margin:0">Preparando {{ ehAudio() ? 'o áudio' : 'o vídeo' }} original…</p>
     } @else {
       <div class="resultado erro" style="margin:0">
         Não foi possível carregar {{ ehAudio() ? 'o áudio' : 'o vídeo' }} — o arquivo pode ter sido movido ou removido de

@@ -1,6 +1,7 @@
-export type VideoOrigem = 'sharepoint' | 'upload';
+export type VideoOrigem = 'sharepoint' | 'upload' | 'gravacao';
 
 export type StatusProtocolo =
+  | 'Gravando'
   | 'Pendente'
   | 'Transcrevendo'
   | 'Analisando'
@@ -10,6 +11,7 @@ export type StatusProtocolo =
   | 'Erro';
 
 export const PROTO_STATUS: StatusProtocolo[] = [
+  'Gravando',
   'Pendente',
   'Transcrevendo',
   'Analisando',
@@ -34,8 +36,17 @@ export const PROTO_MODULOS = [
   'Módulo a validar',
 ] as const;
 
+export const ROTULO_ORIGEM: Record<VideoOrigem, string> = {
+  sharepoint: 'SharePoint',
+  upload: 'Upload manual',
+  gravacao: 'Reunião gravada',
+};
+
 export interface Protocolo {
   id: number;
+  /** Projeto (cliente) a que o protocolo foi direcionado — nulo quando é genérico. */
+  projetoId: number | null;
+  cliente: string;
   titulo: string;
   modulo: string;
   menu: string;
@@ -84,6 +95,58 @@ export interface FiltroProtocolos {
   status?: string;
   q?: string;
   origem?: string;
+  cliente?: string;
+}
+
+/** Um cliente devolvido pela busca no SICLA — a MESMA consulta do Novo Cliente (passo 1).
+ * `codigo` é o código do cliente no SICLA; não há id de projeto aqui, porque a reunião pode
+ * acontecer antes de a implantação existir no painel. */
+export interface ClienteProtocolo {
+  codigo: string;
+  cliente: string;
+  fantasia: string;
+  cnpj: string;
+}
+
+export interface BuscaClientesProtocolo {
+  ok: boolean;
+  mensagem: string;
+  clientes: ClienteProtocolo[];
+}
+
+/** Andamento da gravação em curso, consultado pela tela a cada poucos segundos. */
+export interface EstadoGravacao {
+  /** O transcritor terminou de carregar o modelo? Antes disso o texto demora a aparecer. */
+  pronto: boolean;
+  duracaoSeg: number;
+  trechos: number;
+  pendentes: number;
+  texto: string;
+  erro: string | null;
+}
+
+export interface IniciarGravacaoPayload {
+  /** Só quando a gravação foi aberta de dentro de um projeto (botão do Levantamento). */
+  projetoId?: number;
+  clienteCodigo?: string;
+  cliente?: string;
+  cnpj?: string;
+  titulo?: string;
+  /** Nomes dos participantes e termos da reunião — viram `hotwords` do transcritor. */
+  vocabulario?: string;
+  fonte: 'microfone' | 'reuniao' | 'ambos';
+}
+
+export interface GravacaoIniciada {
+  id: number;
+  cliente: string;
+  titulo: string;
+}
+
+export interface GravacaoFinalizada {
+  id: number;
+  duracaoSeg: number;
+  aviso: string;
 }
 
 export interface ListaProtocolos {

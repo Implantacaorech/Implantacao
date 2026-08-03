@@ -1,7 +1,19 @@
+import { Perfil } from '../common/constants/perfis';
 import { StatusProtocolo } from '../database/entities/protocolo.entity';
 
-// Espelha webapp/db.py:PROTO_STATUS/PROTO_MODULOS/PROTO_CAMPOS_TEXTO.
+/** Quem decide o destino de um protocolo: aprovar, reprovar e excluir. Mais restrito que o
+ * resto da tela (qualquer autenticado lista/envia/edita) — espelha
+ * webapp/routes_protocolos.py:_pode_aprovar.
+ *
+ * Mora aqui, e não no controller, porque a regra de VISIBILIDADE (protocolos.acesso.ts)
+ * precisa da mesma lista: quem aprova tem de enxergar o que vai aprovar. Enquanto a
+ * constante era privada do controller, as duas regras se contradiziam em silêncio. */
+export const PERFIS_APROVA_PROTOCOLO: Perfil[] = ['ADM', 'Coordenador'];
+
+// Espelha webapp/db.py:PROTO_STATUS/PROTO_MODULOS/PROTO_CAMPOS_TEXTO — mais 'Gravando',
+// que só existe no stack novo (reunião sendo gravada e transcrita ao vivo).
 export const PROTO_STATUS: StatusProtocolo[] = [
+  'Gravando',
   'Pendente',
   'Transcrevendo',
   'Analisando',
@@ -74,6 +86,11 @@ export const EXTS_VIDEO = [
   '.mov',
   '.webm',
   '.wmv',
+  // Vídeo de aparelho antigo (WhatsApp legado): mesmo demuxer do .mp4, testado em
+  // 2026-07-31. Sem isto o upload era recusado por "formato não suportado" mesmo com o
+  // transcritor dando conta do arquivo.
+  '.3gp',
+  '.3g2',
 ] as const;
 
 export const EXTS_AUDIO = [
@@ -93,6 +110,36 @@ export const EXTS: readonly string[] = [...EXTS_VIDEO, ...EXTS_AUDIO];
 export function ehAudio(nome: string): boolean {
   const lower = (nome || '').toLowerCase();
   return EXTS_AUDIO.some((ext) => lower.endsWith(ext));
+}
+
+// Content-Type do streaming da revisão. Sem ele o <audio>/<video> do navegador tem de
+// adivinhar pelo conteúdo — e o .wav das reuniões gravadas (que só existe no stack novo)
+// é justamente o caso em que alguns navegadores desistem de tocar.
+const MIME_POR_EXT: Record<string, string> = {
+  '.mp4': 'video/mp4',
+  '.m4v': 'video/mp4',
+  '.mkv': 'video/x-matroska',
+  '.avi': 'video/x-msvideo',
+  '.mov': 'video/quicktime',
+  '.webm': 'video/webm',
+  '.3gp': 'video/3gpp',
+  '.3g2': 'video/3gpp2',
+  '.wmv': 'video/x-ms-wmv',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.m4a': 'audio/mp4',
+  '.aac': 'audio/aac',
+  '.ogg': 'audio/ogg',
+  '.oga': 'audio/ogg',
+  '.opus': 'audio/ogg',
+  '.flac': 'audio/flac',
+  '.wma': 'audio/x-ms-wma',
+};
+
+export function tipoMime(nome: string): string {
+  const lower = (nome || '').toLowerCase();
+  const ext = lower.slice(lower.lastIndexOf('.'));
+  return MIME_POR_EXT[ext] ?? 'application/octet-stream';
 }
 
 // Espelha tools/_common.py:slug — remove acentos, troca não-alfanumérico por "_".

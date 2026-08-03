@@ -7,4 +7,6 @@ export class ListarProtocolosDto {
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() q?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() origem?: string;
+  /** Nome (ou parte) do cliente a que o protocolo foi direcionado. */
+  @ApiPropertyOptional() @IsOptional() @IsString() cliente?: string;
 }

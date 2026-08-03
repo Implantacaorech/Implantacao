@@ -1,0 +1,139 @@
+/* estilos globais cobrem .painel, .campo, .btn, .resultado, .dica, .badge, .acoes */
+
+.gravando-badge {
+  color: var(--erro, #c0392b);
+  font-weight: 600;
+  animation: pulsa 1.6s ease-in-out infinite;
+}
+
+@keyframes pulsa {
+  50% { opacity: 0.35; }
+}
+
+/* Ponto de referência da reunião: precisa ser legível de longe, com a tela projetada. */
+.cronometro {
+  font-size: 2rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.medidor {
+  width: 160px;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--line);
+}
+
+.medidor-nivel {
+  height: 100%;
+  background: var(--brand, var(--fase-2));
+  transition: width 0.12s linear;
+}
+
+/* Busca de cliente: a carteira tem centenas de projetos, então o campo é um autocomplete
+   (digita e escolhe na lista) em vez de um <select> que obrigaria a rolar tudo. */
+.busca-cliente {
+  position: relative;
+}
+
+.lista-clientes {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--card, #fff);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.opcao-cliente {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.opcao-cliente:hover,
+.opcao-cliente:focus-visible {
+  background: var(--line);
+}
+
+.opcao-cliente.escolhido {
+  background: var(--line);
+  font-weight: 600;
+}
+
+.btn-limpar {
+  border: 0;
+  background: none;
+  padding: 0 2px;
+  color: var(--brand, var(--fase-2));
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}
+
+/* Opção que muda o resultado final da transcrição: fica destacada e com a marca ANTES do
+   texto. Antes ela era um `.campo` comum, e o flex em coluna jogava a caixa para cima da
+   frase, centralizada — parecia decoração, não uma escolha. */
+.opcao-destacada {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: var(--sp-3);
+  padding: 10px 12px;
+  border: 1px solid var(--brand, var(--fase-2));
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--brand, var(--fase-2)) 8%, transparent);
+  cursor: pointer;
+}
+
+.opcao-destacada input[type='checkbox'] {
+  margin: 2px 0 0;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.opcao-destacada span { font-size: 0.9rem; line-height: 1.5; }
+
+/* Uma escolha por linha, com a explicação embaixo — o usuário decide isso uma vez por
+   reunião e precisa entender a diferença sem tentativa e erro. */
+.fonte {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: flex-start;
+  padding: var(--sp-2) 0;
+  border-top: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.fonte:first-of-type { border-top: 0; }
+
+.fonte .dica { display: block; margin: 2px 0 0; }
+
+.transcricao-vivo {
+  max-height: 55vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}

@@ -1,6 +1,9 @@
 <h1 class="pagina-titulo"><svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-bulb"/></svg> Transcrição Áudio/Vídeo</h1>
-<p class="sub">Base de conhecimento gerada a partir de <strong>vídeos ou áudios</strong>: o robô lê a pasta do SharePoint
-  (<code>{{ pasta() }}</code>), transcreve, a IA organiza por módulo/menu e você revisa antes de aprovar.</p>
+<p class="sub">Base de conhecimento gerada a partir de <strong>reuniões gravadas, vídeos ou áudios</strong>: o painel
+  transcreve, a IA organiza por módulo/menu e você revisa antes de aprovar. O robô também lê sozinho a pasta do
+  SharePoint (<code>{{ pasta() }}</code>).</p>
+<p class="dica">🔒 Esta lista mostra <strong>apenas o que você mesmo gravou ou enviou</strong> — o material dos
+  outros consultores não aparece aqui. Os vídeos da pasta compartilhada do SharePoint continuam visíveis para todos.</p>
 
 @if (erro()) {
   <div class="resultado erro">{{ erro() }}</div>
@@ -11,6 +14,17 @@
 @if (!carregando() && !roboOk()) {
   <div class="resultado erro">⚠️ Pasta não encontrada — o robô está inativo. Verifique <code>{{ pasta() }}</code>.</div>
 }
+
+<div class="painel">
+  <h3>Gravar uma reunião agora</h3>
+  <div class="acoes">
+    <a class="btn primario" routerLink="/protocolos/gravar">⏺ Gravar reunião</a>
+    <span class="dica" style="margin:0">
+      Presencial (microfone) ou remota pelo Teams. A transcrição aparece durante a reunião e,
+      ao encerrar, a IA devolve o <strong>resumo completo</strong> — tudo arquivado no cliente escolhido.
+    </span>
+  </div>
+</div>
 
 <div class="painel">
   <h3>Enviar vídeo ou áudio (upload manual)</h3>
@@ -42,8 +56,10 @@
       <option value="">(todas)</option>
       <option value="sharepoint">SharePoint</option>
       <option value="upload">Upload</option>
+      <option value="gravacao">Reunião gravada</option>
     </select>
   </label>
+  <label class="campo estreito"><span>Cliente</span><input [(ngModel)]="fCliente" name="fCliente" /></label>
   <label class="campo largo"><span>Palavra-chave</span>
     <input [(ngModel)]="fQ" name="fQ" placeholder="configuração, regra, rotina, menu..." />
   </label>
@@ -55,15 +71,16 @@
 } @else if (itens().length > 0) {
   <div class="tabela-wrap">
     <table class="form-tab">
-      <thead><tr><th>Título</th><th>Módulo</th><th>Menu</th><th>Status</th><th>Origem</th><th>Data</th><th></th></tr></thead>
+      <thead><tr><th>Título</th><th>Cliente</th><th>Módulo</th><th>Menu</th><th>Status</th><th>Origem</th><th>Data</th><th></th></tr></thead>
       <tbody>
         @for (p of itens(); track p.id) {
           <tr>
             <td>{{ p.titulo || p.videoNome }}</td>
+            <td>{{ p.cliente || '—' }}</td>
             <td>{{ p.modulo }}</td>
             <td>{{ p.menu }}</td>
             <td>{{ p.status }}</td>
-            <td>{{ p.videoOrigem === 'sharepoint' ? 'SharePoint' : 'Upload' }}</td>
+            <td>{{ rotuloOrigem(p.videoOrigem) }}</td>
             <td>{{ formatarData(p.criadoEm) }}</td>
             <td class="acoes">
               <a class="btn" [routerLink]="['/protocolos', p.id]">Abrir</a>

@@ -7,12 +7,17 @@ import {
   PROTO_CAMPOS_EDICAO,
   PROTO_MODULOS,
   Protocolo,
+  ROTULO_ORIGEM,
   StatusProtocolo,
+  VideoOrigem,
 } from '../../core/models/protocolo.model';
 
 const ETAPAS = ['Recebido', 'Transcrição', 'Análise IA', 'Em revisão', 'Aprovado'];
 
 const IDX_POR_STATUS: Record<StatusProtocolo, number> = {
+  // A reunião ainda está sendo gravada (transcrição ao vivo em curso, na tela de gravação):
+  // do ponto de vista da linha do tempo, o material ainda nem chegou por completo.
+  Gravando: 0,
   Pendente: 0,
   Transcrevendo: 1,
   Analisando: 2,
@@ -70,9 +75,9 @@ export class ProtocoloFichaComponent implements OnDestroy {
   readonly ehAudio = signal(false);
   readonly videoUrl = signal<string | null>(null);
 
-  /** Estado do player da mídia original. A mídia é baixada inteira (o endpoint exige
-   * Bearer, então não dá para apontar o `src` direto para a URL) — em vídeo de
-   * treinamento isso leva alguns segundos, daí o estado explícito na tela. */
+  /** Estado do player: só o tempo de pedir o ticket de mídia (uma chamada curta). O vídeo
+   * em si é transmitido pelo próprio player, sob demanda — não se baixa mais o arquivo
+   * inteiro para começar a assistir. */
   readonly midiaCarregando = signal(false);
   /** 'ver' = player de vídeo · 'escutar' = só o áudio. Arquivo de áudio só tem 'escutar'. */
   readonly modoMidia = signal<'ver' | 'escutar'>('ver');
@@ -100,6 +105,8 @@ export class ProtocoloFichaComponent implements OnDestroy {
     const p = this.protocolo();
     if (!p) return '';
     switch (p.status) {
+      case 'Gravando':
+        return 'Reunião em gravação — a transcrição ao vivo aparece na tela de gravação.';
       case 'Pendente':
         return 'Aguardando o processamento iniciar…';
       case 'Transcrevendo':
@@ -131,7 +138,8 @@ export class ProtocoloFichaComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     if (this.intervalo) clearInterval(this.intervalo);
-    if (this.videoUrlAtual) URL.revokeObjectURL(this.videoUrlAtual);
+    // Não há mais blob para revogar: a mídia agora é transmitida direto do servidor
+    // (streaming com Range), então não fica nada preso na memória do navegador.
   }
 
   async carregar(): Promise<void> {
@@ -161,14 +169,13 @@ export class ProtocoloFichaComponent implements OnDestroy {
     }
   }
 
-  /** Baixa a mídia original e devolve uma URL de blob para o player. Serve tanto o botão
-   * "Tentar de novo" quanto a carga automática ao abrir a ficha. */
+  /** Pede o ticket e monta a URL de streaming do player. Serve tanto o botão "Tentar de
+   * novo" quanto a carga automática ao abrir a ficha. */
   async carregarVideo(): Promise<void> {
     if (this.midiaCarregando()) return;
     this.midiaCarregando.set(true);
     try {
-      const blob = await this.service.video(this.id);
-      const url = URL.createObjectURL(blob);
+      const url = await this.service.videoUrl(this.id);
       this.videoUrlAtual = url;
       this.videoUrl.set(url);
     } catch {
@@ -179,7 +186,7 @@ export class ProtocoloFichaComponent implements OnDestroy {
     }
   }
 
-  /** Alterna entre assistir (vídeo) e só escutar (áudio) — mesma mídia já baixada. */
+  /** Alterna entre assistir (vídeo) e só escutar (áudio) — mesma URL de streaming. */
   verMidia(modo: 'ver' | 'escutar'): void {
     if (this.ehAudio()) return; // arquivo de áudio não tem imagem para assistir
     this.modoMidia.set(modo);
@@ -301,6 +308,10 @@ export class ProtocoloFichaComponent implements OnDestroy {
       this.erro.set('Não foi possível excluir o protocolo.');
       this.excluindo.set(false);
     }
+  }
+
+  rotuloOrigem(origem: VideoOrigem): string {
+    return ROTULO_ORIGEM[origem] ?? origem;
   }
 
   formatarDataHora(iso: string | null): string {

@@ -1,0 +1,242 @@
+<div class="acoes" style="margin-bottom:var(--sp-3)">
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-bulb"/></svg>
+    Gravar reunião
+  </h1>
+  @if (g.ativa()) { <span class="badge gravando-badge">● Gravando</span> }
+  <span style="flex:1"></span>
+  <a class="btn" routerLink="/protocolos">← Transcrição Áudio/Vídeo</a>
+</div>
+
+@if (erro()) { <div class="resultado erro">{{ erro() }}</div> }
+@if (g.erro()) { <div class="resultado erro">{{ g.erro() }}</div> }
+@if (g.aviso()) { <div class="resultado">ℹ️ {{ g.aviso() }}</div> }
+
+@if (!disponivel) {
+  <div class="resultado erro">
+    <p style="margin:0 0 8px">⚠️ {{ motivo }}</p>
+
+    @if (urlLocalhost; as url) {
+      <p style="margin:0 0 8px">
+        <strong>Se você está na própria máquina do Painel</strong>, abra esta mesma tela por
+        <code>localhost</code> — é contexto seguro por definição, sem HTTPS e sem mexer em nada:
+        <a [href]="url">{{ url }}</a>
+      </p>
+    }
+
+    <p style="margin:0 0 8px">
+      Para o restante da equipe, a solução é publicar o Painel em <strong>HTTPS</strong> ou
+      liberar esta origem na política do navegador (<code>OverrideSecurityRestrictionsOnInsecureOrigin</code>,
+      distribuível por GPO). Enquanto isso, dá para gravar por fora e enviar o arquivo pelo
+      <a routerLink="/protocolos">upload da tela de transcrições</a>.
+    </p>
+
+    <p class="dica" style="margin:0">
+      Diagnóstico — origem: <code>{{ diagnostico.origem }}</code> ·
+      contexto seguro: <strong>{{ diagnostico.contextoSeguro ? 'sim' : 'não' }}</strong> ·
+      microfone disponível: <strong>{{ diagnostico.temMediaDevices ? 'sim' : 'não' }}</strong> ·
+      áudio do navegador: <strong>{{ diagnostico.temAudioContext ? 'sim' : 'não' }}</strong>.
+    </p>
+  </div>
+}
+
+<!-- ------------------------------------------------------------------ preparo -->
+@if (g.fase() === 'parada') {
+  <div class="painel">
+    <h3>1. Para qual cliente é esta reunião?</h3>
+    <p class="dica">
+      Busca no <strong>SICLA</strong> — a mesma consulta do <em>Novo Cliente</em>. Digite o
+      <strong>código</strong> ou parte do <strong>nome/razão social</strong>. Deixe em branco para
+      conteúdo genérico (sem dono).
+    </p>
+    <div class="busca-cliente">
+      <label class="campo largo" style="margin:0"><span>Cliente</span>
+        <input
+          [value]="buscaCliente()"
+          (input)="aoDigitarCliente($any($event.target).value)"
+          (focus)="listaAberta.set(true)"
+          (blur)="fecharListaEmBreve()"
+          placeholder="Código ou nome do cliente no SICLA…"
+          autocomplete="off" />
+      </label>
+
+      @if (listaAberta()) {
+        <ul class="lista-clientes">
+          <li>
+            <button type="button" class="opcao-cliente" (click)="escolherCliente(null)">
+              (sem cliente — conteúdo genérico)
+            </button>
+          </li>
+          @for (c of resultados(); track c.codigo) {
+            <li>
+              <button type="button" class="opcao-cliente"
+                      [class.escolhido]="c.codigo === selecionado()?.codigo"
+                      (click)="escolherCliente(c)">
+                <strong>{{ c.codigo }} — {{ c.cliente }}</strong>
+                <span class="dica" style="margin:0">
+                  @if (c.fantasia) { {{ c.fantasia }} }
+                  @if (c.fantasia && c.cnpj) { · }
+                  @if (c.cnpj) { {{ c.cnpj }} }
+                </span>
+              </button>
+            </li>
+          }
+          @if (buscando()) {
+            <li class="dica" style="padding:8px 10px;margin:0">Consultando o SICLA…</li>
+          } @else if (resultados().length === 0 && mensagemBusca()) {
+            <li class="dica" style="padding:8px 10px;margin:0">{{ mensagemBusca() }}</li>
+          }
+        </ul>
+      }
+    </div>
+
+    @if (temCliente()) {
+      <p class="dica" style="margin:6px 0 0">
+        ✓ Será arquivada em <strong>{{ clienteEscolhido() }}</strong>.
+        <button type="button" class="btn-limpar" (click)="escolherCliente(null)">trocar</button>
+      </p>
+    } @else if (buscaCliente()) {
+      <p class="dica" style="margin:6px 0 0">
+        ⚠️ Escolha um cliente <strong>na lista</strong> — só digitar o nome não vincula a gravação.
+      </p>
+    }
+    <label class="campo largo"><span>Título (opcional)</span>
+      <input [(ngModel)]="titulo" name="titulo" placeholder="Ex.: Treinamento do Faturamento — 2ª visita" />
+    </label>
+
+    <label class="campo largo"><span>Participantes e termos da reunião</span>
+      <input [(ngModel)]="vocabulario" name="vocabulario"
+             placeholder="Ex.: Ivian, Melbros, ouro, GMAX, matriz de integração" />
+    </label>
+    <p class="dica" style="margin:4px 0 0">
+      🎯 <strong>É o que mais melhora a transcrição.</strong> Nome próprio e jargão são
+      justamente o que o transcritor erra (escreveu <em>IVEA</em> onde a pessoa disse
+      <em>Ivian</em>): sem saber que essas palavras existem, ele escolhe o som mais comum do
+      português. Liste aqui os nomes de quem vai falar e os termos do assunto, separados por
+      vírgula. O nome do cliente já entra sozinho.
+    </p>
+  </div>
+
+  <div class="painel">
+    <h3>2. De onde vem o áudio?</h3>
+    <label class="fonte">
+      <input type="radio" name="fonte" value="microfone" [(ngModel)]="fonte" />
+      <span>
+        <strong>Reunião presencial</strong> — microfone desta máquina.
+        <span class="dica">Capta todo mundo na sala. Deixe o notebook no centro da mesa.</span>
+      </span>
+    </label>
+    <label class="fonte">
+      <input type="radio" name="fonte" value="reuniao" [(ngModel)]="fonte" />
+      <span>
+        <strong>Reunião remota (Teams)</strong> — áudio da janela/aba compartilhada.
+        <span class="dica">
+          O navegador vai pedir o que compartilhar: marque <strong>“Compartilhar áudio”</strong>.
+          Teams no navegador → escolha a guia da reunião. Aplicativo do Teams → escolha a
+          <strong>tela inteira</strong> e marque o áudio do sistema.
+        </span>
+      </span>
+    </label>
+    <label class="fonte">
+      <input type="radio" name="fonte" value="ambos" [(ngModel)]="fonte" />
+      <span>
+        <strong>Híbrida</strong> — microfone + áudio da reunião remota, somados.
+        <span class="dica">Use quando há gente na sala e gente no Teams ao mesmo tempo.</span>
+      </span>
+    </label>
+    <div class="acoes" style="margin-top:var(--sp-3)">
+      <button class="btn primario" type="button" [disabled]="!disponivel" (click)="iniciar()">
+        ⏺ Iniciar gravação
+      </button>
+      <span class="dica" style="margin:0">
+        Depois de iniciada, você pode <strong>navegar à vontade pelo portal</strong> — a barra
+        vermelha no topo acompanha e permite pausar ou encerrar de qualquer tela.
+      </span>
+    </div>
+  </div>
+}
+
+<!-- ----------------------------------------------------------------- gravando -->
+@if (g.fase() === 'gravando' || g.fase() === 'encerrando') {
+  <div class="painel">
+    <div class="acoes">
+      <span class="cronometro">{{ formatarDuracao(g.duracaoSeg()) }}</span>
+      <div class="medidor" [attr.aria-label]="'Nível do áudio'">
+        <div class="medidor-nivel" [style.width.%]="g.nivel() * 100"></div>
+      </div>
+      <span style="flex:1"></span>
+      @if (g.fase() === 'gravando') {
+        <button class="btn" type="button" (click)="g.alternarPausa()">
+          {{ g.pausado() ? '▶ Retomar' : '⏸ Pausar' }}
+        </button>
+        <button class="btn primario" type="button" (click)="encerrar()">⏹ Encerrar e resumir</button>
+        <button class="btn perigo" type="button" (click)="descartar()">🗑 Descartar</button>
+      } @else {
+        <span class="dica" style="margin:0">Encerrando e montando o resumo…</span>
+      }
+    </div>
+    <p class="dica" style="margin-top:var(--sp-2)">
+      @if (g.cliente()) { <strong>Cliente:</strong> {{ g.cliente() }} · }
+      <strong>Título:</strong> {{ g.titulo() }}
+      @if (g.pausado()) { · <strong>em pausa</strong> (o áudio não está sendo gravado) }
+      @if (g.enviando() > 0) { · enviando {{ g.enviando() }} trecho(s) }
+      @if (g.pendentes() > 0) { · transcrevendo {{ g.pendentes() }} trecho(s) }
+    </p>
+    <p class="dica" style="margin:0">
+      ✋ <strong>Pode sair desta tela.</strong> A gravação continua enquanto esta aba estiver
+      aberta — use o menu normalmente (preencher o Levantamento, abrir a ficha do cliente) e
+      volte quando quiser. A barra vermelha do topo pausa e encerra de qualquer lugar.
+      <em>Fechar a aba ou recarregar a página (F5) encerra a captura.</em>
+    </p>
+    @if (!g.transcritorPronto()) {
+      <p class="dica">⏳ O transcritor ainda está carregando o modelo — o texto começa a aparecer em instantes.</p>
+    }
+    <label class="opcao-destacada">
+      <input type="checkbox" [(ngModel)]="retranscrever" name="retranscrever" />
+      <span>
+        <strong>Ao encerrar, transcrever o áudio inteiro de novo</strong> — mais demorado
+        (cerca de metade do tempo da reunião), porém sem os cortes entre trechos e com
+        contexto de ponta a ponta. É de onde sai o texto que a IA lê para montar o resumo.
+      </span>
+    </label>
+  </div>
+
+  <div class="painel">
+    <h3>Transcrição ao vivo</h3>
+    @if (g.texto()) {
+      <pre class="transcricao-vivo">{{ g.texto() }}</pre>
+    } @else {
+      <p class="dica">Nada transcrito ainda — o primeiro trecho fecha depois de ~15 s de fala.</p>
+    }
+  </div>
+}
+
+<!-- ---------------------------------------------------------------- concluída -->
+@if (g.fase() === 'concluida') {
+  <div class="painel">
+    <h3>Gravação encerrada</h3>
+    <p>
+      <strong>{{ g.titulo() }}</strong>
+      @if (g.cliente()) { · Cliente: {{ g.cliente() }} }
+      · Duração: {{ formatarDuracao(g.duracaoSeg()) }}
+    </p>
+    <p class="dica">
+      A IA está montando o protocolo e o <strong>resumo completo</strong> da reunião. Isso
+      leva alguns minutos — acompanhe na tela de revisão.
+    </p>
+    <div class="acoes">
+      @if (g.ultimaConcluida(); as r) {
+        <a class="btn primario" [routerLink]="['/protocolos', r.id]">Abrir a revisão</a>
+      }
+      <button class="btn" type="button" (click)="novaGravacao()">⏺ Gravar outra reunião</button>
+      <a class="btn" routerLink="/protocolos">Voltar para a lista</a>
+    </div>
+  </div>
+
+  @if (g.texto()) {
+    <div class="painel">
+      <h3>Transcrição capturada</h3>
+      <pre class="transcricao-vivo">{{ g.texto() }}</pre>
+    </div>
+  }
+}

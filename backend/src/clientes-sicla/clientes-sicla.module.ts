@@ -16,5 +16,9 @@ import { ClientesSiclaService } from './clientes-sicla.service';
   ],
   controllers: [ClientesSiclaController],
   providers: [ClientesSiclaService],
+  // Exportado para a gravação de reunião (ProtocolosModule) usar a MESMA busca de cliente
+  // do passo 1 — o SICLA é a fonte única de quem é cliente, e o SQL é o mesmo (editável
+  // pelo Administrador em Consultas BD).
+  exports: [ClientesSiclaService],
 })
 export class ClientesSiclaModule {}
