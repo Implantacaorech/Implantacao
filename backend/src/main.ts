@@ -33,9 +33,19 @@ async function bootstrap(): Promise<void> {
       hsts: false,
       crossOriginOpenerPolicy: false,
       originAgentCluster: false,
+      // `frame-src` com `blob:`: a pré-visualização de documento (Projeto, Conferência,
+      // envio para assinatura) baixa o PDF por fetch autenticado e o mostra num
+      // <iframe src="blob:…">. O default do Helmet não declara `frame-src`, então ele cai
+      // em `default-src 'self'` — e blob: NÃO é 'self'. O navegador trocava o PDF pela
+      // página "Este conteúdo está bloqueado. Entre em contato com o proprietário do
+      // site", sem erro nenhum no backend. O blob nasce da própria página; liberá-lo aqui
+      // não abre a moldura para origem externa (isso é `frame-ancestors`, intocado).
       contentSecurityPolicy: {
         useDefaults: true,
-        directives: { 'upgrade-insecure-requests': null },
+        directives: {
+          'upgrade-insecure-requests': null,
+          'frame-src': ["'self'", 'blob:'],
+        },
       },
     }),
   );
