@@ -90,3 +90,9 @@ tools/data/_preview/
 
 # Vault Obsidian e banco locais da máquina do desenvolvedor (dados/painel.db já cai no *.db)
 dados/
+
+# Certificado HTTPS do painel — chave PRIVADA, nunca versionar (o .pfx do
+# Gerar_Certificado_Painel.ps1 abre o TLS do servidor para quem tiver o arquivo).
+backend/certs/
+*.pfx
+*.p12

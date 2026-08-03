@@ -69,11 +69,27 @@ if ($env:MIGRACAO_DB_URL) {
   }
 }
 
-if ($env:PAINEL_NOVO_MARIADB_HOST) { $dbHost = $env:PAINEL_NOVO_MARIADB_HOST }
-if ($env:PAINEL_NOVO_MARIADB_PORTA) { $porta = [int]$env:PAINEL_NOVO_MARIADB_PORTA }
-if ($env:PAINEL_NOVO_MARIADB_USUARIO) { $usuario = $env:PAINEL_NOVO_MARIADB_USUARIO }
-if ($env:PAINEL_NOVO_MARIADB_BANCO) { $banco = $env:PAINEL_NOVO_MARIADB_BANCO }
-if ($env:PAINEL_NOVO_MARIADB_SENHA) { $senha = $env:PAINEL_NOVO_MARIADB_SENHA }
+# Os PAINEL_NOVO_MARIADB_* so PREENCHEM o que a MIGRACAO_DB_URL nao trouxe - nao sobrescrevem.
+#
+# Era o contrario ate 02/08/2026, e foi o que quebrou o backup: havia um
+# PAINEL_NOVO_MARIADB_SENHA ANTIGO no ambiente (32 caracteres) mascarando a senha correta da
+# URL (24). O painel continuava no ar normalmente - ele usa a MIGRACAO_DB_URL -, entao nada
+# denunciava a divergencia, e todo backup a partir de 30/07 morria em
+# "Access denied for user 'painel'@'localhost'". Backup que autentica com credencial
+# diferente da aplicacao e um alarme falso esperando para acontecer: a fonte da verdade e a
+# conexao que a aplicacao usa.
+if (-not $dbHost -and $env:PAINEL_NOVO_MARIADB_HOST) { $dbHost = $env:PAINEL_NOVO_MARIADB_HOST }
+if (-not $env:MIGRACAO_DB_URL -and $env:PAINEL_NOVO_MARIADB_PORTA) { $porta = [int]$env:PAINEL_NOVO_MARIADB_PORTA }
+if (-not $usuario -and $env:PAINEL_NOVO_MARIADB_USUARIO) { $usuario = $env:PAINEL_NOVO_MARIADB_USUARIO }
+if (-not $banco -and $env:PAINEL_NOVO_MARIADB_BANCO) { $banco = $env:PAINEL_NOVO_MARIADB_BANCO }
+if (-not $senha -and $env:PAINEL_NOVO_MARIADB_SENHA) { $senha = $env:PAINEL_NOVO_MARIADB_SENHA }
+
+# Aviso alto quando o override existe e DISCORDA da URL: nao e erro (a URL vence), mas quase
+# sempre significa variavel de ambiente esquecida depois de uma troca de senha.
+if ($env:MIGRACAO_DB_URL -and $env:PAINEL_NOVO_MARIADB_SENHA -and
+    $env:PAINEL_NOVO_MARIADB_SENHA -cne $senha) {
+  Log "AVISO -> PAINEL_NOVO_MARIADB_SENHA existe e diverge da MIGRACAO_DB_URL; usando a da URL. Remova a variavel obsoleta."
+}
 
 if (-not $dbHost) { $dbHost = "127.0.0.1" }
 if (-not $usuario) { Falhar "usuario do banco desconhecido - defina MIGRACAO_DB_URL ou PAINEL_NOVO_MARIADB_USUARIO" }
@@ -85,18 +101,31 @@ $ts = Get-Date -Format "yyyyMMdd_HHmmss"
 $sqlFile = Join-Path $dest "painel_novo_mariadb_$ts.sql"
 $zipFile = Join-Path $dest "painel_novo_mariadb_$ts.zip"
 
-# MYSQL_PWD em vez de --password=... : a senha nao aparece na linha de comando (visivel na
-# lista de processos). --result-file faz o proprio cliente gravar o arquivo, sem o pipe do
-# PowerShell no meio (na 5.1 o pipe grava UTF-8 com BOM e quebra o restore).
+# A senha vai por --defaults-extra-file (arquivo temporario, apagado no finally), e NAO por
+# --password= (ficaria visivel na lista de processos) nem por MYSQL_PWD.
+#
+# Por que nao MYSQL_PWD: era assim ate 02/08/2026 e nao funcionava mais com o cliente do
+# MariaDB 12.2 - ele ignora a variavel e tenta conectar sem senha, falhando com
+# "Access denied for user 'painel'@'localhost' (using password: YES)" e o aviso contraditorio
+# "insecure passwordless login". Foi o que quebrou TODO backup a partir de 30/07 (antes
+# disso, 27-29/07, o problema era outro: zips de 176 bytes). O --defaults-extra-file e o
+# caminho suportado e continua mantendo a senha fora da linha de comando.
+#
+# --defaults-extra-file TEM de ser o primeiro argumento - o cliente ignora se vier depois.
+# --result-file faz o proprio cliente gravar o arquivo, sem o pipe do PowerShell no meio (na
+# 5.1 o pipe grava UTF-8 com BOM e quebra o restore).
 # --single-transaction: dump consistente sem travar as tabelas (InnoDB). --routines/
 # --triggers nao se aplicam (o schema nao usa nenhum dos dois).
-$env:MYSQL_PWD = $senha
+$cnf = Join-Path $env:TEMP ("painel_novo_dump_{0}.cnf" -f [guid]::NewGuid().ToString('N'))
 try {
-  & $dump --host=$dbHost --port=$porta --user=$usuario --single-transaction `
-    --default-character-set=utf8mb4 --result-file=$sqlFile $banco
+  # ASCII sem BOM: o cliente nao le o arquivo se vier com BOM.
+  $conteudo = "[client]`npassword=$senha`n"
+  [System.IO.File]::WriteAllText($cnf, $conteudo, [System.Text.Encoding]::ASCII)
+  & $dump "--defaults-extra-file=$cnf" --host=$dbHost --port=$porta --user=$usuario `
+    --single-transaction --default-character-set=utf8mb4 --result-file=$sqlFile $banco
   $codigo = $LASTEXITCODE
 } finally {
-  Remove-Item Env:MYSQL_PWD -ErrorAction SilentlyContinue
+  Remove-Item $cnf -Force -ErrorAction SilentlyContinue
 }
 
 if ($codigo -ne 0) {

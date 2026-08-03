@@ -1,15 +1,26 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { ExpressAdapter } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import express from 'express';
 import helmet from 'helmet';
+import { createServer as criarServidorHttp } from 'http';
+import { createServer as criarServidorHttps } from 'https';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { AppConfig } from './config/configuration';
+import { httpsPainel } from './config/https';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  // HTTPS é OPCIONAL (ver config/https.ts). Sem ele, o caminho é o de sempre; com ele, o
+  // MESMO app express atende HTTP e HTTPS em dois servidores — um processo só.
+  const tls = httpsPainel();
+  const servidorExpress = tls ? express() : undefined;
+  const app = servidorExpress
+    ? await NestFactory.create(AppModule, new ExpressAdapter(servidorExpress))
+    : await NestFactory.create(AppModule);
   const config = app.get(ConfigService<AppConfig, true>);
 
   // Este servidor roda em HTTP puro na rede interna, sem TLS/reverse proxy (ver
@@ -28,6 +39,11 @@ async function bootstrap(): Promise<void> {
   //   ruído sem efeito real aqui.
   // Mantém as demais proteções do Helmet (CSP continua ativo, só sem a diretiva que
   // pressupõe HTTPS).
+  //
+  // `hsts` segue DESLIGADO mesmo quando o HTTPS opcional está ligado, de propósito: o
+  // Strict-Transport-Security vale por HOST e IGNORA a porta — ligá-lo na 5443 faria o
+  // navegador passar a exigir HTTPS também em http://host:5100, derrubando o acesso HTTP
+  // que continua publicado para os favoritos antigos.
   app.use(
     helmet({
       hsts: false,
@@ -77,10 +93,22 @@ async function bootstrap(): Promise<void> {
   SwaggerModule.setup('api/docs', app, document);
 
   const port = config.get('port', { infer: true });
-  await app.listen(port);
+  if (!tls || !servidorExpress) {
+    await app.listen(port);
+    console.log(
+      `Painel API rodando em http://localhost:${port}/api — docs em /api/docs`,
+    );
+    return;
+  }
 
+  // `init()` no lugar de `listen()`: quem abre as portas aqui somos nós, para o mesmo
+  // handler atender os dois protocolos.
+  await app.init();
+  criarServidorHttp(servidorExpress).listen(port);
+  criarServidorHttps(tls.opcoes, servidorExpress).listen(tls.porta);
   console.log(
-    `Painel API rodando em http://localhost:${port}/api — docs em /api/docs`,
+    `Painel API rodando em http://localhost:${port}/api e ` +
+      `https://localhost:${tls.porta}/api (${tls.origem}) — docs em /api/docs`,
   );
 }
 
