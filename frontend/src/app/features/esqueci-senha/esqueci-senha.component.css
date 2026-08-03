@@ -1,0 +1,7 @@
+/* O visual do cartão de acesso está em ../acesso/acesso.css, compartilhado com o login.
+ * Aqui ficam só os ajustes próprios desta tela. */
+
+/* .resultado (ok/erro) vem do CSS global (src/styles.css) sem margem própria. */
+.resultado {
+  margin-bottom: 18px;
+}

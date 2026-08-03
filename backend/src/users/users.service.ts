@@ -23,6 +23,20 @@ export class UsersService {
     return this.repo.findOne({ where: { login: login.trim(), ativo: true } });
   }
 
+  /** Usuário ATIVO por e-mail (case-insensitive), caindo no `login` quando a conta foi
+   * criada sem preencher o campo `email` — é comum aqui, porque `criar()` aceita login em
+   * branco e copia o e-mail para ele, mas o inverso nunca aconteceu. Usado pelo "Esqueci
+   * minha senha": a pessoa só digita o e-mail. */
+  async porEmail(email: string): Promise<Usuario | null> {
+    const e = (email || '').trim().toLowerCase();
+    if (!e) return null;
+    return this.repo
+      .createQueryBuilder('u')
+      .where('(LOWER(u.email) = :e OR LOWER(u.login) = :e)', { e })
+      .andWhere('u.ativo = :ativo', { ativo: true })
+      .getOne();
+  }
+
   /** Todos os usuários (ativos e inativos), ordenados por nome — tela de Usuários (ADM). */
   async listar(): Promise<Usuario[]> {
     return this.repo.find({ order: { nome: 'ASC' } });
@@ -203,6 +217,16 @@ export class UsersService {
     if (!(await this.validarSenha(usuario, senhaAtual))) {
       throw new UnauthorizedException('Senha atual incorreta.');
     }
+    usuario.senhaHash = await bcrypt.hash(senhaNova, SALT_ROUNDS);
+    await this.repo.save(usuario);
+  }
+
+  /** Grava uma senha nova SEM conferir a atual — quem já não a sabe é justamente o caso de
+   * uso. Só pode ser chamado depois que a identidade foi provada por outro meio: hoje,
+   * exclusivamente pelo código de 6 dígitos do "Esqueci minha senha"
+   * (RecuperacaoSenhaService). Não exponha isto num endpoint direto. */
+  async definirSenha(id: number, senhaNova: string): Promise<void> {
+    const usuario = await this.buscarPorId(id);
     usuario.senhaHash = await bcrypt.hash(senhaNova, SALT_ROUNDS);
     await this.repo.save(usuario);
   }
