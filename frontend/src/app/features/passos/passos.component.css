@@ -1,26 +1,37 @@
 /* Estilos vêm do tema global (MANUS). Só o que é específico do fluxo fica aqui. */
 
 /* Grade de gente para marcar (técnicos do passo 8, levantadores do passo 2).
-   Era um flex-wrap com gap: cada nome virava um item de largura própria, o navegador
-   quebrava "Éverton Macléber Remeling" em três linhas e a caixa de seleção ficava
-   centralizada no meio do bloco quebrado — o resultado era a bagunça da tela. Colunas de
-   largura fixa resolvem as duas coisas: o nome cabe inteiro e as caixas alinham numa
-   coluna só. */
+   A lista é um bloco só, com moldura, para não se confundir com o resto do formulário:
+   colunas estreitas lado a lado, linhas coladas, do jeito que se lê uma lista de nomes.
+
+   Duas armadilhas moldaram este bloco e não devem voltar:
+   1) `.campo input{width:100%}` do tema global também acerta a caixa de seleção. Ela
+      esticava até a largura da coluna, o navegador desenhava o quadradinho no meio desse
+      espaço vazio e sobrava um filete para o nome, que quebrava em três linhas — era a
+      bagunça que se via na tela. Por isso a largura da caixa é fixada aqui (a
+      especificidade deste seletor vence a do tema).
+   2) Antes disso era flex-wrap: cada nome ganhava uma largura própria e as caixas nunca
+      alinhavam. As colunas da grade mantêm todas numa prumada só. */
 .grade-pessoas {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 2px 16px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0 var(--sp-1);
   margin-top: 6px;
+  padding: var(--sp-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
 }
 
 .grade-pessoas label {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 6px;
-  border-radius: 6px;
+  gap: 7px;
+  padding: 3px 7px;
+  border-radius: 5px;
+  font-size: 0.875rem;
   font-weight: 500;
-  line-height: 1.25;
+  line-height: 1.3;
   cursor: pointer;
 }
 
@@ -28,15 +39,20 @@
   background: var(--surface);
 }
 
-/* A caixa não encolhe nem sobe junto com um nome de duas linhas. */
+/* Largura explícita (ver item 1 do comentário acima); `flex:none` impede que ela encolha
+   ou suba junto com um nome que ocupe duas linhas. */
 .grade-pessoas input[type='checkbox'] {
   flex: none;
+  width: 15px;
+  height: 15px;
   margin: 0;
+  accent-color: var(--brand);
 }
 
 /* Marcado fica evidente sem precisar conferir a caixinha — com trinta nomes na tela, é o
    que permite ver a equipe escolhida de relance. */
 .grade-pessoas label:has(input:checked) {
-  background: rgba(37, 99, 235, 0.08);
+  background: var(--accent-weak);
   font-weight: 600;
+  color: var(--brand);
 }
