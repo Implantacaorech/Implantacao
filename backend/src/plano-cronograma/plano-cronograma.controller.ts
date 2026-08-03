@@ -4,15 +4,12 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  NotFoundException,
   Param,
   ParseIntPipe,
   Post,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -20,11 +17,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { PERFIS_GERA_CRONOGRAMA } from '../common/constants/perfis';
 import { ApiEnvelope } from '../common/dto/api-envelope';
-import { Projeto } from '../database/entities/projeto.entity';
-import { Evento } from '../database/entities/evento.entity';
-import { CronogramaItensService } from './cronograma-itens.service';
-import { ChecklistItensService } from './checklist-itens.service';
-import { ModificacoesService } from './modificacoes.service';
+import { PlanoCronogramaService } from './plano-cronograma.service';
 import { SalvarCronogramaDto } from './dto/salvar-cronograma.dto';
 import { SalvarChecklistDto } from './dto/salvar-checklist.dto';
 
@@ -38,48 +31,25 @@ import { SalvarChecklistDto } from './dto/salvar-checklist.dto';
  * edição/seed não tinham NENHUM controle de acesso além do login. Decisão deliberada
  * desta conversão: aplicar `PERFIS_GERA_CRONOGRAMA` (mesmo grupo do Flask) também às
  * edições — deixar um endpoint de escrita sem gate de perfil não é um comportamento a
- * preservar por fidelidade, é uma falha de controle de acesso a corrigir. */
+ * preservar por fidelidade, é uma falha de controle de acesso a corrigir.
+ *
+ * Camada de ENTRADA apenas (Guia Mestre §Responsabilidades): rota, guard, validação do DTO
+ * e envelope de resposta. Nada de regra nem de persistência — isso é do
+ * `PlanoCronogramaService`. */
 @ApiTags('plano-cronograma')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(...PERFIS_GERA_CRONOGRAMA)
 @Controller('projetos/:id')
 export class PlanoCronogramaController {
-  constructor(
-    @InjectRepository(Projeto) private readonly projetos: Repository<Projeto>,
-    @InjectRepository(Evento) private readonly eventos: Repository<Evento>,
-    private readonly cronogramaItens: CronogramaItensService,
-    private readonly checklistItens: ChecklistItensService,
-    private readonly modificacoes: ModificacoesService,
-  ) {}
-
-  private async buscarProjeto(id: number): Promise<Projeto> {
-    const p = await this.projetos.findOne({ where: { id } });
-    if (!p) throw new NotFoundException('Projeto não encontrado.');
-    return p;
-  }
-
-  private async registrarEvento(
-    projetoId: number,
-    descricao: string,
-    autor: string,
-  ): Promise<void> {
-    await this.eventos.save(
-      this.eventos.create({ projetoId, tipo: 'nota', descricao, autor }),
-    );
-  }
+  constructor(private readonly plano: PlanoCronogramaService) {}
 
   // --- Cronograma ---
 
   @Get('cronograma')
   @ApiOperation({ summary: 'Linhas do Cronograma + histórico de edições' })
   async obterCronograma(@Param('id', ParseIntPipe) id: number) {
-    await this.buscarProjeto(id);
-    const [itens, historico] = await Promise.all([
-      this.cronogramaItens.doProjeto(id),
-      this.modificacoes.doProjeto(id, 'cronograma'),
-    ]);
-    return new ApiEnvelope({ itens, historico });
+    return new ApiEnvelope(await this.plano.obterCronograma(id));
   }
 
   @Post('cronograma')
@@ -93,21 +63,9 @@ export class PlanoCronogramaController {
     @Body() dto: SalvarCronogramaDto,
     @CurrentUser() user: AuthUser,
   ) {
-    await this.buscarProjeto(id);
-    const mudancas = await this.cronogramaItens.salvar(
-      id,
-      dto.linhas,
-      user.nome,
+    return new ApiEnvelope(
+      await this.plano.salvarCronograma(id, dto.linhas, user.nome),
     );
-    await this.registrarEvento(
-      id,
-      `Cronograma editado (${mudancas} alteração(ões)).`,
-      user.nome,
-    );
-    return new ApiEnvelope({
-      itens: await this.cronogramaItens.doProjeto(id),
-      mudancas,
-    });
   }
 
   @Post('cronograma/seed')
@@ -120,18 +78,7 @@ export class PlanoCronogramaController {
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: AuthUser,
   ) {
-    const projeto = await this.buscarProjeto(id);
-    const linhas = await this.cronogramaItens.gerarPlanoAutomatico(projeto);
-    const mudancas = await this.cronogramaItens.salvar(id, linhas, user.nome);
-    await this.registrarEvento(
-      id,
-      `Cronograma carregado do plano automático (${linhas.length} agendas).`,
-      user.nome,
-    );
-    return new ApiEnvelope({
-      itens: await this.cronogramaItens.doProjeto(id),
-      mudancas,
-    });
+    return new ApiEnvelope(await this.plano.seedCronograma(id, user.nome));
   }
 
   // --- Check List ---
@@ -139,12 +86,7 @@ export class PlanoCronogramaController {
   @Get('checklist')
   @ApiOperation({ summary: 'Linhas do Check List + histórico de edições' })
   async obterChecklist(@Param('id', ParseIntPipe) id: number) {
-    await this.buscarProjeto(id);
-    const [itens, historico] = await Promise.all([
-      this.checklistItens.doProjeto(id),
-      this.modificacoes.doProjeto(id, 'checklist'),
-    ]);
-    return new ApiEnvelope({ itens, historico });
+    return new ApiEnvelope(await this.plano.obterChecklist(id));
   }
 
   @Post('checklist')
@@ -158,21 +100,9 @@ export class PlanoCronogramaController {
     @Body() dto: SalvarChecklistDto,
     @CurrentUser() user: AuthUser,
   ) {
-    await this.buscarProjeto(id);
-    const mudancas = await this.checklistItens.salvar(
-      id,
-      dto.linhas,
-      user.nome,
+    return new ApiEnvelope(
+      await this.plano.salvarChecklist(id, dto.linhas, user.nome),
     );
-    await this.registrarEvento(
-      id,
-      `Check-list editado (${mudancas} alteração(ões)).`,
-      user.nome,
-    );
-    return new ApiEnvelope({
-      itens: await this.checklistItens.doProjeto(id),
-      mudancas,
-    });
   }
 
   @Post('checklist/seed')
@@ -185,17 +115,6 @@ export class PlanoCronogramaController {
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: AuthUser,
   ) {
-    const projeto = await this.buscarProjeto(id);
-    const linhas = await this.checklistItens.gerarRoteiroDoCatalogo(projeto);
-    const mudancas = await this.checklistItens.salvar(id, linhas, user.nome);
-    await this.registrarEvento(
-      id,
-      `Check-list carregado do roteiro dos módulos (${linhas.length} itens).`,
-      user.nome,
-    );
-    return new ApiEnvelope({
-      itens: await this.checklistItens.doProjeto(id),
-      mudancas,
-    });
+    return new ApiEnvelope(await this.plano.seedChecklist(id, user.nome));
   }
 }

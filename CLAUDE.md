@@ -18,6 +18,15 @@ Antes de criar, alterar estruturalmente ou auditar este projeto, carregue e siga
 > estão em [docs/pendencias.md](docs/pendencias.md) — a principal é o repositório ainda estar
 > no GitHub, não no GitLab interno (§3).
 
+**Como organizar o código dentro dessa stack:** [Guia Mestre de Arquitetura](<vault/23 - Padrões/Guia Mestre de Arquitetura de Desenvolvimento.md>)
+(Controller → Service → Repository), adotado pelo [ADR-0002](<vault/17 - ADR/ADR-0002 - Adocao do Guia Mestre de Arquitetura.md>).
+O Padrão Rech diz **qual** stack; o Guia Mestre diz **como estruturar** — em conflito, o
+Padrão Rech prevalece. **Módulo de referência: `backend/src/plano-cronograma/`** — ao criar
+ou adequar um módulo, copie dele (inclusive os 6 docs em `docs/`). A adequação é faseada
+(fase 1 concluída em 2026-07-31; fases 2–4 em `docs/pendencias.md`) e **verificada por
+teste**: `conformidade-arquitetura.spec.ts` no backend e no frontend,
+`test_conformidade_arquitetura.py` no docservice — os três falham o CI.
+
 ## Idioma
 Tudo em **português do Brasil (pt-BR)**, em qualquer arquivo novo.
 

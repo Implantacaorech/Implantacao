@@ -15,6 +15,11 @@ export interface AppConfig {
     sqlitePath?: string;
   };
   corsOrigins: string[];
+  /** Rate limit global (Guia Mestre de Arquitetura §Segurança). Janela em segundos e teto
+   * de requisições por IP dentro dela. Generoso de propósito: é ferramenta interna, e as
+   * telas de BI disparam várias chamadas por carregamento — o objetivo aqui é conter laço
+   * descontrolado/abuso, não policiar o uso normal. */
+  rateLimit: { ttlSegundos: number; limite: number };
   docserviceUrl: string;
   protocolosDir: string;
   protocolosPollMin: number;
@@ -108,6 +113,14 @@ export default (): AppConfig => {
     corsOrigins: (
       process.env.MIGRACAO_CORS_ORIGINS ?? 'http://localhost:4200'
     ).split(','),
+    // Rate limit global por IP. O padrão (300 req/min) foi dimensionado pelo pior caso real
+    // observado — abrir uma tela de BI dispara dezenas de chamadas em rajada —, com folga
+    // para vários usuários atrás do mesmo IP de saída da rede interna. Ajustável por
+    // ambiente sem redeploy; 0 no limite DESLIGA a proteção (só para diagnóstico).
+    rateLimit: {
+      ttlSegundos: Number(process.env.MIGRACAO_RATE_LIMIT_TTL ?? 60),
+      limite: Number(process.env.MIGRACAO_RATE_LIMIT ?? 300),
+    },
     // Serviço interno (FastAPI) de geração de documentos — nunca exposto publicamente,
     // roda no mesmo host (ver docservice/ e docs/migracao/02-decisao-arquitetura.md).
     docserviceUrl:

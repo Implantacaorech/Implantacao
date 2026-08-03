@@ -1,19 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { CronogramaItensService } from './cronograma-itens.service';
-import { CronogramaItem } from '../database/entities/cronograma-item.entity';
+import { CronogramaItensRepository } from './repositories/cronograma-itens.repository';
 import { ModificacoesService } from './modificacoes.service';
 import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
 import { Projeto } from '../database/entities/projeto.entity';
 
 describe('CronogramaItensService', () => {
   let service: CronogramaItensService;
-  const repo = {
-    find: jest.fn(),
-    delete: jest.fn(),
-    save: jest.fn(),
-    create: jest.fn((dto) => dto),
-  };
+  // Dublê do REPOSITORY (não mais do Repository<T> do TypeORM): o service passou a
+  // depender da abstração de persistência, então o teste passa a exercitar o contrato do
+  // módulo em vez dos verbos do ORM.
+  const repo = { doProjeto: jest.fn(), substituir: jest.fn() };
   const modificacoes = { registrar: jest.fn() };
   // Por padrão, SICLA sem ocupação (o plano segue pela cadência fixa).
   const disponibilidade = { consultar: jest.fn().mockResolvedValue([]) };
@@ -24,7 +21,7 @@ describe('CronogramaItensService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CronogramaItensService,
-        { provide: getRepositoryToken(CronogramaItem), useValue: repo },
+        { provide: CronogramaItensRepository, useValue: repo },
         { provide: ModificacoesService, useValue: modificacoes },
         { provide: DisponibilidadeService, useValue: disponibilidade },
       ],
@@ -34,7 +31,7 @@ describe('CronogramaItensService', () => {
 
   describe('salvar', () => {
     it('substitui todas as linhas (apaga e reinsere) e registra o histórico dos diffs', async () => {
-      repo.find.mockResolvedValue([
+      repo.doProjeto.mockResolvedValue([
         {
           etapa: 'A',
           topicos: 't',
@@ -70,8 +67,7 @@ describe('CronogramaItensService', () => {
         '3',
         'Ana',
       );
-      expect(repo.delete).toHaveBeenCalledWith({ projetoId: 1 });
-      expect(repo.save).toHaveBeenCalledWith([
+      expect(repo.substituir).toHaveBeenCalledWith(1, [
         expect.objectContaining({
           projetoId: 1,
           ordem: 0,
@@ -81,8 +77,8 @@ describe('CronogramaItensService', () => {
       ]);
     });
 
-    it('lista vazia apaga tudo sem reinserir', async () => {
-      repo.find.mockResolvedValue([
+    it('lista vazia manda substituir por nada (quem apaga é o repository)', async () => {
+      repo.doProjeto.mockResolvedValue([
         {
           etapa: 'A',
           topicos: '',
@@ -93,8 +89,7 @@ describe('CronogramaItensService', () => {
         },
       ]);
       await service.salvar(1, [], 'Ana');
-      expect(repo.delete).toHaveBeenCalledWith({ projetoId: 1 });
-      expect(repo.save).not.toHaveBeenCalled();
+      expect(repo.substituir).toHaveBeenCalledWith(1, []);
     });
   });
 

@@ -80,6 +80,15 @@
 - [ ] Acesso ao SICLA/SIGER (API ou banco) para a integração.
 - [ ] Chave da API da IA + teto de custo definido.
 - [ ] Estruturar dados que hoje estão soltos (YAMLs por cliente).
+- [ ] **HTTPS (ou origem liberada) para a gravação de reuniões** — *bloqueio real, 2026-07-30.*
+  A gravação com transcrição ao vivo (`/protocolos/gravar`) usa `getUserMedia`/
+  `getDisplayMedia`, que **só existem em contexto seguro**. O painel é servido em
+  `http://I7M1700-01-EVE:5100` (origem insegura), então a tela sobe mas os botões ficam
+  bloqueados, com a explicação na própria página. Caminhos: (a) publicar em **HTTPS**;
+  (b) política do Edge/Chrome `OverrideSecurityRestrictionsOnInsecureOrigin` com essa origem
+  (distribuível por GPO); (c) usar `http://localhost:5100` na própria máquina do servidor.
+  Detalhe em [gravacao-reuniao.md](gravacao-reuniao.md). Enquanto isso, o upload manual da
+  mesma tela continua entregando o mesmo resultado (só sem transcrição durante a reunião).
 
 ## 📐 Conformidade com os Padrões de Desenvolvimento da Rech
 > Auditoria de 2026-07-21 contra o `PADRAO-RECH.md` rev. 2.0.0. Ver o relatório completo e o
@@ -106,9 +115,26 @@
   vencem na retenção de 14 dias em 03/08 e 05/08. Agora usa o cliente local `mariadb-dump`, grava com
   `--result-file` (sem o pipe da PS 5.1, que mete BOM) e **valida o dump** (código de saída,
   tamanho mínimo, rodapé `Dump completed`, presença de `CREATE TABLE`) antes de compactar.
-- [ ] **Rodar o backup corrigido uma vez e conferir o tamanho do zip** — não pude executar
-  nesta sessão (a permissão de rodar o script foi negada pelo harness). Comando:
-  `powershell -ExecutionPolicy Bypass -File tools\Painel_Novo_Backup_MariaDB.ps1`.
+- [x] **Backup rodado e consertado de novo em 2026-08-02** — zip de **1.085.739 bytes**
+  (dump de 4,15 MB). A correção de 29/07 não bastava: **nenhum backup do `painel_novo`
+  saiu entre 30/07 e 02/08**, e o último bom era o de **23/07**. Duas causas encadeadas,
+  ambas invisíveis porque o painel continuava no ar (ele usa a `MIGRACAO_DB_URL`):
+  1. **Senha obsoleta no ambiente.** Havia um `PAINEL_NOVO_MARIADB_SENHA` antigo (32
+     caracteres) e o script deixava o override VENCER a URL da aplicação (24). Resultado:
+     `Access denied for user 'painel'@'localhost'` todo dia. Agora os `PAINEL_NOVO_*` só
+     **preenchem o que a URL não trouxe**, e o script AVISA no log quando divergem —
+     backup que autentica diferente da aplicação é alarme falso esperando acontecer.
+  2. **`MYSQL_PWD` deixou de funcionar** no cliente do MariaDB 12.2 (ignora a variável e
+     tenta conexão sem senha, com o aviso contraditório "insecure passwordless login").
+     Trocado por `--defaults-extra-file` temporário — mantém a senha fora da linha de
+     comando, que era a razão de usar `MYSQL_PWD`.
+- [ ] **Remover a variável de ambiente `PAINEL_NOVO_MARIADB_SENHA`** — hoje ela é ignorada
+  (a URL vence) e só gera o aviso no log. É lixo de uma troca de senha antiga.
+- [ ] **`C:\PainelBackups\backup_novo_mariadb.log` está com encoding misturado** — as linhas
+  de ERRO saíram ilegíveis (UTF-16 lido como UTF-8), o que ajudou os 4 dias de falha a
+  passarem despercebidos. O `Log()` usa `Out-File -Encoding utf8`; padronizar e reescrever.
+- [ ] **Nada monitora o backup.** Ninguém foi avisado em 4 dias de falha consecutiva. Ligar
+  ao digest diário ou ao /api/health uma checagem de "último zip < 48 h e > 100 KB".
 - [x] **Sobra do Postgres removida do repositório** (2026-07-29): `migrations/` (10 migrations
   de DDL Postgres), `seeds/migrar-legado.ts` (+ script `migrar:legado` — migração do Flask,
   concluída em 2026-07-19, e único consumidor de `pg`), as dependências `pg`/`@types/pg` e o
@@ -162,6 +188,92 @@
     formatação inteira.
   - [ ] Restam os demais componentes Python previstos no item acima: `docservice/gerador/`
     (11 arquivos) e a ponte `webapp/` (4).
+
+## 🏛️ Adequação ao Guia Mestre de Arquitetura (ADR-0002 — 2026-07-31)
+> Norma adotada: [`vault/23 - Padrões/Guia Mestre de Arquitetura de Desenvolvimento.md`](<../vault/23 - Padrões/Guia Mestre de Arquitetura de Desenvolvimento.md>)
+> (Controller → Service → Repository). Decisão e contexto no
+> [ADR-0002](<../vault/17 - ADR/ADR-0002 - Adocao do Guia Mestre de Arquitetura.md>).
+> Aplicação **faseada**: o backend tem 446 arquivos e está em produção desde 19/07 — a
+> reescrita de uma vez não se paga. Cada fase termina com a guarda do CI travando o ganho.
+
+### Fase 1 — norma, guardas e piloto *(concluída em 2026-07-31)*
+- [x] **Guia registrado como norma** no Vault + ADR-0002, com a tradução das camadas para
+  cada frente (NestJS · Angular · FastAPI) e a regra de onde cada repository mora.
+- [x] **Módulo-piloto `plano-cronograma`** — corrigida a **única violação real de camada do
+  backend**: o controller injetava `Repository<Projeto>`/`Repository<Evento>` e fazia
+  `findOne`/`save`. Agora tem `repositories/` (3), `PlanoCronogramaService` de orquestração
+  e controller só de entrada/saída. **38 → 46 testes** (as regras que viviam no controller —
+  404, timeline, releitura do estado — não tinham teste; só eram alcançáveis por HTTP).
+- [x] **`RepositoriosModule`** (`database/repositories/`) — ponto único de acesso às
+  entidades transversais `Projeto` e `Evento`, no lugar de repetir
+  `TypeOrmModule.forFeature([Projeto])` em cada módulo.
+- [x] **6 documentos do guia** escritos para o piloto (`backend/src/plano-cronograma/docs/`).
+- [x] **Rate Limit** (`@nestjs/throttler`) — 300 req/min por IP, ajustável por
+  `MIGRACAO_RATE_LIMIT`/`MIGRACAO_RATE_LIMIT_TTL`. `/api/health` fica de fora: o Guardião
+  consulta em intervalo curto do mesmo IP, e um 429 ali o faria reiniciar um painel saudável.
+- [x] **`SELECT 1` do healthcheck saiu do controller** para um `HealthService` — sem isso a
+  regra "controller não acessa banco" nasceria com exceção.
+- [x] **3 guardas no CI** — `backend/src/common/conformidade-arquitetura.spec.ts` (14 testes),
+  `frontend/src/app/conformidade-arquitetura.spec.ts` (6) e
+  `docservice/tests/test_conformidade_arquitetura.py` (5). O docservice **não tinha nenhum
+  teste rodando no CI** até aqui; ganhou job próprio.
+- [x] **Gate de cobertura ligado** no patamar medido, com **1 ponto de folga** (statements 59
+  / branches 52 / functions 62 / lines 59, contra os 60,2 / 53,2 / 63,3 / 60,2 reais). A
+  folga é deliberada: no fio do medido, qualquer commit pequeno derruba o CI por ruído e o
+  time aprende a ignorar o gate. O CI passou a rodar o backend com `--coverage`, porque o
+  `coverageThreshold` só é avaliado quando a cobertura é coletada.
+- [x] **Piloto do frontend** — `permissoes.component.ts` deixou de falar HTTP direto (virou
+  `PermissoesAdminService`). É a tela de controle de acesso, onde a separação importa mais.
+- [x] **Correção de segurança junto** — uma rota do docservice devolvia `str(e)` num **500**
+  (podia expor caminho de arquivo e detalhe de ambiente). Agora responde mensagem genérica,
+  e a guarda impede a volta. 4xx com `str(e)` continua permitido: é mensagem de domínio.
+
+### Fase 2 — espalhar a camada Repository *(a fazer)*
+- [ ] **36 módulos restantes** — hoje 46 arquivos ainda injetam `Repository<T>` direto no
+  Service. Ordem sugerida, pelos que mais concentram acesso: `painel` (5), `passos` (4),
+  `cronograma` (3), `catalogos` (3), depois os de 1–2. Copiar do piloto.
+- [ ] **Docs de módulo** conforme os módulos forem adequados (6 arquivos cada). Escrever
+  junto com o porte — doc gerada em lote vira esqueleto e não é lida.
+- [x] **Componentes Angular com `HttpClient`: dívida ZERADA** (2026-08-02). Os três viraram
+  services em `core/services/`: `permissoes` → `PermissoesAdminService` (piloto),
+  `matriz-detalhada` → `MatrizDetalhadaService`, `matriz-funcoes` → `MatrizFuncoesService`.
+  A catraca `COMPONENTES_COM_HTTP_PENDENTES` ficou **vazia** — a regra agora vale para todo
+  componente, sem exceção, e um novo com HTTP direto quebra o CI.
+  > Efeito colateral nos testes, registrado porque volta a aparecer a cada extração: a
+  > chamada passou a atravessar duas camadas de promise (componente → service → HttpClient),
+  > e os specs que faziam um único `await fixture.whenStable()` entre duas requisições
+  > passaram a falhar com "found none". Daí o helper `assentar()` nos specs de matriz.
+- [ ] Ao adequar cada módulo, **apertar a guarda**: promover a regra de "só o piloto" para
+  "todo módulo já portado".
+
+### Fase 3 — estrutura de pastas *(a fazer — a mais invasiva)*
+- [ ] **`src/modules/`** — os 37 módulos estão na raiz de `src/`. É mecânico e o compilador
+  valida, mas toca centenas de imports; fazer numa mudança própria, sem nada junto.
+- [ ] **Entidades por módulo** — as 38 estão centralizadas em `database/entities/`. Depende
+  de rever `index.ts`, `data-source.ts` e o caminho das migrations. Entidade transversal
+  (`Projeto`, `Evento`) continua central por decisão, não por omissão.
+
+### Dívida do harness de equivalência *(aberta)*
+- [x] **`comparacao.ts` (.xlsx) corrigido** (2026-08-02): a máscara `<HOJE>` trocava QUALQUER
+  célula igual à data de hoje, inclusive data de NEGÓCIO — o oposto do que o próprio
+  comentário do arquivo dizia. Em 02/08 o dia 2 do hypercare da fixture (janela desde
+  01/08) virou `<HOJE>` e a suíte quebrou **sozinha**, sem ninguém tocar em código. Agora a
+  máscara casa o rótulo ("gerado em"/"Atualizado em"). Travado por `comparacao.spec.ts`.
+- [ ] **`comparacao-docx.ts` tem o mesmo padrão** — não quebrou hoje e **não pode receber a
+  mesma correção**: no `gerar_aceite_uat` a célula "Data do aceite" é a data de geração
+  sozinha, sem rótulo na mesma string (o rótulo está na célula anterior). Ali mascarar a
+  célula inteira está certo. Precisa de critério por POSIÇÃO/contexto, não por conteúdo —
+  mudança própria, com o snapshot em mãos.
+- [ ] **`tools/caracterizacao.py` idem** — é quem GERA os snapshots. Não roda no CI, então o
+  defeito só aparece se alguém regenerar num dia que colida, produzindo um snapshot errado.
+  Mesma decisão de critério do item acima.
+
+### Fase 4 — cobertura até 80% *(a fazer)*
+- [ ] Hoje: **60,07% statements · 53,03% branches · 63,63% functions** (886 testes verdes).
+- [ ] Subir o gate a cada fase, **nunca baixar**. Priorizar o que a fase 2 tocar: módulo
+  portado sai com teste do repository e do service, como no piloto.
+- [ ] Frontend: 440 testes em 58 arquivos, **sem gate de cobertura ainda** — o builder
+  `@angular/build:unit-test` precisa de configuração própria; avaliar junto da fase 2.
 
 ## 🔁 Processo de 18 passos (revisão de 2026-07-22)
 - [x] Mapa dos 18 passos, vínculo pessoa×papel (vários levantadores/consultores), RNS de

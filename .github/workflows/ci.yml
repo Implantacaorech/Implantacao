@@ -47,8 +47,11 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - name: Instalar dependências
         run: npm ci
-      - name: Testes (Jest)
-        run: npm test -- --ci
+      # Com --coverage porque o `coverageThreshold` do package.json só é avaliado quando a
+      # cobertura é COLETADA. Sem isso o gate existiria no arquivo e nunca rodaria. É a
+      # mesma execução de testes, não uma segunda passada.
+      - name: Testes (Jest) + gate de cobertura
+        run: npm test -- --ci --coverage
       # Ponta a ponta: sobe o AppModule inteiro com SQLite em memoria e exercita guards,
       # banco e servico via HTTP. Passa a rodar aqui porque, fora do CI, ninguem lembrava de
       # chamar `npm run test:e2e` — o arquivo de passos ficou uma revisao de processo atras
@@ -59,6 +62,24 @@ jobs:
       # passo era best-effort, achado novo se perdia no meio dos velhos e ninguem lia.
       - name: Lint
         run: npx eslint "{src,apps,libs,test}/**/*.ts" --max-warnings 10
+
+  docservice-conformidade:
+    # Só a guarda de arquitetura (ADR-0002). A suíte completa do docservice depende de
+    # modelo de transcrição e de templates .docx locais — não roda no runner. Estes testes
+    # leem o CÓDIGO (AST + regex), sem importar o app, então rodam em qualquer lugar.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docservice
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar o pytest
+        run: pip install pytest
+      - name: Conformidade com o Guia Mestre
+        run: python -X utf8 -m pytest tests/test_conformidade_arquitetura.py -v
 
   frontend-test:
     # Stack novo (Angular) — Vitest via @angular/build:unit-test, roda em Node sem browser real.

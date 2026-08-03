@@ -1,19 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { ChecklistItensService } from './checklist-itens.service';
-import { ChecklistItem } from '../database/entities/checklist-item.entity';
+import { ChecklistItensRepository } from './repositories/checklist-itens.repository';
 import { ModificacoesService } from './modificacoes.service';
 import { ChecklistModeloService } from '../catalogos/checklist-modelo.service';
 import { Projeto } from '../database/entities/projeto.entity';
 
 describe('ChecklistItensService', () => {
   let service: ChecklistItensService;
-  const repo = {
-    find: jest.fn(),
-    delete: jest.fn(),
-    save: jest.fn(),
-    create: jest.fn((dto) => dto),
-  };
+  // Dublê do REPOSITORY — ver a nota equivalente em cronograma-itens.service.spec.ts.
+  const repo = { doProjeto: jest.fn(), substituir: jest.fn() };
   const modificacoes = { registrar: jest.fn() };
   const checklistModelo = { listarPorModulos: jest.fn() };
 
@@ -22,7 +17,7 @@ describe('ChecklistItensService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ChecklistItensService,
-        { provide: getRepositoryToken(ChecklistItem), useValue: repo },
+        { provide: ChecklistItensRepository, useValue: repo },
         { provide: ModificacoesService, useValue: modificacoes },
         { provide: ChecklistModeloService, useValue: checklistModelo },
       ],
@@ -32,7 +27,7 @@ describe('ChecklistItensService', () => {
 
   describe('salvar', () => {
     it('substitui todas as linhas e registra o histórico', async () => {
-      repo.find.mockResolvedValue([
+      repo.doProjeto.mockResolvedValue([
         {
           modulo: 'FAT',
           item: 'x',
@@ -64,7 +59,14 @@ describe('ChecklistItensService', () => {
         'Concluído',
         'Ana',
       );
-      expect(repo.delete).toHaveBeenCalledWith({ projetoId: 1 });
+      expect(repo.substituir).toHaveBeenCalledWith(1, [
+        expect.objectContaining({
+          projetoId: 1,
+          ordem: 0,
+          modulo: 'FAT',
+          status: 'Concluído',
+        }),
+      ]);
     });
   });
 

@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { ChecklistItem } from '../database/entities/checklist-item.entity';
 import { Projeto } from '../database/entities/projeto.entity';
 import { ChecklistModeloService } from '../catalogos/checklist-modelo.service';
+import { ChecklistItensRepository } from './repositories/checklist-itens.repository';
 import { ModificacoesService } from './modificacoes.service';
 import { siglasContratadas } from './catalogo-modulos.util';
 import { diffLinhas } from './linhas-diff.util';
@@ -22,14 +21,13 @@ const CAMPOS = ['modulo', 'item', 'responsavel', 'status', 'obs'];
 @Injectable()
 export class ChecklistItensService {
   constructor(
-    @InjectRepository(ChecklistItem)
-    private readonly repo: Repository<ChecklistItem>,
+    private readonly repo: ChecklistItensRepository,
     private readonly modificacoes: ModificacoesService,
     private readonly checklistModelo: ChecklistModeloService,
   ) {}
 
   async doProjeto(projetoId: number): Promise<ChecklistItem[]> {
-    return this.repo.find({ where: { projetoId }, order: { ordem: 'ASC' } });
+    return this.repo.doProjeto(projetoId);
   }
 
   async salvar(
@@ -55,22 +53,20 @@ export class ChecklistItensService {
         autor,
       );
     }
-    await this.repo.delete({ projetoId });
-    if (linhas.length > 0) {
-      await this.repo.save(
-        linhas.map((l, i) =>
-          this.repo.create({
-            projetoId,
-            ordem: i,
-            modulo: l.modulo ?? '',
-            item: l.item ?? '',
-            responsavel: l.responsavel ?? '',
-            status: l.status ?? 'Pendente',
-            obs: l.obs ?? '',
-          }),
-        ),
-      );
-    }
+    // Os defaults por campo são regra de negócio (status nasce "Pendente", texto vazio no
+    // lugar de nulo) — por isso ficam aqui, e o repository só recebe as linhas prontas.
+    await this.repo.substituir(
+      projetoId,
+      linhas.map((l, i) => ({
+        projetoId,
+        ordem: i,
+        modulo: l.modulo ?? '',
+        item: l.item ?? '',
+        responsavel: l.responsavel ?? '',
+        status: l.status ?? 'Pendente',
+        obs: l.obs ?? '',
+      })),
+    );
     return diffs.length;
   }
 
