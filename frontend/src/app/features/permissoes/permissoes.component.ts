@@ -1,44 +1,15 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
-import { environment } from '../../../environments/environment';
-import { ApiEnvelope } from '../../core/models/api-envelope.model';
+import {
+  DefMenu,
+  Excecao,
+  PermissoesAdminService,
+  UsuarioLista,
+} from '../../core/services/permissoes-admin.service';
 import {
   NivelPermissao,
   PermissoesService,
 } from '../../core/services/permissoes.service';
-
-interface DefMenu {
-  chave: string;
-  rotulo: string;
-  grupo: string;
-  fixaAdm?: boolean;
-}
-interface CelulaPapel {
-  papel: string;
-  menu: string;
-  nivel: NivelPermissao;
-}
-interface Excecao {
-  usuarioId: number;
-  menu: string;
-  nivel: NivelPermissao;
-}
-interface UsuarioLista {
-  id: number;
-  nome: string;
-  login: string;
-  perfil: string;
-}
-interface MatrizResposta {
-  menus: DefMenu[];
-  papeis: string[];
-  niveis: NivelPermissao[];
-  porPapel: CelulaPapel[];
-  porUsuario: Excecao[];
-  usuarios: UsuarioLista[];
-}
 
 /** Manutenção de Permissões (Gestão, ADM): matriz Papel × Menu (nível nada/consulta/
  * alteracao) + exceções por usuário. A regra vale de imediato (backend é a fonte da verdade;
@@ -51,9 +22,8 @@ interface MatrizResposta {
   styleUrl: './permissoes.component.css',
 })
 export class PermissoesComponent {
-  private readonly http = inject(HttpClient);
+  private readonly api = inject(PermissoesAdminService);
   private readonly perm = inject(PermissoesService);
-  private readonly base = `${environment.apiUrl}/permissoes`;
 
   readonly carregando = signal(true);
   readonly erro = signal<string | null>(null);
@@ -106,10 +76,7 @@ export class PermissoesComponent {
     this.carregando.set(true);
     this.erro.set(null);
     try {
-      const res = await firstValueFrom(
-        this.http.get<ApiEnvelope<MatrizResposta>>(this.base),
-      );
-      const d = res.data;
+      const d = await this.api.matriz();
       this.menus.set(d.menus);
       this.papeis.set(d.papeis);
       this.niveis.set(d.niveis);
@@ -145,13 +112,7 @@ export class PermissoesComponent {
     this.salvando.set(chave);
     this.erro.set(null);
     try {
-      await firstValueFrom(
-        this.http.put<ApiEnvelope<{ salvo: boolean }>>(`${this.base}/papel`, {
-          papel,
-          menu,
-          nivel,
-        }),
-      );
+      await this.api.definirNivelDoPapel(papel, menu, nivel);
       this.mapaPapel.update((m) => ({ ...m, [`${papel}|${menu}`]: nivel }));
       await this.perm.carregar(); // pode afetar o próprio menu de quem edita
     } catch {
@@ -179,13 +140,7 @@ export class PermissoesComponent {
     this.salvando.set('excecao');
     this.erro.set(null);
     try {
-      await firstValueFrom(
-        this.http.put<ApiEnvelope<{ salvo: boolean }>>(`${this.base}/usuario`, {
-          usuarioId,
-          menu,
-          nivel: this.excNivel(),
-        }),
-      );
+      await this.api.definirExcecaoDoUsuario(usuarioId, menu, this.excNivel());
       await this.carregar();
       await this.perm.carregar();
     } catch {
@@ -199,13 +154,7 @@ export class PermissoesComponent {
     this.salvando.set(`exc:${usuarioId}|${menu}`);
     this.erro.set(null);
     try {
-      await firstValueFrom(
-        this.http.put<ApiEnvelope<{ salvo: boolean }>>(`${this.base}/usuario`, {
-          usuarioId,
-          menu,
-          nivel: 'herdar',
-        }),
-      );
+      await this.api.definirExcecaoDoUsuario(usuarioId, menu, 'herdar');
       await this.carregar();
       await this.perm.carregar();
     } catch {

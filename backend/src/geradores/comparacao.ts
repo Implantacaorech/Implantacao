@@ -24,11 +24,25 @@ function dataDeHoje(): string {
 
 const HOJE = dataDeHoje();
 
-/** Mesma máscara do harness Python: só a data de GERAÇÃO sai do contrato. As datas de
- * negócio (virada, prazos, dias do hypercare) permanecem — é nelas que um erro de
- * aritmética de datas apareceria, e mascará-las cegaria o teste justamente ali. */
+/** Onde a data de GERAÇÃO aparece nas planilhas: sempre atrás de um rótulo. Nos 8 snapshots
+ * .xlsx que têm `<HOJE>`, a célula é "<Cliente> · gerado em <data>". */
+const ROTULO_GERACAO = /(gerado em|Atualizado em)\s+/i;
+
+/** Só a data de GERAÇÃO sai do contrato. As datas de negócio (virada, prazos, dias do
+ * hypercare) permanecem — é nelas que um erro de aritmética de datas apareceria, e
+ * mascará-las cegaria o teste justamente ali.
+ *
+ * Por que casar o RÓTULO, e não a data solta: a máscara antiga trocava QUALQUER célula igual
+ * à data de hoje, sem saber se era geração ou negócio. Isso fez exatamente o que o parágrafo
+ * acima diz que não pode acontecer — em 02/08/2026 o dia 2 do hypercare (fixture começando
+ * em 01/08/2026) virou `<HOJE>` e a suíte quebrou sozinha, sem ninguém mexer em nada. Seria
+ * assim todo dia em que uma data de negócio das fixtures calhasse de ser hoje. */
 function mascarar(valor: string): string {
-  return valor.split(HOJE).join('<HOJE>');
+  if (!valor.includes(HOJE)) return valor;
+  return valor.replace(
+    new RegExp(`(${ROTULO_GERACAO.source})${HOJE.replace(/\//g, '\\/')}`, 'gi'),
+    '$1<HOJE>',
+  );
 }
 
 /** Texto de uma célula com a MESMA semântica do openpyxl usado no harness Python. */

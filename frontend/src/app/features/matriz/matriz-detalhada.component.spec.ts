@@ -10,6 +10,17 @@ import { MatrizDetalhadaComponent } from './matriz-detalhada.component';
 
 const BASE = `${environment.apiUrl}/matriz-detalhada`;
 
+/** Deixa a cadeia de promises assentar antes da próxima expectativa de HTTP.
+ *
+ * São DOIS `whenStable` porque a chamada atravessa DUAS camadas de promise: o componente
+ * espera o `MatrizDetalhadaService`, que por sua vez espera o `HttpClient`. Cada camada é um
+ * microtask — com um só `whenStable`, a requisição seguinte ainda não teria sido disparada
+ * e o `expectOne` falharia com "found none". */
+async function assentar(fixture: { whenStable(): Promise<unknown> }) {
+  await fixture.whenStable();
+  await fixture.whenStable();
+}
+
 function envelope<T>(data: T) {
   return { success: true, message: 'ok', timestamp: '', data };
 }
@@ -65,7 +76,7 @@ describe('MatrizDetalhadaComponent — gráfico "Média por módulo"', () => {
     mediaCnv: number,
   ) {
     httpMock.expectOne(`${BASE}/1`).flush(ficha(nome, mediaFat, mediaCnv));
-    await fixture.whenStable();
+    await assentar(fixture);
     fixture.detectChanges();
   }
 
@@ -84,7 +95,7 @@ describe('MatrizDetalhadaComponent — gráfico "Média por módulo"', () => {
         podeAdmin: false,
       }),
     );
-    await fixture.whenStable();
+    await assentar(fixture);
     await abrirFichaDe(fixture, 'Ana', 9, 4);
 
     const comp = fixture.componentInstance;
@@ -114,7 +125,7 @@ describe('MatrizDetalhadaComponent — gráfico "Média por módulo"', () => {
         podeAdmin: false,
       }),
     );
-    await fixture.whenStable();
+    await assentar(fixture);
     await abrirFichaDe(fixture, 'Ana', 9, 4);
 
     const comp = fixture.componentInstance;
@@ -122,7 +133,7 @@ describe('MatrizDetalhadaComponent — gráfico "Média por módulo"', () => {
 
     void comp.trocarTecnico(2);
     httpMock.expectOne(`${BASE}/2`).flush(ficha('Beto', 3, 6));
-    await fixture.whenStable();
+    await assentar(fixture);
     fixture.detectChanges();
 
     expect(comp.graficoConfig()!.data.datasets[0].data).toEqual([3, 6]);
@@ -138,7 +149,7 @@ describe('MatrizDetalhadaComponent — gráfico "Média por módulo"', () => {
         podeAdmin: false,
       }),
     );
-    await fixture.whenStable();
+    await assentar(fixture);
     httpMock.expectOne(`${BASE}/1`).flush(
       envelope({
         tecnico: { id: 1, nome: 'Ana', setor: 'FAT', dias: '' },
@@ -158,7 +169,7 @@ describe('MatrizDetalhadaComponent — gráfico "Média por módulo"', () => {
         volta: false,
       }),
     );
-    await fixture.whenStable();
+    await assentar(fixture);
     fixture.detectChanges();
 
     expect(fixture.componentInstance.graficoConfig()).toBeNull();

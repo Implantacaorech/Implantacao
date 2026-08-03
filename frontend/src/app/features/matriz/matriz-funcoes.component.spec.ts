@@ -10,6 +10,17 @@ import { MatrizFuncoesComponent } from './matriz-funcoes.component';
 
 const BASE = `${environment.apiUrl}/matriz-funcoes`;
 
+/** Deixa a cadeia de promises assentar antes da próxima expectativa de HTTP.
+ *
+ * São DOIS `whenStable` porque a chamada atravessa DUAS camadas de promise: o componente
+ * espera o `MatrizFuncoesService`, que por sua vez espera o `HttpClient`. Cada camada é um
+ * microtask — com um só `whenStable`, a requisição seguinte ainda não teria sido disparada
+ * e o `expectOne` falharia com "found none". */
+async function assentar(fixture: { whenStable(): Promise<unknown> }) {
+  await fixture.whenStable();
+  await fixture.whenStable();
+}
+
 function envelope<T>(data: T) {
   return { success: true, message: 'ok', timestamp: '', data };
 }
@@ -66,7 +77,7 @@ describe('MatrizFuncoesComponent', () => {
   let httpMock: HttpTestingController;
 
   /** Monta o componente e resolve as DUAS chamadas do boot: a lista de técnicos e, na
-   * sequência, a ficha do técnico selecionado. O `whenStable` entre elas é obrigatório —
+   * sequência, a ficha do técnico selecionado. O `assentar` entre elas é obrigatório —
    * `carregarFicha` só é disparada depois que a promise da lista resolve. */
   async function montar(podeAdmin = true, resposta = ficha()) {
     TestBed.configureTestingModule({
@@ -84,9 +95,9 @@ describe('MatrizFuncoesComponent', () => {
         podeAdmin,
       }),
     );
-    await fixture.whenStable();
+    await assentar(fixture);
     httpMock.expectOne(`${BASE}/1`).flush(resposta);
-    await fixture.whenStable();
+    await assentar(fixture);
     fixture.detectChanges();
     return fixture;
   }
@@ -163,12 +174,15 @@ describe('MatrizFuncoesComponent', () => {
   });
 
   it('"Reler do SICLA" limpa o cache no servidor e recarrega a ficha', async () => {
-    const comp = (await montar(true)).componentInstance;
+    const fixture = await montar(true);
+    const comp = fixture.componentInstance;
     const p = comp.recarregarDoSicla();
     httpMock
       .expectOne(`${BASE}/recarregar`)
       .flush(envelope({ modulos: 76, funcoes: 1977 }));
-    await Promise.resolve();
+    // `assentar` no lugar de um único `Promise.resolve()`: entre o POST de recarregar e o
+    // GET da ficha há duas camadas de promise (componente → service → HttpClient).
+    await assentar(fixture);
     httpMock.expectOne(`${BASE}/1`).flush(ficha());
     await p;
     expect(comp.erro()).toBeNull();
@@ -190,14 +204,14 @@ describe('MatrizFuncoesComponent', () => {
         podeAdmin: false,
       }),
     );
-    await fixture.whenStable();
+    await assentar(fixture);
     httpMock
       .expectOne(`${BASE}/1`)
       .flush(
         { message: 'Não foi possível ler as funções no SICLA: ORA-12541' },
         { status: 503, statusText: 'Service Unavailable' },
       );
-    await fixture.whenStable();
+    await assentar(fixture);
     fixture.detectChanges();
     expect(fixture.componentInstance.erro()).toContain('ORA-12541');
   });
