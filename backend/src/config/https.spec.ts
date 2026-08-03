@@ -42,7 +42,12 @@ describe('httpsPainel', () => {
 
     expect(r?.porta).toBe(5443);
     expect(r?.opcoes.passphrase).toBe('painel');
-    expect(r?.opcoes.pfx?.toString()).toBe('conteudo-falso');
+    // `pfx` do Node é `string | Buffer | Array<PxfObject>`, e um toString() cru sobre a
+    // união cai no '[object Object]' do Array (o que o eslint acusa). Afirmar o Buffer
+    // primeiro resolve o aviso e prova o que este teste existe para provar: o arquivo é
+    // lido como binário, sem passar por OpenSSL.
+    expect(Buffer.isBuffer(r?.opcoes.pfx)).toBe(true);
+    expect((r?.opcoes.pfx as Buffer).toString()).toBe('conteudo-falso');
   });
 
   it('aceita par PEM quando a CA entrega nesse formato', () => {
