@@ -47,6 +47,21 @@ export class ProtocoloService {
     return r.data;
   }
 
+  /** Define os NOMES dos locutores. Não reescreve a transcrição: o backend guarda o mapa
+   * e devolve o texto já com os nomes aplicados (renomear é reversível). */
+  async renomearLocutores(
+    id: number,
+    mapa: Record<string, string>,
+  ): Promise<{ mapaLocutores: Record<string, string>; transcricao: string }> {
+    const r = await firstValueFrom(
+      this.http.post<ApiEnvelope<{ mapaLocutores: Record<string, string>; transcricao: string }>>(
+        `${this.base}/${id}/locutores`,
+        { mapa },
+      ),
+    );
+    return r.data;
+  }
+
   async salvar(id: number, campos: Partial<Record<CampoTextoProtocolo, string>>): Promise<void> {
     await firstValueFrom(this.http.post(`${this.base}/${id}/salvar`, campos));
   }

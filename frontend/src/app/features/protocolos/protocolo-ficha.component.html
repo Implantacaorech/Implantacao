@@ -96,6 +96,35 @@
     }
   </div>
 
+  @if (locutores().length > 0) {
+    <div class="painel">
+      <h3>🗣️ Quem falou na reunião</h3>
+      <p class="dica" style="margin:0 0 var(--sp-3)">
+        A transcrição foi separada por voz. Dê o nome de cada participante e ele passa a
+        aparecer no lugar de <code>P1</code>, <code>P2</code>… <strong>A transcrição não é
+        reescrita</strong> — o nome fica guardado à parte, então dá para corrigir quantas
+        vezes precisar sem estragar o registro. Ao reprocessar, a IA passa a receber o texto
+        com os nomes, e o resumo distingue consultor e cliente.
+      </p>
+      <div class="grade2">
+        @for (l of locutores(); track l) {
+          <label class="campo"><span>{{ l }}</span>
+            <input [value]="nomeDe(l)" (input)="aoDigitarNome(l, $any($event.target).value)"
+                   placeholder="Nome de quem fala como {{ l }}" />
+          </label>
+        }
+      </div>
+      <div class="acoes" style="margin-top:var(--sp-3)">
+        <button class="btn primario" type="button" [disabled]="salvandoNomes()" (click)="salvarNomes()">
+          {{ salvandoNomes() ? 'Salvando…' : 'Salvar nomes' }}
+        </button>
+        @if (nomesSalvos()) {
+          <span class="dica" style="margin:0">✓ Nomes aplicados na transcrição abaixo.</span>
+        }
+      </div>
+    </div>
+  }
+
   @if (p.pendencias) {
     <div class="painel atencao">
       <h3>⚠ Pontos a validar na revisão</h3>

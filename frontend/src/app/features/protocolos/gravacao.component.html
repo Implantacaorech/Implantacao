@@ -108,6 +108,27 @@
       <input [(ngModel)]="vocabulario" name="vocabulario"
              placeholder="Ex.: Ivian, Melbros, ouro, GMAX, matriz de integração" />
     </label>
+    <label class="campo largo"><span>Quantas pessoas vão falar? *</span>
+      <select name="participantes" [class.faltando]="!participantesEscolhido()"
+              (change)="aoEscolherParticipantes($any($event.target).value)">
+        <option value="" [selected]="participantes === null">— selecione —</option>
+        <option value="1">Apenas eu / não separar por pessoa</option>
+        <option value="2">2 pessoas</option>
+        <option value="3">3 pessoas</option>
+        <option value="4">4 pessoas</option>
+        <option value="5">5 pessoas</option>
+        <option value="6">6 pessoas</option>
+      </select>
+    </label>
+    <p class="dica" style="margin:4px 0 0">
+      🗣️ <strong>Obrigatório.</strong> Separa a transcrição por locutor (<em>P1</em>, <em>P2</em>…),
+      e depois você dá nome a cada um na tela de revisão. Não tem valor padrão de propósito: a
+      separação só acontece <em>durante</em> a gravação, então quem descobrir depois que queria
+      teria de refazer a reunião. O número precisa ser informado — no teste, a detecção
+      automática inventou de 7 a 10 vozes onde havia 2. Custa cerca de
+      <strong>+30% de tempo</strong> de processamento no fim.
+    </p>
+
     <p class="dica" style="margin:4px 0 0">
       🎯 <strong>É o que mais melhora a transcrição.</strong> Nome próprio e jargão são
       justamente o que o transcritor erra (escreveu <em>IVEA</em> onde a pessoa disse
@@ -145,13 +166,19 @@
       </span>
     </label>
     <div class="acoes" style="margin-top:var(--sp-3)">
-      <button class="btn primario" type="button" [disabled]="!disponivel" (click)="iniciar()">
+      <button class="btn primario" type="button" [disabled]="!podeIniciar()" (click)="iniciar()">
         ⏺ Iniciar gravação
       </button>
-      <span class="dica" style="margin:0">
-        Depois de iniciada, você pode <strong>navegar à vontade pelo portal</strong> — a barra
-        vermelha no topo acompanha e permite pausar ou encerrar de qualquer tela.
-      </span>
+      @if (disponivel && !participantesEscolhido()) {
+        <span class="dica" style="margin:0">
+          ⚠️ Responda <strong>“Quantas pessoas vão falar?”</strong> acima para liberar a gravação.
+        </span>
+      } @else {
+        <span class="dica" style="margin:0">
+          Depois de iniciada, você pode <strong>navegar à vontade pelo portal</strong> — a barra
+          vermelha no topo acompanha e permite pausar ou encerrar de qualquer tela.
+        </span>
+      }
     </div>
   </div>
 }

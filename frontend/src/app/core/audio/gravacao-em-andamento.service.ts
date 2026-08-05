@@ -20,6 +20,8 @@ export interface DadosInicioGravacao {
   cnpj?: string;
   /** Nomes dos participantes e termos ditados na reunião (hotwords do transcritor). */
   vocabulario?: string;
+  /** Quantas pessoas vão falar (>= 2 separa as vozes na transcrição). */
+  participantes?: number;
   /** Nome do cliente para exibir enquanto a gravação corre. */
   clienteRotulo?: string;
 }
@@ -89,6 +91,7 @@ export class GravacaoEmAndamentoService {
         cnpj: dados.cnpj,
         titulo: dados.titulo,
         vocabulario: dados.vocabulario,
+        participantes: dados.participantes,
         fonte: dados.fonte,
       });
       id = inicio.id;

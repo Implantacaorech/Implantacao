@@ -186,6 +186,16 @@ Teams/tela ┘         (15-30 s, corta        GET  /gravacao/:id    ←─ texto
   da reunião passaria a trafegar pela internet, ida e volta, para chegar a uma máquina que
   está na mesa ao lado.
 
+## O guardião vigia os DOIS serviços
+
+`Guardiao_Painel_Novo.vbs` (Tarefa Agendada, a cada 5 min) checa **painel (5100)** e
+**docservice (8001)**, e sobe o que estiver fora do ar. Vigiar só o painel era um buraco
+real: em **2026-08-04** o painel reiniciou às 05:35 e o docservice ficou para trás — nada o
+reergueu, e o sintoma chegou ao usuário horas depois como *"Não foi possível iniciar a
+gravação: ECONNREFUSED 127.0.0.1:8001"*, sem relação aparente com a causa. O painel é
+checado primeiro, porque o `Iniciar_Painel_Novo.bat` já sobe o docservice junto quando a
+8001 está livre.
+
 ## Reiniciar o painel NÃO reinicia o docservice
 
 Os dois são processos separados: o painel é o `node` (5100/5443), o docservice é o
@@ -251,6 +261,56 @@ limite do modelo. Duas coisas ajudam mais que qualquer ajuste de software — mi
 de quem fala (notebook no centro da mesa) e listar os nomes no campo de vocabulário antes de
 começar.
 
+## Separação de locutores (quem falou)
+
+O Whisper transcreve *o que* foi dito, não *quem* disse — não há parâmetro de locutor nele.
+Isso exige um segundo modelo. Escolhemos **sherpa-onnx** (44 MB de ONNX, sem download
+restrito) em vez do pyannote, que arrastaria o PyTorch (~2,5 GB) e exigiria conta e token no
+HuggingFace.
+
+**Como usar:** na tela de gravação, informe *"quantas pessoas vão falar"*. Ao encerrar, a
+transcrição sai como `[12:34] P1: fala`. Na ficha de revisão aparece o painel **"Quem falou
+na reunião"**: dê o nome de cada um e ele substitui o rótulo.
+
+**Renomear não reescreve a transcrição.** O texto guarda sempre `P1`; o nome vive num mapa
+à parte (`protocolos.mapa_locutores`). Consequências deliberadas: renomear é reversível,
+corrigir um nome digitado errado não deixa rastro, e um "P2" citado *dentro* de uma fala
+(um código de produto) nunca é trocado por engano. Ao reprocessar, a IA recebe o texto já
+com os nomes — o resumo passa a distinguir consultor e cliente. Código:
+`backend/src/protocolos/locutores.ts` (com testes).
+
+**O número de pessoas é informado, não descoberto.** Medido em 2026-07-31 sobre 3 min de
+uma reunião real: no modo automático o agrupamento encontrou de 7 a 10 vozes onde havia 2;
+com o número fixo em 2, o corte saiu limpo (99 s e 58 s de fala) e o diálogo ficou coerente.
+Microfone de sala, fala distante e sobreposta não dão contraste para adivinhar sozinho — e
+quem convoca a reunião sabe quantos vão falar.
+
+| Medição (i7-1255U) | Resultado |
+| --- | --- |
+| 1 thread | 1,3× tempo real |
+| 8 threads (padrão atual) | **3,3× tempo real** — 1 h de reunião ≈ 18 min |
+| Turnos em 3 min | 12 turnos coerentes (27 picotados antes do ajuste abaixo) |
+
+Palavra curta que cai num vazio da diarização (`né?`, `que`) **herda o locutor anterior** em
+vez de virar desconhecida — sem isso o diálogo se esfarela em turnos de uma palavra só.
+
+**Instalação dos modelos** (44 MB, fora do git):
+
+```powershell
+docservice\.venv\Scripts\python.exe -m pip install sherpa-onnx numpy
+# baixe e coloque em docservice\modelos\diarizacao\ :
+#   segmentacao.onnx  <- sherpa-onnx-pyannote-segmentation-3-0.tar.bz2 (model.onnx)
+#   embedding.onnx    <- 3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx
+# ambos em github.com/k2-fsa/sherpa-onnx/releases
+```
+
+Sem os modelos, a separação simplesmente não acontece — o resto do pipeline segue igual.
+
+**Limite honesto:** a qualidade depende do áudio. Vozes parecidas, fala muito sobreposta e
+microfone distante confundem o agrupamento (pode dividir uma pessoa em duas ou juntar
+duas). Serve para separar 2 a 4 pessoas numa reunião típica, não para transcrição
+forense.
+
 ## Configuração
 
 | Variável | Para que serve | Padrão |
@@ -260,6 +320,7 @@ começar.
 | `PROTOCOLOS_WHISPER_VIVO` | Modelo do ao vivo (`base` alivia a CPU) | o de `PROTOCOLOS_WHISPER` |
 | `PROTOCOLOS_BEAM` | Largura da busca (1 = guloso, rápido e pior) | `5` |
 | `PROTOCOLOS_THREADS_VIVO` | Núcleos do worker ao vivo | `0` (automático) |
+| `PROTOCOLOS_THREADS_DIAR` | Núcleos da separação de locutores | `8` |
 
 **Espaço em disco:** o `.wav` fica em ~115 MB por hora de reunião (16 kHz mono). É menos que
 os vídeos de treinamento que já são sincronizados na mesma pasta, mas conta na cota do

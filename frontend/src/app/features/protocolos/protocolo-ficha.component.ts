@@ -75,6 +75,14 @@ export class ProtocoloFichaComponent implements OnDestroy {
   readonly ehAudio = signal(false);
   readonly videoUrl = signal<string | null>(null);
 
+  /** Locutores separados na transcrição (`P1`, `P2`…) e os nomes já dados a eles. O texto
+   * gravado mantém SEMPRE o rótulo — o nome vive num mapa, então renomear é reversível e
+   * não corrompe a transcrição (ver backend/src/protocolos/locutores.ts). */
+  readonly locutores = signal<string[]>([]);
+  readonly nomes = signal<Record<string, string>>({});
+  readonly salvandoNomes = signal(false);
+  readonly nomesSalvos = signal(false);
+
   /** Estado do player: só o tempo de pedir o ticket de mídia (uma chamada curta). O vídeo
    * em si é transmitido pelo próprio player, sob demanda — não se baixa mais o arquivo
    * inteiro para começar a assistir. */
@@ -151,6 +159,8 @@ export class ProtocoloFichaComponent implements OnDestroy {
       this.podeAprovar.set(r.podeAprovar);
       this.podeExcluir.set(r.podeExcluir);
       this.ehAudio.set(r.ehAudio);
+      this.locutores.set(r.locutores ?? []);
+      this.nomes.set({ ...(r.mapaLocutores ?? {}) });
       if (r.ehAudio) this.modoMidia.set('escutar');
       this.edicao.set({
         titulo: r.protocolo.titulo,
@@ -166,6 +176,32 @@ export class ProtocoloFichaComponent implements OnDestroy {
       this.erro.set('Não foi possível carregar o protocolo.');
     } finally {
       this.carregando.set(false);
+    }
+  }
+
+  nomeDe(rotulo: string): string {
+    return this.nomes()[rotulo] ?? '';
+  }
+
+  aoDigitarNome(rotulo: string, valor: string): void {
+    this.nomes.update((m) => ({ ...m, [rotulo]: valor }));
+    this.nomesSalvos.set(false);
+  }
+
+  /** Grava os nomes e recarrega a transcrição já com eles aplicados. */
+  async salvarNomes(): Promise<void> {
+    this.salvandoNomes.set(true);
+    this.erro.set(null);
+    try {
+      const r = await this.service.renomearLocutores(this.id, this.nomes());
+      this.nomes.set({ ...r.mapaLocutores });
+      const p = this.protocolo();
+      if (p) this.protocolo.set({ ...p, transcricao: r.transcricao });
+      this.nomesSalvos.set(true);
+    } catch {
+      this.erro.set('Não foi possível salvar os nomes dos participantes.');
+    } finally {
+      this.salvandoNomes.set(false);
     }
   }
 

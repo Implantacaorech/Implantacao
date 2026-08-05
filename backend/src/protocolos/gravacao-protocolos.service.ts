@@ -95,6 +95,7 @@ export class GravacaoProtocolosService {
       cnpj?: string;
       titulo?: string;
       vocabulario?: string;
+      participantes?: number;
       fonte?: FonteAudio;
     },
   ): Promise<{ id: number; cliente: string; titulo: string }> {
@@ -111,6 +112,8 @@ export class GravacaoProtocolosService {
       // Guardado no registro (e não só passado adiante) porque a retranscrição do arquivo
       // acontece depois, no encerramento, e precisa dos mesmos termos.
       vocabulario: (dados.vocabulario || '').trim(),
+      // Só faz sentido separar a partir de 2 vozes; 0/1 desliga a diarização.
+      participantes: (dados.participantes ?? 0) >= 2 ? dados.participantes! : 0,
       responsavel: user.nome,
       fonte,
     });

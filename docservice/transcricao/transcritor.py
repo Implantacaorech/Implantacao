@@ -29,6 +29,8 @@ import os
 import sys
 import json
 
+import diarizacao
+
 MODELO = os.environ.get("PROTOCOLOS_WHISPER", "small")
 THREADS = int(os.environ.get("PROTOCOLOS_THREADS", "0") or 0)   # 0 = auto (todos os núcleos)
 # beam_size=1 é busca gulosa: rápido e o que estava aqui, mas erra em palavra ambígua —
@@ -42,10 +44,11 @@ def _fmt_ts(seg):
     return ("%d:%02d:%02d" % (h, m, s)) if h else ("%d:%02d" % (m, s))
 
 
-def transcrever(video_path, progress_cb=None, vocabulario=None):
+def transcrever(video_path, progress_cb=None, vocabulario=None, pessoas=0):
     """Transcreve o vídeo (roda NO PROCESSO ATUAL — prefira transcrever_isolado).
     `progress_cb(pos_seg, dur_seg)` é chamado conforme a transcrição avança.
-    `vocabulario` são termos esperados (nomes, jargão) — ver docstring do módulo."""
+    `vocabulario` são termos esperados (nomes, jargão) — ver docstring do módulo.
+    `pessoas` >= 2 liga a separação de locutores: o texto sai como '[MM:SS] P1: fala'."""
     from faster_whisper import WhisperModel
     model = WhisperModel(MODELO, device="cpu", compute_type="int8", cpu_threads=THREADS)
     opcoes = dict(
@@ -62,25 +65,81 @@ def transcrever(video_path, progress_cb=None, vocabulario=None):
     )
     if vocabulario:
         opcoes["hotwords"] = vocabulario
+    # Com separação de locutores o casamento é PALAVRA a palavra: uma frase do Whisper
+    # atravessa a troca de turno com frequência, e cortar por frase colaria a resposta de
+    # um na fala do outro.
+    if pessoas and pessoas >= 2:
+        opcoes["word_timestamps"] = True
     segments, info = model.transcribe(video_path, **opcoes)
     dur_total = int(getattr(info, "duration", 0) or 0)
-    linhas, dur = [], 0
+
+    coletados, dur = [], 0
     for seg in segments:
-        t = (seg.text or "").strip()
-        if t:
-            linhas.append("[%s] %s" % (_fmt_ts(seg.start), t))
+        coletados.append(seg)
         dur = max(dur, int(seg.end or 0))
         if progress_cb:
             try:
-                progress_cb(dur, dur_total)
+                progress_cb(dur, dur_total, "transcrevendo")
             except Exception:
                 pass
-    return {"texto": "\n".join(linhas),
+
+    trechos = []
+    if pessoas and pessoas >= 2 and diarizacao.disponivel():
+        # Depois da transcrição, de propósito: a barra de progresso acompanha a parte
+        # longa, e a separação entra como uma fase própria — senão a tela ficaria parada
+        # em 99% por vários minutos sem dizer por quê.
+        if progress_cb:
+            try:
+                progress_cb(dur_total or dur, dur_total, "separando vozes")
+            except Exception:
+                pass
+        try:
+            trechos = diarizacao.separar(video_path, pessoas)
+        except Exception as e:
+            # Falhar aqui não pode custar a transcrição inteira: sai sem os rótulos.
+            sys.stderr.write("diarizacao falhou: %s: %s\n" % (type(e).__name__, e))
+
+    return {"texto": _montar_texto(coletados, trechos),
             "duracao": dur_total or dur,
-            "idioma": getattr(info, "language", "pt")}
+            "idioma": getattr(info, "language", "pt"),
+            "locutores": len({t["locutor"] for t in trechos}) if trechos else 0}
 
 
-def transcrever_isolado(video_path, timeout=3 * 3600, progress_file=None, vocabulario=None):
+def _montar_texto(segmentos, trechos):
+    """Monta o texto final. Sem diarização: '[MM:SS] fala' (como sempre foi). Com
+    diarização: '[MM:SS] P1: fala', agrupando palavras seguidas do mesmo locutor num turno.
+    Os rótulos são P1, P2...; os nomes reais entram depois, pelo mapa do painel, sem
+    reescrever o texto."""
+    if not trechos:
+        return "\n".join(
+            "[%s] %s" % (_fmt_ts(s.start), (s.text or "").strip())
+            for s in segmentos
+            if (s.text or "").strip()
+        )
+
+    turnos, anterior = [], None
+    for seg in segmentos:
+        for palavra in (seg.words or []):
+            quem = diarizacao.quem_falou(trechos, palavra.start, palavra.end, anterior)
+            anterior = quem
+            if turnos and turnos[-1]["quem"] == quem:
+                turnos[-1]["texto"] += palavra.word
+            else:
+                turnos.append({"quem": quem, "ini": palavra.start, "texto": palavra.word})
+
+    linhas = []
+    for t in turnos:
+        texto = t["texto"].strip()
+        if not texto:
+            continue
+        linhas.append(
+            "[%s] P%d: %s" % (_fmt_ts(t["ini"]), (t["quem"] or 0) + 1, texto)
+        )
+    return "\n".join(linhas)
+
+
+def transcrever_isolado(video_path, timeout=3 * 3600, progress_file=None,
+                        vocabulario=None, pessoas=0):
     """Transcreve em SUBPROCESSO isolado (memória liberada ao fim). Lança em erro/timeout.
     Com `progress_file`, o subprocesso grava ali o andamento em JSON ({pos,dur,pct}).
     `vocabulario` viaja por variável de ambiente, e não por argumento de linha de comando:
@@ -96,6 +155,8 @@ def transcrever_isolado(video_path, timeout=3 * 3600, progress_file=None, vocabu
     env["PYTHONIOENCODING"] = "utf-8"
     if vocabulario:
         env["PROTOCOLOS_HOTWORDS"] = vocabulario
+    if pessoas:
+        env["PROTOCOLOS_PESSOAS"] = str(int(pessoas))
     try:
         r = subprocess.run(args, capture_output=True, text=True, timeout=timeout, env=env)
         if r.returncode != 0 or not os.path.exists(out):
@@ -114,16 +175,20 @@ def transcrever_isolado(video_path, timeout=3 * 3600, progress_file=None, vocabu
 def _grava_progresso(path):
     """Callback que grava {pos,dur,pct} no arquivo de progresso (com throttle de ~2s)."""
     import time
-    ultimo = [0.0]
+    ultimo = [0.0, "transcrevendo"]
 
-    def cb(pos, dur):
+    def cb(pos, dur, fase="transcrevendo"):
         agora = time.time()
-        if agora - ultimo[0] < 2:
+        # A troca de fase é sempre gravada: é ela que explica na tela por que a barra
+        # parou de andar (a separação de vozes não tem progresso próprio).
+        if agora - ultimo[0] < 2 and fase == ultimo[1]:
             return
-        ultimo[0] = agora
+        ultimo[0], ultimo[1] = agora, fase
         pct = int(round(100.0 * pos / dur)) if dur else 0
         with open(path, "w", encoding="utf-8") as f:
-            json.dump({"pos": int(pos), "dur": int(dur), "pct": min(pct, 99)}, f)
+            json.dump(
+                {"pos": int(pos), "dur": int(dur), "pct": min(pct, 99), "fase": fase}, f
+            )
     return cb
 
 
@@ -131,8 +196,11 @@ if __name__ == "__main__":   # subprocesso: python transcritor.py <video> <saida
     if len(sys.argv) in (3, 4):
         try:
             cb = _grava_progresso(sys.argv[3]) if len(sys.argv) == 4 else None
-            res = transcrever(sys.argv[1], progress_cb=cb,
-                              vocabulario=os.environ.get("PROTOCOLOS_HOTWORDS"))
+            res = transcrever(
+                sys.argv[1], progress_cb=cb,
+                vocabulario=os.environ.get("PROTOCOLOS_HOTWORDS"),
+                pessoas=int(os.environ.get("PROTOCOLOS_PESSOAS", "0") or 0),
+            )
             with open(sys.argv[2], "w", encoding="utf-8") as f:
                 json.dump(res, f, ensure_ascii=False)
         except Exception as e:

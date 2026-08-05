@@ -56,7 +56,8 @@ export class LevantamentoController {
 
   @Put('levantamento')
   @ApiOperation({
-    summary: 'Salva as respostas do Levantamento — { [id]: resposta }',
+    summary:
+      'Salva em lote as respostas do Levantamento — { [id]: resposta }. Uso administrativo/importação: a tela grava pergunta a pergunta pelo PATCH abaixo.',
   })
   async salvarLevantamento(
     @Param('projetoId', ParseIntPipe) projetoId: number,

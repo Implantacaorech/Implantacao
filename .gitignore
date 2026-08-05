@@ -96,3 +96,7 @@ dados/
 backend/certs/
 *.pfx
 *.p12
+
+# Modelos de diarizacao (44 MB, baixados do k2-fsa/sherpa-onnx) — binario, nao versionar.
+# Como obter: ver docs/gravacao-reuniao.md, secao "Separacao de locutores".
+docservice/modelos/

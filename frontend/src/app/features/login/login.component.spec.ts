@@ -95,6 +95,46 @@ describe('LoginComponent', () => {
     expect(comp.erro()).toContain('Não foi possível entrar');
   });
 
+  it('falha ao ABRIR o Painel não é relatada como senha errada', async () => {
+    // Regressão do incidente de 2026-08-03: a senha era aceita e o token emitido, mas o
+    // chunk da rota /home tinha sumido no rebuild. Como o navigateByUrl estava dentro do
+    // mesmo try do login, a tela dizia "Verifique login e senha" — e a equipe reportou
+    // "os logins não funcionam".
+    const fixture = montar();
+    fixture.detectChanges();
+    const comp = fixture.componentInstance;
+    vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockRejectedValue(
+      new Error('Http failure: /home indisponível'),
+    );
+
+    comp.form.setValue({ login: 'ana@rech.com.br', senha: 'segredo123', lembrar: false });
+    await comp.enviar();
+
+    expect(comp.erro()).toContain('Sua senha foi aceita');
+    expect(comp.erro()).not.toContain('Verifique login e senha');
+    expect(comp.enviando()).toBe(false);
+  });
+
+  it('chunk sumido no rebuild recarrega a aba, sem mostrar erro', async () => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...window.location, reload: vi.fn() },
+    });
+    sessionStorage.clear();
+    const fixture = montar();
+    fixture.detectChanges();
+    const comp = fixture.componentInstance;
+    vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockRejectedValue(
+      new Error('Failed to fetch dynamically imported module: /chunk-ABC.js'),
+    );
+
+    comp.form.setValue({ login: 'ana@rech.com.br', senha: 'segredo123', lembrar: false });
+    await comp.enviar();
+
+    expect(location.reload).toHaveBeenCalledTimes(1);
+    expect(comp.erro()).toBeNull();
+  });
+
   it('desmarcar "Lembrar-me" apaga o e-mail guardado antes', async () => {
     localStorage.setItem(CHAVE_LOGIN_LEMBRADO, 'ana@rech.com.br');
     const fixture = montar();

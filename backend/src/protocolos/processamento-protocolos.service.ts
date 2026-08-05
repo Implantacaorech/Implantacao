@@ -16,6 +16,7 @@ import { ProtocoloIaService } from './protocolo-ia.service';
 import { TranscricaoService } from '../transcricao/transcricao.service';
 import { EXTS } from './protocolos.constants';
 import { montarVocabulario } from './vocabulario';
+import { aplicarNomes, lerMapa } from './locutores';
 
 const ESTAVEL_SEG = 90; // arquivo precisa estar sem modificação há N s (OneDrive ainda copiando)
 const INTERVALO_POLL_MS = 2000;
@@ -277,6 +278,7 @@ export class ProcessamentoProtocolosService {
             cliente: p.cliente,
             titulo: p.titulo,
           }),
+          p.participantes,
         );
         const t = await this.aguardarTranscricao(id);
         await this.protocolos.atualizar(id, {
@@ -290,13 +292,18 @@ export class ProcessamentoProtocolosService {
       }
 
       await this.protocolos.atualizarStatus(id, 'Analisando', undefined, autor);
+      // A IA lê a transcrição JÁ com os nomes aplicados (quando alguém já renomeou os
+      // locutores): "Ivian: ..." em vez de "P1: ..." deixa o resumo distinguir quem é
+      // consultor e quem é cliente. O texto gravado segue com os rótulos — ver locutores.ts.
+      const atual = await this.protocolos.buscar(id);
+      const textoIa = aplicarNomes(texto, lerMapa(atual?.mapaLocutores));
       const { campos, bruto } = await this.ia.analisar(
-        texto,
+        textoIa,
         p.videoNome || '',
       );
       await this.protocolos.atualizar(id, { ...campos, textoIa: bruto });
       await this.protocolos.atualizar(id, {
-        resumoCompleto: await this.resumoCompleto(texto, p.videoNome || ''),
+        resumoCompleto: await this.resumoCompleto(textoIa, p.videoNome || ''),
       });
 
       await this.protocolos.atualizarStatus(id, 'Em revisão', undefined, autor);

@@ -86,6 +86,32 @@ Implantação na pré-implantação (`docs/processo-implantacao.md` §2.1.1).
 - A ficha do projeto só **exibe** o valor (aba Resumo). Nada no fluxo se ramifica ainda por
   Levantamento × Demonstração — se isso for desejado, é decisão nova.
 
+## Auditoria de integridade dos 21 passos (2026-08-05)
+
+Bateria de testes extremos (154 casos de API contra instância **isolada**) + auditoria de
+código com verificação adversarial. **Nove defeitos reais, todos corrigidos**, com regressão
+coberta em `e2e/` (Playwright, 29 casos) e no Jest (950 testes).
+
+- **O grande achado: a RN-10 valia só dentro do `PassosController`.** Anexar um arquivo com
+  `tipo=termo`, gerar o layout, reescrever `gci` por `PUT /projetos/:id` ou criar projeto por
+  `POST /fluxo/criar` fechavam passos sem gate de designação — vários irreversíveis, gravados
+  em nome de `"sistema"`. O gate desceu para `DocumentosService.registrarDocumento`, que
+  consulta `PassosService.podeExecutarPasso` antes de concluir.
+- **O processo travava no passo 5:** a rota de concluir exigia `carteira/alteracao` e o
+  Comercial tem `consulta`; o passo 5 é dele e não tem caminho automático. A rota passou a
+  exigir só `carteira` (o gate real é `podeExecutar`), e a tela mostra a ação quando
+  `p.liberado` — antes `soConsulta()` escondia a coluna inteira.
+- Gerar o Termo não fecha mais o passo 18 (RN-8: passo de e-mail redigido nunca conclui por
+  efeito colateral); dois GCIs voltaram a receber o e-mail do passo 8 (`nomesDoCampo`); data
+  de assinatura exige data real e não futura; cadastro recusa homônimo ativo; corpo grande
+  responde 413 em vez de 404.
+- ⚠️ **Como testar sem tocar em produção:** instância isolada na **5199**, SQLite descartável,
+  `cwd` FORA de `backend/` — senão o `backend/dados/smtp.json` é encontrado e **e-mails saem
+  de verdade**. Receita completa em [e2e/README.md](../e2e/README.md). O
+  `playwright.config.ts` recusa a porta 5100 no boot.
+- Dívida remanescente: designação casa por **nome**, não por id (`projeto_pessoas.pessoa`,
+  `Projeto.gci`) — ver `docs/pendencias.md`.
+
 ## Gravação de reunião com transcrição ao vivo (2026-07-30)
 
 O menu **Transcrição Áudio/Vídeo** ganhou uma terceira entrada, além do upload e do robô:
@@ -107,6 +133,20 @@ pelo **Teams** (áudio da aba/tela), ou as duas somadas. Atalho também na tela 
 - **Visibilidade nova:** a lista mostra **só o material do usuário logado**; ADM vê tudo e os
   vídeos do robô do SharePoint continuam comuns a todos
   (`backend/src/protocolos/protocolos.acesso.ts`, vale também nas rotas por id).
+- **Separação de locutores (2026-07-31):** sherpa-onnx (44 MB ONNX, sem PyTorch). A tela
+  pergunta **quantas pessoas** — automático inventou 7-10 vozes onde havia 2. Texto sai
+  `[MM:SS] P1: ...`; o nome vive em `protocolos.mapa_locutores` e a substituição é na
+  leitura (`backend/src/protocolos/locutores.ts`), então renomear é reversível. 3,3× tempo
+  real com 8 threads.
+- **HTTPS opcional no painel (2026-07-30):** `MIGRACAO_HTTPS_PFX`/`_SENHA`/`_PORT`; HTTP na
+  5100 continua no ar em paralelo (HSTS fica desligado de propósito). Certificado pela **CA
+  interna** `rechinfo-PR-ADCS-VS25-CA` — todo domínio já confia, nada a instalar nas
+  máquinas (`Certificado_CA_Interna_Painel.bat`).
+- **Guardião passou a vigiar os DOIS** (painel 5100 + docservice 8001) desde 2026-08-04:
+  o painel reiniciou às 05:35 e o docservice ficou para trás, aparecendo horas depois como
+  ECONNREFUSED na gravação. Antes ele só checava a 5100.
+- ⚠️ **Reiniciar o painel NÃO reinicia o docservice** (processos separados; o Iniciar só
+  sobe o docservice se a 8001 estiver livre). Ao mexer em `docservice/`, derrube os dois.
 - ⚠️ **Bloqueio conhecido:** captura de áudio só funciona em **contexto seguro** (HTTPS/
   localhost) — o painel está em `http://I7M1700-01-EVE:5100`. Ver `docs/gravacao-reuniao.md`
   e `docs/pendencias.md`.

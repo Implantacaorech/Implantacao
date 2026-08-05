@@ -4,8 +4,10 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
+  Max,
   Min,
 } from 'class-validator';
 
@@ -46,6 +48,18 @@ export class IniciarGravacaoDto {
    * do Whisper — ver Protocolo.vocabulario. */
   @ApiPropertyOptional() @IsOptional() @IsString() vocabulario?: string;
 
+  /** Quantas pessoas vão falar. >= 2 liga a separação de locutores; 1 desliga.
+   *
+   * OBRIGATÓRIO (decisão do usuário em 2026-08-04): a tela não oferece mais um valor
+   * inicial. Um default aqui decidiria calado por "não separar" — e a separação só pode
+   * ser feita DURANTE a gravação, então quem descobrisse depois teria de refazer a
+   * reunião. Ver Protocolo.participantes. */
+  @Type(() => Number)
+  @IsInt({ message: 'Informe quantas pessoas vão falar na reunião.' })
+  @Min(1, { message: 'Informe quantas pessoas vão falar na reunião.' })
+  @Max(12)
+  participantes: number;
+
   @ApiPropertyOptional({ enum: FONTES_AUDIO })
   @IsOptional()
   @IsIn(FONTES_AUDIO)
@@ -58,6 +72,12 @@ export class TrechoGravacaoDto {
   @IsInt()
   @Min(0)
   seq: number;
+}
+
+/** Renomear os locutores da transcrição: `{ "P1": "Ivian", "P2": "Marcos" }`. */
+export class MapaLocutoresDto {
+  @IsObject()
+  mapa: Record<string, string>;
 }
 
 export class FinalizarGravacaoDto {

@@ -3,7 +3,8 @@ import { join } from 'path';
 import configuration from '../config/configuration';
 
 /** Guarda automática da stack obrigatória do Padrão Rech §4.8 (Angular · NestJS + TypeORM ·
- * MariaDB · entrega em processo único) — ver CLAUDE.md e `MD Padrao desenv/Padrao_Rech.md`.
+ * MariaDB · entrega em processo único) — ver CLAUDE.md e `PADRAO-DESENVOLVIMENTO-RECH.md`
+ * (documento único; a §4.8 é a mesma seção, na Parte I).
  *
  * Existe porque o desvio entra sempre pela porta de trás, não por decisão: um driver novo
  * numa dependência, uma URL de banco de outro dialeto que o config aceitava em silêncio

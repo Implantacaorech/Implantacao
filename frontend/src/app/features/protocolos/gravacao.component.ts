@@ -60,6 +60,11 @@ export class GravacaoComponent {
   titulo = '';
   /** Nomes dos participantes e termos da reunião — o que mais corrige erro de nome próprio. */
   vocabulario = '';
+  /** Quantas pessoas vão falar. Começa NULO de propósito: é campo obrigatório (decisão do
+   * usuário em 2026-08-04) e um valor inicial decidiria calado por "não separar". A
+   * separação só acontece durante a gravação — quem descobrir depois que queria teria de
+   * refazer a reunião. 1 = não separar. */
+  participantes: number | null = null;
   fonte: FonteAudio = 'microfone';
   /** MARCADO por padrão (decisão do usuário em 2026-07-30): a transcrição do arquivo
    * inteiro é sensivelmente melhor que a emenda dos trechos ao vivo, e é dela que sai o
@@ -77,6 +82,11 @@ export class GravacaoComponent {
   readonly temCliente = computed(
     () => !!this.selecionado() || this.projetoId() !== null,
   );
+  /** Só libera o botão com a captura disponível E o número de pessoas respondido. */
+  readonly podeIniciar = computed(
+    () => this.disponivel && this.participantesEscolhido(),
+  );
+  readonly participantesEscolhido = signal(false);
 
   private buscaAgendada: ReturnType<typeof setTimeout> | null = null;
 
@@ -202,6 +212,7 @@ export class GravacaoComponent {
         cliente: escolhido?.cliente,
         cnpj: escolhido?.cnpj,
         vocabulario: this.vocabulario.trim() || undefined,
+        participantes: Number(this.participantes) || 1,
         clienteRotulo: this.clienteEscolhido(),
       });
       this.titulo = this.g.titulo();
@@ -235,6 +246,13 @@ export class GravacaoComponent {
     this.erro.set(null);
     this.titulo = '';
     this.retranscrever = true;
+    this.participantes = null;
+    this.participantesEscolhido.set(false);
+  }
+
+  aoEscolherParticipantes(valor: string): void {
+    this.participantes = valor === '' ? null : Number(valor);
+    this.participantesEscolhido.set(this.participantes !== null);
   }
 
   formatarDuracao(seg: number): string {

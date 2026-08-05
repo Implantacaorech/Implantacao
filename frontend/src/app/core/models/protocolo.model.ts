@@ -47,6 +47,8 @@ export interface Protocolo {
   /** Projeto (cliente) a que o protocolo foi direcionado — nulo quando é genérico. */
   projetoId: number | null;
   cliente: string;
+  /** Quantas vozes a transcrição separou (0 = não separou). */
+  participantes: number;
   titulo: string;
   modulo: string;
   menu: string;
@@ -134,6 +136,8 @@ export interface IniciarGravacaoPayload {
   titulo?: string;
   /** Nomes dos participantes e termos da reunião — viram `hotwords` do transcritor. */
   vocabulario?: string;
+  /** Quantas pessoas vão falar. >= 2 liga a separação de locutores; 0 ou 1 desliga. */
+  participantes?: number;
   fonte: 'microfone' | 'reuniao' | 'ambos';
 }
 
@@ -161,6 +165,11 @@ export interface FichaProtocolo {
   podeAprovar: boolean;
   podeExcluir: boolean;
   ehAudio: boolean;
+  /** Rótulos de locutor presentes na transcrição (`P1`, `P2`…), na ordem em que falam.
+   * Vazio quando a gravação não separou vozes. */
+  locutores: string[];
+  /** Nomes já definidos: `{ P1: 'Ivian' }`. */
+  mapaLocutores: Record<string, string>;
 }
 
 export interface StatusProcessamento {

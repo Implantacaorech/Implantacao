@@ -30,6 +30,7 @@ export interface DadosGravacao {
   cliente: string;
   clienteCodigo: string;
   vocabulario: string;
+  participantes: number;
   responsavel: string;
   /** Frase que descreve a captura ("microfone (reunião presencial)"...) — vai no histórico. */
   fonte: string;
@@ -116,6 +117,7 @@ export class ProtocolosService {
       cliente: dados.cliente,
       clienteCodigo: dados.clienteCodigo,
       vocabulario: dados.vocabulario,
+      participantes: dados.participantes,
       videoOrigem: 'gravacao',
       status: 'Gravando',
       responsavel: dados.responsavel,

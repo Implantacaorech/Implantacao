@@ -190,8 +190,11 @@
     (11 arquivos) e a ponte `webapp/` (4).
 
 ## 🏛️ Adequação ao Guia Mestre de Arquitetura (ADR-0002 — 2026-07-31)
-> Norma adotada: [`vault/23 - Padrões/Guia Mestre de Arquitetura de Desenvolvimento.md`](<../vault/23 - Padrões/Guia Mestre de Arquitetura de Desenvolvimento.md>)
-> (Controller → Service → Repository). Decisão e contexto no
+> Norma adotada (Controller → Service → Repository): desde 2026-08-03 é a **Parte II (§13 a §21)**
+> do documento único [`PADRAO-DESENVOLVIMENTO-RECH.md`](../PADRAO-DESENVOLVIMENTO-RECH.md), que
+> consolidou o Guia Mestre com o Padrão Rech (Parte I). A leitura **aplicada a este repositório**
+> segue em [`vault/23 - Padrões/Guia Mestre de Arquitetura de Desenvolvimento.md`](<../vault/23 - Padrões/Guia Mestre de Arquitetura de Desenvolvimento.md>).
+> Decisão e contexto no
 > [ADR-0002](<../vault/17 - ADR/ADR-0002 - Adocao do Guia Mestre de Arquitetura.md>).
 > Aplicação **faseada**: o backend tem 446 arquivos e está em produção desde 19/07 — a
 > reescrita de uma vez não se paga. Cada fase termina com a guarda do CI travando o ganho.
@@ -308,6 +311,41 @@
 
 ---
 ## 🟢 Resolvidos (histórico)
+
+- **Auditoria de integridade dos 21 passos + fechamento das brechas de autorização** —
+  2026-08-05. Bateria de testes extremos (154 casos de API contra instância isolada) +
+  auditoria de código por agentes, com verificação adversarial. Nove defeitos reais,
+  todos corrigidos e cobertos por teste de regressão em `e2e/` (Playwright) e no Jest:
+  - **RN-10 valia só dentro do `PassosController`.** Quatro caminhos fechavam passos sem o
+    gate de designação: `POST /projetos/:id/anexar` (sem guard nenhum, e o `tipo` vinha cru
+    do corpo — rotular o arquivo de `termo` fechava o passo 18 de um projeto alheio),
+    `gerar-layout/:slug` (checava só perfil), `PUT /projetos/:id` (permitia se autodesignar
+    GCI e então concluir o passo 10) e `POST /fluxo/criar` (concluía o passo 1, do
+    Comercial). Passos 14 e 18 são irreversíveis, então o estado não se desfazia, e tudo
+    ficava gravado em nome de `"sistema"`. O gate desceu para
+    `DocumentosService.registrarDocumento`, via `PassosService.podeExecutarPasso`.
+  - **O processo travava no passo 5.** A rota de concluir exigia `carteira/alteracao` e o
+    Comercial tem nível `consulta`; o passo 5 é dele e não tem caminho automático. A tela
+    ainda escondia a coluna de ação (`soConsulta()`) enquanto `GET /passos` respondia
+    `liberado: true`. A rota passou a exigir só `carteira` — quem decide é `podeExecutar`,
+    que é mais estrito — e a tela mostra a ação quando o passo está liberado.
+  - **Gerar o Termo fechava o passo 18 sem redação (RN-8)**, inclusive no `modo=modelo` (em
+    branco), disparando o e-mail do modelo com o arquivo vazio anexado.
+    `concluirAutomatico` passou a recusar todo passo de `PASSOS_COM_REDACAO_DE_EMAIL`.
+  - **Com dois GCIs no projeto, nenhum recebia o e-mail** do passo 8 nem do 20 — o
+    `split(',')` cru também barrava um GCI chamado "Silva, João". Resolvido por
+    `nomesDoCampo()`, que oferece as partes E o texto inteiro.
+  - **Data de assinatura validava só o formato:** `2026-13-45` fechava o passo 7. Agora
+    `ehDataIso()` exige data real e recusa data futura (assinatura é fato consumado).
+  - **Homônimos:** o NOME é a chave de designação, então dois cadastros com o mesmo nome
+    eram indistinguíveis — o segundo herdava passos e e-mails do primeiro. O cadastro passou
+    a recusar homônimo ativo.
+  - **Corpo acima do limite respondia 404 "Cannot POST"**, dizendo que a rota não existe. O
+    body-parser saiu do `init()` do Nest para ficar ao lado do handler de erro; agora é 413.
+  - [ ] **Dívida remanescente: designação por NOME, não por id.** `projeto_pessoas.pessoa` e
+    `Projeto.gci` guardam texto. A recusa de homônimo impede a ambiguidade NOVA, mas
+    homônimo que já exista na base continua indistinguível. Migrar para `usuario_id` é
+    mudança de schema com backfill — decisão à parte.
 - **INCIDENTE: Painel fora do ar ~13h (22/07/2026, 00:00→13:21).** O container
   `painel-db-mariadb` estava com `restart=no`: quando o Docker parou, o banco não voltou
   e o Painel passou a falhar com `ECONNREFUSED 127.0.0.1:3307`. O guardião funcionou —

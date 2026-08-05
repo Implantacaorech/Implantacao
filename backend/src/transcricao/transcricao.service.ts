@@ -61,6 +61,7 @@ export class TranscricaoService {
     protocoloId: number,
     caminhoVideo: string,
     vocabulario = '',
+    pessoas = 0,
   ): Promise<void> {
     try {
       await firstValueFrom(
@@ -68,6 +69,7 @@ export class TranscricaoService {
           protocoloId,
           caminhoVideo,
           vocabulario,
+          pessoas,
         }),
       );
     } catch (e) {

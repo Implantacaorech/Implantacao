@@ -36,6 +36,7 @@ import {
 import { temPapel } from '../common/constants/perfis';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { exigirAcessoProtocolo } from './protocolos.acesso';
+import { aplicarNomes, lerMapa, locutoresDe } from './locutores';
 import { JwtService } from '@nestjs/jwt';
 import { ProtocolosService } from './protocolos.service';
 import { ProcessamentoProtocolosService } from './processamento-protocolos.service';
@@ -46,6 +47,7 @@ import { ListarProtocolosDto } from './dto/listar-protocolos.dto';
 import {
   FinalizarGravacaoDto,
   IniciarGravacaoDto,
+  MapaLocutoresDto,
   TrechoGravacaoDto,
 } from './dto/gravacao.dto';
 import {
@@ -256,13 +258,61 @@ export class ProtocolosController {
   ) {
     const p = await this.protocolos.buscarPorId(id);
     exigirAcessoProtocolo(p, user);
+    // A transcrição sai da API JÁ com os nomes aplicados; o texto gravado continua com os
+    // rótulos P1/P2, para renomear seguir sendo reversível (ver locutores.ts).
+    const mapa = lerMapa(p.mapaLocutores);
+    const rotulos = locutoresDe(p.transcricao);
     return new ApiEnvelope({
-      protocolo: p,
+      protocolo: { ...p, transcricao: aplicarNomes(p.transcricao, mapa) },
+      /** Rótulos presentes na transcrição, na ordem em que falam — é o que a tela de
+       * renomear pergunta. Vazio quando a gravação não separou vozes. */
+      locutores: rotulos,
+      mapaLocutores: mapa,
       // Todos os papéis do usuário, não só o principal (correção de 2026-07-28).
       podeAprovar: temPapel(user, ...PERFIS_APROVA_PROTOCOLO),
       // Mesma restrição de aprovar/reprovar (decisão do usuário em 2026-07-30).
       podeExcluir: temPapel(user, ...PERFIS_APROVA_PROTOCOLO),
       ehAudio: ehAudio(p.videoNome),
+    });
+  }
+
+  @Post(':id/locutores')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Define os NOMES dos locutores (P1 -> Ivian) — não reescreve a transcrição',
+  })
+  async renomearLocutores(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: MapaLocutoresDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    const p = await this.protocolos.buscarPorId(id);
+    exigirAcessoProtocolo(p, user);
+    // Só aceita rótulos que EXISTEM na transcrição: evita encher o mapa de lixo (e deixa
+    // claro na tela que renomear alguém que não falou não faz nada).
+    const validos = new Set(locutoresDe(p.transcricao));
+    const mapa: Record<string, string> = {};
+    for (const [rotulo, nome] of Object.entries(dto.mapa ?? {})) {
+      const chave = rotulo.trim().toUpperCase();
+      const limpo = (nome ?? '').trim();
+      if (validos.has(chave) && limpo) mapa[chave] = limpo.slice(0, 80);
+    }
+    await this.protocolos.atualizar(id, {
+      mapaLocutores: JSON.stringify(mapa),
+    });
+    await this.protocolos.salvarHistorico(
+      id,
+      `Locutores nomeados: ${
+        Object.entries(mapa)
+          .map(([r, n]) => `${r}=${n}`)
+          .join(', ') || '(limpo)'
+      }.`,
+      user.nome,
+    );
+    return new ApiEnvelope({
+      mapaLocutores: mapa,
+      transcricao: aplicarNomes(p.transcricao, mapa),
     });
   }
 

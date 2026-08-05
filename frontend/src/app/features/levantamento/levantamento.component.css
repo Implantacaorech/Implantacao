@@ -198,6 +198,20 @@ details.lev-mod[open] > summary::before {
   margin-top: 10px;
   z-index: 2;
 }
+/* Estado do salvamento automático — ocupa o lugar do antigo botão "Salvar respostas". */
+.lev-auto {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ok);
+  white-space: nowrap;
+}
+.lev-auto.pendente {
+  color: var(--muted);
+}
 .lev-completo {
   display: inline-flex;
   align-items: center;

@@ -115,10 +115,10 @@
                       @if (f.menus) { <span class="fun">menu: {{ f.menus }}</span> }
                     </span>
                     <span class="setnota">
-                      <input type="text" inputmode="numeric" [value]="f.nota == null ? '' : f.nota"
+                      <input type="text" inputmode="numeric" [value]="f.nota === null ? '' : f.nota"
                              placeholder="—" [disabled]="!editavel()" [attr.aria-label]="'Nota da função ' + f.codigo"
                              (input)="editar(m, f, $any($event.target).value)" />
-                      <span class="nbar"><i [class]="nb(f.nota)" [style.width.%]="f.nota == null ? 0 : f.nota * 10"></i></span>
+                      <span class="nbar"><i [class]="nb(f.nota)" [style.width.%]="f.nota === null ? 0 : f.nota * 10"></i></span>
                     </span>
                   </div>
                 }

@@ -23,14 +23,15 @@ relacionados:
 Norma de arquitetura deste repositório, adotada em 2026-07-31 pelo
 [[ADR-0002 - Adocao do Guia Mestre de Arquitetura]].
 
-Original do usuário: `Padronizacao_de_estrutura/GUIA_MESTRE_ARQUITETURA_DESENVOLVIMENTO.md`.
-Esta nota é a versão **aplicada** — o texto normativo mais a leitura de como cada regra vale
-neste projeto, incluindo os desvios reconhecidos e o prazo deles.
-
-> **Relação com o [Padrão Rech](<../../MD Padrao desenv/Padrao_Rech.md>):** o Padrão Rech
-> (§4.8) manda **qual** stack usar — Angular · NestJS + TypeORM · MariaDB · processo único.
-> Este guia manda **como organizar o código dentro** dela. Não se contradizem; onde houver
-> conflito, o Padrão Rech prevalece (é norma da empresa, este é do projeto).
+> **O texto normativo mudou de casa em 2026-08-03.** Ele agora é a **Parte II (§13 a §21)** do
+> documento único [`PADRAO-DESENVOLVIMENTO-RECH.md`](../../PADRAO-DESENVOLVIMENTO-RECH.md), que
+> consolida numa peça só o Padrão Rech (Parte I, §3 a §10 — **qual** stack usar) e este guia
+> (**como organizar o código dentro** dela). Em conflito, a Parte I prevalece: é norma da
+> empresa, esta é do projeto.
+>
+> **Esta nota continua sendo a versão *aplicada***: como cada camada se chama nas três frentes
+> daqui, onde mora cada repository, quais guardas rodam no CI e quais desvios estão reconhecidos
+> com prazo. Para a norma em si, leia o documento único.
 
 ## Princípios
 

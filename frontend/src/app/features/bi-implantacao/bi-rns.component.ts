@@ -233,7 +233,9 @@ export class BiRnsComponent {
         l.rnsImplantacao, l.statusImplantacao, l.tecnico, l.responsavel,
       ].map(escapar).join(';'),
     );
-    const csv = `﻿${cab.join(';')}\n${linhas.join('\n')}`;
+    // `\uFEFF` (BOM) na frente do CSV: é o que faz o Excel abrir o arquivo
+    // como UTF-8 em vez de ANSI (sem ele, acento sai trocado na planilha).
+    const csv = `\uFEFF${cab.join(';')}\n${linhas.join('\n')}`;
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
     const a = document.createElement('a');
     a.href = url;

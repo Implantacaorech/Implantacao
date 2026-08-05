@@ -23,15 +23,10 @@ export class LevantamentoService {
     return r.data;
   }
 
-  async salvar(projetoId: number, respostas: Record<string, string>): Promise<number> {
-    const r = await firstValueFrom(
-      this.http.put<ApiEnvelope<{ respondidas: number }>>(this.base(projetoId), respostas),
-    );
-    return r.data.respondidas;
-  }
-
-  /** Autosave de UMA pergunta. `versao` é a que estava em tela — o backend responde 409 se
-   * outro técnico gravou nesse meio tempo. */
+  /** Autosave de UMA pergunta — único caminho de gravação da tela desde que o botão "Salvar
+   * respostas" saiu. `versao` é a que estava em tela: o backend responde 409 se outro técnico
+   * gravou nesse meio tempo. (O PUT em lote continua existindo no backend para importação e
+   * uso administrativo, fora do navegador.) */
   async salvarLinha(
     projetoId: number,
     linhaId: number,

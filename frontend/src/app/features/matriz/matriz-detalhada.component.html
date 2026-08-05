@@ -163,10 +163,10 @@
               @if (mn.funcao) { <span class="fun">{{ mn.funcao }}</span> }
             </span>
             <span class="setnota">
-              <input type="text" inputmode="numeric" [value]="mn.nota == null ? '' : mn.nota"
+              <input type="text" inputmode="numeric" [value]="mn.nota === null ? '' : mn.nota"
                      placeholder="—" [disabled]="!editavel()" [attr.aria-label]="'Nota de ' + mn.codigo"
                      (input)="editar(m, mn, $any($event.target).value)" />
-              <span class="nbar"><i [class]="nb(mn.nota)" [style.width.%]="mn.nota == null ? 0 : mn.nota * 10"></i></span>
+              <span class="nbar"><i [class]="nb(mn.nota)" [style.width.%]="mn.nota === null ? 0 : mn.nota * 10"></i></span>
             </span>
           </div>
         }

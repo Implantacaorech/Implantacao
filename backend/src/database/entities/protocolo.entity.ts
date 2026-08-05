@@ -57,6 +57,17 @@ export class Protocolo {
   @Column({ type: 'text', default: '' })
   vocabulario: string;
 
+  /** Quantas vozes separar na transcrição (0 = não separar). INFORMADO por quem grava, e
+   * não descoberto: testado em 2026-07-31, o agrupamento automático inventou de 7 a 10
+   * vozes onde havia 2 — microfone de sala não dá contraste para adivinhar sozinho. */
+  @Column({ default: 0 })
+  participantes: number;
+
+  /** Nomes dos locutores, JSON `{"P1":"Ivian"}`. A transcrição guarda o RÓTULO; o nome
+   * vive aqui, então renomear é reversível e não reescreve o texto — ver locutores.ts. */
+  @Column({ name: 'mapa_locutores', type: 'text', default: '' })
+  mapaLocutores: string;
+
   @Column({ length: 255, default: '' })
   titulo: string;
 

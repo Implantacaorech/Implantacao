@@ -285,6 +285,9 @@ class IniciarTranscricaoRequest(BaseModel):
     # Termos esperados (nomes dos participantes, cliente, jargão do SIGER) — ver
     # transcricao/transcritor.py, seção VOCABULÁRIO.
     vocabulario: str = ""
+    # Quantas vozes separar (>= 2 liga a diarização). Informado, não descoberto — ver
+    # transcricao/diarizacao.py.
+    pessoas: int = 0
 
 
 @app.post("/transcrever", status_code=202)
@@ -294,7 +297,9 @@ def iniciar_transcricao(req: IniciarTranscricaoRequest):
     webapp/protocolos.py:processar (só a etapa de transcrição — a análise por IA e a
     máquina de estados do Protocolo continuam no NestJS, que é quem tem o banco)."""
     try:
-        transcricao_servico.iniciar(req.protocoloId, req.caminhoVideo, req.vocabulario)
+        transcricao_servico.iniciar(
+            req.protocoloId, req.caminhoVideo, req.vocabulario, req.pessoas
+        )
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail="Arquivo de vídeo não encontrado.") from e
     except RuntimeError as e:
