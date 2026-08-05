@@ -21,8 +21,19 @@ export const CAMPOS_OBRIGATORIOS: Record<Etapa, string[]> = {
     'gci',
     'dataLevantamento',
   ],
-  Projeto: ['cliente', 'cnpj', 'numeroProjeto', 'modulos', 'horasCobradas'], // consultor é definido na Designação
+  // A Designação (passos 8–9) é onde o consultor passa a existir, então é ela que o cobra
+  // para liberar o avanço. O `dataUsoOficial` saiu daqui para o Projeto quando as duas
+  // trocaram de lugar (2026-08-05): a data de go-live é dado do Projeto de Implantação, e
+  // exigi-la já na Designação travaria o avanço de quem ainda não a tem.
   Designação: [
+    'cliente',
+    'cnpj',
+    'numeroProjeto',
+    'modulos',
+    'horasCobradas',
+    'consultor',
+  ],
+  Projeto: [
     'cliente',
     'cnpj',
     'numeroProjeto',
@@ -89,11 +100,16 @@ export const DOC_LABELS: Record<string, string> = {
 
 // Documentos que já devem existir para o projeto estar (corretamente) na etapa. Acumulativo,
 // encadeando a tríade obrigatória: Projeto · Cronograma · Termo. Espelha webapp/db.py:GATES.
+//
+// A lista acompanha a ORDEM de `ETAPAS`: quando `Designação` passou para antes de `Projeto`
+// (2026-08-05, para bater com os passos 8–9 e 10–12), ela deixou de exigir o documento
+// `projeto` — que agora é PRODUZIDO depois dela, no passo 10. Mantê-lo aqui exigiria, para
+// entrar na Designação, um arquivo que só nasce duas etapas à frente: travava todo projeto.
 export const GATES: Record<Etapa, TipoDocumentoGate[]> = {
   Agendamento: [],
   Levantamento: [],
+  Designação: ['levantamento'],
   Projeto: ['levantamento'],
-  Designação: ['levantamento', 'projeto'],
   'Cronograma e Check-list': ['levantamento', 'projeto'],
   Encerramento: ['levantamento', 'projeto', 'cronograma', 'checklist'],
 };

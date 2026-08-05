@@ -116,10 +116,14 @@ coberta em `e2e/` (Playwright, 29 casos) e no Jest (950 testes).
   13); o **passo 8 fechava em nome do Administrativo**, sendo do Coordenador; o Gmail
   montava o MIME fora do `try` e o e-mail sumia do histórico; a tela deixava enviar com
   assunto/corpo vazios.
-- ⚠️ **Aberto, precisa de decisão:** a ordem de `ETAPAS` contradiz a ordem dos passos —
-  Designação (8–9) vem ANTES de Projeto (10–12) no processo, mas DEPOIS no array, então a
-  macro-etapa **regride** no stepper/funil/Kanban/`proxEtapa`. Não corrigi no escuro porque
-  mexe nos gates do motor de auto-avanço. Detalhe em `docs/pendencias.md`.
+- **`ETAPAS` foi alinhado aos passos** (decisão do usuário): **Designação agora vem ANTES de
+  Projeto**, no backend e no frontend. Antes o array tinha as duas invertidas e a macro-etapa
+  **regredia** ao sair da Designação (stepper, funil, Kanban, `proxEtapa`). Não houve
+  migração — `projetos.etapa` guarda o NOME. Junto foi preciso mover o que era indexado por
+  nome e codificava a ordem antiga: `GATES.Designação` não exige mais o documento `projeto`,
+  e `dataUsoOficial` passou de `CAMPOS_OBRIGATORIOS.Designação` para `.Projeto`.
+  ⚠️ Ao mexer em `ETAPAS`, revise sempre `GATES`, `ACAO_ENTRADA` e `CAMPOS_OBRIGATORIOS`
+  (`metricas.constants.ts`) — eles são por NOME e não acompanham a reordenação sozinhos.
 - Dívida remanescente: designação casa por **nome**, não por id (`projeto_pessoas.pessoa`,
   `Projeto.gci`) — ver `docs/pendencias.md`.
 

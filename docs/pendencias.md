@@ -364,20 +364,19 @@
     `Projeto.gci` guardam texto. A recusa de homônimo impede a ambiguidade NOVA, mas
     homônimo que já exista na base continua indistinguível. Migrar para `usuario_id` é
     mudança de schema com backfill — decisão à parte.
-  - [ ] **A ordem de `ETAPAS` contradiz a ordem dos passos** (achado confirmado, NÃO
-    corrigido — precisa de decisão). `ETAPAS` é
-    `Agendamento · Levantamento · Projeto · Designação · Cronograma e Check-list ·
-    Encerramento`, mas os passos colocam **Designação (8–9) ANTES de Projeto (10–12)**. Como
-    `sincronizarEtapa` deriva a macro-etapa do primeiro passo pendente, o projeto anda para
-    "Designação" (índice 3) e depois para "Projeto" (índice 2) — ou seja, **regride** em
-    tudo que lê a ordem do array: stepper, funil, % de progresso, coluna do Kanban e o
-    `proxEtapa` do botão "Avançar" (`metricas.service.ts:191-197,493-563`,
-    `monitoramento.service.ts:560-601`).
-    Não corrigi porque trocar as duas entradas muda, de uma vez, os gates de documento do
-    motor de auto-avanço e a leitura de todas essas telas — e qual das duas ordens é a
-    "certa" é decisão de negócio: ou `ETAPAS` se alinha aos passos (Designação antes de
-    Projeto), ou os passos 8–9 pertencem a outra macro-etapa. Definido isso, a correção é
-    pequena; o risco está em fazê-la no escuro.
+  - **`ETAPAS` alinhado aos passos** (decisão do usuário, 2026-08-05). O array tinha
+    `Projeto` antes de `Designação`, mas os passos põem **Designação (8–9) antes de Projeto
+    (10–12)**; como a macro-etapa sai do primeiro passo pendente, o projeto **regredia** ao
+    sair da Designação em tudo que lê a ordem do array — stepper, funil, % de progresso,
+    coluna do Kanban e o `proxEtapa` do botão "Avançar". As duas trocaram de lugar, no
+    backend e no frontend. O valor gravado em `projetos.etapa` é o NOME, então **não houve
+    migração de dados**.
+    Trocar a ordem exigiu mover junto o que era indexado por nome e codificava a sequência
+    antiga: `GATES.Designação` deixou de exigir o documento `projeto` (que agora nasce duas
+    etapas depois — mantê-lo travaria todo projeto) e `dataUsoOficial` saiu de
+    `CAMPOS_OBRIGATORIOS.Designação` para `.Projeto`, já que a data de go-live é dado do
+    Projeto de Implantação. Guardado por `e2e/…/05` ("a macro-etapa nunca regride enquanto
+    os 21 passos avançam"), que caminha os 21 passos e confere o stepper.
 - **INCIDENTE: Painel fora do ar ~13h (22/07/2026, 00:00→13:21).** O container
   `painel-db-mariadb` estava com `restart=no`: quando o Docker parou, o banco não voltou
   e o Painel passou a falhar com `ECONNREFUSED 127.0.0.1:3307`. O guardião funcionou —

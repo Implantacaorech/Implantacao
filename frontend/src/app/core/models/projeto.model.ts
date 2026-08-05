@@ -8,11 +8,16 @@ export type Etapa =
 
 export type Situacao = 'Em andamento' | 'Em risco' | 'Pausado' | 'Concluído';
 
+/** NA ORDEM DO PROCESSO — espelha `ETAPAS` de backend/src/common/constants/perfis.ts, que é
+ * a fonte da verdade. `Designação` vem antes de `Projeto` porque é assim que os 21 passos
+ * correm: 8–9 são a Designação, 10–12 são o Projeto. As duas estavam invertidas até
+ * 2026-08-05, o que fazia o Kanban e o stepper mostrarem o projeto REGREDINDO ao sair da
+ * Designação. Mexer aqui exige mexer no backend junto. */
 export const ETAPAS: Etapa[] = [
   'Agendamento',
   'Levantamento',
-  'Projeto',
   'Designação',
+  'Projeto',
   'Cronograma e Check-list',
   'Encerramento',
 ];

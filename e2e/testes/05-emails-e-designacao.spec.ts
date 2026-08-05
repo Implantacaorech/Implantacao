@@ -112,6 +112,43 @@ test('nenhum token do seletor de modelos sai literal no e-mail do passo', async 
   });
 });
 
+/**
+ * A macro-etapa é derivada do primeiro passo pendente, e as telas (stepper, funil, Kanban,
+ * "Avançar") leem a ORDEM do array `ETAPAS`. Enquanto `Designação` vinha depois de `Projeto`
+ * nesse array — mas antes dele nos passos —, o projeto REGREDIA ao sair da Designação.
+ */
+test('a macro-etapa nunca regride enquanto os 21 passos avançam', async ({ request }) => {
+  const ORDEM = ['Agendamento', 'Levantamento', 'Designação', 'Projeto', 'Cronograma e Check-list', 'Encerramento'];
+  const adm = await token(request, USUARIOS.adm);
+  const pid = await projetoNoPasso(request, 'Ordem das Etapas', 0);
+
+  const marcacao: Record<number, boolean> = { 7: true, 12: true };
+  const redige = [4, 5, 11, 15, 16, 17, 18, 19, 20, 21];
+  let anterior = -1;
+  const trilha: string[] = [];
+
+  for (let n = 1; n <= 21; n++) {
+    const data: any = {};
+    if (marcacao[n]) { data.marcado = true; data.dataMarcada = '2026-08-05'; }
+    if (redige.includes(n)) data.email = { para: ['x@y.z'], assunto: 'a', corpo: 'b' };
+    const r = await request.post(`/api/projetos/${pid}/passos/${n}/concluir`, { headers: cab(adm), data });
+    expect(r.ok(), `passo ${n}: ${await r.text()}`).toBe(true);
+    if (n === 11 || n === 19) {
+      await request.post(`/api/projetos/${pid}/passos/${n}/conferir`, { headers: cab(adm) });
+    }
+    const proj = dados(await (await request.get(`/api/projetos/${pid}`, { headers: cab(adm) })).json());
+    const idx = ORDEM.indexOf(proj.etapa);
+    expect(idx, `etapa desconhecida "${proj.etapa}" após o passo ${n}`).toBeGreaterThanOrEqual(0);
+    expect(idx, `regrediu para "${proj.etapa}" após o passo ${n} — trilha: ${trilha.join(' -> ')}`)
+      .toBeGreaterThanOrEqual(anterior);
+    if (idx !== anterior) trilha.push(`${n}:${proj.etapa}`);
+    anterior = idx;
+  }
+
+  const cabecalho = dados(await (await request.get(`/api/projetos/${pid}/cabecalho`, { headers: cab(adm) })).json());
+  expect(cabecalho.stepper.map((s: any) => s.nome)).toEqual(ORDEM);
+});
+
 /** O passo 8 é do COORDENADOR, mas a rota que salva a equipe também aceita o Administrativo
  * (que a mantém ao longo do projeto). Salvar a lista não pode fechar o passo dele. */
 test.describe('passo 8 — salvar a equipe só conclui para quem responde pelo passo', () => {

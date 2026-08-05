@@ -96,8 +96,9 @@ describe('HomeService', () => {
 
   it('sem pendência de documento/ação, mas com gate ok -> "Avançar para X"', async () => {
     // Levantamento não exige nenhum doc para SI mesma (GATES.Levantamento=[]); a próxima
-    // etapa (Projeto) exige "levantamento", que aqui está presente -> sem próxima ação de
-    // doc; ação de entrada de Projeto não existe -> avancarOk true -> "Avançar para Projeto".
+    // etapa (Designação, passos 8-9) exige "levantamento", que aqui está presente -> sem
+    // próxima ação de doc; a ação de entrada da Designação é "gci definido", que o projeto
+    // de teste tem -> avancarOk true -> "Avançar para Designação".
     documentos.find.mockResolvedValue([
       {
         id: 1,
@@ -118,7 +119,7 @@ describe('HomeService', () => {
     expect(r.pendencias[0]).toMatchObject({
       id: 1,
       tipo: 'avancar',
-      acao: 'Avançar para Projeto',
+      acao: 'Avançar para Designação',
     });
   });
 
