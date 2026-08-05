@@ -109,6 +109,17 @@ coberta em `e2e/` (Playwright, 29 casos) e no Jest (950 testes).
   `cwd` FORA de `backend/` — senão o `backend/dados/smtp.json` é encontrado e **e-mails saem
   de verdade**. Receita completa em [e2e/README.md](../e2e/README.md). O
   `playwright.config.ts` recusa a porta 5100 no boot.
+- Segundo lote (os 54 achados únicos, todos verificados): a **RN-7 não se cumpria pela
+  tela** — a prévia do e-mail do passo 5 era montada antes de a descrição existir, e a tela
+  devolvia esse corpo, então o Administrativo recebia "Descrição do Comercial:" em branco;
+  os **tokens do modelo saíam literais** ao CLIENTE (a tela oferece 25, o montador resolvia
+  13); o **passo 8 fechava em nome do Administrativo**, sendo do Coordenador; o Gmail
+  montava o MIME fora do `try` e o e-mail sumia do histórico; a tela deixava enviar com
+  assunto/corpo vazios.
+- ⚠️ **Aberto, precisa de decisão:** a ordem de `ETAPAS` contradiz a ordem dos passos —
+  Designação (8–9) vem ANTES de Projeto (10–12) no processo, mas DEPOIS no array, então a
+  macro-etapa **regride** no stepper/funil/Kanban/`proxEtapa`. Não corrigi no escuro porque
+  mexe nos gates do motor de auto-avanço. Detalhe em `docs/pendencias.md`.
 - Dívida remanescente: designação casa por **nome**, não por id (`projeto_pessoas.pessoa`,
   `Projeto.gci`) — ver `docs/pendencias.md`.
 

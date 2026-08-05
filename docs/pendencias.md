@@ -342,10 +342,42 @@
     a recusar homônimo ativo.
   - **Corpo acima do limite respondia 404 "Cannot POST"**, dizendo que a rota não existe. O
     body-parser saiu do `init()` do Nest para ficar ao lado do handler de erro; agora é 413.
+  Segundo lote (todos os 54 achados únicos já passaram pela verificação adversarial):
+  - **RN-7 não se cumpria pela tela.** A prévia do e-mail do passo 5 era montada quando o
+    formulário ABRIA, antes de a pessoa escrever, e a tela devolvia esse corpo já
+    substituído ao concluir — o Administrativo recebia "Descrição do Comercial:" em branco,
+    justamente o dado que a regra manda viajar. A prévia passou a aceitar a descrição
+    pendente (`?descricao=`) e a tela a remonta ao sair do campo.
+  - **Tokens do modelo saíam literais.** A tela Modelos de E-mail oferece 25 variáveis; o
+    montador dos passos resolvia 13. `{{CONTATO_TEL}}` num modelo `passo-N` ia literal para
+    o CLIENTE nos passos 15/16/21. `TOKENS_PASSO` passou a herdar `VAR_CAMPO`.
+  - **Passo 8 fechava em nome do Administrativo**, embora seja do Coordenador: a rota que
+    salva a equipe aceita os dois.
+  - **GmailService montava o MIME fora do `try`:** um anexo ilegível fazia o e-mail sumir do
+    histórico, nem como falha.
+  - **A tela deixava enviar e-mail com assunto/corpo/destinatário vazios** e o backend
+    trocava em silêncio pelo modelo padrão — certo para quem não mexeu em nada, silencioso
+    demais para quem apagou o texto. A tela passou a cobrar o que ela mesma preencheu.
+
+  Continua em aberto:
   - [ ] **Dívida remanescente: designação por NOME, não por id.** `projeto_pessoas.pessoa` e
     `Projeto.gci` guardam texto. A recusa de homônimo impede a ambiguidade NOVA, mas
     homônimo que já exista na base continua indistinguível. Migrar para `usuario_id` é
     mudança de schema com backfill — decisão à parte.
+  - [ ] **A ordem de `ETAPAS` contradiz a ordem dos passos** (achado confirmado, NÃO
+    corrigido — precisa de decisão). `ETAPAS` é
+    `Agendamento · Levantamento · Projeto · Designação · Cronograma e Check-list ·
+    Encerramento`, mas os passos colocam **Designação (8–9) ANTES de Projeto (10–12)**. Como
+    `sincronizarEtapa` deriva a macro-etapa do primeiro passo pendente, o projeto anda para
+    "Designação" (índice 3) e depois para "Projeto" (índice 2) — ou seja, **regride** em
+    tudo que lê a ordem do array: stepper, funil, % de progresso, coluna do Kanban e o
+    `proxEtapa` do botão "Avançar" (`metricas.service.ts:191-197,493-563`,
+    `monitoramento.service.ts:560-601`).
+    Não corrigi porque trocar as duas entradas muda, de uma vez, os gates de documento do
+    motor de auto-avanço e a leitura de todas essas telas — e qual das duas ordens é a
+    "certa" é decisão de negócio: ou `ETAPAS` se alinha aos passos (Designação antes de
+    Projeto), ou os passos 8–9 pertencem a outra macro-etapa. Definido isso, a correção é
+    pequena; o risco está em fazê-la no escuro.
 - **INCIDENTE: Painel fora do ar ~13h (22/07/2026, 00:00→13:21).** O container
   `painel-db-mariadb` estava com `restart=no`: quando o Docker parou, o banco não voltou
   e o Painel passou a falhar com `ECONNREFUSED 127.0.0.1:3307`. O guardião funcionou —

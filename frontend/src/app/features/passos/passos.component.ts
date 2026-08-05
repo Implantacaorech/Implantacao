@@ -408,11 +408,26 @@ export class PassosComponent {
       dados.dataMarcada = this.dataMarcada;
     }
     if (p.redigeEmail) {
+      const para = this.emailPara
+        .split(/[,;]+/)
+        .map((e) => e.trim())
+        .filter(Boolean);
+      // Campo vazio faz o backend cair no MODELO padrão — comportamento certo para quem não
+      // mexeu em nada, mas silencioso demais para quem APAGOU o texto: a pessoa acha que
+      // mandou o que está vendo (em branco) e sai o institucional. Nestes passos o e-mail É
+      // o entregável, então a tela cobra o que ela mesma já preencheu (achado de 2026-08-05).
+      if (para.length === 0) {
+        this.erro.set('Informe ao menos um destinatário para o e-mail.');
+        return;
+      }
+      if (!this.emailAssunto.trim() || !this.emailCorpo.trim()) {
+        this.erro.set(
+          'O assunto e o corpo do e-mail não podem ficar vazios — revise o texto antes de enviar.',
+        );
+        return;
+      }
       dados.email = {
-        para: this.emailPara
-          .split(/[,;]+/)
-          .map((e) => e.trim())
-          .filter(Boolean),
+        para,
         assunto: this.emailAssunto.trim(),
         corpo: this.emailCorpo,
       };
