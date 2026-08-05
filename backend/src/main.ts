@@ -8,20 +8,41 @@ import helmet from 'helmet';
 import { createServer as criarServidorHttp } from 'http';
 import { createServer as criarServidorHttps } from 'https';
 import { AppModule } from './app.module';
+import { assetsEstaticos } from './common/assets-estaticos';
+import { erroDeMiddleware } from './common/filters/erro-de-middleware';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { AppConfig } from './config/configuration';
 import { httpsPainel } from './config/https';
+
+/** Teto do corpo JSON/urlencoded — o mesmo padrão do Express/Nest. Os DTOs já limitam cada
+ * campo bem abaixo disso; quem passar daqui recebe 413. */
+const LIMITE_CORPO = '100kb';
 
 async function bootstrap(): Promise<void> {
   // HTTPS é OPCIONAL (ver config/https.ts). Sem ele, o caminho é o de sempre; com ele, o
   // MESMO app express atende HTTP e HTTPS em dois servidores — um processo só.
   const tls = httpsPainel();
   const servidorExpress = tls ? express() : undefined;
+  // `bodyParser: false` e o parser montado à mão logo abaixo, por uma razão de ORDEM: o
+  // parser que o Nest instala sozinho entra durante o `init()`, DEPOIS de qualquer
+  // `app.use()` nosso — e o Express só considera os handlers de erro que estão adiante na
+  // pilha de quem falhou. Com o parser do Nest, um corpo acima do limite terminava no 404
+  // genérico ("Cannot POST /api/…", dizendo que a rota não existe) em vez de 413, e não
+  // havia posição em que o nosso handler pudesse ser registrado para pegá-lo. Montando o
+  // parser aqui, ele e o handler de erro ficam lado a lado, na ordem certa.
   const app = servidorExpress
-    ? await NestFactory.create(AppModule, new ExpressAdapter(servidorExpress))
-    : await NestFactory.create(AppModule);
+    ? await NestFactory.create(AppModule, new ExpressAdapter(servidorExpress), {
+        bodyParser: false,
+      })
+    : await NestFactory.create(AppModule, { bodyParser: false });
   const config = app.get(ConfigService<AppConfig, true>);
+
+  // Mesmos parsers e o mesmo limite padrão que o Nest usaria (100 kb) — o que muda é só
+  // quem os registra. Uploads continuam por multipart/multer, que não passa por aqui.
+  app.use(express.json({ limit: LIMITE_CORPO }));
+  app.use(express.urlencoded({ extended: true, limit: LIMITE_CORPO }));
+  app.use(erroDeMiddleware());
 
   // Este servidor roda em HTTP puro na rede interna, sem TLS/reverse proxy (ver
   // docs/migracao/05-plano-de-virada.md, acesso por http://I7M1700-01-EVE:5100). Vários
@@ -65,6 +86,12 @@ async function bootstrap(): Promise<void> {
       },
     }),
   );
+  // Antes do fallback de SPA do ServeStaticModule: arquivo de build que não existe mais
+  // vira 404, e não `index.html`. Sem isto, a aba aberta antes de um rebuild recebe
+  // `text/html` no lugar de um chunk e a navegação preguiçosa quebra de forma silenciosa
+  // (ver common/assets-estaticos.ts — incidente "os logins não funcionam", 2026-08-03).
+  app.use(assetsEstaticos(config.get('frontendDistPath', { infer: true })));
+
   app.enableCors({
     origin: config.get('corsOrigins', { infer: true }),
     credentials: true,

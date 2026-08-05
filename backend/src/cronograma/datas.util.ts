@@ -6,6 +6,18 @@ export function parseIso(s: string): Date {
   return new Date(Date.UTC(y, m - 1, d));
 }
 
+/** A string é uma data ISO `aaaa-mm-dd` que EXISTE no calendário?
+ *
+ * Conferir só o formato com regex deixava passar "2026-13-45" (mês 13, dia 45) e gravava
+ * uma assinatura num dia inexistente — achado de 2026-08-05 nos passos 7 e 12. `Date.UTC`
+ * normaliza o que estoura (2026-02-31 vira 03-03), então a prova é o caminho de volta:
+ * a data só é válida se reimprimir exatamente igual. */
+export function ehDataIso(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = parseIso(s);
+  return !Number.isNaN(d.getTime()) && toIso(d) === s;
+}
+
 export function toIso(d: Date): string {
   return d.toISOString().slice(0, 10);
 }

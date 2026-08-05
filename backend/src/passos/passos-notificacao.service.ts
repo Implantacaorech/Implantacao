@@ -12,7 +12,7 @@ import { ModeloEmail } from '../database/entities/modelo-email.entity';
 import { UsersService } from '../users/users.service';
 import { MailerService } from '../email/mailer.service';
 import { Anexo } from '../email/anexo';
-import { DefinicaoPasso } from './passos.constants';
+import { DefinicaoPasso, nomesDoCampo } from './passos.constants';
 import { DestinatariosPassoService } from './destinatarios-passo.service';
 import {
   ANEXO_POR_PASSO,
@@ -167,12 +167,12 @@ export class PassosNotificacaoService {
         return [...adm, ...coord];
       }
       case 'gci':
-        return this.emailsDeNomes([projeto.gci]);
+        return this.emailsDeNomes(nomesDoCampo(projeto.gci));
       case 'consultores': {
         // A fonte da verdade são os vínculos por papel; `Projeto.consultor` é só o espelho.
         const nomes = await this.nomesDoPapel(projeto.id, 'consultor');
         return this.emailsDeNomes(
-          nomes.length > 0 ? nomes : projeto.consultor.split(','),
+          nomes.length > 0 ? nomes : nomesDoCampo(projeto.consultor),
         );
       }
       case 'levantadores':
@@ -194,6 +194,7 @@ export class PassosNotificacaoService {
   private async valoresDoPasso(
     projeto: Projeto,
     passo: number,
+    descricaoPendente?: string,
   ): Promise<Record<string, string>> {
     const [registro, anterior, levantadores] = await Promise.all([
       this.passos.findOne({ where: { projetoId: projeto.id, passo } }),
@@ -203,7 +204,13 @@ export class PassosNotificacaoService {
       this.nomesDoPapel(projeto.id, 'levantador'),
     ]);
     return {
+      // `descricaoPendente` é a descrição que a pessoa ACABOU de digitar e que ainda não foi
+      // gravada. Sem ela, a prévia do passo 5 era montada com a descrição VAZIA (o passo
+      // ainda não existia no banco), a tela devolvia esse corpo já substituído e o
+      // Administrativo recebia "Descrição do Comercial:" em branco — a RN-7 nunca se
+      // cumpria pelo caminho da tela (achado de 2026-08-05).
       _descricaoPasso: (
+        descricaoPendente ||
         registro?.observacao ||
         anterior?.observacao ||
         ''
@@ -231,8 +238,16 @@ export class PassosNotificacaoService {
   }
 
   /** Monta o e-mail do passo sem enviar — usado pela pré-visualização, pela tela de redação
-   * e pelo próprio envio. `null` quando o passo não tem e-mail. */
-  async montar(projeto: Projeto, passo: number): Promise<EmailMontado | null> {
+   * e pelo próprio envio. `null` quando o passo não tem e-mail.
+   *
+   * `descricaoPendente` é o texto que a pessoa está escrevendo AGORA na tela, antes de
+   * concluir: a prévia precisa mostrá-lo já embutido, porque é esse corpo que ela revisa e
+   * devolve ao Painel (ver `valoresDoPasso`). */
+  async montar(
+    projeto: Projeto,
+    passo: number,
+    descricaoPendente?: string,
+  ): Promise<EmailMontado | null> {
     const padrao = EMAIL_POR_PASSO.get(passo);
     if (!padrao) return null;
 
@@ -247,7 +262,7 @@ export class PassosNotificacaoService {
     );
     const para = [...new Set([...listas.flat(), ...config.extras])];
 
-    const extras = await this.valoresDoPasso(projeto, passo);
+    const extras = await this.valoresDoPasso(projeto, passo, descricaoPendente);
     const anexos = await this.anexoDoPasso(projeto.id, passo);
 
     return {

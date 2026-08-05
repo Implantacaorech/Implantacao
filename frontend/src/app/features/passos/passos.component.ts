@@ -266,6 +266,39 @@ export class PassosComponent {
     return destino ? ['/projetos', String(this.projetoId), ...destino] : null;
   }
 
+  /** (Re)monta a prévia do e-mail do passo com a descrição digitada até agora.
+   *
+   * Chamado ao ABRIR o formulário e de novo quando a pessoa sai do campo de descrição: o
+   * corpo que ela revisa é o mesmo que o Painel vai enviar, então ele precisa já conter o
+   * que ela escreveu. Enquanto a prévia era montada uma única vez, no início, a descrição
+   * do Comercial (passo 5) saía SEMPRE em branco — a tela devolvia ao backend um corpo
+   * montado antes de o texto existir (RN-7, achado de 2026-08-05). */
+  private async carregarPreviaEmail(p: Passo): Promise<void> {
+    this.carregandoEmail.set(true);
+    try {
+      const previa = await this.service.previaEmail(
+        this.projetoId,
+        p.numero,
+        this.descricao,
+      );
+      if (previa) {
+        this.emailPara = previa.para.join(', ');
+        this.emailAssunto = previa.assunto;
+        this.emailCorpo = previa.corpo;
+        this.emailAnexo.set(previa.anexo);
+      }
+    } finally {
+      this.carregandoEmail.set(false);
+    }
+  }
+
+  /** A descrição mudou: refaz a prévia para o corpo revisado já conter o texto novo.
+   * Só nos passos que redigem e-mail — nos demais a descrição é registro interno. */
+  async descricaoAlterada(p: Passo): Promise<void> {
+    if (!p.redigeEmail) return;
+    await this.carregarPreviaEmail(p);
+  }
+
   async abrirForm(p: Passo): Promise<void> {
     this.erro.set(null);
     const tipo = this.formDoPasso(p);
@@ -290,21 +323,7 @@ export class PassosComponent {
           // O e-mail chega PRONTO do backend (modelo do passo + tokens do projeto já
           // aplicados) e a pessoa revisa. Escrever do zero toda vez seria retrabalho, e um
           // campo vazio convidaria a improvisar o texto institucional.
-          this.carregandoEmail.set(true);
-          try {
-            const previa = await this.service.previaEmail(
-              this.projetoId,
-              p.numero,
-            );
-            if (previa) {
-              this.emailPara = previa.para.join(', ');
-              this.emailAssunto = previa.assunto;
-              this.emailCorpo = previa.corpo;
-              this.emailAnexo.set(previa.anexo);
-            }
-          } finally {
-            this.carregandoEmail.set(false);
-          }
+          await this.carregarPreviaEmail(p);
         }
         return;
       }

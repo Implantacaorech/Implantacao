@@ -28,6 +28,9 @@ describe('UsersService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    // `find` sem implementação devolvia `undefined` e quebrava a checagem de homônimo —
+    // o TypeORM sempre devolve array, então o padrão do mock é a lista vazia.
+    repo.find.mockResolvedValue([]);
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
@@ -113,6 +116,36 @@ describe('UsersService', () => {
         }),
       ).rejects.toThrow(ConflictException);
     });
+
+    // O NOME é a chave de designação (`projeto_pessoas.pessoa`, `Projeto.gci`): dois
+    // cadastros homônimos fazem o segundo herdar os passos e os e-mails do primeiro.
+    it('rejeita um segundo usuário ATIVO com o mesmo nome', async () => {
+      qb.getCount.mockResolvedValue(0);
+      repo.find.mockResolvedValue([{ id: 9, nome: 'Cesar Consultor' }]);
+      await expect(
+        service.criar({
+          login: 'outro',
+          nome: '  cesar consultor ',
+          email: 'outro@teste.com',
+          senha: 'segredo1',
+          perfil: 'Consultor',
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('aceita nome igual ao de um usuário INATIVO (não é designável)', async () => {
+      qb.getCount.mockResolvedValue(0);
+      repo.find.mockResolvedValue([]); // `find` já filtra por ativo:true
+      await expect(
+        service.criar({
+          login: 'novo',
+          nome: 'Cesar Consultor',
+          email: 'novo@teste.com',
+          senha: 'segredo1',
+          perfil: 'Consultor',
+        }),
+      ).resolves.toBeDefined();
+    });
   });
 
   describe('atualizar', () => {
@@ -132,6 +165,43 @@ describe('UsersService', () => {
       await service.atualizar(1, { nome: 'Novo Nome' });
       expect(existente.senhaHash).toBe('hash-antigo');
       expect(existente.nome).toBe('Novo Nome');
+    });
+
+    it('recusa renomear para o nome de outro usuário ativo', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 1,
+        login: 'x',
+        nome: 'X',
+        email: 'x@teste.com',
+        senhaHash: 'h',
+        perfil: 'Consultor',
+        codigoSicla: '',
+        ativo: true,
+      });
+      qb.getCount.mockResolvedValue(0);
+      repo.find.mockResolvedValue([{ id: 2, nome: 'Cesar Consultor' }]);
+      await expect(
+        service.atualizar(1, { nome: 'Cesar Consultor' }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('editar OUTRO campo não revalida o nome (duplicidade antiga não trava a edição)', async () => {
+      const existente = {
+        id: 1,
+        login: 'x',
+        nome: 'Cesar Consultor',
+        email: 'x@teste.com',
+        senhaHash: 'h',
+        perfil: 'Consultor' as const,
+        codigoSicla: '',
+        ativo: true,
+      };
+      repo.findOne.mockResolvedValue(existente);
+      qb.getCount.mockResolvedValue(0);
+      repo.find.mockResolvedValue([{ id: 2, nome: 'Cesar Consultor' }]);
+      await expect(
+        service.atualizar(1, { codigoSicla: '123' }),
+      ).resolves.toBeDefined();
     });
 
     it('altera a senha (hasheada) quando enviada', async () => {

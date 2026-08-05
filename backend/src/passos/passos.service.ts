@@ -20,7 +20,7 @@ import { DocumentosService } from '../documentos/documentos.service';
 import { Etapa, Perfil, temPapel } from '../common/constants/perfis';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { filtrarCarteiraPorPerfil } from '../common/carteira-visibilidade';
-import { hojeIso } from '../cronograma/datas.util';
+import { ehDataIso, hojeIso } from '../cronograma/datas.util';
 import {
   PassosNotificacaoService,
   tipoAnexoLivre,
@@ -28,6 +28,7 @@ import {
 import {
   DefinicaoPasso,
   EXTENSOES_EMAIL,
+  nomesDoCampo,
   ResponsavelPasso,
   PASSOS,
   PASSOS_COM_ANEXO_DE_EMAIL,
@@ -163,9 +164,7 @@ export class PassosService {
 
     switch (def.responsavel) {
       case 'GCI':
-        return projeto.gci
-          .split(',')
-          .some((g) => g.trim().toLowerCase() === nome);
+        return nomesDoCampo(projeto.gci).some((g) => g.toLowerCase() === nome);
       case 'Consultor':
         return designadoComo('consultor');
       case 'Levantador':
@@ -221,6 +220,30 @@ export class PassosService {
     return temPapel(usuario, ...PERFIS_POR_RESPONSAVEL[def.responsavel])
       ? `Você não está designado(a) neste projeto como ${def.responsavel}.`
       : `Só o responsável (${def.responsavel}) pode concluir.`;
+  }
+
+  /** A pessoa pode concluir ESTE passo NESTE projeto? — para quem age em OUTRA tela.
+   *
+   * `concluirAutomatico` não checa perfil DE PROPÓSITO: o contrato é que "quem autorizou foi
+   * o gate da própria rota que executou a ação". Este método É esse gate, para as rotas cuja
+   * ação fecha um passo (anexar/gerar documento). Sem ele, a RN-10 (designação por projeto)
+   * valia só dentro do `PassosController` — e anexar um arquivo qualquer rotulado `termo`
+   * fechava, de forma IRREVERSÍVEL, o passo 18 de um projeto alheio (achado de 2026-08-05).
+   *
+   * Devolve `false` em vez de lançar: gerar/anexar o documento continua permitido a quem o
+   * perfil autoriza (o Administrativo precisa poder baixar o Termo em branco); o que a
+   * autorização decide é só se aquilo CONCLUI o passo. */
+  async podeExecutarPasso(
+    projetoId: number,
+    numero: number,
+    usuario: { nome: string; perfil: Perfil; perfis?: Perfil[] },
+  ): Promise<boolean> {
+    const def = PASSOS_POR_NUMERO.get(numero);
+    if (!def) return false;
+    const projeto = await this.projetos.findOne({ where: { id: projetoId } });
+    if (!projeto) return false;
+    const designados = await this.pessoas.find({ where: { projetoId } });
+    return this.podeExecutar(def, usuario, projeto, designados);
   }
 
   async pessoasDoProjeto(
@@ -347,9 +370,21 @@ export class PassosService {
           `Marque "${rotulo}" antes de concluir o passo ${numero}.`,
         );
       }
-      if (!/^\d{4}-\d{2}-\d{2}$/.test((dados.dataMarcada ?? '').trim())) {
+      // Data REAL, não só o formato: a regex sozinha aceitava "2026-13-45" e gravava uma
+      // assinatura em um dia que não existe (achado de 2026-08-05). `Date.UTC` normaliza —
+      // 2026-02-31 vira 03-03 —, então só passa quando as três partes voltam iguais.
+      const data = (dados.dataMarcada ?? '').trim();
+      if (!ehDataIso(data)) {
         throw new BadRequestException(
-          `Informe a data da assinatura (${rotulo}) para concluir o passo ${numero}.`,
+          `Informe uma data válida de assinatura (${rotulo}, no formato aaaa-mm-dd) para concluir o passo ${numero}.`,
+        );
+      }
+      // Assinatura é fato consumado: a data registra QUANDO aconteceu, então não pode estar
+      // no futuro. Sem isto, um dedo trocado no ano ("2099") passava e a métrica de prazo
+      // do projeto contava a partir de uma data que ainda não chegou.
+      if (data > hojeIso()) {
+        throw new BadRequestException(
+          `A data de assinatura (${rotulo}) não pode ser futura — informe o dia em que foi assinado.`,
         );
       }
     }
@@ -428,11 +463,11 @@ export class PassosService {
    *
    * Não exige a permissão de CONCLUIR: quem tem acesso à carteira pode ver o que o Painel
    * mandaria — é a mesma transparência da consulta ao histórico. `null` = passo sem e-mail. */
-  async previaEmail(projetoId: number, numero: number) {
+  async previaEmail(projetoId: number, numero: number, descricao?: string) {
     this.definicao(numero);
     const projeto = await this.projetos.findOne({ where: { id: projetoId } });
     if (!projeto) throw new NotFoundException('Projeto não encontrado.');
-    return this.notificacao.montar(projeto, numero);
+    return this.notificacao.montar(projeto, numero, descricao);
   }
 
   /** Os e-mails já gerados no projeto, para consulta. */
@@ -553,6 +588,13 @@ export class PassosService {
   ): Promise<boolean> {
     const def = PASSOS_POR_NUMERO.get(numero);
     if (!def) return false;
+
+    // RN-8: nos passos em que a pessoa REDIGE o e-mail na tela, fechar por efeito colateral
+    // mandaria ao cliente (ou ao Administrativo) o texto do MODELO, sem ninguém revisar — e
+    // como esses passos são irreversíveis a partir do 14, não há como desfazer. Gerar o
+    // documento é PARTE do passo, não o passo inteiro: o passo 18 é "Gerar o Termo E ENVIAR
+    // ao Administrativo", e o envio é o e-mail redigido na tela (achado de 2026-08-05).
+    if (PASSOS_COM_REDACAO_DE_EMAIL.has(numero)) return false;
 
     const projeto = await this.projetos.findOne({ where: { id: projetoId } });
     if (!projeto) return false;

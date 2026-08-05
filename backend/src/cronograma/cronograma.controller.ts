@@ -531,6 +531,10 @@ export class CronogramaController {
       salvo.arquivo,
       salvo.caminho,
       'gerado',
+      user.nome,
+      // O @Roles da classe garante o PERFIL; a designação NAQUELE projeto (RN-10) quem
+      // verifica é o registro do documento, que é o que fecha o passo 13.
+      { usuario: user },
     );
     await this.documentos.registrarEvento(
       projetoId,

@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -63,9 +64,19 @@ export class PassosController {
     return new ApiEnvelope(await this.passos.listar(id, user));
   }
 
+  /** Concluir o PRÓPRIO passo não é "editar a carteira".
+   *
+   * Esta rota exigia `carteira/alteracao`, mas o Comercial tem nível `consulta` nesse menu
+   * (`PADRAO_PERMISSOES`) — e os passos 1 e 5 são DELE. Como o passo 5 não tem caminho
+   * automático, todo projeto travava ali até um ADM concluir por fora, enquanto
+   * `GET /passos` seguia informando `liberado: true` (achado de 2026-08-05).
+   *
+   * O gate correto já existe e é mais estrito: `PassosService.podeExecutar` exige o perfil
+   * responsável pelo passo E a designação naquele projeto (RN-10). O nível de menu volta a
+   * ser o que ele é — quem vê a carteira alcança a rota; quem responde pelo passo conclui. */
   @Post('passos/:numero/concluir')
   @Roles()
-  @Permissao('carteira', 'alteracao')
+  @Permissao('carteira')
   @ApiOperation({ summary: 'Conclui um passo (só o responsável consegue)' })
   async concluir(
     @Param('id', ParseIntPipe) id: number,
@@ -91,8 +102,12 @@ export class PassosController {
   async previaEmail(
     @Param('id', ParseIntPipe) id: number,
     @Param('numero', ParseIntPipe) numero: number,
+    // A descrição que a pessoa está digitando AGORA (passo 5). Sem ela, a prévia sai com o
+    // token `{{DESCRICAO_PASSO}}` resolvido em BRANCO — e como a tela devolve esse corpo já
+    // montado, a descrição do Comercial nunca chegava ao Administrativo (RN-7).
+    @Query('descricao') descricao?: string,
   ) {
-    return new ApiEnvelope(await this.passos.previaEmail(id, numero));
+    return new ApiEnvelope(await this.passos.previaEmail(id, numero, descricao));
   }
 
   @Get('emails')

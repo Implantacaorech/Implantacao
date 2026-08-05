@@ -203,7 +203,13 @@
 
           </div>
 
-          @if (!soConsulta()) {
+          <!-- `|| p.liberado`: quem só CONSULTA a carteira ainda pode ser o responsável por
+               um passo — é o caso do Comercial, dono dos passos 1 e 5, que tem nível
+               `consulta` no menu. Esconder a coluna inteira por `soConsulta()` deixava o
+               processo travado no passo 5 sem nada na tela explicando por quê (2026-08-05).
+               `liberado` já vem do backend com a regra completa (dependências + RN-10), então
+               ele aparece exatamente para quem a API vai aceitar. -->
+          @if (!soConsulta() || p.liberado) {
           <div style="display:flex;flex-direction:column;gap:6px;flex:none;width:130px;align-items:stretch">
             <!-- Passo de documento: o fluxo leva à tela de trabalho. ABRIR segue a permissão
                  da TELA (`podeAbrir`), NÃO a de concluir o passo — quem preenche o
@@ -314,7 +320,15 @@
                       <small style="color:var(--muted);font-weight:400">— opcional, fica registrada no passo</small>
                     }
                   </span>
-                  <textarea rows="3" [(ngModel)]="descricao" name="descricao{{ p.numero }}"></textarea>
+                  <!-- `blur`: ao sair do campo, o corpo do e-mail é remontado com o que foi
+                       escrito. É o corpo revisado aqui que o Painel envia, então uma prévia
+                       montada antes do texto mandava a descrição em branco (RN-7). -->
+                  <textarea
+                    rows="3"
+                    [(ngModel)]="descricao"
+                    name="descricao{{ p.numero }}"
+                    (blur)="descricaoAlterada(p)"
+                  ></textarea>
                 </label>
 
                 @if (p.redigeEmail) {

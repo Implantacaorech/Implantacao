@@ -384,3 +384,23 @@ export const PASSO_CRONOGRAMA = 13;
 /** Extensões aceitas no anexo de e-mail: formato nativo do Outlook (.msg) e o padrão
  * de e-mail exportado (.eml). */
 export const EXTENSOES_EMAIL = ['.msg', '.eml'];
+
+/** Nomes gravados num campo de equipe do projeto (`gci`, `consultor`), que guarda a lista
+ * separada por vírgula.
+ *
+ * Devolve as PARTES **e** a string inteira, porque a vírgula é o separador mas também
+ * aparece dentro de um nome ("Silva, João") — e aí o único casamento possível é o texto
+ * completo. Quem consome compara contra o cadastro de usuários, então um candidato que não
+ * corresponde a ninguém simplesmente não resolve: oferecer os dois é seguro e cobre os dois
+ * casos. Dois achados de 2026-08-05 vinham do `split(',')` cru: com DOIS GCIs nenhum dos
+ * dois recebia o e-mail do passo 8, e um GCI chamado "Silva, João" era barrado no próprio
+ * passo por não bater com nenhuma das metades. */
+export function nomesDoCampo(campo: string): string[] {
+  const inteiro = (campo ?? '').trim();
+  if (!inteiro) return [];
+  const partes = inteiro
+    .split(',')
+    .map((n) => n.trim())
+    .filter(Boolean);
+  return [...new Set([inteiro, ...partes])];
+}

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -11,6 +12,7 @@ import { UpdateProjetoDto } from './dto/update-projeto.dto';
 import { ListarProjetosDto } from './dto/listar-projetos.dto';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 import { filtrarCarteiraPorPerfil } from '../common/carteira-visibilidade';
+import { PERFIS_DESIGNA, temPapel } from '../common/constants/perfis';
 import { CronogramaService } from '../cronograma/cronograma.service';
 import { DesignacoesService } from '../cronograma/designacoes.service';
 import { LevantamentoRespostaService } from '../levantamento/levantamento-resposta.service';
@@ -97,11 +99,27 @@ export class ProjetosService {
    * seletor "Fase da Implantação" que a tela Angular tinha na aba Dados pulava etapa
    * sem checar nada — achado real ao fechar a pendência de enforcement de `pode_avancar`
    * (2026-07-17). */
-  async atualizar(id: number, dto: UpdateProjetoDto): Promise<Projeto> {
+  async atualizar(
+    id: number,
+    dto: UpdateProjetoDto,
+    usuario?: AuthUser,
+  ): Promise<Projeto> {
     const projeto = await this.buscarPorId(id);
     if (dto.etapa !== undefined && dto.etapa !== projeto.etapa) {
       throw new BadRequestException(
         'A fase da implantação não pode ser alterada por aqui — use o botão "Avançar" na ficha do projeto.',
+      );
+    }
+    // `gci` e `consultor` NÃO são campos comuns da ficha: são a designação da equipe, e é
+    // por eles que a RN-10 decide quem conclui os passos 10 e 13+. Deixá-los na edição livre
+    // permitia se autodesignar e destravar o passo de um projeto alheio (achado de
+    // 2026-08-05). Quem designa equipe é PERFIS_DESIGNA, a mesma lista de `PATCH pessoas`.
+    const mudaEquipe =
+      (dto.gci !== undefined && dto.gci !== projeto.gci) ||
+      (dto.consultor !== undefined && dto.consultor !== projeto.consultor);
+    if (mudaEquipe && usuario && !temPapel(usuario, ...PERFIS_DESIGNA)) {
+      throw new ForbiddenException(
+        'Só a Coordenação, o Administrativo ou o ADM podem alterar o GCI e os consultores do projeto.',
       );
     }
     const situacaoAnterior = projeto.situacao;

@@ -28,6 +28,8 @@ import {
 import type { Response } from 'express';
 import { existsSync } from 'fs';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { PermissaoGuard } from '../permissoes/permissao.guard';
+import { Permissao } from '../common/decorators/permissao.decorator';
 import {
   CurrentUser,
   type AuthUser,
@@ -77,9 +79,20 @@ const _PERFIS_GERA: Record<SlugDocumentoFiel, Perfil[]> = {
   termo: PERFIS_GERA_CRONOGRAMA,
 };
 
+/**
+ * O `PermissaoGuard` entra aqui, mas SEM `@Permissao` no nível da classe: as rotas de
+ * LEITURA (listar, baixar, preview) têm de continuar abertas a quem só tem consulta — é
+ * exigência explícita do processo ("download liberado a quem só tem consulta", ver
+ * `RN - Passos do Processo de Implantação`). Rota sem `@Permissao` passa direto pelo guard,
+ * então as de ESCRITA declaram `@Permissao('carteira', 'alteracao')` uma a uma.
+ *
+ * Antes de 2026-08-05 não havia guard nenhum: `POST projetos/:id/anexar` aceitava o `tipo`
+ * cru do corpo e qualquer autenticado fechava, de forma irreversível, o passo de um projeto
+ * alheio. O gate de RN-10 também é aplicado em `DocumentosService.registrarDocumento`.
+ */
 @ApiTags('documentos')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissaoGuard)
 @Controller()
 export class DocumentosController {
   constructor(
@@ -114,6 +127,7 @@ export class DocumentosController {
 
   @Post('projetos/:projetoId/avancar')
   @HttpCode(HttpStatus.OK)
+  @Permissao('carteira', 'alteracao')
   @ApiOperation({
     summary:
       'Avança a etapa do projeto (exige que o gate da etapa atual esteja OK)',
@@ -128,6 +142,7 @@ export class DocumentosController {
 
   @Post('projetos/:projetoId/nota')
   @HttpCode(HttpStatus.OK)
+  @Permissao('carteira', 'alteracao')
   @ApiOperation({
     summary: 'Adiciona uma anotação manual na timeline do projeto',
   })
@@ -145,6 +160,7 @@ export class DocumentosController {
   }
 
   @Post('projetos/:projetoId/anexar')
+  @Permissao('carteira', 'alteracao')
   @UseInterceptors(FileInterceptor('arquivo'))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
@@ -154,21 +170,26 @@ export class DocumentosController {
     @Param('projetoId', ParseIntPipe) projetoId: number,
     @Body('tipo') tipo: string | undefined,
     @UploadedFile() arquivo: Express.Multer.File | undefined,
+    @CurrentUser() user: AuthUser,
   ) {
     if (!arquivo)
       throw new UnprocessableEntityException(
         'Selecione um arquivo para anexar.',
       );
+    // `user` vai adiante porque o `tipo` vem do CORPO, escolhido por quem envia: sem ele,
+    // rotular o arquivo de `checklist` fechava o passo 14 de um projeto alheio (RN-10).
     const doc = await this.documentos.anexarDocumento(
       projetoId,
       tipo ?? 'outro',
       arquivo.originalname,
       arquivo.buffer,
+      user,
     );
     return new ApiEnvelope(doc, 'Documento anexado.');
   }
 
   @Delete('documentos/:id')
+  @Permissao('carteira', 'alteracao')
   @ApiOperation({
     summary:
       'Exclui um documento (só se nada posterior no fluxo depender dele)',
@@ -264,6 +285,8 @@ export class DocumentosController {
         salvoDocx.arquivo,
         salvoDocx.caminho,
         'importado',
+        user.nome,
+        { usuario: user },
       );
       await this.documentos.registrarEvento(
         projetoId,
@@ -305,6 +328,8 @@ export class DocumentosController {
       salvo.arquivo,
       salvo.caminho,
       'gerado',
+      user.nome,
+      { usuario: user },
     );
     await this.documentos.registrarEvento(
       projetoId,
@@ -362,6 +387,12 @@ export class DocumentosController {
       salvo.arquivo,
       salvo.caminho,
       'gerado',
+      user.nome,
+      // `modo=modelo` é o layout EM BRANCO, para preencher à mão — não fecha passo.
+      // `usuario` faz a conclusão respeitar a RN-10: o perfil autoriza GERAR o documento
+      // (o Administrativo precisa poder baixar o Termo), mas concluir o passo é de quem
+      // está designado NAQUELE projeto.
+      { usuario: user, concluiPasso: modo !== 'modelo' },
     );
     const rotulo =
       `Gerou ${arquivo.filename} pelo layout oficial (${slug})` +
