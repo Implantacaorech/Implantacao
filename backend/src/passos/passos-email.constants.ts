@@ -1,3 +1,5 @@
+import { VAR_CAMPO } from '../email/modelo-email.constants';
+
 /** Quem recebe o e-mail de cada passo e o que ele diz.
  *
  * O mapa dos passos (`passos.constants.ts`) descreve o e-mail em linguagem de negócio; aqui
@@ -40,22 +42,21 @@ export interface EmailDePasso {
   corpo: string;
 }
 
-/** Tokens disponíveis no assunto e no corpo — os mesmos da tela de modelos de e-mail.
+/** Tokens disponíveis no assunto e no corpo dos e-mails de PASSO.
  *
- * `_descricaoPasso`, `_dataMarcada` e `_levantadores` não são colunas do projeto: vêm do
- * registro do passo (a descrição que a pessoa escreveu, a data de assinatura que ela marcou)
- * e dos vínculos por papel. São resolvidos em runtime pelo serviço de notificação. */
+ * Herda `VAR_CAMPO` — a mesma lista que a tela **Modelos de E-mail** oferece no seletor
+ * "clique para inserir". Antes esta lista era uma cópia reduzida (13 de 25), então um ADM que
+ * editasse o modelo `passo-N` e inserisse, digamos, `{{CONTATO_TEL}}` via um token que o
+ * montador dos passos não conhecia: ele saía **literal**, `{{CONTATO_TEL}}` mesmo, no e-mail
+ * — inclusive nos passos 15, 16 e 21, que vão para o CLIENTE (achado de 2026-08-05). Herdar
+ * em vez de copiar faz o seletor e o montador não poderem mais divergir.
+ *
+ * Os três acrescentados aqui não existem na outra tela porque só fazem sentido num passo:
+ * `_descricaoPasso` e `_dataMarcada` vêm do registro do passo (o texto que a pessoa escreveu,
+ * a data de assinatura que ela marcou) e `_levantadores`, dos vínculos por papel. Todos são
+ * resolvidos em runtime pelo serviço de notificação. */
 export const TOKENS_PASSO: Record<string, string> = {
-  '{{CLIENTE}}': 'cliente',
-  '{{CNPJ}}': 'cnpj',
-  '{{NUMERO_PROJETO}}': 'numeroProjeto',
-  '{{GCI}}': 'gci',
-  '{{CONSULTOR}}': 'consultor',
-  '{{CONTATO_NOME}}': 'contatoNome',
-  '{{CONTATO_EMAIL}}': 'contatoEmail',
-  '{{DATA_LEVANTAMENTO}}': 'dataLevantamento',
-  '{{DATA_ENCERRAMENTO}}': 'dataEncerramento',
-  '{{MODULOS}}': 'modulos',
+  ...VAR_CAMPO,
   '{{LEVANTADOR}}': '_levantadores',
   '{{DESCRICAO_PASSO}}': '_descricaoPasso',
   '{{DATA_ASSINATURA}}': '_dataMarcada',

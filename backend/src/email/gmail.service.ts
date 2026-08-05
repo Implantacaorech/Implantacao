@@ -236,25 +236,38 @@ export class GmailService {
     const para = Array.isArray(destino)
       ? destino.filter(Boolean).join(', ')
       : destino;
-    const composer = new MailComposer({
-      to: para,
-      subject: assunto,
-      text: corpo,
-      attachments: anexos
-        .filter((a) => existsSync(a.caminho))
-        .map((a) => ({ path: a.caminho, filename: a.nomeArquivo })),
-    });
-    const cru: Buffer = await new Promise((resolve, reject) => {
-      composer.compile().build((err: Error | null, message: Buffer) => {
-        if (err) reject(err);
-        else resolve(message);
+    // A montagem do MIME ficava FORA do try: um anexo ilegível ou um cabeçalho inválido
+    // rejeitava a promise, a exceção escapava de `enviar` e quem chamou (`notificarPasso`,
+    // que roda em `void`) perdia o erro — o e-mail simplesmente não aparecia no histórico,
+    // nem como falha. Todo caminho de saída daqui é um `ResultadoEnvio` (achado de
+    // 2026-08-05).
+    let raw: string;
+    try {
+      const composer = new MailComposer({
+        to: para,
+        subject: assunto,
+        text: corpo,
+        attachments: anexos
+          .filter((a) => existsSync(a.caminho))
+          .map((a) => ({ path: a.caminho, filename: a.nomeArquivo })),
       });
-    });
-    const raw = cru
-      .toString('base64')
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
+      const cru: Buffer = await new Promise((resolve, reject) => {
+        composer.compile().build((err: Error | null, message: Buffer) => {
+          if (err) reject(err);
+          else resolve(message);
+        });
+      });
+      raw = cru
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+    } catch (e) {
+      return {
+        ok: false,
+        erro: `Falha ao montar a mensagem: ${e instanceof Error ? e.message : String(e)}`,
+      };
+    }
     try {
       const { token } = await client.getAccessToken();
       const res = await fetch(

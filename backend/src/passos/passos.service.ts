@@ -263,6 +263,7 @@ export class PassosService {
     papel: PapelProjeto,
     nomes: string[],
     autor = 'sistema',
+    usuario?: { nome: string; perfil: Perfil; perfis?: Perfil[] },
   ): Promise<ProjetoPessoa[]> {
     const limpos = [
       ...new Set(nomes.map((n) => n.trim()).filter(Boolean)),
@@ -281,8 +282,15 @@ export class PassosService {
       // Ele se completa aqui, quando os técnicos entram — desde que o GCI já esteja
       // definido. Ficava pendente para sempre quando a pessoa salvava pelo formulário do
       // passo, que não passa por `designarConsultores`.
+      //
+      // Mas o passo 8 é do COORDENADOR, e esta rota também aceita o Administrativo (que
+      // mantém a lista da equipe ao longo do projeto): sem a checagem, salvar a lista
+      // fechava, em nome dele, um passo que não é dele (achado de 2026-08-05). Sem
+      // `usuario`, é chamada interna do sistema e o comportamento é o de sempre.
       const projeto = await this.projetos.findOne({ where: { id: projetoId } });
-      if (limpos.length > 0 && projeto?.gci.trim()) {
+      const podeFechar8 =
+        !usuario || (await this.podeExecutarPasso(projetoId, 8, usuario));
+      if (limpos.length > 0 && projeto?.gci.trim() && podeFechar8) {
         await this.concluirAutomatico(
           projetoId,
           8,

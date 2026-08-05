@@ -142,6 +142,16 @@ export class PassosNotificacaoService {
       .filter(Boolean);
   }
 
+  /** Primeiro e segundo consultor do projeto, para `{{CONSULTOR_A}}`/`{{CONSULTOR_B}}` (e os
+   * apelidos `_X`/`_Y`). `Projeto.consultor` guarda a lista separada por vírgula. */
+  private static consultoresAB(consultor: string): Record<string, string> {
+    const nomes = (consultor ?? '')
+      .split(',')
+      .map((n) => n.trim())
+      .filter(Boolean);
+    return { _consultorA: nomes[0] ?? '', _consultorB: nomes[1] ?? '' };
+  }
+
   /** Nomes designados em um papel do projeto. */
   private async nomesDoPapel(
     projetoId: number,
@@ -217,6 +227,10 @@ export class PassosNotificacaoService {
       ).trim(),
       _dataMarcada: registro?.dataMarcada || '',
       _levantadores: levantadores.join(', '),
+      // `_consultorA`/`_consultorB` não são colunas: saem do split de `consultor`, mesma
+      // derivação de `ModeloEmailService`. Entraram aqui junto com `VAR_CAMPO` — sem elas,
+      // `{{CONSULTOR_A}}` num modelo de passo sairia literal.
+      ...PassosNotificacaoService.consultoresAB(projeto.consultor),
     };
   }
 

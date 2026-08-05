@@ -107,7 +107,9 @@ export class PassosController {
     // montado, a descrição do Comercial nunca chegava ao Administrativo (RN-7).
     @Query('descricao') descricao?: string,
   ) {
-    return new ApiEnvelope(await this.passos.previaEmail(id, numero, descricao));
+    return new ApiEnvelope(
+      await this.passos.previaEmail(id, numero, descricao),
+    );
   }
 
   @Get('emails')
@@ -214,7 +216,15 @@ export class PassosController {
     @CurrentUser() user: AuthUser,
   ) {
     return new ApiEnvelope(
-      await this.passos.definirPessoas(id, dto.papel, dto.pessoas, user.nome),
+      // `user` inteiro, e não só o nome: é ele que decide se salvar a equipe também FECHA o
+      // passo 8 — que é do Coordenador, embora esta rota aceite o Administrativo.
+      await this.passos.definirPessoas(
+        id,
+        dto.papel,
+        dto.pessoas,
+        user.nome,
+        user,
+      ),
     );
   }
 
