@@ -360,10 +360,23 @@
     demais para quem apagou o texto. A tela passou a cobrar o que ela mesma preencheu.
 
   Continua em aberto:
-  - [ ] **Dívida remanescente: designação por NOME, não por id.** `projeto_pessoas.pessoa` e
-    `Projeto.gci` guardam texto. A recusa de homônimo impede a ambiguidade NOVA, mas
-    homônimo que já exista na base continua indistinguível. Migrar para `usuario_id` é
-    mudança de schema com backfill — decisão à parte.
+  - **Designação passou a identificar por `usuario_id`** (2026-08-06, migration
+    `DesignacaoPorUsuarioId`). `projeto_pessoas` ganhou a coluna, o **GCI virou papel ali**
+    (`papel: 'gci'`) e `Projeto.gci`/`Projeto.consultor` seguem como espelho de texto — é o
+    que telas, tokens e documentos leem. O backfill só amarra o id quando o nome casa com
+    **exatamente um** usuário ativo: nome ambíguo fica sem id de propósito, porque chutar
+    daria a um estranho o passo de outra pessoa.
+    Escrever a designação a partir de um campo de texto (`PUT /projetos/:id`) resolve
+    "Silva, João" pelo cadastro antes de decidir se é uma pessoa ou uma lista — sem isso, a
+    edição da ficha partia o nome em dois e o GCI perdia o próprio projeto.
+  - [ ] **11 dos 22 vínculos de produção não casam com nenhum usuário ativo** — achado ao
+    preparar a migração (2026-08-06). São apelidos/primeiros nomes gravados em
+    `projeto_pessoas.pessoa`: **Alex, Dibah, Eder, Everton, Liliana, Micael, Pereira,
+    Thomaz, Vitor Assunção**. Esses vínculos **já não autorizavam ninguém** antes da
+    migração (a comparação por nome também falhava), então não houve regressão — mas
+    significa que essas pessoas dependem do ADM para concluir os próprios passos. A
+    migration imprime a lista ao rodar. **Corrigir é trabalho humano:** ajustar o nome no
+    cadastro do usuário ou refazer a designação na tela, para o vínculo ganhar identidade.
   - **`ETAPAS` alinhado aos passos** (decisão do usuário, 2026-08-05). O array tinha
     `Projeto` antes de `Designação`, mas os passos põem **Designação (8–9) antes de Projeto
     (10–12)**; como a macro-etapa sai do primeiro passo pendente, o projeto **regredia** ao

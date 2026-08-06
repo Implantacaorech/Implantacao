@@ -6,6 +6,7 @@ import { DocumentosService } from '../documentos/documentos.service';
 import { Projeto } from '../database/entities/projeto.entity';
 import { ProjetoPasso } from '../database/entities/projeto-passo.entity';
 import { ProjetoPessoa } from '../database/entities/projeto-pessoa.entity';
+import { Usuario } from '../database/entities/usuario.entity';
 import { Evento } from '../database/entities/evento.entity';
 import { Perfil } from '../common/constants/perfis';
 
@@ -22,7 +23,11 @@ describe('PassosService — permissão de ABRIR a tela do passo', () => {
   const pessoas = { find: jest.fn() };
   const eventos = { find: jest.fn(), save: jest.fn(), create: jest.fn() };
 
-  const usuario = (perfil: Perfil, nome = 'Fulano') => ({ nome, perfil });
+  const usuario = (perfil: Perfil, nome = 'Fulano', sub?: number) => ({
+    nome,
+    perfil,
+    sub,
+  });
 
   /** Marca `numeros` como já concluídos no projeto. */
   function concluidos(numeros: number[]) {
@@ -55,6 +60,11 @@ describe('PassosService — permissão de ABRIR a tela do passo', () => {
         { provide: getRepositoryToken(ProjetoPasso), useValue: passos },
         { provide: getRepositoryToken(ProjetoPessoa), useValue: pessoas },
         { provide: getRepositoryToken(Evento), useValue: eventos },
+        // Só é consultado ao GRAVAR designação (resolver nome -> usuario_id).
+        {
+          provide: getRepositoryToken(Usuario),
+          useValue: { find: jest.fn().mockResolvedValue([]) },
+        },
         {
           provide: PassosNotificacaoService,
           useValue: { notificarPasso: jest.fn() },
@@ -113,5 +123,85 @@ describe('PassosService — permissão de ABRIR a tela do passo', () => {
     const lista = await service.listar(1, usuario('ADM'));
     const semTela = lista.filter((p) => ![3, 9, 11, 12].includes(p.numero));
     expect(semTela.every((p) => !p.podeAbrir)).toBe(true);
+  });
+});
+
+/**
+ * A designação identifica pela PESSOA, não pelo nome.
+ *
+ * Dois usuários chamados igual eram a mesma pessoa para a RN-10: o segundo concluía os
+ * passos do primeiro e recebia os e-mails do cliente (auditoria dos 21 passos, 2026-08-05).
+ * Desde a migração `DesignacaoPorUsuarioId`, o vínculo carrega `usuario_id` — e é ele que
+ * decide. O nome só volta a valer no vínculo antigo que ficou sem id.
+ */
+describe('PassosService — designação por usuario_id (homônimos)', () => {
+  let service: PassosService;
+  const projetos = { findOne: jest.fn() };
+  const passos = { find: jest.fn() };
+  const pessoas = { find: jest.fn() };
+  const eventos = { find: jest.fn(), save: jest.fn(), create: jest.fn() };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    projetos.findOne.mockResolvedValue({ id: 1, cliente: 'C', gci: '' });
+    // Passos 1 e 2 concluídos: o 3 (do Levantador designado) fica liberado pela ordem.
+    passos.find.mockResolvedValue(
+      [1, 2].map((passo) => ({
+        projetoId: 1,
+        passo,
+        concluidoEm: new Date('2026-08-06T12:00:00Z'),
+        concluidoPor: 'setup',
+        conferido: false,
+      })),
+    );
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        PassosService,
+        { provide: getRepositoryToken(Projeto), useValue: projetos },
+        { provide: getRepositoryToken(ProjetoPasso), useValue: passos },
+        { provide: getRepositoryToken(ProjetoPessoa), useValue: pessoas },
+        { provide: getRepositoryToken(Evento), useValue: eventos },
+        {
+          provide: getRepositoryToken(Usuario),
+          useValue: { find: jest.fn().mockResolvedValue([]) },
+        },
+        {
+          provide: PassosNotificacaoService,
+          useValue: { notificarPasso: jest.fn() },
+        },
+        { provide: DocumentosService, useValue: { anexarDocumento: jest.fn() } },
+      ],
+    }).compile();
+    service = module.get(PassosService);
+  });
+
+  const passo3De = async (nome: string, sub: number) =>
+    (
+      await service.listar(1, { nome, perfil: 'Levantador' as Perfil, sub })
+    ).find((p) => p.numero === 3);
+
+  it('o designado (mesmo id) pode concluir', async () => {
+    pessoas.find.mockResolvedValue([
+      { papel: 'levantador', pessoa: 'Ana Silva', usuarioId: 7 },
+    ]);
+    expect((await passo3De('Ana Silva', 7))?.liberado).toBe(true);
+  });
+
+  it('o HOMÔNIMO (mesmo nome, outro id) NÃO pode concluir', async () => {
+    pessoas.find.mockResolvedValue([
+      { papel: 'levantador', pessoa: 'Ana Silva', usuarioId: 7 },
+    ]);
+    const p = await passo3De('Ana Silva', 99);
+    expect(p?.liberado).toBe(false);
+    expect(p?.motivos).toContain(
+      'Você não está designado(a) neste projeto como Levantador.',
+    );
+  });
+
+  it('vínculo ANTIGO sem id ainda decide pelo nome — não trava quem já trabalhava', async () => {
+    pessoas.find.mockResolvedValue([
+      { papel: 'levantador', pessoa: 'Ana Silva', usuarioId: null },
+    ]);
+    expect((await passo3De('Ana Silva', 99))?.liberado).toBe(true);
   });
 });

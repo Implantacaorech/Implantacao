@@ -117,8 +117,12 @@ export class DesignacaoService {
     if (nomes.length === 0)
       throw new BadRequestException('Selecione ao menos um GCI.');
     const projeto = await this.buscarProjeto(projetoId);
+    // `definirPessoas` grava os vínculos COM `usuario_id` (é o que a RN-10 passou a usar) e
+    // atualiza `projeto.gci` como espelho — telas, tokens de e-mail e documentos leem dali.
+    // Escrever só o campo de texto, como era antes, deixava a designação sem identidade.
+    await this.passos.definirPessoas(projetoId, 'gci', nomes, autor);
+    // `definirPessoas` já gravou o espelho no banco; isto alinha o objeto devolvido.
     projeto.gci = nomes.join(', ');
-    await this.projetos.save(projeto);
     await this.registrarEvento(
       projetoId,
       `GCI(s) definido(s): ${projeto.gci}`,

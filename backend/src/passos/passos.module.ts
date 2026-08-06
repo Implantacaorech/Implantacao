@@ -5,6 +5,7 @@ import { Evento } from '../database/entities/evento.entity';
 import { ProjetoPasso } from '../database/entities/projeto-passo.entity';
 import { ProjetoPessoa } from '../database/entities/projeto-pessoa.entity';
 import { ProjetoRns } from '../database/entities/projeto-rns.entity';
+import { Usuario } from '../database/entities/usuario.entity';
 import { PassosController } from './passos.controller';
 import { PassosPainelController } from './passos-painel.controller';
 import { DestinatariosPassoController } from './destinatarios-passo.controller';
@@ -34,6 +35,8 @@ import { ModeloEmail } from '../database/entities/modelo-email.entity';
       DestinatarioPassoConfig,
       EmailPasso,
       ModeloEmail,
+      // Resolver nome -> id ao gravar a designação (PassosService.idsPorNome).
+      Usuario,
     ]),
     UsersModule,
     EmailModule,

@@ -19,6 +19,7 @@ import { LevantamentoRespostaService } from '../levantamento/levantamento-respos
 import { DocConteudoService } from '../levantamento/doc-conteudo.service';
 import { DocumentosService } from '../documentos/documentos.service';
 import { NotificacaoService } from '../email/notificacao.service';
+import { PassosService } from '../passos/passos.service';
 
 export interface Paginado<T> {
   data: T[];
@@ -40,6 +41,7 @@ export class ProjetosService {
     private readonly docConteudo: DocConteudoService,
     private readonly documentos: DocumentosService,
     private readonly notificacao: NotificacaoService,
+    private readonly passos: PassosService,
   ) {}
 
   /** Equivalente a _so_meus() do Flask: ADM/Coordenador/Administrativo veem tudo; GCI só onde
@@ -125,6 +127,31 @@ export class ProjetosService {
     const situacaoAnterior = projeto.situacao;
     Object.assign(projeto, dto);
     const salvo = await this.repo.save(projeto);
+    // `gci`/`consultor` aqui são texto, e texto não identifica ninguém: quem manda na RN-10
+    // são os vínculos com `usuario_id`. Editar a ficha sem refazê-los deixaria os dois
+    // discordando — o campo dizendo um nome e a autorização olhando para outro.
+    //
+    // `usuario` vai adiante para o gate do passo 8 continuar valendo: `definirPessoas` de
+    // consultores conclui esse passo, e sem o autor ele fecharia por edição de ficha, em
+    // nome de "sistema" — a mesma classe de furo fechada em 2026-08-05.
+    if (dto.gci !== undefined) {
+      await this.passos.definirPessoas(
+        id,
+        'gci',
+        await this.passos.nomesDoCampoParaGravar(dto.gci),
+        usuario?.nome ?? 'sistema',
+        usuario,
+      );
+    }
+    if (dto.consultor !== undefined) {
+      await this.passos.definirPessoas(
+        id,
+        'consultor',
+        await this.passos.nomesDoCampoParaGravar(dto.consultor),
+        usuario?.nome ?? 'sistema',
+        usuario,
+      );
+    }
     // Notifica a Coordenação quando a situação MUDA para "Concluído" (não a cada save
     // com a situação já concluída) — mesmo gatilho de webapp/app.py:projeto_ficha (POST).
     if (dto.situacao === 'Concluído' && situacaoAnterior !== 'Concluído') {

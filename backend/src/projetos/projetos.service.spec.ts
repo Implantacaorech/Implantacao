@@ -10,6 +10,7 @@ import { LevantamentoRespostaService } from '../levantamento/levantamento-respos
 import { DocConteudoService } from '../levantamento/doc-conteudo.service';
 import { DocumentosService } from '../documentos/documentos.service';
 import { NotificacaoService } from '../email/notificacao.service';
+import { PassosService } from '../passos/passos.service';
 
 describe('ProjetosService', () => {
   let service: ProjetosService;
@@ -39,6 +40,7 @@ describe('ProjetosService', () => {
   const docConteudo = { limparProjeto: jest.fn() };
   const documentos = { limparProjeto: jest.fn() };
   const notificacao = { notificarEvento: jest.fn() };
+  const passos = { definirPessoas: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -55,6 +57,8 @@ describe('ProjetosService', () => {
         { provide: DocConteudoService, useValue: docConteudo },
         { provide: DocumentosService, useValue: documentos },
         { provide: NotificacaoService, useValue: notificacao },
+        // Editar `gci`/`consultor` refaz os vínculos com usuario_id (RN-10).
+        { provide: PassosService, useValue: passos },
       ],
     }).compile();
     service = module.get(ProjetosService);

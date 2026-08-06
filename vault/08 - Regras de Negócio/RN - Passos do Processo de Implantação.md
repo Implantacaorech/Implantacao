@@ -124,10 +124,17 @@ levantamento (pode ser mais de um) · Consultor = pode ser mais de um.
   `PassosService.podeExecutarPasso` antes de concluir: o documento é gravado de qualquer forma
   — o Administrativo precisa poder baixar o Termo —, mas o passo só fecha para quem responde
   por ele, e no nome de quem agiu (era `"sistema"`).
-  **Limite conhecido:** a designação casa por NOME (`projeto_pessoas.pessoa`, `Projeto.gci`).
-  O cadastro passou a recusar homônimo ativo, mas homônimo que já exista na base continua
-  indistinguível — migrar para `usuario_id` é mudança de schema, registrada em
-  `docs/pendencias.md`.
+  **A designação identifica por `usuario_id`, não por nome** (migration
+  `DesignacaoPorUsuarioId`, 2026-08-06). `projeto_pessoas` ganhou a coluna, o **GCI virou um
+  papel ali** (`papel: 'gci'`) e `Projeto.gci`/`Projeto.consultor` seguem como ESPELHO de
+  texto, que é o que telas, tokens de e-mail e documentos leem. Antes, dois usuários com o
+  mesmo nome eram a mesma pessoa para esta regra: o segundo concluía os passos do primeiro e
+  recebia os e-mails do cliente. O cadastro também passou a recusar homônimo ativo, então a
+  ambiguidade não nasce mais.
+  O nome só decide em **vínculo antigo sem id** — aquele cujo nome não casou com exatamente
+  um usuário ativo na migração. Esses vínculos já não autorizavam ninguém antes (a comparação
+  por nome também falhava), e a migration **imprime a lista** deles para alguém corrigir o
+  cadastro ou refazer a designação na tela.
 - **RN-11 — ABRIR a tela ≠ CONCLUIR o passo.** `PERFIS_TELA_DO_PASSO` usa a mesma lista que a
   tela de destino já exige, para o botão não prometer o que a tela recusa.
 - **RN-12 — Elaborar o cronograma (13) não fala com o cliente.** É trabalho interno, e o

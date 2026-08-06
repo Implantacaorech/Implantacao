@@ -124,8 +124,15 @@ coberta em `e2e/` (Playwright, 29 casos) e no Jest (950 testes).
   e `dataUsoOficial` passou de `CAMPOS_OBRIGATORIOS.Designação` para `.Projeto`.
   ⚠️ Ao mexer em `ETAPAS`, revise sempre `GATES`, `ACAO_ENTRADA` e `CAMPOS_OBRIGATORIOS`
   (`metricas.constants.ts`) — eles são por NOME e não acompanham a reordenação sozinhos.
-- Dívida remanescente: designação casa por **nome**, não por id (`projeto_pessoas.pessoa`,
-  `Projeto.gci`) — ver `docs/pendencias.md`.
+- **Designação por `usuario_id`** (2026-08-06, migration `DesignacaoPorUsuarioId`): a dívida
+  do "casa por nome" foi paga. `projeto_pessoas` tem a coluna, **o GCI virou papel ali**
+  (`papel: 'gci'`), e `Projeto.gci`/`Projeto.consultor` seguem como espelho de TEXTO — é o
+  que telas, tokens de e-mail e documentos leem, então não quebrou nada. O nome só decide em
+  vínculo antigo sem id.
+- ⚠️ **Achado ao migrar: 11 dos 22 vínculos de produção têm apelido/primeiro nome** (Alex,
+  Dibah, Thomaz…) que não casa com nenhum usuário ativo. Já era assim antes — essas pessoas
+  dependem do ADM para concluir os próprios passos. A migration imprime a lista; corrigir é
+  ajustar o cadastro ou refazer a designação na tela. Ver `docs/pendencias.md`.
 
 ## Gravação de reunião com transcrição ao vivo (2026-07-30)
 

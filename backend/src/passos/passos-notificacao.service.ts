@@ -4,7 +4,10 @@ import { Repository } from 'typeorm';
 import { existsSync } from 'fs';
 import { Projeto } from '../database/entities/projeto.entity';
 import { Evento } from '../database/entities/evento.entity';
-import { ProjetoPessoa } from '../database/entities/projeto-pessoa.entity';
+import {
+  PapelProjeto,
+  ProjetoPessoa,
+} from '../database/entities/projeto-pessoa.entity';
 import { ProjetoPasso } from '../database/entities/projeto-passo.entity';
 import { Documento } from '../database/entities/documento.entity';
 import { EmailPasso } from '../database/entities/email-passo.entity';
@@ -155,10 +158,33 @@ export class PassosNotificacaoService {
   /** Nomes designados em um papel do projeto. */
   private async nomesDoPapel(
     projetoId: number,
-    papel: 'consultor' | 'levantador',
+    papel: PapelProjeto,
   ): Promise<string[]> {
     const vinculos = await this.pessoas.find({ where: { projetoId, papel } });
     return vinculos.map((v) => v.pessoa);
+  }
+
+  /** E-mails dos designados em um papel, resolvidos por `usuario_id`.
+   *
+   * O nome só é usado no vínculo antigo que a migração não conseguiu resolver. Enquanto a
+   * resolução era só por nome, o homônimo do consultor designado recebia os e-mails do
+   * cliente junto com ele (achado da auditoria dos 21 passos). */
+  private async emailsDoPapel(
+    projetoId: number,
+    papel: PapelProjeto,
+  ): Promise<string[]> {
+    const vinculos = await this.pessoas.find({ where: { projetoId, papel } });
+    if (vinculos.length === 0) return [];
+    const ids = new Set(
+      vinculos.map((v) => v.usuarioId).filter((id): id is number => id != null),
+    );
+    const semId = vinculos.filter((v) => v.usuarioId == null).map((v) => v.pessoa);
+    const todos = await this.users.listar();
+    const porId = todos
+      .filter((u) => u.ativo && ids.has(u.id))
+      .map((u) => u.email || u.login)
+      .filter(Boolean);
+    return [...new Set([...porId, ...(await this.emailsDeNomes(semId))])];
   }
 
   /** Resolve um grupo de destinatário em endereços de e-mail. */
@@ -176,19 +202,23 @@ export class PassosNotificacaoService {
         ]);
         return [...adm, ...coord];
       }
-      case 'gci':
-        return this.emailsDeNomes(nomesDoCampo(projeto.gci));
+      case 'gci': {
+        // Vínculo com papel 'gci' é a designação de verdade; `Projeto.gci` (texto) é o
+        // espelho e só decide em projeto anterior à migração `DesignacaoPorUsuarioId`.
+        const porVinculo = await this.emailsDoPapel(projeto.id, 'gci');
+        return porVinculo.length > 0
+          ? porVinculo
+          : this.emailsDeNomes(nomesDoCampo(projeto.gci));
+      }
       case 'consultores': {
         // A fonte da verdade são os vínculos por papel; `Projeto.consultor` é só o espelho.
-        const nomes = await this.nomesDoPapel(projeto.id, 'consultor');
-        return this.emailsDeNomes(
-          nomes.length > 0 ? nomes : nomesDoCampo(projeto.consultor),
-        );
+        const porVinculo = await this.emailsDoPapel(projeto.id, 'consultor');
+        return porVinculo.length > 0
+          ? porVinculo
+          : this.emailsDeNomes(nomesDoCampo(projeto.consultor));
       }
       case 'levantadores':
-        return this.emailsDeNomes(
-          await this.nomesDoPapel(projeto.id, 'levantador'),
-        );
+        return this.emailsDoPapel(projeto.id, 'levantador');
       case 'comercial':
         return [projeto.comercialEmail].map((e) => e.trim()).filter(Boolean);
       case 'cliente':
