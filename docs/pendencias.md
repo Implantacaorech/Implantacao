@@ -312,6 +312,33 @@
 ---
 ## 🟢 Resolvidos (histórico)
 
+- **Auditoria geral 360° do sistema** — 2026-08-07 (skill `auditoria-geral-sistema`).
+  Percorreu rotas, menus, telas, formulários, CRUDs, APIs, banco, autenticação, autorização,
+  console, network, layout, responsividade e segurança básica, num navegador real contra a
+  instância isolada. **Três achados, todos corrigidos:**
+  - **INT-001 (Médio):** a suíte de geradores quebrava **sozinha** em certas datas.
+    `comparacao-docx.ts` trocava qualquer ocorrência da data de hoje por `<HOJE>`, mas só no
+    lado GERADO; o snapshot guarda literais as datas de negócio das fixtures. Em 07/08/2026 a
+    data fixa "07/08/2026" do Projeto colidiu. **Causa raiz:** o mesmo defeito já ocorrera no
+    harness `.xlsx` em 02/08 e fora corrigido lá — a correção nunca chegou ao irmão `.docx`.
+    Agora os DOIS lados são normalizados igual. Guardado por `comparacao-docx.spec.ts`, que
+    prova simetria e idempotência sem depender do calendário.
+  - **INT-002 (Baixo):** overflow horizontal de 43px em mobile (390px), em **todas** as telas
+    — era o shell. `.topbar-perfil` é `flex: none` e mede 183px com nome+login; como não
+    encolhia, empurrava o `.topbar-sair` para fora (começava em x=397 num viewport de 390).
+    Corrigido escondendo o texto do cartão abaixo de 620px, restando o avatar — mesmo padrão
+    que o título e a busca já seguiam ali.
+  - **INT-003:** levantado e **descartado como falso positivo** — o modelo de e-mail inativo
+    some do `GET /config/modelos-email` por default, mas a tela de administração já chama com
+    `apenasAtivos=false`. O default filtrado é para o CONSUMIDOR do modelo, e está certo.
+  - **CRUD verificado módulo a módulo** (54 casos): projetos, usuários, RNS, cadastros,
+    modelos de e-mail e preferências — ciclo completo mais corpo vazio, campo desconhecido,
+    fora do enum, acima do máximo, obrigatório faltando, acentuação, HTML e id inválido.
+    Nenhum defeito. Virou `e2e/testes/06-crud.spec.ts`.
+  - Instrumento novo: `e2e/testes/90-auditoria-varredura.spec.ts` percorre as 45 rotas
+    estáticas + 9 de projeto coletando erro de console e resposta HTTP ≥ 400, confere overflow
+    em 3 viewports e valida o menu dos 6 perfis não-ADM. **Zero** erro de console e **zero**
+    requisição falhando em todo o sistema.
 - **Auditoria de integridade dos 21 passos + fechamento das brechas de autorização** —
   2026-08-05. Bateria de testes extremos (154 casos de API contra instância isolada) +
   auditoria de código por agentes, com verificação adversarial. Nove defeitos reais,

@@ -34,7 +34,8 @@ máquina `I7M1700-01-EVE`.
 
 ## NÃO é seu
 - Regras de fluxo/rotas → **painel-core** (ele apenas CONSOME seus conectores). Geração de
-  documentos/transcrição → **documentos-geracao** (`docservice/`). HTML/SCSS → **MANUS**.
+  documentos/transcrição → **documentos-geracao** (`docservice/`). Visual do Angular →
+  **painel-core** (era do MANUS IA, que saiu em 2026-08-07).
   Testes → **qualidade**. Operação do **Flask legado** (`projeto_old/`) não é mais rotina —
   ele está desligado; só entra em cena num rollback de emergência (ver
   `docs/migracao/05-plano-de-virada.md` §"Registro real da virada").

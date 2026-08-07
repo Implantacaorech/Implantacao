@@ -191,8 +191,10 @@ page.on('response', (r) => { if (r.status() >= 400) falhas.push(`${r.status()} $
   Há confirmação onde precisa? O erro é compreensível? Dá para voltar? Fica claro quando a
   operação terminou?
 
-⚠️ **`templates/` e o CSS do Angular são do MANUS IA — nenhum agente de software escreve
-lá** (CLAUDE.md). Achado de layout nessas áreas vira **registro**, não correção.
+O visual do Angular é **nosso** desde 2026-08-07 (o MANUS IA saiu do projeto): achado de
+layout vira **correção**, como qualquer outro. A exceção continua sendo `templates/` — os
+layouts .docx/.xlsx oficiais da Rech são material de negócio, e mexer neles é decisão do
+usuário.
 
 ## Fase 10 — Segurança (sem teste destrutivo)
 

@@ -86,6 +86,22 @@ Implantação na pré-implantação (`docs/processo-implantacao.md` §2.1.1).
 - A ficha do projeto só **exibe** o valor (aba Resumo). Nada no fluxo se ramifica ainda por
   Levantamento × Demonstração — se isso for desejado, é decisão nova.
 
+## Auditoria geral 360° + o visual passou a ser nosso (2026-08-07)
+
+- **O MANUS IA saiu do projeto.** O HTML/CSS do Angular (`frontend/src/app/`) virou
+  responsabilidade dos agentes de software: achado visual agora é **correção**, não registro.
+  `templates/` (layouts .docx/.xlsx da Rech) continua sendo decisão do usuário. CLAUDE.md,
+  `.claude/agents/` e a skill de auditoria foram atualizados.
+- Auditoria completa pela skill `auditoria-geral-sistema`. **Zero erro de console e zero
+  requisição falhando** nas 45 rotas estáticas + 9 de projeto. Menu correto nos 6 perfis.
+  CRUD verificado módulo a módulo (54 casos): nenhum defeito.
+- Dois defeitos reais, corrigidos: a suíte de geradores quebrava SOZINHA em datas que
+  batessem com fixtures (máscara de "hoje" aplicada a um lado só — o mesmo defeito já
+  corrigido no harness `.xlsx` e não propagado ao `.docx`); e overflow de 43px em mobile
+  causado por `.topbar-perfil`, que não encolhia e empurrava o botão Sair para fora.
+- Instrumento novo e permanente: `e2e/testes/90-auditoria-varredura.spec.ts` (rotas, console,
+  network, responsividade, menu por perfil) e `e2e/testes/06-crud.spec.ts`.
+
 ## Auditoria de integridade dos 21 passos (2026-08-05)
 
 Bateria de testes extremos (154 casos de API contra instância **isolada**) + auditoria de

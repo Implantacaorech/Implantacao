@@ -131,7 +131,12 @@ atualizadas em 2026-07-19 pro stack novo (`backend/src/*`, `docservice/`, ponte
 **`webapp/legado_cli.py`/`runner.py`/`roles.py`/`forms.py` e `tools/`** continuam vivos —
 são a ponte de subprocesso do backend novo (`LegadoCliService`) para o assistente
 administrativo legado. Não mover/apagar sem checar quem importa o quê primeiro.
-**`templates/` + CSS do Angular são do MANUS IA — nenhum agente de software escreve lá.**
+**O visual do Angular (HTML/CSS de `frontend/src/app/`) passou a ser NOSSO** — decisão do
+usuário em 2026-08-07: o MANUS IA saiu do projeto. Layout, alinhamento, espaçamento,
+responsividade e padronização visual são responsabilidade dos agentes de software como
+qualquer outro código, e achado visual vira **correção**, não registro. `templates/` (os
+layouts .docx/.xlsx oficiais da Rech) continua sendo material de negócio — alterar um
+layout ali é decisão do usuário, não refatoração.
 
 **Antes de todo push:** `cd backend && npm test` e `cd frontend && npm test` (specs reais,
 ~40s+~23s). `python tools/verificar.py` (smoke dos geradores, best-effort) se mexer em

@@ -222,4 +222,19 @@
   .topbar-marca img {
     height: 17px;
   }
+
+  /* Cartão do usuário fica só com o AVATAR.
+   *
+   * `.topbar-perfil` é `flex: none` e media 183px com o nome + login dentro; como não
+   * encolhe, ele empurrava o botão Sair para FORA da tela — a barra estourava 43px em 390px
+   * de largura, em todas as telas (achado da auditoria de 2026-08-07: o Sair começava em
+   * x=397 num viewport de 390). Some o texto, sobram as iniciais, e os 36px do Sair cabem.
+   * O nome completo continua a um toque, em Meu perfil. */
+  .topbar-perfil-txt {
+    display: none;
+  }
+
+  .topbar-perfil {
+    padding: 5px;
+  }
 }

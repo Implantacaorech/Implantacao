@@ -173,17 +173,11 @@ test.describe('Auditoria — responsividade', () => {
 
   for (const vp of VIEWPORTS) {
     test(`sem overflow horizontal em ${vp.nome} (${vp.width}px)`, async ({ page }) => {
-      // ACHADO ABERTO (auditoria de 2026-08-07), só em mobile: o Painel estoura 43px em
-      // 390px de largura, em TODAS as telas — logo é o shell, não o conteúdo. O elemento é
-      // `button.topbar-sair`, que começa em x=397 (viewport 390) e termina em 433, que é
-      // exatamente o scrollWidth medido. `aside.side` fica em left:-256 (position:fixed),
-      // fora da tela à esquerda, e NÃO contribui para o scroll.
-      //
-      // Não corrigido de propósito: o estilo mora em
-      // `frontend/src/app/layouts/shell/shell.component.css`, e o CLAUDE.md reserva o CSS do
-      // Angular ao MANUS IA — "nenhum agente de software escreve lá". Fica como registro
-      // para quem cuida do visual. Notebook e tablet passam.
-      if (vp.width < 500) test.fail();
+      // Guarda do achado da auditoria de 2026-08-07: o Painel estourava 43px em 390px, em
+      // TODAS as telas — era o shell, não o conteúdo. `.topbar-perfil` é `flex: none` e
+      // media 183px com nome+login dentro; como não encolhia, empurrava o `.topbar-sair`
+      // para fora (começava em x=397 num viewport de 390). Corrigido escondendo o texto do
+      // cartão abaixo de 620px, restando o avatar.
       test.setTimeout(120_000);
       await page.setViewportSize({ width: vp.width, height: vp.height });
       await entrarComSucesso(page, USUARIOS.adm);
