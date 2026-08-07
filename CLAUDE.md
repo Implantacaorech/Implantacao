@@ -143,3 +143,9 @@ encontrado em 2026-08-05 — se um falhar, a brecha voltou. Exige a **instância
 porta 5199** (SQLite descartável, `cwd` fora de `backend/` para o `smtp.json` não ser
 encontrado). ⚠️ **Nunca aponte o e2e para a 5100** — é produção, e os testes concluem passos
 e disparam e-mail; o `playwright.config.ts` recusa essa porta no boot.
+
+**Auditoria 360° do sistema** (antes de uma entrega/virada, ou quando pedirem "auditoria
+geral"/"testar tudo"): skill **`auditoria-geral-sistema`** — percorre frontend, backend,
+APIs, banco, permissões, navegação, formulários, layout, responsividade, console, network,
+performance e segurança, em navegador real, classifica os achados por severidade, corrige a
+causa raiz, reteste e fecha com relatório. Roda na mesma instância isolada da 5199.
