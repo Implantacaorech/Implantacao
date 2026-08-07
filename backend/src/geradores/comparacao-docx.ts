@@ -27,7 +27,7 @@ export interface SnapshotDocx {
   rodapes: Record<string, string[]>;
 }
 
-/** Data de hoje em dd/mm/aaaa — a única que é mascarada, pelo mesmo motivo do .xlsx. */
+/** Data de hoje em dd/mm/aaaa. */
 function dataDeHoje(): string {
   const d = new Date();
   const p = (n: number) => String(n).padStart(2, '0');
@@ -60,6 +60,18 @@ function dataDeHojePorExtenso(): string {
 
 const HOJE_EXTENSO = dataDeHojePorExtenso();
 
+/** Troca a data de hoje pelo marcador — nas duas formas.
+ *
+ * A troca é CEGA (qualquer ocorrência), e por isso é aplicada aos DOIS lados da comparação:
+ * ao documento gerado agora e ao snapshot carregado (ver `carregarSnapshotDocx`). Aplicar só
+ * de um lado foi o defeito que quebrou a suíte sozinha em 07/08/2026: o snapshot do Projeto
+ * tem a data de negócio fixa "07/08/2026" vinda da fixture; naquele dia ela virou `<HOJE>`
+ * no lado gerado e continuou literal no esperado. Seria assim em todo dia que batesse com
+ * uma data das fixtures (04/05, 22/05, 28/05, 01/06, 30/06, 01/07, 07/08...).
+ *
+ * Normalizar os dois lados do mesmo jeito faz a coincidência se cancelar. O `.xlsx`
+ * (`comparacao.ts`) resolveu o mesmo problema ancorando no rótulo "gerado em"; aqui não dá,
+ * porque em `gerar_aceite_uat` a data de geração ocupa a célula inteira, sem rótulo nenhum. */
 function mascarar(valor: string): string {
   return valor
     .split(HOJE)
@@ -67,6 +79,9 @@ function mascarar(valor: string): string {
     .split(HOJE_EXTENSO)
     .join('<HOJE_EXTENSO>');
 }
+
+/** Exposto só para o spec provar a simetria/idempotência sem depender do calendário. */
+export const mascararParaTeste = mascarar;
 
 // preserveOrder mantém a ordem entre <w:p> e <w:tbl> dentro do corpo, que faz parte do
 // contrato. Sem ele, o parser agruparia por nome de tag e a ordem se perderia.
@@ -253,5 +268,19 @@ export function carregarSnapshotDocx(nomeModuloPython: string): SnapshotDocx {
     'caracterizacao',
     `${nomeModuloPython}.json`,
   );
-  return JSON.parse(readFileSync(caminho, 'utf8')) as SnapshotDocx;
+  const bruto = JSON.parse(readFileSync(caminho, 'utf8')) as SnapshotDocx;
+  // O MESMO `mascarar` do lado gerado. O snapshot já vem com `<HOJE>` onde o harness Python
+  // mascarou na captura, mas guarda LITERAIS as datas de negócio das fixtures — e uma delas
+  // pode calhar de ser hoje. Normalizar aqui também faz a coincidência se cancelar em vez de
+  // virar falha (ver `mascarar`).
+  const porMapa = (m: Record<string, string[]>) =>
+    Object.fromEntries(
+      Object.entries(m).map(([k, v]) => [k, v.map(mascarar)]),
+    );
+  return {
+    paragrafos: bruto.paragrafos.map(mascarar),
+    tabelas: bruto.tabelas.map((t) => t.map((l) => l.map(mascarar))),
+    cabecalhos: porMapa(bruto.cabecalhos),
+    rodapes: porMapa(bruto.rodapes),
+  };
 }
