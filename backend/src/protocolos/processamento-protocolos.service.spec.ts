@@ -88,7 +88,11 @@ describe('ProcessamentoProtocolosService', () => {
         protocolo({ videoCaminho: video, videoOrigem: 'upload' }),
       );
       transcricao.iniciar.mockResolvedValue(undefined);
-      transcricao.status.mockResolvedValue({
+      // `null` na 1ª consulta = docservice ainda não conhece este protocolo, que é o estado
+      // real de quem nunca foi transcrito. Sem isso o pipeline acharia trabalho pronto e
+      // REAPROVEITARIA (ver "reaproveitamento do trabalho do docservice" mais abaixo) — o
+      // teste passaria sem nunca exercitar a transcrição de verdade.
+      transcricao.status.mockResolvedValueOnce(null).mockResolvedValue({
         status: 'concluido',
         transcricao: '[00:01] fala',
         duracaoSeg: 10,
@@ -104,6 +108,7 @@ describe('ProcessamentoProtocolosService', () => {
 
       const r = await service.processar(1, 'Fulano');
       expect(r.ok).toBe(true);
+      expect(transcricao.iniciar).toHaveBeenCalled(); // transcreveu de fato
       expect(protocolos.atualizarStatus).toHaveBeenNthCalledWith(
         1,
         1,
@@ -232,6 +237,201 @@ describe('ProcessamentoProtocolosService', () => {
       );
       expect(existsSync(video)).toBe(false); // foi movido
       expect(existsSync(join(raiz, 'Videos Com Erro', 'aula3.mp4'))).toBe(true);
+    });
+  });
+
+  /** O resultado concluído fica no `_jobs` do docservice até o processo morrer. Quando a
+   * gravação no banco falhava — foi o caso do limite de 64 KB da coluna `transcricao`, em
+   * 2026-08-10 —, o texto continuava lá inteiro e ninguém voltava a buscá-lo: reprocessar
+   * retranscrevia do zero e ainda sobrescrevia o resultado pronto. */
+  describe('processar — reaproveitamento do trabalho do docservice', () => {
+    /** Deixa o pipeline pronto para chegar até a transcrição e terminar bem depois dela. */
+    function videoPendente(nome: string) {
+      const video = join(raiz, nome);
+      writeFileSync(video, 'x');
+      protocolos.buscar.mockResolvedValue(
+        protocolo({ videoCaminho: video, videoOrigem: 'upload' }),
+      );
+      ia.analisar.mockResolvedValue({ campos: {}, bruto: '{}' });
+      ia.resumirCompleto.mockResolvedValue('resumo');
+      return video;
+    }
+
+    it('job JÁ concluído é reaproveitado — não retranscreve', async () => {
+      videoPendente('reaproveita.mp4');
+      transcricao.status.mockResolvedValue({
+        status: 'concluido',
+        transcricao: '[00:01] texto que sobreviveu',
+        duracaoSeg: 7200,
+        idioma: 'pt',
+      });
+
+      const r = await service.processar(1, 'Fulano');
+
+      expect(r.ok).toBe(true);
+      expect(transcricao.iniciar).not.toHaveBeenCalled();
+      expect(protocolos.atualizar).toHaveBeenCalledWith(1, {
+        transcricao: '[00:01] texto que sobreviveu',
+        duracaoSeg: 7200,
+      });
+    });
+
+    it('job em andamento é ACOMPANHADO, não recomeçado (chamar iniciar daria 409)', async () => {
+      videoPendente('em-andamento.mp4');
+      transcricao.status
+        .mockResolvedValueOnce({
+          status: 'processando',
+          pct: 10,
+          pos: 60,
+          dur: 600,
+        })
+        .mockResolvedValue({
+          status: 'concluido',
+          transcricao: '[00:01] fala',
+          duracaoSeg: 600,
+          idioma: 'pt',
+        });
+      jest
+        .spyOn(service as unknown as { sleep: () => Promise<void> }, 'sleep')
+        .mockResolvedValue(undefined);
+
+      const r = await service.processar(1, 'Fulano');
+
+      expect(r.ok).toBe(true);
+      expect(transcricao.iniciar).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['sem job nenhum', null],
+      [
+        'job de uma tentativa que falhou',
+        { status: 'erro', mensagem: 'RuntimeError: falhou antes' },
+      ],
+    ])('%s -> transcreve do zero', async (_caso, primeiro) => {
+      videoPendente('do-zero.mp4');
+      transcricao.iniciar.mockResolvedValue(undefined);
+      transcricao.status.mockResolvedValueOnce(primeiro).mockResolvedValue({
+        status: 'concluido',
+        transcricao: '[00:01] fala',
+        duracaoSeg: 10,
+        idioma: 'pt',
+      });
+
+      await service.processar(1, 'Fulano');
+
+      expect(transcricao.iniciar).toHaveBeenCalled();
+    });
+  });
+
+  /** A espera precisa SEMPRE terminar. Um laço que só saía em 'concluido'/'erro' deixava o
+   * protocolo preso em 'Transcrevendo' para sempre quando o docservice reiniciava no meio —
+   * e de 'Transcrevendo' não há volta pela tela, porque `processar` recusa reprocessar. */
+  describe('processar — a espera da transcrição não pode girar para sempre', () => {
+    /** Sem espera real entre as consultas, e com o relógio sob controle do teste. */
+    function relogioControlado() {
+      jest
+        .spyOn(service as unknown as { sleep: () => Promise<void> }, 'sleep')
+        .mockResolvedValue(undefined);
+      let agora = 0;
+      jest.spyOn(Date, 'now').mockImplementation(() => agora);
+      return { avancarMin: (min: number) => (agora += min * 60_000) };
+    }
+
+    function videoPendente(nome: string) {
+      const video = join(raiz, nome);
+      writeFileSync(video, 'x');
+      protocolos.buscar.mockResolvedValue(
+        protocolo({ videoCaminho: video, videoOrigem: 'upload' }),
+      );
+      transcricao.iniciar.mockResolvedValue(undefined);
+    }
+
+    afterEach(() => jest.restoreAllMocks());
+
+    it('docservice reiniciado (status some) -> termina em Erro em vez de girar sem fim', async () => {
+      videoPendente('sumiu.mp4');
+      // Depois do `iniciar`, o job existia; o serviço reiniciou e passou a responder 404.
+      transcricao.status.mockResolvedValue(null);
+      relogioControlado();
+
+      const r = await service.processar(1, 'Fulano');
+
+      expect(r.ok).toBe(false);
+      const erro = protocolos.atualizarStatus.mock.calls.find(
+        (c: unknown[]) => c[1] === 'Erro',
+      ) as [number, string, string, string];
+      expect(erro[2]).toContain('não conhece mais este trabalho');
+      // Não ficou consultando para sempre: desistiu perto do limite configurado.
+      expect(transcricao.status.mock.calls.length).toBeLessThan(25);
+    });
+
+    it('trabalho que avançou e depois congelou -> dado como travado', async () => {
+      videoPendente('congelou.mp4');
+      const relogio = relogioControlado();
+      // `pos` sobe uma vez e nunca mais; o relógio anda 10 min a cada consulta.
+      transcricao.status
+        .mockResolvedValueOnce({
+          status: 'processando',
+          pct: 5,
+          pos: 120,
+          dur: 7200,
+        })
+        .mockImplementation(() => {
+          relogio.avancarMin(10);
+          return Promise.resolve({
+            status: 'processando',
+            pct: 5,
+            pos: 120,
+            dur: 7200,
+          });
+        });
+
+      const r = await service.processar(1, 'Fulano');
+
+      expect(r.ok).toBe(false);
+      const erro = protocolos.atualizarStatus.mock.calls.find(
+        (c: unknown[]) => c[1] === 'Erro',
+      ) as [number, string, string, string];
+      expect(erro[2]).toContain('parou de avançar');
+      expect(erro[2]).toContain('120s de áudio');
+    });
+
+    it('job ESPERANDO NA FILA (pos=0 por horas) NÃO é dado como travado', async () => {
+      // O docservice transcreve um job por vez (lock global `_BUSY`): quem está na fila fica
+      // legitimamente com pos=0 enquanto o da frente roda. Se a detecção de travamento
+      // olhasse o relógio sem olhar o `pos`, mataria trabalho perfeitamente válido.
+      videoPendente('na-fila.mp4');
+      const relogio = relogioControlado();
+      ia.analisar.mockResolvedValue({ campos: {}, bruto: '{}' });
+      ia.resumirCompleto.mockResolvedValue('resumo');
+
+      let consultas = 0;
+      transcricao.status.mockImplementation(() => {
+        relogio.avancarMin(30); // 30 consultas => 15 horas na fila
+        consultas += 1;
+        if (consultas <= 30) {
+          return Promise.resolve({
+            status: 'processando',
+            pct: null,
+            pos: 0,
+            dur: 0,
+          });
+        }
+        return Promise.resolve({
+          status: 'concluido',
+          transcricao: '[00:01] finalmente',
+          duracaoSeg: 60,
+          idioma: 'pt',
+        });
+      });
+
+      const r = await service.processar(1, 'Fulano');
+
+      expect(r.ok).toBe(true);
+      expect(protocolos.atualizar).toHaveBeenCalledWith(1, {
+        transcricao: '[00:01] finalmente',
+        duracaoSeg: 60,
+      });
     });
   });
 

@@ -21,6 +21,26 @@ import { aplicarNomes, lerMapa } from './locutores';
 const ESTAVEL_SEG = 90; // arquivo precisa estar sem modificação há N s (OneDrive ainda copiando)
 const INTERVALO_POLL_MS = 2000;
 
+/** Quantas consultas seguidas podem voltar "não conheço este trabalho" antes de desistir.
+ *
+ * O `_jobs` do docservice é memória pura: reiniciando o serviço, o job some e o status passa
+ * a responder 404 — que vira `null` aqui. Como `null` não é 'concluido' nem 'erro', a espera
+ * girava PARA SEMPRE e o protocolo ficava preso em 'Transcrevendo', estado do qual não há
+ * volta (o `processar` recusa reprocessar o que está 'Transcrevendo'/'Analisando').
+ *
+ * Tolerar algumas respostas vazias cobre a janela entre o POST e o registro do job; passar
+ * disso é o docservice tendo perdido o trabalho de verdade. */
+const MAX_CONSULTAS_SEM_JOB = 15; // ~30 s
+
+/** Tempo máximo que um trabalho JÁ EM ANDAMENTO pode passar sem avançar um segundo sequer.
+ *
+ * Só vale depois de `pos` passar de zero, e o motivo é importante: o docservice transcreve um
+ * job por vez (lock global `_BUSY` em `transcricao/servico.py`), então um job na FILA fica
+ * legitimamente com `pos = 0` por horas, esperando o da frente. Cronometrar esse caso mataria
+ * trabalho válido. Depois que o progresso começa, ele avança a cada ~2 s — uma hora parado é
+ * travamento, não lentidão. */
+const MAX_MS_CONGELADO = 60 * 60 * 1000;
+
 /** Pipeline Vídeo -> Protocolo: transcrição local (via docservice) e análise IA. Fluxo:
  * vídeo em 'Videos Pendentes' (ou upload) -> registro Pendente (dedup por hash) ->
  * Transcrevendo -> Analisando -> Em revisão (+ move p/ 'Videos Processados'); qualquer
@@ -210,20 +230,113 @@ export class ProcessamentoProtocolosService {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  /** Aguarda o job de transcrição do docservice terminar, fazendo polling. */
+  /** Aguarda o job de transcrição do docservice terminar, fazendo polling.
+   *
+   * Sai por quatro caminhos, e os dois últimos existem para que a espera SEMPRE termine: um
+   * laço que só sai em 'concluido'/'erro' deixava o protocolo preso em 'Transcrevendo' para
+   * sempre quando o docservice reiniciava no meio — e de lá não há volta pela tela. */
   private async aguardarTranscricao(
     protocoloId: number,
   ): Promise<{ transcricao: string; duracaoSeg: number }> {
+    let consultasSemJob = 0;
+    let maiorPos = 0;
+    let avancouEm = Date.now();
+
     for (;;) {
       const job = await this.transcricao.status(protocoloId);
-      if (job && job.status === 'concluido') {
+
+      if (job?.status === 'concluido') {
         return { transcricao: job.transcricao, duracaoSeg: job.duracaoSeg };
       }
-      if (job && job.status === 'erro') {
+      if (job?.status === 'erro') {
         throw new Error(job.mensagem);
       }
+
+      if (!job) {
+        consultasSemJob += 1;
+        if (consultasSemJob > MAX_CONSULTAS_SEM_JOB) {
+          throw new Error(
+            'O serviço de transcrição não conhece mais este trabalho — ele foi ' +
+              'reiniciado durante o processamento. É preciso transcrever de novo.',
+          );
+        }
+      } else {
+        consultasSemJob = 0;
+        if (job.pos > maiorPos) {
+          maiorPos = job.pos;
+          avancouEm = Date.now();
+        } else if (maiorPos > 0 && Date.now() - avancouEm > MAX_MS_CONGELADO) {
+          const minutos = Math.round(MAX_MS_CONGELADO / 60000);
+          throw new Error(
+            `A transcrição parou de avançar há mais de ${minutos} minutos ` +
+              `(parada em ${Math.round(maiorPos)}s de áudio) e foi dada como travada.`,
+          );
+        }
+      }
+
       await this.sleep(INTERVALO_POLL_MS);
     }
+  }
+
+  /** Obtém a transcrição do docservice REAPROVEITANDO o que já estiver pronto lá.
+   *
+   * O resultado concluído fica no `_jobs` do docservice até o processo morrer. Quando a
+   * gravação no banco falhava (foi o caso do limite de 64 KB da coluna `transcricao`, em
+   * 2026-08-10), o texto continuava ali, inteiro — e ninguém voltava a buscá-lo: reprocessar
+   * chamava `iniciar`, que retranscrevia do zero e ainda SOBRESCREVIA o resultado pronto.
+   * Horas de CPU jogadas fora por um erro que já tinha sido corrigido.
+   *
+   * Os três casos:
+   *   `concluido`   → reaproveita, sem transcrever nada;
+   *   `processando` → acompanha o que já está rodando (chamar `iniciar` aqui daria 409);
+   *   `erro`/nada   → começa do zero, que é o comportamento de sempre.
+   *
+   * O job é indexado pelo id do protocolo e morre junto com o docservice, então reaproveitar
+   * não corre o risco de devolver a transcrição de outro vídeo. */
+  private async transcreverProtocolo(
+    p: {
+      videoCaminho: string;
+      vocabulario: string;
+      cliente: string;
+      titulo: string;
+      participantes: number;
+    },
+    id: number,
+  ): Promise<{ transcricao: string; duracaoSeg: number }> {
+    const jaExistente = await this.transcricao.status(id);
+
+    if (jaExistente?.status === 'concluido') {
+      this.logger.log(
+        `Protocolo ${id}: reaproveitando a transcrição que já estava pronta no docservice ` +
+          `(${jaExistente.transcricao.length} caracteres) — não vai retranscrever.`,
+      );
+      return {
+        transcricao: jaExistente.transcricao,
+        duracaoSeg: jaExistente.duracaoSeg,
+      };
+    }
+
+    if (jaExistente?.status === 'processando') {
+      this.logger.log(
+        `Protocolo ${id}: já havia transcrição em andamento no docservice — acompanhando ` +
+          'em vez de recomeçar.',
+      );
+    } else {
+      // O MESMO vocabulário da gravação vale aqui: a retranscrição do arquivo é onde
+      // sai o texto definitivo, então é justamente onde o nome próprio precisa acertar.
+      await this.transcricao.iniciar(
+        id,
+        p.videoCaminho,
+        montarVocabulario({
+          digitado: p.vocabulario,
+          cliente: p.cliente,
+          titulo: p.titulo,
+        }),
+        p.participantes,
+      );
+    }
+
+    return this.aguardarTranscricao(id);
   }
 
   /** Roda o pipeline de UM protocolo: transcreve -> analisa -> Em revisão. Se a
@@ -268,19 +381,7 @@ export class ProcessamentoProtocolosService {
           undefined,
           autor,
         );
-        // O MESMO vocabulário da gravação vale aqui: a retranscrição do arquivo é onde
-        // sai o texto definitivo, então é justamente onde o nome próprio precisa acertar.
-        await this.transcricao.iniciar(
-          id,
-          p.videoCaminho,
-          montarVocabulario({
-            digitado: p.vocabulario,
-            cliente: p.cliente,
-            titulo: p.titulo,
-          }),
-          p.participantes,
-        );
-        const t = await this.aguardarTranscricao(id);
+        const t = await this.transcreverProtocolo(p, id);
         await this.protocolos.atualizar(id, {
           transcricao: t.transcricao,
           duracaoSeg: t.duracaoSeg,
