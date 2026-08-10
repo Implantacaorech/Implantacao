@@ -32,6 +32,19 @@ const INTERVALO_POLL_MS = 2000;
  * disso é o docservice tendo perdido o trabalho de verdade. */
 const MAX_CONSULTAS_SEM_JOB = 15; // ~30 s
 
+/** Quantas consultas de andamento podem FALHAR seguidas antes de desistir.
+ *
+ * Diferente do caso acima: aqui o docservice não disse "não conheço" — a conexão em si
+ * quebrou (`read ECONNRESET`). Isso acontece sob carga, porque o docservice transcreve um job
+ * por vez e vários pipelines ficam consultando o andamento a cada 2 s enquanto uma
+ * transcrição pesada monopoliza a máquina.
+ *
+ * Consultar o andamento é DESCARTÁVEL: falhar nela não diz nada sobre o trabalho em si, que
+ * segue rodando do outro lado. Desistir na primeira falha era jogar fora horas de transcrição
+ * por um soluço de rede local — foi o que derrubou quatro protocolos em 2026-08-10.
+ * 30 tentativas ≈ 1 minuto de indisponibilidade tolerada. */
+const MAX_FALHAS_DE_CONSULTA = 30;
+
 /** Tempo máximo que um trabalho JÁ EM ANDAMENTO pode passar sem avançar um segundo sequer.
  *
  * Só vale depois de `pos` passar de zero, e o motivo é importante: o docservice transcreve um
@@ -239,11 +252,39 @@ export class ProcessamentoProtocolosService {
     protocoloId: number,
   ): Promise<{ transcricao: string; duracaoSeg: number }> {
     let consultasSemJob = 0;
+    let falhasSeguidas = 0;
     let maiorPos = 0;
     let avancouEm = Date.now();
 
     for (;;) {
-      const job = await this.transcricao.status(protocoloId);
+      // `status()` lança em qualquer erro que não seja 404. Sem este try, um `ECONNRESET` de
+      // um instante -- num serviço em 127.0.0.1! -- derrubava o pipeline e jogava fora horas
+      // de transcrição já feita. Aconteceu em produção em 2026-08-10 com quatro protocolos
+      // (60, 63, 64 e 65) reprocessados em lote: o docservice transcreve um por vez e, sob
+      // carga, parou de responder aos polls por alguns segundos.
+      //
+      // Consultar o andamento é uma operação DESCARTÁVEL: falhar nela não diz nada sobre o
+      // trabalho em si, que segue rodando do outro lado. Só desiste quando as falhas se
+      // repetem a ponto de indicar que o serviço caiu de vez.
+      let job: Awaited<ReturnType<TranscricaoService['status']>>;
+      try {
+        job = await this.transcricao.status(protocoloId);
+        falhasSeguidas = 0;
+      } catch (e) {
+        falhasSeguidas += 1;
+        if (falhasSeguidas > MAX_FALHAS_DE_CONSULTA) {
+          throw new Error(
+            'O serviço de transcrição parou de responder durante o processamento ' +
+              `(${falhasSeguidas} tentativas seguidas). Último erro: ${this.erroAmigavel(e)}`,
+          );
+        }
+        this.logger.warn(
+          `Protocolo ${protocoloId}: consulta de andamento falhou ` +
+            `(${falhasSeguidas}/${MAX_FALHAS_DE_CONSULTA}) — segue aguardando. ${this.erroAmigavel(e)}`,
+        );
+        await this.sleep(INTERVALO_POLL_MS);
+        continue;
+      }
 
       if (job?.status === 'concluido') {
         return { transcricao: job.transcricao, duracaoSeg: job.duracaoSeg };
@@ -303,7 +344,19 @@ export class ProcessamentoProtocolosService {
     },
     id: number,
   ): Promise<{ transcricao: string; duracaoSeg: number }> {
-    const jaExistente = await this.transcricao.status(id);
+    // Esta consulta é uma OTIMIZAÇÃO (reaproveitar trabalho pronto), não um passo do fluxo.
+    // Se ela falhar, o certo é seguir para o `iniciar` — que dará o erro de verdade se o
+    // serviço estiver mesmo fora. Deixar a otimização derrubar o pipeline seria trocar um
+    // ganho por um risco.
+    let jaExistente: Awaited<ReturnType<TranscricaoService['status']>> = null;
+    try {
+      jaExistente = await this.transcricao.status(id);
+    } catch (e) {
+      this.logger.warn(
+        `Protocolo ${id}: não deu para consultar se já havia transcrição pronta ` +
+          `(${this.erroAmigavel(e)}) — seguindo para transcrever.`,
+      );
+    }
 
     if (jaExistente?.status === 'concluido') {
       this.logger.log(
