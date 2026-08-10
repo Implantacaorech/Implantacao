@@ -12,6 +12,35 @@ import { DisponibilidadeService } from '../disponibilidade/disponibilidade.servi
 // real do Agendador (test/cronograma.e2e-spec.ts). Aqui, um cenário mínimo (1-2 módulos,
 // sem período bloqueado nem dias excluídos) isola só o comportamento novo:
 // bloqueado_ext/modo conjunta-individual.
+/** Datas do cenário calculadas a cada execução, e sempre no FUTURO.
+ *
+ * Antes a suíte fixava a segunda-feira 03/08/2026 e passou a falhar sozinha no dia 04, sem
+ * ninguém ter tocado no código: o serviço nunca agenda no passado (`if (inicio < hoje)
+ * inicio = hoje`, distribuicao.service.ts), então a alocação saía no dia de hoje e todas as
+ * expectativas de data erravam. Data fixa em teste de agendamento é bomba-relógio. */
+function iso(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`;
+}
+
+/** Segunda-feira seguinte (1 a 7 dias à frente) — nunca hoje, nunca fim de semana. */
+function proximaSegunda(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  do {
+    d.setDate(d.getDate() + 1);
+  } while (d.getDay() !== 1);
+  return d;
+}
+
+const SEGUNDA = iso(proximaSegunda());
+const TERCA = (() => {
+  const d = proximaSegunda();
+  d.setDate(d.getDate() + 1);
+  return iso(d);
+})();
+
 describe('DistribuicaoService — disponibilidade externa (SICLA/Oracle)', () => {
   let service: DistribuicaoService;
 
@@ -79,7 +108,7 @@ describe('DistribuicaoService — disponibilidade externa (SICLA/Oracle)', () =>
     ]);
     cronograma.config.mockResolvedValue({
       modoDisponibilidade: modo,
-      dataInicio: '2026-08-03', // segunda-feira
+      dataInicio: SEGUNDA, // segunda-feira, sempre futura
       diasTurnosExcluidos: '',
       analistaPadrao: '',
     });
@@ -99,7 +128,7 @@ describe('DistribuicaoService — disponibilidade externa (SICLA/Oracle)', () =>
     expect(cronograma.alocar).toHaveBeenCalledWith(
       1,
       1,
-      expect.objectContaining({ data: '2026-08-03', turno: 'manha' }),
+      expect.objectContaining({ data: SEGUNDA, turno: 'manha' }),
     );
   });
 
@@ -118,7 +147,7 @@ describe('DistribuicaoService — disponibilidade externa (SICLA/Oracle)', () =>
     users.codigosSiclaPorNome.mockResolvedValue({ ana: '007' });
     disponibilidade.configurado.mockReturnValue(true);
     disponibilidade.ocupacaoPorSlotCache.mockResolvedValue({
-      '007|2026-08-03|manha': true,
+      [`007|${SEGUNDA}|manha`]: true,
     });
 
     await service.distribuirAutomatico(1);
@@ -126,7 +155,7 @@ describe('DistribuicaoService — disponibilidade externa (SICLA/Oracle)', () =>
     expect(cronograma.alocar).toHaveBeenCalledWith(
       1,
       1,
-      expect.objectContaining({ data: '2026-08-03', turno: 'tarde' }),
+      expect.objectContaining({ data: SEGUNDA, turno: 'tarde' }),
     );
   });
 
@@ -138,7 +167,7 @@ describe('DistribuicaoService — disponibilidade externa (SICLA/Oracle)', () =>
     ]);
     cronograma.config.mockResolvedValue({
       modoDisponibilidade: 'individual',
-      dataInicio: '2026-08-03',
+      dataInicio: SEGUNDA,
       diasTurnosExcluidos: '',
       analistaPadrao: '',
     });
@@ -150,7 +179,7 @@ describe('DistribuicaoService — disponibilidade externa (SICLA/Oracle)', () =>
     disponibilidade.configurado.mockReturnValue(true);
     // Ana (007) ocupada na manhã de 03/08 — Beto (008) não é afetado no modo individual.
     disponibilidade.ocupacaoPorSlotCache.mockResolvedValue({
-      '007|2026-08-03|manha': true,
+      [`007|${SEGUNDA}|manha`]: true,
     });
 
     await service.distribuirAutomatico(1);
@@ -158,12 +187,12 @@ describe('DistribuicaoService — disponibilidade externa (SICLA/Oracle)', () =>
     expect(cronograma.alocar).toHaveBeenCalledWith(
       1,
       1,
-      expect.objectContaining({ data: '2026-08-03', turno: 'tarde' }),
+      expect.objectContaining({ data: SEGUNDA, turno: 'tarde' }),
     ); // Ana pulou pra tarde
     expect(cronograma.alocar).toHaveBeenCalledWith(
       2,
       1,
-      expect.objectContaining({ data: '2026-08-03', turno: 'manha' }),
+      expect.objectContaining({ data: SEGUNDA, turno: 'manha' }),
     ); // Beto ficou na manhã (não afetado)
   });
 
@@ -175,7 +204,7 @@ describe('DistribuicaoService — disponibilidade externa (SICLA/Oracle)', () =>
     ]);
     cronograma.config.mockResolvedValue({
       modoDisponibilidade: 'conjunta',
-      dataInicio: '2026-08-03',
+      dataInicio: SEGUNDA,
       diasTurnosExcluidos: '',
       analistaPadrao: '',
     });
@@ -188,7 +217,7 @@ describe('DistribuicaoService — disponibilidade externa (SICLA/Oracle)', () =>
     // só a Ana (007) está ocupada na manhã de 03/08 — mas em modo conjunta isso bloqueia
     // o grupo inteiro, então Beto também não pode ficar na manhã de 03/08.
     disponibilidade.ocupacaoPorSlotCache.mockResolvedValue({
-      '007|2026-08-03|manha': true,
+      [`007|${SEGUNDA}|manha`]: true,
     });
 
     await service.distribuirAutomatico(1);
@@ -198,7 +227,7 @@ describe('DistribuicaoService — disponibilidade externa (SICLA/Oracle)', () =>
     expect(cronograma.alocar).toHaveBeenCalledWith(
       1,
       1,
-      expect.objectContaining({ data: '2026-08-03', turno: 'tarde' }),
+      expect.objectContaining({ data: SEGUNDA, turno: 'tarde' }),
     );
     // Beto (EST): a manhã de 03/08 já está bloqueada pelo SICLA (bloqueadoExt, em modo
     // conjunta vale pra qualquer técnico do projeto); a TARDE de 03/08 agora também está
@@ -208,7 +237,7 @@ describe('DistribuicaoService — disponibilidade externa (SICLA/Oracle)', () =>
     expect(cronograma.alocar).toHaveBeenCalledWith(
       2,
       1,
-      expect.objectContaining({ data: '2026-08-04', turno: 'manha' }),
+      expect.objectContaining({ data: TERCA, turno: 'manha' }),
     );
   });
 
@@ -226,7 +255,7 @@ describe('DistribuicaoService — disponibilidade externa (SICLA/Oracle)', () =>
     expect(cronograma.alocar).toHaveBeenCalledWith(
       1,
       1,
-      expect.objectContaining({ data: '2026-08-03', turno: 'manha' }),
+      expect.objectContaining({ data: SEGUNDA, turno: 'manha' }),
     );
   });
 });

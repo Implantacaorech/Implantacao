@@ -44,6 +44,7 @@ from gerar_fiel import gerar_docx, gerar_xlsx  # noqa: E402
 # motivo do gerador/ acima.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "transcricao"))
 import servico as transcricao_servico  # noqa: E402
+import vivo as transcricao_vivo  # noqa: E402
 
 import docview  # noqa: E402
 
@@ -281,6 +282,12 @@ def gerar_documento_fiel(req: GerarDocumentoFielRequest):
 class IniciarTranscricaoRequest(BaseModel):
     protocoloId: int
     caminhoVideo: str
+    # Termos esperados (nomes dos participantes, cliente, jargão do SIGER) — ver
+    # transcricao/transcritor.py, seção VOCABULÁRIO.
+    vocabulario: str = ""
+    # Quantas vozes separar (>= 2 liga a diarização). Informado, não descoberto — ver
+    # transcricao/diarizacao.py.
+    pessoas: int = 0
 
 
 @app.post("/transcrever", status_code=202)
@@ -290,7 +297,9 @@ def iniciar_transcricao(req: IniciarTranscricaoRequest):
     webapp/protocolos.py:processar (só a etapa de transcrição — a análise por IA e a
     máquina de estados do Protocolo continuam no NestJS, que é quem tem o banco)."""
     try:
-        transcricao_servico.iniciar(req.protocoloId, req.caminhoVideo)
+        transcricao_servico.iniciar(
+            req.protocoloId, req.caminhoVideo, req.vocabulario, req.pessoas
+        )
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail="Arquivo de vídeo não encontrado.") from e
     except RuntimeError as e:
@@ -307,6 +316,80 @@ def status_transcricao(protocolo_id: int):
     if job is None:
         raise HTTPException(status_code=404, detail="Nenhuma transcrição iniciada para este protocolo.")
     return job
+
+
+class IniciarVivoRequest(BaseModel):
+    sessaoId: int
+    vocabulario: str = ""
+
+
+class TrechoVivoRequest(BaseModel):
+    seq: int
+    audioBase64: str
+
+
+class FinalizarVivoRequest(BaseModel):
+    caminhoDestino: str
+    timeoutSeg: int = 300
+
+
+@app.post("/transcrever/vivo", status_code=202)
+def iniciar_vivo(req: IniciarVivoRequest):
+    """Abre uma sessão de transcrição AO VIVO (reunião presencial ou remota pelo Teams) e
+    sobe o worker com o modelo aquecido. O navegador manda os trechos de áudio em
+    POST /transcrever/vivo/{id}/trecho enquanto a reunião acontece."""
+    try:
+        transcricao_vivo.iniciar(req.sessaoId, req.vocabulario)
+    except RuntimeError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    return {"status": "gravando"}
+
+
+@app.post("/transcrever/vivo/{sessao_id}/trecho")
+def trecho_vivo(sessao_id: int, req: TrechoVivoRequest):
+    """Recebe um trecho de áudio (WAV 16 kHz mono 16 bits, base64) e o enfileira para
+    transcrição. Devolve na hora — o texto aparece no GET de estado."""
+    try:
+        audio = base64.b64decode(req.audioBase64)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail="Áudio em base64 inválido.") from e
+    try:
+        return transcricao_vivo.trecho(sessao_id, req.seq, audio)
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail="Gravação não encontrada (sessão encerrada?).") from e
+    except ValueError as e:
+        # 4xx com str(e) é deliberado: a mensagem do ValueError é do domínio ("trecho fora
+        # de ordem", "sessão já finalizada") e serve ao chamador.
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        # 5xx NÃO devolve str(e): falha interna do worker pode carregar caminho de arquivo
+        # e detalhe de ambiente. Mesma regra já aplicada na geração de documentos (acima).
+        raise HTTPException(status_code=500, detail="Falha ao processar o trecho de áudio.") from e
+
+
+@app.get("/transcrever/vivo/{sessao_id}")
+def estado_vivo(sessao_id: int):
+    """Andamento da gravação: {pronto, duracaoSeg, trechos, pendentes, texto, erro}."""
+    estado = transcricao_vivo.estado(sessao_id)
+    if estado is None:
+        raise HTTPException(status_code=404, detail="Nenhuma gravação em andamento para esta sessão.")
+    return estado
+
+
+@app.post("/transcrever/vivo/{sessao_id}/finalizar")
+def finalizar_vivo(sessao_id: int, req: FinalizarVivoRequest):
+    """Encerra a gravação: espera a fila drenar, junta os trechos num único .wav em
+    `caminhoDestino` e devolve a transcrição completa."""
+    try:
+        return transcricao_vivo.finalizar(sessao_id, req.caminhoDestino, req.timeoutSeg)
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail="Nenhuma gravação em andamento para esta sessão.") from e
+
+
+@app.delete("/transcrever/vivo/{sessao_id}")
+def cancelar_vivo(sessao_id: int):
+    """Descarta a gravação (mata o worker e apaga os trechos)."""
+    return {"cancelado": transcricao_vivo.cancelar(sessao_id)}
 
 
 class PreviewRequest(BaseModel):

@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { CronogramaItem } from '../database/entities/cronograma-item.entity';
 import { Projeto } from '../database/entities/projeto.entity';
+import { CronogramaItensRepository } from './repositories/cronograma-itens.repository';
 import { ModificacoesService } from './modificacoes.service';
 import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
 import { diffLinhas } from './linhas-diff.util';
@@ -141,14 +140,13 @@ function planoAutomatico(modulos: string[]): EtapaPlano[] {
 @Injectable()
 export class CronogramaItensService {
   constructor(
-    @InjectRepository(CronogramaItem)
-    private readonly repo: Repository<CronogramaItem>,
+    private readonly repo: CronogramaItensRepository,
     private readonly modificacoes: ModificacoesService,
     private readonly disponibilidade: DisponibilidadeService,
   ) {}
 
   async doProjeto(projetoId: number): Promise<CronogramaItem[]> {
-    return this.repo.find({ where: { projetoId }, order: { ordem: 'ASC' } });
+    return this.repo.doProjeto(projetoId);
   }
 
   /** Substitui todas as linhas do projeto pelas `linhas` enviadas, registrando um
@@ -178,23 +176,21 @@ export class CronogramaItensService {
         autor,
       );
     }
-    await this.repo.delete({ projetoId });
-    if (linhas.length > 0) {
-      await this.repo.save(
-        linhas.map((l, i) =>
-          this.repo.create({
-            projetoId,
-            ordem: i,
-            etapa: l.etapa ?? '',
-            topicos: l.topicos ?? '',
-            horas: l.horas ?? '',
-            data: l.data ?? '',
-            modalidade: l.modalidade ?? '',
-            status: l.status ?? 'Previsto',
-          }),
-        ),
-      );
-    }
+    // Os defaults por campo são regra de negócio (status nasce "Previsto", texto vazio no
+    // lugar de nulo) — por isso ficam aqui, e o repository só recebe as linhas prontas.
+    await this.repo.substituir(
+      projetoId,
+      linhas.map((l, i) => ({
+        projetoId,
+        ordem: i,
+        etapa: l.etapa ?? '',
+        topicos: l.topicos ?? '',
+        horas: l.horas ?? '',
+        data: l.data ?? '',
+        modalidade: l.modalidade ?? '',
+        status: l.status ?? 'Previsto',
+      })),
+    );
     return diffs.length;
   }
 

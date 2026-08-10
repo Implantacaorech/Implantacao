@@ -36,11 +36,26 @@ export function temPapel(
   return papeis.some((p) => meus.includes(p));
 }
 
+/** As 6 macro-etapas, NA ORDEM DO PROCESSO — a ordem do array é usada como sequência
+ * (stepper, funil, % de progresso, coluna do Kanban e a "próxima etapa" do botão Avançar).
+ *
+ * `Designação` vem ANTES de `Projeto` porque é assim que os 21 passos correm: 8–9 são a
+ * Designação (indicar o GCI e os técnicos, incluir as RNS) e 10–12 são o Projeto (criar,
+ * conferir, sinalizar assinado). Até 2026-08-05 o array tinha as duas invertidas: como
+ * `sincronizarEtapa` deriva a macro-etapa do primeiro passo pendente, o projeto andava para
+ * "Designação" (índice 3) e depois para "Projeto" (índice 2) — ou seja, REGREDIA em toda
+ * tela que lê a ordem daqui.
+ *
+ * ⚠️ Mexer nesta ordem exige revisar junto `GATES`, `ACAO_ENTRADA` e `CAMPOS_OBRIGATORIOS`
+ * (metricas.constants.ts): os três são indexados por NOME, então não acompanham sozinhos —
+ * eles descrevem o que já precisa existir para o projeto estar naquela etapa, e isso muda
+ * quando a etapa muda de lugar na fila. O valor gravado em `projetos.etapa` é o NOME, então
+ * reordenar não exige migração de dados. */
 export const ETAPAS = [
   'Agendamento',
   'Levantamento',
-  'Projeto',
   'Designação',
+  'Projeto',
   'Cronograma e Check-list',
   'Encerramento',
 ] as const;
@@ -53,6 +68,14 @@ export const SITUACOES = [
   'Concluído',
 ] as const;
 export type Situacao = (typeof SITUACOES)[number];
+
+/** Natureza da demanda aberta pelo Comercial no passo 1 — "Geração da demanda de
+ * levantamento / demonstração" (docs/processo-implantacao.md §2.1.1). São os dois motivos
+ * pelos quais o Comercial aciona a Implantação na pré-implantação: mapear os processos do
+ * cliente (Levantamento) ou apoiar uma demonstração do SIGER® (Demonstração). Escolha
+ * OBRIGATÓRIA no cadastro do cliente. */
+export const TIPOS_DEMANDA = ['Levantamento', 'Demonstração'] as const;
+export type TipoDemanda = (typeof TIPOS_DEMANDA)[number];
 
 // pode_ver("gestao") no Flask — mantido para telas que ainda incluem o Administrativo.
 export const PERFIS_GESTAO: Perfil[] = [

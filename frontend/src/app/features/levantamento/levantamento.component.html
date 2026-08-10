@@ -8,7 +8,25 @@
   <p class="sub">Responda as perguntas do <strong>Índice de Tópicos</strong> dos módulos contratados.
     Estas respostas alimentam a geração do <strong>Projeto de Implantação</strong>.
     <strong>Todas as perguntas são obrigatórias</strong> — a que não se aplicar ao cliente,
-    marque <em>“Não será utilizado.”</em>.</p>
+    marque <em>“Não será utilizado.”</em>.
+    <strong>Não é preciso salvar</strong>: cada resposta é gravada sozinha enquanto você
+    conduz a reunião.</p>
+
+  <!-- Mesma aba: a gravação virou serviço de aplicação (GravacaoEmAndamentoService), então
+       ela sobrevive à navegação — inicia aqui, volta para o formulário e a barra vermelha do
+       topo continua controlando. -->
+  <div class="acoes lev-gravar">
+    <a class="btn"
+       [routerLink]="['/protocolos', 'gravar']"
+       [queryParams]="{ projetoId: projetoId, cliente: cliente(), titulo: 'Levantamento — ' + cliente() }">
+      ⏺ Gravar reunião
+    </a>
+    <span class="dica" style="margin:0">
+      Grava a reunião de levantamento (presencial ou pelo Teams) e transcreve ao vivo, já
+      arquivada em <strong>{{ cliente() }}</strong>. Depois de iniciar, volte para cá e continue
+      preenchendo — a gravação segue rodando.
+    </span>
+  </div>
 
   @if (erro()) {
     <div class="resultado erro">{{ erro() }}</div>
@@ -19,12 +37,6 @@
       <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-bell"/></svg>
       <span>{{ a }}</span>
       <button type="button" class="lev-x" (click)="aviso.set(null)" aria-label="Fechar aviso">×</button>
-    </div>
-  }
-
-  @if (salvo()) {
-    <div class="resultado ok linha">
-      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg> Respostas salvas.
     </div>
   }
 
@@ -40,7 +52,7 @@
         <span><strong>Edição compartilhada</strong> — também nesta tela agora:
           @for (p of presentes(); track p.usuarioId) {<span class="lev-quem">{{ p.nome }}</span>}
         </span>
-        <span class="dica" style="margin:0">Cada resposta é salva sozinha, assim que você sai do campo.</span>
+        <span class="dica" style="margin:0">Cada um vê o que o outro grava, a cada poucos segundos.</span>
       </div>
     }
 
@@ -51,7 +63,9 @@
       <span class="dica" style="margin:0"><strong>{{ resumo().respondidas }}</strong> / {{ resumo().total }} respondidas</span>
     </div>
 
-    <form (ngSubmit)="salvar()">
+    <!-- Sem (ngSubmit)/botão de enviar: o preenchimento é salvo campo a campo e por tempo
+         (ver INTERVALO_AUTOSAVE_MS no componente). -->
+    <form>
       @for (g of grupos(); track g.area) {
         <details class="lev-mod">
           <summary>
@@ -115,11 +129,8 @@
       }
 
       <div class="lev-barra">
-        <button class="btn primario" type="submit" [disabled]="salvando()">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvar respostas
-        </button>
         @if (faltam() > 0) {
-          <button class="btn" type="button" (click)="irParaPendente()">
+          <button class="btn primario" type="button" (click)="irParaPendente()">
             Faltam {{ faltam() }} — ir para a próxima
           </button>
         } @else {
@@ -129,6 +140,19 @@
           </span>
         }
         <a class="btn btn-voltar" [routerLink]="['/projetos', projetoId]">← Voltar à ficha</a>
+
+        <span class="lev-auto" [class.pendente]="naoSalvas() > 0">
+          @if (naoSalvas() > 0) {
+            <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-clock"/></svg>
+            Salvando {{ naoSalvas() }} {{ naoSalvas() === 1 ? 'resposta' : 'respostas' }}…
+          } @else if (ultimoSalvamento(); as hora) {
+            <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+            Tudo salvo — última gravação às {{ hora }}
+          } @else {
+            <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-clock"/></svg>
+            Salvamento automático ligado
+          }
+        </span>
       </div>
     </form>
   }

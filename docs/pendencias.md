@@ -80,6 +80,15 @@
 - [ ] Acesso ao SICLA/SIGER (API ou banco) para a integração.
 - [ ] Chave da API da IA + teto de custo definido.
 - [ ] Estruturar dados que hoje estão soltos (YAMLs por cliente).
+- [ ] **HTTPS (ou origem liberada) para a gravação de reuniões** — *bloqueio real, 2026-07-30.*
+  A gravação com transcrição ao vivo (`/protocolos/gravar`) usa `getUserMedia`/
+  `getDisplayMedia`, que **só existem em contexto seguro**. O painel é servido em
+  `http://I7M1700-01-EVE:5100` (origem insegura), então a tela sobe mas os botões ficam
+  bloqueados, com a explicação na própria página. Caminhos: (a) publicar em **HTTPS**;
+  (b) política do Edge/Chrome `OverrideSecurityRestrictionsOnInsecureOrigin` com essa origem
+  (distribuível por GPO); (c) usar `http://localhost:5100` na própria máquina do servidor.
+  Detalhe em [gravacao-reuniao.md](gravacao-reuniao.md). Enquanto isso, o upload manual da
+  mesma tela continua entregando o mesmo resultado (só sem transcrição durante a reunião).
 
 ## 📐 Conformidade com os Padrões de Desenvolvimento da Rech
 > Auditoria de 2026-07-21 contra o `PADRAO-RECH.md` rev. 2.0.0. Ver o relatório completo e o
@@ -106,9 +115,26 @@
   vencem na retenção de 14 dias em 03/08 e 05/08. Agora usa o cliente local `mariadb-dump`, grava com
   `--result-file` (sem o pipe da PS 5.1, que mete BOM) e **valida o dump** (código de saída,
   tamanho mínimo, rodapé `Dump completed`, presença de `CREATE TABLE`) antes de compactar.
-- [ ] **Rodar o backup corrigido uma vez e conferir o tamanho do zip** — não pude executar
-  nesta sessão (a permissão de rodar o script foi negada pelo harness). Comando:
-  `powershell -ExecutionPolicy Bypass -File tools\Painel_Novo_Backup_MariaDB.ps1`.
+- [x] **Backup rodado e consertado de novo em 2026-08-02** — zip de **1.085.739 bytes**
+  (dump de 4,15 MB). A correção de 29/07 não bastava: **nenhum backup do `painel_novo`
+  saiu entre 30/07 e 02/08**, e o último bom era o de **23/07**. Duas causas encadeadas,
+  ambas invisíveis porque o painel continuava no ar (ele usa a `MIGRACAO_DB_URL`):
+  1. **Senha obsoleta no ambiente.** Havia um `PAINEL_NOVO_MARIADB_SENHA` antigo (32
+     caracteres) e o script deixava o override VENCER a URL da aplicação (24). Resultado:
+     `Access denied for user 'painel'@'localhost'` todo dia. Agora os `PAINEL_NOVO_*` só
+     **preenchem o que a URL não trouxe**, e o script AVISA no log quando divergem —
+     backup que autentica diferente da aplicação é alarme falso esperando acontecer.
+  2. **`MYSQL_PWD` deixou de funcionar** no cliente do MariaDB 12.2 (ignora a variável e
+     tenta conexão sem senha, com o aviso contraditório "insecure passwordless login").
+     Trocado por `--defaults-extra-file` temporário — mantém a senha fora da linha de
+     comando, que era a razão de usar `MYSQL_PWD`.
+- [ ] **Remover a variável de ambiente `PAINEL_NOVO_MARIADB_SENHA`** — hoje ela é ignorada
+  (a URL vence) e só gera o aviso no log. É lixo de uma troca de senha antiga.
+- [ ] **`C:\PainelBackups\backup_novo_mariadb.log` está com encoding misturado** — as linhas
+  de ERRO saíram ilegíveis (UTF-16 lido como UTF-8), o que ajudou os 4 dias de falha a
+  passarem despercebidos. O `Log()` usa `Out-File -Encoding utf8`; padronizar e reescrever.
+- [ ] **Nada monitora o backup.** Ninguém foi avisado em 4 dias de falha consecutiva. Ligar
+  ao digest diário ou ao /api/health uma checagem de "último zip < 48 h e > 100 KB".
 - [x] **Sobra do Postgres removida do repositório** (2026-07-29): `migrations/` (10 migrations
   de DDL Postgres), `seeds/migrar-legado.ts` (+ script `migrar:legado` — migração do Flask,
   concluída em 2026-07-19, e único consumidor de `pg`), as dependências `pg`/`@types/pg` e o
@@ -163,6 +189,112 @@
   - [ ] Restam os demais componentes Python previstos no item acima: `docservice/gerador/`
     (11 arquivos) e a ponte `webapp/` (4).
 
+## 🏛️ Adequação ao Guia Mestre de Arquitetura (ADR-0002 — 2026-07-31)
+> Norma adotada (Controller → Service → Repository): desde 2026-08-03 é a **Parte II (§13 a §21)**
+> do documento único [`PADRAO-DESENVOLVIMENTO-RECH.md`](../PADRAO-DESENVOLVIMENTO-RECH.md), que
+> consolidou o Guia Mestre com o Padrão Rech (Parte I). A leitura **aplicada a este repositório**
+> segue em [`vault/23 - Padrões/Guia Mestre de Arquitetura de Desenvolvimento.md`](<../vault/23 - Padrões/Guia Mestre de Arquitetura de Desenvolvimento.md>).
+> Decisão e contexto no
+> [ADR-0002](<../vault/17 - ADR/ADR-0002 - Adocao do Guia Mestre de Arquitetura.md>).
+> Aplicação **faseada**: o backend tem 446 arquivos e está em produção desde 19/07 — a
+> reescrita de uma vez não se paga. Cada fase termina com a guarda do CI travando o ganho.
+
+### Fase 1 — norma, guardas e piloto *(concluída em 2026-07-31)*
+- [x] **Guia registrado como norma** no Vault + ADR-0002, com a tradução das camadas para
+  cada frente (NestJS · Angular · FastAPI) e a regra de onde cada repository mora.
+- [x] **Módulo-piloto `plano-cronograma`** — corrigida a **única violação real de camada do
+  backend**: o controller injetava `Repository<Projeto>`/`Repository<Evento>` e fazia
+  `findOne`/`save`. Agora tem `repositories/` (3), `PlanoCronogramaService` de orquestração
+  e controller só de entrada/saída. **38 → 46 testes** (as regras que viviam no controller —
+  404, timeline, releitura do estado — não tinham teste; só eram alcançáveis por HTTP).
+- [x] **`RepositoriosModule`** (`database/repositories/`) — ponto único de acesso às
+  entidades transversais `Projeto` e `Evento`, no lugar de repetir
+  `TypeOrmModule.forFeature([Projeto])` em cada módulo.
+- [x] **6 documentos do guia** escritos para o piloto (`backend/src/plano-cronograma/docs/`).
+- [x] **Rate Limit** (`@nestjs/throttler`) — 300 req/min por IP, ajustável por
+  `MIGRACAO_RATE_LIMIT`/`MIGRACAO_RATE_LIMIT_TTL`. `/api/health` fica de fora: o Guardião
+  consulta em intervalo curto do mesmo IP, e um 429 ali o faria reiniciar um painel saudável.
+- [x] **`SELECT 1` do healthcheck saiu do controller** para um `HealthService` — sem isso a
+  regra "controller não acessa banco" nasceria com exceção.
+- [x] **3 guardas no CI** — `backend/src/common/conformidade-arquitetura.spec.ts` (14 testes),
+  `frontend/src/app/conformidade-arquitetura.spec.ts` (6) e
+  `docservice/tests/test_conformidade_arquitetura.py` (5). O docservice **não tinha nenhum
+  teste rodando no CI** até aqui; ganhou job próprio.
+- [x] **Gate de cobertura ligado** — statements 55 / branches 48 / functions 57 / lines 55,
+  com ~1,5 ponto de folga. A folga é deliberada: no fio do medido, qualquer commit pequeno
+  derruba o CI por ruído e o time aprende a ignorar o gate. O CI passou a rodar o backend
+  com `--coverage`, porque o `coverageThreshold` só é avaliado quando a cobertura é coletada.
+  > **Calibrado pelo CI, não pela máquina** — e isso custou um CI vermelho para aprender. O
+  > gate saiu primeiro em 59/52/62/59, medido localmente (60,2 / 53,2 / 63,3 / 60,2). No
+  > runner a cobertura é **56,5 / 49,9 / 58,6 / 56,5**, e o PR #20 reprovou com os 921
+  > testes PASSANDO. Quem enforce é o CI; é o número dele que vale.
+- [ ] **23 testes (1 suíte) são pulados no CI e não no local** — é a origem da diferença de
+  cobertura acima. Localmente `jest --ci` roda 96 suítes / 925 testes sem nenhum pendente;
+  no runner são 95 / 921 com 23 pulados. São testes que não protegem nada no CI, e ninguém
+  sabia. Descobrir qual suíte é (provável dependência de ambiente: Oracle, Python ou
+  arquivo local) e fazer o skip ser EXPLÍCITO, com motivo, ou consertar a dependência.
+- [x] **Piloto do frontend** — `permissoes.component.ts` deixou de falar HTTP direto (virou
+  `PermissoesAdminService`). É a tela de controle de acesso, onde a separação importa mais.
+- [x] **Correção de segurança junto** — uma rota do docservice devolvia `str(e)` num **500**
+  (podia expor caminho de arquivo e detalhe de ambiente). Agora responde mensagem genérica,
+  e a guarda impede a volta. 4xx com `str(e)` continua permitido: é mensagem de domínio.
+
+### Fase 2 — espalhar a camada Repository *(a fazer)*
+- [ ] **36 módulos restantes** — hoje 46 arquivos ainda injetam `Repository<T>` direto no
+  Service. Ordem sugerida, pelos que mais concentram acesso: `painel` (5), `passos` (4),
+  `cronograma` (3), `catalogos` (3), depois os de 1–2. Copiar do piloto.
+- [ ] **Docs de módulo** conforme os módulos forem adequados (6 arquivos cada). Escrever
+  junto com o porte — doc gerada em lote vira esqueleto e não é lida.
+- [x] **Componentes Angular com `HttpClient`: dívida ZERADA** (2026-08-02). Os três viraram
+  services em `core/services/`: `permissoes` → `PermissoesAdminService` (piloto),
+  `matriz-detalhada` → `MatrizDetalhadaService`, `matriz-funcoes` → `MatrizFuncoesService`.
+  A catraca `COMPONENTES_COM_HTTP_PENDENTES` ficou **vazia** — a regra agora vale para todo
+  componente, sem exceção, e um novo com HTTP direto quebra o CI.
+  > Efeito colateral nos testes, registrado porque volta a aparecer a cada extração: a
+  > chamada passou a atravessar duas camadas de promise (componente → service → HttpClient),
+  > e os specs que faziam um único `await fixture.whenStable()` entre duas requisições
+  > passaram a falhar com "found none". Daí o helper `assentar()` nos specs de matriz.
+- [ ] Ao adequar cada módulo, **apertar a guarda**: promover a regra de "só o piloto" para
+  "todo módulo já portado".
+
+### Fase 3 — estrutura de pastas *(a fazer — a mais invasiva)*
+- [ ] **`src/modules/`** — os 37 módulos estão na raiz de `src/`. É mecânico e o compilador
+  valida, mas toca centenas de imports; fazer numa mudança própria, sem nada junto.
+- [ ] **Entidades por módulo** — as 38 estão centralizadas em `database/entities/`. Depende
+  de rever `index.ts`, `data-source.ts` e o caminho das migrations. Entidade transversal
+  (`Projeto`, `Evento`) continua central por decisão, não por omissão.
+
+### Dívida do harness de equivalência *(aberta)*
+- [x] **`comparacao.ts` (.xlsx) corrigido** (2026-08-02): a máscara `<HOJE>` trocava QUALQUER
+  célula igual à data de hoje, inclusive data de NEGÓCIO — o oposto do que o próprio
+  comentário do arquivo dizia. Em 02/08 o dia 2 do hypercare da fixture (janela desde
+  01/08) virou `<HOJE>` e a suíte quebrou **sozinha**, sem ninguém tocar em código. Agora a
+  máscara casa o rótulo ("gerado em"/"Atualizado em"). Travado por `comparacao.spec.ts`.
+- [x] **`comparacao-docx.ts` corrigido** (2026-08-07) — **este item previu o defeito e ele
+  aconteceu**: em 07/08 a suíte quebrou sozinha, porque o snapshot do Projeto tem a data de
+  negócio fixa "07/08/2026" vinda da fixture e naquele dia ela colidiu com a de hoje.
+  A previsão de que a correção do `.xlsx` não serviria aqui estava certa: tentei ancorar no
+  rótulo e quebrou `gerar_aceite_uat`, onde a data ocupa a célula inteira, sem rótulo.
+  A saída foi outra: **normalizar os DOIS lados** com a mesma `mascarar` (o snapshot passa
+  por ela ao ser carregado), em vez de só o lado gerado. A coincidência se cancela.
+  Travado por `comparacao-docx.spec.ts`, que prova simetria e idempotência sem depender do
+  calendário.
+  ⚠️ **Ponto cego que fica:** num dia que colida com uma fixture, o teste deixa de enxergar
+  o caso em que o gerador escreveu a data de HOJE onde deveria estar a data de negócio —
+  os dois lados viram `<HOJE>`. Fechar isso exige o critério por POSIÇÃO que este item pedia
+  originalmente; a normalização simétrica troca esse ponto cego estreito pelo fim dos falsos
+  negativos, que quebravam a suíte várias vezes por ano.
+- [ ] **`tools/caracterizacao.py` idem** — é quem GERA os snapshots. Não roda no CI, então o
+  defeito só aparece se alguém regenerar num dia que colida, produzindo um snapshot errado.
+  Mesma decisão de critério do item acima.
+
+### Fase 4 — cobertura até 80% *(a fazer)*
+- [ ] Hoje: **60,07% statements · 53,03% branches · 63,63% functions** (886 testes verdes).
+- [ ] Subir o gate a cada fase, **nunca baixar**. Priorizar o que a fase 2 tocar: módulo
+  portado sai com teste do repository e do service, como no piloto.
+- [ ] Frontend: 440 testes em 58 arquivos, **sem gate de cobertura ainda** — o builder
+  `@angular/build:unit-test` precisa de configuração própria; avaliar junto da fase 2.
+
 ## 🔁 Processo de 18 passos (revisão de 2026-07-22)
 - [x] Mapa dos 18 passos, vínculo pessoa×papel (vários levantadores/consultores), RNS de
   quantidade livre, gates por responsável, paralelismo (10 não espera o 8), conferência
@@ -188,6 +320,112 @@
 
 ---
 ## 🟢 Resolvidos (histórico)
+
+- **Auditoria geral 360° do sistema** — 2026-08-07 (skill `auditoria-geral-sistema`).
+  Percorreu rotas, menus, telas, formulários, CRUDs, APIs, banco, autenticação, autorização,
+  console, network, layout, responsividade e segurança básica, num navegador real contra a
+  instância isolada. **Três achados, todos corrigidos:**
+  - **INT-001 (Médio):** a suíte de geradores quebrava **sozinha** em certas datas.
+    `comparacao-docx.ts` trocava qualquer ocorrência da data de hoje por `<HOJE>`, mas só no
+    lado GERADO; o snapshot guarda literais as datas de negócio das fixtures. Em 07/08/2026 a
+    data fixa "07/08/2026" do Projeto colidiu. **Causa raiz:** o mesmo defeito já ocorrera no
+    harness `.xlsx` em 02/08 e fora corrigido lá — a correção nunca chegou ao irmão `.docx`.
+    Agora os DOIS lados são normalizados igual. Guardado por `comparacao-docx.spec.ts`, que
+    prova simetria e idempotência sem depender do calendário.
+  - **INT-002 (Baixo):** overflow horizontal de 43px em mobile (390px), em **todas** as telas
+    — era o shell. `.topbar-perfil` é `flex: none` e mede 183px com nome+login; como não
+    encolhia, empurrava o `.topbar-sair` para fora (começava em x=397 num viewport de 390).
+    Corrigido escondendo o texto do cartão abaixo de 620px, restando o avatar — mesmo padrão
+    que o título e a busca já seguiam ali.
+  - **INT-003:** levantado e **descartado como falso positivo** — o modelo de e-mail inativo
+    some do `GET /config/modelos-email` por default, mas a tela de administração já chama com
+    `apenasAtivos=false`. O default filtrado é para o CONSUMIDOR do modelo, e está certo.
+  - **CRUD verificado módulo a módulo** (54 casos): projetos, usuários, RNS, cadastros,
+    modelos de e-mail e preferências — ciclo completo mais corpo vazio, campo desconhecido,
+    fora do enum, acima do máximo, obrigatório faltando, acentuação, HTML e id inválido.
+    Nenhum defeito. Virou `e2e/testes/06-crud.spec.ts`.
+  - Instrumento novo: `e2e/testes/90-auditoria-varredura.spec.ts` percorre as 45 rotas
+    estáticas + 9 de projeto coletando erro de console e resposta HTTP ≥ 400, confere overflow
+    em 3 viewports e valida o menu dos 6 perfis não-ADM. **Zero** erro de console e **zero**
+    requisição falhando em todo o sistema.
+- **Auditoria de integridade dos 21 passos + fechamento das brechas de autorização** —
+  2026-08-05. Bateria de testes extremos (154 casos de API contra instância isolada) +
+  auditoria de código por agentes, com verificação adversarial. Nove defeitos reais,
+  todos corrigidos e cobertos por teste de regressão em `e2e/` (Playwright) e no Jest:
+  - **RN-10 valia só dentro do `PassosController`.** Quatro caminhos fechavam passos sem o
+    gate de designação: `POST /projetos/:id/anexar` (sem guard nenhum, e o `tipo` vinha cru
+    do corpo — rotular o arquivo de `termo` fechava o passo 18 de um projeto alheio),
+    `gerar-layout/:slug` (checava só perfil), `PUT /projetos/:id` (permitia se autodesignar
+    GCI e então concluir o passo 10) e `POST /fluxo/criar` (concluía o passo 1, do
+    Comercial). Passos 14 e 18 são irreversíveis, então o estado não se desfazia, e tudo
+    ficava gravado em nome de `"sistema"`. O gate desceu para
+    `DocumentosService.registrarDocumento`, via `PassosService.podeExecutarPasso`.
+  - **O processo travava no passo 5.** A rota de concluir exigia `carteira/alteracao` e o
+    Comercial tem nível `consulta`; o passo 5 é dele e não tem caminho automático. A tela
+    ainda escondia a coluna de ação (`soConsulta()`) enquanto `GET /passos` respondia
+    `liberado: true`. A rota passou a exigir só `carteira` — quem decide é `podeExecutar`,
+    que é mais estrito — e a tela mostra a ação quando o passo está liberado.
+  - **Gerar o Termo fechava o passo 18 sem redação (RN-8)**, inclusive no `modo=modelo` (em
+    branco), disparando o e-mail do modelo com o arquivo vazio anexado.
+    `concluirAutomatico` passou a recusar todo passo de `PASSOS_COM_REDACAO_DE_EMAIL`.
+  - **Com dois GCIs no projeto, nenhum recebia o e-mail** do passo 8 nem do 20 — o
+    `split(',')` cru também barrava um GCI chamado "Silva, João". Resolvido por
+    `nomesDoCampo()`, que oferece as partes E o texto inteiro.
+  - **Data de assinatura validava só o formato:** `2026-13-45` fechava o passo 7. Agora
+    `ehDataIso()` exige data real e recusa data futura (assinatura é fato consumado).
+  - **Homônimos:** o NOME é a chave de designação, então dois cadastros com o mesmo nome
+    eram indistinguíveis — o segundo herdava passos e e-mails do primeiro. O cadastro passou
+    a recusar homônimo ativo.
+  - **Corpo acima do limite respondia 404 "Cannot POST"**, dizendo que a rota não existe. O
+    body-parser saiu do `init()` do Nest para ficar ao lado do handler de erro; agora é 413.
+  Segundo lote (todos os 54 achados únicos já passaram pela verificação adversarial):
+  - **RN-7 não se cumpria pela tela.** A prévia do e-mail do passo 5 era montada quando o
+    formulário ABRIA, antes de a pessoa escrever, e a tela devolvia esse corpo já
+    substituído ao concluir — o Administrativo recebia "Descrição do Comercial:" em branco,
+    justamente o dado que a regra manda viajar. A prévia passou a aceitar a descrição
+    pendente (`?descricao=`) e a tela a remonta ao sair do campo.
+  - **Tokens do modelo saíam literais.** A tela Modelos de E-mail oferece 25 variáveis; o
+    montador dos passos resolvia 13. `{{CONTATO_TEL}}` num modelo `passo-N` ia literal para
+    o CLIENTE nos passos 15/16/21. `TOKENS_PASSO` passou a herdar `VAR_CAMPO`.
+  - **Passo 8 fechava em nome do Administrativo**, embora seja do Coordenador: a rota que
+    salva a equipe aceita os dois.
+  - **GmailService montava o MIME fora do `try`:** um anexo ilegível fazia o e-mail sumir do
+    histórico, nem como falha.
+  - **A tela deixava enviar e-mail com assunto/corpo/destinatário vazios** e o backend
+    trocava em silêncio pelo modelo padrão — certo para quem não mexeu em nada, silencioso
+    demais para quem apagou o texto. A tela passou a cobrar o que ela mesma preencheu.
+
+  Continua em aberto:
+  - **Designação passou a identificar por `usuario_id`** (2026-08-06, migration
+    `DesignacaoPorUsuarioId`). `projeto_pessoas` ganhou a coluna, o **GCI virou papel ali**
+    (`papel: 'gci'`) e `Projeto.gci`/`Projeto.consultor` seguem como espelho de texto — é o
+    que telas, tokens e documentos leem. O backfill só amarra o id quando o nome casa com
+    **exatamente um** usuário ativo: nome ambíguo fica sem id de propósito, porque chutar
+    daria a um estranho o passo de outra pessoa.
+    Escrever a designação a partir de um campo de texto (`PUT /projetos/:id`) resolve
+    "Silva, João" pelo cadastro antes de decidir se é uma pessoa ou uma lista — sem isso, a
+    edição da ficha partia o nome em dois e o GCI perdia o próprio projeto.
+  - [ ] **11 dos 22 vínculos de produção não casam com nenhum usuário ativo** — achado ao
+    preparar a migração (2026-08-06). São apelidos/primeiros nomes gravados em
+    `projeto_pessoas.pessoa`: **Alex, Dibah, Eder, Everton, Liliana, Micael, Pereira,
+    Thomaz, Vitor Assunção**. Esses vínculos **já não autorizavam ninguém** antes da
+    migração (a comparação por nome também falhava), então não houve regressão — mas
+    significa que essas pessoas dependem do ADM para concluir os próprios passos. A
+    migration imprime a lista ao rodar. **Corrigir é trabalho humano:** ajustar o nome no
+    cadastro do usuário ou refazer a designação na tela, para o vínculo ganhar identidade.
+  - **`ETAPAS` alinhado aos passos** (decisão do usuário, 2026-08-05). O array tinha
+    `Projeto` antes de `Designação`, mas os passos põem **Designação (8–9) antes de Projeto
+    (10–12)**; como a macro-etapa sai do primeiro passo pendente, o projeto **regredia** ao
+    sair da Designação em tudo que lê a ordem do array — stepper, funil, % de progresso,
+    coluna do Kanban e o `proxEtapa` do botão "Avançar". As duas trocaram de lugar, no
+    backend e no frontend. O valor gravado em `projetos.etapa` é o NOME, então **não houve
+    migração de dados**.
+    Trocar a ordem exigiu mover junto o que era indexado por nome e codificava a sequência
+    antiga: `GATES.Designação` deixou de exigir o documento `projeto` (que agora nasce duas
+    etapas depois — mantê-lo travaria todo projeto) e `dataUsoOficial` saiu de
+    `CAMPOS_OBRIGATORIOS.Designação` para `.Projeto`, já que a data de go-live é dado do
+    Projeto de Implantação. Guardado por `e2e/…/05` ("a macro-etapa nunca regride enquanto
+    os 21 passos avançam"), que caminha os 21 passos e confere o stepper.
 - **INCIDENTE: Painel fora do ar ~13h (22/07/2026, 00:00→13:21).** O container
   `painel-db-mariadb` estava com `restart=no`: quando o Docker parou, o banco não voltou
   e o Painel passou a falhar com `ECONNREFUSED 127.0.0.1:3307`. O guardião funcionou —

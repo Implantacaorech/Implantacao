@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -11,12 +12,14 @@ import { UpdateProjetoDto } from './dto/update-projeto.dto';
 import { ListarProjetosDto } from './dto/listar-projetos.dto';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 import { filtrarCarteiraPorPerfil } from '../common/carteira-visibilidade';
+import { PERFIS_DESIGNA, temPapel } from '../common/constants/perfis';
 import { CronogramaService } from '../cronograma/cronograma.service';
 import { DesignacoesService } from '../cronograma/designacoes.service';
 import { LevantamentoRespostaService } from '../levantamento/levantamento-resposta.service';
 import { DocConteudoService } from '../levantamento/doc-conteudo.service';
 import { DocumentosService } from '../documentos/documentos.service';
 import { NotificacaoService } from '../email/notificacao.service';
+import { PassosService } from '../passos/passos.service';
 
 export interface Paginado<T> {
   data: T[];
@@ -38,6 +41,7 @@ export class ProjetosService {
     private readonly docConteudo: DocConteudoService,
     private readonly documentos: DocumentosService,
     private readonly notificacao: NotificacaoService,
+    private readonly passos: PassosService,
   ) {}
 
   /** Equivalente a _so_meus() do Flask: ADM/Coordenador/Administrativo veem tudo; GCI só onde
@@ -97,16 +101,57 @@ export class ProjetosService {
    * seletor "Fase da Implantação" que a tela Angular tinha na aba Dados pulava etapa
    * sem checar nada — achado real ao fechar a pendência de enforcement de `pode_avancar`
    * (2026-07-17). */
-  async atualizar(id: number, dto: UpdateProjetoDto): Promise<Projeto> {
+  async atualizar(
+    id: number,
+    dto: UpdateProjetoDto,
+    usuario?: AuthUser,
+  ): Promise<Projeto> {
     const projeto = await this.buscarPorId(id);
     if (dto.etapa !== undefined && dto.etapa !== projeto.etapa) {
       throw new BadRequestException(
         'A fase da implantação não pode ser alterada por aqui — use o botão "Avançar" na ficha do projeto.',
       );
     }
+    // `gci` e `consultor` NÃO são campos comuns da ficha: são a designação da equipe, e é
+    // por eles que a RN-10 decide quem conclui os passos 10 e 13+. Deixá-los na edição livre
+    // permitia se autodesignar e destravar o passo de um projeto alheio (achado de
+    // 2026-08-05). Quem designa equipe é PERFIS_DESIGNA, a mesma lista de `PATCH pessoas`.
+    const mudaEquipe =
+      (dto.gci !== undefined && dto.gci !== projeto.gci) ||
+      (dto.consultor !== undefined && dto.consultor !== projeto.consultor);
+    if (mudaEquipe && usuario && !temPapel(usuario, ...PERFIS_DESIGNA)) {
+      throw new ForbiddenException(
+        'Só a Coordenação, o Administrativo ou o ADM podem alterar o GCI e os consultores do projeto.',
+      );
+    }
     const situacaoAnterior = projeto.situacao;
     Object.assign(projeto, dto);
     const salvo = await this.repo.save(projeto);
+    // `gci`/`consultor` aqui são texto, e texto não identifica ninguém: quem manda na RN-10
+    // são os vínculos com `usuario_id`. Editar a ficha sem refazê-los deixaria os dois
+    // discordando — o campo dizendo um nome e a autorização olhando para outro.
+    //
+    // `usuario` vai adiante para o gate do passo 8 continuar valendo: `definirPessoas` de
+    // consultores conclui esse passo, e sem o autor ele fecharia por edição de ficha, em
+    // nome de "sistema" — a mesma classe de furo fechada em 2026-08-05.
+    if (dto.gci !== undefined) {
+      await this.passos.definirPessoas(
+        id,
+        'gci',
+        await this.passos.nomesDoCampoParaGravar(dto.gci),
+        usuario?.nome ?? 'sistema',
+        usuario,
+      );
+    }
+    if (dto.consultor !== undefined) {
+      await this.passos.definirPessoas(
+        id,
+        'consultor',
+        await this.passos.nomesDoCampoParaGravar(dto.consultor),
+        usuario?.nome ?? 'sistema',
+        usuario,
+      );
+    }
     // Notifica a Coordenação quando a situação MUDA para "Concluído" (não a cada save
     // com a situação já concluída) — mesmo gatilho de webapp/app.py:projeto_ficha (POST).
     if (dto.situacao === 'Concluído' && situacaoAnterior !== 'Concluído') {

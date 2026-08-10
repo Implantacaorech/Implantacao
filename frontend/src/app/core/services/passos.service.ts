@@ -85,13 +85,21 @@ export class PassosService {
 
   /** E-mail do passo já montado pelo backend, para a tela abrir preenchida. `null` quando o
    * passo não envia e-mail. */
+  /** @param descricao O que a pessoa está escrevendo AGORA (passo 5). Vai junto para o corpo
+   * já chegar com `{{DESCRICAO_PASSO}}` preenchido — a tela devolve esse corpo ao concluir,
+   * então uma prévia montada sem ele mandava a descrição do Comercial em branco (RN-7). */
   async previaEmail(
     projetoId: number,
     numero: number,
+    descricao?: string,
   ): Promise<EmailDoPasso | null> {
+    const params: Record<string, string> = descricao?.trim()
+      ? { descricao: descricao.trim() }
+      : {};
     const res = await firstValueFrom(
       this.http.get<ApiEnvelope<EmailDoPasso | null>>(
         `${this.base(projetoId)}/passos/${numero}/email`,
+        { params },
       ),
     );
     return res.data;

@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" width="640" height="400" role="img" aria-label="Capacidade da equipe: ranking de consultores por conhecimento, folga de agenda e carga, com resposta pronta ao Comercial">
+  <style>
+    .t{font-family:Inter,'Segoe UI',system-ui,sans-serif}
+    .h{font-size:9px;font-weight:700;fill:#003399}
+    .s{font-size:8px;fill:#5A6B82}
+    .n{font-size:9.5px;font-weight:600;fill:#0F1B2D}
+  </style>
+  <rect width="640" height="400" rx="10" fill="#fff"/>
+  <rect x=".5" y=".5" width="639" height="399" rx="10" fill="none" stroke="#E2E8F0"/>
+  <path d="M0 10a10 10 0 0 1 10-10h620a10 10 0 0 1 10 10v24H0z" fill="#001F66"/>
+  <text class="t" x="18" y="21" style="font-size:10px;font-weight:600;fill:#fff">Capacidade da equipe</text>
+  <text class="t" x="622" y="21" text-anchor="end" style="font-size:8.5px;fill:#8FB0E4">"dá para receber um cliente novo? quem atende? quando?"</text>
+
+  <!-- filtros -->
+  <rect x="16" y="46" width="608" height="30" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text class="t s" x="28" y="65">Módulos do cliente:</text>
+  <rect x="112" y="54" width="150" height="15" rx="7" fill="#fff" stroke="#CBD5E1"/>
+  <text class="t s" x="120" y="65" style="fill:#0F1B2D">FIN, EST, FAT, CTB</text>
+  <text class="t s" x="272" y="65">Setor:</text>
+  <rect x="302" y="54" width="94" height="15" rx="7" fill="#fff" stroke="#CBD5E1"/>
+  <text class="t s" x="310" y="65" style="fill:#0F1B2D">Implantação</text>
+  <text class="t s" x="406" y="65">Janela:</text>
+  <rect x="440" y="54" width="66" height="15" rx="7" fill="#fff" stroke="#CBD5E1"/>
+  <text class="t s" x="448" y="65" style="fill:#0F1B2D">8 semanas</text>
+  <rect x="518" y="53" width="94" height="17" rx="8" fill="#003399"/>
+  <text class="t" x="565" y="65" text-anchor="middle" style="font-size:8.5px;fill:#fff">Avaliar</text>
+
+  <!-- ranking -->
+  <text class="t h" x="16" y="96">Ranking por conhecimento nos módulos, agenda livre e carga de clientes</text>
+
+  <g>
+    <rect x="16" y="106" width="380" height="58" rx="8" fill="#fff" stroke="#86EFAC"/>
+    <text class="t n" x="30" y="126">1 · Ana Prado</text>
+    <rect x="120" y="115" width="46" height="14" rx="7" fill="#ECFDF3"/>
+    <text class="t" x="143" y="125" text-anchor="middle" style="font-size:7.5px;fill:#15803D">Pronto</text>
+    <text class="t s" x="30" y="141">Matriz nos módulos: 9,2 · 14 turnos livres · 3 clientes</text>
+    <rect x="30" y="147" width="240" height="7" rx="3.5" fill="#E2E8F0"/>
+    <rect x="30" y="147" width="216" height="7" rx="3.5" fill="#15803D"/>
+    <text class="t" x="380" y="140" text-anchor="end" style="font-size:16px;font-weight:700;fill:#15803D">90</text>
+
+    <rect x="16" y="172" width="380" height="58" rx="8" fill="#fff" stroke="#FCD34D"/>
+    <text class="t n" x="30" y="192">2 · Carlos Nunes</text>
+    <rect x="132" y="181" width="46" height="14" rx="7" fill="#FFF7ED"/>
+    <text class="t" x="155" y="191" text-anchor="middle" style="font-size:7.5px;fill:#B45309">Parcial</text>
+    <text class="t s" x="30" y="207">Matriz nos módulos: 7,4 · 6 turnos livres · 5 clientes</text>
+    <rect x="30" y="213" width="240" height="7" rx="3.5" fill="#E2E8F0"/>
+    <rect x="30" y="213" width="151" height="7" rx="3.5" fill="#B45309"/>
+    <text class="t" x="380" y="206" text-anchor="end" style="font-size:16px;font-weight:700;fill:#B45309">63</text>
+
+    <rect x="16" y="238" width="380" height="58" rx="8" fill="#fff" stroke="#FCA5A5"/>
+    <text class="t n" x="30" y="258">3 · Marina Alves</text>
+    <rect x="136" y="247" width="60" height="14" rx="7" fill="#FEF3F2"/>
+    <text class="t" x="166" y="257" text-anchor="middle" style="font-size:7.5px;fill:#B42318">Sem janela</text>
+    <text class="t s" x="30" y="273">Matriz nos módulos: 8,8 · 0 turnos livres · 7 clientes</text>
+    <rect x="30" y="279" width="240" height="7" rx="3.5" fill="#E2E8F0"/>
+    <rect x="30" y="279" width="79" height="7" rx="3.5" fill="#B42318"/>
+    <text class="t" x="380" y="272" text-anchor="end" style="font-size:16px;font-weight:700;fill:#B42318">33</text>
+  </g>
+
+  <!-- turnos livres por semana -->
+  <rect x="16" y="306" width="380" height="78" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text class="t h" x="30" y="324">Turnos livres por semana · Ana Prado</text>
+  <g fill="#003399">
+    <rect x="34" y="352" width="26" height="18" rx="3"/>
+    <rect x="74" y="344" width="26" height="26" rx="3"/>
+    <rect x="114" y="338" width="26" height="32" rx="3"/>
+    <rect x="154" y="348" width="26" height="22" rx="3"/>
+    <rect x="194" y="334" width="26" height="36" rx="3"/>
+    <rect x="234" y="342" width="26" height="28" rx="3"/>
+    <rect x="274" y="336" width="26" height="34" rx="3"/>
+    <rect x="314" y="330" width="26" height="40" rx="3"/>
+  </g>
+  <g class="t" text-anchor="middle" style="font-size:7px;fill:#94A3B8">
+    <text x="47" y="379">S1</text><text x="87" y="379">S2</text><text x="127" y="379">S3</text><text x="167" y="379">S4</text>
+    <text x="207" y="379">S5</text><text x="247" y="379">S6</text><text x="287" y="379">S7</text><text x="327" y="379">S8</text>
+  </g>
+
+  <!-- resposta ao comercial -->
+  <rect x="408" y="106" width="216" height="278" rx="10" fill="#E8EEF8" stroke="#003399"/>
+  <text class="t h" x="424" y="128">Resposta ao Comercial</text>
+  <rect x="424" y="138" width="184" height="1" fill="#BFDBFE"/>
+  <text class="t s" x="424" y="158">Consultor indicado</text>
+  <text class="t" x="424" y="176" style="font-size:13px;font-weight:700;fill:#003399">Ana Prado</text>
+  <text class="t s" x="424" y="198">Pode iniciar em</text>
+  <text class="t" x="424" y="216" style="font-size:13px;font-weight:700;fill:#003399">15/09/2026</text>
+  <text class="t s" x="424" y="238">Cobertura dos módulos</text>
+  <g class="t" style="font-size:8px">
+    <rect x="424" y="246" width="40" height="15" rx="7" fill="#ECFDF3"/><text x="444" y="257" fill="#15803D" text-anchor="middle">FIN 9,5</text>
+    <rect x="470" y="246" width="40" height="15" rx="7" fill="#ECFDF3"/><text x="490" y="257" fill="#15803D" text-anchor="middle">EST 9,0</text>
+    <rect x="516" y="246" width="40" height="15" rx="7" fill="#ECFDF3"/><text x="536" y="257" fill="#15803D" text-anchor="middle">FAT 9,0</text>
+    <rect x="424" y="266" width="40" height="15" rx="7" fill="#FFF7ED"/><text x="444" y="277" fill="#B45309" text-anchor="middle">CTB 8,2</text>
+  </g>
+  <text class="t s" x="424" y="302">A agenda cruza as alocações do Painel</text>
+  <text class="t s" x="424" y="314">com os compromissos do SICLA, e a nota</text>
+  <text class="t s" x="424" y="326">vem da Matriz de Conhecimento.</text>
+  <rect x="424" y="340" width="184" height="30" rx="6" fill="#fff" stroke="#BFDBFE"/>
+  <text class="t s" x="434" y="353" style="fill:#003399">Alternativa: Carlos Nunes a partir de</text>
+  <text class="t s" x="434" y="364" style="fill:#003399">06/10, com apoio em Contabilidade.</text>
+</svg>

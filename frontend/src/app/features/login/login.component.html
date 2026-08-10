@@ -1,24 +1,39 @@
-<div style="max-width:380px;margin:9vh auto;padding:0 20px">
-  <div style="text-align:center;margin-bottom:8px">
-    <img src="logo-rech-color.png" alt="Rech Sistemas de Gestão" style="height:64px;width:auto;object-fit:contain" />
-  </div>
-  <h1 class="pagina-titulo centro">Painel de Implantação</h1>
-  <form class="painel" [formGroup]="form" (ngSubmit)="enviar()">
+<div class="acesso-cartao">
+  <img class="acesso-logo" src="logo-portal-rech-azul.png" alt="Portal Rech" />
+  <h1 class="pagina-titulo acesso-sub">Implantação SIGER®</h1>
+
+  <form [formGroup]="form" (ngSubmit)="enviar()">
     @if (erro()) {
       <div class="resultado erro">⚠️ {{ erro() }}</div>
     }
-    <label class="campo">
-      <span>Login (e-mail)</span>
-      <input formControlName="login" autocomplete="username" />
+
+    <label class="acesso-campo">
+      <input type="email" formControlName="login" autocomplete="username"
+             placeholder=" " autofocus />
+      <span>E-mail<i>*</i></span>
     </label>
-    <label class="campo">
+
+    <label class="acesso-campo">
+      <input type="password" formControlName="senha" autocomplete="current-password"
+             placeholder=" " />
       <span>Senha</span>
-      <input type="password" formControlName="senha" autocomplete="current-password" />
     </label>
-    <button class="btn primario bloco" type="submit" [disabled]="form.invalid || enviando()">
+
+    <div class="acesso-linha">
+      <label class="acesso-check">
+        <input type="checkbox" formControlName="lembrar" />
+        <span>Lembrar-me</span>
+      </label>
+      <a routerLink="/esqueci-senha">Esqueci minha senha</a>
+    </div>
+
+    <button class="acesso-botao" type="submit" [disabled]="form.invalid || enviando()">
       {{ enviando() ? 'Entrando…' : 'Entrar' }}
     </button>
   </form>
-  <p class="dica" style="text-align:center">Não tem acesso? <a routerLink="/cadastro">Criar conta</a></p>
-  <p class="dica" style="text-align:center;margin-top:2px">Rech Sistemas de Gestão</p>
+
+  <!-- Porta de entrada da apresentação pública: dá para conhecer o Painel sem ter login. -->
+  <a class="acesso-secundario login-apresentacao" routerLink="/apresentacao">
+    Conheça os recursos do Painel
+  </a>
 </div>

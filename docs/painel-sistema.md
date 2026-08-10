@@ -271,11 +271,36 @@ protocolo** revisáveis:
 - **Revisão humana:** tela com o vídeo (player), a transcrição completa, todos os campos
   editáveis, pendências destacadas, histórico e decisão (**Aprovar e publicar** /
   **Reprovar / Ajustar** — ADM/Coordenador).
-- **Consulta (base de conhecimento):** filtros por módulo, menu, status, origem e palavra-chave
-  (busca em resumo, passo a passo, configurações, regras e dependências).
+- **Consulta (base de conhecimento):** filtros por módulo, menu, status, origem, **cliente** e
+  palavra-chave (busca em resumo, passo a passo, configurações, regras e dependências).
+- **Visibilidade (regra de 2026-07-30):** cada pessoa vê **apenas o que ela mesma gravou ou
+  enviou**. Exceções: **ADM** vê tudo (administra e aprova) e os **vídeos do robô do
+  SharePoint** continuam visíveis para todos (pasta compartilhada, sem dono). Vale na lista
+  **e** em toda rota por id — `backend/src/protocolos/protocolos.acesso.ts`.
 - Config: `PROTOCOLOS_DIR` (pasta raiz), `PROTOCOLOS_POLL_MIN` (robô, padrão 10 min),
   `PROTOCOLOS_WHISPER` (modelo, padrão `base` — rápido; use `small`/`medium` p/ mais
   precisão) e `PROTOCOLOS_THREADS` (0 = automático/todos os núcleos, o mais rápido).
+
+### 5.17.1 Gravar reunião com transcrição ao vivo (`/protocolos/gravar`)
+Terceira entrada da mesma tela (além do upload e do robô): **gravar a reunião pelo próprio
+painel** e ver a transcrição sendo escrita enquanto ela acontece.
+- **Fontes de áudio:** *presencial* (microfone da máquina/sala), *remota* (áudio da aba/tela
+  compartilhada — reunião do **Teams**) ou *híbrida* (as duas somadas num mixer só).
+- **Direcionamento a cliente:** a gravação é vinculada a um **projeto/cliente** do painel
+  (opcional — dá para gravar conteúdo genérico). O nome do cliente fica gravado no registro
+  e vira **coluna e filtro** na lista de transcrições.
+- **Como funciona:** o navegador captura o áudio, corta em trechos de 15–30 s **numa pausa da
+  fala** (não no relógio, para não partir palavra ao meio) e envia; o docservice transcreve
+  cada trecho na hora com um worker que mantém o modelo **carregado** durante toda a reunião.
+- **Ao encerrar:** os trechos viram um único `.wav` em `PROTOCOLOS_DIR/Gravacoes/`, a
+  transcrição completa entra no **mesmo pipeline** dos vídeos (análise de IA + **resumo
+  completo**) e o registro segue para revisão. A opção *"transcrever o áudio inteiro de novo"*
+  troca velocidade por precisão — é ligada sozinha se a transcrição ao vivo vier vazia.
+- **Requisito do navegador:** captura de áudio só existe em **contexto seguro** (HTTPS ou
+  `localhost`). Como o painel roda em `http://I7M1700-01-EVE:5100`, a tela avisa e explica o
+  que fazer — ver **[docs/gravacao-reuniao.md](gravacao-reuniao.md)**.
+- Config adicional: `PROTOCOLOS_WHISPER_VIVO` (modelo do ao vivo; cai no `PROTOCOLOS_WHISPER`)
+  e `PROTOCOLOS_THREADS_VIVO`.
 
 ### 5.18 Matriz de Conhecimento (`/matriz`)
 Cadastro das notas de conhecimento (1–10) por **técnico × competência** (153 competências em
@@ -350,6 +375,22 @@ carga de dados já sai filtrada (sem consulta jogada fora nem piscada de conteú
 tolerante — filtro que não existe mais, ou cujo formato mudou, é ignorado. Código:
 `frontend/src/app/core/utils/filtros-salvos.ts`, `core/services/preferencias.service.ts` e
 `backend/src/preferencias/`.
+
+### 5.22 Apresentação pública dos recursos (`/apresentacao`)
+
+Página **aberta, sem login** — junto do login e do "esqueci minha senha", é a terceira tela
+que roda fora do shell. Alcançada pelo botão **"Conheça os recursos do Painel"** no cartão de
+acesso, e com um botão **"Entrar no Painel"** fixo no topo da própria página (mais um no fim).
+
+Serve para apresentar o Painel a quem ainda não usa (Comercial, Coordenação, direção, gente
+nova no time). O texto é de **nível usuário**: fala do que a pessoa faz e do que ganha, sem
+citar tecnologia, rota ou nome de arquivo. Cobre visão geral, os 21 passos, carteira,
+levantamento → documentos, agenda de visitas, transcrição/gravação, matriz + dicionário,
+capacidade da equipe, BI, monitoramento e perfis de acesso.
+
+As imagens são **ilustrações do Painel** desenhadas à mão em `frontend/public/apresentacao/*.svg`
+— não são capturas de tela reais, de propósito: a página é pública e uma captura exporia dados
+de cliente. Ao mudar uma tela de verdade, vale rever a ilustração correspondente.
 
 ---
 
@@ -485,7 +526,7 @@ Apoio: `db.py` (dados), `gerar_layout.py` + `gl_*` (geração fiel), `mailer.py`
 
 ## 14. Mapa de telas (rotas)
 
-**Núcleo / acesso:** `/login` · `/logout` · `/cadastro` · `/cadastro/confirmar` · `/perfil` ·
+**Núcleo / acesso:** `/login` · `/apresentacao` (público) · `/logout` · `/cadastro` · `/cadastro/confirmar` · `/perfil` ·
 `/usuarios` · `/cliente` · `/health` · `/download`
 
 **Painel:** `/` (home) · `/coordenacao` · `/atividade` · `/monitoramento` · `/mapa`

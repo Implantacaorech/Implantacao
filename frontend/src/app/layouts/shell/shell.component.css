@@ -1,9 +1,240 @@
 /* A maior parte do visual vem de src/styles.css (sistema de design global, portado de
-   webapp/static/style.css) — aqui só o necessário para o <button> do "Sair" herdar o
-   mesmo estilo do link .topbar-ico (browsers aplicam estilo padrão de botão por cima). */
-button.topbar-ico {
-  background: none;
-  border: none;
-  font: inherit;
+   webapp/static/style.css). Aqui fica o que é só do shell — em especial a BARRA SUPERIOR
+   ESCURA, o padrão do Portal Rech adotado em 2026-07-30.
+ *
+ * Estes seletores repetem nomes do CSS global de propósito: o Angular acrescenta o atributo
+ * de encapsulamento (`.topbar[_ngcontent-x]`), o que já dá especificidade maior que a regra
+ * global — sem precisar de `!important` nem de editar src/styles.css, que é do MANUS. Como
+ * o encapsulamento é do componente, nada disto vaza para o conteúdo das páginas. */
+
+/* A barra atravessa as duas colunas do grid (menu + conteúdo), como no padrão: a marca fica
+   na barra, não no menu lateral. */
+.app {
+  grid-template-rows: auto 1fr;
+}
+
+.topbar {
+  grid-column: 1 / -1;
+  height: 56px;
+  padding: 0 20px;
+  gap: 14px;
+  background: linear-gradient(90deg, #061A45 0%, var(--brand-900) 55%, #062A73 100%);
+  border-bottom: 0;
+  backdrop-filter: none;
+  box-shadow: 0 2px 10px rgba(3, 20, 52, .28);
+}
+
+/* O menu lateral passa a começar ABAIXO da barra — sem isto ele grudaria no topo e ficaria
+   com 100vh, gerando rolagem sobrando na altura da barra. */
+.side {
+  top: 56px;
+  height: calc(100vh - 56px);
+  padding-top: 10px;
+}
+
+/* ===== Marca na barra =====
+   Mesmo logo oficial do cartão de acesso, na versão branca, com a identificação do sistema
+   logo abaixo — o empilhamento pedido em 2026-07-30. */
+.topbar-marca {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 3px;
+  flex: none;
+  color: #fff;
+}
+
+.topbar-marca:hover {
+  text-decoration: none;
+}
+
+.topbar-marca img {
+  display: block;
+  height: 20px;
+  width: auto;
+}
+
+.topbar-marca small {
+  font-size: .62rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: .06em;
+  color: rgba(255, 255, 255, .78);
+}
+
+/* ===== Nome da tela ===== */
+/* Sem `max-width`: o corte com reticências ("Matriz por Menu - Funç…") vinha do teto de
+   200px do CSS global. Agora o título ocupa o que precisar e quem encolhe é a busca. */
+.topbar-title {
+  max-width: none;
+  min-width: 0;
+  flex: 0 1 auto;
+  color: #fff;
+  font-size: 1rem;
+  padding-left: 14px;
+  border-left: 1px solid rgba(255, 255, 255, .22);
+}
+
+/* ===== Busca, ícones ===== */
+.side-toggle {
+  color: #fff;
+}
+
+/* Caixa BRANCA com texto PRETO — regra do Painel: fundo claro pede tinta escura.
+ *
+ * Antes a busca era um vidro translúcido com texto branco, o que funcionava só enquanto o
+ * fundo continuasse azul. Bastava o autofill do Chrome entrar (ele pinta o campo de branco
+ * e ignora `background`) para o que a pessoa digitava sumir — branco no branco, relatado em
+ * 2026-07-30. Caixa branca de verdade é legível em todo estado, inclusive nesse. */
+/* Altura FIXA e compacta. Sem ela a caixa se monta somando `line-height` do texto (~22px) +
+   padding do input + padding do contêiner, chegando a ~40px — alta demais para os 56px da
+   barra, onde ficava espremida contra as bordas. 34px a deixa folgada e alinhada ao peso do
+   sino e do botão Sair. */
+.topbar-busca {
+  flex: 0 1 260px;
+  min-width: 0;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 17px;
+  background: var(--surface);
+  border-color: rgba(255, 255, 255, .3);
+}
+
+.topbar-busca:focus-within {
+  background: var(--surface);
+  border-color: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, .22);
+}
+
+.topbar-busca .svgi {
+  color: var(--muted);
+}
+
+/* `height:100%` + `padding:0` no input: é ele quem inflava a caixa (linha de ~22px mais o
+   padding próprio). Sem isso a altura fixa acima seria estourada por dentro. */
+.topbar-busca input {
+  height: 100%;
+  padding: 0;
+  color: var(--ink);
+}
+
+.topbar-busca input::placeholder {
+  color: var(--faint);
+}
+
+/* Cinto e suspensório: mesmo que o autofill repinte o campo, a tinta continua escura. */
+.topbar-busca input:-webkit-autofill,
+.topbar-busca input:-webkit-autofill:hover,
+.topbar-busca input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 40px var(--surface) inset;
+  -webkit-text-fill-color: var(--ink);
+  caret-color: var(--ink);
+}
+
+.topbar-ico {
+  color: rgba(255, 255, 255, .85);
+}
+
+.topbar-ico:hover {
+  background: rgba(255, 255, 255, .14);
+  color: #fff;
+}
+
+/* ===== Cartão do usuário (pílula branca) ===== */
+.topbar-perfil {
+  background: var(--surface);
+  border-radius: var(--r-md);
+  padding: 5px 14px 5px 7px;
+  gap: 10px;
+  flex: none;
+  max-width: 260px;
+  box-shadow: 0 1px 3px rgba(3, 20, 52, .25);
+}
+
+.topbar-perfil:hover {
+  background: var(--surface-2);
+}
+
+/* O login É o e-mail neste Painel (ver UsersService.criar) — é ele que identifica a pessoa
+   no cartão, mais útil que repetir o papel, que já aparece em Meu perfil. */
+.topbar-perfil-txt {
+  min-width: 0;
+}
+
+.topbar-perfil-txt,
+.topbar-perfil-txt small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== Sair (vermelho, à direita do cartão) ===== */
+.topbar-sair {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--err);
+  color: #fff;
   cursor: pointer;
+  font: inherit;
+  transition: .14s;
+}
+
+.topbar-sair:hover {
+  background: #8F1A12;
+}
+
+.topbar-sair .svgi {
+  width: 18px;
+  height: 18px;
+}
+
+@media (max-width: 980px) {
+  /* Vira gaveta: cobre a barra inteira, como qualquer drawer. */
+  .side {
+    top: 0;
+    height: 100vh;
+    padding-top: 14px;
+  }
+}
+
+@media (max-width: 620px) {
+  .topbar {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  /* Espaço curto: fica só o logo, menor, e o nome da tela sai da barra (a página já traz o
+     próprio título). */
+  .topbar-marca small,
+  .topbar-title {
+    display: none;
+  }
+
+  .topbar-marca img {
+    height: 17px;
+  }
+
+  /* Cartão do usuário fica só com o AVATAR.
+   *
+   * `.topbar-perfil` é `flex: none` e media 183px com o nome + login dentro; como não
+   * encolhe, ele empurrava o botão Sair para FORA da tela — a barra estourava 43px em 390px
+   * de largura, em todas as telas (achado da auditoria de 2026-08-07: o Sair começava em
+   * x=397 num viewport de 390). Some o texto, sobram as iniciais, e os 36px do Sair cabem.
+   * O nome completo continua a um toque, em Meu perfil. */
+  .topbar-perfil-txt {
+    display: none;
+  }
+
+  .topbar-perfil {
+    padding: 5px;
+  }
 }

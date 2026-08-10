@@ -534,9 +534,14 @@ describe('Passos do processo (e2e)', () => {
         })
         .expect(200);
 
+      // Coordenador, não Administrativo: `/fluxo/criar` conclui o passo 1 ("Consulta e
+      // Cadastro do Cliente"), que é do COMERCIAL, e por isso exige `novo_cliente` —
+      // permissão que o Administrativo não tem desde que ele deixou de cadastrar cliente
+      // (2026-07-27). Antes a rota não tinha gate nenhum e qualquer autenticado fechava o
+      // passo 1 em nome próprio (auditoria de 2026-08-05).
       const criar = await auth(
         request(server()).post('/api/fluxo/criar'),
-        tokens.administrativo,
+        tokens.coordenador,
       )
         .send(
           (parse.body as { data: { campos: Record<string, unknown> } }).data

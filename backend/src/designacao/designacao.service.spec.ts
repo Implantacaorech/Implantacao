@@ -223,4 +223,37 @@ describe('DesignacaoService', () => {
       expect(mailer.enviar).not.toHaveBeenCalled();
     });
   });
+
+  /** `Projeto.modulos` guarda os CÓDIGOS do SICLA; a designação precisa ser gravada por
+   * SIGLA, que é a chave usada pelo Agendador de Visitas na mesma tabela `designacoes`. */
+  describe('módulos vindos do SICLA (códigos numéricos)', () => {
+    const projetoDoSicla = () =>
+      projeto({
+        modulos: '8, 7',
+        modulosDetalhe: JSON.stringify([
+          { codigo: '8', descricao: 'COM - Sist.Controle de Compras' },
+          { codigo: '7', descricao: 'EST - Sist.Controle de Estoques' },
+        ]),
+      });
+
+    it('lista as siglas para o GCI escolher, não os códigos', async () => {
+      projetosRepo.findOne.mockResolvedValue(projetoDoSicla());
+      designacoesRepo.find.mockResolvedValue([]);
+      users.porPerfil.mockResolvedValue([{ nome: 'Ana' }]);
+
+      const view = await service.obterConsultores(1);
+
+      expect(view.modulos).toEqual(['COM', 'EST']);
+    });
+
+    it('grava a designação com a sigla — a mesma chave que o Agendador lê', async () => {
+      projetosRepo.findOne.mockResolvedValue(projetoDoSicla());
+
+      await service.designarConsultores(1, { COM: 'Ana' }, 'GCI Um');
+
+      expect(designacoesRepo.save).toHaveBeenCalledWith([
+        { projetoId: 1, modulo: 'COM', consultor: 'Ana' },
+      ]);
+    });
+  });
 });

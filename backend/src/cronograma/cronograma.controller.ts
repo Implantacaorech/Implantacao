@@ -87,6 +87,16 @@ export class CronogramaController {
     return this.designacoes.doProjeto(projetoId);
   }
 
+  @Get('tecnicos')
+  @ApiOperation({
+    summary:
+      'Técnicos que podem ser escolhidos na agenda — a equipe indicada no passo 8 ' +
+      '(GCI + técnicos), mais quem já está designado por módulo',
+  })
+  tecnicos(@Param('projetoId', ParseIntPipe) projetoId: number) {
+    return this.designacoes.tecnicosDoProjeto(projetoId);
+  }
+
   @Put('designacoes')
   @ApiOperation({
     summary: 'Define técnico/ordem/analista/"não distribuir" de um módulo',
@@ -521,6 +531,10 @@ export class CronogramaController {
       salvo.arquivo,
       salvo.caminho,
       'gerado',
+      user.nome,
+      // O @Roles da classe garante o PERFIL; a designação NAQUELE projeto (RN-10) quem
+      // verifica é o registro do documento, que é o que fecha o passo 13.
+      { usuario: user },
     );
     await this.documentos.registrarEvento(
       projetoId,

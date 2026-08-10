@@ -3,13 +3,14 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { filter, map, startWith } from 'rxjs';
+import { BarraGravacaoComponent } from '../../features/protocolos/barra-gravacao.component';
 import { AuthService } from '../../core/services/auth.service';
 import { PermissoesService } from '../../core/services/permissoes.service';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, BarraGravacaoComponent],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.css',
 })

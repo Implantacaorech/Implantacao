@@ -1,0 +1,52 @@
+<div class="acesso-cartao">
+  <img class="acesso-logo" src="logo-portal-rech-azul.png" alt="Portal Rech" />
+  <h1 class="pagina-titulo acesso-sub">Recuperar acesso</h1>
+
+  @if (etapa() === 'email') {
+    <p class="acesso-nota">Informe o e-mail da sua conta. Enviaremos um código de 6 dígitos para você criar uma senha nova.</p>
+    <form [formGroup]="formEmail" (ngSubmit)="pedirCodigo()">
+      @if (erro()) {
+        <div class="resultado erro">⚠️ {{ erro() }}</div>
+      }
+      <label class="acesso-campo">
+        <input type="email" formControlName="email" autocomplete="username" placeholder=" " />
+        <span>E-mail<i>*</i></span>
+      </label>
+      <button class="acesso-botao" type="submit" [disabled]="formEmail.invalid || enviando()">
+        {{ enviando() ? 'Enviando…' : 'Enviar código' }}
+      </button>
+    </form>
+  } @else {
+    <p class="acesso-nota">
+      Se <strong>{{ formEmail.getRawValue().email }}</strong> tiver acesso ao Painel, o código chegará em instantes. Ele vale por 15 minutos.
+    </p>
+    <form [formGroup]="formRedefinir" (ngSubmit)="redefinir()">
+      @if (erro()) {
+        <div class="resultado erro">⚠️ {{ erro() }}</div>
+      }
+      @if (aviso()) {
+        <div class="resultado ok">{{ aviso() }}</div>
+      }
+      <label class="acesso-campo">
+        <input class="acesso-codigo" formControlName="codigo" inputmode="numeric" maxlength="6" placeholder=" " />
+        <span>Código de 6 dígitos</span>
+      </label>
+      <label class="acesso-campo">
+        <input type="password" formControlName="senhaNova" autocomplete="new-password" placeholder=" " />
+        <span>Nova senha (mín. 8 caracteres)</span>
+      </label>
+      <label class="acesso-campo">
+        <input type="password" formControlName="confirmacao" autocomplete="new-password" placeholder=" " />
+        <span>Confirme a nova senha</span>
+      </label>
+      <button class="acesso-botao" type="submit" [disabled]="formRedefinir.invalid || enviando()">
+        {{ enviando() ? 'Salvando…' : 'Salvar nova senha' }}
+      </button>
+      <button class="acesso-secundario" type="button" [disabled]="reenviando()" (click)="reenviarCodigo()">
+        {{ reenviando() ? 'Reenviando…' : 'Reenviar código' }}
+      </button>
+    </form>
+  }
+
+  <p class="acesso-rodape"><a routerLink="/login">← Voltar ao login</a></p>
+</div>

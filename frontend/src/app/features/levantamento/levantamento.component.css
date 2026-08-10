@@ -198,6 +198,20 @@ details.lev-mod[open] > summary::before {
   margin-top: 10px;
   z-index: 2;
 }
+/* Estado do salvamento automático — ocupa o lugar do antigo botão "Salvar respostas". */
+.lev-auto {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ok);
+  white-space: nowrap;
+}
+.lev-auto.pendente {
+  color: var(--muted);
+}
 .lev-completo {
   display: inline-flex;
   align-items: center;
@@ -205,4 +219,11 @@ details.lev-mod[open] > summary::before {
   font-size: 0.83rem;
   font-weight: 700;
   color: var(--ok);
+}
+/* Chamada para gravar a reunião de levantamento — fica no topo porque a gravação começa
+   junto com a reunião, não no fim do preenchimento. */
+.lev-gravar {
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 16px;
 }

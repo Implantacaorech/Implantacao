@@ -61,13 +61,23 @@ export class ProjetosController {
     return this.service.criar(dto);
   }
 
+  /** Edição da ficha.
+   *
+   * `@Permissao('carteira')` da classe é nível CONSULTA — sozinho, deixava quem só consulta
+   * reescrever o projeto. Pior: `gci` e `consultor` são os campos que a RN-10 usa para saber
+   * quem pode concluir os passos, então bastava alguém se escrever ali para destravar o
+   * passo 10 de um cliente que não é seu (achado de 2026-08-05). Agora exige `alteracao`, e
+   * quem MUDA a equipe é `PERFIS_DESIGNA` — verificado no serviço, porque depende de o
+   * campo ter vindo no corpo. */
   @Put(':id')
+  @Permissao('carteira', 'alteracao')
   @ApiOperation({ summary: 'Atualiza campos da ficha do projeto' })
   atualizar(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateProjetoDto,
+    @CurrentUser() user: AuthUser,
   ) {
-    return this.service.atualizar(id, dto);
+    return this.service.atualizar(id, dto, user);
   }
 
   @Delete(':id')

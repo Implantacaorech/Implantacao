@@ -3,7 +3,7 @@ titulo: "Regras de Negócio — Passos do Processo de Implantação"
 tipo: regras-de-negocio-tela
 status: vivo
 criado: 2026-07-30
-atualizado: 2026-07-30
+atualizado: 2026-08-05
 responsavel: "Arquiteto Principal (IA)"
 tags:
   - vault
@@ -28,6 +28,10 @@ fontes_codigo:
 > Espelha o mapa executável em `passos.constants.ts`, que é a fonte da verdade. A prova de
 > que os dois batem é `passos.constants.spec.ts` — se o mapa mudar sem esta nota, o teste
 > continua verde, então **atualize os dois juntos**.
+>
+> As regras de AUTORIZAÇÃO desta nota (RN-4, RN-8, RN-10) têm prova ponta a ponta em
+> `e2e/testes/` (Playwright, contra instância isolada): cada caso ali nasceu de um defeito
+> real encontrado em 2026-08-05. Se algum voltar a falhar, a brecha voltou.
 
 # Regras de negócio — os 21 passos do processo de implantação
 
@@ -81,7 +85,10 @@ levantamento (pode ser mais de um) · Consultor = pode ser mais de um.
   baixa e manda ao cliente dali mesmo.
 - **RN-4 — Dois passos exigem assinatura + data.** O 7 (contrato assinado) e o 12 (projeto
   assinado) só fecham com a marcação E a data preenchidas — `PASSOS_COM_MARCACAO`, gravadas em
-  `projeto_passos.marcado`/`data_marcada`. Sem elas o backend recusa (400).
+  `projeto_passos.marcado`/`data_marcada`. Sem elas o backend recusa (400). A data tem de ser
+  **real e não futura** (`ehDataIso` + comparação com hoje): a regex de formato sozinha
+  aceitava `2026-13-45`, e assinatura é fato consumado — um ano digitado errado ("2099")
+  contaminava a métrica de prazo do projeto (2026-08-05).
 - **RN-5 — Dois passos exigem conferência para liberar o seguinte.** O 11 e o 19
   (`PASSOS_COM_CONFERENCIA`): concluir não basta, é preciso marcar "conferido".
 - **RN-6 — A partir do 14, concluir é definitivo.** São atos já formalizados com o cliente
@@ -94,6 +101,12 @@ levantamento (pode ser mais de um) · Consultor = pode ser mais de um.
   `PASSOS_COM_REDACAO_DE_EMAIL` (4, 5, 11, 15–21) a tela abre com o e-mail já montado (modelo
   do passo + tokens do projeto) e a pessoa revisa destinatários, assunto e corpo antes de
   mandar. Nos demais, o e-mail sai pronto ao concluir.
+  **Corolário (2026-08-05): passo que exige redação NUNCA fecha por efeito colateral.**
+  `concluirAutomatico` recusa todo passo desta lista. Antes, gerar o Termo fechava o passo 18
+  e disparava o e-mail do MODELO — e, no `modo=modelo`, com o Termo **em branco** anexado ao
+  Administrativo. Como o 18 é irreversível, não havia como desfazer. Por isso `termo` saiu de
+  `DocumentosService.PASSO_POR_TIPO`: gerar o arquivo é parte do passo, não o passo inteiro
+  ("Gerar o Termo **e enviar** ao Administrativo").
 - **RN-9 — Passos 4 e 6 guardam a PROVA, não o envio.** Nesses dois o e-mail sai do Outlook da
   pessoa; o Painel aceita o `.msg`/`.eml` encaminhado como registro
   (`PASSOS_COM_ANEXO_DE_EMAIL`).
@@ -101,6 +114,27 @@ levantamento (pode ser mais de um) · Consultor = pode ser mais de um.
   projeto, a pessoa tem de estar designada NAQUELE projeto (GCI em `Projeto.gci`; Consultor e
   Levantador em `projeto_pessoas`). Administrativo, Coordenador e Comercial valem pelo perfil.
   ADM passa em tudo.
+  **A regra vale em TODO caminho que fecha passo, não só no `PassosController`** (correção de
+  2026-08-05). `concluirAutomatico` continua sem checar perfil de propósito — o contrato é que
+  "quem autorizou foi o gate da própria rota" —, mas quatro rotas não tinham gate nenhum:
+  anexar documento (o `tipo` vinha cru do corpo, então rotular o arquivo de `checklist` fechava
+  o passo 14 alheio), gerar o layout (checava só perfil), `PUT /projetos/:id` (dava para se
+  autodesignar GCI e então concluir o passo 10) e `POST /fluxo/criar` (fechava o passo 1, do
+  Comercial). Hoje `DocumentosService.registrarDocumento` consulta
+  `PassosService.podeExecutarPasso` antes de concluir: o documento é gravado de qualquer forma
+  — o Administrativo precisa poder baixar o Termo —, mas o passo só fecha para quem responde
+  por ele, e no nome de quem agiu (era `"sistema"`).
+  **A designação identifica por `usuario_id`, não por nome** (migration
+  `DesignacaoPorUsuarioId`, 2026-08-06). `projeto_pessoas` ganhou a coluna, o **GCI virou um
+  papel ali** (`papel: 'gci'`) e `Projeto.gci`/`Projeto.consultor` seguem como ESPELHO de
+  texto, que é o que telas, tokens de e-mail e documentos leem. Antes, dois usuários com o
+  mesmo nome eram a mesma pessoa para esta regra: o segundo concluía os passos do primeiro e
+  recebia os e-mails do cliente. O cadastro também passou a recusar homônimo ativo, então a
+  ambiguidade não nasce mais.
+  O nome só decide em **vínculo antigo sem id** — aquele cujo nome não casou com exatamente
+  um usuário ativo na migração. Esses vínculos já não autorizavam ninguém antes (a comparação
+  por nome também falhava), e a migration **imprime a lista** deles para alguém corrigir o
+  cadastro ou refazer a designação na tela.
 - **RN-11 — ABRIR a tela ≠ CONCLUIR o passo.** `PERFIS_TELA_DO_PASSO` usa a mesma lista que a
   tela de destino já exige, para o botão não prometer o que a tela recusa.
 - **RN-12 — Elaborar o cronograma (13) não fala com o cliente.** É trabalho interno, e o

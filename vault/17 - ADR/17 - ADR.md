@@ -25,6 +25,7 @@ relacionados:
 | # | Título | Status |
 | --- | --- | --- |
 | [[ADR-0001 - Adocao do ecossistema Vault + IA]] | Adoção do ecossistema Vault Obsidian + IA como camada de documentação | Aceito |
+| [[ADR-0002 - Adocao do Guia Mestre de Arquitetura]] | Adoção do Guia Mestre de Arquitetura (Controller → Service → Repository), com adequação faseada e guarda no CI | Aceito |
 
 ## Relacionados no Vault
 
@@ -38,4 +39,7 @@ commits `feat(migracao): ...` já existentes no histórico do Git como evidênci
 
 ## Status
 
-Esqueleto criado em 2026-07-19 — primeiro ADR real registrado ([[ADR-0001 - Adocao do ecossistema Vault + IA]]). Ver [[00 - Dashboard]].
+Esqueleto criado em 2026-07-19 — primeiro ADR real registrado ([[ADR-0001 - Adocao do ecossistema Vault + IA]]).
+Em 2026-07-31 entrou o [[ADR-0002 - Adocao do Guia Mestre de Arquitetura]], cujas decisões
+são verificadas por teste no CI (ver [[Guia Mestre de Arquitetura de Desenvolvimento]]).
+Ver [[00 - Dashboard]].

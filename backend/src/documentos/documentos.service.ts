@@ -21,6 +21,7 @@ import {
   MetricasService,
 } from '../metricas/metricas.service';
 import { PassosService } from '../passos/passos.service';
+import type { Perfil } from '../common/constants/perfis';
 
 // Precedência dos documentos no fluxo — a exclusão respeita as dependências: um documento
 // só pode ser excluído se nenhum documento POSTERIOR existir (ex.: exclua o Projeto antes
@@ -126,12 +127,16 @@ export class DocumentosService {
   }
 
   /** Anexo manual de documento (upload direto pela ficha, distinto dos gerados pelo
-   * layout fiel) — sempre `origem: 'importado'`. Espelha webapp/app.py:projeto_anexar. */
+   * layout fiel) — sempre `origem: 'importado'`. Espelha webapp/app.py:projeto_anexar.
+   *
+   * `usuario` é repassado a `registrarDocumento` para que o `tipo` escolhido por quem envia
+   * o arquivo não sirva de atalho para fechar o passo de outra pessoa (ver RN-10 lá). */
   async anexarDocumento(
     projetoId: number,
     tipo: string,
     arquivoOriginal: string,
     buffer: Buffer,
+    usuario?: { nome: string; perfil: Perfil; perfis?: Perfil[] },
   ): Promise<Documento> {
     const salvo = this.salvarArquivoGerado(projetoId, arquivoOriginal, buffer);
     return this.registrarDocumento(
@@ -140,6 +145,8 @@ export class DocumentosService {
       salvo.arquivo,
       salvo.caminho,
       'importado',
+      usuario?.nome || 'sistema',
+      { usuario },
     );
   }
 
@@ -202,14 +209,33 @@ export class DocumentosService {
    * correspondência. Tipo que não estiver no mapa (por exemplo `email_passo_3`, do anexo do
    * Outlook) simplesmente não conclui passo nenhum. */
   // Números conforme os 21 passos (revisão de 2026-07-30, que inseriu os passos 5 e 12):
-  // Criação do Projeto = 10, Cronograma = 13, Check-list = 14, Termo = 18.
+  // Criação do Projeto = 10, Cronograma = 13, Check-list = 14.
+  //
+  // `termo` SAIU do mapa em 2026-08-05: o passo 18 é "Gerar o Termo de Encerramento **e
+  // enviar ao Administrativo**", e o envio é um e-mail que a pessoa REDIGE na tela (RN-8).
+  // Fechá-lo ao gerar o arquivo mandava o texto do modelo sem revisão — com o Termo EM
+  // BRANCO anexado, quando a geração era `modo=modelo` — e o passo é irreversível, então não
+  // dava para desfazer. Agora o consultor gera o arquivo aqui e fecha o passo pela tela.
   private static readonly PASSO_POR_TIPO: Record<string, number> = {
     projeto: 10,
     cronograma: 13,
     checklist: 14,
-    termo: 18,
   };
 
+  /** Passo que este tipo de documento conclui, ou `undefined` se não conclui nenhum. */
+  static passoDoTipo(tipo: string): number | undefined {
+    return DocumentosService.PASSO_POR_TIPO[(tipo || '').trim().toLowerCase()];
+  }
+
+  /**
+   * @param opcoes.usuario Quem está agindo. Informado, a conclusão do passo passa pela RN-10
+   *   (designação NAQUELE projeto): o documento é gravado de todo jeito, mas o passo só
+   *   fecha se essa pessoa pudesse concluí-lo. Omitido, mantém o comportamento de sempre —
+   *   é a chamada interna do sistema, cuja autorização já foi dada pela rota que a disparou.
+   * @param opcoes.concluiPasso `false` guarda o arquivo sem fechar passo nenhum. É o caso do
+   *   layout EM BRANCO (`modo=modelo`): baixar o modelo para preencher à mão não é entregar
+   *   o documento, e fechar o passo ali dava o trabalho por feito (achado de 2026-08-05).
+   */
   async registrarDocumento(
     projetoId: number,
     tipo: string,
@@ -217,19 +243,41 @@ export class DocumentosService {
     caminho: string,
     origem: OrigemDocumento = 'gerado',
     autor = 'sistema',
+    opcoes: {
+      usuario?: { nome: string; perfil: Perfil; perfis?: Perfil[] };
+      concluiPasso?: boolean;
+    } = {},
   ): Promise<Documento> {
+    const { usuario, concluiPasso = true } = opcoes;
     const doc = await this.documentos.save(
       this.documentos.create({ projetoId, tipo, arquivo, caminho, origem }),
     );
-    const passo =
-      DocumentosService.PASSO_POR_TIPO[(tipo || '').trim().toLowerCase()];
+    const passo = concluiPasso
+      ? DocumentosService.passoDoTipo(tipo)
+      : undefined;
     if (passo) {
-      await this.passos.concluirAutomatico(
-        projetoId,
-        passo,
-        autor,
-        `Documento ${tipo} gerado`,
-      );
+      // Sem este gate, RN-10 valia só dentro do PassosController: qualquer autenticado
+      // anexava um arquivo rotulado `checklist` e fechava o passo 14 — irreversível — de um
+      // projeto alheio, gravado em nome de "sistema" (achado de 2026-08-05).
+      const autorizado =
+        !usuario ||
+        (await this.passos.podeExecutarPasso(projetoId, passo, usuario));
+      if (autorizado) {
+        await this.passos.concluirAutomatico(
+          projetoId,
+          passo,
+          usuario?.nome || autor,
+          `Documento ${tipo} gerado`,
+        );
+      } else {
+        await this.registrarEvento(
+          projetoId,
+          'passo',
+          `Documento ${tipo} registrado, mas o passo ${passo} NÃO foi concluído: ` +
+            `${usuario.nome} não é o responsável designado por ele neste projeto.`,
+          usuario.nome,
+        );
+      }
     }
     return doc;
   }

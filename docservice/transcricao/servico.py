@@ -26,11 +26,12 @@ def _progresso_path(protocolo_id):
     return os.path.join(_DIR, "protocolo_%d.json" % int(protocolo_id))
 
 
-def _rodar(protocolo_id, caminho_video):
+def _rodar(protocolo_id, caminho_video, vocabulario=None, pessoas=0):
     with _BUSY:
         try:
             t = transcritor.transcrever_isolado(
-                caminho_video, progress_file=_progresso_path(protocolo_id)
+                caminho_video, progress_file=_progresso_path(protocolo_id),
+                vocabulario=vocabulario, pessoas=pessoas,
             )
             texto = (t.get("texto") or "").strip()
             if not texto:
@@ -40,6 +41,7 @@ def _rodar(protocolo_id, caminho_video):
                 "transcricao": t.get("texto") or "",
                 "duracaoSeg": int(t.get("duracao") or 0),
                 "idioma": t.get("idioma") or "pt",
+                "locutores": int(t.get("locutores") or 0),
             }
         except Exception as e:
             resultado = {"status": "erro", "mensagem": "%s: %s" % (type(e).__name__, e)}
@@ -47,9 +49,10 @@ def _rodar(protocolo_id, caminho_video):
             _jobs[protocolo_id] = resultado
 
 
-def iniciar(protocolo_id, caminho_video):
-    """Dispara a transcrição em segundo plano. Lança FileNotFoundError se o vídeo não
-    existir; lança RuntimeError se já houver um job em andamento para este id."""
+def iniciar(protocolo_id, caminho_video, vocabulario=None, pessoas=0):
+    """Dispara a transcrição em segundo plano. `vocabulario` são termos esperados (nomes,
+    jargão) usados como hotwords. Lança FileNotFoundError se o vídeo não existir; lança
+    RuntimeError se já houver um job em andamento para este id."""
     if not os.path.exists(caminho_video):
         raise FileNotFoundError(caminho_video)
     with _lock_jobs:
@@ -58,7 +61,7 @@ def iniciar(protocolo_id, caminho_video):
             raise RuntimeError("Já há uma transcrição em andamento para este protocolo.")
         _jobs[protocolo_id] = {"status": "processando"}
     threading.Thread(
-        target=_rodar, args=(protocolo_id, caminho_video),
+        target=_rodar, args=(protocolo_id, caminho_video, vocabulario, pessoas),
         daemon=True, name="transcricao-%s" % protocolo_id,
     ).start()
 
@@ -73,11 +76,12 @@ def status(protocolo_id):
         return None
     out = dict(job)
     if out.get("status") == "processando":
-        out.update(pct=None, pos=0, dur=0)
+        out.update(pct=None, pos=0, dur=0, fase="transcrevendo")
         try:
             with open(_progresso_path(protocolo_id), encoding="utf-8") as f:
                 j = json.load(f)
-            out.update(pct=j.get("pct"), pos=j.get("pos") or 0, dur=j.get("dur") or 0)
+            out.update(pct=j.get("pct"), pos=j.get("pos") or 0, dur=j.get("dur") or 0,
+                       fase=j.get("fase") or "transcrevendo")
         except Exception:
             pass
     return out

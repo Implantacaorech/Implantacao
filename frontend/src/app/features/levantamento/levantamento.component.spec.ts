@@ -46,7 +46,6 @@ describe('LevantamentoComponent', () => {
               linhas,
               resumo: { respondidas, total: linhas.length },
             }),
-            salvar: vi.fn().mockResolvedValue(respondidas),
             salvarLinha: vi.fn(async (_p: number, id: number, dados: Record<string, unknown>) => ({
               linha: { ...linhas.find((l) => l.id === id)!, ...dados, versao: 1 },
               resumo: { respondidas, total: linhas.length },
@@ -103,21 +102,22 @@ describe('LevantamentoComponent', () => {
       fixture.destroy();
     });
 
-    it('salvar com pendência não confirma "salvo" e passa a cobrar os campos vazios', async () => {
+    it('abre a tela sem cobrar os campos vazios; a revisão das pendências é que cobra', async () => {
       const fixture = await montar([linha({ id: 1, resposta: '' })]);
       const comp = fixture.componentInstance;
-      await comp.salvar();
-      expect(comp.salvo()).toBe(false);
+      expect(comp.cobrarPendentes()).toBe(false);
+
+      comp.irParaPendente();
+
       expect(comp.cobrarPendentes()).toBe(true);
       fixture.destroy();
     });
 
-    it('salvar com tudo respondido confirma', async () => {
-      const fixture = await montar([linha({ id: 1, resposta: 'ok' })]);
-      const comp = fixture.componentInstance;
-      await comp.salvar();
-      expect(comp.salvo()).toBe(true);
-      expect(comp.cobrarPendentes()).toBe(false);
+    it('não oferece botão de salvar — o preenchimento é gravado sozinho', async () => {
+      const fixture = await montar([linha({ id: 1, resposta: '' })]);
+      const html: string = fixture.nativeElement.textContent;
+      expect(html).not.toContain('Salvar respostas');
+      expect(fixture.nativeElement.querySelector('button[type="submit"]')).toBeNull();
       fixture.destroy();
     });
   });
@@ -269,24 +269,84 @@ describe('LevantamentoComponent', () => {
       comp.onBlur(1);
       await fixture.whenStable();
 
-      expect(salvarLinha).toHaveBeenCalledWith(5, 1, { resposta: 'texto', versao: 7 });
+      expect(salvarLinha).toHaveBeenCalledWith(5, 1, {
+        resposta: 'texto',
+        naoUtilizado: false,
+        versao: 7,
+      });
       expect(comp.linhas()[0].versao).toBe(8);
       fixture.destroy();
     });
+  });
 
-    it('o salvamento em lote não manda as perguntas descartadas (o texto delas é do backend)', async () => {
-      const salvar = vi.fn().mockResolvedValue(2);
-      const fixture = await montar(
-        [
-          linha({ id: 1, resposta: 'respondida' }),
-          linha({ id: 2, naoUtilizado: true, resposta: TEXTO_NAO_UTILIZADO }),
-        ],
-        { salvar },
+  describe('salvamento automático (sem botão)', () => {
+    it('a resposta que não foi confirmada continua pendente e é reenviada no tique', async () => {
+      const salvarLinha = vi
+        .fn()
+        .mockRejectedValueOnce(new HttpErrorResponse({ status: 0 }))
+        .mockResolvedValue({
+          linha: linha({ id: 1, resposta: 'texto', versao: 1 }),
+          resumo: { respondidas: 1, total: 1 },
+        });
+      const fixture = await montar([linha({ id: 1 })], { salvarLinha });
+      const comp = fixture.componentInstance;
+
+      comp.onRespostaChange(1, 'texto');
+      comp.onBlur(1);
+      await fixture.whenStable();
+      expect(comp.estadoLinha()[1]).toBe('erro');
+      expect(comp.naoSalvas()).toBe(1);
+
+      // é o tique do autosave, não um clique, que resolve
+      comp['salvarPendentes']();
+      await fixture.whenStable();
+
+      expect(salvarLinha).toHaveBeenCalledTimes(2);
+      expect(comp.estadoLinha()[1]).toBe('salvo');
+      expect(comp.naoSalvas()).toBe(0);
+      expect(comp.ultimoSalvamento()).not.toBe('');
+      fixture.destroy();
+    });
+
+    it('sair da tela grava o que ainda estava esperando o debounce', async () => {
+      const salvarLinha = vi.fn().mockResolvedValue({
+        linha: linha({ id: 1, resposta: 'digitado e não salvo', versao: 1 }),
+        resumo: { respondidas: 1, total: 1 },
+      });
+      const fixture = await montar([linha({ id: 1 })], { salvarLinha });
+
+      fixture.componentInstance.onRespostaChange(1, 'digitado e não salvo');
+      expect(salvarLinha).not.toHaveBeenCalled();
+
+      fixture.destroy();
+
+      expect(salvarLinha).toHaveBeenCalledWith(5, 1, {
+        resposta: 'digitado e não salvo',
+        naoUtilizado: false,
+        versao: 0,
+      });
+    });
+
+    it('não dispara duas gravações simultâneas da mesma pergunta (409 falso)', async () => {
+      let liberar: (v: unknown) => void = () => undefined;
+      const salvarLinha = vi.fn().mockReturnValue(
+        new Promise((resolve) => {
+          liberar = resolve;
+        }),
       );
+      const fixture = await montar([linha({ id: 1 })], { salvarLinha });
+      const comp = fixture.componentInstance;
 
-      await fixture.componentInstance.salvar();
+      comp.onRespostaChange(1, 'texto');
+      comp.onBlur(1); // 1ª gravação, ainda em voo
+      comp['salvarPendentes'](); // tique do autosave cai em cima
 
-      expect(salvar).toHaveBeenCalledWith(5, { '1': 'respondida' });
+      expect(salvarLinha).toHaveBeenCalledTimes(1);
+      liberar({
+        linha: linha({ id: 1, resposta: 'texto', versao: 1 }),
+        resumo: { respondidas: 1, total: 1 },
+      });
+      await fixture.whenStable();
       fixture.destroy();
     });
   });

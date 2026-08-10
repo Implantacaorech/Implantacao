@@ -49,12 +49,18 @@ export interface Passo {
   podeAbrir: boolean;
 }
 
-export type PapelProjeto = 'levantador' | 'consultor';
+/** Espelha `PapelProjeto` de backend/src/database/entities/projeto-pessoa.entity.ts.
+ * `gci` entrou em 2026-08-06, quando o GCI deixou de viver só como texto em `Projeto.gci`
+ * e passou a ter vínculo com identidade (`usuario_id`). */
+export type PapelProjeto = 'levantador' | 'consultor' | 'gci';
 
 export interface PessoaProjeto {
   id: number;
   projetoId: number;
   pessoa: string;
+  /** Quem a pessoa é. `null` em vínculo antigo cujo nome não casou com um usuário ativo —
+   * nesses, a autorização ainda decide pelo nome. */
+  usuarioId: number | null;
   papel: PapelProjeto;
 }
 

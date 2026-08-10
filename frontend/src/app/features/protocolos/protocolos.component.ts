@@ -2,7 +2,13 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ProtocoloService } from '../../core/services/protocolo.service';
-import { PROTO_MODULOS, PROTO_STATUS, Protocolo } from '../../core/models/protocolo.model';
+import {
+  PROTO_MODULOS,
+  PROTO_STATUS,
+  Protocolo,
+  ROTULO_ORIGEM,
+  VideoOrigem,
+} from '../../core/models/protocolo.model';
 import { deCamposDe, filtrosSalvos } from '../../core/utils/filtros-salvos';
 
 @Component({
@@ -32,6 +38,7 @@ export class ProtocolosComponent {
   fMenu = '';
   fStatus = '';
   fOrigem = '';
+  fCliente = '';
   fQ = '';
 
   /** Filtros salvos por usuário logado. São propriedades comuns (o `[(ngModel)]` escreve
@@ -39,7 +46,7 @@ export class ProtocolosComponent {
    * em que o filtro passa a valer no servidor. */
   private readonly salvos = filtrosSalvos(
     'protocolos',
-    deCamposDe(this, 'fModulo', 'fMenu', 'fStatus', 'fOrigem', 'fQ'),
+    deCamposDe(this, 'fModulo', 'fMenu', 'fStatus', 'fOrigem', 'fCliente', 'fQ'),
     { aoRestaurar: () => void this.carregar() },
   );
 
@@ -57,6 +64,7 @@ export class ProtocolosComponent {
         menu: this.fMenu,
         status: this.fStatus,
         origem: this.fOrigem,
+        cliente: this.fCliente,
         q: this.fQ,
       });
       this.itens.set(r.itens);
@@ -106,6 +114,10 @@ export class ProtocolosComponent {
     } finally {
       this.excluindo.set(null);
     }
+  }
+
+  rotuloOrigem(origem: VideoOrigem): string {
+    return ROTULO_ORIGEM[origem] ?? origem;
   }
 
   formatarData(iso: string): string {

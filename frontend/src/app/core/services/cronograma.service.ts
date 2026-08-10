@@ -37,6 +37,12 @@ export class CronogramaService {
     return r.data;
   }
 
+  /** Equipe do projeto (GCI + técnicos do passo 8) — as opções do seletor de técnico. */
+  async tecnicos(projetoId: number): Promise<string[]> {
+    const r = await firstValueFrom(this.http.get<ApiEnvelope<string[]>>(`${this.base(projetoId)}/tecnicos`));
+    return r.data;
+  }
+
   async salvarDesignacao(
     projetoId: number,
     dto: { modulo: string; tecnico?: string; ordem?: number; naoDistribuir?: boolean; analista?: string },

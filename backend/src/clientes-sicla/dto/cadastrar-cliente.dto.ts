@@ -1,6 +1,14 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsIn,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { TIPOS_DEMANDA } from '../../common/constants/perfis';
+import type { TipoDemanda } from '../../common/constants/perfis';
 import { CreateProjetoDto } from '../../projetos/dto/create-projeto.dto';
 
 /** Um módulo contratado marcado na consulta ao SICLA. `codigo` é o EFETIVO (do adicional
@@ -46,6 +54,17 @@ export class ConversaoDto {
 /** Cadastro do cliente no passo 1 (Comercial). É a ficha do projeto (CreateProjetoDto) mais
  * o e-mail do próprio Comercial e a lista de módulos contratados marcados no SICLA. */
 export class CadastrarClienteDto extends CreateProjetoDto {
+  @ApiProperty({
+    enum: TIPOS_DEMANDA,
+    description:
+      'Natureza da demanda (§2.1.1 do processo). OBRIGATÓRIO: o Comercial escolhe entre ' +
+      'Levantamento e Demonstração. Repare que em CreateProjetoDto (edição da ficha) o ' +
+      'campo é opcional — a exigência é do CADASTRO, para não travar projetos antigos que ' +
+      'nasceram sem ele.',
+  })
+  @IsIn(TIPOS_DEMANDA)
+  tipoDemanda: TipoDemanda;
+
   @ApiPropertyOptional({
     description: 'E-mail do Comercial (recebe o retorno do passo 3).',
   })

@@ -139,7 +139,11 @@ describe('ClientesSiclaService', () => {
     const concluir = jest.fn();
     const { service } = montar({ projetoFindOne, projetoSave, concluir });
     const r = await service.cadastrar(
-      { cliente: 'ACME', cnpj: '00.000/0001-00' },
+      {
+        cliente: 'ACME',
+        cnpj: '00.000/0001-00',
+        tipoDemanda: 'Levantamento',
+      },
       { nome: 'Vendedor', perfil: 'Comercial' },
     );
     expect(r).toEqual({ projetoId: 42, duplicado: true });
@@ -151,12 +155,16 @@ describe('ClientesSiclaService', () => {
     const concluir = jest.fn().mockResolvedValue([]);
     const { service, projetoSave } = montar({ concluir });
     const r = await service.cadastrar(
-      { cliente: 'Nova Indústria', cnpj: '' },
+      { cliente: 'Nova Indústria', cnpj: '', tipoDemanda: 'Demonstração' },
       { nome: 'Vendedor', perfil: 'Comercial' },
     );
     expect(r.duplicado).toBe(false);
     expect(r.projetoId).toBe(7);
     expect(projetoSave).toHaveBeenCalled();
+    // O tipo de demanda escolhido no passo 1 vai para a ficha.
+    expect(projetoSave.mock.calls[0][0]).toMatchObject({
+      tipoDemanda: 'Demonstração',
+    });
     expect(concluir).toHaveBeenCalledWith(
       7,
       1,
@@ -170,6 +178,7 @@ describe('ClientesSiclaService', () => {
     await service.cadastrar(
       {
         cliente: 'Nova Indústria',
+        tipoDemanda: 'Levantamento',
         modulosSelecionados: [
           { codigo: '105', descricao: 'Faturamento · NF-e', obs: 'com nota' },
           { codigo: '20', descricao: 'Estoque', obs: '' },
@@ -193,6 +202,7 @@ describe('ClientesSiclaService', () => {
     await service.cadastrar(
       {
         cliente: 'Nova Indústria',
+        tipoDemanda: 'Levantamento',
         conversoesSelecionadas: [
           {
             nome: 'Importação Cad. produtos',

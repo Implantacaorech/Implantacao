@@ -6,6 +6,7 @@ import { CronogramaConfig } from '../database/entities/cronograma-config.entity'
 import { CronogramaPeriodoBloqueado } from '../database/entities/cronograma-periodo-bloqueado.entity';
 import { Designacao } from '../database/entities/designacao.entity';
 import { Projeto } from '../database/entities/projeto.entity';
+import { ProjetoPessoa } from '../database/entities/projeto-pessoa.entity';
 import { CatalogosModule } from '../catalogos/catalogos.module';
 import { GeracaoModule } from '../geracao/geracao.module';
 import { DocumentosModule } from '../documentos/documentos.module';
@@ -26,6 +27,9 @@ import { CronogramaController } from './cronograma.controller';
       CronogramaPeriodoBloqueado,
       Designacao,
       Projeto,
+      // A equipe do passo 8 (GCI + técnicos) mora em `projeto_pessoas` — é dela que sai a
+      // lista de técnicos oferecida no Agendador (`DesignacoesService.tecnicosDoProjeto`).
+      ProjetoPessoa,
     ]),
     CatalogosModule,
     GeracaoModule,

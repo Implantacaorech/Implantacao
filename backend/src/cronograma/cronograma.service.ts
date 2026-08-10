@@ -14,6 +14,7 @@ import {
 import { CronogramaPeriodoBloqueado } from '../database/entities/cronograma-periodo-bloqueado.entity';
 import { Projeto } from '../database/entities/projeto.entity';
 import { ChecklistModeloService } from '../catalogos/checklist-modelo.service';
+import { siglasContratadas } from '../plano-cronograma/catalogo-modulos.util';
 import { UsersService } from '../users/users.service';
 import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
 import { DesignacoesService } from './designacoes.service';
@@ -105,7 +106,7 @@ export class CronogramaService {
   async garantirSeed(projetoId: number): Promise<void> {
     const projeto = await this.projetos.findOne({ where: { id: projetoId } });
     if (!projeto) return;
-    await this.atividadesSeed(projetoId, projeto.modulos || '');
+    await this.atividadesSeed(projetoId, siglasContratadas(projeto));
   }
 
   /** Chamado por `ProjetosService.excluir` — sem isso, excluir um projeto deixaria as
@@ -145,15 +146,17 @@ export class CronogramaService {
   // --- Atividades / Visitas -------------------------------------------------------------
 
   /** Semeia (1ª vez) as atividades a partir do Check List dos módulos contratados, agrupadas
-   * por módulo+seq (Visita). Idempotente. Devolve o total de atividades do projeto. */
-  async atividadesSeed(projetoId: number, modulosStr: string): Promise<number> {
+   * por módulo+seq (Visita). Idempotente. Devolve o total de atividades do projeto.
+   *
+   * Recebe SIGLAS (`['FAT', 'CTB']`), não o conteúdo cru de `Projeto.modulos`: desde que o
+   * passo 1 virou consulta ao SICLA, aquele campo guarda CÓDIGOS numéricos (`"8, 7, 6"`),
+   * e o catálogo `ChecklistModelo` é indexado por sigla. Quem traduz é
+   * `siglasContratadas` (ver `garantirSeed`) — sem ela a consulta casava zero linhas, o
+   * projeto ficava sem nenhuma atividade e a Agenda de Visitas abria vazia, sem erro
+   * nenhum. É a mesma tradução que o Check List do Cronograma já fazia. */
+  async atividadesSeed(projetoId: number, siglas: string[]): Promise<number> {
     const ja = await this.atividades.count({ where: { projetoId } });
     if (ja > 0) return ja;
-
-    const siglas = (modulosStr || '')
-      .split(/[,;\n]+/)
-      .map((m) => m.trim().toUpperCase())
-      .filter(Boolean);
     if (siglas.length === 0) return 0;
 
     const linhas = await this.checklist.listarPorModulos(siglas);

@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Designacao } from '../database/entities/designacao.entity';
 import { AtividadeCronograma } from '../database/entities/atividade-cronograma.entity';
+import { Projeto } from '../database/entities/projeto.entity';
+import { ProjetoPessoa } from '../database/entities/projeto-pessoa.entity';
 
 export interface DesignacaoDto {
   modulo: string;
@@ -20,6 +22,9 @@ export class DesignacoesService {
     @InjectRepository(Designacao) private readonly repo: Repository<Designacao>,
     @InjectRepository(AtividadeCronograma)
     private readonly atividadesRepo: Repository<AtividadeCronograma>,
+    @InjectRepository(Projeto) private readonly projetos: Repository<Projeto>,
+    @InjectRepository(ProjetoPessoa)
+    private readonly pessoas: Repository<ProjetoPessoa>,
   ) {}
 
   async doProjeto(projetoId: number): Promise<DesignacaoDto[]> {
@@ -34,6 +39,43 @@ export class DesignacoesService {
       naoDistribuir: !!d.naoDistribuir,
       analista: d.analista || '',
     }));
+  }
+
+  /** Nomes oferecidos como TÉCNICO no Agendador de Visitas — a equipe responsável pelo
+   * projeto.
+   *
+   * Não pode sair das `designacoes`: elas são o RESULTADO da escolha que esta lista precisa
+   * permitir. Enquanto a tela derivava as opções delas mesmas, o seletor nascia vazio e
+   * nunca havia como preenchê-lo — era o bug de "a agenda não carrega os responsáveis
+   * vinculados no passo 8".
+   *
+   * A equipe vem do passo 8 ("Indicar o GCI e os técnicos responsáveis"), que grava o GCI em
+   * `Projeto.gci` e os técnicos em `projeto_pessoas` (papel 'consultor') — nenhum dos dois
+   * passa por esta tabela. As designações e o técnico já gravado nos cartões entram junto
+   * para que projeto antigo (designado pelo fluxo por módulo da etapa 6, anterior ao passo 8)
+   * não perca nomes da lista. */
+  async tecnicosDoProjeto(projetoId: number): Promise<string[]> {
+    const [projeto, pessoas, designacoes, atividades] = await Promise.all([
+      this.projetos.findOne({ where: { id: projetoId } }),
+      this.pessoas.find({ where: { projetoId, papel: 'consultor' } }),
+      this.repo.find({ where: { projetoId } }),
+      this.atividadesRepo.find({ where: { projetoId } }),
+    ]);
+
+    const nomes = new Set<string>();
+    // `Projeto.gci`/`Projeto.consultor` guardam a lista consolidada separada por vírgula.
+    const acrescentar = (bruto: string | null | undefined): void => {
+      for (const parte of (bruto || '').split(',')) {
+        const nome = parte.trim();
+        if (nome) nomes.add(nome);
+      }
+    };
+    acrescentar(projeto?.gci);
+    acrescentar(projeto?.consultor);
+    for (const p of pessoas) acrescentar(p.pessoa);
+    for (const d of designacoes) acrescentar(d.consultor);
+    for (const a of atividades) acrescentar(a.tecnico);
+    return [...nomes].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }
 
   /** `tecnico` undefined = não mexe no técnico/cartões; `null`/"" reservado para o sentinela

@@ -23,6 +23,20 @@ export class UsersService {
     return this.repo.findOne({ where: { login: login.trim(), ativo: true } });
   }
 
+  /** Usuário ATIVO por e-mail (case-insensitive), caindo no `login` quando a conta foi
+   * criada sem preencher o campo `email` — é comum aqui, porque `criar()` aceita login em
+   * branco e copia o e-mail para ele, mas o inverso nunca aconteceu. Usado pelo "Esqueci
+   * minha senha": a pessoa só digita o e-mail. */
+  async porEmail(email: string): Promise<Usuario | null> {
+    const e = (email || '').trim().toLowerCase();
+    if (!e) return null;
+    return this.repo
+      .createQueryBuilder('u')
+      .where('(LOWER(u.email) = :e OR LOWER(u.login) = :e)', { e })
+      .andWhere('u.ativo = :ativo', { ativo: true })
+      .getOne();
+  }
+
   /** Todos os usuários (ativos e inativos), ordenados por nome — tela de Usuários (ADM). */
   async listar(): Promise<Usuario[]> {
     return this.repo.find({ order: { nome: 'ASC' } });
@@ -105,6 +119,28 @@ export class UsersService {
     return this.repo.count({ where: { ativo: true } });
   }
 
+  /** Recusa dois usuários ATIVOS com o mesmo nome.
+   *
+   * O NOME é a chave de designação em todo o processo: `projeto_pessoas.pessoa` e
+   * `Projeto.gci` guardam nome, e é por ele que a RN-10 decide quem conclui cada passo e
+   * para quem sai cada e-mail. Com dois cadastros homônimos, o segundo herda os passos e as
+   * mensagens do primeiro — provado em 2026-08-05, quando um homônimo do consultor designado
+   * concluiu o passo 13 de um projeto que não era dele e passou a receber os e-mails do
+   * cliente. Enquanto a designação não migrar para o ID do usuário, a saída é não deixar a
+   * ambiguidade nascer. Compara sem caixa e sem espaço em excesso; ignora inativos, que não
+   * são designáveis. */
+  private async existeHomonimo(
+    nome: string,
+    ignorarId?: number,
+  ): Promise<boolean> {
+    const alvo = (nome || '').trim().toLowerCase();
+    if (!alvo) return false;
+    const ativos = await this.repo.find({ where: { ativo: true } });
+    return ativos.some(
+      (u) => u.id !== ignorarId && (u.nome || '').trim().toLowerCase() === alvo,
+    );
+  }
+
   async criar(dados: {
     login: string;
     nome: string;
@@ -120,6 +156,12 @@ export class UsersService {
     if (await this.existeUsuario(login, dados.email)) {
       throw new ConflictException(
         'Já existe um usuário com este login ou e-mail.',
+      );
+    }
+    if (await this.existeHomonimo(dados.nome)) {
+      throw new ConflictException(
+        `Já existe um usuário ativo chamado "${dados.nome.trim()}". O nome é o que liga a ` +
+          'pessoa às designações do projeto — diferencie (ex.: incluindo o sobrenome).',
       );
     }
     const senhaHash = await bcrypt.hash(dados.senha, SALT_ROUNDS);
@@ -167,6 +209,20 @@ export class UsersService {
         'Já existe um usuário com este login ou e-mail.',
       );
     }
+    // Só quando o nome MUDA (ou quando um inativo é reativado): reeditar outro campo de um
+    // cadastro já existente não pode falhar por causa de uma duplicidade anterior a esta regra.
+    const nomeNovo = dados.nome !== undefined ? dados.nome : usuario.nome;
+    const vaiFicarAtivo =
+      dados.ativo !== undefined ? dados.ativo : usuario.ativo;
+    const mudouNome =
+      (dados.nome !== undefined && dados.nome.trim() !== usuario.nome.trim()) ||
+      (vaiFicarAtivo && !usuario.ativo);
+    if (mudouNome && (await this.existeHomonimo(nomeNovo, id))) {
+      throw new ConflictException(
+        `Já existe um usuário ativo chamado "${nomeNovo.trim()}". O nome é o que liga a ` +
+          'pessoa às designações do projeto — diferencie (ex.: incluindo o sobrenome).',
+      );
+    }
     usuario.login = loginNovo;
     if (dados.nome !== undefined) usuario.nome = dados.nome;
     usuario.email = emailNovo;
@@ -203,6 +259,16 @@ export class UsersService {
     if (!(await this.validarSenha(usuario, senhaAtual))) {
       throw new UnauthorizedException('Senha atual incorreta.');
     }
+    usuario.senhaHash = await bcrypt.hash(senhaNova, SALT_ROUNDS);
+    await this.repo.save(usuario);
+  }
+
+  /** Grava uma senha nova SEM conferir a atual — quem já não a sabe é justamente o caso de
+   * uso. Só pode ser chamado depois que a identidade foi provada por outro meio: hoje,
+   * exclusivamente pelo código de 6 dígitos do "Esqueci minha senha"
+   * (RecuperacaoSenhaService). Não exponha isto num endpoint direto. */
+  async definirSenha(id: number, senhaNova: string): Promise<void> {
+    const usuario = await this.buscarPorId(id);
     usuario.senhaHash = await bcrypt.hash(senhaNova, SALT_ROUNDS);
     await this.repo.save(usuario);
   }

@@ -60,6 +60,9 @@ export class ProjetoFormComponent {
   readonly gerando = signal<string | null>(null);
 
   readonly projetoId = signal<number | null>(null);
+  /** Levantamento ou Demonstração (passo 1). Fora do formulário de propósito: quem grava é o
+   * cadastro do cliente; aqui é só leitura. Vazio nos projetos anteriores ao campo. */
+  readonly tipoDemanda = signal<string>('');
   readonly cabecalho = signal<Cabecalho | null>(null);
   readonly documentos = signal<Documento[]>([]);
   readonly eventos = signal<EventoProjeto[]>([]);
@@ -128,6 +131,7 @@ export class ProjetoFormComponent {
     try {
       const projeto = await this.service.buscar(id);
       this.form.patchValue(projeto);
+      this.tipoDemanda.set(projeto.tipoDemanda ?? '');
     } catch {
       this.erro.set('Não foi possível carregar o projeto.');
       this.carregando.set(false);

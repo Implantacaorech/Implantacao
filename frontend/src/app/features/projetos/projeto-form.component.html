@@ -139,6 +139,7 @@
     <section class="painel-aba ativa">
       <div class="painel">
         <div class="resumo">
+          @if (tipoDemanda()) { <div class="row"><span class="k">Tipo de demanda</span><span class="v">{{ tipoDemanda() }}</span></div> }
           @if (form.getRawValue().cnpj) { <div class="row"><span class="k">CNPJ</span><span class="v">{{ form.getRawValue().cnpj }}</span></div> }
           @if (form.getRawValue().numeroProposta) { <div class="row"><span class="k">Nº Proposta</span><span class="v">{{ form.getRawValue().numeroProposta }}</span></div> }
           @if (form.getRawValue().ramo) { <div class="row"><span class="k">Ramo</span><span class="v">{{ form.getRawValue().ramo }}</span></div> }

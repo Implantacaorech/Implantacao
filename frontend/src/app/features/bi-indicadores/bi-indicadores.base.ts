@@ -159,7 +159,9 @@ export abstract class BiIndicadoresBase {
       const s = String(v ?? '');
       return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const csv = `﻿${cab.join(';')}\n${linhas.map((l) => l.map(escapar).join(';')).join('\n')}`;
+    // `\uFEFF` (BOM) na frente do CSV: é o que faz o Excel abrir o arquivo
+    // como UTF-8 em vez de ANSI (sem ele, acento sai trocado na planilha).
+    const csv = `\uFEFF${cab.join(';')}\n${linhas.map((l) => l.map(escapar).join(';')).join('\n')}`;
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
     const a = document.createElement('a');
     a.href = url;

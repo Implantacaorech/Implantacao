@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -9,9 +10,12 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { RecuperacaoSenhaService } from './recuperacao-senha.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { TrocarSenhaDto } from './dto/trocar-senha.dto';
+import { EsqueciSenhaDto } from './dto/esqueci-senha.dto';
+import { RedefinirSenhaDto } from './dto/redefinir-senha.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
@@ -24,6 +28,7 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly users: UsersService,
+    private readonly recuperacao: RecuperacaoSenhaService,
   ) {}
 
   @Post('login')
@@ -77,5 +82,38 @@ export class AuthController {
   ) {
     await this.users.trocarSenha(user.sub, dto.senhaAtual, dto.senhaNova);
     return new ApiEnvelope(null, 'Senha alterada.');
+  }
+
+  @Post('esqueci-senha')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      '"Esqueci minha senha" da tela de login: envia um código de 6 dígitos ao e-mail da conta',
+  })
+  async esqueciSenha(@Body() dto: EsqueciSenhaDto) {
+    await this.recuperacao.solicitar(dto.email);
+    // Resposta deliberadamente igual para e-mail cadastrado e desconhecido — sem login, este
+    // endpoint viraria um verificador de quem tem acesso ao Painel (ver
+    // RecuperacaoSenhaService).
+    return new ApiEnvelope(
+      { email: dto.email },
+      'Se este e-mail tiver acesso ao Painel, o código chegará em instantes.',
+    );
+  }
+
+  @Post('redefinir-senha')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Conclui o "Esqueci minha senha": valida o código e grava a senha nova (sem exigir a atual)',
+  })
+  async redefinirSenha(@Body() dto: RedefinirSenhaDto) {
+    const r = await this.recuperacao.redefinir(
+      dto.email,
+      dto.codigo,
+      dto.senhaNova,
+    );
+    if (!r.ok) throw new BadRequestException(r.mensagem);
+    return new ApiEnvelope(null, 'Senha redefinida. Entre com a senha nova.');
   }
 }

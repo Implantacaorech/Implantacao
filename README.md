@@ -6,8 +6,10 @@ padronizar o processo de implantação do ERP **SIGER®**, conforme o processo
 
 Repositório: <https://github.com/Implantacaorech/Implantacao>
 
-> Este projeto segue os
-> [Padrões de Desenvolvimento da Rech](https://gitlab.rech.com.br/gitlab/rech/ia/padrao-ia/raw/master/PADRAO-RECH.md).
+> Este projeto segue o [Padrão de Desenvolvimento da Rech](PADRAO-DESENVOLVIMENTO-RECH.md) —
+> documento único: stack homologada (Parte I) e arquitetura de código (Parte II). A Parte I tem
+> [versão canônica no GitLab interno](https://gitlab.rech.com.br/gitlab/rech/ia/padrao-ia/raw/master/PADRAO-RECH.md),
+> que prevalece se divergir.
 
 ## Acesso
 
@@ -64,7 +66,8 @@ Chaves de IA **não** são variáveis de ambiente: ficam por finalidade em `dado
 ## Exceções ao padrão (§4.3 / §4.8)
 
 Este projeto tem componentes **Python** fora da stack homologada, em processo de adequação
-(auditoria de 2026-07-21 contra o `PADRAO-RECH.md` rev. 2.0.0):
+(auditoria de 2026-07-21 contra o Padrão Rech rev. 2.0.0, hoje a Parte I do
+[documento único](PADRAO-DESENVOLVIMENTO-RECH.md)):
 
 | Componente | Situação |
 |---|---|

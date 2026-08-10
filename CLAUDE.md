@@ -5,18 +5,39 @@ Repositório do **time de implantação** da Rech: **agentes** (papéis), **skil
 2026-07-19 — porta 5100, `http://I7M1700-01-EVE:5100`). Este arquivo é curto de propósito —
 o detalhamento operacional está em **[docs/guia-operacional-ia.md](docs/guia-operacional-ia.md)**.
 
-## Padrões de desenvolvimento da Rech
-Antes de criar, alterar estruturalmente ou auditar este projeto, carregue e siga:
-<https://gitlab.rech.com.br/gitlab/rech/ia/padrao-ia/raw/master/PADRAO-RECH.md>
+## Padrão de desenvolvimento — documento único
+Antes de criar, alterar estruturalmente ou auditar este projeto, carregue e siga
+**[PADRAO-DESENVOLVIMENTO-RECH.md](PADRAO-DESENVOLVIMENTO-RECH.md)** (raiz). Desde 2026-08-03
+ele é o **único** documento normativo de desenvolvimento — consolida, em um arquivo:
 
-> Há uma cópia local em `MD Padrao desenv/Padrao_Rech.md` (rev. **2.0.0**). Em 2026-07-21 a
-> canônica ainda respondia rev. 1.0.0 (sem a §4.8, de aplicações web) — a cópia local está
-> **à frente**. Compare as revisões antes de assumir qual vale.
+- **Parte I (§3–§10)** — o **que** usar: Padrão Rech rev. **2.0.0** (GitLab, stack, banco,
+  README, CI/CD, DevTools). Norma da empresa.
+- **Parte II (§13–§21)** — **como** construir: Guia Mestre de Arquitetura (Controller →
+  Service → Repository, módulos, testes, documentação, segurança), adotado pelo
+  [ADR-0002](<vault/17 - ADR/ADR-0002 - Adocao do Guia Mestre de Arquitetura.md>).
+
+Em conflito, a Parte I prevalece. A numeração `§1`–`§12` é a mesma do Padrão Rech (só o
+controle de revisões saiu da §13 para a §22), então as citações espalhadas pelo código e pelos
+docs continuam valendo. `MD Padrao desenv/Padrao_Rech.md` e
+`Padronizacao_de_estrutura/GUIA_MESTRE_ARQUITETURA_DESENVOLVIMENTO.md` viraram ponteiros.
+
+> A Parte I tem versão canônica em
+> <https://gitlab.rech.com.br/gitlab/rech/ia/padrao-ia/raw/master/PADRAO-RECH.md> e **prevalece
+> se divergir** — em 2026-07-21 a canônica ainda respondia rev. 1.0.0 (sem a §4.8), ou seja, o
+> texto daqui estava **à frente**. Compare as revisões antes de assumir qual vale.
 >
 > **Este projeto é uma aplicação web** e está sujeito à §4.8 (Angular · NestJS + TypeORM ·
 > MariaDB · entrega em processo único). Não conformidades conhecidas e o plano de adequação
 > estão em [docs/pendencias.md](docs/pendencias.md) — a principal é o repositório ainda estar
 > no GitHub, não no GitLab interno (§3).
+
+**Leitura aplicada a este repositório** (como cada camada se chama no backend/frontend/
+docservice, guardas do CI e desvios com prazo): [Guia Mestre de Arquitetura](<vault/23 - Padrões/Guia Mestre de Arquitetura de Desenvolvimento.md>).
+**Módulo de referência: `backend/src/plano-cronograma/`** — ao criar ou adequar um módulo,
+copie dele (inclusive os 6 docs em `docs/`). A adequação é faseada (fase 1 concluída em
+2026-07-31; fases 2–4 em `docs/pendencias.md`) e **verificada por teste**:
+`conformidade-arquitetura.spec.ts` no backend e no frontend,
+`test_conformidade_arquitetura.py` no docservice — os três falham o CI.
 
 ## Idioma
 Tudo em **português do Brasil (pt-BR)**, em qualquer arquivo novo.
@@ -110,8 +131,26 @@ atualizadas em 2026-07-19 pro stack novo (`backend/src/*`, `docservice/`, ponte
 **`webapp/legado_cli.py`/`runner.py`/`roles.py`/`forms.py` e `tools/`** continuam vivos —
 são a ponte de subprocesso do backend novo (`LegadoCliService`) para o assistente
 administrativo legado. Não mover/apagar sem checar quem importa o quê primeiro.
-**`templates/` + CSS do Angular são do MANUS IA — nenhum agente de software escreve lá.**
+**O visual do Angular (HTML/CSS de `frontend/src/app/`) passou a ser NOSSO** — decisão do
+usuário em 2026-08-07: o MANUS IA saiu do projeto. Layout, alinhamento, espaçamento,
+responsividade e padronização visual são responsabilidade dos agentes de software como
+qualquer outro código, e achado visual vira **correção**, não registro. `templates/` (os
+layouts .docx/.xlsx oficiais da Rech) continua sendo material de negócio — alterar um
+layout ali é decisão do usuário, não refatoração.
 
 **Antes de todo push:** `cd backend && npm test` e `cd frontend && npm test` (specs reais,
 ~40s+~23s). `python tools/verificar.py` (smoke dos geradores, best-effort) se mexer em
 `tools/`. CI roda os três em `.github/workflows/ci.yml`.
+
+**Ao mexer em passos, permissões ou geração de documento**, rode também **[e2e/](e2e/README.md)**
+(Playwright, navegador real): cada caso ali nasceu de um defeito real de autorização
+encontrado em 2026-08-05 — se um falhar, a brecha voltou. Exige a **instância isolada na
+porta 5199** (SQLite descartável, `cwd` fora de `backend/` para o `smtp.json` não ser
+encontrado). ⚠️ **Nunca aponte o e2e para a 5100** — é produção, e os testes concluem passos
+e disparam e-mail; o `playwright.config.ts` recusa essa porta no boot.
+
+**Auditoria 360° do sistema** (antes de uma entrega/virada, ou quando pedirem "auditoria
+geral"/"testar tudo"): skill **`auditoria-geral-sistema`** — percorre frontend, backend,
+APIs, banco, permissões, navegação, formulários, layout, responsividade, console, network,
+performance e segurança, em navegador real, classifica os achados por severidade, corrige a
+causa raiz, reteste e fecha com relatório. Roda na mesma instância isolada da 5199.

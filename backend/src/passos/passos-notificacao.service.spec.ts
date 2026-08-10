@@ -56,6 +56,9 @@ describe('PassosNotificacaoService', () => {
   let configurado: boolean;
   let consultoresVinculados: ProjetoPessoa[];
   let levantadoresVinculados: ProjetoPessoa[];
+  /** Vínculos com papel 'gci'. Vazio = projeto anterior à migração `DesignacaoPorUsuarioId`,
+   * em que o GCI só existe como texto em `Projeto.gci`. */
+  let gcisVinculados: ProjetoPessoa[];
   let documentoDoProjeto: Partial<Documento> | null;
   /** Arquivos anexados à mão ao e-mail do passo (tipo `anexo_passo_N`). */
   let anexosManuais: Partial<Documento>[];
@@ -113,6 +116,7 @@ describe('PassosNotificacaoService', () => {
     configurado = true;
     consultoresVinculados = [];
     levantadoresVinculados = [];
+    gcisVinculados = [];
     documentoDoProjeto = null;
     anexosManuais = [];
     modeloDoPasso = null;
@@ -136,12 +140,21 @@ describe('PassosNotificacaoService', () => {
         {
           provide: getRepositoryToken(ProjetoPessoa),
           useValue: {
-            find: (opcoes: { where?: { papel?: string } }) =>
-              Promise.resolve(
-                opcoes?.where?.papel === 'levantador'
-                  ? levantadoresVinculados
-                  : consultoresVinculados,
-              ),
+            // Fiel ao papel pedido: desde que o GCI virou vínculo (`papel: 'gci'`), devolver
+            // os consultores para qualquer papel faria o e-mail do GCI sair para eles.
+            find: (opcoes: { where?: { papel?: string } }) => {
+              const papel = opcoes?.where?.papel;
+              if (papel === 'levantador')
+                return Promise.resolve(levantadoresVinculados);
+              if (papel === 'consultor')
+                return Promise.resolve(consultoresVinculados);
+              if (papel === 'gci') return Promise.resolve(gcisVinculados);
+              return Promise.resolve([
+                ...gcisVinculados,
+                ...consultoresVinculados,
+                ...levantadoresVinculados,
+              ]);
+            },
           },
         },
         {

@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" width="640" height="400" role="img" aria-label="Centro de Monitoramento com saúde por setor, carga por colaborador, próximas entregas e telemetria dos agentes de IA">
+  <style>
+    .t{font-family:Inter,'Segoe UI',system-ui,sans-serif}
+    .h{font-size:9px;font-weight:700;fill:#003399}
+    .s{font-size:7.5px;fill:#5A6B82}
+    .set{font-size:9px;font-weight:600;fill:#0F1B2D}
+  </style>
+  <rect width="640" height="400" rx="10" fill="#fff"/>
+  <rect x=".5" y=".5" width="639" height="399" rx="10" fill="none" stroke="#E2E8F0"/>
+  <path d="M0 10a10 10 0 0 1 10-10h620a10 10 0 0 1 10 10v24H0z" fill="#001F66"/>
+  <text class="t" x="18" y="21" style="font-size:10px;font-weight:600;fill:#fff">Centro de Monitoramento</text>
+  <text class="t" x="622" y="21" text-anchor="end" style="font-size:8.5px;fill:#8FB0E4">saúde geral 82/100</text>
+
+  <!-- setores -->
+  <text class="t h" x="16" y="58">Setores</text>
+  <g>
+    <rect x="16" y="66" width="118" height="62" rx="8" fill="#ECFDF3" stroke="#86EFAC"/>
+    <text class="t set" x="28" y="84">Comercial</text>
+    <text class="t s" x="28" y="97" style="fill:#15803D">Normal</text>
+    <text class="t" x="122" y="120" text-anchor="end" style="font-size:15px;font-weight:700;fill:#15803D">94</text>
+
+    <rect x="142" y="66" width="118" height="62" rx="8" fill="#ECFDF3" stroke="#86EFAC"/>
+    <text class="t set" x="154" y="84">Administrativo</text>
+    <text class="t s" x="154" y="97" style="fill:#15803D">Normal</text>
+    <text class="t" x="248" y="120" text-anchor="end" style="font-size:15px;font-weight:700;fill:#15803D">88</text>
+
+    <rect x="268" y="66" width="118" height="62" rx="8" fill="#FFF7ED" stroke="#FCD34D"/>
+    <text class="t set" x="280" y="84">Coordenação</text>
+    <text class="t s" x="280" y="97" style="fill:#B45309">Pendências</text>
+    <text class="t" x="374" y="120" text-anchor="end" style="font-size:15px;font-weight:700;fill:#B45309">71</text>
+
+    <rect x="394" y="66" width="118" height="62" rx="8" fill="#FEF3F2" stroke="#FCA5A5"/>
+    <text class="t set" x="406" y="84">Consultoria</text>
+    <text class="t s" x="406" y="97" style="fill:#B42318">Sobrecarregado</text>
+    <text class="t" x="500" y="120" text-anchor="end" style="font-size:15px;font-weight:700;fill:#B42318">58</text>
+
+    <rect x="520" y="66" width="104" height="62" rx="8" fill="#ECFDF3" stroke="#86EFAC"/>
+    <text class="t set" x="532" y="84">Suporte</text>
+    <text class="t s" x="532" y="97" style="fill:#15803D">Normal</text>
+    <text class="t" x="612" y="120" text-anchor="end" style="font-size:15px;font-weight:700;fill:#15803D">90</text>
+  </g>
+
+  <!-- carga por colaborador -->
+  <rect x="16" y="142" width="300" height="130" rx="8" fill="#fff" stroke="#E2E8F0"/>
+  <text class="t h" x="30" y="160">Carga por colaborador</text>
+  <g>
+    <text class="t s" x="30" y="182">Ana Prado</text>
+    <rect x="110" y="174" width="184" height="9" rx="4.5" fill="#F1F5F9"/>
+    <rect x="110" y="174" width="132" height="9" rx="4.5" fill="#15803D"/>
+    <text class="t s" x="30" y="204">Carlos Nunes</text>
+    <rect x="110" y="196" width="184" height="9" rx="4.5" fill="#F1F5F9"/>
+    <rect x="110" y="196" width="106" height="9" rx="4.5" fill="#15803D"/>
+    <text class="t s" x="30" y="226">Marina Alves</text>
+    <rect x="110" y="218" width="184" height="9" rx="4.5" fill="#F1F5F9"/>
+    <rect x="110" y="218" width="178" height="9" rx="4.5" fill="#B42318"/>
+    <text class="t s" x="30" y="248">Rafael Dias</text>
+    <rect x="110" y="240" width="184" height="9" rx="4.5" fill="#F1F5F9"/>
+    <rect x="110" y="240" width="152" height="9" rx="4.5" fill="#B45309"/>
+  </g>
+  <text class="t s" x="30" y="264" style="fill:#94A3B8">7 clientes em Marina Alves — realocação sugerida</text>
+
+  <!-- próximas entregas -->
+  <rect x="324" y="142" width="300" height="130" rx="8" fill="#fff" stroke="#E2E8F0"/>
+  <text class="t h" x="338" y="160">Próximas entregas</text>
+  <g>
+    <rect x="338" y="170" width="272" height="28" rx="6" fill="#FEF3F2"/>
+    <text class="t s" x="348" y="182" style="fill:#B42318;font-weight:700">hoje</text>
+    <text class="t s" x="380" y="182" style="fill:#0F1B2D">Metalúrgica Alfa · designar GCI (passo 8)</text>
+    <text class="t s" x="380" y="193" style="fill:#5A6B82">Coordenação · 3 dias em atraso</text>
+
+    <rect x="338" y="204" width="272" height="28" rx="6" fill="#FFF7ED"/>
+    <text class="t s" x="348" y="216" style="fill:#B45309;font-weight:700">1 dia</text>
+    <text class="t s" x="380" y="216" style="fill:#0F1B2D">Comércio Beta · Projeto de Implantação</text>
+    <text class="t s" x="380" y="227" style="fill:#5A6B82">GCI Ana Prado · prazo de 5 dias úteis</text>
+
+    <rect x="338" y="238" width="272" height="28" rx="6" fill="#F8FAFC"/>
+    <text class="t s" x="348" y="250" style="fill:#5A6B82;font-weight:700">4 dias</text>
+    <text class="t s" x="380" y="250" style="fill:#0F1B2D">Indústria Gama · cronograma de visitas</text>
+    <text class="t s" x="380" y="261" style="fill:#5A6B82">Consultor Carlos Nunes</text>
+  </g>
+
+  <!-- agentes de IA + automações -->
+  <rect x="16" y="284" width="300" height="100" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text class="t h" x="30" y="302">Assistentes de IA do Painel</text>
+  <g class="t s">
+    <text x="30" y="322">Transcrição · 14 execuções hoje</text>
+    <rect x="200" y="314" width="96" height="8" rx="4" fill="#E2E8F0"/>
+    <rect x="200" y="314" width="86" height="8" rx="4" fill="#15803D"/>
+    <text x="30" y="344">Análise de conteúdo · 11</text>
+    <rect x="200" y="336" width="96" height="8" rx="4" fill="#E2E8F0"/>
+    <rect x="200" y="336" width="70" height="8" rx="4" fill="#15803D"/>
+    <text x="30" y="366">Falhas · 1 (reprocessada)</text>
+    <rect x="200" y="358" width="96" height="8" rx="4" fill="#E2E8F0"/>
+    <rect x="200" y="358" width="9" height="8" rx="4" fill="#B42318"/>
+  </g>
+
+  <rect x="324" y="284" width="300" height="100" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text class="t h" x="338" y="302">Automações em pé</text>
+  <g class="t s" style="fill:#0F1B2D">
+    <circle cx="344" cy="318" r="3.5" fill="#15803D"/><text x="356" y="321">Resumo diário da carteira por e-mail</text>
+    <circle cx="344" cy="338" r="3.5" fill="#15803D"/><text x="356" y="341">Notificação a cada passo concluído</text>
+    <circle cx="344" cy="358" r="3.5" fill="#15803D"/><text x="356" y="361">Busca automática de novos vídeos do setor</text>
+    <circle cx="344" cy="376" r="3.5" fill="#15803D"/><text x="356" y="379">Cópia de segurança diária</text>
+  </g>
+</svg>

@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" width="640" height="400" role="img" aria-label="Fluxo do processo em 21 passos, com responsável por passo, gate de conclusão e e-mail automático">
+  <style>
+    .t{font-family:Inter,'Segoe UI',system-ui,sans-serif}
+    .n{font-size:9px;font-weight:700;fill:#fff;text-anchor:middle}
+    .p{font-size:9.5px;fill:#0F1B2D}
+    .r{font-size:8px;fill:#5A6B82}
+  </style>
+  <rect width="640" height="400" rx="10" fill="#fff"/>
+  <rect x=".5" y=".5" width="639" height="399" rx="10" fill="none" stroke="#E2E8F0"/>
+  <path d="M0 10a10 10 0 0 1 10-10h620a10 10 0 0 1 10 10v24H0z" fill="#001F66"/>
+  <text class="t" x="18" y="21" style="font-size:10px;font-weight:600;fill:#fff">Projeto · Metalúrgica Alfa Ltda</text>
+  <text class="t" x="622" y="21" text-anchor="end" style="font-size:9px;fill:#8FB0E4">Passo 8 de 21</text>
+
+  <!-- trilha -->
+  <line x1="46" y1="70" x2="46" y2="352" stroke="#E2E8F0" stroke-width="2"/>
+
+  <!-- concluídos -->
+  <g>
+    <circle cx="46" cy="70" r="12" fill="#15803D"/><text class="t n" x="46" y="74">1</text>
+    <text class="t p" x="70" y="66" style="font-weight:600">Consulta e Cadastro do Cliente</text>
+    <text class="t r" x="70" y="79">Comercial · concluído em 02/07 · SICLA consultado</text>
+    <circle cx="46" cy="118" r="12" fill="#15803D"/><text class="t n" x="46" y="122">3</text>
+    <text class="t p" x="70" y="114" style="font-weight:600">Realizar o Levantamento de Processo</text>
+    <text class="t r" x="70" y="127">Levantador · documento gerado pelo layout oficial</text>
+    <circle cx="46" cy="166" r="12" fill="#15803D"/><text class="t n" x="46" y="170">6</text>
+    <text class="t p" x="70" y="162" style="font-weight:600">Finalizar negociação e enviar o fechamento</text>
+    <text class="t r" x="70" y="175">Administrativo · e-mail enviado à Coordenação</text>
+    <circle cx="46" cy="214" r="12" fill="#15803D"/><text class="t n" x="46" y="218">7</text>
+    <text class="t p" x="70" y="210" style="font-weight:600">Contrato assinado e liberação</text>
+    <text class="t r" x="70" y="223">Administrativo · concluído em 21/07</text>
+  </g>
+
+  <!-- passo atual -->
+  <rect x="26" y="240" width="586" height="66" rx="10" fill="#EFF4FF" stroke="#2563EB"/>
+  <circle cx="46" cy="262" r="12" fill="#2563EB"/><text class="t n" x="46" y="266">8</text>
+  <text class="t p" x="70" y="258" style="font-weight:700;fill:#003399">Indicar o GCI e os técnicos responsáveis</text>
+  <text class="t r" x="70" y="271">Responsável: Coordenador · em aberto desde 24/07</text>
+  <rect x="70" y="280" width="150" height="16" rx="8" fill="#fff" stroke="#BFDBFE"/>
+  <text class="t r" x="80" y="291" style="fill:#2563EB">GCI: selecione…</text>
+  <rect x="228" y="280" width="150" height="16" rx="8" fill="#fff" stroke="#BFDBFE"/>
+  <text class="t r" x="238" y="291" style="fill:#2563EB">Técnicos por módulo…</text>
+  <rect x="500" y="278" width="96" height="20" rx="10" fill="#003399"/>
+  <text class="t" x="548" y="292" text-anchor="middle" style="font-size:9px;fill:#fff">Concluir passo</text>
+
+  <!-- bloqueados -->
+  <g opacity=".72">
+    <circle cx="46" cy="330" r="12" fill="#fff" stroke="#CBD5E1" stroke-width="2"/><text class="t n" x="46" y="334" style="fill:#94A3B8">9</text>
+    <text class="t p" x="70" y="326" style="fill:#5A6B82">Incluir a RNI e as RNS de COB e Conversão</text>
+    <text class="t r" x="70" y="339">Administrativo · liberado quando o passo 8 concluir</text>
+    <circle cx="46" cy="370" r="12" fill="#fff" stroke="#CBD5E1" stroke-width="2"/><text class="t n" x="46" y="374" style="fill:#94A3B8">10</text>
+    <text class="t p" x="70" y="366" style="fill:#5A6B82">Criação do Projeto</text>
+    <text class="t r" x="70" y="379">GCI · gera o documento a partir do levantamento</text>
+  </g>
+
+  <!-- legenda -->
+  <g class="t" style="font-size:8px;fill:#5A6B82">
+    <circle cx="486" cy="66" r="5" fill="#15803D"/><text x="496" y="69">concluído</text>
+    <circle cx="486" cy="84" r="5" fill="#2563EB"/><text x="496" y="87">em aberto</text>
+    <circle cx="486" cy="102" r="5" fill="#fff" stroke="#CBD5E1" stroke-width="1.5"/><text x="496" y="105">bloqueado pelo gate</text>
+  </g>
+  <rect x="470" y="126" width="142" height="60" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text class="t" x="482" y="142" style="font-size:8.5px;font-weight:600;fill:#003399">Ao concluir um passo</text>
+  <text class="t r" x="482" y="156">→ e-mail aos responsáveis</text>
+  <text class="t r" x="482" y="168">→ registro na linha do tempo</text>
+  <text class="t r" x="482" y="180">→ próximo passo liberado</text>
+</svg>

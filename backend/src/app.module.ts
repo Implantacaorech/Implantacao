@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import configuration, { AppConfig } from './config/configuration';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
@@ -42,6 +44,18 @@ import { BiMovimentosModule } from './bi-movimentos/bi-movimentos.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
     ScheduleModule.forRoot(),
+    // Rate limit global (Guia Mestre §Segurança). Vale para TODA rota da API; quem precisa
+    // de exceção declara @SkipThrottle no controller (é o caso do /api/health, que o
+    // guardião/Tarefa Agendada consulta em intervalo curto e não pode ser barrado).
+    ThrottlerModule.forRootAsync({
+      useFactory: (config: ConfigService<AppConfig, true>) => {
+        const { ttlSegundos, limite } = config.get('rateLimit', {
+          infer: true,
+        });
+        return { throttlers: [{ ttl: ttlSegundos * 1000, limit: limite }] };
+      },
+      inject: [ConfigService],
+    }),
     // Serve o build de produção do Angular (`ng build`) direto pelo NestJS — um único
     // processo/porta em produção (ver configuration.ts:frontendDistPath), evitando CORS/
     // reverse proxy para uma ferramenta interna. `/api/*` fica de fora (API real); tudo
@@ -91,5 +105,6 @@ import { BiMovimentosModule } from './bi-movimentos/bi-movimentos.module';
     BiAgendaAlocacaoModule,
     BiMovimentosModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

@@ -9,6 +9,8 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { PermissaoGuard } from '../permissoes/permissao.guard';
+import { Permissao } from '../common/decorators/permissao.decorator';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import {
   CurrentUser,
@@ -28,7 +30,7 @@ import { MODELO_FECHAMENTO } from './fluxo.constants';
  * gerador legado via LegadoCliService) e envia o e-mail-resumo com anexos. */
 @ApiTags('fluxo')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissaoGuard)
 @Controller('fluxo')
 export class FluxoController {
   constructor(
@@ -77,8 +79,14 @@ export class FluxoController {
     return new ApiEnvelope({ encontrado: true, assunto, campos });
   }
 
+  /** Criar o projeto por aqui CONCLUI o passo 1 ("Consulta e Cadastro do Cliente", do
+   * Comercial). Sem gate, um Consultor criava o projeto e o passo 1 fechava em nome dele —
+   * o Administrativo passava a agendar o levantamento de um cliente que o Comercial nunca
+   * cadastrou (achado de 2026-08-05). A exigência é a MESMA da rota oficial de cadastro
+   * (`/clientes-sicla`, tela Novo Cliente): quem abre o processo é quem pode cadastrar. */
   @Post('criar')
   @HttpCode(HttpStatus.OK)
+  @Permissao('novo_cliente', 'alteracao')
   @ApiOperation({
     summary:
       'Cria o projeto a partir dos campos confirmados/editados, gera o pacote inicial e envia o e-mail-resumo aos responsáveis',

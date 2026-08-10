@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" width="640" height="400" role="img" aria-label="Tela de Visão Geral do Painel com indicadores do dia e lista de pendências priorizadas">
+  <style>
+    .t{font-family:Inter,'Segoe UI',system-ui,sans-serif}
+    .rot{font-size:9px;fill:#5A6B82}
+    .num{font-size:20px;font-weight:700;fill:#0F1B2D}
+    .men{font-size:9px;fill:#5A6B82}
+    .tit{font-size:11px;font-weight:600;fill:#003399}
+    .lin{font-size:9.5px;fill:#0F1B2D}
+  </style>
+  <rect width="640" height="400" rx="10" fill="#fff"/>
+  <rect x=".5" y=".5" width="639" height="399" rx="10" fill="none" stroke="#E2E8F0"/>
+
+  <!-- topbar -->
+  <path d="M0 10a10 10 0 0 1 10-10h620a10 10 0 0 1 10 10v24H0z" fill="#001F66"/>
+  <rect x="16" y="11" width="52" height="12" rx="3" fill="#fff" opacity=".92"/>
+  <text class="t" x="78" y="21" style="font-size:9px;fill:#B9CCEF">Implantação SIGER®</text>
+  <rect x="196" y="9" width="120" height="16" rx="8" fill="#0B3A92"/>
+  <text class="t" x="206" y="21" style="font-size:8.5px;fill:#8FB0E4">Buscar cliente…</text>
+  <circle cx="600" cy="17" r="9" fill="#0B3A92"/>
+  <text class="t" x="600" y="21" text-anchor="middle" style="font-size:8px;fill:#fff">EV</text>
+
+  <!-- menu lateral -->
+  <rect x="0" y="34" width="118" height="366" fill="#F8FAFC"/>
+  <line x1="118" y1="34" x2="118" y2="400" stroke="#E2E8F0"/>
+  <text class="t rot" x="14" y="52" letter-spacing="1" style="font-size:7.5px;fill:#94A3B8">EXECUÇÃO</text>
+  <rect x="8" y="58" width="102" height="18" rx="6" fill="#E8EEF8"/>
+  <rect x="16" y="65" width="8" height="4" rx="2" fill="#003399"/>
+  <text class="t" x="30" y="70" style="font-size:9px;font-weight:600;fill:#003399">Visão Geral</text>
+  <g class="t" style="fill:#5A6B82;font-size:9px">
+    <text x="30" y="92">Novo Cliente</text>
+    <text x="30" y="112">Carteira</text>
+    <text x="30" y="132">Transcrições</text>
+    <text x="30" y="152">Matriz</text>
+    <text x="30" y="172">Dicionário</text>
+  </g>
+  <g fill="#CBD5E1">
+    <rect x="16" y="87" width="8" height="4" rx="2"/><rect x="16" y="107" width="8" height="4" rx="2"/>
+    <rect x="16" y="127" width="8" height="4" rx="2"/><rect x="16" y="147" width="8" height="4" rx="2"/>
+    <rect x="16" y="167" width="8" height="4" rx="2"/>
+  </g>
+  <text class="t rot" x="14" y="196" letter-spacing="1" style="font-size:7.5px;fill:#94A3B8">GESTÃO</text>
+  <g class="t" style="fill:#5A6B82;font-size:9px">
+    <text x="30" y="212">Coordenação</text>
+    <text x="30" y="232">Centro Operac.</text>
+    <text x="30" y="252">BI</text>
+    <text x="30" y="272">Permissões</text>
+  </g>
+  <g fill="#CBD5E1">
+    <rect x="16" y="207" width="8" height="4" rx="2"/><rect x="16" y="227" width="8" height="4" rx="2"/>
+    <rect x="16" y="247" width="8" height="4" rx="2"/><rect x="16" y="267" width="8" height="4" rx="2"/>
+  </g>
+
+  <!-- KPIs -->
+  <g>
+    <rect x="134" y="50" width="115" height="58" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <text class="t rot" x="146" y="68">Projetos ativos</text>
+    <text class="t num" x="146" y="92">18</text>
+    <rect x="254" y="50" width="115" height="58" rx="8" fill="#ECFDF3" stroke="#86EFAC"/>
+    <text class="t rot" x="266" y="68" style="fill:#15803D">No prazo</text>
+    <text class="t num" x="266" y="92" style="fill:#15803D">12</text>
+    <rect x="374" y="50" width="115" height="58" rx="8" fill="#FFF7ED" stroke="#FCD34D"/>
+    <text class="t rot" x="386" y="68" style="fill:#B45309">Em risco</text>
+    <text class="t num" x="386" y="92" style="fill:#B45309">4</text>
+    <rect x="494" y="50" width="115" height="58" rx="8" fill="#FEF3F2" stroke="#FCA5A5"/>
+    <text class="t rot" x="506" y="68" style="fill:#B42318">Atrasados</text>
+    <text class="t num" x="506" y="92" style="fill:#B42318">2</text>
+  </g>
+
+  <!-- pendências -->
+  <text class="t tit" x="134" y="132">Pendências priorizadas</text>
+  <g>
+    <rect x="134" y="142" width="475" height="40" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <rect x="134" y="142" width="4" height="40" rx="2" fill="#B42318"/>
+    <text class="t lin" x="150" y="160" style="font-weight:600">Metalúrgica Alfa Ltda</text>
+    <text class="t men" x="150" y="173">Passo 8 · Indicar o GCI e os técnicos — 3 dias em atraso</text>
+    <rect x="520" y="153" width="76" height="18" rx="9" fill="#003399"/>
+    <text class="t" x="558" y="165" text-anchor="middle" style="font-size:8.5px;fill:#fff">Designar</text>
+
+    <rect x="134" y="190" width="475" height="40" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <rect x="134" y="190" width="4" height="40" rx="2" fill="#B45309"/>
+    <text class="t lin" x="150" y="208" style="font-weight:600">Comércio Beta S/A</text>
+    <text class="t men" x="150" y="221">Passo 10 · Criação do Projeto — vence em 1 dia útil</text>
+    <rect x="520" y="201" width="76" height="18" rx="9" fill="#003399"/>
+    <text class="t" x="558" y="213" text-anchor="middle" style="font-size:8.5px;fill:#fff">Gerar</text>
+
+    <rect x="134" y="238" width="475" height="40" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <rect x="134" y="238" width="4" height="40" rx="2" fill="#2563EB"/>
+    <text class="t lin" x="150" y="256" style="font-weight:600">Indústria Gama</text>
+    <text class="t men" x="150" y="269">Passo 13 · Elaborar o cronograma e incluir agendas</text>
+    <rect x="520" y="249" width="76" height="18" rx="9" fill="#fff" stroke="#CBD5E1"/>
+    <text class="t" x="558" y="261" text-anchor="middle" style="font-size:8.5px;fill:#5A6B82">Abrir</text>
+  </g>
+
+  <!-- projeto em foco -->
+  <rect x="134" y="292" width="475" height="86" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text class="t tit" x="148" y="312">Projeto em foco · Metalúrgica Alfa Ltda</text>
+  <text class="t men" x="148" y="328">GCI: Ana Prado · Go-live previsto 12/09 · 240h contratadas</text>
+  <rect x="148" y="340" width="447" height="8" rx="4" fill="#E2E8F0"/>
+  <rect x="148" y="340" width="170" height="8" rx="4" fill="#003399"/>
+  <text class="t men" x="148" y="366">Passo 8 de 21 · Designação</text>
+  <g class="t" style="font-size:8px;fill:#5A6B82">
+    <rect x="470" y="356" width="58" height="15" rx="7" fill="#F5F3FF" stroke="#DDD6FE"/>
+    <text x="499" y="366" text-anchor="middle" fill="#7C3AED">Levantam.</text>
+    <rect x="534" y="356" width="61" height="15" rx="7" fill="#EFF4FF" stroke="#BFDBFE"/>
+    <text x="564" y="366" text-anchor="middle" fill="#2563EB">Projeto</text>
+  </g>
+</svg>

@@ -17,6 +17,23 @@ export interface FiltroProtocolos {
   status?: string;
   q?: string;
   origem?: string;
+  cliente?: string;
+  /** Restringe a lista ao material desta pessoa (+ o do robô do SharePoint, que não tem
+   * dono). Definido pelo controller a partir do usuário logado — nunca vem da tela. Ver
+   * protocolos.acesso.ts. */
+  apenasDe?: string;
+}
+
+export interface DadosGravacao {
+  titulo: string;
+  projetoId: number | null;
+  cliente: string;
+  clienteCodigo: string;
+  vocabulario: string;
+  participantes: number;
+  responsavel: string;
+  /** Frase que descreve a captura ("microfone (reunião presencial)"...) — vai no histórico. */
+  fonte: string;
 }
 
 /** CRUD + regras de negócio simples do Protocolo (dedup por hash, histórico, edição,
@@ -89,6 +106,31 @@ export class ProtocolosService {
     return { id: salvo.id, novo: true };
   }
 
+  /** Abre o registro de uma reunião que COMEÇA AGORA a ser gravada (status 'Gravando').
+   * Diferente de `criar`: aqui ainda não existe arquivo nenhum — o .wav só nasce quando a
+   * gravação é encerrada, e é nessa hora que `videoNome`/`videoCaminho`/`videoHash` são
+   * preenchidos. Por isso também não há dedup por hash: cada reunião é única. */
+  async criarGravacao(dados: DadosGravacao): Promise<Protocolo> {
+    const p = this.repo.create({
+      titulo: dados.titulo,
+      projetoId: dados.projetoId,
+      cliente: dados.cliente,
+      clienteCodigo: dados.clienteCodigo,
+      vocabulario: dados.vocabulario,
+      participantes: dados.participantes,
+      videoOrigem: 'gravacao',
+      status: 'Gravando',
+      responsavel: dados.responsavel,
+    });
+    this.historico(
+      p,
+      `Gravação de reunião iniciada — captura: ${dados.fonte}.` +
+        (dados.cliente ? ` Cliente: ${dados.cliente}.` : ''),
+      dados.responsavel,
+    );
+    return this.repo.save(p);
+  }
+
   async buscarPorId(id: number): Promise<Protocolo> {
     const p = await this.repo.findOne({ where: { id } });
     if (!p) throw new NotFoundException('Protocolo não encontrado.');
@@ -113,6 +155,15 @@ export class ProtocolosService {
       qb.andWhere('LOWER(p.menu) LIKE :menu', {
         menu: `%${filtro.menu.toLowerCase()}%`,
       });
+    if (filtro.cliente)
+      qb.andWhere('LOWER(p.cliente) LIKE :cliente', {
+        cliente: `%${filtro.cliente.toLowerCase()}%`,
+      });
+    if (filtro.apenasDe)
+      qb.andWhere(
+        "(p.responsavel = :apenasDe OR p.videoOrigem = 'sharepoint')",
+        { apenasDe: filtro.apenasDe },
+      );
     if (filtro.q) {
       qb.andWhere(
         '(LOWER(p.titulo) LIKE :q OR LOWER(p.assunto) LIKE :q OR LOWER(p.resumo) LIKE :q ' +
@@ -145,6 +196,15 @@ export class ProtocolosService {
     );
     await this.repo.save(p);
     return true;
+  }
+
+  /** Acrescenta uma linha ao histórico sem mexer em mais nada (usado por fluxos que já
+   * atualizaram o registro e só precisam registrar o que aconteceu). */
+  async salvarHistorico(id: number, acao: string, autor = ''): Promise<void> {
+    const p = await this.repo.findOne({ where: { id } });
+    if (!p) return;
+    this.historico(p, acao, autor);
+    await this.repo.save(p);
   }
 
   /** Salva a edição humana da tela de revisão (campos de conteúdo). */

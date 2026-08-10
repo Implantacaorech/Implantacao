@@ -43,6 +43,7 @@ function projeto(): Projeto {
     cnpj: '',
     numeroProjeto: '',
     numeroProposta: '',
+    tipoDemanda: '',
     ramo: '',
     responsavel: '',
     consultor: '',
@@ -118,7 +119,7 @@ describe('PassosComponent', () => {
     concluidos: number[];
   };
 
-  async function montar(passos: Passo[]) {
+  async function montar(passos: Passo[], podeAlterarCarteira = true) {
     servicoFake = {
       concluidos: [],
       listar: () => Promise.resolve(passos),
@@ -170,11 +171,16 @@ describe('PassosComponent', () => {
               Promise.resolve({ blob: new Blob(), filename: 'Projeto.docx' }),
           },
         },
-        // Sem Alteração na Carteira a tela vira SÓ CONSULTA e esconde a coluna de ações —
-        // os testes de botão precisam do nível que o painel de Permissões daria.
+        // Sem Alteração na Carteira a tela vira SÓ CONSULTA — os testes de botão precisam do
+        // nível que o painel de Permissões daria. `podeAlterarCarteira: false` simula o
+        // COMERCIAL, que tem nível `consulta` no menu e ainda assim responde pelos passos
+        // 1 e 5 (ver o teste do passo liberado, mais abaixo).
         {
           provide: PermissoesService,
-          useValue: { podeAlterar: (menu: string) => menu === 'carteira' },
+          useValue: {
+            podeAlterar: (menu: string) =>
+              menu === 'carteira' ? podeAlterarCarteira : false,
+          },
         },
         {
           provide: ActivatedRoute,
@@ -191,6 +197,46 @@ describe('PassosComponent', () => {
     fixture.detectChanges();
     return fixture;
   }
+
+  // O Comercial tem nível `consulta` na Carteira e ainda assim responde pelos passos 1 e 5.
+  // Enquanto a coluna de ações dependia só de `soConsulta()`, ele não via botão nenhum e o
+  // processo travava no passo 5 — sem nada na tela explicando por quê (achado de 2026-08-05).
+  // Quem manda é `liberado`, que já chega do backend com a regra completa (dependências +
+  // RN-10): aparece exatamente para quem a API vai aceitar.
+  describe('quem só CONSULTA a carteira', () => {
+    it('vê a ação do passo que é dele (liberado pelo backend)', async () => {
+      const fixture = await montar(
+        [passo({ numero: 5, titulo: 'Avançar', responsavel: 'Comercial', liberado: true })],
+        false,
+      );
+      const raiz = fixture.nativeElement as HTMLElement;
+      const botoes = [...raiz.querySelectorAll('button')].map((b) =>
+        (b.textContent ?? '').trim(),
+      );
+      expect(botoes).toContain('Concluir');
+    });
+
+    it('NÃO vê ação em passo que não é dele', async () => {
+      const fixture = await montar(
+        [passo({ numero: 10, titulo: 'Criação do Projeto', responsavel: 'GCI', liberado: false, motivos: ['Só o responsável (GCI) pode concluir.'] })],
+        false,
+      );
+      const raiz = fixture.nativeElement as HTMLElement;
+      const botoes = [...raiz.querySelectorAll('button')].map((b) =>
+        (b.textContent ?? '').trim(),
+      );
+      expect(botoes).not.toContain('Concluir');
+    });
+
+    it('continua enxergando o motivo do bloqueio', async () => {
+      const fixture = await montar(
+        [passo({ numero: 10, liberado: false, motivos: ['Depende do passo 8 (Indicar o GCI).'] })],
+        false,
+      );
+      const raiz = fixture.nativeElement as HTMLElement;
+      expect(raiz.textContent).toContain('Depende do passo 8');
+    });
+  });
 
   it('agrupa os passos por macro-etapa, preservando a ordem do processo', async () => {
     const fixture = await montar([

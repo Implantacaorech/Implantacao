@@ -15,12 +15,13 @@ import {
   ProjetoPessoa,
 } from '../database/entities/projeto-pessoa.entity';
 import { Evento } from '../database/entities/evento.entity';
+import { Usuario } from '../database/entities/usuario.entity';
 import { Documento } from '../database/entities/documento.entity';
 import { DocumentosService } from '../documentos/documentos.service';
 import { Etapa, Perfil, temPapel } from '../common/constants/perfis';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { filtrarCarteiraPorPerfil } from '../common/carteira-visibilidade';
-import { hojeIso } from '../cronograma/datas.util';
+import { ehDataIso, hojeIso } from '../cronograma/datas.util';
 import {
   PassosNotificacaoService,
   tipoAnexoLivre,
@@ -28,6 +29,7 @@ import {
 import {
   DefinicaoPasso,
   EXTENSOES_EMAIL,
+  nomesDoCampo,
   ResponsavelPasso,
   PASSOS,
   PASSOS_COM_ANEXO_DE_EMAIL,
@@ -39,6 +41,18 @@ import {
   PERFIS_POR_RESPONSAVEL,
   PERFIS_TELA_DO_PASSO,
 } from './passos.constants';
+
+/** Quem está agindo, para efeito de DESIGNAÇÃO no projeto.
+ *
+ * `sub` é o id do usuário no token — é ele que identifica a pessoa. `nome` continua aqui
+ * porque é o que se grava em `concluidoPor` e o que decide nos vínculos antigos, anteriores
+ * à migração `DesignacaoPorUsuarioId`, que ficaram sem id. */
+export interface UsuarioDoPasso {
+  sub?: number;
+  nome: string;
+  perfil: Perfil;
+  perfis?: Perfil[];
+}
 
 /** O que a tela manda ao concluir um passo, além do simples "concluí". */
 export interface DadosConclusao {
@@ -117,6 +131,9 @@ export class PassosService {
     private readonly pessoas: Repository<ProjetoPessoa>,
     @InjectRepository(Evento)
     private readonly eventos: Repository<Evento>,
+    // Só para resolver nome -> id ao gravar a designação (ver `idsPorNome`).
+    @InjectRepository(Usuario)
+    private readonly usuarios: Repository<Usuario>,
     private readonly notificacao: PassosNotificacaoService,
     @Inject(forwardRef(() => DocumentosService))
     private readonly documentos: DocumentosService,
@@ -135,16 +152,22 @@ export class PassosService {
    * perfil — para os papéis que são designados por projeto, a pessoa tem de estar
    * designada NAQUELE projeto:
    *
-   *   GCI        -> precisa ser o GCI do projeto (`Projeto.gci`)
+   *   GCI        -> precisa estar em `projeto_pessoas` com papel 'gci'
    *   Consultor  -> precisa estar em `projeto_pessoas` com papel 'consultor'
    *   Levantador -> precisa estar em `projeto_pessoas` com papel 'levantador'
    *
    * Administrativo e Coordenador NÃO são designados por projeto — não existe esse vínculo
    * no processo —, então para eles vale o perfil. ADM passa em tudo, por ser o perfil de
-   * administração do Painel. */
+   * administração do Painel.
+   *
+   * A comparação é por `usuario_id` desde 2026-08-06. Enquanto era por NOME, dois usuários
+   * homônimos eram a mesma pessoa para esta função: o segundo concluía os passos do primeiro
+   * (achado da auditoria dos 21 passos). O nome só decide em vínculo ANTIGO que a migração
+   * não conseguiu resolver — nome ambíguo ou sem usuário ativo correspondente —, e aí o
+   * comportamento é o que já era. */
   private podeExecutar(
     def: DefinicaoPasso,
-    usuario: { nome: string; perfil: Perfil; perfis?: Perfil[] },
+    usuario: UsuarioDoPasso,
     projeto: Projeto,
     designados: ProjetoPessoa[],
   ): boolean {
@@ -157,15 +180,22 @@ export class PassosService {
     // Nome diferente do `temPapel` importado de propósito: aquele pergunta pelo CARGO no
     // cadastro; este, pela DESIGNAÇÃO neste projeto. São checagens distintas.
     const designadoComo = (papel: PapelProjeto) =>
-      designados.some(
-        (d) => d.papel === papel && d.pessoa.trim().toLowerCase() === nome,
-      );
+      designados.some((d) => {
+        if (d.papel !== papel) return false;
+        // Vínculo com identidade: só o id decide. Cair no nome aqui reabriria o furo do
+        // homônimo justamente onde ele foi fechado.
+        if (d.usuarioId != null) return d.usuarioId === usuario.sub;
+        return d.pessoa.trim().toLowerCase() === nome;
+      });
 
     switch (def.responsavel) {
       case 'GCI':
-        return projeto.gci
-          .split(',')
-          .some((g) => g.trim().toLowerCase() === nome);
+        // `Projeto.gci` (texto) continua sendo o espelho para telas e documentos; a
+        // designação de verdade são as linhas com papel 'gci'. Projeto antigo, anterior à
+        // migração e sem essas linhas, ainda decide pelo campo de texto.
+        return designados.some((d) => d.papel === 'gci')
+          ? designadoComo('gci')
+          : nomesDoCampo(projeto.gci).some((g) => g.toLowerCase() === nome);
       case 'Consultor':
         return designadoComo('consultor');
       case 'Levantador':
@@ -202,7 +232,7 @@ export class PassosService {
   private async exigirPermissao(
     projetoId: number,
     def: DefinicaoPasso,
-    usuario: { nome: string; perfil: Perfil; perfis?: Perfil[] },
+    usuario: UsuarioDoPasso,
   ): Promise<Projeto> {
     const projeto = await this.projetos.findOne({ where: { id: projetoId } });
     if (!projeto) throw new NotFoundException('Projeto não encontrado.');
@@ -223,6 +253,70 @@ export class PassosService {
       : `Só o responsável (${def.responsavel}) pode concluir.`;
   }
 
+  /** A pessoa pode concluir ESTE passo NESTE projeto? — para quem age em OUTRA tela.
+   *
+   * `concluirAutomatico` não checa perfil DE PROPÓSITO: o contrato é que "quem autorizou foi
+   * o gate da própria rota que executou a ação". Este método É esse gate, para as rotas cuja
+   * ação fecha um passo (anexar/gerar documento). Sem ele, a RN-10 (designação por projeto)
+   * valia só dentro do `PassosController` — e anexar um arquivo qualquer rotulado `termo`
+   * fechava, de forma IRREVERSÍVEL, o passo 18 de um projeto alheio (achado de 2026-08-05).
+   *
+   * Devolve `false` em vez de lançar: gerar/anexar o documento continua permitido a quem o
+   * perfil autoriza (o Administrativo precisa poder baixar o Termo em branco); o que a
+   * autorização decide é só se aquilo CONCLUI o passo. */
+  async podeExecutarPasso(
+    projetoId: number,
+    numero: number,
+    usuario: UsuarioDoPasso,
+  ): Promise<boolean> {
+    const def = PASSOS_POR_NUMERO.get(numero);
+    if (!def) return false;
+    const projeto = await this.projetos.findOne({ where: { id: projetoId } });
+    if (!projeto) return false;
+    const designados = await this.pessoas.find({ where: { projetoId } });
+    return this.podeExecutar(def, usuario, projeto, designados);
+  }
+
+  /** Transforma o CAMPO de texto (`Projeto.gci`, `Projeto.consultor`) na lista de nomes.
+   *
+   * A vírgula separa a lista, mas também aparece DENTRO de nome ("Silva, João") — e, ao
+   * ESCREVER, não dá para decidir isso só olhando o texto. Quem decide é o cadastro: se a
+   * string inteira é um usuário ativo, é UMA pessoa; senão, é lista. Sem isto, editar a
+   * ficha de um GCI chamado "Silva, João" criava dois vínculos ("Silva" e "João") e ele
+   * perdia o próprio projeto. */
+  async nomesDoCampoParaGravar(campo: string): Promise<string[]> {
+    const inteiro = (campo ?? '').trim();
+    if (!inteiro) return [];
+    if (!inteiro.includes(',')) return [inteiro];
+    const ids = await this.idsPorNome([inteiro]);
+    if (ids.size > 0) return [inteiro];
+    return inteiro
+      .split(',')
+      .map((n) => n.trim())
+      .filter(Boolean);
+  }
+
+  /** `nome minúsculo -> id`, apenas para os nomes que casam com EXATAMENTE UM usuário ativo.
+   *
+   * Nome ambíguo fica DE FORA do mapa de propósito: é justamente o caso do homônimo, e
+   * escolher um dos dois aqui seria decidir no escuro quem responde pelo projeto. */
+  private async idsPorNome(nomes: string[]): Promise<Map<string, number>> {
+    const alvo = new Set(nomes.map((n) => n.trim().toLowerCase()));
+    if (alvo.size === 0) return new Map();
+    const ativos = await this.usuarios.find({ where: { ativo: true } });
+    const porNome = new Map<string, number[]>();
+    for (const u of ativos) {
+      const chave = (u.nome || '').trim().toLowerCase();
+      if (!alvo.has(chave)) continue;
+      porNome.set(chave, [...(porNome.get(chave) ?? []), u.id]);
+    }
+    const mapa = new Map<string, number>();
+    for (const [chave, ids] of porNome) {
+      if (ids.length === 1) mapa.set(chave, ids[0]);
+    }
+    return mapa;
+  }
+
   async pessoasDoProjeto(
     projetoId: number,
     papel?: PapelProjeto,
@@ -233,24 +327,39 @@ export class PassosService {
     });
   }
 
-  /** Substitui a lista de pessoas de um papel. `Projeto.consultor` continua sendo mantido
-   * com a lista consolidada, para não quebrar telas e documentos que leem aquele campo. */
+  /** Substitui a lista de pessoas de um papel. `Projeto.consultor` e `Projeto.gci` continuam
+   * sendo mantidos com a lista consolidada, para não quebrar telas, tokens de e-mail e
+   * documentos que leem aqueles campos — mas quem identifica é `usuario_id`. */
   async definirPessoas(
     projetoId: number,
     papel: PapelProjeto,
     nomes: string[],
     autor = 'sistema',
+    usuario?: UsuarioDoPasso,
   ): Promise<ProjetoPessoa[]> {
     const limpos = [
       ...new Set(nomes.map((n) => n.trim()).filter(Boolean)),
     ].sort();
     await this.pessoas.delete({ projetoId, papel });
     if (limpos.length > 0) {
+      // Resolve nome -> id AGORA, na gravação: é o único momento em que a escolha da tela
+      // (que é por nome) ainda pode ser amarrada a um usuário. Nome ambíguo fica sem id, e
+      // a autorização cai no nome — mesmo critério da migração, pelo mesmo motivo: chutar
+      // um id daria a um estranho o passo de outra pessoa.
+      const ids = await this.idsPorNome(limpos);
       await this.pessoas.save(
         limpos.map((pessoa) =>
-          this.pessoas.create({ projetoId, papel, pessoa }),
+          this.pessoas.create({
+            projetoId,
+            papel,
+            pessoa,
+            usuarioId: ids.get(pessoa.toLowerCase()) ?? null,
+          }),
         ),
       );
+    }
+    if (papel === 'gci') {
+      await this.projetos.update(projetoId, { gci: limpos.join(', ') });
     }
     if (papel === 'consultor') {
       await this.projetos.update(projetoId, { consultor: limpos.join(', ') });
@@ -258,8 +367,15 @@ export class PassosService {
       // Ele se completa aqui, quando os técnicos entram — desde que o GCI já esteja
       // definido. Ficava pendente para sempre quando a pessoa salvava pelo formulário do
       // passo, que não passa por `designarConsultores`.
+      //
+      // Mas o passo 8 é do COORDENADOR, e esta rota também aceita o Administrativo (que
+      // mantém a lista da equipe ao longo do projeto): sem a checagem, salvar a lista
+      // fechava, em nome dele, um passo que não é dele (achado de 2026-08-05). Sem
+      // `usuario`, é chamada interna do sistema e o comportamento é o de sempre.
       const projeto = await this.projetos.findOne({ where: { id: projetoId } });
-      if (limpos.length > 0 && projeto?.gci.trim()) {
+      const podeFechar8 =
+        !usuario || (await this.podeExecutarPasso(projetoId, 8, usuario));
+      if (limpos.length > 0 && projeto?.gci.trim() && podeFechar8) {
         await this.concluirAutomatico(
           projetoId,
           8,
@@ -274,7 +390,7 @@ export class PassosService {
   /** Os passos do projeto com o estado de cada um, para a tela de tarefas. */
   async listar(
     projetoId: number,
-    usuario: { nome: string; perfil: Perfil; perfis?: Perfil[] },
+    usuario: UsuarioDoPasso,
   ): Promise<PassoView[]> {
     const projeto = await this.projetos.findOne({ where: { id: projetoId } });
     if (!projeto) throw new NotFoundException('Projeto não encontrado.');
@@ -331,7 +447,7 @@ export class PassosService {
   async concluir(
     projetoId: number,
     numero: number,
-    usuario: { nome: string; perfil: Perfil; perfis?: Perfil[] },
+    usuario: UsuarioDoPasso,
     dados: DadosConclusao = {},
   ): Promise<PassoView[]> {
     const def = this.definicao(numero);
@@ -347,9 +463,21 @@ export class PassosService {
           `Marque "${rotulo}" antes de concluir o passo ${numero}.`,
         );
       }
-      if (!/^\d{4}-\d{2}-\d{2}$/.test((dados.dataMarcada ?? '').trim())) {
+      // Data REAL, não só o formato: a regex sozinha aceitava "2026-13-45" e gravava uma
+      // assinatura em um dia que não existe (achado de 2026-08-05). `Date.UTC` normaliza —
+      // 2026-02-31 vira 03-03 —, então só passa quando as três partes voltam iguais.
+      const data = (dados.dataMarcada ?? '').trim();
+      if (!ehDataIso(data)) {
         throw new BadRequestException(
-          `Informe a data da assinatura (${rotulo}) para concluir o passo ${numero}.`,
+          `Informe uma data válida de assinatura (${rotulo}, no formato aaaa-mm-dd) para concluir o passo ${numero}.`,
+        );
+      }
+      // Assinatura é fato consumado: a data registra QUANDO aconteceu, então não pode estar
+      // no futuro. Sem isto, um dedo trocado no ano ("2099") passava e a métrica de prazo
+      // do projeto contava a partir de uma data que ainda não chegou.
+      if (data > hojeIso()) {
+        throw new BadRequestException(
+          `A data de assinatura (${rotulo}) não pode ser futura — informe o dia em que foi assinado.`,
         );
       }
     }
@@ -428,11 +556,11 @@ export class PassosService {
    *
    * Não exige a permissão de CONCLUIR: quem tem acesso à carteira pode ver o que o Painel
    * mandaria — é a mesma transparência da consulta ao histórico. `null` = passo sem e-mail. */
-  async previaEmail(projetoId: number, numero: number) {
+  async previaEmail(projetoId: number, numero: number, descricao?: string) {
     this.definicao(numero);
     const projeto = await this.projetos.findOne({ where: { id: projetoId } });
     if (!projeto) throw new NotFoundException('Projeto não encontrado.');
-    return this.notificacao.montar(projeto, numero);
+    return this.notificacao.montar(projeto, numero, descricao);
   }
 
   /** Os e-mails já gerados no projeto, para consulta. */
@@ -554,6 +682,13 @@ export class PassosService {
     const def = PASSOS_POR_NUMERO.get(numero);
     if (!def) return false;
 
+    // RN-8: nos passos em que a pessoa REDIGE o e-mail na tela, fechar por efeito colateral
+    // mandaria ao cliente (ou ao Administrativo) o texto do MODELO, sem ninguém revisar — e
+    // como esses passos são irreversíveis a partir do 14, não há como desfazer. Gerar o
+    // documento é PARTE do passo, não o passo inteiro: o passo 18 é "Gerar o Termo E ENVIAR
+    // ao Administrativo", e o envio é o e-mail redigido na tela (achado de 2026-08-05).
+    if (PASSOS_COM_REDACAO_DE_EMAIL.has(numero)) return false;
+
     const projeto = await this.projetos.findOne({ where: { id: projetoId } });
     if (!projeto) return false;
 
@@ -616,7 +751,7 @@ export class PassosService {
   async conferir(
     projetoId: number,
     numero: number,
-    usuario: { nome: string; perfil: Perfil; perfis?: Perfil[] },
+    usuario: UsuarioDoPasso,
   ): Promise<PassoView[]> {
     const def = this.definicao(numero);
     if (!PASSOS_COM_CONFERENCIA.has(numero)) {
@@ -652,7 +787,7 @@ export class PassosService {
   async reabrir(
     projetoId: number,
     numero: number,
-    usuario: { nome: string; perfil: Perfil; perfis?: Perfil[] },
+    usuario: UsuarioDoPasso,
   ): Promise<PassoView[]> {
     const def = this.definicao(numero);
     if (def.irreversivel) {
@@ -699,7 +834,7 @@ export class PassosService {
     projetoId: number,
     numero: number,
     arquivo: { originalname: string; buffer: Buffer },
-    usuario: { nome: string; perfil: Perfil; perfis?: Perfil[] },
+    usuario: UsuarioDoPasso,
   ): Promise<Documento> {
     const def = this.definicao(numero);
     if (!PASSOS_COM_ANEXO_DE_EMAIL.has(numero)) {
@@ -745,7 +880,7 @@ export class PassosService {
     projetoId: number,
     numero: number,
     arquivo: { originalname: string; buffer: Buffer },
-    usuario: { nome: string; perfil: Perfil; perfis?: Perfil[] },
+    usuario: UsuarioDoPasso,
   ): Promise<Documento> {
     const def = this.definicao(numero);
     if (!PASSOS_COM_ANEXO_LIVRE.has(numero)) {

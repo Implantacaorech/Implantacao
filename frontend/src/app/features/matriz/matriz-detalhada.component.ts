@@ -2,44 +2,16 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
 import { ChartConfiguration } from 'chart.js/auto';
-import { firstValueFrom } from 'rxjs';
-import { environment } from '../../../environments/environment';
-import { ApiEnvelope } from '../../core/models/api-envelope.model';
 import { ChartDirective } from '../../core/directives/chart.directive';
+import {
+  FichaMatrizDetalhada,
+  ListaMatrizDetalhada,
+  MatrizDetalhadaService,
+  MenuComNota,
+  ModuloComNotas,
+} from '../../core/services/matriz-detalhada.service';
 import { deSignal, filtrosSalvos } from '../../core/utils/filtros-salvos';
-
-interface MenuComNota {
-  codigo: string;
-  opcao: string;
-  programa: string;
-  funcao: string;
-  chave: string;
-  nota: number | null;
-}
-interface ModuloComNotas {
-  sigla: string;
-  tipo: 'modulo' | 'adicional';
-  titulo: string;
-  total: number;
-  avaliadas: number;
-  media: number | null;
-  menus: MenuComNota[];
-}
-interface FichaResp {
-  tecnico: { id: number; nome: string; setor: string; dias: string };
-  modulos: ModuloComNotas[];
-  resumo: { media: number | null; avaliadas: number; total: number };
-  editavel: boolean;
-  volta: boolean;
-}
-interface ListaResp {
-  tecnicos: { id: number; nome: string; setor: string }[];
-  meuId: number | null;
-  podeVerTodos: boolean;
-  podeAdmin: boolean;
-}
 
 /** Matriz de Conhecimento — DETALHADA (por menu do SIGER). Notas por menu (código de acesso);
  * a nota do módulo é a média dos menus avaliados. Taxonomia vem do Dicionário. Mesmas regras
@@ -52,21 +24,20 @@ interface ListaResp {
   styleUrl: './matriz-detalhada.component.css',
 })
 export class MatrizDetalhadaComponent {
-  private readonly http = inject(HttpClient);
-  private readonly base = `${environment.apiUrl}/matriz-detalhada`;
+  private readonly api = inject(MatrizDetalhadaService);
 
   readonly carregando = signal(true);
   readonly erro = signal<string | null>(null);
   readonly salvando = signal(false);
   readonly salvo = signal(false);
 
-  readonly tecnicos = signal<ListaResp['tecnicos']>([]);
+  readonly tecnicos = signal<ListaMatrizDetalhada['tecnicos']>([]);
   readonly podeVerTodos = signal(false);
   readonly tecnicoId = signal<number | null>(null);
 
-  readonly tecnico = signal<FichaResp['tecnico'] | null>(null);
+  readonly tecnico = signal<FichaMatrizDetalhada['tecnico'] | null>(null);
   readonly modulos = signal<ModuloComNotas[]>([]);
-  readonly resumo = signal<FichaResp['resumo']>({ media: null, avaliadas: 0, total: 0 });
+  readonly resumo = signal<FichaMatrizDetalhada['resumo']>({ media: null, avaliadas: 0, total: 0 });
   readonly editavel = signal(false);
 
   readonly abertos = signal<Set<string>>(new Set());
@@ -225,12 +196,10 @@ export class MatrizDetalhadaComponent {
     this.carregando.set(true);
     this.erro.set(null);
     try {
-      const res = await firstValueFrom(
-        this.http.get<ApiEnvelope<ListaResp>>(this.base),
-      );
-      this.tecnicos.set(res.data.tecnicos);
-      this.podeVerTodos.set(res.data.podeVerTodos);
-      const alvo = res.data.meuId ?? res.data.tecnicos[0]?.id ?? null;
+      const lista = await this.api.lista();
+      this.tecnicos.set(lista.tecnicos);
+      this.podeVerTodos.set(lista.podeVerTodos);
+      const alvo = lista.meuId ?? lista.tecnicos[0]?.id ?? null;
       this.tecnicoId.set(alvo);
       if (alvo) await this.carregarFicha(alvo);
       else this.carregando.set(false);
@@ -255,13 +224,11 @@ export class MatrizDetalhadaComponent {
     this.temAlteracao.set(false);
     this.salvo.set(false);
     try {
-      const res = await firstValueFrom(
-        this.http.get<ApiEnvelope<FichaResp>>(`${this.base}/${id}`),
-      );
-      this.tecnico.set(res.data.tecnico);
-      this.modulos.set(res.data.modulos);
-      this.resumo.set(res.data.resumo);
-      this.editavel.set(res.data.editavel);
+      const ficha = await this.api.ficha(id);
+      this.tecnico.set(ficha.tecnico);
+      this.modulos.set(ficha.modulos);
+      this.resumo.set(ficha.resumo);
+      this.editavel.set(ficha.editavel);
     } catch {
       this.erro.set('Não foi possível carregar a ficha.');
     } finally {
@@ -337,12 +304,7 @@ export class MatrizDetalhadaComponent {
     try {
       const notas: Record<string, string> = {};
       for (const [k, v] of this.alterados) notas[k] = v;
-      await firstValueFrom(
-        this.http.post<ApiEnvelope<{ salvo: boolean }>>(
-          `${this.base}/${id}/salvar`,
-          { notas },
-        ),
-      );
+      await this.api.salvarNotas(id, notas);
       this.alterados.clear();
       this.temAlteracao.set(false);
       this.salvo.set(true);

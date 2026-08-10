@@ -170,13 +170,19 @@ describe('MetricasService', () => {
     });
 
     it('encadeia mais de uma etapa na mesma chamada quando os gates seguintes já estão ok', () => {
-      const p = projeto({ etapa: 'Projeto', gci: 'Ana', consultor: 'Ana' });
-      // Designação exige a ação "gci definido" (presente); Cronograma e Check-list exige
-      // "consultores" (presente); ambos os gates de documento pedem só levantamento+projeto.
+      // Ordem do processo: Designação (passos 8-9) -> Projeto (10-12) -> Cronograma (13-16).
+      const p = projeto({
+        etapa: 'Designação',
+        gci: 'Ana',
+        consultor: 'Ana',
+        dataUsoOficial: '2026-12-01',
+      });
+      // Projeto pede só o documento de levantamento; Cronograma e Check-list pede
+      // levantamento+projeto e a ação "consultores" (presente).
       const docs = [{ tipo: 'levantamento' }, { tipo: 'projeto' }];
       const r = service.autoAvancar(p, docs);
       expect(r.map((t) => t.etapaNova)).toEqual([
-        'Designação',
+        'Projeto',
         'Cronograma e Check-list',
       ]);
       expect(p.etapa).toBe('Cronograma e Check-list'); // para aqui: falta cronograma/checklist p/ Encerramento
@@ -372,7 +378,8 @@ describe('MetricasService', () => {
         label: 'Mapeamento (Levantamento)',
         ok: false,
       });
-      expect(c.proxEtapa).toBe('Projeto');
+      // Depois do Levantamento vem a Designação (passos 8-9), não o Projeto (10-12).
+      expect(c.proxEtapa).toBe('Designação');
     });
 
     it('próxima ação = "Definir GCI" quando o gate está ok mas falta o GCI', () => {

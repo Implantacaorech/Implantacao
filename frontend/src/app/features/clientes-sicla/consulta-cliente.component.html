@@ -102,6 +102,23 @@
           <input type="text" formControlName="cliente" />
         </label>
         <label class="campo">
+          <span>Tipo de demanda *</span>
+          <select
+            formControlName="tipoDemanda"
+            [class.invalido]="form.controls.tipoDemanda.invalid && form.controls.tipoDemanda.touched"
+          >
+            <option value="" disabled>Selecione…</option>
+            @for (t of tiposDemanda; track t) {
+              <option [value]="t">{{ t }}</option>
+            }
+          </select>
+          @if (form.controls.tipoDemanda.invalid && form.controls.tipoDemanda.touched) {
+            <small class="erro-campo">Escolha Levantamento ou Demonstração.</small>
+          } @else {
+            <small class="dica-campo">Levantamento (mapeamento de processos) ou Demonstração (apoio ao Comercial).</small>
+          }
+        </label>
+        <label class="campo">
           <span>CNPJ</span>
           <input type="text" formControlName="cnpj" />
         </label>
@@ -284,7 +301,9 @@
         </label>
       </div>
 
-      <button class="btn primario" type="submit" style="margin-top:12px" [disabled]="form.invalid || salvando()">
+      <!-- Sem `form.invalid` no disabled: ver o comentário em salvar() — o submit inválido
+           é quem aponta o campo que falta, em vez de um botão morto sem explicação. -->
+      <button class="btn primario" type="submit" style="margin-top:12px" [disabled]="salvando()">
         <svg class="svgi" aria-hidden="true"><use href="#ic-check"/></svg>
         {{ salvando() ? 'Cadastrando…' : 'Cadastrar cliente' }}
       </button>

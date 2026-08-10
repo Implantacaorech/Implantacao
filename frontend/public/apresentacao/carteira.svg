@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" width="640" height="400" role="img" aria-label="Carteira de projetos em quadro, com filtros por etapa e situação e cartões por cliente">
+  <style>
+    .t{font-family:Inter,'Segoe UI',system-ui,sans-serif}
+    .cli{font-size:10px;font-weight:600;fill:#0F1B2D}
+    .sub{font-size:8px;fill:#5A6B82}
+    .col{font-size:8.5px;font-weight:700;letter-spacing:.5px}
+  </style>
+  <rect width="640" height="400" rx="10" fill="#fff"/>
+  <rect x=".5" y=".5" width="639" height="399" rx="10" fill="none" stroke="#E2E8F0"/>
+  <path d="M0 10a10 10 0 0 1 10-10h620a10 10 0 0 1 10 10v24H0z" fill="#001F66"/>
+  <text class="t" x="18" y="21" style="font-size:10px;font-weight:600;fill:#fff">Carteira de Projetos</text>
+
+  <!-- barra de filtros -->
+  <rect x="16" y="46" width="608" height="30" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <rect x="26" y="54" width="118" height="15" rx="7" fill="#fff" stroke="#CBD5E1"/>
+  <text class="t sub" x="34" y="65">Buscar cliente…</text>
+  <rect x="152" y="54" width="86" height="15" rx="7" fill="#fff" stroke="#CBD5E1"/>
+  <text class="t sub" x="160" y="65">Situação: todas</text>
+  <rect x="246" y="54" width="86" height="15" rx="7" fill="#fff" stroke="#CBD5E1"/>
+  <text class="t sub" x="254" y="65">Etapa: todas</text>
+  <rect x="340" y="54" width="70" height="15" rx="7" fill="#E8EEF8"/>
+  <text class="t sub" x="348" y="65" style="fill:#003399">Só meus</text>
+  <text class="t sub" x="614" y="65" text-anchor="end">quadro · tabela · grade — o filtro fica salvo por usuário</text>
+
+  <!-- colunas -->
+  <g>
+    <rect x="16" y="88" width="148" height="298" rx="10" fill="#F5F3FF"/>
+    <text class="t col" x="30" y="106" style="fill:#7C3AED">LEVANTAMENTO · 4</text>
+    <rect x="172" y="88" width="148" height="298" rx="10" fill="#EFF4FF"/>
+    <text class="t col" x="186" y="106" style="fill:#2563EB">PROJETO · 5</text>
+    <rect x="328" y="88" width="148" height="298" rx="10" fill="#ECFEFF"/>
+    <text class="t col" x="342" y="106" style="fill:#0891B2">CRONOGRAMA · 6</text>
+    <rect x="484" y="88" width="140" height="298" rx="10" fill="#ECFDF3"/>
+    <text class="t col" x="498" y="106" style="fill:#15803D">ENCERRAMENTO · 3</text>
+  </g>
+
+  <!-- cards coluna 1 -->
+  <g>
+    <rect x="26" y="116" width="128" height="56" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <text class="t cli" x="38" y="134">Transportes Ipê</text>
+    <text class="t sub" x="38" y="147">Passo 3 · GCI Ana Prado</text>
+    <rect x="38" y="153" width="46" height="12" rx="6" fill="#ECFDF3"/>
+    <text class="t" x="61" y="162" text-anchor="middle" style="font-size:7.5px;fill:#15803D">No prazo</text>
+    <rect x="26" y="180" width="128" height="56" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <text class="t cli" x="38" y="198">Frigorífico Sul</text>
+    <text class="t sub" x="38" y="211">Passo 4 · GCI Caio Melo</text>
+    <rect x="38" y="217" width="46" height="12" rx="6" fill="#FFF7ED"/>
+    <text class="t" x="61" y="226" text-anchor="middle" style="font-size:7.5px;fill:#B45309">Em risco</text>
+  </g>
+  <!-- cards coluna 2 -->
+  <g>
+    <rect x="182" y="116" width="128" height="56" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <text class="t cli" x="194" y="134">Metalúrgica Alfa</text>
+    <text class="t sub" x="194" y="147">Passo 8 · 240h · 6 módulos</text>
+    <rect x="194" y="153" width="52" height="12" rx="6" fill="#FEF3F2"/>
+    <text class="t" x="220" y="162" text-anchor="middle" style="font-size:7.5px;fill:#B42318">Atrasado</text>
+    <rect x="182" y="180" width="128" height="56" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <text class="t cli" x="194" y="198">Comércio Beta</text>
+    <text class="t sub" x="194" y="211">Passo 10 · GCI Ana Prado</text>
+    <rect x="194" y="217" width="46" height="12" rx="6" fill="#ECFDF3"/>
+    <text class="t" x="217" y="226" text-anchor="middle" style="font-size:7.5px;fill:#15803D">No prazo</text>
+    <rect x="182" y="244" width="128" height="56" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <text class="t cli" x="194" y="262">Móveis Aurora</text>
+    <text class="t sub" x="194" y="275">Passo 11 · assinatura</text>
+    <rect x="194" y="281" width="46" height="12" rx="6" fill="#ECFDF3"/>
+    <text class="t" x="217" y="290" text-anchor="middle" style="font-size:7.5px;fill:#15803D">No prazo</text>
+  </g>
+  <!-- cards coluna 3 -->
+  <g>
+    <rect x="338" y="116" width="128" height="56" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <text class="t cli" x="350" y="134">Indústria Gama</text>
+    <text class="t sub" x="350" y="147">Passo 13 · 18 visitas</text>
+    <rect x="350" y="153" width="46" height="12" rx="6" fill="#ECFDF3"/>
+    <text class="t" x="373" y="162" text-anchor="middle" style="font-size:7.5px;fill:#15803D">No prazo</text>
+    <rect x="338" y="180" width="128" height="56" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <text class="t cli" x="350" y="198">Agro Vale Verde</text>
+    <text class="t sub" x="350" y="211">Passo 16 · cronograma</text>
+    <rect x="350" y="217" width="46" height="12" rx="6" fill="#FFF7ED"/>
+    <text class="t" x="373" y="226" text-anchor="middle" style="font-size:7.5px;fill:#B45309">Em risco</text>
+  </g>
+  <!-- cards coluna 4 -->
+  <g>
+    <rect x="494" y="116" width="120" height="56" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <text class="t cli" x="506" y="134">Têxtil Horizonte</text>
+    <text class="t sub" x="506" y="147">Passo 19 · Termo</text>
+    <rect x="506" y="153" width="52" height="12" rx="6" fill="#ECFDF3"/>
+    <text class="t" x="532" y="162" text-anchor="middle" style="font-size:7.5px;fill:#15803D">Concluído</text>
+    <rect x="494" y="180" width="120" height="56" rx="8" fill="#fff" stroke="#E2E8F0"/>
+    <text class="t cli" x="506" y="198">Distribuidora Rio</text>
+    <text class="t sub" x="506" y="211">Passo 21 · encerrado</text>
+    <rect x="506" y="217" width="52" height="12" rx="6" fill="#ECFDF3"/>
+    <text class="t" x="532" y="226" text-anchor="middle" style="font-size:7.5px;fill:#15803D">Concluído</text>
+  </g>
+</svg>

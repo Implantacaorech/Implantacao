@@ -45,6 +45,12 @@ function areaDoModulo(sigla: string, modulo: string): string {
 const INTERVALO_SYNC_MS = 5000;
 /** Silêncio no teclado que dispara o autosave do campo. */
 const ESPERA_DIGITACAO_MS = 900;
+/** Rede de segurança do autosave: de tempo em tempo, tudo que o servidor ainda não confirmou
+ * é reenviado sozinho. Esta tela NÃO tem botão de salvar — quem está conduzindo a reunião de
+ * levantamento não pode depender de lembrar de clicar —, então é este tique que cobre o que o
+ * autosave por campo não pega sozinho: a gravação que falhou por rede e o campo que ficou
+ * aberto sem novas teclas. */
+const INTERVALO_AUTOSAVE_MS = 30000;
 
 export type EstadoLinha = 'salvando' | 'salvo' | 'erro';
 
@@ -78,9 +84,7 @@ export class LevantamentoComponent implements OnDestroy {
   readonly projetoId = Number(this.route.snapshot.paramMap.get('id'));
 
   readonly carregando = signal(true);
-  readonly salvando = signal(false);
   readonly erro = signal<string | null>(null);
-  readonly salvo = signal(false);
   readonly cliente = signal('');
   readonly linhas = signal<LevantamentoRespostaLinha[]>([]);
   readonly resumo = signal<LevantamentoResumo>({ respondidas: 0, total: 0 });
@@ -89,21 +93,35 @@ export class LevantamentoComponent implements OnDestroy {
   readonly presentes = signal<PresencaLevantamento[]>([]);
   /** Situação do autosave campo a campo. */
   readonly estadoLinha = signal<Record<number, EstadoLinha>>({});
+  /** Hora (HH:mm) da última resposta confirmada pelo servidor — é o "salvo" que a tela mostra
+   * no lugar do antigo botão. */
+  readonly ultimoSalvamento = signal('');
   /** Recado de edição simultânea (o colega gravou por cima) — some no próximo salvamento. */
   readonly aviso = signal<string | null>(null);
-  /** Só passa a marcar os campos vazios em vermelho depois da 1ª tentativa de concluir —
-   * abrir a tela com tudo em vermelho não ajuda ninguém. */
+  /** Só passa a marcar os campos vazios em vermelho depois de pedirem a revisão das
+   * pendências — abrir a tela com tudo em vermelho não ajuda ninguém. */
   readonly cobrarPendentes = signal(false);
 
   private readonly focoLinha = signal<number | null>(null);
 
   /** Ids com texto digitado ainda não confirmado pelo servidor. O tique NUNCA sobrescreve
-   * estes — seria puxar o tapete de quem está digitando. */
-  private readonly sujas = new Set<number>();
+   * estes — seria puxar o tapete de quem está digitando. É signal porque a barra inferior
+   * mostra, sem botão nenhum, quanto ainda falta gravar. */
+  private readonly sujas = signal<ReadonlySet<number>>(new Set());
+  /** Ids com gravação em andamento. Duas requisições simultâneas da mesma pergunta sairiam
+   * com a mesma `versao` e a segunda levaria um 409 que não é conflito de verdade. */
+  private readonly emVoo = new Set<number>();
   private readonly debounces = new Map<number, ReturnType<typeof setTimeout>>();
   private timerSync?: ReturnType<typeof setInterval>;
+  private timerAutosave?: ReturnType<typeof setInterval>;
   /** Relógio do servidor no último tique — filtro do próximo. */
   private desde?: string;
+
+  /** Trocar de aba/minimizar é o momento em que o técnico costuma abandonar a tela sem
+   * fechá-la; grava aí em vez de esperar o próximo tique. */
+  private readonly aoTrocarVisibilidade = (): void => {
+    if (this.doc.visibilityState === 'hidden') this.salvarPendentes();
+  };
 
   readonly progresso = computed(() => {
     const { respondidas, total } = this.resumo();
@@ -113,6 +131,9 @@ export class LevantamentoComponent implements OnDestroy {
   readonly faltam = computed(
     () => this.linhas().filter((l) => !l.naoUtilizado && !(l.resposta || '').trim()).length,
   );
+
+  /** Respostas digitadas aqui que o servidor ainda não confirmou. */
+  readonly naoSalvas = computed(() => this.sujas().size);
 
   /** linhaId -> nomes de quem está com o cursor naquela pergunta agora. */
   readonly editores = computed(() => {
@@ -158,13 +179,19 @@ export class LevantamentoComponent implements OnDestroy {
   });
 
   constructor() {
+    this.doc.addEventListener('visibilitychange', this.aoTrocarVisibilidade);
     void this.carregar();
   }
 
   ngOnDestroy(): void {
+    if (this.timerSync) clearInterval(this.timerSync);
+    if (this.timerAutosave) clearInterval(this.timerAutosave);
+    this.doc.removeEventListener('visibilitychange', this.aoTrocarVisibilidade);
+    // Sair da tela não pode custar o que estava digitado: o que ainda estava no debounce vira
+    // gravação agora (a requisição segue em voo mesmo com o componente destruído).
+    this.salvarPendentes();
     for (const t of this.debounces.values()) clearTimeout(t);
     this.debounces.clear();
-    if (this.timerSync) clearInterval(this.timerSync);
     // Best-effort: some da lista do colega na hora em vez de esperar o TTL do servidor.
     void this.service.sair(this.projetoId).catch(() => undefined);
   }
@@ -180,7 +207,7 @@ export class LevantamentoComponent implements OnDestroy {
       this.cliente.set(projeto.cliente);
       this.linhas.set(dados.linhas);
       this.resumo.set(dados.resumo);
-      this.iniciarSincronizacao();
+      this.iniciarTemporizadores();
     } catch {
       this.erro.set('Não foi possível carregar o levantamento.');
     } finally {
@@ -190,10 +217,11 @@ export class LevantamentoComponent implements OnDestroy {
 
   // ——— edição a várias mãos ———————————————————————————————————————————————
 
-  private iniciarSincronizacao(): void {
+  private iniciarTemporizadores(): void {
     if (this.timerSync) return;
     void this.tique();
     this.timerSync = setInterval(() => void this.tique(), INTERVALO_SYNC_MS);
+    this.timerAutosave = setInterval(() => this.salvarPendentes(), INTERVALO_AUTOSAVE_MS);
   }
 
   /** Publica a presença deste técnico e aplica o que os outros gravaram desde o último tique. */
@@ -218,10 +246,11 @@ export class LevantamentoComponent implements OnDestroy {
    * está velha) e aí sim a tela resolve o conflito mostrando os dois textos. */
   private mesclar(recebidas: LevantamentoRespostaLinha[]): void {
     const porId = new Map(recebidas.map((l) => [l.id, l]));
+    const sujas = this.sujas();
     let mudou = false;
     const atualizadas = this.linhas().map((l) => {
       const nova = porId.get(l.id);
-      if (!nova || this.sujas.has(l.id)) return l;
+      if (!nova || sujas.has(l.id)) return l;
       if (nova.versao === l.versao) return l;
       mudou = true;
       return nova;
@@ -233,8 +262,7 @@ export class LevantamentoComponent implements OnDestroy {
 
   onRespostaChange(id: number, valor: string): void {
     this.atualizarLocal(id, { resposta: valor });
-    this.sujas.add(id);
-    this.salvo.set(false);
+    this.marcarSuja(id, true);
     this.agendarGravacao(id);
   }
 
@@ -245,7 +273,7 @@ export class LevantamentoComponent implements OnDestroy {
   /** Sair do campo grava na hora — não faz sentido esperar o debounce de quem já terminou. */
   onBlur(id: number): void {
     if (this.focoLinha() === id) this.focoLinha.set(null);
-    if (this.sujas.has(id)) this.gravarAgora(id);
+    if (this.sujas().has(id)) this.gravarAgora(id);
   }
 
   /** "Não será utilizado.": preenche com a frase padrão e tranca o campo. Desmarcando,
@@ -261,8 +289,7 @@ export class LevantamentoComponent implements OnDestroy {
         ? ''
         : linha.resposta;
     this.atualizarLocal(id, { naoUtilizado: marcado, resposta });
-    this.sujas.delete(id);
-    this.salvo.set(false);
+    this.marcarSuja(id, false);
     void this.gravar(id, { naoUtilizado: marcado, resposta });
   }
 
@@ -280,11 +307,19 @@ export class LevantamentoComponent implements OnDestroy {
     this.debounces.delete(id);
   }
 
+  /** Manda o estado local da linha inteira: a flag vai junto com o texto para que uma
+   * regravação (autosave periódico, saída da tela) não deixe uma das duas para trás. */
   private gravarAgora(id: number): void {
     this.cancelarDebounce(id);
     const linha = this.linhas().find((l) => l.id === id);
     if (!linha) return;
-    void this.gravar(id, { resposta: linha.resposta });
+    void this.gravar(id, { resposta: linha.resposta, naoUtilizado: linha.naoUtilizado });
+  }
+
+  /** Reenvia tudo que o servidor ainda não confirmou — tique do autosave, aba escondida e
+   * saída da tela. */
+  private salvarPendentes(): void {
+    for (const id of this.sujas()) this.gravarAgora(id);
   }
 
   /** Autosave de um campo, com a versão que estava em tela (o backend recusa se envelheceu). */
@@ -294,7 +329,13 @@ export class LevantamentoComponent implements OnDestroy {
   ): Promise<void> {
     const linha = this.linhas().find((l) => l.id === id);
     if (!linha) return;
+    if (this.emVoo.has(id)) {
+      // A gravação em andamento é que traz a versão nova; esta espera a resposta dela.
+      this.agendarGravacao(id);
+      return;
+    }
     const enviado = dados.resposta;
+    this.emVoo.add(id);
     this.marcarEstado(id, 'salvando');
     try {
       const { linha: salva, resumo } = await this.service.salvarLinha(this.projetoId, id, {
@@ -311,17 +352,25 @@ export class LevantamentoComponent implements OnDestroy {
           l.id === id ? { ...salva, resposta: aindaDigitando ? l.resposta : salva.resposta } : l,
         ),
       );
-      if (!aindaDigitando) this.sujas.delete(id);
+      if (aindaDigitando) this.agendarGravacao(id);
+      else this.marcarSuja(id, false);
       this.resumo.set(resumo);
       this.marcarEstado(id, 'salvo');
+      this.ultimoSalvamento.set(
+        new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      );
       this.erro.set(null);
     } catch (e) {
       if (e instanceof HttpErrorResponse && e.status === 409) {
         await this.resolverConflito(id, enviado ?? '', e);
         return;
       }
+      // Fica sujo de propósito: o tique do autosave tenta de novo sozinho, sem exigir que
+      // alguém no meio de uma reunião perceba o aviso e reaja a ele.
       this.marcarEstado(id, 'erro');
-      this.erro.set('Não foi possível salvar esta resposta. Verifique a conexão.');
+      this.erro.set('Sem conexão com o servidor — a resposta será salva assim que voltar.');
+    } finally {
+      this.emVoo.delete(id);
     }
   }
 
@@ -333,7 +382,7 @@ export class LevantamentoComponent implements OnDestroy {
     textoLocal: string,
     e: HttpErrorResponse,
   ): Promise<void> {
-    this.sujas.delete(id);
+    this.marcarSuja(id, false);
     const msg =
       (e.error as { message?: string } | null)?.message ??
       'Esta resposta foi alterada por outro técnico.';
@@ -357,35 +406,23 @@ export class LevantamentoComponent implements OnDestroy {
     this.linhas.set(this.linhas().map((l) => (l.id === id ? { ...l, ...campos } : l)));
   }
 
+  private marcarSuja(id: number, suja: boolean): void {
+    const atual = this.sujas();
+    if (suja === atual.has(id)) return;
+    const nova = new Set(atual);
+    if (suja) nova.add(id);
+    else nova.delete(id);
+    this.sujas.set(nova);
+  }
+
   private marcarEstado(id: number, estado: EstadoLinha): void {
     this.estadoLinha.set({ ...this.estadoLinha(), [id]: estado });
   }
 
-  // ——— conclusão ————————————————————————————————————————————————————————
+  // ——— pendências ———————————————————————————————————————————————————————
 
-  /** O botão continua existindo como rede de segurança (grava tudo de uma vez) e é onde a
-   * obrigatoriedade é cobrada: com pergunta em branco, avisa e leva até a primeira. */
-  async salvar(): Promise<void> {
-    for (const id of [...this.debounces.keys()]) this.gravarAgora(id);
-    this.salvando.set(true);
-    this.erro.set(null);
-    try {
-      const respostas: Record<string, string> = {};
-      for (const l of this.linhas()) if (!l.naoUtilizado) respostas[String(l.id)] = l.resposta;
-      const respondidas = await this.service.salvar(this.projetoId, respostas);
-      this.resumo.set({ respondidas, total: this.linhas().length });
-      const pendentes = this.faltam();
-      this.cobrarPendentes.set(pendentes > 0);
-      this.salvo.set(pendentes === 0);
-      if (pendentes > 0) this.irParaPendente();
-    } catch {
-      this.erro.set('Não foi possível salvar as respostas.');
-    } finally {
-      this.salvando.set(false);
-    }
-  }
-
-  /** Abre o bloco da primeira pergunta em branco e rola até ela. */
+  /** Abre o bloco da primeira pergunta em branco e rola até ela. É aqui que a
+   * obrigatoriedade passa a ser cobrada em tela (antes era no botão de salvar). */
   irParaPendente(): void {
     this.cobrarPendentes.set(true);
     const alvo = this.linhas().find((l) => !l.naoUtilizado && !(l.resposta || '').trim());

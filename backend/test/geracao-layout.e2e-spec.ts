@@ -229,14 +229,19 @@ seTiverInsumo(
     // Também entra um evento de PASSO: gerar o Termo é o passo 18 do processo (era o 15
     // antes da revisão que levou o processo a 21 passos — ver DocumentosService.
     // PASSO_POR_TIPO), e como este projeto de teste não passou pelos passos anteriores, o
-    // sistema registra que o passo NÃO foi concluído e por quê — a geração acontece do
-    // mesmo jeito.
+    // Gerar o Termo NÃO conclui o passo 18 (mudou em 2026-08-05).
+    //
+    // O passo 18 é "Gerar o Termo de Encerramento **e enviar** ao Administrativo", e o envio
+    // é um e-mail que a pessoa REDIGE na tela (RN-8). Enquanto a geração o fechava, saía o
+    // e-mail do MODELO, sem revisão — e no `modo=modelo` com o Termo EM BRANCO anexado.
+    // Como o passo é irreversível, não havia como desfazer. Por isso `termo` saiu de
+    // `PASSO_POR_TIPO`: gerar o arquivo é PARTE do passo, não o passo inteiro.
     expect(
       eventos.body.data.some(
         (e: { tipo: string; descricao: string }) =>
-          e.tipo === 'passo' && e.descricao.includes('passo 18'),
+          e.tipo === 'passo' && /passo 18.*conclu/i.test(e.descricao),
       ),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       eventos.body.data.some((e: { descricao: string }) =>
         e.descricao.includes('termo_teste.docx'),

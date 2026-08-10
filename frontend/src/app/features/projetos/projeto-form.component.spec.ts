@@ -14,6 +14,7 @@ const SALVO: Projeto = {
   cnpj: '11.222.333/0001-44',
   numeroProjeto: '2026-0042',
   numeroProposta: 'PROP-9',
+  tipoDemanda: 'Levantamento',
   ramo: 'Indústria',
   responsavel: 'Maria',
   consultor: 'João',

@@ -6,9 +6,10 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-export type VideoOrigem = 'sharepoint' | 'upload';
+export type VideoOrigem = 'sharepoint' | 'upload' | 'gravacao';
 
 export type StatusProtocolo =
+  | 'Gravando'
   | 'Pendente'
   | 'Transcrevendo'
   | 'Analisando'
@@ -17,14 +18,55 @@ export type StatusProtocolo =
   | 'Reprovado / Ajustar'
   | 'Erro';
 
-/** Registro de protocolo gerado a partir de um vídeo de treinamento (transcrito
- * localmente via faster-whisper no docservice e analisado pela IA), com revisão humana
- * antes da aprovação. Não vinculado a Projeto/Cliente — base de conhecimento própria,
- * independente do fluxo de implantação. Espelha webapp/db.py:Protocolo. */
+/** Registro de protocolo gerado a partir de um vídeo/áudio de treinamento ou de uma
+ * REUNIÃO GRAVADA ao vivo (transcrito localmente via faster-whisper no docservice e
+ * analisado pela IA), com revisão humana antes da aprovação. Espelha webapp/db.py:Protocolo.
+ *
+ * O vínculo com Projeto/Cliente é OPCIONAL (`projetoId`/`cliente`): a base de conhecimento
+ * continua existindo por si só (treinamentos genéricos do SIGER não são de cliente nenhum),
+ * mas uma gravação de reunião normalmente é "de um cliente" e precisa ser achada por ele. */
 @Entity({ name: 'protocolos' })
 export class Protocolo {
   @PrimaryGeneratedColumn()
   id: number;
+
+  /** Projeto (cliente) a que a gravação/protocolo pertence — nulo quando é conteúdo
+   * genérico, sem dono. É só um ponteiro: não há FK/relação declarada, para que excluir
+   * um projeto nunca apague conhecimento já registrado. */
+  @Index()
+  @Column({ name: 'projeto_id', type: 'int', nullable: true })
+  projetoId: number | null;
+
+  /** Nome do cliente no momento do registro — desnormalizado de propósito: é o que a
+   * lista filtra/exibe, e continua legível mesmo se o projeto for excluído depois. */
+  @Column({ length: 200, default: '' })
+  cliente: string;
+
+  /** Código do cliente no SICLA — a gravação escolhe o cliente pela MESMA busca do passo 1
+   * (SICLA), que nem sempre tem projeto no painel: uma reunião pode acontecer antes de a
+   * ficha existir. É este código, e não o `projetoId`, que identifica o cliente de verdade. */
+  @Column({ name: 'cliente_codigo', length: 20, default: '' })
+  clienteCodigo: string;
+
+  /** Termos que o transcritor deve ESPERAR ouvir nesta gravação (nomes dos participantes,
+   * cliente, jargão do SIGER). Vai como `hotwords` para o Whisper nos dois passes — o ao
+   * vivo e a retranscrição do arquivo. É o que corrige nome próprio: sem contexto, o modelo
+   * escolhe a sequência de sons mais provável do português geral ("IVEA" no lugar de
+   * "IVIAN"). Guardado no registro porque a retranscrição acontece DEPOIS, e precisa dos
+   * mesmos termos. */
+  @Column({ type: 'text', default: '' })
+  vocabulario: string;
+
+  /** Quantas vozes separar na transcrição (0 = não separar). INFORMADO por quem grava, e
+   * não descoberto: testado em 2026-07-31, o agrupamento automático inventou de 7 a 10
+   * vozes onde havia 2 — microfone de sala não dá contraste para adivinhar sozinho. */
+  @Column({ default: 0 })
+  participantes: number;
+
+  /** Nomes dos locutores, JSON `{"P1":"Ivian"}`. A transcrição guarda o RÓTULO; o nome
+   * vive aqui, então renomear é reversível e não reescreve o texto — ver locutores.ts. */
+  @Column({ name: 'mapa_locutores', type: 'text', default: '' })
+  mapaLocutores: string;
 
   @Column({ length: 255, default: '' })
   titulo: string;
@@ -126,6 +168,8 @@ export class Protocolo {
   @Column({ name: 'video_caminho', type: 'text', default: '' })
   videoCaminho: string;
 
+  // 'sharepoint' (robô da pasta) · 'upload' (arquivo enviado na tela) · 'gravacao'
+  // (reunião gravada e transcrita ao vivo pelo próprio painel).
   // type: 'varchar' explícito — ver comentário equivalente em projeto.entity.ts.
   @Column({
     name: 'video_origem',

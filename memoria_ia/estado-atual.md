@@ -70,6 +70,125 @@ De/para dos dados: `1–4` iguais · `5–10` → +1 · `11–19` → +2 — mig
   é por onde entram os dois grupos de e-mail da Rech avisados no passo 1.
 - Detalhe completo em `vault/08 - Regras de Negócio/RN - Passos do Processo de Implantação.md`.
 
+## Tipo de demanda no cadastro do cliente (2026-07-31)
+
+O passo 1 (**Novo Cliente** → `/clientes/novo`) passou a exigir a escolha entre
+**Levantamento** e **Demonstração** — os dois motivos pelos quais o Comercial aciona a
+Implantação na pré-implantação (`docs/processo-implantacao.md` §2.1.1).
+
+- Campo `projetos.tipo_demanda` (migration `1784870000000-TipoDemanda.ts`); lista em
+  `TIPOS_DEMANDA` (backend `common/constants/perfis.ts`, frontend `core/models/projeto.model.ts`).
+- **Obrigatório só no CADASTRO** (`CadastrarClienteDto`, `@IsIn`), não em `CreateProjetoDto` —
+  projetos antigos e a edição da ficha não podem ser travados por um campo que nasceu depois.
+  A combo começa **vazia** de propósito: um default classificaria a demanda errada calado.
+  Guardado por `clientes-sicla/dto/cadastrar-cliente.dto.spec.ts` (a herança do DTO faria um
+  `@IsOptional()` no pai revogar a obrigatoriedade aqui, sem ninguém perceber).
+- A ficha do projeto só **exibe** o valor (aba Resumo). Nada no fluxo se ramifica ainda por
+  Levantamento × Demonstração — se isso for desejado, é decisão nova.
+
+## Auditoria geral 360° + o visual passou a ser nosso (2026-08-07)
+
+- **O MANUS IA saiu do projeto.** O HTML/CSS do Angular (`frontend/src/app/`) virou
+  responsabilidade dos agentes de software: achado visual agora é **correção**, não registro.
+  `templates/` (layouts .docx/.xlsx da Rech) continua sendo decisão do usuário. CLAUDE.md,
+  `.claude/agents/` e a skill de auditoria foram atualizados.
+- Auditoria completa pela skill `auditoria-geral-sistema`. **Zero erro de console e zero
+  requisição falhando** nas 45 rotas estáticas + 9 de projeto. Menu correto nos 6 perfis.
+  CRUD verificado módulo a módulo (54 casos): nenhum defeito.
+- Dois defeitos reais, corrigidos: a suíte de geradores quebrava SOZINHA em datas que
+  batessem com fixtures (máscara de "hoje" aplicada a um lado só — o mesmo defeito já
+  corrigido no harness `.xlsx` e não propagado ao `.docx`); e overflow de 43px em mobile
+  causado por `.topbar-perfil`, que não encolhia e empurrava o botão Sair para fora.
+- Instrumento novo e permanente: `e2e/testes/90-auditoria-varredura.spec.ts` (rotas, console,
+  network, responsividade, menu por perfil) e `e2e/testes/06-crud.spec.ts`.
+
+## Auditoria de integridade dos 21 passos (2026-08-05)
+
+Bateria de testes extremos (154 casos de API contra instância **isolada**) + auditoria de
+código com verificação adversarial. **Nove defeitos reais, todos corrigidos**, com regressão
+coberta em `e2e/` (Playwright, 29 casos) e no Jest (950 testes).
+
+- **O grande achado: a RN-10 valia só dentro do `PassosController`.** Anexar um arquivo com
+  `tipo=termo`, gerar o layout, reescrever `gci` por `PUT /projetos/:id` ou criar projeto por
+  `POST /fluxo/criar` fechavam passos sem gate de designação — vários irreversíveis, gravados
+  em nome de `"sistema"`. O gate desceu para `DocumentosService.registrarDocumento`, que
+  consulta `PassosService.podeExecutarPasso` antes de concluir.
+- **O processo travava no passo 5:** a rota de concluir exigia `carteira/alteracao` e o
+  Comercial tem `consulta`; o passo 5 é dele e não tem caminho automático. A rota passou a
+  exigir só `carteira` (o gate real é `podeExecutar`), e a tela mostra a ação quando
+  `p.liberado` — antes `soConsulta()` escondia a coluna inteira.
+- Gerar o Termo não fecha mais o passo 18 (RN-8: passo de e-mail redigido nunca conclui por
+  efeito colateral); dois GCIs voltaram a receber o e-mail do passo 8 (`nomesDoCampo`); data
+  de assinatura exige data real e não futura; cadastro recusa homônimo ativo; corpo grande
+  responde 413 em vez de 404.
+- ⚠️ **Como testar sem tocar em produção:** instância isolada na **5199**, SQLite descartável,
+  `cwd` FORA de `backend/` — senão o `backend/dados/smtp.json` é encontrado e **e-mails saem
+  de verdade**. Receita completa em [e2e/README.md](../e2e/README.md). O
+  `playwright.config.ts` recusa a porta 5100 no boot.
+- Segundo lote (os 54 achados únicos, todos verificados): a **RN-7 não se cumpria pela
+  tela** — a prévia do e-mail do passo 5 era montada antes de a descrição existir, e a tela
+  devolvia esse corpo, então o Administrativo recebia "Descrição do Comercial:" em branco;
+  os **tokens do modelo saíam literais** ao CLIENTE (a tela oferece 25, o montador resolvia
+  13); o **passo 8 fechava em nome do Administrativo**, sendo do Coordenador; o Gmail
+  montava o MIME fora do `try` e o e-mail sumia do histórico; a tela deixava enviar com
+  assunto/corpo vazios.
+- **`ETAPAS` foi alinhado aos passos** (decisão do usuário): **Designação agora vem ANTES de
+  Projeto**, no backend e no frontend. Antes o array tinha as duas invertidas e a macro-etapa
+  **regredia** ao sair da Designação (stepper, funil, Kanban, `proxEtapa`). Não houve
+  migração — `projetos.etapa` guarda o NOME. Junto foi preciso mover o que era indexado por
+  nome e codificava a ordem antiga: `GATES.Designação` não exige mais o documento `projeto`,
+  e `dataUsoOficial` passou de `CAMPOS_OBRIGATORIOS.Designação` para `.Projeto`.
+  ⚠️ Ao mexer em `ETAPAS`, revise sempre `GATES`, `ACAO_ENTRADA` e `CAMPOS_OBRIGATORIOS`
+  (`metricas.constants.ts`) — eles são por NOME e não acompanham a reordenação sozinhos.
+- **Designação por `usuario_id`** (2026-08-06, migration `DesignacaoPorUsuarioId`): a dívida
+  do "casa por nome" foi paga. `projeto_pessoas` tem a coluna, **o GCI virou papel ali**
+  (`papel: 'gci'`), e `Projeto.gci`/`Projeto.consultor` seguem como espelho de TEXTO — é o
+  que telas, tokens de e-mail e documentos leem, então não quebrou nada. O nome só decide em
+  vínculo antigo sem id.
+- ⚠️ **Achado ao migrar: 11 dos 22 vínculos de produção têm apelido/primeiro nome** (Alex,
+  Dibah, Thomaz…) que não casa com nenhum usuário ativo. Já era assim antes — essas pessoas
+  dependem do ADM para concluir os próprios passos. A migration imprime a lista; corrigir é
+  ajustar o cadastro ou refazer a designação na tela. Ver `docs/pendencias.md`.
+
+## Gravação de reunião com transcrição ao vivo (2026-07-30)
+
+O menu **Transcrição Áudio/Vídeo** ganhou uma terceira entrada, além do upload e do robô:
+**gravar a reunião pelo painel** (`/protocolos/gravar`), presencial (microfone) ou remota
+pelo **Teams** (áudio da aba/tela), ou as duas somadas. Atalho também na tela de
+**Levantamento**, que abre em outra aba já com o cliente do projeto.
+
+- O navegador captura, corta em trechos de 15–30 s **numa pausa da fala** (não no relógio) e
+  envia; o docservice transcreve cada trecho com um worker que mantém o modelo **carregado**
+  durante a reunião (`docservice/transcricao/vivo.py` + `worker_vivo.py`) — separado do
+  pipeline de vídeo, que continua abrindo um subprocesso por transcrição.
+- Ao encerrar: os trechos viram um `.wav` único em `PROTOCOLOS_DIR/Gravacoes/` e a
+  transcrição entra no **mesmo pipeline** (IA + **resumo completo**).
+- **Cliente vem da busca no SICLA** — a MESMA do Novo Cliente (passo 1), delegada ao
+  `ClientesSiclaService` e reexposta em `GET /protocolos/clientes?termo=` sob a permissão
+  'protocolos'. A carteira de projetos não serve: reunião acontece antes da implantação existir.
+- Protocolo agora tem **`projeto_id` + `cliente` + `cliente_codigo`** (migrations
+  `1784840000000` e `1784850000000`), status novo `Gravando` e origem nova `gravacao`.
+- **Visibilidade nova:** a lista mostra **só o material do usuário logado**; ADM vê tudo e os
+  vídeos do robô do SharePoint continuam comuns a todos
+  (`backend/src/protocolos/protocolos.acesso.ts`, vale também nas rotas por id).
+- **Separação de locutores (2026-07-31):** sherpa-onnx (44 MB ONNX, sem PyTorch). A tela
+  pergunta **quantas pessoas** — automático inventou 7-10 vozes onde havia 2. Texto sai
+  `[MM:SS] P1: ...`; o nome vive em `protocolos.mapa_locutores` e a substituição é na
+  leitura (`backend/src/protocolos/locutores.ts`), então renomear é reversível. 3,3× tempo
+  real com 8 threads.
+- **HTTPS opcional no painel (2026-07-30):** `MIGRACAO_HTTPS_PFX`/`_SENHA`/`_PORT`; HTTP na
+  5100 continua no ar em paralelo (HSTS fica desligado de propósito). Certificado pela **CA
+  interna** `rechinfo-PR-ADCS-VS25-CA` — todo domínio já confia, nada a instalar nas
+  máquinas (`Certificado_CA_Interna_Painel.bat`).
+- **Guardião passou a vigiar os DOIS** (painel 5100 + docservice 8001) desde 2026-08-04:
+  o painel reiniciou às 05:35 e o docservice ficou para trás, aparecendo horas depois como
+  ECONNREFUSED na gravação. Antes ele só checava a 5100.
+- ⚠️ **Reiniciar o painel NÃO reinicia o docservice** (processos separados; o Iniciar só
+  sobe o docservice se a 8001 estiver livre). Ao mexer em `docservice/`, derrube os dois.
+- ⚠️ **Bloqueio conhecido:** captura de áudio só funciona em **contexto seguro** (HTTPS/
+  localhost) — o painel está em `http://I7M1700-01-EVE:5100`. Ver `docs/gravacao-reuniao.md`
+  e `docs/pendencias.md`.
+
 ## Filtros salvos por usuário (2026-07-29)
 
 Toda tela com filtro reabre no recorte que o usuário deixou. Base: tabela

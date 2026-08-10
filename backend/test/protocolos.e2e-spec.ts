@@ -312,10 +312,92 @@ describe('Protocolos de Treinamento (e2e)', () => {
         ),
     );
     const id = upload.body.data.id as number;
+
+    // A mídia NÃO é servida pelo cabeçalho Authorization: o `<video>` do navegador busca o
+    // arquivo sozinho e não tem como mandá-lo. O acesso vem de um ticket assinado e curto
+    // na query (ver ProtocolosMidiaController). Este teste chamava a rota só com o header e
+    // por isso passou a receber 401 quando o ticket entrou.
+    const ticket = await auth(
+      request(server()).get(`/api/protocolos/${id}/video-ticket`),
+    );
+    expect(ticket.status).toBe(200);
+
+    // `.buffer()` porque a resposta agora sai com Content-Type de mídia (video/mp4): sem
+    // isso o supertest não junta o corpo como texto e `res.text` vem indefinido.
+    const res = await request(server())
+      .get(`/api/protocolos/${id}/video`)
+      .query({ t: ticket.body.data.ticket as string })
+      .buffer();
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toBe('video/mp4');
+    expect(res.headers['accept-ranges']).toBe('bytes');
+    expect(Buffer.from(res.body as Buffer).toString()).toBe(
+      'conteudo do video para stream',
+    );
+  });
+
+  it('respeita o cabeçalho Range (o player busca só o pedaço que precisa)', async () => {
+    const upload = await auth(
+      request(server())
+        .post('/api/protocolos/novo')
+        .attach('video', Buffer.from('0123456789'), 'range.mp4'),
+    );
+    const id = upload.body.data.id as number;
+    const ticket = await auth(
+      request(server()).get(`/api/protocolos/${id}/video-ticket`),
+    );
+
+    const parcial = await request(server())
+      .get(`/api/protocolos/${id}/video`)
+      .query({ t: ticket.body.data.ticket as string })
+      .set('Range', 'bytes=2-5')
+      .buffer();
+    expect(parcial.status).toBe(206);
+    expect(parcial.headers['content-range']).toBe('bytes 2-5/10');
+    expect(Buffer.from(parcial.body as Buffer).toString()).toBe('2345');
+
+    // Seek além do fim devolve 416 em vez de estourar no createReadStream (o player
+    // simplesmente parava, sem explicação).
+    const fora = await request(server())
+      .get(`/api/protocolos/${id}/video`)
+      .query({ t: ticket.body.data.ticket as string })
+      .set('Range', 'bytes=99-')
+      .buffer();
+    expect(fora.status).toBe(416);
+  });
+
+  it('sem ticket, o streaming recusa mesmo com sessão válida', async () => {
+    const upload = await auth(
+      request(server())
+        .post('/api/protocolos/novo')
+        .attach('video', Buffer.from('conteudo'), 'sem-ticket.mp4'),
+    );
+    const id = upload.body.data.id as number;
     const res = await auth(
       request(server()).get(`/api/protocolos/${id}/video`),
     );
-    expect(res.status).toBe(200);
-    expect(res.text).toBe('conteudo do video para stream');
+    expect(res.status).toBe(401);
+  });
+
+  it('o ticket de um protocolo não abre a mídia de outro', async () => {
+    const a = await auth(
+      request(server())
+        .post('/api/protocolos/novo')
+        .attach('video', Buffer.from('video A'), 'a.mp4'),
+    );
+    const b = await auth(
+      request(server())
+        .post('/api/protocolos/novo')
+        .attach('video', Buffer.from('video B'), 'b.mp4'),
+    );
+    const ticketA = await auth(
+      request(server()).get(
+        `/api/protocolos/${a.body.data.id as number}/video-ticket`,
+      ),
+    );
+    const res = await request(server())
+      .get(`/api/protocolos/${b.body.data.id as number}/video`)
+      .query({ t: ticketA.body.data.ticket as string });
+    expect(res.status).toBe(403);
   });
 });
