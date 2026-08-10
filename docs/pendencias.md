@@ -107,25 +107,31 @@ feita; o que ela revelou em volta, não.
   **Nenhuma suíte pegaria isso sozinha** — dev/teste rodam em SQLite, onde `TEXT` é ilimitado.
   Vale como alerta geral: *limite de tamanho de coluna é uma classe de defeito que só existe
   em produção neste projeto.*
-- [ ] **O resultado pronto do docservice é jogado fora quando a gravação falha.** O pipeline
-  *já* salva a transcrição assim que ela fica pronta, antes das chamadas de IA
-  (`processamento-protocolos.service.ts`, logo após `aguardarTranscricao`) — a ordem está
-  certa. O buraco é o que acontece quando **esse** `UPDATE` falha: o pipeline vai para `Erro`
-  e ninguém volta a buscar o texto, embora ele continue na memória do docservice
-  (`_jobs[protocolo_id]`, em `transcricao/servico.py`) e `GET /transcrever/{id}/status`
-  ainda o devolva. Pior: reprocessar **retranscreve do zero** e sobrescreve o job — o
-  `iniciar` só recusa quando o status é `processando`. Correção barata: antes de chamar
-  `iniciar`, consultar `status()` e reaproveitar um `concluido` que já exista.
-- [ ] **`aguardarTranscricao` gira para sempre se o docservice sumir.** É um `for (;;)` com
-  poll de 2 s e **sem timeout**. Quando o docservice reinicia, o job some e `status()` passa a
-  devolver `null` — que não é `concluido` nem `erro`, então o laço nunca sai e o protocolo
-  fica em `Transcrevendo` indefinidamente.
+- [x] **Feito — o resultado pronto do docservice não é mais jogado fora.** O pipeline *já*
+  salvava a transcrição assim que ela ficava pronta, antes das chamadas de IA — a ordem sempre
+  esteve certa. O buraco era o que acontecia quando **esse** `UPDATE` falhava: ia para `Erro`
+  e ninguém voltava a buscar o texto, embora ele continuasse na memória do docservice
+  (`_jobs[protocolo_id]`, em `transcricao/servico.py`), servido por
+  `GET /transcrever/{id}/status`. Pior: reprocessar retranscrevia do zero e **sobrescrevia** o
+  resultado pronto. Agora `transcreverProtocolo` consulta o status antes de transcrever —
+  `concluido` é reaproveitado, `processando` é acompanhado (chamar `iniciar` ali daria 409) e
+  só `erro`/inexistente começa do zero.
+- [x] **Feito — a espera da transcrição sempre termina.** `aguardarTranscricao` era um
+  `for (;;)` com poll de 2 s e sem saída: com o docservice reiniciado, `status()` passava a
+  devolver `null` — que não é `concluido` nem `erro` — e o laço girava para sempre. Agora
+  desiste depois de `MAX_CONSULTAS_SEM_JOB` respostas vazias seguidas, e também dá por travado
+  o trabalho que avançou e depois congelou por mais de uma hora.
+  ⚠️ A detecção de congelamento **só vale depois de `pos` passar de zero**, e isso é
+  essencial: o docservice transcreve um job por vez (lock global `_BUSY`), então quem está na
+  fila fica legitimamente com `pos = 0` por horas. Cronometrar esse caso mataria trabalho
+  válido — há teste cobrindo exatamente ele.
 - [ ] **Protocolo preso em `Transcrevendo` não tem como voltar.** Não há recuperação de
   trabalho órfão no boot, e tanto `processar` quanto o controller recusam agir quando o status
   é `Transcrevendo`/`Analisando` ("Já está em processamento"). A trava que evita corrida entre
   o robô e o clique manual é a mesma que impede o conserto: só mexendo no banco à mão.
   Consequência prática — **reiniciar o backend não é operação livre** enquanto houver
-  transcrição em voo.
+  transcrição em voo. *Ficou menor com o item acima* (a espera agora termina em `Erro`, que é
+  reprocessável), mas continua valendo para quem já está preso e para o restart no meio.
 - [ ] **Não há como cancelar uma transcrição de arquivo.** O docservice expõe
   `DELETE /transcrever/vivo/{id}` (gravação ao vivo), mas **nada** equivalente para
   `/transcrever/{id}`. Por isso o cancelamento na tela não mata o subprocesso: observado em
