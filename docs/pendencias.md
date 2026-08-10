@@ -107,17 +107,30 @@ feita; o que ela revelou em volta, não.
   **Nenhuma suíte pegaria isso sozinha** — dev/teste rodam em SQLite, onde `TEXT` é ilimitado.
   Vale como alerta geral: *limite de tamanho de coluna é uma classe de defeito que só existe
   em produção neste projeto.*
-- [ ] **Falha ao gravar descarta o processamento inteiro.** O resultado é persistido num
-  `UPDATE` único, sem salvamento parcial nem retentativa: o erro acima levou junto título,
-  duração e transcrição dos protocolos #55 e #56, que ficaram zerados no banco depois de horas
-  de CPU. Gravar a transcrição assim que ela fica pronta — antes das chamadas de IA — já
-  eliminaria a maior parte do prejuízo.
-- [ ] **Cancelar um protocolo não mata o processo Python.** Observado em 2026-08-06: o
-  subprocesso seguia a 377% de CPU depois do cancelamento na tela.
-- [ ] **Reiniciar o backend abandona o protocolo em `Transcrevendo`.** O `aguardarTranscricao`
-  é um laço em memória; não há recuperação de trabalho órfão no boot. Na prática, o restart
-  precisa ser combinado com a fila — não é uma operação livre enquanto houver transcrição em
-  voo.
+- [ ] **O resultado pronto do docservice é jogado fora quando a gravação falha.** O pipeline
+  *já* salva a transcrição assim que ela fica pronta, antes das chamadas de IA
+  (`processamento-protocolos.service.ts`, logo após `aguardarTranscricao`) — a ordem está
+  certa. O buraco é o que acontece quando **esse** `UPDATE` falha: o pipeline vai para `Erro`
+  e ninguém volta a buscar o texto, embora ele continue na memória do docservice
+  (`_jobs[protocolo_id]`, em `transcricao/servico.py`) e `GET /transcrever/{id}/status`
+  ainda o devolva. Pior: reprocessar **retranscreve do zero** e sobrescreve o job — o
+  `iniciar` só recusa quando o status é `processando`. Correção barata: antes de chamar
+  `iniciar`, consultar `status()` e reaproveitar um `concluido` que já exista.
+- [ ] **`aguardarTranscricao` gira para sempre se o docservice sumir.** É um `for (;;)` com
+  poll de 2 s e **sem timeout**. Quando o docservice reinicia, o job some e `status()` passa a
+  devolver `null` — que não é `concluido` nem `erro`, então o laço nunca sai e o protocolo
+  fica em `Transcrevendo` indefinidamente.
+- [ ] **Protocolo preso em `Transcrevendo` não tem como voltar.** Não há recuperação de
+  trabalho órfão no boot, e tanto `processar` quanto o controller recusam agir quando o status
+  é `Transcrevendo`/`Analisando` ("Já está em processamento"). A trava que evita corrida entre
+  o robô e o clique manual é a mesma que impede o conserto: só mexendo no banco à mão.
+  Consequência prática — **reiniciar o backend não é operação livre** enquanto houver
+  transcrição em voo.
+- [ ] **Não há como cancelar uma transcrição de arquivo.** O docservice expõe
+  `DELETE /transcrever/vivo/{id}` (gravação ao vivo), mas **nada** equivalente para
+  `/transcrever/{id}`. Por isso o cancelamento na tela não mata o subprocesso: observado em
+  2026-08-06 a 377% de CPU depois de cancelado. O `_jobs` também é memória pura e sem teto —
+  cresce enquanto o processo viver.
 
 ## 📐 Conformidade com os Padrões de Desenvolvimento da Rech
 > Auditoria de 2026-07-21 contra o `PADRAO-RECH.md` rev. 2.0.0. Ver o relatório completo e o
