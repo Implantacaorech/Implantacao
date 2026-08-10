@@ -78,17 +78,28 @@ describe('DicionarioComponent', () => {
     expect(fixture.componentInstance.resultados()).toHaveLength(1);
   });
 
-  it('não busca com todos os filtros vazios', async () => {
-    let chamadas = 0;
+  // Antes, sem critério a tela não buscava e mostrava "Digite um termo ou escolha um filtro
+  // para começar" — quem não sabe o nome do que procura ficava travado num campo em branco.
+  // Agora ela abre com o acervo: sem critério, a API devolve tudo para navegar.
+  it('sem nenhum critério, busca assim mesmo e lista o acervo para navegar', async () => {
+    const chamadas: unknown[] = [];
     const fixture = montar({
-      pesquisar: () => {
-        chamadas += 1;
+      pesquisar: (filtros: unknown) => {
+        chamadas.push(filtros);
         return Promise.resolve([resultado()]);
       },
     });
     fixture.componentInstance.onTermoAlterado('   ');
     await new Promise((r) => setTimeout(r, 500));
-    expect(chamadas).toBe(0);
+
+    expect(chamadas.length).toBeGreaterThan(0);
+    // Espaço em branco não vira termo de pesquisa — vai `undefined`, não `'   '`.
+    expect(chamadas.at(-1)).toEqual({
+      q: undefined,
+      tipo: undefined,
+      sigla: undefined,
+    });
+    expect(fixture.componentInstance.semCriterio()).toBe(true);
   });
 
   it('perguntar sem IA mostra aviso e fontes', async () => {
