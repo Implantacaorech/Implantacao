@@ -38,11 +38,19 @@ export class DicionarioDocumento {
   @Column({ type: 'text', default: '' })
   resumo: string;
 
-  // Conteúdo markdown completo do documento (fonte da verdade renderizável na tela).
-  // 'text' (não 'mediumtext'/'longtext') de propósito: portável para o better-sqlite3 dos
-  // testes, e o maior documento curado tem ~58KB — dentro do limite de 64KB do TEXT do
-  // MariaDB, com folga. As seções são dado DERIVADO (reparseadas de `conteudo` sob demanda
-  // em DicionarioService.obter), então não há coluna para elas — evita duplicar o conteúdo.
+  /** Conteúdo markdown completo do documento (fonte da verdade renderizável na tela).
+   *
+   * ⚠️ No MariaDB esta coluna é **LONGTEXT** — ver a migration
+   * `DicionarioConteudoLongtext1784900000000`. O `type: 'text'` daqui é o que o driver
+   * SQLite (dev/teste) entende; ele não conhece `longtext` e falharia no boot. Como
+   * `synchronize` é FALSE no MariaDB, o tipo alargado pela migration não é revertido.
+   *
+   * Antes de 2026-08-10 o comentário aqui dizia que os ~58 KB do maior documento cabiam nos
+   * 64 KB do `TEXT` "com folga". Não cabiam com folga nenhuma: era **88% do teto**, e o
+   * mesmo limite tinha acabado de derrubar a transcrição em produção no mesmo dia.
+   *
+   * As seções são dado DERIVADO (reparseadas de `conteudo` sob demanda em
+   * `DicionarioService.obter`), então não há coluna para elas — evita duplicar o conteúdo. */
   @Column({ type: 'text' })
   conteudo: string;
 

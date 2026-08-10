@@ -74,6 +74,86 @@ describe('DicionarioService', () => {
     });
   });
 
+  /** A busca era `LIKE %termo%` nas quatro colunas, ordenada por sigla — alfabética, não por
+   * relevância. Na prática: pesquisar uma frase só achava se ela existisse literalmente, e um
+   * termo no título valia o mesmo que um perdido no meio do texto. */
+  describe('pesquisar — relevância', () => {
+    const faturamento = doc({
+      id: 2,
+      slug: '05-fat-faturamento',
+      sigla: 'FAT',
+      titulo: 'FAT - Faturamento',
+      resumo: 'Emissão de nota fiscal e devolução de mercadoria.',
+      palavrasChave: 'FAT001 nota devolucao',
+      conteudo: '# FAT\n\nEmite nota fiscal. Trata devolução de venda.',
+    });
+    const estoque = doc({
+      id: 3,
+      slug: '07-est-estoque',
+      sigla: 'EST',
+      titulo: 'EST - Estoque',
+      resumo: 'Controle de saldo.',
+      palavrasChave: 'EST001',
+      // Cita "nota" só de passagem, e não fala de devolução.
+      conteudo: '# EST\n\nO saldo é baixado quando a nota é emitida.',
+    });
+
+    it('pesquisa com várias palavras: quem atende mais termos vem primeiro', async () => {
+      // Antes, `nota fiscal devolução` era procurado como UMA string literal — e não achava
+      // nada, porque essa sequência exata não existe em documento nenhum.
+      qb.getMany.mockResolvedValue([estoque, faturamento]);
+      const r = await service.pesquisar({ q: 'nota fiscal devolução' });
+      expect(r.map((x) => x.sigla)).toEqual(['FAT', 'EST']);
+    });
+
+    it('termo no título pesa mais do que o mesmo termo no meio do conteúdo', async () => {
+      const citaNoCorpo = doc({
+        id: 4,
+        slug: '06-fin-financeiro',
+        sigla: 'FIN',
+        titulo: 'FIN - Financeiro',
+        resumo: 'Contas a pagar e receber.',
+        palavrasChave: 'FIN001',
+        conteudo: '# FIN\n\nIntegra com o faturamento para gerar o título.',
+      });
+      // Alfabeticamente FIN vem antes de FAT? Não — mas a ordenação antiga era por sigla,
+      // então quem decidia o topo era o alfabeto, e não o assunto.
+      qb.getMany.mockResolvedValue([citaNoCorpo, faturamento]);
+      const r = await service.pesquisar({ q: 'faturamento' });
+      expect(r[0].sigla).toBe('FAT');
+    });
+
+    it('acha sem acento e recorta o trecho do texto ORIGINAL, com acento', async () => {
+      qb.getMany.mockResolvedValue([faturamento]);
+      const r = await service.pesquisar({ q: 'devolucao' });
+      expect(r).toHaveLength(1);
+      // Se a normalização não preservasse posições, o recorte sairia deslocado.
+      expect(r[0].trecho).toContain('devolução');
+    });
+
+    it('a sigla exata ganha de quem só cita o termo no corpo', async () => {
+      const citaFat = doc({
+        id: 5,
+        slug: '10-cst-custos',
+        sigla: 'CST',
+        titulo: 'CST - Custos',
+        resumo: 'Apuração de custo.',
+        palavrasChave: 'CST001',
+        conteudo: '# CST\n\nUsa dados do FAT para compor o custo.',
+      });
+      qb.getMany.mockResolvedValue([citaFat, faturamento]);
+      const r = await service.pesquisar({ q: 'FAT' });
+      expect(r[0].sigla).toBe('FAT');
+    });
+
+    it('descarta palavras vazias — "de"/"da" não podem pontuar documento nenhum', async () => {
+      qb.getMany.mockResolvedValue([estoque, faturamento]);
+      const r = await service.pesquisar({ q: 'de da do' });
+      // Sobrou zero termo buscável: vira navegação (acervo), não uma busca que casa com tudo.
+      expect(r.every((x) => x.trecho === null)).toBe(true);
+    });
+  });
+
   it('obter lança NotFound quando o slug não existe', async () => {
     repo.findOne.mockResolvedValue(null);
     await expect(service.obter('inexistente')).rejects.toBeInstanceOf(

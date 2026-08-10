@@ -52,7 +52,13 @@
   } @else if (jaBuscou() && resultados().length === 0) {
     <p class="dica">Nada encontrado para os filtros atuais.</p>
   } @else if (resultados().length > 0) {
-    <div class="count">{{ resultados().length }} resultado(s)</div>
+    <div class="count">
+      @if (semCriterio()) {
+        Todos os assuntos ({{ resultados().length }}) — busque acima ou clique para abrir
+      } @else {
+        {{ resultados().length }} resultado(s)
+      }
+    </div>
     @for (r of resultados(); track r.slug) {
       <a class="dic-card" [routerLink]="['/dicionario', r.slug]">
         <div class="dic-card-h">

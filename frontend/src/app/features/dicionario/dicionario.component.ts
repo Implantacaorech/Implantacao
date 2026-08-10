@@ -55,21 +55,23 @@ export class DicionarioComponent {
         filtroTipo: deSignal(this.filtroTipo),
         filtroSigla: deSignal(this.filtroSigla),
       },
-      { aoRestaurar: () => this.buscarSeTemFiltro() },
+      { aoRestaurar: () => void this.buscar() },
     );
     void this.carregarMeta();
-    // Restaurado o recorte, JÁ traz o resultado: campo preenchido com a lista vazia embaixo
-    // pareceria busca sem resultado, quando na verdade ninguém tinha buscado ainda.
-    this.buscarSeTemFiltro();
+    // Sempre busca ao abrir, mesmo sem termo nem filtro: sem critério a API devolve o acervo
+    // inteiro, e a tela abre mostrando os assuntos disponíveis em vez de um convite a digitar.
+    // Quem chega aqui muitas vezes não sabe o nome do que procura — dar o que existe para
+    // percorrer é mais útil do que um campo em branco.
+    void this.buscar();
     this.destroyRef.onDestroy(() => {
       if (this.debounceId) clearTimeout(this.debounceId);
     });
   }
 
-  private buscarSeTemFiltro(): void {
-    if (this.termo().trim() || this.filtroTipo() || this.filtroSigla()) {
-      void this.buscar();
-    }
+  /** Nenhum critério informado: a lista embaixo é o acervo para navegar, não um resultado de
+   * busca — e a tela precisa dizer isso com outras palavras. */
+  semCriterio(): boolean {
+    return !this.termo().trim() && !this.filtroTipo() && !this.filtroSigla();
   }
 
   private async carregarMeta(): Promise<void> {
@@ -110,11 +112,6 @@ export class DicionarioComponent {
     const q = this.termo().trim();
     const tipo = this.filtroTipo();
     const sigla = this.filtroSigla();
-    if (!q && !tipo && !sigla) {
-      this.resultados.set([]);
-      this.jaBuscou.set(false);
-      return;
-    }
     this.buscando.set(true);
     this.erro.set(null);
     try {
