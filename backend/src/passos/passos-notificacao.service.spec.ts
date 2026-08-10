@@ -144,8 +144,10 @@ describe('PassosNotificacaoService', () => {
             // os consultores para qualquer papel faria o e-mail do GCI sair para eles.
             find: (opcoes: { where?: { papel?: string } }) => {
               const papel = opcoes?.where?.papel;
-              if (papel === 'levantador') return Promise.resolve(levantadoresVinculados);
-              if (papel === 'consultor') return Promise.resolve(consultoresVinculados);
+              if (papel === 'levantador')
+                return Promise.resolve(levantadoresVinculados);
+              if (papel === 'consultor')
+                return Promise.resolve(consultoresVinculados);
               if (papel === 'gci') return Promise.resolve(gcisVinculados);
               return Promise.resolve([
                 ...gcisVinculados,

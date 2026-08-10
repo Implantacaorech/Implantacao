@@ -178,7 +178,9 @@ export class PassosNotificacaoService {
     const ids = new Set(
       vinculos.map((v) => v.usuarioId).filter((id): id is number => id != null),
     );
-    const semId = vinculos.filter((v) => v.usuarioId == null).map((v) => v.pessoa);
+    const semId = vinculos
+      .filter((v) => v.usuarioId == null)
+      .map((v) => v.pessoa);
     const todos = await this.users.listar();
     const porId = todos
       .filter((u) => u.ativo && ids.has(u.id))

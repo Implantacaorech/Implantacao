@@ -74,14 +74,15 @@ export class DesignacaoPorUsuarioId1784880000000 implements MigrationInterface {
     //    autorizavam ninguém antes desta migration, porque a comparação por nome também
     //    falhava. Imprimir a lista é o que transforma isso em tarefa para alguém resolver,
     //    em vez de um silêncio que ninguém percebe.
-    const orfaos: { pessoa: string; papel: string; qtd: number }[] =
-      await queryRunner.query(
-        `SELECT \`pessoa\`, \`papel\`, COUNT(*) AS qtd
+    // `queryRunner.query` devolve `any`; a asserção é o que dá tipo ao resultado sem
+    // desligar a regra de segurança de tipo para o arquivo inteiro.
+    const orfaos = (await queryRunner.query(
+      `SELECT \`pessoa\`, \`papel\`, COUNT(*) AS qtd
            FROM \`projeto_pessoas\`
           WHERE \`usuario_id\` IS NULL
           GROUP BY \`pessoa\`, \`papel\`
           ORDER BY \`pessoa\``,
-      );
+    )) as { pessoa: string; papel: string; qtd: number }[];
     if (orfaos.length > 0) {
       console.warn(
         `\n[DesignacaoPorUsuarioId] ${orfaos.length} nome(s) de designação NÃO casaram com ` +

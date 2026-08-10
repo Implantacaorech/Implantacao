@@ -274,9 +274,7 @@ export function carregarSnapshotDocx(nomeModuloPython: string): SnapshotDocx {
   // pode calhar de ser hoje. Normalizar aqui também faz a coincidência se cancelar em vez de
   // virar falha (ver `mascarar`).
   const porMapa = (m: Record<string, string[]>) =>
-    Object.fromEntries(
-      Object.entries(m).map(([k, v]) => [k, v.map(mascarar)]),
-    );
+    Object.fromEntries(Object.entries(m).map(([k, v]) => [k, v.map(mascarar)]));
   return {
     paragrafos: bruto.paragrafos.map(mascarar),
     tabelas: bruto.tabelas.map((t) => t.map((l) => l.map(mascarar))),

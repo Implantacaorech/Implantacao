@@ -169,16 +169,19 @@ describe('PassosService — designação por usuario_id (homônimos)', () => {
           provide: PassosNotificacaoService,
           useValue: { notificarPasso: jest.fn() },
         },
-        { provide: DocumentosService, useValue: { anexarDocumento: jest.fn() } },
+        {
+          provide: DocumentosService,
+          useValue: { anexarDocumento: jest.fn() },
+        },
       ],
     }).compile();
     service = module.get(PassosService);
   });
 
   const passo3De = async (nome: string, sub: number) =>
-    (
-      await service.listar(1, { nome, perfil: 'Levantador' as Perfil, sub })
-    ).find((p) => p.numero === 3);
+    (await service.listar(1, { nome, perfil: 'Levantador', sub })).find(
+      (p) => p.numero === 3,
+    );
 
   it('o designado (mesmo id) pode concluir', async () => {
     pessoas.find.mockResolvedValue([

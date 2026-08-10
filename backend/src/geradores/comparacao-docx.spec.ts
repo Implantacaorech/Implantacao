@@ -16,13 +16,17 @@ describe('comparacao-docx — máscara de data', () => {
   const HOJE = `${p(hoje.getDate())}/${p(hoje.getMonth() + 1)}/${hoje.getFullYear()}`;
 
   it('troca a data de hoje pelo marcador', () => {
-    expect(mascararParaTeste(`Atualizado em ${HOJE}`)).toBe('Atualizado em <HOJE>');
+    expect(mascararParaTeste(`Atualizado em ${HOJE}`)).toBe(
+      'Atualizado em <HOJE>',
+    );
   });
 
   it('é IDEMPOTENTE: aplicar no valor já mascarado não muda nada', () => {
     // É isto que faz os dois lados convergirem — o snapshot já vem com `<HOJE>` da captura,
     // e passar `mascarar` nele de novo não pode estragá-lo.
-    expect(mascararParaTeste('Atualizado em <HOJE>')).toBe('Atualizado em <HOJE>');
+    expect(mascararParaTeste('Atualizado em <HOJE>')).toBe(
+      'Atualizado em <HOJE>',
+    );
   });
 
   it('uma data de NEGÓCIO igual à de hoje converge nos dois lados', () => {
@@ -30,10 +34,14 @@ describe('comparacao-docx — máscara de data', () => {
     // máscara aplicada aos dois, ambos viram `<HOJE>` e a comparação passa.
     const esperadoDoSnapshot = HOJE; // literal, como está gravado no .json
     const geradoAgora = HOJE;
-    expect(mascararParaTeste(esperadoDoSnapshot)).toBe(mascararParaTeste(geradoAgora));
+    expect(mascararParaTeste(esperadoDoSnapshot)).toBe(
+      mascararParaTeste(geradoAgora),
+    );
   });
 
   it('não mexe em data que não é hoje', () => {
-    expect(mascararParaTeste('Virada em 01/01/2030')).toBe('Virada em 01/01/2030');
+    expect(mascararParaTeste('Virada em 01/01/2030')).toBe(
+      'Virada em 01/01/2030',
+    );
   });
 });
