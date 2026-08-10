@@ -12,12 +12,25 @@
  * glossário fixo entra só com o que sobra. */
 
 /** Núcleo do jargão da casa. Curto de propósito: cada termo aqui ocupa espaço que poderia
- * ser de um nome de participante, que é o caso em que o modelo mais erra. */
+ * ser de um nome de participante, que é o caso em que o modelo mais erra.
+ *
+ * A lista cresceu em 2026-08-10 com o vocabulário de CHÃO DE FÁBRICA e de documento fiscal,
+ * depois de medir numa gravação real: "as OPs filhas… as OPs pais" saiu como
+ * **"as OBS Fidas… as OBS Pais"**, e "apontamento" e "etiqueta" apareceram embolados. Não é
+ * áudio ruim — é o modelo escolhendo a sequência de sons mais provável do português geral,
+ * onde "OP" e "apontamento de produção" praticamente não existem.
+ *
+ * Isso importa além da transcrição: o resumo é obrigado a relacionar os MENUS e PROGRAMAS
+ * citados (ver `SISTEMA_RESUMO` em protocolo-ia.service.ts), e ele só consegue relacionar o
+ * que chegou íntegro no texto. Termo mastigado aqui vira menu ausente no resumo. */
 export const TERMOS_RECH = [
   'SIGER',
   'Rech',
   'RNS',
   'SICLA',
+  'OP',
+  'ordem de produção',
+  'apontamento',
   'implantação',
   'levantamento',
   'faturamento',
@@ -26,6 +39,8 @@ export const TERMOS_RECH = [
   'NF-e',
   'CFOP',
   'centro de custo',
+  'estoque',
+  'etiqueta',
 ];
 
 /** Teto de caracteres do vocabulário. Passar disso não melhora — a janela de contexto do

@@ -18,7 +18,28 @@ Por isso o padrão saiu de 'base' para 'small': o ganho de inteligibilidade é g
 ainda deixa a transcrição ao vivo acompanhar a reunião. 'medium' custa 4x o tempo do small
 para ganho que não apareceu neste áudio — só vale em máquina bem mais forte.
 
-Threads: env PROTOCOLOS_THREADS (padrão 0 = automático, usa todos os núcleos).
+Threads: env PROTOCOLOS_THREADS (padrão 8). NÃO use 0 (automático) nesta máquina: o
+i7-1255U é HÍBRIDO — 2 núcleos de performance + 8 de eficiência —, e o CTranslate2 sincroniza
+no thread mais lento, então espalhar por todos os 12 threads lógicos é PIOR do que usar 8.
+Medido em 2026-08-10 sobre trecho de reunião real (small, beam=5, contexto ON):
+
+    threads=auto ->  2,25x tempo real
+    threads=4    ->  2,12x
+    threads=6    ->  2,47x
+    threads=8    ->  2,99x   <- padrão
+
+Em máquina com núcleos homogêneos, `0` volta a ser razoável — ajuste pelo env.
+
+BEAM: medido em 2026-08-10 em TRÊS gravações reais, `beam=1` é ~1,6x mais rápido que
+`beam=5` e foi DESCARTADO: na terceira gravação ele degradou visivelmente ("Vocês tiveram que
+alcançar um exemplo" virou "Você estiver de um alto exemplo... com a conhecinha do que é o
+nosso passado"). Nas outras duas empatou. Uma amostra boa não paga o risco de uma ruim: numa
+transcrição de treinamento, texto errado custa mais do que alguns minutos de espera.
+
+BATCHING (`BatchedInferencePipeline`, disponível no faster-whisper 1.2): 2,2x mais rápido,
+também DESCARTADO por ora — produziu 4 segmentos onde o modo atual produz 34 (os timestamps
+`[MM:SS]`, que servem para pular ao momento, ficariam a cada ~30 s) e, no trecho medido,
+PERDEU uma frase. Reavaliar se algum dia o volume justificar o risco.
 
 VOCABULÁRIO (env PROTOCOLOS_HOTWORDS): lista de termos que o modelo deve "esperar ouvir" —
 nomes de participantes, do cliente, jargão do SIGER. É o que corrige o erro clássico de nome
@@ -32,7 +53,7 @@ import json
 import diarizacao
 
 MODELO = os.environ.get("PROTOCOLOS_WHISPER", "small")
-THREADS = int(os.environ.get("PROTOCOLOS_THREADS", "0") or 0)   # 0 = auto (todos os núcleos)
+THREADS = int(os.environ.get("PROTOCOLOS_THREADS", "8") or 8)   # ver docstring: 0 (auto) é PIOR aqui
 # beam_size=1 é busca gulosa: rápido e o que estava aqui, mas erra em palavra ambígua —
 # escolhe a primeira hipótese sem comparar alternativas. 5 é o padrão do Whisper.
 BEAM = int(os.environ.get("PROTOCOLOS_BEAM", "5") or 5)
