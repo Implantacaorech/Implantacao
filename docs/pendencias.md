@@ -270,11 +270,20 @@
   comentário do arquivo dizia. Em 02/08 o dia 2 do hypercare da fixture (janela desde
   01/08) virou `<HOJE>` e a suíte quebrou **sozinha**, sem ninguém tocar em código. Agora a
   máscara casa o rótulo ("gerado em"/"Atualizado em"). Travado por `comparacao.spec.ts`.
-- [ ] **`comparacao-docx.ts` tem o mesmo padrão** — não quebrou hoje e **não pode receber a
-  mesma correção**: no `gerar_aceite_uat` a célula "Data do aceite" é a data de geração
-  sozinha, sem rótulo na mesma string (o rótulo está na célula anterior). Ali mascarar a
-  célula inteira está certo. Precisa de critério por POSIÇÃO/contexto, não por conteúdo —
-  mudança própria, com o snapshot em mãos.
+- [x] **`comparacao-docx.ts` corrigido** (2026-08-07) — **este item previu o defeito e ele
+  aconteceu**: em 07/08 a suíte quebrou sozinha, porque o snapshot do Projeto tem a data de
+  negócio fixa "07/08/2026" vinda da fixture e naquele dia ela colidiu com a de hoje.
+  A previsão de que a correção do `.xlsx` não serviria aqui estava certa: tentei ancorar no
+  rótulo e quebrou `gerar_aceite_uat`, onde a data ocupa a célula inteira, sem rótulo.
+  A saída foi outra: **normalizar os DOIS lados** com a mesma `mascarar` (o snapshot passa
+  por ela ao ser carregado), em vez de só o lado gerado. A coincidência se cancela.
+  Travado por `comparacao-docx.spec.ts`, que prova simetria e idempotência sem depender do
+  calendário.
+  ⚠️ **Ponto cego que fica:** num dia que colida com uma fixture, o teste deixa de enxergar
+  o caso em que o gerador escreveu a data de HOJE onde deveria estar a data de negócio —
+  os dois lados viram `<HOJE>`. Fechar isso exige o critério por POSIÇÃO que este item pedia
+  originalmente; a normalização simétrica troca esse ponto cego estreito pelo fim dos falsos
+  negativos, que quebravam a suíte várias vezes por ano.
 - [ ] **`tools/caracterizacao.py` idem** — é quem GERA os snapshots. Não roda no CI, então o
   defeito só aparece se alguém regenerar num dia que colida, produzindo um snapshot errado.
   Mesma decisão de critério do item acima.
