@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { TranscricaoLongtext1784890000000 } from './1784890000000-TranscricaoLongtext';
+import { RestauraDefaultTranscricao1784910000000 } from './1784910000000-RestauraDefaultTranscricao';
 
 /**
  * Guarda do tamanho das colunas que recebem a transcrição.
@@ -84,5 +85,70 @@ describe('Colunas de transcrição não podem voltar a caber em 64 KB', () => {
     for (const coluna of OBRIGATORIAS) {
       expect(sql).toContain(`MODIFY \`${coluna}\` TEXT NOT NULL`);
     }
+  });
+});
+
+/**
+ * `MODIFY` substitui a definição INTEIRA da coluna — não só o tipo.
+ *
+ * A `TranscricaoLongtext1784890000000` alargou as colunas com
+ * `MODIFY ... LONGTEXT NOT NULL` e, sem repetir o `DEFAULT ''` que elas tinham, descartou o
+ * default em silêncio. Horas depois, em 2026-08-10, todo INSERT de protocolo passou a falhar
+ * com `Field 'resumo_completo' doesn't have a default value`: o upload manual devolvia "Não
+ * foi possível enviar o arquivo" e o robô do SharePoint falhava em todo vídeo da pasta.
+ *
+ * O teste que faltava não era sobre transcrição — era sobre `MODIFY`. Aqui ele fica: toda
+ * coluna que a ENTIDADE declara com `default` precisa aparecer com `DEFAULT` no SQL que a
+ * redefine. Vale para a próxima migration que alargar qualquer coisa.
+ *
+ * Em SQLite nada disso aparece: `synchronize` recria o schema a partir da entidade, que
+ * declara `default: ''`. O desvio só existe no MariaDB, onde o schema vem das migrations.
+ */
+describe('MODIFY não pode descartar o DEFAULT da coluna', () => {
+  const entidade = readFileSync(
+    join(__dirname, '..', 'entities', 'protocolo.entity.ts'),
+    'utf8',
+  );
+
+  const sqlDaCorrecao = async () => {
+    const emitido: string[] = [];
+    await new RestauraDefaultTranscricao1784910000000().up({
+      query: (sql: string) => {
+        emitido.push(sql);
+        return Promise.resolve([]);
+      },
+    } as never);
+    return emitido;
+  };
+
+  /** Coluna no banco -> propriedade na entidade. */
+  const PROPRIEDADE: Record<string, string> = {
+    transcricao: 'transcricao',
+    resumo_completo: 'resumoCompleto',
+    texto_ia: 'textoIa',
+    historico: 'historico',
+  };
+
+  it.each(Object.keys(PROPRIEDADE))(
+    'a entidade declara default para `%s` — então o SQL precisa trazer DEFAULT',
+    async (coluna) => {
+      // Confirma a premissa na própria entidade: sem isto o teste vira letra morta se alguém
+      // remover o `default` de lá. Casa o @Column() imediatamente acima da propriedade.
+      const declaracao = new RegExp(
+        `@Column\\(\\{([^}]*)\\}\\)\\s*\\n\\s*${PROPRIEDADE[coluna]}: string;`,
+      ).exec(entidade);
+      expect(declaracao).not.toBeNull();
+      expect(declaracao?.[1]).toContain("default: ''");
+
+      const sql = (await sqlDaCorrecao()).join('\n');
+      expect(sql).toContain(
+        `MODIFY \`${coluna}\` LONGTEXT NOT NULL DEFAULT ''`,
+      );
+    },
+  );
+
+  it('a correção cobre exatamente as quatro colunas que perderam o default', async () => {
+    const sql = await sqlDaCorrecao();
+    expect(sql).toHaveLength(4);
   });
 });
