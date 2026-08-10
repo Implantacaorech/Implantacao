@@ -25,7 +25,14 @@ export const AppDataSource = new DataSource(
         type: 'mariadb',
         url: dbUrl,
         entities: ENTITIES,
-        migrations: ['src/database/migrations-mariadb/*.ts'],
+        // `!(...).spec.ts` exclui os testes que vivem junto das migrations. Sem isso o
+        // runner tentava carregar o .spec como se fosse uma migration e morria com
+        // "ReferenceError: describe is not defined" — erro que não diz nada sobre a causa e
+        // que só aparece na hora de migrar a PRODUÇÃO, porque em SQLite não se roda migration.
+        // Só `src/**.ts`: este DataSource é usado pelo CLI do TypeORM, que roda por ts-node.
+        // Incluir também o `dist/**.js` faz cada migration ser carregada DUAS vezes e o
+        // runner aborta com "Duplicate migrations".
+        migrations: ['src/database/migrations-mariadb/!(*.spec).ts'],
         synchronize: false,
         // Mesmo motivo de database.module.ts: sem isto, o driver mysql2 negocia utf8mb3
         // (legado) na conexão mesmo com o servidor em utf8mb4, corrompendo acento.

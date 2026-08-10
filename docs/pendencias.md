@@ -90,6 +90,35 @@
   Detalhe em [gravacao-reuniao.md](gravacao-reuniao.md). Enquanto isso, o upload manual da
   mesma tela continua entregando o mesmo resultado (só sem transcrição durante a reunião).
 
+## 🎙️ Transcrição — robustez do processamento *(2026-08-10)*
+
+Uma gravação de treinamento de ~3 h falhou em produção com
+`QueryFailedError: Data too long for column 'transcricao' at row 1`. A correção imediata está
+feita; o que ela revelou em volta, não.
+
+- [x] **Feito — colunas de 64 KB.** `TEXT` do MariaDB são 65.535 bytes, e uma transcrição
+  longa passa disso com folga (um bloco `[MM:SS]` por fala, acento custando 2 bytes em
+  utf8mb4). Migration `TranscricaoLongtext1784890000000` alargou para `LONGTEXT` as **quatro**
+  colunas alimentadas pela transcrição — `transcricao`, `resumo_completo`, `texto_ia` e
+  `historico` —, não só a que estourou: as outras recebem material do mesmo tamanho.
+  ⚠️ A entidade segue declarando `type: 'text'` **de propósito** (o driver SQLite do TypeORM
+  não conhece `longtext` e falharia no boot dos testes); `synchronize` é `false` no MariaDB,
+  então o tipo alargado não é revertido. Guarda: `transcricao-longtext.spec.ts`.
+  **Nenhuma suíte pegaria isso sozinha** — dev/teste rodam em SQLite, onde `TEXT` é ilimitado.
+  Vale como alerta geral: *limite de tamanho de coluna é uma classe de defeito que só existe
+  em produção neste projeto.*
+- [ ] **Falha ao gravar descarta o processamento inteiro.** O resultado é persistido num
+  `UPDATE` único, sem salvamento parcial nem retentativa: o erro acima levou junto título,
+  duração e transcrição dos protocolos #55 e #56, que ficaram zerados no banco depois de horas
+  de CPU. Gravar a transcrição assim que ela fica pronta — antes das chamadas de IA — já
+  eliminaria a maior parte do prejuízo.
+- [ ] **Cancelar um protocolo não mata o processo Python.** Observado em 2026-08-06: o
+  subprocesso seguia a 377% de CPU depois do cancelamento na tela.
+- [ ] **Reiniciar o backend abandona o protocolo em `Transcrevendo`.** O `aguardarTranscricao`
+  é um laço em memória; não há recuperação de trabalho órfão no boot. Na prática, o restart
+  precisa ser combinado com a fila — não é uma operação livre enquanto houver transcrição em
+  voo.
+
 ## 📐 Conformidade com os Padrões de Desenvolvimento da Rech
 > Auditoria de 2026-07-21 contra o `PADRAO-RECH.md` rev. 2.0.0. Ver o relatório completo e o
 > plano de adequação no histórico da sessão. **Revisitado em 2026-07-29** (auditoria da stack
