@@ -188,6 +188,14 @@ export class Protocolo {
   duracaoSeg: number;
 
   // Transcrição original com timestamps por bloco ([MM:SS] fala...).
+  /** ⚠️ No MariaDB esta coluna é **LONGTEXT**, não TEXT — ver a migration
+   * `TranscricaoLongtext1784890000000`. O `type: 'text'` daqui é o que o driver SQLite
+   * (dev/teste) entende; ele não conhece `longtext` e falharia no boot. Como `synchronize` é
+   * FALSE no MariaDB, o tipo alargado pela migration não é revertido.
+   *
+   * TEXT são 64 KB, e uma transcrição de ~3 h passa disso — em 2026-08-10 a gravação de um
+   * treinamento morreu com "Data too long for column 'transcricao'" DEPOIS de mais de uma
+   * hora de processamento. O mesmo vale para `resumoCompleto`, `textoIa` e `historico`. */
   @Column({ type: 'text', default: '' })
   transcricao: string;
 
