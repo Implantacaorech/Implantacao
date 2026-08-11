@@ -26,8 +26,17 @@ $dest = "C:\PainelBackups"
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
 $logFile = Join-Path $dest "backup_novo_mariadb.log"
 
+# UTF-8 SEM BOM, gravado direto pelo .NET - e nao por Out-File.
+#
+# O `Out-File -Append` da PowerShell 5.1 e a origem do log ilegivel: sem -Encoding ele grava
+# UTF-16, e com `-Encoding utf8` ele carimba um BOM a cada append. O arquivo virava uma
+# mistura de codificacoes, e era EXATAMENTE nas linhas de ERRO dos 4 dias de falha
+# (30/07 a 02/08/2026) que o texto saia como caracteres chineses - quem abria o log via lixo
+# e seguia em frente. Um log de alarme ilegivel e um alarme que nao existe.
+$script:Utf8SemBom = New-Object System.Text.UTF8Encoding($false)
 function Log($msg) {
-  "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $msg" | Out-File -Append -FilePath $logFile -Encoding utf8
+  $linha = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $msg`r`n"
+  [System.IO.File]::AppendAllText($logFile, $linha, $script:Utf8SemBom)
 }
 
 function Falhar($msg) {

@@ -9,8 +9,13 @@ $logFile = Join-Path $dest "integridade_novo.log"
 $porta = 5100
 $falhas = @()
 
+# UTF-8 sem BOM pelo .NET: `Out-File -Append` na PowerShell 5.1 grava UTF-16 quando nao se
+# passa -Encoding, e carimba BOM no meio do arquivo quando se passa. Foi o que deixou o log
+# do backup ilegivel justamente nas linhas de ERRO - ver Painel_Novo_Backup_MariaDB.ps1.
+$script:Utf8SemBom = New-Object System.Text.UTF8Encoding($false)
 function Log($msg) {
-  "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $msg" | Out-File -Append -FilePath $logFile
+  $linha = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $msg`r`n"
+  [System.IO.File]::AppendAllText($logFile, $linha, $script:Utf8SemBom)
 }
 
 Log "=== Verificacao de integridade iniciada ==="

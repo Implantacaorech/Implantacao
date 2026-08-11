@@ -21,6 +21,13 @@
 ---
 
 ## 1. Diagnóstico rápido
+- **Comece por aqui (stack novo, 2026-08-11):** abra **Centro de Monitoramento → Saúde do
+  sistema**, ou chame `GET /api/saude`. Seis checagens com o que fazer em cada uma: banco,
+  **backup** (idade e tamanho do último zip), **Guardião** (reinícios em 24 h), **docservice**,
+  transcrições presas e e-mails que falharam. O mesmo resumo vai no **digest diário** — não é
+  preciso lembrar de olhar. Detalhe em `backend/src/saude/docs/`.
+  > O restante desta seção é do painel **Flask**, desligado em 2026-07-19 (porta 5000,
+  > `webapp/verificar_*.py`) — mantido como histórico.
 - **Tudo de uma vez:** `python webapp/verificar_tudo.py` — um comando, um veredito: rotas (smoke),
   banco, e-mail, disponibilidade e idade do backup. Sai **1** se algo essencial falhou.
 - **App no ar?** `GET /health` deve responder `{"status":"ok"}` (200). `degraded`/503 = banco inacessível.

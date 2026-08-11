@@ -277,6 +277,15 @@ protocolo** revisáveis:
   enviou**. Exceções: **ADM** vê tudo (administra e aprova) e os **vídeos do robô do
   SharePoint** continuam visíveis para todos (pasta compartilhada, sem dono). Vale na lista
   **e** em toda rota por id — `backend/src/protocolos/protocolos.acesso.ts`.
+- **Dá para desistir e dá para destravar (2026-08-11):** enquanto o protocolo está
+  *Transcrevendo*/*Analisando*, a ficha oferece **Cancelar processamento** — o subprocesso do
+  transcritor é **morto de verdade** no docservice (antes ele seguia moendo o vídeo inteiro,
+  a 377% de CPU, mesmo depois de cancelado), e o registro volta para **Erro**, que é de onde
+  *Processar agora* funciona. Excluir um protocolo em processamento faz o mesmo antes de
+  apagar a linha. E, se o **painel for reiniciado no meio**, uma varredura no boot religa o
+  que dá para aproveitar (transcrição já gravada, ou pronta/em andamento no docservice) e
+  deixa o resto em *Erro* com a explicação — **nunca retranscreve do zero por conta própria**,
+  porque um vídeo de treinamento custa horas de máquina.
 - Config: `PROTOCOLOS_DIR` (pasta raiz), `PROTOCOLOS_POLL_MIN` (robô, padrão 10 min),
   `PROTOCOLOS_WHISPER` (modelo, padrão `base` — rápido; use `small`/`medium` p/ mais
   precisão) e `PROTOCOLOS_THREADS` (0 = automático/todos os núcleos, o mais rápido).
@@ -301,6 +310,29 @@ painel** e ver a transcrição sendo escrita enquanto ela acontece.
   que fazer — ver **[docs/gravacao-reuniao.md](gravacao-reuniao.md)**.
 - Config adicional: `PROTOCOLOS_WHISPER_VIVO` (modelo do ao vivo; cai no `PROTOCOLOS_WHISPER`)
   e `PROTOCOLOS_THREADS_VIVO`.
+
+### 5.17.2 Saúde do sistema (bloco no Centro de Monitoramento) — *2026-08-11*
+Vigilância da **infraestrutura do próprio Painel** (`GET /api/saude`, permissão
+`centro_operacional`). Seis checagens, cada uma com o que fazer:
+
+| Item | Fica crítico quando |
+|---|---|
+| **Banco de dados** | a conexão não responde |
+| **Backup do banco** | não há zip, o último tem **< 100 KB** ou é de **≥ 48 h** atrás |
+| **Estabilidade (Guardião)** | **3 ou mais** reinícios em 24 h (1–2 é aviso) |
+| **Serviço de documentos e transcrição** | o docservice (8001) não responde |
+| **Transcrições em andamento** | *(aviso)* registro diz "Transcrevendo" e não há trabalho rodando |
+| **Envio de e-mail** | *(aviso)* e-mails do processo falharam nas últimas 24 h |
+
+Cada limiar veio de um incidente real — os zips de **176 bytes** por 3 dias (o script logava
+`ok`), os **4 dias sem dump** por uma senha obsoleta no ambiente, e o Guardião reiniciando o
+painel **159 vezes em 13 h**. Em todos, o painel continuava no ar e ninguém foi avisado.
+
+Por isso o resultado sai por **dois canais**: o bloco no Centro de Monitoramento e uma seção
+no **digest diário** — este é o que fecha o buraco de verdade, porque em todos os casos
+ninguém estava abrindo o painel. Quando está tudo certo o e-mail traz uma linha só, de
+propósito. Detalhe do módulo em `backend/src/saude/docs/`.
+Config: `MIGRACAO_BACKUP_DIR` (padrão `C:\PainelBackups`).
 
 ### 5.18 Matriz de Conhecimento (`/matriz`)
 Cadastro das notas de conhecimento (1–10) por **técnico × competência** (153 competências em

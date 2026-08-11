@@ -7,6 +7,7 @@ import { Projeto } from '../database/entities/projeto.entity';
 import { Documento } from '../database/entities/documento.entity';
 import { MetricasService } from '../metricas/metricas.service';
 import { MailerService } from '../email/mailer.service';
+import { SaudeService } from '../saude/saude.service';
 import { construirDocsMap } from '../painel/docs-map.util';
 
 export interface ResultadoDigest {
@@ -24,6 +25,7 @@ export class DigestService {
     private readonly documentos: Repository<Documento>,
     private readonly metricas: MetricasService,
     private readonly mailer: MailerService,
+    private readonly saude: SaudeService,
     private readonly config: ConfigService<AppConfig, true>,
   ) {}
 
@@ -36,6 +38,34 @@ export class DigestService {
       .split(/[;,\n]/)
       .map((e) => e.trim())
       .filter(Boolean);
+  }
+
+  /** Bloco "Saúde do sistema" — só o que NÃO está ok.
+   *
+   * É a razão de o digest existir para isto: todo incidente de infraestrutura deste projeto
+   * passou dias despercebido porque a informação só existia num log que ninguém abria
+   * (backup gravando 176 bytes com o script dizendo "ok"; 4 dias sem dump; guardião
+   * reiniciando 159 vezes em 13 h). Aqui a notícia vai atrás de quem precisa dela.
+   *
+   * Silêncio quando está tudo bem, de propósito: um bloco que aparece todo dia dizendo "ok"
+   * treina o leitor a pular a seção — e aí ele pula no dia em que ela diz outra coisa.
+   *
+   * Falhar aqui NÃO derruba o resumo: o digest é do processo de implantação, e perdê-lo
+   * inteiro porque o diagnóstico de infra tropeçou seria trocar um problema por outro. */
+  private async blocoSaude(): Promise<string[]> {
+    try {
+      const problemas = await this.saude.problemas();
+      if (problemas.length === 0) return ['Saúde do sistema: tudo certo.'];
+      return [
+        `SAÚDE DO SISTEMA — ${problemas.length} ponto(s) de atenção:`,
+        ...problemas.flatMap((p) => [
+          `  [${p.nivel.toUpperCase()}] ${p.titulo}: ${p.mensagem}`,
+          ...(p.detalhe ? [`      ${p.detalhe}`] : []),
+        ]),
+      ];
+    } catch {
+      return ['Saúde do sistema: não foi possível verificar.'];
+    }
   }
 
   private async montarDigest(): Promise<{ assunto: string; corpo: string }> {
@@ -62,6 +92,7 @@ export class DigestService {
     } else {
       linhas.push('Sem alertas no momento.');
     }
+    linhas.push('', ...(await this.blocoSaude()));
     linhas.push('', '— Painel de Implantação · Rech');
 
     const hoje = new Date();

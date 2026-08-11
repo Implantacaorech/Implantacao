@@ -96,6 +96,20 @@ export class TranscricaoService {
     }
   }
 
+  /** Desiste da transcrição do ARQUIVO: o docservice mata o subprocesso e esquece o job.
+   *
+   * Best-effort, como o `vivoCancelar`: se o serviço não responder, não há nada para matar
+   * do outro lado e o painel não pode ficar preso por causa disso. Vale também para
+   * descartar um resultado já pronto que ninguém vai mais buscar (exclusão do protocolo) —
+   * é a transcrição inteira ocupando memória do docservice até ele reiniciar. */
+  async cancelar(protocoloId: number): Promise<void> {
+    try {
+      await firstValueFrom(this.http.delete(`/transcrever/${protocoloId}`));
+    } catch {
+      // Job inexistente ou serviço fora — não há o que cancelar do outro lado.
+    }
+  }
+
   // ------------------------------------------------------------------ ao vivo (reunião)
 
   /** Abre a sessão de gravação ao vivo no docservice (sobe o worker com o modelo
