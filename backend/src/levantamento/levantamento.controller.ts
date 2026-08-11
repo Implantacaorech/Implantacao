@@ -20,8 +20,10 @@ import { PERFIS_GERA_LEVANTAMENTO } from '../common/constants/perfis';
 import { LevantamentoRespostaService } from './levantamento-resposta.service';
 import { LevantamentoPresencaService } from './levantamento-presenca.service';
 import { DocConteudoService } from './doc-conteudo.service';
+import { SugestaoLevantamentoService } from './sugestao-levantamento.service';
 import { SalvarLinhaLevantamentoDto } from './dto/salvar-linha-levantamento.dto';
 import { SincronizarLevantamentoDto } from './dto/sincronizar-levantamento.dto';
+import { SugerirLevantamentoDto } from './dto/sugerir-levantamento.dto';
 import type { DocumentoConteudo } from '../database/entities/doc-conteudo.entity';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 
@@ -38,6 +40,7 @@ export class LevantamentoController {
     private readonly respostas: LevantamentoRespostaService,
     private readonly presenca: LevantamentoPresencaService,
     private readonly docConteudo: DocConteudoService,
+    private readonly sugestoes: SugestaoLevantamentoService,
   ) {}
 
   @Get('levantamento')
@@ -87,6 +90,38 @@ export class LevantamentoController {
     );
     const resumo = await this.respostas.resumo(projetoId);
     return new ApiEnvelope({ linha, resumo });
+  }
+
+  @Get('levantamento/gravacoes')
+  @ApiOperation({
+    summary:
+      'Gravações do projeto que têm transcrição — a origem possível das sugestões',
+  })
+  async gravacoes(@Param('projetoId', ParseIntPipe) projetoId: number) {
+    return new ApiEnvelope({
+      gravacoes: await this.sugestoes.gravacoes(projetoId),
+      // A tela precisa saber ANTES de oferecer o botão: sem chave configurada em
+      // Config → IA, o pedido só falharia depois do clique.
+      iaDisponivel: this.sugestoes.disponivel(),
+    });
+  }
+
+  @Post('levantamento/sugerir')
+  @ApiOperation({
+    summary:
+      'Sugere as respostas pendentes a partir da transcrição da reunião. NÃO grava nada.',
+  })
+  async sugerir(
+    @Param('projetoId', ParseIntPipe) projetoId: number,
+    @Body() dto: SugerirLevantamentoDto,
+  ) {
+    // Propositalmente sem gravar: a resposta volta para a tela como PROPOSTA, e quem
+    // responde é o GCI, pelo mesmo PATCH por linha de sempre (com versão e autoria). Um
+    // documento de Levantamento é assinado pelo cliente — "quem escreveu isto?" não pode
+    // ter como resposta "a IA, sozinha".
+    return new ApiEnvelope(
+      await this.sugestoes.sugerir(projetoId, dto.protocoloId),
+    );
   }
 
   @Post('levantamento/sincronizar')

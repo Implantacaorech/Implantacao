@@ -203,6 +203,28 @@ pelo **Teams** (áudio da aba/tela), ou as duas somadas. Atalho também na tela 
   localhost) — o painel está em `http://I7M1700-01-EVE:5100`. Ver `docs/gravacao-reuniao.md`
   e `docs/pendencias.md`.
 
+## Da reunião gravada ao Levantamento (2026-08-11)
+
+`POST /projetos/:id/levantamento/sugerir` lê a transcrição de uma reunião já gravada e
+**propõe** a resposta das perguntas em branco do questionário, com a marca de tempo da
+origem. É o primeiro caso concreto do "Copiloto do Consultor" e o que fecha o ciclo da
+gravação (gravar → transcrever → resumir → **preencher o documento**).
+
+- ⚠️ **A invariante: nada é gravado sozinho.** A rota devolve PROPOSTAS; aceitar é um clique
+  e a gravação sai pelo `PATCH` de sempre, com versão e **autoria de quem aceitou**. O
+  Levantamento é assinado pelo cliente — coberto por teste no service, no e2e (confere que a
+  linha continua vazia e com `versao` intocada) e no Vitest.
+- Só entram perguntas **pendentes**; respondida e "Não será utilizado." são decisão humana.
+- A gravação é casada por `projetoId` **ou nome do cliente** — a reunião de levantamento
+  costuma acontecer antes de a ficha existir (cliente vem do SICLA), então casar só pelo id
+  deixaria de fora justamente a reunião que interessa.
+- A transcrição vai com os **nomes dos locutores aplicados**: "Ivian:" em vez de "P1:" é o
+  que deixa a IA separar o que o CLIENTE faz do que o consultor propôs.
+- Lotes de 50 tópicos, teto de 6 lotes (300) por pedido — e o corte é **declarado** na
+  resposta, nunca silencioso.
+- Finalidade de IA **nova e própria**: `levantamento` (Config → IA). Sem chave, a tela
+  explica em vez de oferecer o botão.
+
 ## O Painel passou a vigiar a si mesmo (2026-08-11)
 
 Módulo `backend/src/saude/` + `GET /api/saude` (permissão `centro_operacional`, a mesma do

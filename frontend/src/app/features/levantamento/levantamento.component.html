@@ -28,6 +28,69 @@
     </span>
   </div>
 
+  <!-- O outro lado da gravação: a reunião que já aconteceu vira PROPOSTA de resposta. Nada
+       é gravado por aqui — cada sugestão espera um "Usar", porque o Levantamento é assinado
+       pelo cliente e a autoria da resposta é de quem revisou. -->
+  <div class="acoes lev-sugerir">
+    <button class="btn" type="button" [disabled]="sugerindo()" (click)="alternarPainelGravacoes()">
+      ✨ {{ sugerindo() ? 'Lendo a reunião…' : 'Preencher a partir de uma reunião' }}
+    </button>
+    @if (totalSugestoes() > 0) {
+      <button class="btn primario" type="button" (click)="irParaSugestao()">
+        {{ totalSugestoes() }} sugestão(ões) a revisar
+      </button>
+      <button class="btn" type="button" (click)="usarTodasSugestoes()">Usar todas</button>
+    }
+    <span class="dica" style="margin:0">
+      Lê a transcrição de uma reunião já gravada e propõe a resposta das perguntas em branco.
+    </span>
+  </div>
+
+  @if (avisoSugestao(); as a) {
+    <div class="resultado">
+      ℹ️ {{ a }}
+      <button type="button" class="lev-x" (click)="avisoSugestao.set(null)" aria-label="Fechar aviso">×</button>
+    </div>
+  }
+
+  @if (painelGravacoes()) {
+    <div class="painel lev-gravacoes">
+      <h3 style="margin-top:0">De qual reunião?</h3>
+      @if (carregandoGravacoes()) {
+        <p class="dica" style="margin:0">Procurando as gravações deste cliente…</p>
+      } @else if (!iaDisponivel()) {
+        <p class="resultado erro" style="margin:0">
+          A finalidade <strong>“Levantamento a partir da reunião”</strong> ainda não tem chave
+          de IA configurada — cadastre em <strong>Config → IA</strong> para usar este recurso.
+        </p>
+      } @else if (gravacoes().length === 0) {
+        <p class="dica" style="margin:0">
+          Nenhuma gravação com transcrição pronta para <strong>{{ cliente() }}</strong>. Grave a
+          reunião pelo botão acima (ou envie o áudio em Transcrição Áudio/Vídeo) e volte aqui
+          quando a transcrição terminar.
+        </p>
+      } @else {
+        <ul class="lev-grav-lista">
+          @for (g of gravacoes(); track g.id) {
+            <li>
+              <div>
+                <strong>{{ g.titulo }}</strong>
+                <div class="dica" style="margin:0">
+                  {{ g.criadoEm | date: 'dd/MM/yyyy HH:mm' }} · {{ g.status }}
+                  @if (g.duracaoSeg) { · {{ formatarDuracao(g.duracaoSeg) }} }
+                  · {{ g.caracteres }} caracteres transcritos
+                </div>
+              </div>
+              <button class="btn" type="button" [disabled]="sugerindo()" (click)="pedirSugestoes(g.id)">
+                Usar esta reunião
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  }
+
   @if (erro()) {
     <div class="resultado erro">{{ erro() }}</div>
   }
@@ -105,6 +168,19 @@
                           [ngModel]="r.resposta" name="resposta_{{ r.id }}"
                           (ngModelChange)="onRespostaChange(r.id, $event)"
                           (focus)="onFoco(r.id)" (blur)="onBlur(r.id)"></textarea>
+
+                @if (r.sugestao; as s) {
+                  <div class="lev-sugestao">
+                    <div class="lev-sugestao-topo">
+                      <span class="lev-sugestao-tag">✨ Da reunião</span>
+                      @if (s.trecho) { <span class="dica" style="margin:0">em {{ s.trecho }}</span> }
+                      <span style="flex:1"></span>
+                      <button class="btn" type="button" (click)="usarSugestao(r.id)">Usar</button>
+                      <button class="btn" type="button" (click)="descartarSugestao(r.id)">Descartar</button>
+                    </div>
+                    <p style="margin:6px 0 0">{{ s.texto }}</p>
+                  </div>
+                }
 
                 <div class="lev-rodape">
                   @if (editores().get(r.id); as quem) {

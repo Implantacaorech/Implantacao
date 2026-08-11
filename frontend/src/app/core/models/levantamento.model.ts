@@ -30,6 +30,40 @@ export interface LevantamentoDados {
   resumo: LevantamentoResumo;
 }
 
+/** Gravação de reunião que pode servir de origem para as sugestões. */
+export interface GravacaoDisponivel {
+  id: number;
+  titulo: string;
+  criadoEm: string;
+  duracaoSeg: number;
+  status: string;
+  /** Tamanho da transcrição — dá a noção de "tem conteúdo aqui". */
+  caracteres: number;
+}
+
+export interface GravacoesLevantamento {
+  gravacoes: GravacaoDisponivel[];
+  /** A finalidade "Levantamento" está configurada em Config → IA? */
+  iaDisponivel: boolean;
+}
+
+/** Proposta de resposta vinda da reunião. **Nunca** foi gravada: quem responde é o GCI. */
+export interface SugestaoLevantamento {
+  linhaId: number;
+  moduloSigla: string;
+  topico: string;
+  texto: string;
+  /** Marca de tempo da transcrição onde o assunto aparece — a origem, para conferir. */
+  trecho: string;
+}
+
+export interface ResultadoSugestoes {
+  sugestoes: SugestaoLevantamento[];
+  analisados: number;
+  naoAnalisados: number;
+  aviso: string;
+}
+
 /** Outro técnico com a mesma tela aberta e onde ele está agora. */
 export interface PresencaLevantamento {
   usuarioId: number;

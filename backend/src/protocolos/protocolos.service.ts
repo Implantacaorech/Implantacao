@@ -178,6 +178,33 @@ export class ProtocolosService {
     return qb.getMany();
   }
 
+  /** Gravações e vídeos ligados a um projeto, mais recentes primeiro — é a lista que o
+   * Levantamento oferece para sugerir respostas a partir da reunião.
+   *
+   * Casa por `projetoId` **ou** pelo nome do cliente, e o "ou" é o ponto: a gravação de
+   * reunião escolhe o cliente pela busca no SICLA, que acontece ANTES de a ficha do projeto
+   * existir (`Protocolo.projetoId` fica nulo nesses casos — ver protocolo.entity.ts). Casar
+   * só pelo id deixaria de fora justamente a reunião de levantamento, que é a mais provável
+   * de ter acontecido antes do cadastro.
+   *
+   * Só devolve o que tem transcrição: sem texto não há o que sugerir. */
+  async listarDoProjeto(projetoId: number, cliente = ''): Promise<Protocolo[]> {
+    const qb = this.repo
+      .createQueryBuilder('p')
+      .where('p.transcricao <> :vazio', { vazio: '' })
+      .orderBy('p.criadoEm', 'DESC');
+    const nome = (cliente || '').trim().toLowerCase();
+    if (nome) {
+      qb.andWhere('(p.projetoId = :projetoId OR LOWER(p.cliente) = :cliente)', {
+        projetoId,
+        cliente: nome,
+      });
+    } else {
+      qb.andWhere('p.projetoId = :projetoId', { projetoId });
+    }
+    return qb.getMany();
+  }
+
   async atualizarStatus(
     id: number,
     status: StatusProtocolo,

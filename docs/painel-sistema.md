@@ -167,6 +167,26 @@ contextuais (gerar pendentes, anexar, nota, avançar, excluir). Inclui:
 As perguntas do **Índice de Tópicos** dos módulos contratados viram um formulário, agrupado
 por área (como no documento). As respostas são salvas e **alimentam o Projeto** sem redigitar.
 
+**Preencher a partir da reunião gravada — *2026-08-11*.** Fecha o ciclo com a gravação
+(§5.17.1): a mesma tela que oferece *Gravar reunião* passa a oferecer **“Preencher a partir
+de uma reunião”**. O painel lê a transcrição de uma reunião já gravada do cliente e **propõe**
+a resposta das perguntas em branco, cada uma com a marca de tempo (`[12:35]`) de onde o
+assunto aparece — para conferir a origem em um clique.
+
+- ⚠️ **Nada é gravado sozinho.** A sugestão aparece ao lado da pergunta e espera **Usar** ou
+  **Descartar**. Ao aceitar, o texto entra pelo mesmo caminho da digitação — autosave, versão
+  e **autoria de quem aceitou**. O Levantamento é assinado pelo cliente: “quem escreveu
+  isto?” não pode ter como resposta “a IA, sozinha”.
+- Só entram perguntas **em branco**: resposta já digitada e *“Não será utilizado.”* são
+  decisão humana e não são colocadas em dúvida.
+- A gravação é casada por **projeto ou nome do cliente** — a reunião de levantamento costuma
+  acontecer antes de a ficha existir (o cliente vem da busca no SICLA).
+- Silêncio é resposta válida: o que a reunião não tratou volta sem sugestão. É comum uma
+  gravação render 5 sugestões, não 50.
+- Configuração: finalidade **“Levantamento a partir da reunião”** em **Config → IA** (chave
+  própria, separada de Protocolos e Dicionário). Sem ela, a tela explica o que fazer em vez
+  de oferecer o botão.
+
 ### 5.5 Gate de origem do Projeto (`/projetos/<id>/projeto/origem`)
 O Projeto **nasce do Levantamento**. A tela oferece três origens:
 - **Dados em tela** — usa as respostas preenchidas no painel;
