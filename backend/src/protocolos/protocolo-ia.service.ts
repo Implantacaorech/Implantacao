@@ -152,6 +152,47 @@ export interface ResultadoAnaliseIa {
   bruto: string;
 }
 
+/**
+ * Resgata os campos de um JSON que veio CORTADO.
+ *
+ * O corte é uma possibilidade real, não teórica: a saída é limitada a 8.000 tokens e o
+ * formato pede ~24 seções, uma delas sendo "TODOS os menus citados no treinamento". Num
+ * treinamento longo o modelo chega ao teto no meio de um campo, e aí não existe `}` final.
+ *
+ * Até 2026-08-11 isso custava o registro INTEIRO: sem `}`, o `JSON.parse` falhava, a regex
+ * de resgate (que exigia o fecha-chaves) não casava, e a função devolvia `null` — descartando
+ * em silêncio todos os campos que tinham chegado completos. Aproveitar o que veio é sempre
+ * melhor do que perder tudo: o revisor completa um campo faltante, mas não reconstrói um
+ * protocolo vazio.
+ *
+ * Só recolhe pares `"chave": "valor"` FECHADOS — o campo que estava sendo escrito na hora do
+ * corte fica de fora, em vez de entrar pela metade.
+ */
+export function resgatarCamposDeJsonCortado(
+  txt: string,
+): Record<string, string> {
+  const campos: Record<string, string> = {};
+  const re = /"([a-z_]+)"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(txt)) !== null) {
+    try {
+      // Reaproveita o parser para desescapar \n, \" e afins do jeito certo.
+      campos[m[1]] = JSON.parse(`"${m[2]}"`) as string;
+    } catch {
+      // O parser recusa coisas que o modelo emite na prática — a mais comum é uma quebra de
+      // linha DE VERDADE dentro da string (JSON exige `\n`). Desescapa à mão em vez de
+      // perder o campo: aqui já estamos no caminho do resgate, e um texto com escape
+      // imperfeito continua sendo útil para quem revisa.
+      campos[m[1]] = m[2]
+        .replace(/\\n/g, '\n')
+        .replace(/\\t/g, '\t')
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, '\\');
+    }
+  }
+  return campos;
+}
+
 function extraiJson(txt: string): unknown {
   try {
     return JSON.parse(txt);
@@ -161,10 +202,11 @@ function extraiJson(txt: string): unknown {
       try {
         return JSON.parse(m[0]);
       } catch {
-        return null;
+        // Cai no resgate: JSON malformado ainda costuma ter campos inteiros aproveitáveis.
       }
     }
-    return null;
+    const resgatados = resgatarCamposDeJsonCortado(txt || '');
+    return Object.keys(resgatados).length > 0 ? resgatados : null;
   }
 }
 
@@ -184,11 +226,22 @@ export class ProtocoloIaService {
     return this.ia.disponivel('protocolos');
   }
 
+  /** `menusReconhecidos` é a lista de menus do catálogo REAL do SIGER que foram encontrados
+   * na transcrição (ver `menus-mencionados.ts`). Entregá-la aqui muda o trabalho da IA: em
+   * vez de adivinhar o código do menu a partir de um texto onde ele chegou mastigado
+   * ("um ponto quatro i"), ela escolhe dentro do que existe. Vazia, o comportamento é o de
+   * antes — a IA extrai o que conseguir do texto. */
   async analisar(
     transcricao: string,
     videoNome = '',
+    menusReconhecidos = '',
   ): Promise<ResultadoAnaliseIa> {
-    const user = `Vídeo: ${videoNome}\n\nTRANSCRIÇÃO (com timestamps):\n${transcricao}`;
+    const bloco = menusReconhecidos.trim()
+      ? '\n\nMENUS DO SIGER RECONHECIDOS NESTA GRAVAÇÃO (catálogo oficial — use ESTES ' +
+        'códigos e nomes; não invente nem reescreva o código):\n' +
+        `${menusReconhecidos.trim()}\n`
+      : '';
+    const user = `Vídeo: ${videoNome}${bloco}\n\nTRANSCRIÇÃO (com timestamps):\n${transcricao}`;
     const bruto = await this.ia.completar('protocolos', {
       system: SISTEMA,
       messages: [{ role: 'user', content: user }],

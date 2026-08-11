@@ -14,6 +14,7 @@ import { ProcessamentoProtocolosService } from './processamento-protocolos.servi
 import { ProtocolosService } from './protocolos.service';
 import { ProtocoloIaService } from './protocolo-ia.service';
 import { TranscricaoService } from '../transcricao/transcricao.service';
+import { MenusSigerService } from '../matriz-detalhada/menus-siger.service';
 import { Protocolo } from '../database/entities/protocolo.entity';
 
 describe('ProcessamentoProtocolosService', () => {
@@ -30,6 +31,9 @@ describe('ProcessamentoProtocolosService', () => {
   };
   const ia = { analisar: jest.fn(), resumirCompleto: jest.fn() };
   const transcricao = { iniciar: jest.fn(), status: jest.fn() };
+  // Taxonomia de menus do SIGER (Dicionário). Vazia por padrão: o reconhecimento de menus é
+  // ENRIQUECIMENTO, e o pipeline tem de funcionar igual sem ele.
+  const menus = { taxonomia: jest.fn().mockResolvedValue([]) };
 
   beforeAll(() => {
     raiz = mkdtempSync(join(tmpdir(), 'protocolos-raiz-'));
@@ -41,6 +45,7 @@ describe('ProcessamentoProtocolosService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    menus.taxonomia.mockResolvedValue([]);
     config.get.mockReturnValue(raiz);
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -49,6 +54,7 @@ describe('ProcessamentoProtocolosService', () => {
         { provide: ProtocolosService, useValue: protocolos },
         { provide: ProtocoloIaService, useValue: ia },
         { provide: TranscricaoService, useValue: transcricao },
+        { provide: MenusSigerService, useValue: menus },
       ],
     }).compile();
     service = module.get(ProcessamentoProtocolosService);
@@ -148,6 +154,69 @@ describe('ProcessamentoProtocolosService', () => {
           'Registro de Atividades por Menu do Sistema\nMenu 4 – Caixa:\nAção: lançamento manual.',
       });
       expect(existsSync(video)).toBe(true); // upload não é movido
+    });
+
+    /** A queixa de 2026-08-11: "não trouxe os menus de uso mencionados no vídeo". O prompt
+     * já pedia os menus; o que faltava era o código chegar íntegro ao texto. Agora a
+     * transcrição é casada contra o catálogo real do Dicionário e a IA recebe a lista. */
+    it('entrega à IA os menus do SIGER reconhecidos na transcrição', async () => {
+      const video = join(raiz, 'com-menus.mp4');
+      writeFileSync(video, 'x');
+      protocolos.buscar.mockResolvedValue(
+        protocolo({
+          videoCaminho: video,
+          // Como o Whisper realmente escreve: o código falado por extenso.
+          transcricao: 'Abrimos o dois ponto três N para emitir a nota fiscal.',
+        }),
+      );
+      menus.taxonomia.mockResolvedValue([
+        {
+          sigla: 'FAT',
+          tipo: 'modulo',
+          titulo: 'FAT - Faturamento',
+          menus: [
+            {
+              codigo: '2.3-N/G/K',
+              opcao: 'Emissao de notas.',
+              programa: 'FAT203',
+              funcao: '',
+            },
+          ],
+        },
+      ]);
+      ia.analisar.mockResolvedValue({ campos: {}, bruto: '{}' });
+      ia.resumirCompleto.mockResolvedValue('resumo');
+
+      await service.processar(1, 'Fulano');
+
+      const [, , menusNoPrompt] = ia.analisar.mock.calls[0] as [
+        string,
+        string,
+        string,
+      ];
+      expect(menusNoPrompt).toContain('2.3-N/G/K');
+      expect(menusNoPrompt).toContain('FAT203');
+    });
+
+    it('Dicionário indisponível não derruba o pipeline — é enriquecimento', async () => {
+      const video = join(raiz, 'sem-dicionario.mp4');
+      writeFileSync(video, 'x');
+      protocolos.buscar.mockResolvedValue(
+        protocolo({ videoCaminho: video, transcricao: 'texto qualquer' }),
+      );
+      menus.taxonomia.mockRejectedValue(new Error('banco fora'));
+      ia.analisar.mockResolvedValue({ campos: {}, bruto: '{}' });
+      ia.resumirCompleto.mockResolvedValue('resumo');
+
+      const r = await service.processar(1, 'Fulano');
+
+      expect(r.ok).toBe(true);
+      const [, , menusNoPrompt] = ia.analisar.mock.calls[0] as [
+        string,
+        string,
+        string,
+      ];
+      expect(menusNoPrompt).toBe(''); // segue sem a lista, como antes
     });
 
     it('falha no resumo completo não derruba o pipeline (protocolo segue p/ revisão)', async () => {
