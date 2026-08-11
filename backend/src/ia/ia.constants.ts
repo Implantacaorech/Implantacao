@@ -6,7 +6,7 @@ export const PROVEDORES_IA: ProvedorIa[] = ['anthropic', 'openrouter'];
 
 /** Cada uso de IA no Painel é uma "finalidade" com chave/provedor/modelo PRÓPRIOS — o usuário
  * pediu campos separados por finalidade, não uma chave global compartilhada. */
-export type FinalidadeIa = 'protocolos' | 'dicionario';
+export type FinalidadeIa = 'protocolos' | 'dicionario' | 'levantamento';
 
 export interface DefinicaoFinalidade {
   id: FinalidadeIa;
@@ -26,6 +26,13 @@ export const FINALIDADES_IA: DefinicaoFinalidade[] = [
     rotulo: 'Dicionário Inteligente',
     descricao:
       'Resposta em linguagem natural fundamentada nos documentos do SIGER® (RAG).',
+  },
+  {
+    id: 'levantamento',
+    rotulo: 'Levantamento a partir da reunião',
+    descricao:
+      'Sugere as respostas do questionário de Levantamento a partir da transcrição da ' +
+      'reunião gravada. As sugestões nunca são gravadas sozinhas — quem responde é o GCI.',
   },
 ];
 

@@ -227,3 +227,57 @@ details.lev-mod[open] > summary::before {
   gap: 10px;
   margin: 0 0 16px;
 }
+/* O outro lado da gravação: a reunião que já aconteceu preenchendo o questionário. Fica
+   colada na chamada de gravar, porque as duas são a mesma história em tempos diferentes. */
+.lev-sugerir {
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 16px;
+}
+.lev-gravacoes {
+  margin: 0 0 16px;
+}
+.lev-grav-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.lev-grav-lista li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.lev-grav-lista li > div {
+  flex: 1;
+  min-width: 0;
+}
+/* Proposta, não resposta: fundo distinto do campo e ações explícitas ao lado. Enquanto o
+   consultor não clicar em "Usar", nada disto existe no banco. */
+.lev-sugestao {
+  border: 1px dashed var(--brand);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 8px 10px;
+  margin-top: 6px;
+}
+.lev-sugestao-topo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.lev-sugestao-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--brand);
+}
+.lev-sugestao p {
+  white-space: pre-wrap;
+}

@@ -1,4 +1,4 @@
-import { DOCUMENT } from '@angular/common';
+import { DOCUMENT, DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -6,9 +6,11 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { LevantamentoService } from '../../core/services/levantamento.service';
 import { ProjetosService } from '../../core/services/projetos.service';
 import {
+  GravacaoDisponivel,
   LevantamentoRespostaLinha,
   LevantamentoResumo,
   PresencaLevantamento,
+  SugestaoLevantamento,
   TEXTO_NAO_UTILIZADO,
 } from '../../core/models/levantamento.model';
 
@@ -59,6 +61,8 @@ export interface ItemLevantamentoRender extends LevantamentoRespostaLinha {
   mostrarAdicional: boolean;
   /** Sem resposta e sem a flag "Não será utilizado." — é o que falta para concluir. */
   pendente: boolean;
+  /** Proposta vinda da reunião gravada, ainda não aceita. Nunca substitui o campo sozinha. */
+  sugestao: SugestaoLevantamento | null;
 }
 
 export interface GrupoLevantamentoRender {
@@ -71,7 +75,7 @@ export interface GrupoLevantamentoRender {
 @Component({
   selector: 'app-levantamento',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, DatePipe],
   templateUrl: './levantamento.component.html',
   styleUrl: './levantamento.component.css',
 })
@@ -101,6 +105,19 @@ export class LevantamentoComponent implements OnDestroy {
   /** Só passa a marcar os campos vazios em vermelho depois de pedirem a revisão das
    * pendências — abrir a tela com tudo em vermelho não ajuda ninguém. */
   readonly cobrarPendentes = signal(false);
+
+  // ——— sugestões a partir da reunião gravada ———————————————————————————————
+  /** Propostas por linha, ainda NÃO gravadas. Aceitar é um clique explícito: o documento é
+   * assinado pelo cliente, e a autoria da resposta tem de ser de quem revisou. */
+  readonly sugestoes = signal<ReadonlyMap<number, SugestaoLevantamento>>(new Map());
+  readonly gravacoes = signal<GravacaoDisponivel[]>([]);
+  readonly iaDisponivel = signal(true);
+  readonly painelGravacoes = signal(false);
+  readonly carregandoGravacoes = signal(false);
+  readonly sugerindo = signal(false);
+  readonly avisoSugestao = signal<string | null>(null);
+
+  readonly totalSugestoes = computed(() => this.sugestoes().size);
 
   private readonly focoLinha = signal<number | null>(null);
 
@@ -171,6 +188,7 @@ export class LevantamentoComponent implements OnDestroy {
         mostrarModulo,
         mostrarAdicional,
         pendente: !r.naoUtilizado && !respondida,
+        sugestao: this.sugestoes().get(r.id) ?? null,
       });
       if (respondida) ctrl.g.resp++;
       else if (!r.naoUtilizado) ctrl.g.faltam++;
@@ -419,6 +437,95 @@ export class LevantamentoComponent implements OnDestroy {
     this.estadoLinha.set({ ...this.estadoLinha(), [id]: estado });
   }
 
+  // ——— sugestões a partir da reunião gravada ———————————————————————————————
+
+  /** Abre (ou fecha) a lista de gravações do projeto. Carrega sob demanda: quem nunca gravou
+   * reunião não paga uma chamada por abrir o Levantamento. */
+  async alternarPainelGravacoes(): Promise<void> {
+    if (this.painelGravacoes()) {
+      this.painelGravacoes.set(false);
+      return;
+    }
+    this.painelGravacoes.set(true);
+    if (this.gravacoes().length > 0) return;
+    this.carregandoGravacoes.set(true);
+    try {
+      const r = await this.service.gravacoes(this.projetoId);
+      this.gravacoes.set(r.gravacoes);
+      this.iaDisponivel.set(r.iaDisponivel);
+    } catch {
+      this.avisoSugestao.set('Não foi possível listar as gravações deste projeto.');
+    } finally {
+      this.carregandoGravacoes.set(false);
+    }
+  }
+
+  /** Pede as sugestões de uma reunião. Nada é gravado aqui — o que volta fica ao lado de
+   * cada pergunta, esperando um "Usar". */
+  async pedirSugestoes(gravacaoId: number): Promise<void> {
+    this.sugerindo.set(true);
+    this.avisoSugestao.set(null);
+    try {
+      const r = await this.service.sugerir(this.projetoId, gravacaoId);
+      this.sugestoes.set(new Map(r.sugestoes.map((s) => [s.linhaId, s])));
+      this.avisoSugestao.set(r.aviso);
+      this.painelGravacoes.set(false);
+    } catch {
+      this.avisoSugestao.set(
+        'Não foi possível ler a reunião. Confira a chave de IA em Config → IA e tente de novo.',
+      );
+    } finally {
+      this.sugerindo.set(false);
+    }
+  }
+
+  /** Aceita a proposta: o texto entra no campo pelo MESMO caminho da digitação — autosave,
+   * versão e autoria de quem clicou. A sugestão sai da lista; o texto pode ser editado como
+   * qualquer outro depois. */
+  usarSugestao(linhaId: number): void {
+    const s = this.sugestoes().get(linhaId);
+    if (!s) return;
+    this.onRespostaChange(linhaId, s.texto);
+    this.descartarSugestao(linhaId);
+  }
+
+  descartarSugestao(linhaId: number): void {
+    const nova = new Map(this.sugestoes());
+    nova.delete(linhaId);
+    this.sugestoes.set(nova);
+  }
+
+  /** Aceita todas de uma vez. Existe porque revisar 20 respostas uma a uma na tela é o
+   * caminho mais provável para ninguém revisar nenhuma — mas continua sendo um ato
+   * explícito, com confirmação dizendo quantas são. */
+  usarTodasSugestoes(): void {
+    const total = this.sugestoes().size;
+    if (total === 0) return;
+    if (
+      !confirm(
+        `Usar as ${total} sugestões de uma vez? Elas entram como resposta em seu nome — ` +
+          'revise depois cada uma antes de gerar o documento.',
+      )
+    ) {
+      return;
+    }
+    for (const linhaId of [...this.sugestoes().keys()]) this.usarSugestao(linhaId);
+    this.avisoSugestao.set(`${total} resposta(s) preenchidas a partir da reunião.`);
+  }
+
+  formatarDuracao(seg: number): string {
+    const m = Math.floor(seg / 60);
+    const s = String(seg % 60).padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  /** Leva até a primeira pergunta com sugestão — mesma mecânica do "ir para pendente". */
+  irParaSugestao(): void {
+    const alvo = this.linhas().find((l) => this.sugestoes().has(l.id));
+    if (!alvo) return;
+    this.rolarAte(alvo.id);
+  }
+
   // ——— pendências ———————————————————————————————————————————————————————
 
   /** Abre o bloco da primeira pergunta em branco e rola até ela. É aqui que a
@@ -426,8 +533,12 @@ export class LevantamentoComponent implements OnDestroy {
   irParaPendente(): void {
     this.cobrarPendentes.set(true);
     const alvo = this.linhas().find((l) => !l.naoUtilizado && !(l.resposta || '').trim());
-    if (!alvo) return;
-    const campo = this.doc.getElementById(`lev-campo-${alvo.id}`);
+    if (alvo) this.rolarAte(alvo.id);
+  }
+
+  /** Abre o bloco da pergunta e rola até ela, com o cursor dentro. */
+  private rolarAte(linhaId: number): void {
+    const campo = this.doc.getElementById(`lev-campo-${linhaId}`);
     if (!campo) return;
     campo.closest('details')?.setAttribute('open', '');
     campo.scrollIntoView({ block: 'center', behavior: 'smooth' });

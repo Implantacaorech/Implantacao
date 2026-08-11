@@ -4,9 +4,11 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiEnvelope } from '../models/api-envelope.model';
 import {
+  GravacoesLevantamento,
   LevantamentoDados,
   LevantamentoRespostaLinha,
   LevantamentoResumo,
+  ResultadoSugestoes,
   SincronizacaoLevantamento,
 } from '../models/levantamento.model';
 
@@ -51,6 +53,26 @@ export class LevantamentoService {
         `${this.base(projetoId)}/sincronizar`,
         dados,
       ),
+    );
+    return r.data;
+  }
+
+  /** Gravações do projeto que têm transcrição — a origem possível das sugestões. */
+  async gravacoes(projetoId: number): Promise<GravacoesLevantamento> {
+    const r = await firstValueFrom(
+      this.http.get<ApiEnvelope<GravacoesLevantamento>>(`${this.base(projetoId)}/gravacoes`),
+    );
+    return r.data;
+  }
+
+  /** Pede as sugestões a partir de uma reunião gravada. **Nada é gravado**: o que volta são
+   * propostas, e a gravação continua acontecendo pelo `salvarLinha` de sempre — com versão e
+   * autoria de quem aceitou. */
+  async sugerir(projetoId: number, protocoloId: number): Promise<ResultadoSugestoes> {
+    const r = await firstValueFrom(
+      this.http.post<ApiEnvelope<ResultadoSugestoes>>(`${this.base(projetoId)}/sugerir`, {
+        protocoloId,
+      }),
     );
     return r.data;
   }

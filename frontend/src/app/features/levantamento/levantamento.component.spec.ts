@@ -83,6 +83,131 @@ describe('LevantamentoComponent', () => {
     TestBed.resetTestingModule();
   });
 
+  /** O ponto do recurso: a reunião gravada preenche o questionário — mas nada entra sozinho.
+   * O Levantamento é assinado pelo cliente, e a autoria da resposta tem de ser de quem
+   * revisou, não da IA. */
+  describe('sugestões a partir da reunião gravada', () => {
+    const sugestao = {
+      linhaId: 1,
+      moduloSigla: 'FAT',
+      topico: 'Emissão de nota fiscal',
+      texto: 'A emissão é feita hoje no sistema antigo, uma a uma.',
+      trecho: '[00:10]',
+    };
+
+    function comSugestao(extra: Record<string, unknown> = {}) {
+      return {
+        gravacoes: vi.fn().mockResolvedValue({
+          gravacoes: [
+            {
+              id: 42,
+              titulo: 'Reunião de levantamento',
+              criadoEm: '2026-08-01T10:00:00.000Z',
+              duracaoSeg: 1800,
+              status: 'Em revisão',
+              caracteres: 1200,
+            },
+          ],
+          iaDisponivel: true,
+        }),
+        sugerir: vi.fn().mockResolvedValue({
+          sugestoes: [sugestao],
+          analisados: 1,
+          naoAnalisados: 0,
+          aviso: '1 sugestão(ões) a revisar.',
+        }),
+        ...extra,
+      };
+    }
+
+    it('mostra a proposta ao lado da pergunta, sem tocar no campo', async () => {
+      const servico = comSugestao();
+      const fixture = await montar([linha({ id: 1, resposta: '' })], servico);
+      const comp = fixture.componentInstance;
+
+      await comp.pedirSugestoes(42);
+      fixture.detectChanges();
+
+      expect(comp.totalSugestoes()).toBe(1);
+      // A resposta continua vazia — a sugestão é proposta, não preenchimento.
+      expect(comp.linhas()[0].resposta).toBe('');
+      expect(servico.sugerir).toHaveBeenCalledWith(5, 42);
+      const texto = fixture.nativeElement.textContent as string;
+      expect(texto).toContain('A emissão é feita hoje no sistema antigo');
+      expect(texto).toContain('[00:10]');
+      fixture.destroy();
+    });
+
+    it('"Usar" grava pelo mesmo caminho da digitação (com versão), e a sugestão sai da tela', async () => {
+      const salvarLinha = vi.fn().mockResolvedValue({
+        linha: linha({ id: 1, resposta: sugestao.texto, versao: 4, atualizadoPor: 'Eu' }),
+        resumo: { respondidas: 1, total: 1 },
+      });
+      const fixture = await montar(
+        [linha({ id: 1, resposta: '', versao: 3 })],
+        comSugestao({ salvarLinha }),
+      );
+      const comp = fixture.componentInstance;
+      await comp.pedirSugestoes(42);
+
+      comp.usarSugestao(1);
+
+      // O texto entra no campo na hora, e a gravação sai pelo autosave de sempre — com a
+      // versão que estava em tela, para o backend recusar se um colega gravou antes.
+      expect(comp.linhas()[0].resposta).toBe(sugestao.texto);
+      expect(comp.totalSugestoes()).toBe(0);
+      await vi.waitFor(() => expect(salvarLinha).toHaveBeenCalled());
+      expect(salvarLinha).toHaveBeenCalledWith(5, 1, {
+        resposta: sugestao.texto,
+        naoUtilizado: false,
+        versao: 3,
+      });
+      fixture.destroy();
+    });
+
+    it('"Descartar" não escreve nada e some com a proposta', async () => {
+      const fixture = await montar([linha({ id: 1, resposta: '' })], comSugestao());
+      const comp = fixture.componentInstance;
+      await comp.pedirSugestoes(42);
+
+      comp.descartarSugestao(1);
+
+      expect(comp.totalSugestoes()).toBe(0);
+      expect(comp.linhas()[0].resposta).toBe('');
+      fixture.destroy();
+    });
+
+    it('sem chave de IA configurada, a tela diz o que fazer em vez de oferecer o botão', async () => {
+      const fixture = await montar(
+        [linha({ id: 1 })],
+        comSugestao({
+          gravacoes: vi.fn().mockResolvedValue({ gravacoes: [], iaDisponivel: false }),
+        }),
+      );
+      const comp = fixture.componentInstance;
+
+      await comp.alternarPainelGravacoes();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).toContain('Config → IA');
+      fixture.destroy();
+    });
+
+    it('falha ao ler a reunião vira aviso, não quebra a tela', async () => {
+      const fixture = await montar(
+        [linha({ id: 1 })],
+        comSugestao({ sugerir: vi.fn().mockRejectedValue(new Error('502')) }),
+      );
+      const comp = fixture.componentInstance;
+
+      await comp.pedirSugestoes(42);
+
+      expect(comp.avisoSugestao()).toContain('Não foi possível ler a reunião');
+      expect(comp.sugerindo()).toBe(false);
+      fixture.destroy();
+    });
+  });
+
   describe('obrigatoriedade', () => {
     it('conta como pendente toda pergunta sem resposta', async () => {
       const fixture = await montar([

@@ -30,7 +30,14 @@
 - [x] **Feito:** **Cronograma automático** — distribui as agendas pelas horas (cobradas+bonificadas), macro tópicos por etapa/módulo, datas em dias úteis; gerado pela ficha e anexado (satisfaz o gate). Fecha a tríade obrigatória.
 - [ ] Integração **SICLA + RNS** (abrir/atualizar RNS(I), atividades 12/13/84). *Depende de API/banco.*
 - [ ] **Dossiê vivo + Painel de portfólio** (= a própria tela Projetos por Cliente).
-- [ ] **Copiloto do Consultor (IA)**: redigir rotinas, sugerir próximo passo, rascunhar e-mails, apontar riscos (RAID).
+- [~] **Copiloto do Consultor (IA)**: redigir rotinas, sugerir próximo passo, rascunhar e-mails, apontar riscos (RAID).
+  - [x] **Feito (2026-08-11) — da reunião gravada ao Levantamento.** O primeiro caso concreto
+    do copiloto, e o que fecha o ciclo da gravação: `POST /projetos/:id/levantamento/sugerir`
+    lê a transcrição de uma reunião do cliente e **propõe** a resposta das perguntas em
+    branco, com a marca de tempo da origem. ⚠️ **Nada é gravado sozinho** — aceitar é um
+    clique, e a gravação sai pelo mesmo PATCH de sempre, com a autoria de quem aceitou.
+    Finalidade de IA própria (`levantamento`), chave separada em Config → IA.
+  - [ ] Os demais: próximo passo, rascunho de e-mail e riscos (RAID).
 - [ ] **Pipeline de Conversão + gate de virada** (reconciliação origem×destino, SIT/UAT, pendências, docs obrigatórios).
 - [ ] **Disparadores de fim de fluxo** (critério de saída do hypercare → Termo + e-mails + RNS para manutenção).
 - [x] **Feito:** **Alertas proativos** — uso oficial vencido, SLA de 5 dias úteis do Cronograma, Em risco, Hypercare prolongado e projeto parado; painel no Coordenação + badge no menu (respeita o perfil).
