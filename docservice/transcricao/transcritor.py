@@ -160,11 +160,17 @@ def _montar_texto(segmentos, trechos):
 
 
 def transcrever_isolado(video_path, timeout=3 * 3600, progress_file=None,
-                        vocabulario=None, pessoas=0):
+                        vocabulario=None, pessoas=0, ao_iniciar=None):
     """Transcreve em SUBPROCESSO isolado (memória liberada ao fim). Lança em erro/timeout.
     Com `progress_file`, o subprocesso grava ali o andamento em JSON ({pos,dur,pct}).
     `vocabulario` viaja por variável de ambiente, e não por argumento de linha de comando:
-    é texto livre digitado pelo usuário (nomes, termos), que quebraria o quoting do shell."""
+    é texto livre digitado pelo usuário (nomes, termos), que quebraria o quoting do shell.
+
+    `ao_iniciar(proc)` recebe o subprocesso assim que ele nasce — é por essa alça que o
+    cancelamento consegue MATAR a transcrição (ver servico.cancelar). Antes daqui existia
+    um `subprocess.run`, que não devolve nada enquanto espera: cancelar na tela apagava o
+    registro e deixava o transcritor moendo o vídeo inteiro (observado a 377% de CPU em
+    2026-08-06, já sem ninguém para receber o resultado)."""
     import subprocess
     import tempfile
     out = tempfile.mktemp(suffix=".json")
@@ -179,9 +185,22 @@ def transcrever_isolado(video_path, timeout=3 * 3600, progress_file=None,
     if pessoas:
         env["PROTOCOLOS_PESSOAS"] = str(int(pessoas))
     try:
-        r = subprocess.run(args, capture_output=True, text=True, timeout=timeout, env=env)
-        if r.returncode != 0 or not os.path.exists(out):
-            raise RuntimeError((r.stderr or r.stdout or "transcrição falhou").strip()[-400:])
+        proc = subprocess.Popen(
+            args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env
+        )
+        if ao_iniciar:
+            # Antes de esperar: quem cancela precisa da alça enquanto o processo VIVE.
+            ao_iniciar(proc)
+        try:
+            saida, erro = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            # Mesmo desfecho do `subprocess.run(timeout=...)` que estava aqui: mata o
+            # processo, recolhe o que sobrou dos pipes e propaga.
+            proc.kill()
+            proc.communicate()
+            raise
+        if proc.returncode != 0 or not os.path.exists(out):
+            raise RuntimeError((erro or saida or "transcrição falhou").strip()[-400:])
         with open(out, encoding="utf-8") as f:
             return json.load(f)
     finally:

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   copyFileSync,
@@ -15,6 +15,7 @@ import { ProtocolosService } from './protocolos.service';
 import { ProtocoloIaService } from './protocolo-ia.service';
 import { TranscricaoService } from '../transcricao/transcricao.service';
 import { EXTS } from './protocolos.constants';
+import { StatusProtocolo } from '../database/entities/protocolo.entity';
 import { montarVocabulario } from './vocabulario';
 import { aplicarNomes, lerMapa } from './locutores';
 import { formatarParaPrompt, menusMencionados } from './menus-mencionados';
@@ -56,6 +57,18 @@ const MAX_FALHAS_DE_CONSULTA = 30;
  * travamento, não lentidão. */
 const MAX_MS_CONGELADO = 60 * 60 * 1000;
 
+/** Status em que existe trabalho em curso — é onde cancelar faz sentido e é de onde o
+ * protocolo não conseguia sair sozinho. */
+export const STATUS_EM_PROCESSAMENTO: StatusProtocolo[] = [
+  'Transcrevendo',
+  'Analisando',
+];
+
+/** Marca que o pipeline foi mandado parar. Não é "falha": é decisão de quem cancelou, e o
+ * `catch` do pipeline a distingue do erro de verdade para não sobrescrever a mensagem nem
+ * mandar o vídeo para 'Videos Com Erro'. */
+const CANCELADO = 'PROCESSAMENTO_CANCELADO';
+
 /** Pipeline Vídeo -> Protocolo: transcrição local (via docservice) e análise IA. Fluxo:
  * vídeo em 'Videos Pendentes' (ou upload) -> registro Pendente (dedup por hash) ->
  * Transcrevendo -> Analisando -> Em revisão (+ move p/ 'Videos Processados'); qualquer
@@ -64,8 +77,15 @@ const MAX_MS_CONGELADO = 60 * 60 * 1000;
  * docservice (Python/faster-whisper); este serviço só orquestra (tem o banco, o
  * docservice não). */
 @Injectable()
-export class ProcessamentoProtocolosService {
+export class ProcessamentoProtocolosService implements OnApplicationBootstrap {
   private readonly logger = new Logger('ProcessamentoProtocolosService');
+
+  /** Protocolos com pipeline RODANDO neste processo. Só quem está aqui pode ser cancelado
+   * em voo — assim `cancelados` nunca acumula id de trabalho que não existe. */
+  private readonly emVoo = new Set<number>();
+  /** Subconjunto de `emVoo` que recebeu ordem de parar. Limpo no `finally` do próprio
+   * pipeline, que é o único a lê-lo. */
+  private readonly cancelados = new Set<number>();
 
   constructor(
     private readonly config: ConfigService<AppConfig, true>,
@@ -74,6 +94,13 @@ export class ProcessamentoProtocolosService {
     private readonly transcricao: TranscricaoService,
     private readonly menus: MenusSigerService,
   ) {}
+
+  /** Roda depois que todos os módulos subiram (o banco já está conectado). Pulado em teste
+   * — a suíte chama `recuperarPresos()` direto, sem depender do ciclo de vida do Nest. */
+  onApplicationBootstrap(): void {
+    if (process.env.NODE_ENV === 'test') return;
+    void this.recuperarPresos();
+  }
 
   pastaRaiz(): string {
     return this.config.get('protocolosDir', { infer: true });
@@ -289,6 +316,11 @@ export class ProcessamentoProtocolosService {
     let avancouEm = Date.now();
 
     for (;;) {
+      // Cancelamento é verificado ANTES da consulta: quem cancelou já matou o job do outro
+      // lado, e insistir aqui só produziria o erro genérico "não conhece mais este
+      // trabalho" — que apagaria a mensagem de cancelamento na tela.
+      if (this.cancelados.has(protocoloId)) throw new Error(CANCELADO);
+
       // `status()` lança em qualquer erro que não seja 404. Sem este try, um `ECONNRESET` de
       // um instante -- num serviço em 127.0.0.1! -- derrubava o pipeline e jogava fora horas
       // de transcrição já feita. Aconteceu em produção em 2026-08-10 com quatro protocolos
@@ -424,6 +456,124 @@ export class ProcessamentoProtocolosService {
     return this.aguardarTranscricao(id);
   }
 
+  /** Manda o pipeline em voo parar e mata a transcrição do lado do docservice. NÃO mexe no
+   * status — quem chama decide o que registrar (cancelar marca 'Erro'; excluir apaga a
+   * linha inteira).
+   *
+   * A ordem importa: primeiro a marca em memória (para o laço de espera desistir na próxima
+   * batida), depois o docservice. */
+  async interromper(id: number): Promise<void> {
+    if (this.emVoo.has(id)) this.cancelados.add(id);
+    await this.transcricao.cancelar(id);
+  }
+
+  /** Cancela o processamento de um protocolo — é o "destravar" da tela.
+   *
+   * Sem isto, protocolo em 'Transcrevendo'/'Analisando' era um beco sem saída: a trava que
+   * evita corrida entre o robô e o clique manual (ver `processar`) é a MESMA que impedia o
+   * conserto, então o único caminho era editar o banco à mão. Consequência prática: reiniciar
+   * o backend com transcrição em voo deixava o registro preso para sempre.
+   *
+   * Termina em 'Erro' de propósito: é o único status de onde "Processar agora" volta a
+   * funcionar — e o reprocessamento aproveita o que já estiver pronto no docservice. */
+  async cancelar(
+    id: number,
+    autor = '',
+  ): Promise<{ ok: boolean; msg: string }> {
+    const p = await this.protocolos.buscar(id);
+    if (!p) return { ok: false, msg: 'Protocolo não encontrado.' };
+    if (!STATUS_EM_PROCESSAMENTO.includes(p.status)) {
+      return {
+        ok: false,
+        msg: `Não há processamento em andamento para cancelar (status: ${p.status}).`,
+      };
+    }
+    await this.interromper(id);
+    const quem = autor || 'sistema';
+    await this.protocolos.atualizarStatus(
+      id,
+      'Erro',
+      `Processamento cancelado por ${quem}. Use "Processar agora" para recomeçar — ` +
+        'a transcrição que já tiver ficado pronta será aproveitada.',
+      autor,
+    );
+    this.logger.log(`Protocolo ${id}: processamento cancelado por ${quem}.`);
+    return { ok: true, msg: 'Processamento cancelado.' };
+  }
+
+  /** Religa o que ficou preso quando o painel foi reiniciado no meio do processamento.
+   *
+   * O pipeline vive na memória DESTE processo: reiniciar o backend mata a espera, mas o
+   * banco continua marcando 'Transcrevendo'/'Analisando' — e desse estado nada saía sozinho.
+   *
+   * Regra que governa a retomada: **nunca retranscrever do zero por conta própria.** Um
+   * vídeo de treinamento leva horas de CPU, e um boot que resolvesse recomeçar meia dúzia
+   * deles ocuparia a máquina o dia inteiro sem ninguém ter pedido. Só retoma quando o
+   * trabalho pesado já existe (transcrição no banco, ou pronta/em andamento no docservice);
+   * fora isso, marca 'Erro' com a explicação e deixa a decisão para quem abrir a tela. */
+  async recuperarPresos(): Promise<{ retomados: number; parados: number }> {
+    const presos: {
+      id: number;
+      transcricao: string;
+      status: StatusProtocolo;
+    }[] = [];
+    for (const status of STATUS_EM_PROCESSAMENTO) {
+      presos.push(...(await this.protocolos.listar({ status })));
+    }
+    let retomados = 0;
+    let parados = 0;
+
+    for (const p of presos) {
+      const temTexto = (p.transcricao || '').trim().length > 0;
+      let job: Awaited<ReturnType<TranscricaoService['status']>> = null;
+      if (!temTexto) {
+        try {
+          job = await this.transcricao.status(p.id);
+        } catch (e) {
+          // Docservice fora do ar no boot (ele sobe em processo próprio, e o painel não
+          // espera por ele): trata como "não há trabalho pronto" e deixa em Erro.
+          this.logger.warn(
+            `Protocolo ${p.id}: não deu para consultar a transcrição no boot ` +
+              `(${this.erroAmigavel(e)}).`,
+          );
+        }
+      }
+      const aproveitavel =
+        temTexto ||
+        job?.status === 'concluido' ||
+        job?.status === 'processando';
+
+      // Precisa passar por 'Erro' ANTES de reprocessar: `processar` recusa quem está em
+      // 'Transcrevendo'/'Analisando' — é a mesma trava que criou o beco sem saída.
+      await this.protocolos.atualizarStatus(
+        p.id,
+        'Erro',
+        aproveitavel
+          ? 'O painel foi reiniciado durante o processamento — retomando de onde parou ' +
+              '(a transcrição já feita não é refeita).'
+          : 'O painel foi reiniciado durante o processamento e a transcrição se perdeu. ' +
+              'Não foi refeita sozinha para não ocupar a máquina por horas sem alguém pedir — ' +
+              'use "Processar agora".',
+        'sistema',
+      );
+
+      if (aproveitavel) {
+        this.processarAsync(p.id, 'sistema');
+        retomados += 1;
+      } else {
+        parados += 1;
+      }
+    }
+
+    if (presos.length > 0) {
+      this.logger.log(
+        `Recuperação de boot: ${presos.length} protocolo(s) preso(s) em processamento — ` +
+          `${retomados} retomado(s), ${parados} aguardando decisão.`,
+      );
+    }
+    return { retomados, parados };
+  }
+
   /** Roda o pipeline de UM protocolo: transcreve -> analisa -> Em revisão. Se a
    * transcrição JÁ existe (ex.: reprocessando após falha da IA ou edição), ela é
    * APROVEITADA — vai direto para a análise. Em falha, marca Erro e move o vídeo p/
@@ -457,6 +607,9 @@ export class ProcessamentoProtocolosService {
       return { ok: false, msg: 'Arquivo de vídeo não encontrado.' };
     }
 
+    // A partir daqui o pipeline é cancelável: só quem está em voo entra em `cancelados`,
+    // então a marca nunca sobra para um trabalho que já acabou.
+    this.emVoo.add(id);
     try {
       if (!texto) {
         // só transcreve se ainda não há transcrição
@@ -476,6 +629,10 @@ export class ProcessamentoProtocolosService {
           throw new Error('Transcrição vazia (vídeo sem fala reconhecível?).');
         }
       }
+
+      // Última saída barata: daqui para frente cada etapa é uma chamada PAGA de IA, e
+      // cancelar não interrompe uma requisição já em andamento.
+      if (this.cancelados.has(id)) throw new Error(CANCELADO);
 
       await this.protocolos.atualizarStatus(id, 'Analisando', undefined, autor);
       // A IA lê a transcrição JÁ com os nomes aplicados (quando alguém já renomeou os
@@ -509,6 +666,13 @@ export class ProcessamentoProtocolosService {
       }
       return { ok: true, msg: 'Protocolo pronto para revisão.' };
     } catch (e) {
+      if (e instanceof Error && e.message === CANCELADO) {
+        // Não é falha: `cancelar` já gravou o status e a mensagem. Sobrescrever aqui
+        // trocaria "cancelado por Fulano" por um erro técnico, e mandar o vídeo para
+        // 'Videos Com Erro' esconderia da varredura um arquivo que não tem defeito nenhum.
+        this.logger.log(`Pipeline do protocolo ${id} interrompido a pedido.`);
+        return { ok: false, msg: 'Processamento cancelado.' };
+      }
       this.logger.error(
         `Pipeline do protocolo ${id} falhou`,
         e instanceof Error ? e.stack : String(e),
@@ -532,6 +696,9 @@ export class ProcessamentoProtocolosService {
         ok: false,
         msg: `Falha no processamento: ${e instanceof Error ? e.constructor.name : 'Error'}`,
       };
+    } finally {
+      this.emVoo.delete(id);
+      this.cancelados.delete(id);
     }
   }
 

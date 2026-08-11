@@ -277,6 +277,15 @@ protocolo** revisáveis:
   enviou**. Exceções: **ADM** vê tudo (administra e aprova) e os **vídeos do robô do
   SharePoint** continuam visíveis para todos (pasta compartilhada, sem dono). Vale na lista
   **e** em toda rota por id — `backend/src/protocolos/protocolos.acesso.ts`.
+- **Dá para desistir e dá para destravar (2026-08-11):** enquanto o protocolo está
+  *Transcrevendo*/*Analisando*, a ficha oferece **Cancelar processamento** — o subprocesso do
+  transcritor é **morto de verdade** no docservice (antes ele seguia moendo o vídeo inteiro,
+  a 377% de CPU, mesmo depois de cancelado), e o registro volta para **Erro**, que é de onde
+  *Processar agora* funciona. Excluir um protocolo em processamento faz o mesmo antes de
+  apagar a linha. E, se o **painel for reiniciado no meio**, uma varredura no boot religa o
+  que dá para aproveitar (transcrição já gravada, ou pronta/em andamento no docservice) e
+  deixa o resto em *Erro* com a explicação — **nunca retranscreve do zero por conta própria**,
+  porque um vídeo de treinamento custa horas de máquina.
 - Config: `PROTOCOLOS_DIR` (pasta raiz), `PROTOCOLOS_POLL_MIN` (robô, padrão 10 min),
   `PROTOCOLOS_WHISPER` (modelo, padrão `base` — rápido; use `small`/`medium` p/ mais
   precisão) e `PROTOCOLOS_THREADS` (0 = automático/todos os núcleos, o mais rápido).

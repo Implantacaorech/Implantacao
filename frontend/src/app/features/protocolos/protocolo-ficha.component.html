@@ -48,9 +48,14 @@
       @if (p.aprovadoEm) { · <strong>Aprovado:</strong> {{ formatarData(p.aprovadoEm) }} por {{ p.aprovador }} }
     </p>
     <div class="acoes" style="margin-top:var(--sp-3)">
-      <button class="btn" type="button" [disabled]="processando()" (click)="processar()">
+      <button class="btn" type="button" [disabled]="processando() || emProcessamento()" (click)="processar()">
         🔁 {{ p.status === 'Pendente' || p.status === 'Erro' ? 'Processar agora' : 'Reprocessar' }}
       </button>
+      @if (emProcessamento()) {
+        <button class="btn perigo" type="button" [disabled]="cancelando()" (click)="cancelar()">
+          ⛔ {{ cancelando() ? 'Cancelando…' : 'Cancelar processamento' }}
+        </button>
+      }
       @if (podeAprovar() && p.status === 'Em revisão') {
         <button class="btn primario" type="button" [disabled]="decidindo()" (click)="aprovar()"><svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Aprovar e publicar</button>
         <button class="btn perigo" type="button" [disabled]="decidindo()" (click)="reprovar()"><svg class="svgi" aria-hidden="true"><use href="#ic-x"/></svg> Reprovar / Ajustar</button>

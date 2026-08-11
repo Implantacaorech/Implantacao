@@ -73,6 +73,18 @@ export class ProtocoloService {
     return r.data;
   }
 
+  /** Cancela o processamento em andamento (mata a transcrição no servidor e destrava o
+   * protocolo, que volta para "Erro" e pode ser reprocessado). */
+  async cancelarProcessamento(id: number): Promise<{ cancelado: boolean; aviso: string }> {
+    const r = await firstValueFrom(
+      this.http.post<ApiEnvelope<{ cancelado: boolean; aviso: string }>>(
+        `${this.base}/${id}/cancelar`,
+        {},
+      ),
+    );
+    return r.data;
+  }
+
   async aprovar(id: number): Promise<void> {
     await firstValueFrom(this.http.post(`${this.base}/${id}/aprovar`, {}));
   }

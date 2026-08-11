@@ -81,6 +81,36 @@ jobs:
       - name: Conformidade com o Guia Mestre
         run: python -X utf8 -m pytest tests/test_conformidade_arquitetura.py -v
 
+  docservice-transcricao:
+    # A orquestração do job de transcrição (fila, cancelamento, poda do registro em
+    # memória) mocka o faster-whisper — nenhum modelo é baixado e nenhum áudio é lido, só o
+    # fluxo é exercitado. Por isso roda no runner, ao contrário do resto da suíte do
+    # docservice, que depende de templates .docx locais.
+    #
+    # Passa a rodar aqui porque, fora do CI, ninguém executava este arquivo: 5 dos 7 testes
+    # ficaram VERMELHOS por dias sem ninguém ver (os dublês ficaram para trás quando
+    # `pessoas` entrou na assinatura do transcritor) — o mesmo enredo do e2e do backend em
+    # 2026-07-29. Guarda de contrato entre NestJS e docservice só vale se rodar.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docservice
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Cobre o que `import main` exige em tempo de import (hoje só fastapi/pydantic chegam
+      # ao nível de módulo; docx/openpyxl/Pillow entram como folga, caso algum import interno
+      # suba). faster-whisper, PyAV e sherpa-onnx ficam de fora de propósito: são importados
+      # DENTRO das funções que transcrevem, e nenhuma delas roda aqui (o transcritor é
+      # substituído por dublê). pywin32 idem — é Windows-only, e o docview só o toca ao
+      # converter .docx pelo Word.
+      - name: Instalar dependências
+        run: pip install pytest httpx "fastapi>=0.115" "pydantic>=2.9" "python-docx>=1.1" "openpyxl>=3.1" "Pillow>=10.0" "python-multipart>=0.0.12"
+      - name: Job de transcrição (fila, cancelamento, poda)
+        run: python -X utf8 -m pytest tests/test_transcricao.py -v
+
   frontend-test:
     # Stack novo (Angular) — Vitest via @angular/build:unit-test, roda em Node sem browser real.
     runs-on: ubuntu-latest
