@@ -354,6 +354,21 @@ export class ProtocolosController {
     });
   }
 
+  @Post(':id/cancelar')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Cancela o processamento em andamento — mata a transcrição e destrava o protocolo',
+  })
+  async cancelar(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser,
+  ) {
+    exigirAcessoProtocolo(await this.protocolos.buscarPorId(id), user);
+    const r = await this.processamento.cancelar(id, user.nome);
+    return new ApiEnvelope({ cancelado: r.ok, aviso: r.msg });
+  }
+
   @Post(':id/aprovar')
   @HttpCode(HttpStatus.OK)
   @UseGuards(RolesGuard)
@@ -396,6 +411,11 @@ export class ProtocolosController {
     @CurrentUser() user: AuthUser,
   ) {
     exigirAcessoProtocolo(await this.protocolos.buscarPorId(id), user);
+    // Antes de apagar a linha: mata a transcrição do lado do docservice e para o pipeline
+    // em voo. Sem isto, excluir um protocolo em processamento deixava o transcritor moendo
+    // o vídeo até o fim (377% de CPU em 2026-08-06) para entregar um resultado a um
+    // registro que não existe mais — e o texto pronto ficava ocupando memória lá.
+    await this.processamento.interromper(id);
     const p = await this.protocolos.excluir(id);
     if (!p) throw new NotFoundException('Protocolo não encontrado.');
     this.processamento.apagarArquivo(p.videoCaminho);

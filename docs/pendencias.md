@@ -125,18 +125,34 @@ feita; o que ela revelou em volta, não.
   essencial: o docservice transcreve um job por vez (lock global `_BUSY`), então quem está na
   fila fica legitimamente com `pos = 0` por horas. Cronometrar esse caso mataria trabalho
   válido — há teste cobrindo exatamente ele.
-- [ ] **Protocolo preso em `Transcrevendo` não tem como voltar.** Não há recuperação de
-  trabalho órfão no boot, e tanto `processar` quanto o controller recusam agir quando o status
-  é `Transcrevendo`/`Analisando` ("Já está em processamento"). A trava que evita corrida entre
-  o robô e o clique manual é a mesma que impede o conserto: só mexendo no banco à mão.
-  Consequência prática — **reiniciar o backend não é operação livre** enquanto houver
-  transcrição em voo. *Ficou menor com o item acima* (a espera agora termina em `Erro`, que é
-  reprocessável), mas continua valendo para quem já está preso e para o restart no meio.
-- [ ] **Não há como cancelar uma transcrição de arquivo.** O docservice expõe
-  `DELETE /transcrever/vivo/{id}` (gravação ao vivo), mas **nada** equivalente para
-  `/transcrever/{id}`. Por isso o cancelamento na tela não mata o subprocesso: observado em
-  2026-08-06 a 377% de CPU depois de cancelado. O `_jobs` também é memória pura e sem teto —
-  cresce enquanto o processo viver.
+- [x] **Feito — protocolo preso em `Transcrevendo` tem saída, e o boot religa sozinho o que
+  dá.** Eram dois buracos ligados: a trava que evita corrida entre o robô e o clique manual
+  ("Já está em processamento") era a mesma que impedia o conserto, e o pipeline vive na
+  MEMÓRIA do processo — reiniciar o backend matava a espera e deixava o banco marcando
+  `Transcrevendo` para sempre. Agora:
+  - **`POST /protocolos/:id/cancelar`** (botão *Cancelar processamento* na ficha) interrompe o
+    pipeline em voo e devolve o registro para `Erro`, que é o único status de onde *Processar
+    agora* volta a funcionar — aproveitando o que já estiver pronto no docservice.
+  - **Varredura no boot** (`recuperarPresos`, `OnApplicationBootstrap`) religa o que tem
+    trabalho pesado já feito (transcrição no banco, ou pronta/em andamento no docservice) e
+    deixa o resto em `Erro` explicado. ⚠️ **Nunca retranscreve do zero sozinha** — um boot que
+    resolvesse recomeçar meia dúzia de vídeos ocuparia a máquina o dia inteiro sem ninguém ter
+    pedido. Há teste cobrindo exatamente essa recusa.
+- [x] **Feito — dá para cancelar uma transcrição de arquivo, e o `_jobs` parou de crescer.**
+  O docservice ganhou o `DELETE /transcrever/{id}` que só existia no irmão ao vivo, e ele
+  **mata o subprocesso**: o `subprocess.run` do transcritor virou `Popen` + callback
+  `ao_iniciar`, porque `run` não devolve alça nenhuma enquanto espera — era por isso que
+  cancelar deixava o processo moendo o vídeo a 377% de CPU (2026-08-06). Cancelar vale também
+  para quem ainda está **na fila** (o `_BUSY` serializa, e a espera passa de hora com um vídeo
+  grande na frente) e para **descartar resultado pronto**, que é o que a exclusão do protocolo
+  faz. O registro de jobs agora é podado por idade (24 h) e por teto (50) — nunca o que está
+  em andamento.
+- [!] **Achado no caminho: `docservice/tests/test_transcricao.py` estava VERMELHO** — 5 dos 7
+  testes, desde que `pessoas` entrou na assinatura do transcritor e os dublês ficaram para
+  trás. O CI do docservice só rodava a guarda de arquitetura, então ninguém viu. Consertado e
+  **posto no CI** (job `docservice-transcricao`): a suíte mocka o faster-whisper, não baixa
+  modelo nenhum e roda no runner com as dependências de import. Mesmo enredo do e2e do backend
+  em 2026-07-29 — guarda de contrato que não roda não é guarda.
 
 ## 📐 Conformidade com os Padrões de Desenvolvimento da Rech
 > Auditoria de 2026-07-21 contra o `PADRAO-RECH.md` rev. 2.0.0. Ver o relatório completo e o

@@ -318,6 +318,17 @@ def status_transcricao(protocolo_id: int):
     return job
 
 
+@app.delete("/transcrever/{protocolo_id}")
+def cancelar_transcricao(protocolo_id: int):
+    """Desiste da transcrição do ARQUIVO: mata o subprocesso e esquece o job. Espelha o
+    `DELETE /transcrever/vivo/{id}` da gravação ao vivo, que existia desde sempre — aqui
+    não existia, e por isso cancelar na tela do painel deixava o transcritor moendo o vídeo
+    até o fim (377% de CPU em 2026-08-06, sem ninguém para receber o resultado).
+
+    Idempotente: cancelar o que não existe devolve `{"cancelado": false}`, não erro."""
+    return {"cancelado": transcricao_servico.cancelar(protocolo_id)}
+
+
 class IniciarVivoRequest(BaseModel):
     sessaoId: int
     vocabulario: str = ""

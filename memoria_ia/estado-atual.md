@@ -185,6 +185,20 @@ pelo **Teams** (áudio da aba/tela), ou as duas somadas. Atalho também na tela 
   ECONNREFUSED na gravação. Antes ele só checava a 5100.
 - ⚠️ **Reiniciar o painel NÃO reinicia o docservice** (processos separados; o Iniciar só
   sobe o docservice se a 8001 estiver livre). Ao mexer em `docservice/`, derrube os dois.
+- **Cancelar e destravar (2026-08-11):** `POST /protocolos/:id/cancelar` interrompe o
+  pipeline em voo, e o `DELETE /transcrever/{id}` novo do docservice **mata o subprocesso**
+  (o `subprocess.run` do transcritor virou `Popen` + callback `ao_iniciar` — `run` não devolve
+  alça enquanto espera, e era por isso que cancelar deixava o processo a 377% de CPU). Vale
+  para quem está na fila e para descartar resultado pronto (é o que a exclusão faz). O
+  `_jobs` do docservice agora é podado (24 h / 50 itens), nunca o que está em andamento.
+  **Reiniciar o backend deixou de ser operação arriscada:** `recuperarPresos()` religa no
+  boot o que tem trabalho pesado já feito e deixa o resto em `Erro` explicado — nunca
+  retranscreve do zero sozinho.
+- ⚠️ **`docservice/tests/test_transcricao.py` estava vermelho havia dias** (5 de 7) porque o
+  CI do docservice só rodava a guarda de arquitetura. Consertado e posto no CI (job
+  `docservice-transcricao`). Ao mexer na assinatura de `transcrever_isolado`, os dublês da
+  suíte precisam acompanhar — o serviço passa tudo por keyword e o TypeError morre dentro da
+  thread, virando um "erro" silencioso.
 - ⚠️ **Bloqueio conhecido:** captura de áudio só funciona em **contexto seguro** (HTTPS/
   localhost) — o painel está em `http://I7M1700-01-EVE:5100`. Ver `docs/gravacao-reuniao.md`
   e `docs/pendencias.md`.

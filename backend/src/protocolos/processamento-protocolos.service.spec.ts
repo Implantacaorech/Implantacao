@@ -30,7 +30,11 @@ describe('ProcessamentoProtocolosService', () => {
     listar: jest.fn(),
   };
   const ia = { analisar: jest.fn(), resumirCompleto: jest.fn() };
-  const transcricao = { iniciar: jest.fn(), status: jest.fn() };
+  const transcricao = {
+    iniciar: jest.fn(),
+    status: jest.fn(),
+    cancelar: jest.fn(),
+  };
   // Taxonomia de menus do SIGER (Dicionário). Vazia por padrão: o reconhecimento de menus é
   // ENRIQUECIMENTO, e o pipeline tem de funcionar igual sem ele.
   const menus = { taxonomia: jest.fn().mockResolvedValue([]) };
@@ -565,6 +569,193 @@ describe('ProcessamentoProtocolosService', () => {
         transcricao: '[00:01] finalmente',
         duracaoSeg: 60,
       });
+    });
+  });
+
+  /** 'Transcrevendo'/'Analisando' era um beco sem saída: a trava que evita corrida entre o
+   * robô e o clique manual é a MESMA que impedia o conserto, então só se saía mexendo no
+   * banco à mão. Na prática isso significava que reiniciar o backend com transcrição em voo
+   * deixava o registro preso para sempre. */
+  describe('cancelar — destravar o que estava preso em processamento', () => {
+    function relogioControlado() {
+      jest
+        .spyOn(service as unknown as { sleep: () => Promise<void> }, 'sleep')
+        .mockResolvedValue(undefined);
+    }
+
+    afterEach(() => jest.restoreAllMocks());
+
+    it.each(['Transcrevendo', 'Analisando'] as const)(
+      'de "%s" -> mata a transcrição no docservice e devolve para Erro (reprocessável)',
+      async (statusAtual) => {
+        protocolos.buscar.mockResolvedValue(protocolo({ status: statusAtual }));
+
+        const r = await service.cancelar(1, 'Fulano');
+
+        expect(r.ok).toBe(true);
+        expect(transcricao.cancelar).toHaveBeenCalledWith(1);
+        const [, status, msg, autor] = protocolos.atualizarStatus.mock
+          .calls[0] as [number, string, string, string];
+        // 'Erro' é o único status de onde "Processar agora" volta a funcionar — e o
+        // reprocessamento aproveita o que já estiver pronto no docservice.
+        expect(status).toBe('Erro');
+        expect(msg).toContain('cancelado por Fulano');
+        expect(autor).toBe('Fulano');
+      },
+    );
+
+    it.each(['Pendente', 'Em revisão', 'Aprovado', 'Erro'] as const)(
+      'status "%s" não tem o que cancelar — não mexe no registro',
+      async (statusAtual) => {
+        protocolos.buscar.mockResolvedValue(protocolo({ status: statusAtual }));
+
+        const r = await service.cancelar(1, 'Fulano');
+
+        expect(r.ok).toBe(false);
+        expect(transcricao.cancelar).not.toHaveBeenCalled();
+        expect(protocolos.atualizarStatus).not.toHaveBeenCalled();
+      },
+    );
+
+    /** Cancelar não pode virar "falha no processamento": a mensagem que a tela mostra é a de
+     * quem cancelou, e o vídeo não pode ir para 'Videos Com Erro' — não há defeito nenhum
+     * nele, e a varredura deixaria de vê-lo. */
+    it('pipeline em voo desiste na batida seguinte, sem sobrescrever a mensagem', async () => {
+      const video = join(raiz, 'cancelado-no-meio.mp4');
+      writeFileSync(video, 'x');
+      protocolos.buscar.mockResolvedValue(
+        protocolo({ videoCaminho: video, videoOrigem: 'sharepoint' }),
+      );
+      relogioControlado();
+
+      let n = 0;
+      transcricao.status.mockImplementation(async () => {
+        n += 1;
+        // Na 2ª consulta (já dentro da espera) alguém clica em Cancelar.
+        if (n === 2) await service.interromper(1);
+        return { status: 'processando', pct: 10, pos: 60, dur: 600 };
+      });
+
+      const r = await service.processar(1, 'Fulano');
+
+      expect(r).toEqual({ ok: false, msg: 'Processamento cancelado.' });
+      expect(transcricao.cancelar).toHaveBeenCalledWith(1);
+      expect(protocolos.atualizarStatus).not.toHaveBeenCalledWith(
+        1,
+        'Erro',
+        expect.anything(),
+        expect.anything(),
+      );
+      expect(existsSync(video)).toBe(true); // não foi para 'Videos Com Erro'
+      expect(ia.analisar).not.toHaveBeenCalled();
+    });
+
+    /** É o caminho da EXCLUSÃO: o registro vai embora, então não há status para atualizar —
+     * mas o subprocesso do docservice precisa morrer do mesmo jeito. Sem isso, excluir um
+     * protocolo em processamento deixava o transcritor moendo o vídeo inteiro (377% de CPU
+     * em 2026-08-06) para entregar o resultado a um registro que não existe mais. */
+    it('interromper mata a transcrição sem tocar no status', async () => {
+      await service.interromper(7);
+
+      expect(transcricao.cancelar).toHaveBeenCalledWith(7);
+      expect(protocolos.atualizarStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  /** O pipeline vive na memória DESTE processo: reiniciar o backend mata a espera, mas o
+   * banco continua marcando 'Transcrevendo'/'Analisando' — e desse estado nada saía sozinho. */
+  describe('recuperarPresos — o painel reiniciou no meio do processamento', () => {
+    function presos(porStatus: Record<string, Partial<Protocolo>[]>) {
+      protocolos.listar.mockImplementation(({ status }: { status: string }) =>
+        Promise.resolve((porStatus[status] ?? []).map((p) => protocolo(p))),
+      );
+      return jest
+        .spyOn(service, 'processarAsync')
+        .mockImplementation(() => undefined);
+    }
+
+    afterEach(() => jest.restoreAllMocks());
+
+    it('transcrição já gravada no banco -> retoma sozinho (a IA é barata perto dela)', async () => {
+      const async_ = presos({
+        Analisando: [{ id: 5, status: 'Analisando', transcricao: '[00:01] x' }],
+      });
+
+      const r = await service.recuperarPresos();
+
+      expect(r).toEqual({ retomados: 1, parados: 0 });
+      // Precisa passar por 'Erro' ANTES: `processar` recusa quem está em 'Analisando' — é a
+      // mesma trava que criou o beco sem saída.
+      expect(protocolos.atualizarStatus).toHaveBeenCalledWith(
+        5,
+        'Erro',
+        expect.stringContaining('retomando de onde parou'),
+        'sistema',
+      );
+      expect(async_).toHaveBeenCalledWith(5, 'sistema');
+      // Nem consultou o docservice: o texto já está no banco.
+      expect(transcricao.status).not.toHaveBeenCalled();
+    });
+
+    it('resultado pronto no docservice -> retoma e aproveita', async () => {
+      const async_ = presos({
+        Transcrevendo: [{ id: 6, status: 'Transcrevendo' }],
+      });
+      transcricao.status.mockResolvedValue({
+        status: 'concluido',
+        transcricao: '[00:01] sobreviveu',
+        duracaoSeg: 10,
+        idioma: 'pt',
+      });
+
+      const r = await service.recuperarPresos();
+
+      expect(r).toEqual({ retomados: 1, parados: 0 });
+      expect(async_).toHaveBeenCalledWith(6, 'sistema');
+    });
+
+    /** A regra que governa a retomada: nunca retranscrever do zero por conta própria. Um
+     * vídeo de treinamento leva HORAS de CPU, e um boot que resolvesse recomeçar meia dúzia
+     * deles ocuparia a máquina o dia inteiro sem ninguém ter pedido. */
+    it.each([
+      ['docservice perdeu o job', null],
+      ['job terminou em erro', { status: 'erro', mensagem: 'RuntimeError: x' }],
+    ])('%s -> para em Erro e NÃO retranscreve sozinho', async (_caso, job) => {
+      const async_ = presos({
+        Transcrevendo: [{ id: 7, status: 'Transcrevendo' }],
+      });
+      transcricao.status.mockResolvedValue(job);
+
+      const r = await service.recuperarPresos();
+
+      expect(r).toEqual({ retomados: 0, parados: 1 });
+      expect(protocolos.atualizarStatus).toHaveBeenCalledWith(
+        7,
+        'Erro',
+        expect.stringContaining('Processar agora'),
+        'sistema',
+      );
+      expect(async_).not.toHaveBeenCalled();
+    });
+
+    /** O docservice sobe em processo próprio e o painel não espera por ele — no boot ele
+     * pode simplesmente não estar de pé ainda. */
+    it('docservice fora do ar no boot não derruba a varredura', async () => {
+      presos({ Transcrevendo: [{ id: 8, status: 'Transcrevendo' }] });
+      transcricao.status.mockRejectedValue(new Error('ECONNREFUSED'));
+
+      const r = await service.recuperarPresos();
+
+      expect(r).toEqual({ retomados: 0, parados: 1 });
+    });
+
+    it('nada preso -> não escreve nada', async () => {
+      presos({});
+
+      const r = await service.recuperarPresos();
+
+      expect(r).toEqual({ retomados: 0, parados: 0 });
+      expect(protocolos.atualizarStatus).not.toHaveBeenCalled();
     });
   });
 

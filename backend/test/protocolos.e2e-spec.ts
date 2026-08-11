@@ -20,6 +20,10 @@ import { ProtocoloIaService } from '../src/protocolos/protocolo-ia.service';
 // e protocolo-ia.service.spec.ts); aqui só verificamos a orquestração ponta a ponta:
 // upload multipart -> pipeline -> revisão -> aprovação, através do HTTP real do NestJS.
 class TranscricaoServiceFake {
+  /** Ids que receberam ordem de cancelar — é o que prova que o subprocesso do docservice
+   * seria morto de verdade (ver o teste de exclusão). */
+  static cancelados: number[] = [];
+
   async iniciar(): Promise<void> {}
   async status() {
     return {
@@ -28,6 +32,9 @@ class TranscricaoServiceFake {
       duracaoSeg: 7,
       idioma: 'pt',
     };
+  }
+  async cancelar(id: number): Promise<void> {
+    TranscricaoServiceFake.cancelados.push(id);
   }
 }
 
@@ -291,9 +298,44 @@ describe('Protocolos de Treinamento (e2e)', () => {
     );
     expect(excluir.status).toBe(200);
     expect(existsSync(caminho)).toBe(false); // apagou o arquivo também
+    // Excluir precisa MATAR a transcrição do lado do docservice antes de apagar a linha:
+    // sem isso o transcritor seguia moendo o vídeo (377% de CPU em 2026-08-06) para
+    // entregar o resultado a um registro que não existe mais.
+    expect(TranscricaoServiceFake.cancelados).toContain(id);
 
     const depois = await auth(request(server()).get(`/api/protocolos/${id}`));
     expect(depois.status).toBe(404);
+  }, 15000);
+
+  it('cancelar exige protocolo existente e só age sobre o que está em processamento', async () => {
+    const inexistente = await auth(
+      request(server()).post('/api/protocolos/999999/cancelar'),
+    );
+    expect(inexistente.status).toBe(404);
+
+    const upload = await auth(
+      request(server())
+        .post('/api/protocolos/novo')
+        .attach('video', Buffer.from('video pronto'), 'nada-a-cancelar.mp4'),
+    );
+    const id = upload.body.data.id as number;
+    for (let i = 0; i < 50; i++) {
+      const f = await auth(request(server()).get(`/api/protocolos/${id}`));
+      if (f.body.data.protocolo.status === 'Em revisão') break;
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
+    // Já terminou: não há trabalho para interromper, e o registro não pode ser jogado em
+    // 'Erro' por um clique tardio no botão.
+    const res = await auth(
+      request(server()).post(`/api/protocolos/${id}/cancelar`),
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.data.cancelado).toBe(false);
+    expect(res.body.data.aviso).toContain('Em revisão');
+
+    const depois = await auth(request(server()).get(`/api/protocolos/${id}`));
+    expect(depois.body.data.protocolo.status).toBe('Em revisão');
   }, 15000);
 
   it('excluir devolve 404 para protocolo inexistente', async () => {

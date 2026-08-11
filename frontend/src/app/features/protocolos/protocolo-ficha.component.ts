@@ -29,6 +29,10 @@ const IDX_POR_STATUS: Record<StatusProtocolo, number> = {
 
 const EM_ANDAMENTO: StatusProtocolo[] = ['Pendente', 'Transcrevendo', 'Analisando'];
 
+/** Status em que existe trabalho de verdade rodando no servidor — é aqui que cancelar tem
+ * o que interromper. 'Pendente' fica de fora: nada começou ainda. */
+const EM_PROCESSAMENTO: StatusProtocolo[] = ['Transcrevendo', 'Analisando'];
+
 export interface EtapaTimeline {
   nome: string;
   numero: number;
@@ -66,6 +70,7 @@ export class ProtocoloFichaComponent implements OnDestroy {
   readonly aviso = signal<string | null>(null);
   readonly salvo = signal(false);
   readonly processando = signal(false);
+  readonly cancelando = signal(false);
   readonly decidindo = signal(false);
 
   readonly protocolo = signal<Protocolo | null>(null);
@@ -132,6 +137,13 @@ export class ProtocoloFichaComponent implements OnDestroy {
       default:
         return '';
     }
+  });
+
+  /** Há trabalho rodando no servidor agora? Governa o botão de cancelar (e desliga o de
+   * reprocessar, que o backend recusaria de qualquer forma). */
+  readonly emProcessamento = computed(() => {
+    const p = this.protocolo();
+    return !!p && EM_PROCESSAMENTO.includes(p.status);
   });
 
   readonly mostrarBarra = computed(() => this.protocolo()?.status === 'Transcrevendo' && this.pct() !== null);
@@ -277,6 +289,31 @@ export class ProtocoloFichaComponent implements OnDestroy {
       this.erro.set('Não foi possível iniciar o processamento.');
     } finally {
       this.processando.set(false);
+    }
+  }
+
+  /** Interrompe o processamento em andamento. O protocolo volta para "Erro" — que é de
+   * onde "Processar agora" funciona —, e a transcrição que já tiver ficado pronta no
+   * servidor é aproveitada no reprocessamento, em vez de ser refeita do zero. */
+  async cancelar(): Promise<void> {
+    if (
+      !confirm(
+        'Cancelar o processamento? A transcrição em andamento é interrompida no servidor. ' +
+          'O protocolo fica marcado como Erro e pode ser reprocessado depois.',
+      )
+    ) {
+      return;
+    }
+    this.cancelando.set(true);
+    this.erro.set(null);
+    try {
+      const r = await this.service.cancelarProcessamento(this.id);
+      this.aviso.set(r.aviso);
+      await this.carregar();
+    } catch {
+      this.erro.set('Não foi possível cancelar o processamento.');
+    } finally {
+      this.cancelando.set(false);
     }
   }
 
