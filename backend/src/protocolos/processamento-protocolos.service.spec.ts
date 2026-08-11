@@ -348,6 +348,70 @@ describe('ProcessamentoProtocolosService', () => {
 
     afterEach(() => jest.restoreAllMocks());
 
+    /** Um soluço de rede não pode custar horas de transcrição. O `status()` lança em qualquer
+     * erro que não seja 404, e sem tolerância um `ECONNRESET` — num serviço em 127.0.0.1! —
+     * derrubava o pipeline inteiro. Aconteceu em produção em 2026-08-10 com quatro protocolos
+     * reprocessados em lote: o docservice transcreve um por vez e, sob carga, parou de
+     * responder aos polls por alguns segundos. */
+    it('falha passageira na consulta NÃO derruba o pipeline — segue aguardando', async () => {
+      videoPendente('econnreset.mp4');
+      relogioControlado();
+      ia.analisar.mockResolvedValue({ campos: {}, bruto: '{}' });
+      ia.resumirCompleto.mockResolvedValue('resumo');
+
+      let n = 0;
+      transcricao.status.mockImplementation(() => {
+        n += 1;
+        // Cinco quedas seguidas no meio do caminho, como sob carga.
+        if (n >= 2 && n <= 6) {
+          return Promise.reject(
+            new Error('Serviço de transcrição indisponível: read ECONNRESET'),
+          );
+        }
+        if (n === 1) {
+          return Promise.resolve({
+            status: 'processando',
+            pct: 10,
+            pos: 60,
+            dur: 600,
+          });
+        }
+        return Promise.resolve({
+          status: 'concluido',
+          transcricao: '[00:01] sobreviveu ao ECONNRESET',
+          duracaoSeg: 600,
+          idioma: 'pt',
+        });
+      });
+
+      const r = await service.processar(1, 'Fulano');
+
+      expect(r.ok).toBe(true);
+      expect(protocolos.atualizar).toHaveBeenCalledWith(1, {
+        transcricao: '[00:01] sobreviveu ao ECONNRESET',
+        duracaoSeg: 600,
+      });
+    });
+
+    it('serviço fora do ar de vez -> desiste com mensagem que diz o que houve', async () => {
+      videoPendente('fora-do-ar.mp4');
+      relogioControlado();
+      transcricao.status.mockRejectedValue(
+        new Error('Serviço de transcrição indisponível: read ECONNRESET'),
+      );
+
+      const r = await service.processar(1, 'Fulano');
+
+      expect(r.ok).toBe(false);
+      const erro = protocolos.atualizarStatus.mock.calls.find(
+        (c: unknown[]) => c[1] === 'Erro',
+      ) as [number, string, string, string];
+      expect(erro[2]).toContain('parou de responder');
+      expect(erro[2]).toContain('ECONNRESET');
+      // Não ficou tentando para sempre.
+      expect(transcricao.status.mock.calls.length).toBeLessThan(40);
+    });
+
     it('docservice reiniciado (status some) -> termina em Erro em vez de girar sem fim', async () => {
       videoPendente('sumiu.mp4');
       // Depois do `iniciar`, o job existia; o serviço reiniciou e passou a responder 404.
