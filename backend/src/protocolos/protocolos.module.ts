@@ -7,6 +7,7 @@ import { ClientesSiclaModule } from '../clientes-sicla/clientes-sicla.module';
 import { Projeto } from '../database/entities/projeto.entity';
 import { Protocolo } from '../database/entities/protocolo.entity';
 import { IaModule } from '../ia/ia.module';
+import { MatrizDetalhadaModule } from '../matriz-detalhada/matriz-detalhada.module';
 import { TranscricaoModule } from '../transcricao/transcricao.module';
 import { ProtocolosService } from './protocolos.service';
 import { ProtocoloIaService } from './protocolo-ia.service';
@@ -23,6 +24,9 @@ import { ProtocolosMidiaController } from './protocolos-midia.controller';
     TypeOrmModule.forFeature([Protocolo, Projeto]),
     IaModule,
     TranscricaoModule,
+    // Taxonomia de menus do SIGER (derivada do Dicionário) — é contra ela que a transcrição
+    // é casada para descobrir quais menus foram citados na gravação. Ver menus-mencionados.ts.
+    MatrizDetalhadaModule,
     // Busca de cliente no SICLA — a MESMA do passo 1 (Novo Cliente), reexposta sob a
     // permissão 'protocolos'. Ver GravacaoProtocolosService.buscarClientes.
     ClientesSiclaModule,

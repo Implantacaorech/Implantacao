@@ -16,5 +16,8 @@ import { MatrizDetalhadaController } from './matriz-detalhada.controller';
   ],
   controllers: [MatrizDetalhadaController],
   providers: [MenusSigerService, MatrizDetalhadaService],
+  // A taxonomia de menus é útil fora daqui: os Protocolos de Treinamento a usam para
+  // reconhecer, na transcrição, quais menus foram citados na gravação (menus-mencionados.ts).
+  exports: [MenusSigerService],
 })
 export class MatrizDetalhadaModule {}

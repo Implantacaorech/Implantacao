@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ProtocoloIaService } from './protocolo-ia.service';
+import {
+  ProtocoloIaService,
+  resgatarCamposDeJsonCortado,
+} from './protocolo-ia.service';
 import { IaService } from '../ia/ia.service';
 
 describe('ProtocoloIaService', () => {
@@ -177,5 +180,51 @@ describe('ProtocoloIaService', () => {
         'overloaded',
       );
     });
+  });
+});
+
+/**
+ * JSON cortado não pode custar o registro inteiro.
+ *
+ * A saída da IA é limitada a 8.000 tokens e o formato pede ~24 seções, uma delas sendo
+ * "TODOS os menus citados". Num treinamento longo o modelo chega ao teto no meio de um campo.
+ * Até 2026-08-11 isso devolvia `null` e descartava em silêncio tudo que tinha chegado
+ * completo — inclusive os menus, que é a queixa que originou esta correção.
+ */
+describe('resgatarCamposDeJsonCortado', () => {
+  it('aproveita os campos fechados de um JSON sem fecha-chaves', () => {
+    const cortado =
+      '{"titulo": "Treinamento de Faturamento", "modulo": "FAT", ' +
+      '"menus_abordados": "### 2.3-N — Emissao de notas", "funcionalidades": "ficou pela met';
+    const r = resgatarCamposDeJsonCortado(cortado);
+    expect(r.titulo).toBe('Treinamento de Faturamento');
+    expect(r.modulo).toBe('FAT');
+    expect(r.menus_abordados).toContain('2.3-N');
+    // O campo que estava sendo escrito no momento do corte fica de fora, e não pela metade.
+    expect(r.funcionalidades).toBeUndefined();
+  });
+
+  it('desescapa quebra de linha e aspas como o JSON manda', () => {
+    const r = resgatarCamposDeJsonCortado(
+      '{"resumo": "linha 1\\nlinha 2 com \\"aspas\\"", "modulo": "EST"',
+    );
+    expect(r.resumo).toBe('linha 1\nlinha 2 com "aspas"');
+    expect(r.modulo).toBe('EST');
+  });
+
+  it('tolera quebra de linha DE VERDADE dentro da string — malformação comum de modelo', () => {
+    // JSON exige `\n`; o modelo às vezes emite o caractere cru, e o JSON.parse recusa.
+    // Perder o campo por isso seria desperdiçar texto perfeitamente aproveitável.
+    const r = resgatarCamposDeJsonCortado(
+      '{"resumo": "primeira linha\nsegunda linha", "modulo": "FAT"',
+    );
+    expect(r.resumo).toContain('primeira linha');
+    expect(r.resumo).toContain('segunda linha');
+    expect(r.modulo).toBe('FAT');
+  });
+
+  it('texto sem par algum devolve objeto vazio (e não quebra)', () => {
+    expect(resgatarCamposDeJsonCortado('desculpe, não consegui')).toEqual({});
+    expect(resgatarCamposDeJsonCortado('')).toEqual({});
   });
 });

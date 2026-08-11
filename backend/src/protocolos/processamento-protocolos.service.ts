@@ -17,6 +17,8 @@ import { TranscricaoService } from '../transcricao/transcricao.service';
 import { EXTS } from './protocolos.constants';
 import { montarVocabulario } from './vocabulario';
 import { aplicarNomes, lerMapa } from './locutores';
+import { formatarParaPrompt, menusMencionados } from './menus-mencionados';
+import { MenusSigerService } from '../matriz-detalhada/menus-siger.service';
 
 const ESTAVEL_SEG = 90; // arquivo precisa estar sem modificação há N s (OneDrive ainda copiando)
 const INTERVALO_POLL_MS = 2000;
@@ -70,6 +72,7 @@ export class ProcessamentoProtocolosService {
     private readonly protocolos: ProtocolosService,
     private readonly ia: ProtocoloIaService,
     private readonly transcricao: TranscricaoService,
+    private readonly menus: MenusSigerService,
   ) {}
 
   pastaRaiz(): string {
@@ -241,6 +244,35 @@ export class ProcessamentoProtocolosService {
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /** Casa a transcrição contra o catálogo de menus do SIGER (derivado do Dicionário) e
+   * devolve os candidatos já formatados para o prompt.
+   *
+   * É ENRIQUECIMENTO, não etapa do fluxo: se o Dicionário não estiver ingerido, ou a leitura
+   * falhar, o pipeline segue e a IA extrai o que conseguir do texto — exatamente como antes.
+   * Deixar isto derrubar o processamento seria trocar uma melhoria por um risco. */
+  private async reconhecerMenus(texto: string, id: number): Promise<string> {
+    try {
+      const taxonomia = await this.menus.taxonomia();
+      const catalogo = taxonomia.flatMap((m) =>
+        m.menus.map((menu) => ({ sigla: m.sigla, ...menu })),
+      );
+      const achados = menusMencionados(texto, catalogo);
+      if (achados.length > 0) {
+        this.logger.log(
+          `Protocolo ${id}: ${achados.length} menu(s) do SIGER reconhecidos na ` +
+            `transcrição (${achados.map((a) => a.codigo).join(', ')}).`,
+        );
+      }
+      return formatarParaPrompt(achados);
+    } catch (e) {
+      this.logger.warn(
+        `Protocolo ${id}: não deu para reconhecer os menus contra o Dicionário ` +
+          `(${this.erroAmigavel(e)}) — a IA vai extrair só do texto.`,
+      );
+      return '';
+    }
   }
 
   /** Aguarda o job de transcrição do docservice terminar, fazendo polling.
@@ -451,9 +483,15 @@ export class ProcessamentoProtocolosService {
       // consultor e quem é cliente. O texto gravado segue com os rótulos — ver locutores.ts.
       const atual = await this.protocolos.buscar(id);
       const textoIa = aplicarNomes(texto, lerMapa(atual?.mapaLocutores));
+      // Descobre, contra o catálogo REAL do SIGER, quais menus foram citados na gravação.
+      // Sem isto a IA precisa adivinhar o código a partir de um texto onde ele chegou
+      // mastigado ("um ponto quatro i") — e o resultado era menu sumido no resumo, que foi
+      // a queixa do usuário em 2026-08-11. Falhar aqui não pode derrubar o pipeline: é
+      // enriquecimento, não etapa obrigatória.
       const { campos, bruto } = await this.ia.analisar(
         textoIa,
         p.videoNome || '',
+        await this.reconhecerMenus(textoIa, id),
       );
       await this.protocolos.atualizar(id, { ...campos, textoIa: bruto });
       await this.protocolos.atualizar(id, {
