@@ -194,11 +194,21 @@ feita; o que ela revelou em volta, não.
      comando, que era a razão de usar `MYSQL_PWD`.
 - [ ] **Remover a variável de ambiente `PAINEL_NOVO_MARIADB_SENHA`** — hoje ela é ignorada
   (a URL vence) e só gera o aviso no log. É lixo de uma troca de senha antiga.
-- [ ] **`C:\PainelBackups\backup_novo_mariadb.log` está com encoding misturado** — as linhas
-  de ERRO saíram ilegíveis (UTF-16 lido como UTF-8), o que ajudou os 4 dias de falha a
-  passarem despercebidos. O `Log()` usa `Out-File -Encoding utf8`; padronizar e reescrever.
-- [ ] **Nada monitora o backup.** Ninguém foi avisado em 4 dias de falha consecutiva. Ligar
-  ao digest diário ou ao /api/health uma checagem de "último zip < 48 h e > 100 KB".
+- [x] **Feito — o log parou de sair ilegível.** A causa era o `Out-File -Append` da
+  PowerShell 5.1: **sem** `-Encoding` ele grava UTF-16, e **com** `-Encoding utf8` carimba um
+  BOM a cada append — o arquivo virava uma mistura, e era justamente nas linhas de ERRO dos 4
+  dias de falha que o texto saía como caracteres chineses. Os três scripts (`..._MariaDB.ps1`,
+  `Painel_Novo_Backup.ps1`, `Verificar_Integridade_Novo.ps1`) passaram a gravar por
+  `[System.IO.File]::AppendAllText` em UTF-8 **sem BOM**. O histórico já corrompido continua
+  no arquivo, e a leitura do painel atravessa isso (detecta UTF-16 e descarta o ilegível).
+- [x] **Feito — o backup passou a ser monitorado, e o Guardião junto.** Módulo
+  `backend/src/saude/` + `GET /api/saude`, com seis checagens: banco, **backup** (último zip
+  < 48 h **e** > 100 KB — tamanho porque os zips de 176 bytes de 27–29/07 tinham idade
+  perfeita), **Guardião** (nº de reinícios em 24 h; ≥ 3 é crítico), **docservice**,
+  **transcrições presas** e **e-mails que falharam**. Sai por dois canais: bloco no Centro de
+  Monitoramento e seção no **digest diário** — é este segundo que fecha o buraco real, porque
+  todo incidente passou dias despercebido justamente com ninguém abrindo o painel.
+  Documentação do módulo em `backend/src/saude/docs/` (6 arquivos do Guia Mestre).
 - [x] **Sobra do Postgres removida do repositório** (2026-07-29): `migrations/` (10 migrations
   de DDL Postgres), `seeds/migrar-legado.ts` (+ script `migrar:legado` — migração do Flask,
   concluída em 2026-07-19, e único consumidor de `pg`), as dependências `pg`/`@types/pg` e o
@@ -495,8 +505,11 @@ feita; o que ela revelou em volta, não.
   e o Painel passou a falhar com `ECONNREFUSED 127.0.0.1:3307`. O guardião funcionou —
   reiniciou 159 vezes no dia — mas ninguém foi avisado, porque **não há alerta de queda
   prolongada**. Corrigido: container agora é `restart=unless-stopped`.
-  - [ ] **Alertar quando o guardião falhar N vezes seguidas.** Reiniciar em laço por 13h sem
-    avisar ninguém é o verdadeiro defeito; o `restart=no` foi só o gatilho.
+  - [x] **Feito (2026-08-11) — o laço do guardião agora avisa.** Reiniciar em laço por 13 h
+    sem avisar ninguém era o verdadeiro defeito; o `restart=no` foi só o gatilho. A checagem
+    "Estabilidade (Guardião)" do `GET /api/saude` conta os reinícios das últimas 24 h
+    (`guardiao_novo.log`): 1–2 é aviso, **≥ 3 é crítico**, e vai no digest diário. Quando
+    isto aconteceu de novo — 5 reinícios entre 10 e 11/08 — continuava sem alarme nenhum.
   - [ ] **Backup do banco não rodou em 21/07** (último: 20/07 22:00). Verificar por que a
     tarefa pulou — provavelmente máquina desligada às 22:00, sem reagendamento.
 - **CAUSA RAIZ do incidente recorrente: o Docker Desktop não sobe sozinho** — repetiu em

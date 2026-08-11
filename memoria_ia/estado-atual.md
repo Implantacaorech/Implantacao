@@ -203,6 +203,31 @@ pelo **Teams** (áudio da aba/tela), ou as duas somadas. Atalho também na tela 
   localhost) — o painel está em `http://I7M1700-01-EVE:5100`. Ver `docs/gravacao-reuniao.md`
   e `docs/pendencias.md`.
 
+## O Painel passou a vigiar a si mesmo (2026-08-11)
+
+Módulo `backend/src/saude/` + `GET /api/saude` (permissão `centro_operacional`, a mesma do
+Centro de Monitoramento — sem chave de RBAC nova). Seis checagens: banco, **backup**,
+**Guardião**, **docservice**, transcrições presas e e-mails que falharam.
+
+- **Cada limiar veio de um incidente que ninguém viu:** zips de **176 bytes** por 3 dias com
+  o script logando `ok` (por isso o backup checa **tamanho**, não só idade); **4 dias sem
+  dump** por senha obsoleta no ambiente; Guardião reiniciando o painel **159 vezes em 13 h**
+  (≥ 3 em 24 h agora é crítico). Ao construir isto, o log real mostrava **5 reinícios entre
+  10 e 11/08** — ainda sem alarme nenhum.
+- **Dois canais, e o segundo é o que importa:** bloco na tela + seção no **digest diário**.
+  Em todos os incidentes ninguém estava abrindo o painel. Silêncio quando está tudo bem (uma
+  linha), para a seção não virar ruído ignorável.
+- **Backup em 48 h, não 24 h:** a tarefa roda às 22:00 e a máquina às vezes está desligada —
+  reclamar de uma noite perdida geraria ruído diário.
+- **`Out-File -Append` da PS 5.1 era o culpado do log ilegível:** sem `-Encoding` grava
+  UTF-16, com `-Encoding utf8` carimba BOM a cada append. Os três scripts de `tools/` passaram
+  a usar `[System.IO.File]::AppendAllText` em UTF-8 sem BOM; a leitura do painel ainda
+  atravessa o histórico corrompido.
+- Config: `MIGRACAO_BACKUP_DIR` (padrão `C:\PainelBackups`). Docs do módulo em
+  `backend/src/saude/docs/` (os 6 do Guia Mestre).
+- ⚠️ `tools/Painel_Novo_Backup.ps1` é **histórico** (Postgres `painel-db-novo`, que não existe
+  mais) — o backup em uso é o `Painel_Novo_Backup_MariaDB.ps1`.
+
 ## Filtros salvos por usuário (2026-07-29)
 
 Toda tela com filtro reabre no recorte que o usuário deixou. Base: tabela

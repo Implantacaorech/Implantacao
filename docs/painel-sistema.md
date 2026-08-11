@@ -311,6 +311,29 @@ painel** e ver a transcrição sendo escrita enquanto ela acontece.
 - Config adicional: `PROTOCOLOS_WHISPER_VIVO` (modelo do ao vivo; cai no `PROTOCOLOS_WHISPER`)
   e `PROTOCOLOS_THREADS_VIVO`.
 
+### 5.17.2 Saúde do sistema (bloco no Centro de Monitoramento) — *2026-08-11*
+Vigilância da **infraestrutura do próprio Painel** (`GET /api/saude`, permissão
+`centro_operacional`). Seis checagens, cada uma com o que fazer:
+
+| Item | Fica crítico quando |
+|---|---|
+| **Banco de dados** | a conexão não responde |
+| **Backup do banco** | não há zip, o último tem **< 100 KB** ou é de **≥ 48 h** atrás |
+| **Estabilidade (Guardião)** | **3 ou mais** reinícios em 24 h (1–2 é aviso) |
+| **Serviço de documentos e transcrição** | o docservice (8001) não responde |
+| **Transcrições em andamento** | *(aviso)* registro diz "Transcrevendo" e não há trabalho rodando |
+| **Envio de e-mail** | *(aviso)* e-mails do processo falharam nas últimas 24 h |
+
+Cada limiar veio de um incidente real — os zips de **176 bytes** por 3 dias (o script logava
+`ok`), os **4 dias sem dump** por uma senha obsoleta no ambiente, e o Guardião reiniciando o
+painel **159 vezes em 13 h**. Em todos, o painel continuava no ar e ninguém foi avisado.
+
+Por isso o resultado sai por **dois canais**: o bloco no Centro de Monitoramento e uma seção
+no **digest diário** — este é o que fecha o buraco de verdade, porque em todos os casos
+ninguém estava abrindo o painel. Quando está tudo certo o e-mail traz uma linha só, de
+propósito. Detalhe do módulo em `backend/src/saude/docs/`.
+Config: `MIGRACAO_BACKUP_DIR` (padrão `C:\PainelBackups`).
+
 ### 5.18 Matriz de Conhecimento (`/matriz`)
 Cadastro das notas de conhecimento (1–10) por **técnico × competência** (153 competências em
 8 áreas — Controladoria, Folha, Negócios, Finanças, Produção, Gerais, Outras, Formulários),

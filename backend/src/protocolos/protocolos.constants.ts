@@ -23,6 +23,19 @@ export const PROTO_STATUS: StatusProtocolo[] = [
   'Erro',
 ];
 
+/** Status em que existe trabalho em curso — é onde cancelar faz sentido e é de onde o
+ * protocolo não conseguia sair sozinho (ver ProcessamentoProtocolosService.cancelar e
+ * .recuperarPresos).
+ *
+ * Mora aqui, e não no service que a usa, porque a vigilância de saúde
+ * (`saude/repositories/saude-banco.repository.ts`) precisa da MESMA lista para procurar
+ * protocolo preso — e repository importando de service inverte a camada do Guia Mestre.
+ * Duas listas separadas divergiriam no primeiro status novo. */
+export const STATUS_EM_PROCESSAMENTO: StatusProtocolo[] = [
+  'Transcrevendo',
+  'Analisando',
+];
+
 export const PROTO_MODULOS = [
   'Fiscal',
   'Estoque',

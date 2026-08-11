@@ -28,6 +28,40 @@
     <div class="kpi"><div class="n">{{ d.m.horasTotal | number: '1.0-0' }}</div><div class="l">Horas na carteira</div></div>
   </div>
 
+  <!-- Saúde da INFRAESTRUTURA (backup, Guardião, docservice, banco, e-mail) — separada do
+       "Saúde geral" acima, que é o percentual de projetos saudáveis. Fica no topo porque é
+       o único lugar do sistema onde uma falha silenciosa de operação aparece: todo
+       incidente sério deste projeto passou dias despercebido em um log que ninguém abria. -->
+  <section class="painel ops-card infra" [class]="'nivel-' + (saude()?.nivel ?? 'desconhecido')">
+    <div class="ops-card-title">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-heart-pulse"/></svg>
+      Saúde do sistema
+      @if (saude(); as s) {
+        <span class="infra-badge">{{ rotuloNivel[s.nivel] }}</span>
+      }
+      <span style="flex:1"></span>
+      <button class="btn" type="button" (click)="carregarSaude()">Verificar agora</button>
+    </div>
+
+    @if (saudeIndisponivel()) {
+      <p class="dica" style="margin:0">Não foi possível verificar a saúde do sistema agora.</p>
+    } @else if (saude(); as s) {
+      <ul class="infra-lista">
+        @for (i of s.itens; track i.chave) {
+          <li [class]="'infra-item nivel-' + i.nivel">
+            <span class="infra-ponto" aria-hidden="true"></span>
+            <div>
+              <strong>{{ i.titulo }}</strong> — {{ i.mensagem }}
+              @if (i.detalhe) { <div class="dica infra-detalhe">{{ i.detalhe }}</div> }
+            </div>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="dica" style="margin:0">Verificando…</p>
+    }
+  </section>
+
   <section class="ops-grid">
     <div class="painel ops-card ops-health">
       <div class="ops-card-title">

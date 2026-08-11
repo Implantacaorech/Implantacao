@@ -39,6 +39,7 @@ import { BiImplantacaoModule } from './bi-implantacao/bi-implantacao.module';
 import { BiIndicadoresModule } from './bi-indicadores/bi-indicadores.module';
 import { BiAgendaAlocacaoModule } from './bi-agenda-alocacao/bi-agenda-alocacao.module';
 import { BiMovimentosModule } from './bi-movimentos/bi-movimentos.module';
+import { SaudeModule } from './saude/saude.module';
 
 @Module({
   imports: [
@@ -75,6 +76,10 @@ import { BiMovimentosModule } from './bi-movimentos/bi-movimentos.module';
     UsersModule,
     ProjetosModule,
     HealthModule,
+    // Vigilância da própria infraestrutura (backup, Guardião, docservice, e-mail). Irmã do
+    // HealthModule, com outro público: `/api/health` responde ao Guardião em uma linha;
+    // `/api/saude` é o relatório para gente ler — e vai junto no digest diário.
+    SaudeModule,
     CatalogosModule,
     CronogramaModule,
     LevantamentoModule,

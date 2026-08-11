@@ -6,6 +6,7 @@ import { Projeto } from '../database/entities/projeto.entity';
 import { Documento } from '../database/entities/documento.entity';
 import { MetricasService } from '../metricas/metricas.service';
 import { MailerService } from '../email/mailer.service';
+import { SaudeService } from '../saude/saude.service';
 
 describe('DigestService', () => {
   let service: DigestService;
@@ -13,9 +14,11 @@ describe('DigestService', () => {
   const documentosRepo = { find: jest.fn().mockResolvedValue([]) };
   const mailer = { configurado: jest.fn(), enviar: jest.fn() };
   const config = { get: jest.fn() };
+  const saude = { problemas: jest.fn().mockResolvedValue([]) };
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    saude.problemas.mockResolvedValue([]);
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DigestService,
@@ -23,6 +26,7 @@ describe('DigestService', () => {
         { provide: getRepositoryToken(Projeto), useValue: projetosRepo },
         { provide: getRepositoryToken(Documento), useValue: documentosRepo },
         { provide: MailerService, useValue: mailer },
+        { provide: SaudeService, useValue: saude },
         { provide: ConfigService, useValue: config },
       ],
     }).compile();
@@ -99,6 +103,64 @@ describe('DigestService', () => {
 
       const corpo = mailer.enviar.mock.calls[0][2];
       expect(corpo).toContain('Sem alertas no momento.');
+    });
+
+    /** O digest é o único canal que chega a quem NÃO abre o painel — foi a ausência dele
+     * que deixou 4 dias de backup falhando passarem sem ninguém saber. */
+    it('leva a saúde da infraestrutura para o e-mail, com o que fazer', async () => {
+      config.get.mockReturnValue('a@x.com');
+      mailer.configurado.mockReturnValue(true);
+      mailer.enviar.mockResolvedValue({ ok: true, erro: null });
+      saude.problemas.mockResolvedValue([
+        {
+          chave: 'backup',
+          titulo: 'Backup do banco',
+          nivel: 'critico',
+          mensagem: 'O último backup é de 72 h atrás.',
+          detalhe: 'Confira a Tarefa Agendada.',
+        },
+      ]);
+
+      await service.enviar();
+
+      const corpo = mailer.enviar.mock.calls[0][2];
+      expect(corpo).toContain('SAÚDE DO SISTEMA — 1 ponto(s) de atenção');
+      expect(corpo).toContain(
+        '[CRITICO] Backup do banco: O último backup é de 72 h atrás.',
+      );
+      expect(corpo).toContain('Confira a Tarefa Agendada.');
+    });
+
+    /** Silêncio quando está tudo bem: um bloco que aparece todo dia dizendo "ok" treina o
+     * leitor a pular a seção — e aí ele pula no dia em que ela diz outra coisa. */
+    it('quando está tudo certo, a saúde ocupa uma linha só', async () => {
+      config.get.mockReturnValue('a@x.com');
+      mailer.configurado.mockReturnValue(true);
+      mailer.enviar.mockResolvedValue({ ok: true, erro: null });
+
+      await service.enviar();
+
+      const corpo = mailer.enviar.mock.calls[0][2];
+      expect(corpo).toContain('Saúde do sistema: tudo certo.');
+      expect(corpo).not.toContain('ponto(s) de atenção');
+    });
+
+    /** O resumo é do processo de implantação; perdê-lo inteiro porque o diagnóstico de
+     * infraestrutura tropeçou seria trocar um problema por outro. */
+    it('falha no diagnóstico não derruba o resumo', async () => {
+      config.get.mockReturnValue('a@x.com');
+      mailer.configurado.mockReturnValue(true);
+      mailer.enviar.mockResolvedValue({ ok: true, erro: null });
+      saude.problemas.mockRejectedValue(
+        new Error('pasta de backup inacessível'),
+      );
+
+      const r = await service.enviar();
+
+      expect(r.ok).toBe(true);
+      expect(mailer.enviar.mock.calls[0][2]).toContain(
+        'Saúde do sistema: não foi possível verificar.',
+      );
     });
 
     it('devolve o erro do mailer quando o envio falha', async () => {

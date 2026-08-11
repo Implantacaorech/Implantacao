@@ -4,6 +4,7 @@ import { Projeto } from '../database/entities/projeto.entity';
 import { Documento } from '../database/entities/documento.entity';
 import { MetricasModule } from '../metricas/metricas.module';
 import { EmailModule } from '../email/email.module';
+import { SaudeModule } from '../saude/saude.module';
 import { DigestService } from './digest.service';
 import { RoboDigestService } from './robo-digest.service';
 
@@ -12,6 +13,9 @@ import { RoboDigestService } from './robo-digest.service';
     TypeOrmModule.forFeature([Projeto, Documento]),
     MetricasModule,
     EmailModule,
+    // O resumo diário é o único canal que chega a quem não abre o painel — é por ele que a
+    // saúde da infraestrutura (backup, Guardião, docservice) passa a ser vista.
+    SaudeModule,
   ],
   providers: [DigestService, RoboDigestService],
   exports: [DigestService],

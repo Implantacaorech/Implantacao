@@ -1,3 +1,7 @@
+# ⚠️ HISTORICO - NAO USE. O painel novo roda em MariaDB desde 2026-07-17, e o Postgres
+# `painel-db-novo` (assim como o Docker desta maquina) nao existe mais. O backup em uso e o
+# tools/Painel_Novo_Backup_MariaDB.ps1. Este arquivo fica so como registro de como era.
+#
 # Backup do Postgres do Painel NOVO (painel-db-novo): dump comprimido em C:\PainelBackups.
 # Diferente do Postgres do Flask antigo (painel-db, container no WSL2), o painel-db-novo
 # roda direto no Docker Desktop do Windows - por isso este script e PowerShell + Tarefa
@@ -16,8 +20,12 @@ $dest = "C:\PainelBackups"
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
 $logFile = Join-Path $dest "backup_novo.log"
 
+# UTF-8 sem BOM (ver Painel_Novo_Backup_MariaDB.ps1: `Out-File -Append` da PS 5.1 grava
+# UTF-16 sem -Encoding e carimba BOM com ele, deixando o log ilegivel).
+$script:Utf8SemBom = New-Object System.Text.UTF8Encoding($false)
 function Log($msg) {
-  "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $msg" | Out-File -Append -FilePath $logFile
+  $linha = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $msg`r`n"
+  [System.IO.File]::AppendAllText($logFile, $linha, $script:Utf8SemBom)
 }
 
 if (-not $env:PAINEL_NOVO_DB_SENHA) {

@@ -31,6 +31,9 @@ export interface AppConfig {
   imapIntakeAtivo: boolean;
   digestHora: number;
   digestPara: string;
+  /** Pasta onde a Tarefa Agendada deixa os zips do dump e os logs de operação (backup e
+   * Guardião). É de onde a vigilância de saúde lê — ver src/saude/. */
+  backupDir: string;
   frontendDistPath: string;
   legadoPythonExe: string;
   legadoWebappDir: string;
@@ -152,6 +155,10 @@ export default (): AppConfig => {
     // `digest_para.txt` do Flask não foi portado (sem UI que o gerencie; só o env var).
     digestHora: Number(process.env.MIGRACAO_DIGEST_HORA ?? 8),
     digestPara: process.env.MIGRACAO_DIGEST_PARA ?? '',
+    // Pasta de operação: zips do dump do MariaDB (`painel_novo_mariadb_*.zip`, gerados por
+    // tools/Painel_Novo_Backup_MariaDB.ps1) e os logs do backup e do Guardião. O painel só
+    // LÊ daqui — é o que permite responder "o backup de ontem saiu?" sem abrir o servidor.
+    backupDir: process.env.MIGRACAO_BACKUP_DIR ?? 'C:\\PainelBackups',
     // Onde fica o build de produção do Angular (`ng build`, saída em
     // frontend/dist/frontend/browser) — o NestJS serve esses arquivos estáticos direto
     // (ver main.ts/ServeStaticModule), um único processo/porta em produção, mesmo padrão

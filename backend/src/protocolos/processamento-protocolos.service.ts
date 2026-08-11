@@ -14,7 +14,7 @@ import { AppConfig } from '../config/configuration';
 import { ProtocolosService } from './protocolos.service';
 import { ProtocoloIaService } from './protocolo-ia.service';
 import { TranscricaoService } from '../transcricao/transcricao.service';
-import { EXTS } from './protocolos.constants';
+import { EXTS, STATUS_EM_PROCESSAMENTO } from './protocolos.constants';
 import { StatusProtocolo } from '../database/entities/protocolo.entity';
 import { montarVocabulario } from './vocabulario';
 import { aplicarNomes, lerMapa } from './locutores';
@@ -56,13 +56,6 @@ const MAX_FALHAS_DE_CONSULTA = 30;
  * trabalho válido. Depois que o progresso começa, ele avança a cada ~2 s — uma hora parado é
  * travamento, não lentidão. */
 const MAX_MS_CONGELADO = 60 * 60 * 1000;
-
-/** Status em que existe trabalho em curso — é onde cancelar faz sentido e é de onde o
- * protocolo não conseguia sair sozinho. */
-export const STATUS_EM_PROCESSAMENTO: StatusProtocolo[] = [
-  'Transcrevendo',
-  'Analisando',
-];
 
 /** Marca que o pipeline foi mandado parar. Não é "falha": é decisão de quem cancelou, e o
  * `catch` do pipeline a distingue do erro de verdade para não sobrescrever a mensagem nem
