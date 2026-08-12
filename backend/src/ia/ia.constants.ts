@@ -1,8 +1,20 @@
-/** Provedores de IA suportados. OpenRouter (openrouter.ai) agrega vários modelos atrás de uma
- * única chave, via API compatível com a da OpenAI (base `https://openrouter.ai/api/v1`). */
-export type ProvedorIa = 'anthropic' | 'openrouter';
+/** Provedores de IA suportados.
+ *
+ * - `anthropic` — SDK oficial.
+ * - `openrouter` — openrouter.ai, API compatível com a da OpenAI (base fixa
+ *   `https://openrouter.ai/api/v1`).
+ * - `local` — **qualquer endpoint compatível com a API da OpenAI**, com a URL informada por
+ *   quem configura: Ollama (`http://host:11434/v1`), LM Studio (`http://host:1234/v1`),
+ *   vLLM, ou o endpoint de compatibilidade de outro provedor.
+ *
+ * O `local` existe por uma razão de PRIVACIDADE, não de preço: o conteúdo que a IA lê aqui é
+ * transcrição de reunião de cliente e descrição dos processos dele. A transcrição já roda na
+ * própria rede de propósito (faster-whisper local, "o áudio não sai da rede"); mandar o TEXTO
+ * para um endpoint gratuito que treina com o que recebe desfaria essa decisão pela porta dos
+ * fundos. Com `local`, o dado não sai da rede em nenhuma etapa. */
+export type ProvedorIa = 'anthropic' | 'openrouter' | 'local';
 
-export const PROVEDORES_IA: ProvedorIa[] = ['anthropic', 'openrouter'];
+export const PROVEDORES_IA: ProvedorIa[] = ['anthropic', 'openrouter', 'local'];
 
 /** Cada uso de IA no Painel é uma "finalidade" com chave/provedor/modelo PRÓPRIOS — o usuário
  * pediu campos separados por finalidade, não uma chave global compartilhada. */

@@ -152,6 +152,147 @@ describe('IaService', () => {
     fetchMock.mockRestore();
   });
 
+  /** O provedor `local` existe por PRIVACIDADE, não por preço: Protocolos e Levantamento leem
+   * transcrição de reunião de cliente, e a transcrição do áudio já roda na própria rede de
+   * propósito. Mandar o texto para um endpoint gratuito que treina com o que recebe desfaria
+   * essa decisão pela porta dos fundos. */
+  describe('provedor local (endpoint compatível com a API da OpenAI)', () => {
+    function configurarLocal(over: Record<string, string> = {}): void {
+      service.salvar('protocolos', {
+        provider: 'local',
+        apiKey: '',
+        modelo: 'qwen2.5:14b',
+        baseUrl: 'http://192.168.1.50:11434/v1',
+        ...over,
+      });
+    }
+
+    /** A chave é opcional aqui — Ollama e LM Studio não pedem nenhuma, e exigir uma
+     * inventada só para o registro sobreviver seria teatro. Quem identifica o destino é a URL. */
+    it('fica ativo SEM chave, com a URL fazendo o papel dela', () => {
+      configurarLocal();
+      const st = service.status('protocolos');
+      expect(st.ativa).toBe(true);
+      expect(st.provider).toBe('local');
+      expect(st.baseUrl).toBe('http://192.168.1.50:11434/v1');
+      expect(service.disponivel('protocolos')).toBe(true);
+    });
+
+    it('chama a URL configurada, no formato OpenAI, e sem cabeçalho de autorização', async () => {
+      configurarLocal();
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: 'olá do Ollama' } }],
+          }),
+      } as Response);
+
+      const texto = await service.completar('protocolos', {
+        system: 'sys',
+        messages: [{ role: 'user', content: 'oi' }],
+        maxTokens: 300,
+      });
+
+      expect(texto).toBe('olá do Ollama');
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url as string).toBe(
+        'http://192.168.1.50:11434/v1/chat/completions',
+      );
+      const headers = (init as RequestInit).headers as Record<string, string>;
+      // `Bearer ` vazio faz alguns servidores recusarem com 401 em vez de ignorar.
+      expect(headers.Authorization).toBeUndefined();
+      const body = JSON.parse((init as RequestInit).body as string) as {
+        model: string;
+        messages: { role: string }[];
+      };
+      expect(body.model).toBe('qwen2.5:14b');
+      expect(body.messages[0].role).toBe('system');
+      fetchMock.mockRestore();
+    });
+
+    it('manda a chave quando há um proxy autenticado na frente', async () => {
+      configurarLocal({ apiKey: 'token-do-proxy' });
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ choices: [{ message: { content: 'ok' } }] }),
+      } as Response);
+
+      await service.completar('protocolos', {
+        system: '',
+        messages: [],
+        maxTokens: 10,
+      });
+
+      const headers = (fetchMock.mock.calls[0][1] as RequestInit)
+        .headers as Record<string, string>;
+      expect(headers.Authorization).toBe('Bearer token-do-proxy');
+      fetchMock.mockRestore();
+    });
+
+    it('barra final na URL não vira caminho duplicado', () => {
+      configurarLocal({ baseUrl: 'http://servidor:11434/v1/' });
+      expect(service.status('protocolos').baseUrl).toBe(
+        'http://servidor:11434/v1',
+      );
+    });
+
+    /** Recusar na hora de salvar, e não na primeira chamada de IA horas depois. */
+    it.each([
+      ['texto que não é URL', 'servidor local'],
+      ['protocolo não suportado', 'ftp://servidor/v1'],
+    ])('recusa %s ao salvar', (_caso, baseUrl) => {
+      expect(() =>
+        service.salvar('protocolos', {
+          provider: 'local',
+          apiKey: '',
+          modelo: 'qwen2.5:14b',
+          baseUrl,
+        }),
+      ).toThrow();
+      expect(service.disponivel('protocolos')).toBe(false);
+    });
+
+    /** Não há padrão possível: o nome é o do modelo carregado NAQUELE servidor. Chutar
+     * produziria um 404 do Ollama longe daqui. */
+    it('exige o nome do modelo', () => {
+      expect(() =>
+        service.salvar('protocolos', {
+          provider: 'local',
+          apiKey: '',
+          modelo: '',
+          baseUrl: 'http://servidor:11434/v1',
+        }),
+      ).toThrow('modelo');
+    });
+
+    it('URL em branco remove a configuração', () => {
+      configurarLocal();
+      expect(service.disponivel('protocolos')).toBe(true);
+      service.salvar('protocolos', { provider: 'local', baseUrl: '' });
+      expect(service.disponivel('protocolos')).toBe(false);
+    });
+
+    /** Servidor local desligado é o caso comum, e o "fetch failed" cru não diz nada a quem
+     * vai consertar. */
+    it('servidor fora do ar vira mensagem que diz o endereço', async () => {
+      configurarLocal();
+      const fetchMock = jest
+        .spyOn(global, 'fetch')
+        .mockRejectedValue(new Error('fetch failed'));
+
+      await expect(
+        service.completar('protocolos', {
+          system: '',
+          messages: [],
+          maxTokens: 10,
+        }),
+      ).rejects.toThrow('http://192.168.1.50:11434/v1');
+      fetchMock.mockRestore();
+    });
+  });
+
   it('completar lança quando a finalidade não está configurada', async () => {
     await expect(
       service.completar('protocolos', {
