@@ -203,6 +203,30 @@ pelo **Teams** (áudio da aba/tela), ou as duas somadas. Atalho também na tela 
   localhost) — o painel está em `http://I7M1700-01-EVE:5100`. Ver `docs/gravacao-reuniao.md`
   e `docs/pendencias.md`.
 
+## IA pode rodar na própria rede — provedor `local` (2026-08-11)
+
+`ProvedorIa` ganhou `local`: qualquer endpoint compatível com a API da OpenAI, com a **URL
+informada por finalidade** (Ollama `:11434/v1`, LM Studio `:1234/v1`, vLLM). O caminho do
+OpenRouter já era um `fetch` no dialeto da OpenAI, então virou um método só
+(`completarCompativel`), parametrizado pela URL base.
+
+- **Motivo é privacidade, não preço.** Protocolos e Levantamento leem transcrição de reunião
+  de CLIENTE; a transcrição do áudio já roda na rede de propósito. Endpoint gratuito externo
+  costuma ser gratuito por treinar com o que recebe — mandar o texto para lá desfaria a
+  decisão pela porta dos fundos. O Dicionário é outro caso (documentação do SIGER, conteúdo
+  nosso) e aceita bem um modelo externo. As chaves serem por finalidade é o que permite
+  separar assim.
+- **Chave é OPCIONAL no `local`** — Ollama/LM Studio não pedem. Quem sinaliza "configurado"
+  ali é a **URL**, e URL em branco é o que remove a configuração (nos outros provedores,
+  continua sendo a chave em branco). Sem chave, o cabeçalho `Authorization` **não é enviado**:
+  `Bearer ` vazio faz alguns servidores responderem 401 em vez de ignorar.
+- Modelo é **obrigatório** no `local` (não há padrão possível: é o nome carregado naquele
+  servidor) e a URL é validada ao salvar, não na primeira chamada horas depois.
+- Timeout de **10 min** por chamada: generoso para modelo grande em CPU, mas existe — sem
+  teto, um servidor engasgado penduraria o pipeline de transcrição.
+- ⚠️ A máquina de desenvolvimento (i7-1255U) **não** é a de produção — o servidor oficial terá
+  recursos melhores, e é lá que o modelo local faz sentido de verdade.
+
 ## Da reunião gravada ao Levantamento (2026-08-11)
 
 `POST /projetos/:id/levantamento/sugerir` lê a transcrição de uma reunião já gravada e

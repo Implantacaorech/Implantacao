@@ -523,6 +523,35 @@ Todas restritas ao ADM:
 | `/config/disponibilidade` | Conexão + SELECT da base externa de ocupação dos técnicos |
 | `/config/modelos-email` | CRUD de modelos de e-mail (assunto/corpo com variáveis) |
 
+### 10.1 IA por finalidade — e onde o dado vai parar *(2026-08-11)*
+
+Cada uso de IA é uma **finalidade** com chave, provedor e modelo **próprios** (Transcrição
+Áudio/Vídeo · Dicionário · Levantamento a partir da reunião). Provedores aceitos:
+
+| Provedor | Chave | Modelo | Observação |
+|---|---|---|---|
+| `anthropic` | `sk-ant-…` | `claude-opus-4-8` | SDK oficial |
+| `openrouter` | `sk-or-…` | `anthropic/claude-sonnet-4` | catálogo no combo da tela |
+| **`local`** | **opcional** | `qwen2.5:14b` | URL do serviço, ex. `http://192.168.1.50:11434/v1` |
+
+**O provedor `local` existe por privacidade, não por preço.** Vale para qualquer endpoint
+compatível com a API da OpenAI: **Ollama** (porta 11434), **LM Studio** (1234), vLLM. Informe
+a URL **com o `/v1`**; a chave fica em branco (Ollama e LM Studio não pedem nenhuma) e só é
+preenchida quando há um proxy autenticado na frente.
+
+Por que isso importa aqui: **Protocolos e Levantamento leem transcrição de reunião de
+cliente**. A transcrição do áudio já roda na própria rede de propósito (faster-whisper local,
+"o áudio não sai da rede") — mandar o **texto** para um modelo gratuito de provedor externo
+desfaria essa decisão pela porta dos fundos, porque endpoint gratuito costuma ser gratuito
+justamente por treinar com o que recebe. Com `local`, o dado não sai da rede em etapa nenhuma.
+O **Dicionário** é outro caso: lê documentação do SIGER, conteúdo nosso — ali um modelo
+externo é uma escolha razoável. É exatamente para permitir essa separação que as chaves são
+por finalidade.
+
+Espera do serviço local: teto de **10 minutos** por chamada. Generoso porque um modelo grande
+em CPU lendo 13 mil tokens leva minutos; existe porque sem teto um servidor engasgado
+penduraria o pipeline de transcrição.
+
 ---
 
 ## 11. Segurança

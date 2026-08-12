@@ -3,10 +3,19 @@
 } @else {
   <h1 class="pagina-titulo">Modo IA — chaves por finalidade</h1>
   <p class="dica">Cada finalidade tem a sua própria chave, provedor e modelo. Provedores aceitos:
-    <strong>Anthropic</strong> (chave <code>sk-ant-…</code>) e
+    <strong>Anthropic</strong> (chave <code>sk-ant-…</code>),
     <strong>OpenRouter</strong> (<a href="https://openrouter.ai/" target="_blank" rel="noopener">openrouter.ai</a>,
-    chave <code>sk-or-…</code>, modelo no formato <code>anthropic/claude-sonnet-4</code>).
-    Sem chave, a finalidade funciona no modo básico (sem IA).</p>
+    chave <code>sk-or-…</code>, modelo no formato <code>anthropic/claude-sonnet-4</code>) e
+    <strong>serviço local</strong> (Ollama, LM Studio, vLLM — sem custo e sem chave).
+    Sem configuração, a finalidade funciona no modo básico (sem IA).</p>
+  <p class="dica">
+    <strong>Sobre onde o dado vai parar:</strong> Protocolos e Levantamento leem
+    <em>transcrição de reunião de cliente</em>. Modelos gratuitos de provedores externos
+    costumam ser gratuitos porque treinam com o que recebem — para esses dois, prefira o
+    <strong>serviço local</strong>, que mantém o texto na rede interna (a transcrição do áudio
+    já roda assim). O Dicionário lê documentação do SIGER, conteúdo nosso: ali um modelo
+    externo gratuito é uma escolha razoável.
+  </p>
 
   @if (aviso()) {
     <div class="resultado ok linha">
@@ -47,17 +56,33 @@
                   }
                 </select>
               </label>
+              @if (ehLocal(i)) {
+                <label class="campo largo">
+                  <span>URL do serviço</span>
+                  <input type="text" formControlName="baseUrl"
+                         placeholder="http://192.168.1.50:11434/v1" autocomplete="off" />
+                  <small class="dica">
+                    Endereço compatível com a API da OpenAI, <strong>incluindo o /v1</strong>.
+                    Ollama usa a porta 11434; LM Studio, a 1234.
+                  </small>
+                </label>
+              }
               <label class="campo largo">
-                <span>Chave de API</span>
-                <input type="password" formControlName="apiKey" placeholder="sk-ant-… ou sk-or-…" autocomplete="off" />
+                <span>Chave de API @if (ehLocal(i)) { <em>(opcional)</em> }</span>
+                <input type="password" formControlName="apiKey"
+                       [placeholder]="ehLocal(i) ? 'em branco — Ollama/LM Studio não pedem chave' : 'sk-ant-… ou sk-or-…'"
+                       autocomplete="off" />
               </label>
               <label class="campo largo">
                 <span>Modelo</span>
                 <input type="text" formControlName="modelo"
                        [attr.list]="ehOpenRouter(i) ? 'modelos-openrouter' : null"
-                       placeholder="claude-opus-4-8 / anthropic/claude-sonnet-4" autocomplete="off" />
+                       placeholder="claude-opus-4-8 / anthropic/claude-sonnet-4 / qwen2.5:14b" autocomplete="off" />
                 @if (ehOpenRouter(i)) {
                   <small class="dica">Digite para filtrar e escolha um modelo do catálogo do OpenRouter.</small>
+                }
+                @if (ehLocal(i)) {
+                  <small class="dica">O nome exato do modelo carregado naquele servidor (ex.: <code>qwen2.5:14b</code>).</small>
                 }
               </label>
               <button class="btn primario" type="button" [disabled]="salvandoIdx() !== null" (click)="salvar(i)">
@@ -71,7 +96,10 @@
                 <a href="https://openrouter.ai/models" target="_blank" rel="noopener">openrouter.ai/models</a>.
               </small>
             }
-            <small class="dica">Fica salva em arquivo local (fora do Git). Deixe a chave em branco e salve para remover.</small>
+            <small class="dica">
+              Fica salvo em arquivo local (fora do Git). Para remover, salve com a
+              @if (ehLocal(i)) { <strong>URL</strong> } @else { <strong>chave</strong> } em branco.
+            </small>
           }
         </div>
       }

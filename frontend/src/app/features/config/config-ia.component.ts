@@ -47,6 +47,9 @@ export class ConfigIaComponent {
       provider: [f.provider as ProvedorIa],
       apiKey: [''],
       modelo: [f.modelo],
+      // Reexibida ao contrário da chave: é endereço de rede, não segredo — e sem ela em tela
+      // salvar qualquer outro campo apagaria a configuração local (URL vazia = remover).
+      baseUrl: [f.baseUrl],
     });
   }
 
@@ -72,12 +75,22 @@ export class ConfigIaComponent {
     }
   }
 
+  private provedorDe(i: number): ProvedorIa {
+    return this.itens.at(i).get('provider')?.value as ProvedorIa;
+  }
+
   ehOpenRouter(i: number): boolean {
-    return (this.itens.at(i).get('provider')?.value as ProvedorIa) === 'openrouter';
+    return this.provedorDe(i) === 'openrouter';
+  }
+
+  ehLocal(i: number): boolean {
+    return this.provedorDe(i) === 'local';
   }
 
   rotuloProvedor(p: ProvedorIa): string {
-    return p === 'openrouter' ? 'OpenRouter' : 'Anthropic';
+    if (p === 'openrouter') return 'OpenRouter';
+    if (p === 'local') return 'Serviço local (Ollama, LM Studio…)';
+    return 'Anthropic';
   }
 
   /** Alerta preventivo: no OpenRouter o modelo precisa do prefixo do provedor
@@ -98,6 +111,7 @@ export class ConfigIaComponent {
       provider: ProvedorIa;
       apiKey: string;
       modelo: string;
+      baseUrl: string;
     };
     this.salvandoIdx.set(idx);
     this.erro.set(null);
@@ -108,7 +122,10 @@ export class ConfigIaComponent {
       this.finalidades.set(res.finalidades);
       this.itens.at(idx).patchValue({ apiKey: '' });
       const nova = res.finalidades[idx];
-      this.aviso.set(nova.ativa ? `${nova.rotulo}: chave salva.` : `${nova.rotulo}: chave removida.`);
+      const oQue = nova.provider === 'local' ? 'serviço local' : 'chave';
+      this.aviso.set(
+        nova.ativa ? `${nova.rotulo}: ${oQue} salvo.` : `${nova.rotulo}: configuração removida.`,
+      );
     } catch (e) {
       this.erro.set(
         e instanceof HttpErrorResponse && typeof e.error?.message === 'string'

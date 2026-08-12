@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import Anthropic from '@anthropic-ai/sdk';
 import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
@@ -7,13 +7,23 @@ import {
   FinalidadeIa,
   MODELO_ANTHROPIC_PADRAO,
   OPENROUTER_BASE_URL,
+  PROVEDORES_IA,
   ProvedorIa,
 } from './ia.constants';
+
+/** Teto de espera do serviço local. Generoso porque um modelo grande em CPU lendo 13 mil
+ * tokens de transcrição leva minutos — e apertar isso transformaria "lento" em "quebrado".
+ * Existir, porém, é obrigatório: sem teto, um servidor engasgado penduraria o pipeline de
+ * transcrição para sempre, que é exatamente o defeito corrigido em `aguardarTranscricao`. */
+const TIMEOUT_LOCAL_MS = 10 * 60 * 1000;
 
 export interface ConfigFinalidade {
   provider: ProvedorIa;
   apiKey: string;
   modelo: string;
+  /** Só para `local`: URL base do endpoint compatível com a API da OpenAI, com o caminho da
+   * versão incluído (ex.: `http://192.168.1.50:11434/v1`). */
+  baseUrl?: string;
 }
 
 export interface StatusFinalidade {
@@ -23,6 +33,9 @@ export interface StatusFinalidade {
   ativa: boolean;
   provider: ProvedorIa;
   modelo: string;
+  /** Devolvida para a tela reexibir o que está configurado. Não é segredo — é um endereço
+   * de rede interna; a CHAVE é que nunca sai daqui. */
+  baseUrl: string;
   viaEnv: boolean;
 }
 
@@ -124,13 +137,21 @@ export class IaService {
     return null;
   }
 
+  /** Uma configuração está de pé? Normalmente é ter chave — mas no provedor `local` a chave
+   * é OPCIONAL: Ollama e LM Studio não pedem nenhuma, e exigir uma inventada só para o
+   * registro sobreviver seria teatro. Lá o que identifica o destino é a URL. */
+  private configurada(c: ConfigFinalidade | undefined): boolean {
+    if (!c) return false;
+    return c.provider === 'local' ? !!c.baseUrl : !!c.apiKey;
+  }
+
   /** Configuração efetiva de uma finalidade (própria, senão o fallback global). */
   private resolver(
     finalidade: FinalidadeIa,
   ): { config: ConfigFinalidade; viaEnv: boolean } | null {
     const propria = this.lerArquivo()[finalidade];
-    if (propria?.apiKey) {
-      return { config: propria, viaEnv: false };
+    if (this.configurada(propria)) {
+      return { config: propria as ConfigFinalidade, viaEnv: false };
     }
     const fallback = this.fallbackAnthropic();
     if (fallback) {
@@ -160,6 +181,7 @@ export class IaService {
       ativa: resolvido !== null,
       provider: resolvido?.config.provider ?? 'anthropic',
       modelo: resolvido?.config.modelo ?? '',
+      baseUrl: resolvido?.config.baseUrl ?? '',
       viaEnv: resolvido?.viaEnv ?? false,
     };
   }
@@ -168,15 +190,75 @@ export class IaService {
     return FINALIDADES_IA.map((f) => this.status(f.id));
   }
 
-  /** Salva (ou remove, se apiKey vazia) a configuração de uma finalidade. */
+  /** Normaliza a URL base do provedor `local` e recusa o que não dá para chamar.
+   *
+   * Aceita só http/https e tira a barra final (senão a requisição sairia com `//chat/...`).
+   * A URL é digitada pelo ADM na tela de Sistema — é ele quem decide para onde o painel
+   * fala, e essa é justamente a função do recurso; o que não pode é aceitar um texto
+   * qualquer e só descobrir na primeira chamada de IA, horas depois. */
+  private normalizarBaseUrl(bruta: string): string {
+    const texto = (bruta ?? '').trim().replace(/\/+$/, '');
+    if (!texto) {
+      throw new BadRequestException(
+        'Informe a URL do serviço local (ex.: http://192.168.1.50:11434/v1).',
+      );
+    }
+    let url: URL;
+    try {
+      url = new URL(texto);
+    } catch {
+      throw new BadRequestException(`URL inválida: "${texto}".`);
+    }
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      throw new BadRequestException(
+        'A URL do serviço local deve ser http ou https.',
+      );
+    }
+    return texto;
+  }
+
+  /** Salva a configuração de uma finalidade — ou a REMOVE quando vem vazia (chave em branco
+   * nos provedores com chave; URL em branco no `local`). */
   salvar(finalidade: FinalidadeIa, dados: Partial<ConfigFinalidade>): void {
     const config = this.lerArquivo();
     const apiKey = (dados.apiKey ?? '').trim();
+    const provider: ProvedorIa = PROVEDORES_IA.includes(
+      dados.provider as ProvedorIa,
+    )
+      ? (dados.provider as ProvedorIa)
+      : 'anthropic';
+
+    if (provider === 'local') {
+      const baseUrl = (dados.baseUrl ?? '').trim();
+      if (!baseUrl) {
+        delete config[finalidade];
+        this.gravarArquivo(config);
+        return;
+      }
+      const modelo = (dados.modelo ?? '').trim();
+      if (!modelo) {
+        // Sem padrão possível: o nome do modelo é o que estiver carregado NAQUELE servidor
+        // (`qwen2.5:14b`, `llama3.1:8b`…). Chutar produziria um 404 do Ollama na primeira
+        // chamada, longe daqui.
+        throw new BadRequestException(
+          'Informe o nome do modelo carregado no serviço local (ex.: qwen2.5:14b).',
+        );
+      }
+      config[finalidade] = {
+        provider,
+        // Opcional de propósito: Ollama/LM Studio não pedem chave. Fica guardada quando há
+        // um proxy autenticado na frente.
+        apiKey,
+        modelo,
+        baseUrl: this.normalizarBaseUrl(baseUrl),
+      };
+      this.gravarArquivo(config);
+      return;
+    }
+
     if (!apiKey) {
       delete config[finalidade];
     } else {
-      const provider: ProvedorIa =
-        dados.provider === 'openrouter' ? 'openrouter' : 'anthropic';
       const modelo =
         (dados.modelo ?? '').trim() ||
         (provider === 'anthropic' ? MODELO_ANTHROPIC_PADRAO : '');
@@ -215,7 +297,17 @@ export class IaService {
     }
     const { config } = resolvido;
     if (config.provider === 'openrouter') {
-      return this.completarOpenRouter(config, opcoes);
+      return this.completarCompativel(config, OPENROUTER_BASE_URL, opcoes);
+    }
+    if (config.provider === 'local') {
+      return this.completarCompativel(
+        config,
+        config.baseUrl ?? '',
+        opcoes,
+        // Modelo local não tem catálogo remoto para consultar, e um servidor engasgado
+        // simplesmente não responde. Sem teto, o pipeline de transcrição ficaria pendurado.
+        TIMEOUT_LOCAL_MS,
+      );
     }
     return this.completarAnthropic(config, opcoes);
   }
@@ -237,36 +329,60 @@ export class IaService {
       .join('');
   }
 
-  /** OpenRouter usa a API de chat completions compatível com a da OpenAI: o `system` vira a
-   * primeira mensagem com role `system`. */
-  private async completarOpenRouter(
+  /** Chat completions no dialeto da OpenAI — atende OpenRouter e qualquer serviço `local`
+   * (Ollama, LM Studio, vLLM). A única diferença entre eles é a URL base e o fato de a chave
+   * ser opcional no local; o corpo da requisição é idêntico, então o código é um só. O
+   * `system` vira a primeira mensagem com role `system`. */
+  private async completarCompativel(
     config: ConfigFinalidade,
+    baseUrl: string,
     opcoes: OpcoesCompletar,
+    timeoutMs?: number,
   ): Promise<string> {
+    const onde = config.provider === 'local' ? 'O serviço local' : 'OpenRouter';
     if (!config.modelo) {
       throw new Error(
-        'Modelo do OpenRouter não informado (ex.: anthropic/claude-sonnet-4).',
+        config.provider === 'local'
+          ? 'Modelo do serviço local não informado (ex.: qwen2.5:14b).'
+          : 'Modelo do OpenRouter não informado (ex.: anthropic/claude-sonnet-4).',
       );
     }
-    const resp = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: config.modelo,
-        max_tokens: opcoes.maxTokens,
-        messages: [
-          { role: 'system', content: opcoes.system },
-          ...opcoes.messages,
-        ],
-      }),
-    });
+    if (!baseUrl) {
+      throw new Error('URL do serviço local não configurada (Config → IA).');
+    }
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    // Sem chave, sem cabeçalho: mandar `Bearer ` vazio faz alguns servidores recusarem com
+    // 401 em vez de simplesmente ignorar a autenticação que não pediram.
+    if (config.apiKey) headers.Authorization = `Bearer ${config.apiKey}`;
+
+    let resp: Response;
+    try {
+      resp = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: config.modelo,
+          max_tokens: opcoes.maxTokens,
+          messages: [
+            { role: 'system', content: opcoes.system },
+            ...opcoes.messages,
+          ],
+        }),
+        ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
+      });
+    } catch (e) {
+      // Servidor local desligado/inalcançável é o caso comum, e o erro cru do fetch
+      // ("fetch failed") não diz nada a quem vai consertar.
+      throw new Error(
+        `${onde} não respondeu (${baseUrl}): ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
     if (!resp.ok) {
       const detalhe = await resp.text().catch(() => '');
       throw new Error(
-        `OpenRouter respondeu ${resp.status}: ${detalhe.slice(0, 300)}`,
+        `${onde} respondeu ${resp.status}: ${detalhe.slice(0, 300)}`,
       );
     }
     const dados = (await resp.json()) as {

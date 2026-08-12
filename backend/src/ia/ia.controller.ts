@@ -18,8 +18,9 @@ import { SalvarChaveIaDto } from './dto/salvar-chave-ia.dto';
 import { PROVEDORES_IA } from './ia.constants';
 
 /** Tela Config → IA (Ferramentas → Modo IA) — exclusivo do Administrador. Configura as chaves
- * de IA POR FINALIDADE (Protocolos, Dicionário…), cada uma com provedor próprio
- * (Anthropic ou OpenRouter) e modelo. Espelha webapp/routes_config.py:config(). */
+ * de IA POR FINALIDADE (Protocolos, Dicionário, Levantamento…), cada uma com provedor próprio
+ * (Anthropic, OpenRouter ou um serviço **local** compatível com a API da OpenAI) e modelo.
+ * Espelha webapp/routes_config.py:config(). */
 @ApiTags('config-ia')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -58,6 +59,7 @@ export class IaController {
       provider: dto.provider,
       apiKey: dto.apiKey,
       modelo: dto.modelo,
+      baseUrl: dto.baseUrl,
     });
     return new ApiEnvelope({
       provedores: PROVEDORES_IA,

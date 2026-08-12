@@ -12,6 +12,7 @@ function finalidade(over: Partial<StatusFinalidadeIa> = {}): StatusFinalidadeIa 
     ativa: false,
     provider: 'anthropic',
     modelo: '',
+    baseUrl: '',
     viaEnv: false,
     ...over,
   };
@@ -19,7 +20,7 @@ function finalidade(over: Partial<StatusFinalidadeIa> = {}): StatusFinalidadeIa 
 
 function status(over: Partial<StatusConfigIa> = {}): StatusConfigIa {
   return {
-    provedores: ['anthropic', 'openrouter'],
+    provedores: ['anthropic', 'openrouter', 'local'],
     finalidades: [
       finalidade(),
       finalidade({ finalidade: 'dicionario', rotulo: 'Dicionário Inteligente' }),
@@ -75,8 +76,93 @@ describe('ConfigIaComponent', () => {
       provider: 'openrouter',
       apiKey: 'sk-or-teste',
       modelo: 'anthropic/claude-sonnet-4',
+      baseUrl: '',
     });
     expect(fixture.componentInstance.finalidades()[0].ativa).toBe(true);
+  });
+
+  /** O serviço local é o caminho sem custo E sem mandar transcrição de cliente para fora. */
+  describe('serviço local', () => {
+    it('mostra o campo de URL só quando o provedor é local', async () => {
+      const fixture = montar({ status: () => Promise.resolve(status()) });
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.ehLocal(0)).toBe(false);
+      expect(fixture.nativeElement.textContent).not.toContain('URL do serviço');
+
+      fixture.componentInstance.itens.at(0).patchValue({ provider: 'local' });
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.ehLocal(0)).toBe(true);
+      expect(fixture.nativeElement.textContent).toContain('URL do serviço');
+    });
+
+    it('salva URL e modelo, com a chave em branco', async () => {
+      const salvar = vi.fn().mockResolvedValue(
+        status({
+          finalidades: [
+            finalidade({
+              ativa: true,
+              provider: 'local',
+              modelo: 'qwen2.5:14b',
+              baseUrl: 'http://192.168.1.50:11434/v1',
+            }),
+            finalidade({ finalidade: 'dicionario' }),
+          ],
+        }),
+      );
+      const fixture = montar({ status: () => Promise.resolve(status()), salvar });
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      fixture.componentInstance.itens.at(0).patchValue({
+        provider: 'local',
+        modelo: 'qwen2.5:14b',
+        baseUrl: 'http://192.168.1.50:11434/v1',
+      });
+      await fixture.componentInstance.salvar(0);
+
+      expect(salvar).toHaveBeenCalledWith({
+        finalidade: 'protocolos',
+        provider: 'local',
+        apiKey: '',
+        modelo: 'qwen2.5:14b',
+        baseUrl: 'http://192.168.1.50:11434/v1',
+      });
+      expect(fixture.componentInstance.finalidades()[0].ativa).toBe(true);
+    });
+
+    /** Sem a URL em tela, salvar qualquer outro campo apagaria a configuração (URL vazia =
+     * remover) — o usuário perderia o serviço local sem entender por quê. */
+    it('reexibe a URL já configurada (ao contrário da chave)', async () => {
+      const fixture = montar({
+        status: () =>
+          Promise.resolve(
+            status({
+              finalidades: [
+                finalidade({
+                  ativa: true,
+                  provider: 'local',
+                  modelo: 'qwen2.5:14b',
+                  baseUrl: 'http://servidor:11434/v1',
+                }),
+              ],
+            }),
+          ),
+      });
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const grupo = fixture.componentInstance.itens.at(0).getRawValue() as {
+        baseUrl: string;
+        apiKey: string;
+      };
+      expect(grupo.baseUrl).toBe('http://servidor:11434/v1');
+      expect(grupo.apiKey).toBe(''); // a chave, essa nunca volta
+    });
   });
 
   it('carrega o catálogo do OpenRouter para o combo de modelos', async () => {

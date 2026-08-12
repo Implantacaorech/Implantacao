@@ -12,7 +12,7 @@ export class SalvarChaveIaDto {
 
   @ApiPropertyOptional({
     enum: PROVEDORES_IA,
-    description: 'Provedor da chave (anthropic | openrouter)',
+    description: 'Provedor da chave (anthropic | openrouter | local)',
   })
   @IsOptional()
   @IsIn(PROVEDORES_IA)
@@ -27,9 +27,20 @@ export class SalvarChaveIaDto {
 
   @ApiPropertyOptional({
     description:
-      'Modelo (ex.: claude-opus-4-8, ou anthropic/claude-sonnet-4 no OpenRouter)',
+      'Modelo (ex.: claude-opus-4-8; anthropic/claude-sonnet-4 no OpenRouter; ' +
+      'qwen2.5:14b num serviço local)',
   })
   @IsOptional()
   @IsString()
   modelo?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Só para o provedor `local`: URL base do endpoint compatível com a API da OpenAI, ' +
+      'com o caminho da versão (ex.: http://192.168.1.50:11434/v1). Vazia = remove a ' +
+      'configuração da finalidade.',
+  })
+  @IsOptional()
+  @IsString()
+  baseUrl?: string;
 }
