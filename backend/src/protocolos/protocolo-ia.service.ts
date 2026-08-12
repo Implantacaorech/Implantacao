@@ -97,27 +97,77 @@ const SISTEMA_RESUMO =
   '5. Ordem cronológica do treinamento.\n' +
   '6. Responda SOMENTE com o texto do registro — sem JSON, sem markdown, sem comentários ' +
   'antes ou depois.\n\n' +
+  'TÍTULO DE CADA BLOCO — é o erro mais comum, leia com atenção:\n' +
+  '- Cada bloco é um MENU ou uma ROTINA do SIGER.\n' +
+  '- CÓDIGO DE MENU: só escreva um se ele estiver na lista MENUS DO SIGER RECONHECIDOS ' +
+  'entregue no pedido, ou se aparecer LITERALMENTE na transcrição. Nesse caso use o código ' +
+  'exatamente como veio (ex.: "Menu 3.4-L – Listagem de Caixa:").\n' +
+  '- ⚠️ Se não houver lista e o código não estiver dito na gravação, **NÃO INVENTE UM**. ' +
+  'Escrever "Menu 3.4" por dedução é pior do que não citar menu nenhum: quem revisa confia ' +
+  'no código e vai procurar uma tela que não existe. Nesse caso, titule o bloco pelo NOME ' +
+  'PRÓPRIO da rotina ou da tela como ela foi chamada na gravação (ex.: "Geração de ' +
+  'Necessidades Materiais:", "Rotina de Conciliação Bancária:").\n' +
+  '- É PROIBIDO usar como título um assunto genérico em caixa alta ("PARAMETRIZAÇÕES E ' +
+  'CONFIGURAÇÕES:", "HISTÓRICO DE DEMANDA:", "BLOCOS DE JANELA:"). Isso não é nem menu nem ' +
+  'rotina — é um tema inventado para agrupar parágrafos.\n' +
+  '- Um bloco por TELA/ROTINA. Não empilhe vários pares Ação/Finalidade sob o mesmo ' +
+  'título: se a gravação passou por cinco telas, são cinco blocos.\n\n' +
+  'LINHAS DE CADA BLOCO: use TODOS os rótulos que couberem ao caso, não só dois. ' +
+  '`Ação:` e `Finalidade:` são o mínimo; acrescente `Configuração:`, `Parâmetros:`, ' +
+  '`Recurso:`, `Processamento:`, `Automação:`, `Correção:` e `Validação:` sempre que a ' +
+  'gravação tiver esse conteúdo. Um bloco só com Ação/Finalidade num trecho que mostrou ' +
+  'parametrização é registro incompleto.\n\n' +
+  'DEFINIÇÕES: cada item explica um termo COMO ELE FOI EXPLICADO NA GRAVAÇÃO — tabela, ' +
+  'parâmetro, arquivo, tecla, conceito do SIGER. NÃO escreva definição genérica de ' +
+  'dicionário e NÃO invente o significado de uma sigla: se o consultor não explicou o que ' +
+  'ela é, ela não entra nesta seção.\n\n' +
   'FORMATO EXATO DA RESPOSTA (duas seções, nesta ordem):\n\n' +
   'Registro de Atividades por Menu do Sistema\n' +
   '<um bloco por menu/rotina abordada, no formato:>\n' +
-  '<Menu ou rotina> – <nome/descrição>:\n' +
+  '<Menu com código – nome, ou nome próprio da rotina>:\n' +
   'Ação: <o que foi executado>\n' +
   'Finalidade: <para que serve / o que resolve>\n' +
-  '<e, quando houver, mais linhas rotuladas conforme o caso: Configuração:, ' +
-  'Parâmetros:, Recurso:, Processamento:, Automação:, Correção:, Validação:>\n\n' +
+  '<mais linhas rotuladas conforme o caso, ver acima>\n\n' +
   'Definições de Configuração\n' +
   '<um item por conceito, termo, tabela, arquivo ou parâmetro explicado, no formato:>\n' +
   '<Termo>: <explicação clara e objetiva de como funciona e para que serve>\n\n' +
-  'Exemplo do estilo esperado (conteúdo é ilustrativo, NÃO reaproveite):\n' +
+  'EXEMPLO DO ESTILO ESPERADO — o conteúdo abaixo é de um treinamento de CAIXA e é ' +
+  'puramente ilustrativo. Copie a ESTRUTURA (títulos com código de menu, variedade de ' +
+  'rótulos, definições ancoradas no que foi dito); NUNCA reaproveite o conteúdo. Se a ' +
+  'gravação não falar de caixa/conciliação, nada daqui pode aparecer na sua resposta:\n\n' +
+  'Registro de Atividades por Menu do Sistema\n' +
   'Menu 4 – Movimentos de Caixa / Conta Corrente (Inclusão de Movimento):\n' +
   'Ação: Execução de lançamentos manuais utilizando a tecla F4 para acionamento de ' +
   'Matrizes de Integração.\n' +
   'Finalidade: Registrar movimentos que não possuem origem no Contas a Pagar ou Receber ' +
-  '(ex: juros, tarifas), onde o sistema carrega automaticamente as contas de débito, ' +
+  '(ex.: juros, tarifas), onde o sistema carrega automaticamente as contas de débito, ' +
   'crédito e histórico baseando-se na matriz selecionada via F8.\n' +
+  'Menu M – Manutenção de Históricos / Importação de Extrato (FX):\n' +
+  'Ação: Configuração do caminho de diretório para busca de arquivos bancários e ' +
+  'definição de períodos de importação via F3.\n' +
+  'Configuração: Amarração de históricos bancários às matrizes de integração, garantindo ' +
+  'que, na leitura do arquivo FX, o sistema identifique automaticamente a natureza do ' +
+  'lançamento.\n' +
+  'Recurso: Uso da tecla F8 para explorar arquivos dentro do diretório padrão configurado.\n' +
+  'Rotina de Conciliação Bancária:\n' +
+  'Ação: Confronto entre os movimentos internos do SIGER e o extrato bancário importado.\n' +
+  'Processamento: Execução da Conciliação Automática por critérios de data e valor.\n' +
+  'Automação: Uso do comando "Cria Movimento" para gerar lançamentos automáticos para ' +
+  'itens do extrato que já possuem matriz associada.\n' +
+  'Correção: Procedimento de "Desconciliar" para permitir a alteração de históricos ou ' +
+  'valores em lançamentos já integrados que apresentem inconsistências.\n' +
+  'Menu 1 > Tabela 4 > Tabela 8 – Tabelas por Empresa (Manutenção Consolidada):\n' +
+  'Ação: Manutenção e criação da base de dados das Matrizes de Integração.\n' +
+  'Parâmetros: Configuração de regras de contrapartida contábil por empresa, visto que ' +
+  'códigos de caixa e banco variam entre as unidades.\n\n' +
+  'Definições de Configuração\n' +
   'Matriz de Integração: Conjunto de regras pré-definidas que automatiza o lançamento ' +
   'contábil (débito/crédito) e o histórico, eliminando a necessidade de conhecimento ' +
-  'contábil técnico por parte do operador financeiro.';
+  'contábil técnico por parte do operador financeiro.\n' +
+  'Conta 99 (Coringa): Código utilizado dentro da matriz para direcionar lançamentos a ' +
+  'contas de despesas variadas sem criar um código de caixa específico para cada gasto.\n' +
+  'Arquivo FX/OFX: Formato de arquivo digital fornecido pelas instituições bancárias para ' +
+  'importação de movimentos financeiros no sistema.';
 
 // camelCase (entidade) -> snake_case (chave que a IA devolve, igual ao prompt/ao Flask).
 const CHAVE_IA: Record<string, string> = {
@@ -282,9 +332,24 @@ export class ProtocoloIaService {
   /** Resumo COMPLETO da transcrição, em texto (não JSON): registro de atividades por menu
    * do sistema + definições de configuração. Chamada separada da `analisar` — ver
    * SISTEMA_RESUMO. `maxTokens` fica abaixo de 8192 de propósito: é o teto de saída de
-   * vários modelos que o usuário pode configurar em Config → IA. */
-  async resumirCompleto(transcricao: string, videoNome = ''): Promise<string> {
-    const user = `Vídeo: ${videoNome}\n\nTRANSCRIÇÃO (com timestamps):\n${transcricao}`;
+   * vários modelos que o usuário pode configurar em Config → IA.
+   *
+   * `menusReconhecidos` é a MESMA lista entregue à `analisar` — e não recebê-la era o
+   * defeito relatado em 2026-08-12 ("o resumo não traz os menus"). O reconhecimento contra o
+   * catálogo entrou em 2026-08-11 só na análise; o resumo continuou tendo de adivinhar o
+   * código a partir de um texto onde ele chega mastigado ("um ponto quatro i"), e o
+   * resultado era bloco intitulado por assunto genérico em CAIXA ALTA no lugar do menu. */
+  async resumirCompleto(
+    transcricao: string,
+    videoNome = '',
+    menusReconhecidos = '',
+  ): Promise<string> {
+    const bloco = menusReconhecidos.trim()
+      ? '\n\nMENUS DO SIGER RECONHECIDOS NESTA GRAVAÇÃO (catálogo oficial — use ESTES ' +
+        'códigos e nomes nos títulos dos blocos; não invente nem reescreva o código):\n' +
+        `${menusReconhecidos.trim()}\n`
+      : '';
+    const user = `Vídeo: ${videoNome}${bloco}\n\nTRANSCRIÇÃO (com timestamps):\n${transcricao}`;
     const texto = await this.ia.completar('protocolos', {
       system: SISTEMA_RESUMO,
       messages: [{ role: 'user', content: user }],

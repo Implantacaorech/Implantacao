@@ -149,9 +149,11 @@ describe('ProcessamentoProtocolosService', () => {
         menu: '1.4-I',
         textoIa: '{"modulo":"Estoque"}',
       });
+      // 3º argumento: os menus reconhecidos (vazio aqui — a taxonomia do teste é vazia).
       expect(ia.resumirCompleto).toHaveBeenCalledWith(
         '[00:01] fala',
         'video.mp4',
+        '',
       );
       expect(protocolos.atualizar).toHaveBeenCalledWith(1, {
         resumoCompleto:
@@ -200,6 +202,49 @@ describe('ProcessamentoProtocolosService', () => {
       ];
       expect(menusNoPrompt).toContain('2.3-N/G/K');
       expect(menusNoPrompt).toContain('FAT203');
+    });
+
+    /** A queixa de 2026-08-12: "o resumo completo não traz os menus". O reconhecimento
+     * contra o catálogo existia desde 2026-08-11, mas ia SÓ para a análise — e o resumo,
+     * que é o texto que o revisor lê, continuava adivinhando o código a partir de um texto
+     * onde ele chega mastigado. O resultado era bloco intitulado por assunto genérico em
+     * CAIXA ALTA ("PARAMETRIZAÇÕES E CONFIGURAÇÕES:") no lugar do menu. */
+    it('entrega os MESMOS menus reconhecidos à análise E ao resumo completo', async () => {
+      const video = join(raiz, 'menus-no-resumo.mp4');
+      writeFileSync(video, 'x');
+      protocolos.buscar.mockResolvedValue(
+        protocolo({
+          videoCaminho: video,
+          transcricao: 'Abrimos o dois ponto três N para emitir a nota fiscal.',
+        }),
+      );
+      menus.taxonomia.mockResolvedValue([
+        {
+          sigla: 'FAT',
+          tipo: 'modulo',
+          titulo: 'FAT - Faturamento',
+          menus: [
+            {
+              codigo: '2.3-N/G/K',
+              opcao: 'Emissao de notas.',
+              programa: 'FAT203',
+              funcao: '',
+            },
+          ],
+        },
+      ]);
+      ia.analisar.mockResolvedValue({ campos: {}, bruto: '{}' });
+      ia.resumirCompleto.mockResolvedValue('resumo');
+
+      await service.processar(1, 'Fulano');
+
+      const menusNaAnalise = ia.analisar.mock.calls[0][2] as string;
+      const menusNoResumo = ia.resumirCompleto.mock.calls[0][2] as string;
+      expect(menusNaAnalise).toContain('2.3-N/G/K');
+      // O ponto do teste: a MESMA lista, não uma string vazia.
+      expect(menusNoResumo).toBe(menusNaAnalise);
+      // E o catálogo é consultado uma vez só — não duas.
+      expect(menus.taxonomia).toHaveBeenCalledTimes(1);
     });
 
     it('Dicionário indisponível não derruba o pipeline — é enriquecimento', async () => {

@@ -250,9 +250,14 @@ export class ProcessamentoProtocolosService implements OnApplicationBootstrap {
   private async resumoCompleto(
     transcricao: string,
     videoNome: string,
+    menusReconhecidos = '',
   ): Promise<string> {
     try {
-      return await this.ia.resumirCompleto(transcricao, videoNome);
+      return await this.ia.resumirCompleto(
+        transcricao,
+        videoNome,
+        menusReconhecidos,
+      );
     } catch (e) {
       this.logger.error(
         `Resumo completo do protocolo "${videoNome}" falhou`,
@@ -635,17 +640,27 @@ export class ProcessamentoProtocolosService implements OnApplicationBootstrap {
       const textoIa = aplicarNomes(texto, lerMapa(atual?.mapaLocutores));
       // Descobre, contra o catálogo REAL do SIGER, quais menus foram citados na gravação.
       // Sem isto a IA precisa adivinhar o código a partir de um texto onde ele chegou
-      // mastigado ("um ponto quatro i") — e o resultado era menu sumido no resumo, que foi
-      // a queixa do usuário em 2026-08-11. Falhar aqui não pode derrubar o pipeline: é
-      // enriquecimento, não etapa obrigatória.
+      // mastigado ("um ponto quatro i") — e o resultado era menu sumido, que foi a queixa do
+      // usuário em 2026-08-11. Falhar aqui não pode derrubar o pipeline: é enriquecimento,
+      // não etapa obrigatória.
+      //
+      // Calculado UMA vez e entregue às DUAS chamadas de IA. Em 2026-08-11 ele ia só para a
+      // análise, e o resumo completo — que é o que o revisor lê — continuou sem menu nenhum,
+      // intitulando os blocos por assunto genérico em caixa alta. Mesma lista, mesmo
+      // catálogo: se os dois textos citam menus, têm de citar OS MESMOS.
+      const menus = await this.reconhecerMenus(textoIa, id);
       const { campos, bruto } = await this.ia.analisar(
         textoIa,
         p.videoNome || '',
-        await this.reconhecerMenus(textoIa, id),
+        menus,
       );
       await this.protocolos.atualizar(id, { ...campos, textoIa: bruto });
       await this.protocolos.atualizar(id, {
-        resumoCompleto: await this.resumoCompleto(textoIa, p.videoNome || ''),
+        resumoCompleto: await this.resumoCompleto(
+          textoIa,
+          p.videoNome || '',
+          menus,
+        ),
       });
 
       await this.protocolos.atualizarStatus(id, 'Em revisão', undefined, autor);
