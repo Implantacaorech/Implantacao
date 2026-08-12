@@ -346,7 +346,12 @@ export class ProtocoloIaService {
   ): Promise<string> {
     const bloco = menusReconhecidos.trim()
       ? '\n\nMENUS DO SIGER RECONHECIDOS NESTA GRAVAÇÃO (catálogo oficial — use ESTES ' +
-        'códigos e nomes nos títulos dos blocos; não invente nem reescreva o código):\n' +
+        'códigos e nomes nos títulos dos blocos; não invente nem reescreva o código).\n' +
+        '⚠️ Cada item vem com o TRECHO em que foi citado: são CANDIDATOS, não fatos. ' +
+        'Alguns nomes de menu são termos correntes do dia a dia (ex.: "ordem de produção"), ' +
+        'e citá-los não significa que a tela foi aberta. Leia o trecho: se ele mostra a tela ' +
+        'sendo usada, use o menu; se é só a expressão aparecendo numa frase, IGNORE aquele ' +
+        'candidato.\n' +
         `${menusReconhecidos.trim()}\n`
       : '';
     const user = `Vídeo: ${videoNome}${bloco}\n\nTRANSCRIÇÃO (com timestamps):\n${transcricao}`;

@@ -209,11 +209,16 @@ describe('expandirCodigo', () => {
 });
 
 describe('formatarParaPrompt', () => {
-  it('monta uma linha por menu, com módulo e programa', () => {
+  it('monta uma linha por menu, com módulo, programa e o trecho onde casou', () => {
     const menus = menusMencionados('abre o 2.3-N', CATALOGO);
-    expect(formatarParaPrompt(menus)).toBe(
+    const saida = formatarParaPrompt(menus);
+    expect(saida).toContain(
       '- 2.3-N/G/K (FAT, FAT203) — Emissao de notas, NF-e/NFC-e/NFS-e',
     );
+    // O trecho vai junto para a IA poder CONFERIR o candidato: nome de menu às vezes é
+    // termo corrente do domínio, e a citação não prova que a tela foi aberta.
+    expect(saida).toContain('citado em:');
+    expect(saida).toContain('abre o 2.3-N');
   });
 
   it('sem menu, não gera bloco nenhum', () => {
