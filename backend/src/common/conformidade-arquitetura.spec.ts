@@ -142,6 +142,38 @@ describe('Conformidade com o Guia Mestre de Arquitetura', () => {
     });
   });
 
+  describe('Adequação faseada — a dívida de Repository nos Services não CRESCE (A18)', () => {
+    // A regra central do ADR-0002 é "Service não injeta Repository<T> direto — vai pela camada
+    // Repository". A adequação é faseada (fase 2 do plano em docs/pendencias.md): há uma dívida
+    // conhecida de Services que ainda injetam `@InjectRepository`. Esta catraca NÃO exige zerar
+    // já — exige NÃO PIORAR: um módulo novo (ou uma alteração) que injete Repository num Service
+    // sobe o número e QUEBRA aqui, forçando a passar pela camada certa. Achado A18.
+    //
+    // Baseline medido em 2026-08-13. Ao portar um módulo para a camada Repository, o número
+    // CAI — atualize o baseline PARA BAIXO (nunca para cima) para a catraca acompanhar o ganho.
+    const BASELINE_SERVICES_COM_REPOSITORY = 43;
+
+    it('o nº de Services que injetam @InjectRepository não passa do baseline', () => {
+      const services = arquivos('.service.ts').filter(
+        (s) => !s.endsWith('.spec.ts'),
+      );
+      const comRepository = services
+        .filter((s) => /@InjectRepository\(/.test(ler(s)))
+        .map(rel)
+        .sort();
+      // expect(valor, msg) é do Vitest; o Jest só aceita um argumento — por isso a mensagem
+      // acionável vai DENTRO do valor comparado (mesmo idioma de `exigirVazio`).
+      const relatorio =
+        comRepository.length > BASELINE_SERVICES_COM_REPOSITORY
+          ? `Service injetando Repository<T> direto sobe a dívida do ADR-0002 (baseline ` +
+            `${BASELINE_SERVICES_COM_REPOSITORY}, agora ${comRepository.length}). Use a ` +
+            `camada Repository (copie do piloto plano-cronograma):\n` +
+            comRepository.map((s) => `  - ${s}`).join('\n')
+          : '';
+      expect(relatorio).toBe('');
+    });
+  });
+
   describe('Injeção de dependência', () => {
     it('nenhum Service instancia outro Service/Repository com `new`', () => {
       // O guia é explícito: "nunca instanciar dependências com new". `new` de Date, Error,

@@ -338,10 +338,11 @@ export const PRONTIDAO_ACHADOS: AchadoProntidao[] = [
     severidade: 'alto',
     eixo: 2,
     evidencia: 'conformidade-arquitetura.spec.ts — sem asserção sobre Services',
-    correcao: 'Apertar a catraca por módulo já portado.',
-    status: 'aberto',
+    correcao:
+      'Catraca no CI: nº de Services com @InjectRepository não passa do baseline (43); Service novo violador quebra o teste. Portar módulo baixa o baseline.',
+    status: 'corrigido',
     dono: 'software',
-    prazo: '2026-09-16',
+    prazo: 'feito',
   },
   {
     codigo: 'A19',
@@ -440,9 +441,22 @@ export const PRONTIDAO_ACHADOS: AchadoProntidao[] = [
     severidade: 'medio',
     eixo: 1,
     evidencia: 'auth.service.ts:71-76',
-    correcao: 'Revogar a família de tokens do usuário no replay.',
-    status: 'aberto',
+    correcao:
+      'refresh distingue revogação por rotação × logout; reuso de um token ROTACIONADO revoga a família (motivo replay) e recusa; logout reapresentado não escala. Migration RefreshTokenMotivo.',
+    status: 'corrigido',
     dono: 'software',
-    prazo: '2026-09-16',
+    prazo: 'feito',
+  },
+  {
+    codigo: 'M4',
+    titulo: 'POST/PATCH /agentes/execucoes com @Roles() vazio',
+    severidade: 'medio',
+    eixo: 2,
+    evidencia: 'agentes.controller.ts:35,44 — qualquer autenticado gravava',
+    correcao:
+      "@Permissao('centro_operacional','alteracao') no registro de telemetria (o agente reporta com token ADM, que tem a permissão).",
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
   },
 ];

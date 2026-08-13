@@ -96,9 +96,10 @@
 - [ ] **A17 — Backup nunca restaurado + runbook aponta para Postgres/Docker extinto.** **Correção:**
   restore cronometrado num banco descartável, corrigir o runbook, cópia off-site. **Dono:** usuário
   (executar o restore) + software (runbook). **Prazo:** 2026-08-26.
-- [ ] **A18 — Guarda do ADR-0002 não trava os 43 services que ainda injetam `Repository<T>`** — o
-  número pode crescer sem quebrar o CI. **Correção:** apertar a catraca por módulo já portado.
-  **Dono:** software. **Prazo:** 2026-09-16.
+- [x] **A18 — Catraca do ADR-0002 (corrigido 2026-08-13).** `conformidade-arquitetura.spec.ts`
+  passou a contar os Services que injetam `@InjectRepository` e falha se o número **passar do
+  baseline (43)** — Service novo violador quebra o CI; portar um módulo baixa o baseline. Não
+  exige zerar já (fase 2), exige **não piorar**. **Dono:** software.
 - [ ] **A19 — Suíte e2e/Playwright fora do CI** (a que achou as 9 brechas de autorização).
   **Correção:** job de CI (self-hosted ou instância efêmera). **Dono:** software. **Prazo:** 2026-09-16.
 
@@ -107,7 +108,7 @@
 - [x] **M1 — Swagger `/api/docs` público (corrigido 2026-08-12).** Sobe só fora de produção (mesmo sinal do C1). **Dono:** software.
 - [ ] **M2 — 12 rotas de escrita atrás de permissão de `consulta`** (inclui `concluir` passo). **Dono:** software. **Prazo:** 2026-09-09.
 - [x] **M3 — `POST /fluxo/inbox` sem `@Permissao` (corrigido 2026-08-12).** Exige `@Permissao('novo_cliente','alteracao')` como a rota irmã `criar`. **Dono:** software.
-- [ ] **M4 — `POST/PATCH /agentes/execucoes` com `@Roles()` vazio.** **Dono:** software. **Prazo:** 2026-09-02.
+- [x] **M4 — `POST/PATCH /agentes/execucoes` com `@Roles()` vazio (corrigido 2026-08-13).** Passou a exigir `@Permissao('centro_operacional','alteracao')` — só quem opera o Centro (ou o agente com token ADM) grava telemetria. **Dono:** software.
 - [ ] **M5 — Credenciais em claro em `backend/dados/`** (`ia_config.json`, `mariadb.env`, `smtp.json`, `imap.json`, CSV) — proteger por ACL, considerar cifra. **Dono:** usuário + software. **Prazo:** 2026-09-02.
 - [ ] **M6 — Detecção de ausência só para backup** (digest/robôs sem heartbeat). **Dono:** software. **Prazo:** 2026-09-09.
 - [x] **M7 — Log de integridade ilegível (corrigido 2026-08-12).** A saída do `npm test` passou a ser capturada e anexada em UTF-8 sem BOM (o mesmo helper do resto do script), em `Verificar_Integridade_Novo.ps1`. **Dono:** software.
@@ -119,7 +120,7 @@
   3 clientes) e à **IA** (header do fetch). Guarda: `correlacao.spec.ts`. Eixo Observabilidade 2→3.
   **Dono:** software.
 - [ ] **M10 — Kill switch de IA vazando** (fallback global Anthropic) e sem desligamento em runtime dos robôs. **Dono:** software. **Prazo:** 2026-09-16.
-- [ ] **M11 — Sem detecção de reuso de refresh token** (revogar a família no replay). **Dono:** software. **Prazo:** 2026-09-16.
+- [x] **M11 — Detecção de reuso de refresh token (corrigido 2026-08-13).** O `refresh` distingue revogação por **rotação** × **logout**: reapresentar um token já ROTACIONADO (sinal de vazamento) revoga toda a família do usuário (motivo `replay`) e recusa; reapresentar um token de logout (aba velha) não escala. Coluna `motivo_revogacao` (migration `RefreshTokenMotivo`). Guarda em `auth.service.spec.ts`. **Dono:** software.
 - [ ] **M12 — `recuperarPresos` re-dispara IA a cada boot sem contador de tentativas.** **Dono:** software. **Prazo:** 2026-09-09.
 
 ### 🔵 Baixo

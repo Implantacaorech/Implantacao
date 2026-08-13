@@ -65,14 +65,33 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token inválido ou expirado');
     }
     const hash = this.hash(refreshToken);
+    // Busca SEM o filtro `revogado: false` — um token já revogado apresentado de novo é o
+    // sinal que interessa para a detecção de reuso (M11).
     const registro = await this.refreshRepo.findOne({
-      where: { tokenHash: hash, revogado: false },
+      where: { tokenHash: hash },
     });
     if (!registro || registro.expiraEm < new Date()) {
       throw new UnauthorizedException('Refresh token inválido ou expirado');
     }
-    // Rotaciona: revoga o antigo e emite um par novo — reduz a janela de replay.
+    if (registro.revogado) {
+      // M11 — reuso de um refresh que já tinha sido ROTACIONADO (usado) é sinal de token
+      // vazado: o dono usou, rotacionou, e agora ele aparece de novo. Revoga TODA a família
+      // ativa do usuário — atacante e legítimo reautenticam. Um token de LOGOUT reapresentado
+      // (aba velha) não escala: é 401 e pronto, para não derrubar os outros dispositivos.
+      if (registro.motivoRevogacao === 'rotacao') {
+        await this.refreshRepo.update(
+          { usuarioId: registro.usuarioId, revogado: false },
+          { revogado: true, motivoRevogacao: 'replay' },
+        );
+      }
+      throw new UnauthorizedException(
+        'Sessão encerrada por segurança (token reutilizado). Entre novamente.',
+      );
+    }
+    // Rotaciona: revoga o antigo (motivo `rotacao`) e emite um par novo — reduz a janela de
+    // replay e marca o token para a detecção de reuso acima.
     registro.revogado = true;
+    registro.motivoRevogacao = 'rotacao';
     await this.refreshRepo.save(registro);
 
     // Papéis, nome e código SICLA saem do CADASTRO, não do token que veio. Enquanto eram
@@ -99,7 +118,12 @@ export class AuthService {
 
   async logout(refreshToken: string): Promise<void> {
     const hash = this.hash(refreshToken);
-    await this.refreshRepo.update({ tokenHash: hash }, { revogado: true });
+    // motivo `logout`: reapresentar este token depois NÃO escala para revogar a família
+    // (só o reuso de um token `rotacao` faz isso — ver refresh/M11).
+    await this.refreshRepo.update(
+      { tokenHash: hash },
+      { revogado: true, motivoRevogacao: 'logout' },
+    );
   }
 
   private async emitirTokens(payload: AuthUser): Promise<TokenPair> {
