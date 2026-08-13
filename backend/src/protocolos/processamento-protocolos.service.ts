@@ -19,6 +19,7 @@ import { StatusProtocolo } from '../database/entities/protocolo.entity';
 import { montarVocabulario } from './vocabulario';
 import { aplicarNomes, lerMapa } from './locutores';
 import { formatarParaPrompt, menusMencionados } from './menus-mencionados';
+import { codigosValidosDoCatalogo } from './validar-menus';
 import { MenusSigerService } from '../matriz-detalhada/menus-siger.service';
 
 const ESTAVEL_SEG = 90; // arquivo precisa estar sem modificação há N s (OneDrive ainda copiando)
@@ -277,7 +278,15 @@ export class ProcessamentoProtocolosService implements OnApplicationBootstrap {
    * É ENRIQUECIMENTO, não etapa do fluxo: se o Dicionário não estiver ingerido, ou a leitura
    * falhar, o pipeline segue e a IA extrai o que conseguir do texto — exatamente como antes.
    * Deixar isto derrubar o processamento seria trocar uma melhoria por um risco. */
-  private async reconhecerMenus(texto: string, id: number): Promise<string> {
+  /** Consulta o catálogo do SIGER UMA vez e devolve as duas coisas que o pipeline precisa dele:
+   * o `prompt` com os menus reconhecidos na transcrição (enriquecimento entregue à IA) e o
+   * conjunto `validos` de códigos reais (para a validação pós-geração, A15). Best-effort: sem
+   * Dicionário ingerido, ou falha de leitura, devolve prompt vazio e conjunto vazio — nenhum
+   * dos dois derruba o pipeline, e a validação, por contrato, não faz nada com catálogo vazio. */
+  private async reconhecerMenus(
+    texto: string,
+    id: number,
+  ): Promise<{ prompt: string; validos: Set<string> }> {
     try {
       const taxonomia = await this.menus.taxonomia();
       const catalogo = taxonomia.flatMap((m) =>
@@ -290,13 +299,16 @@ export class ProcessamentoProtocolosService implements OnApplicationBootstrap {
             `transcrição (${achados.map((a) => a.codigo).join(', ')}).`,
         );
       }
-      return formatarParaPrompt(achados);
+      return {
+        prompt: formatarParaPrompt(achados),
+        validos: codigosValidosDoCatalogo(catalogo),
+      };
     } catch (e) {
       this.logger.warn(
         `Protocolo ${id}: não deu para reconhecer os menus contra o Dicionário ` +
           `(${this.erroAmigavel(e)}) — a IA vai extrair só do texto.`,
       );
-      return '';
+      return { prompt: '', validos: new Set() };
     }
   }
 
@@ -648,11 +660,15 @@ export class ProcessamentoProtocolosService implements OnApplicationBootstrap {
       // análise, e o resumo completo — que é o que o revisor lê — continuou sem menu nenhum,
       // intitulando os blocos por assunto genérico em caixa alta. Mesma lista, mesmo
       // catálogo: se os dois textos citam menus, têm de citar OS MESMOS.
-      const menus = await this.reconhecerMenus(textoIa, id);
+      // UMA consulta ao catálogo entrega as duas coisas: o prompt de menus reconhecidos
+      // (enriquecimento) e o conjunto de códigos válidos (validação pós-geração, A15).
+      const { prompt: menus, validos: codigosValidos } =
+        await this.reconhecerMenus(textoIa, id);
       const { campos, bruto } = await this.ia.analisar(
         textoIa,
         p.videoNome || '',
         menus,
+        codigosValidos,
       );
       await this.protocolos.atualizar(id, { ...campos, textoIa: bruto });
       await this.protocolos.atualizar(id, {

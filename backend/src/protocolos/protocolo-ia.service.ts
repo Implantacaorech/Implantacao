@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { IaService } from '../ia/ia.service';
 import { PROTO_CAMPOS_TEXTO, PROTO_MODULOS } from './protocolos.constants';
+import {
+  codigosInexistentesNoTexto,
+  validarMenuPrincipal,
+} from './validar-menus';
 
 const SISTEMA =
   'Você é um consultor especialista em documentação de treinamentos de sistemas ERP. ' +
@@ -285,6 +289,10 @@ export class ProtocoloIaService {
     transcricao: string,
     videoNome = '',
     menusReconhecidos = '',
+    // A15: catálogo de códigos válidos do SIGER para conferir a saída da IA. Vazio (o padrão)
+    // = sem validação — em dev/teste, ou antes de ingerir o Dicionário, não há como afirmar
+    // que um código "não existe".
+    codigosValidos: Set<string> = new Set(),
   ): Promise<ResultadoAnaliseIa> {
     const bloco = menusReconhecidos.trim()
       ? '\n\nMENUS DO SIGER RECONHECIDOS NESTA GRAVAÇÃO (catálogo oficial — use ESTES ' +
@@ -330,7 +338,48 @@ export class ProtocoloIaService {
       // Regra da seção 8 do prompt: ausência de pendências é declarada, não fica em branco.
       campos.pendenciasTreinamento = 'Nenhuma pendência identificada.';
     }
+    this.validarMenusContraCatalogo(campos, codigosValidos);
     return { campos, bruto };
+  }
+
+  /** A15 — confere os menus da saída da IA contra o catálogo real do SIGER. O menu PRINCIPAL
+   * inexistente é REJEITADO (vira "revisar manualmente"); códigos inexistentes citados no texto
+   * são SINALIZADOS na lista do revisor (`pendencias`), sem reescrever o conteúdo. Catálogo
+   * vazio não faz nada. */
+  private validarMenusContraCatalogo(
+    campos: ResultadoAnaliseIa['campos'],
+    codigosValidos: Set<string>,
+  ): void {
+    if (codigosValidos.size === 0) return;
+    const notas: string[] = [];
+
+    const { menu, rejeitado } = validarMenuPrincipal(
+      campos.menu || '',
+      codigosValidos,
+    );
+    if (rejeitado) {
+      campos.menu = menu;
+      notas.push(
+        `o menu principal "${rejeitado}" não existe no catálogo do SIGER (rebaixado para revisão manual)`,
+      );
+    }
+
+    const inexistentes = codigosInexistentesNoTexto(
+      campos.menusAbordados || '',
+      codigosValidos,
+    );
+    if (inexistentes.length > 0) {
+      notas.push(
+        `códigos citados que não existem no catálogo: ${inexistentes.join(', ')}`,
+      );
+    }
+
+    if (notas.length > 0) {
+      const aviso = `⚠️ Validação automática de menus (A15): ${notas.join('; ')}.`;
+      campos.pendencias = [campos.pendencias, aviso]
+        .filter((s) => (s || '').trim())
+        .join('\n');
+    }
   }
 
   /** Resumo COMPLETO da transcrição, em texto (não JSON): registro de atividades por menu

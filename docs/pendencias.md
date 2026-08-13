@@ -82,9 +82,12 @@
 - [x] **A14 — Oracle e OpenRouter sem timeout (corrigido 2026-08-12).** `callTimeout` de 15 s na
   conexão Oracle; timeout de 2 min no OpenRouter/Anthropic e 10 s no catálogo de modelos.
   Guarda: `ia.service.spec.ts`. **Dono:** software.
-- [ ] **A15 — Sem validação pós-geração da saída de IA** (código de menu inexistente não é rejeitado).
-  **Correção:** conferir o código de menu contra o dicionário antes de gravar. **Dono:** software.
-  **Prazo:** 2026-09-09.
+- [x] **A15 — Sem validação pós-geração da saída de IA (corrigido 2026-08-13).** `validar-menus.ts`
+  confere a saída da análise contra o catálogo real do SIGER (Dicionário): o menu **principal**
+  inexistente é rebaixado a "revisar manualmente" e os códigos inventados citados no texto viram
+  **nota ao revisor** no campo `pendencias`. Catálogo vazio (dev/Dicionário não ingerido) não
+  valida nada, por contrato. Guarda: `validar-menus.spec.ts` + bloco A15 em
+  `protocolo-ia.service.spec.ts`. Eixo Alucinações 3→4. **Dono:** software.
 - [x] **A16 — docservice sem log (corrigido 2026-08-12).** `docservice/iniciar.bat` passou a gravar
   a saída em `C:\PainelBackups\docservice_stdout.log`. **Dono:** software.
 - [ ] **A17 — Backup nunca restaurado + runbook aponta para Postgres/Docker extinto.** **Correção:**

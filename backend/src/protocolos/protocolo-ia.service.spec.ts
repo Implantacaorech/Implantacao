@@ -101,6 +101,48 @@ describe('ProtocoloIaService', () => {
     );
   });
 
+  // A15: validação pós-geração contra o catálogo do SIGER.
+  describe('validação de menus contra o catálogo (A15)', () => {
+    const validos = new Set(['1.4-I', '2.1-P']);
+
+    it('rejeita o menu principal inexistente e sinaliza ao revisor', async () => {
+      ia.completar.mockResolvedValue(
+        JSON.stringify({
+          menu: '3.4-L', // não existe no catálogo
+          menus_abordados: '### 9.9-Z — Tela inventada',
+          pendencias: '',
+        }),
+      );
+      const { campos } = await service.analisar('t', 'v.mp4', '', validos);
+      expect(campos.menu).toBe('Menu não identificado - revisar manualmente');
+      expect(campos.pendencias).toContain('3.4-L');
+      expect(campos.pendencias).toContain('9.9-Z');
+      expect(campos.pendencias).toContain('A15');
+    });
+
+    it('mantém o menu válido e não gera nota', async () => {
+      ia.completar.mockResolvedValue(
+        JSON.stringify({
+          menu: '1.4-I',
+          menus_abordados: '### 1.4-I — Cadastro\n### 2.1-P — Nota',
+          pendencias: '',
+        }),
+      );
+      const { campos } = await service.analisar('t', 'v.mp4', '', validos);
+      expect(campos.menu).toBe('1.4-I');
+      expect(campos.pendencias).toBe('');
+    });
+
+    it('sem catálogo (Set vazio) não valida nada — comportamento de antes', async () => {
+      ia.completar.mockResolvedValue(
+        JSON.stringify({ menu: '3.4-L', pendencias: '' }),
+      );
+      const { campos } = await service.analisar('t', 'v.mp4', '', new Set());
+      expect(campos.menu).toBe('3.4-L');
+      expect(campos.pendencias).toBe('');
+    });
+  });
+
   it('o prompt cobre as 10 seções obrigatórias do protocolo de treinamento', async () => {
     ia.completar.mockResolvedValue(JSON.stringify({}));
     await service.analisar('transcrição');

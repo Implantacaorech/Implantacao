@@ -66,7 +66,7 @@ export interface MenuMencionado {
  * número dito numa conversa. O código sem letra entra no catálogo para ser achado pelo NOME,
  * e para que a IA possa citá-lo depois de reconhecido.
  */
-const CODIGO_MENU = /^\d{1,2}\.\d{1,2}(?:-[A-Za-z](?:\/[A-Za-z])*)?$/;
+export const CODIGO_MENU = /^\d{1,2}\.\d{1,2}(?:-[A-Za-z](?:\/[A-Za-z])*)?$/;
 
 /** Só o que é código de menu de verdade entra na busca. */
 export function apenasMenusValidos(catalogo: MenuCatalogo[]): MenuCatalogo[] {

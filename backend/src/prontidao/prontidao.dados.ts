@@ -84,9 +84,9 @@ export const PRONTIDAO_EIXOS: EixoProntidao[] = [
   {
     numero: 6,
     nome: 'Alucinações',
-    maturidade: 3,
+    maturidade: 4,
     resumo:
-      'Grounding real e a invariante "IA não escreve no documento oficial" confirmada; falta validação pós-geração, teste de regressão e temperatura factual.',
+      'Grounding real, invariante "IA não escreve no documento oficial" confirmada e validação pós-geração dos menus contra o catálogo (A15); ainda falta teste de regressão de prompt e temperatura factual explícita.',
   },
   {
     numero: 7,
@@ -299,10 +299,11 @@ export const PRONTIDAO_ACHADOS: AchadoProntidao[] = [
     severidade: 'alto',
     eixo: 6,
     evidencia: 'protocolo-ia.service.ts:314-328,363 — só enum de módulo',
-    correcao: 'Conferir o código de menu contra o dicionário antes de gravar.',
-    status: 'aberto',
+    correcao:
+      'validar-menus.ts confere a saída contra o catálogo do SIGER: menu principal inexistente é rebaixado a "revisar manualmente" e códigos inventados viram nota ao revisor. Catálogo vazio não valida.',
+    status: 'corrigido',
     dono: 'software',
-    prazo: '2026-09-09',
+    prazo: 'feito',
   },
   {
     codigo: 'A16',
