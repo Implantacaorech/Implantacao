@@ -3,7 +3,11 @@
    global (src/styles.css, portado de webapp/static/style.css). */
 .vg-cols {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, 1fr) e não 1fr: item de grid tem min-width:auto por padrão, então um conteúdo
+     que não encolhe (a linha de "próximas ações") esticava a coluna além do container e
+     estourava a tela em mobile 390px em 114px (achado de responsividade da auditoria). O 0 no
+     minmax deixa a trilha encolher abaixo do conteúdo. Visualmente idêntico no desktop. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
   margin-top: 14px;
 }
@@ -56,6 +60,9 @@
   color: var(--muted);
   font-size: 0.85rem;
   flex: 1;
+  /* min-width:0 deixa este item flex encolher abaixo do próprio conteúdo (o texto quebra em
+     vez de empurrar a linha inteira para fora). Sem isto, a ação longa alargava a linha. */
+  min-width: 0;
 }
 
 .ac-go {
@@ -74,6 +81,6 @@ h2.sec .svgi.hi {
 
 @media (max-width: 760px) {
   .vg-cols {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -110,6 +110,14 @@ export const MENUS: DefinicaoMenu[] = [
     grupo: 'Sistema',
     fixaAdm: true,
   },
+  // Prontidão do Sistema — visão da Auditoria de Prontidão dos 9 eixos (2026-08-12). fixaAdm:
+  // é uma tela de Sistema (só ADM), e o ADM sempre a enxerga pela trava de segurança.
+  {
+    chave: 'prontidao',
+    rotulo: 'Prontidão do Sistema',
+    grupo: 'Sistema',
+    fixaAdm: true,
+  },
 ];
 export const MENU_CHAVES = MENUS.map((m) => m.chave);
 export function ehMenuValido(chave: string): boolean {
@@ -225,6 +233,7 @@ export const PADRAO_PERMISSOES: Record<
   modelos_docs: { ADM: 'alteracao' },
   consulta_bd: { ADM: 'alteracao' },
   assistente_legado: { ADM: 'alteracao' },
+  prontidao: { ADM: 'alteracao' },
 };
 
 export const PAPEIS_PERMISSAO: Perfil[] = [...PERFIS];

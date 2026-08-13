@@ -51,17 +51,37 @@ export interface AppConfig {
 // do Postgres e fallback fraco de secret_key"). Fora de produção, mantém o fallback fixo
 // (conveniência de desenvolvimento/teste — refresh tokens emitidos localmente não
 // precisam sobreviver a um segredo trocado a cada boot).
+/** "Isto é uma instância de produção?" — a pergunta que decide se um segredo fraco pode
+ * valer. NÃO depende só de `NODE_ENV=production`: a auditoria de 2026-08-12 encontrou que
+ * `NODE_ENV` nunca era definido no boot (nenhum `.bat`/serviço o setava), então o guarda de
+ * segredo abaixo NUNCA disparava em produção e o backend podia subir assinando tokens com o
+ * fallback publicado no repositório — suficiente para forjar um JWT de perfil ADM.
+ *
+ * A correção é dupla: (1) `Iniciar_Painel_Novo.bat` passou a exportar `NODE_ENV=production`;
+ * e (2) esta função também trata como produção QUALQUER boot apontado para um banco MariaDB
+ * real (`mysql://`/`mariadb://`). Assim, mesmo subindo por `node dist/main.js`, `start:prod`
+ * ou um serviço que esqueça o `NODE_ENV`, um segredo ausente FALHA O BOOT em vez de cair no
+ * fallback — porque um MariaDB configurado só existe em ambiente real, nunca em dev/teste
+ * (que usam SQLite descartável). Dev/teste (sem `MIGRACAO_DB_URL`) seguem com o fallback fixo,
+ * por conveniência: refresh tokens locais não precisam sobreviver a um segredo trocado a cada
+ * boot. */
+export function ehProducao(env: string, dbUrl: string | undefined): boolean {
+  return env === 'production' || /^(mysql|mariadb):\/\//i.test(dbUrl ?? '');
+}
+
 function exigirEmProducao(
-  env: string,
+  producao: boolean,
   valor: string | undefined,
   nomeVar: string,
   fallback: string,
 ): string {
   if (valor) return valor;
-  if (env === 'production') {
+  if (producao) {
     throw new Error(
-      `${nomeVar} não está definida — obrigatória em produção (NODE_ENV=production). ` +
-        'Defina a variável de ambiente antes de subir o backend.',
+      `${nomeVar} não está definida — é obrigatória quando o backend aponta para um banco ` +
+        'real (MariaDB) ou roda com NODE_ENV=production. Sem ela, o backend usaria um ' +
+        'segredo publicado no repositório e QUALQUER pessoa poderia forjar um token de ' +
+        'perfil ADM. Defina a variável de ambiente antes de subir o backend.',
     );
   }
   return fallback;
@@ -86,18 +106,21 @@ function exigirMariaDb(dbUrl: string): 'mariadb' {
 export default (): AppConfig => {
   const env = process.env.NODE_ENV ?? 'development';
   const dbUrl = process.env.MIGRACAO_DB_URL;
+  // Produção = NODE_ENV=production OU banco real configurado (ver ehProducao). Um dos dois
+  // basta para exigir segredos fortes e recusar o fallback publicado.
+  const producao = ehProducao(env, dbUrl);
   return {
     env,
     port: Number(process.env.MIGRACAO_PORT ?? 3000),
     jwtSecret: exigirEmProducao(
-      env,
+      producao,
       process.env.MIGRACAO_JWT_SECRET,
       'MIGRACAO_JWT_SECRET',
       'dev-only-secret-troque-em-producao',
     ),
     jwtExpiresIn: process.env.MIGRACAO_JWT_EXPIRES_IN ?? '15m',
     jwtRefreshSecret: exigirEmProducao(
-      env,
+      producao,
       process.env.MIGRACAO_JWT_REFRESH_SECRET,
       'MIGRACAO_JWT_REFRESH_SECRET',
       'dev-only-refresh-secret-troque-em-producao',

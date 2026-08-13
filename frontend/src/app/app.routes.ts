@@ -470,6 +470,16 @@ export const routes: Routes = [
           ),
       },
       {
+        // Sistema → Prontidão do Sistema: Auditoria de Prontidão dos 9 eixos (fixo-ADM).
+        path: 'prontidao',
+        canActivate: [permissaoGuard('prontidao')],
+        data: { titulo: 'Prontidão do Sistema' },
+        loadComponent: () =>
+          import('./features/prontidao/prontidao.component').then(
+            (m) => m.ProntidaoComponent,
+          ),
+      },
+      {
         path: 'permissoes',
         canActivate: [permissaoGuard('permissoes')],
         data: { titulo: 'Permissões' },

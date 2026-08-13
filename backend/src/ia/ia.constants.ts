@@ -50,6 +50,26 @@ export const FINALIDADES_IA: DefinicaoFinalidade[] = [
 
 export const FINALIDADE_IDS: FinalidadeIa[] = FINALIDADES_IA.map((f) => f.id);
 
+/** Finalidades cujo conteúdo é dado sensível de CLIENTE — transcrição de reunião e descrição
+ * dos processos do cliente — e que, por decisão de privacidade/LGPD, SÓ podem usar o provedor
+ * `local` (o texto não pode sair da rede).
+ *
+ * Achado A1 da auditoria de 2026-08-12: essa decisão existia só como comentário neste arquivo,
+ * e nada no código a fazia valer — a configuração chegou a apontar `protocolos` para o
+ * OpenRouter. Agora `IaService.salvar` recusa provedor externo para estas finalidades, e
+ * `IaService.avisosPrivacidade()` denuncia qualquer configuração legada que já esteja violando
+ * a política (surge no aviso de boot e no módulo Prontidão do Sistema).
+ *
+ * `dicionario` fica de fora de propósito: é documentação do SIGER® (conteúdo NOSSO), sem dado
+ * de cliente — aceita bem um modelo externo. */
+export const FINALIDADES_SO_LOCAL: FinalidadeIa[] = [
+  'protocolos',
+  'levantamento',
+];
+export function exigeProvedorLocal(finalidade: FinalidadeIa): boolean {
+  return FINALIDADES_SO_LOCAL.includes(finalidade);
+}
+
 // Modelo padrão quando o provedor é Anthropic e o usuário não informou um. Para OpenRouter não
 // há padrão seguro (o id do modelo é do catálogo do provedor, ex.: `anthropic/claude-sonnet-4`),
 // então a chave OpenRouter exige que o modelo seja informado.

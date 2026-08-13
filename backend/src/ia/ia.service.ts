@@ -1,9 +1,16 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  OnModuleInit,
+} from '@nestjs/common';
 import Anthropic from '@anthropic-ai/sdk';
 import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import {
+  exigeProvedorLocal,
   FINALIDADES_IA,
+  FINALIDADES_SO_LOCAL,
   FinalidadeIa,
   MODELO_ANTHROPIC_PADRAO,
   OPENROUTER_BASE_URL,
@@ -61,7 +68,22 @@ type ArquivoConfig = Partial<Record<FinalidadeIa, ConfigFinalidade>>;
  * `dados/anthropic_key.txt`) continuam valendo como fallback Anthropic para qualquer
  * finalidade sem configuração própria — setups antigos seguem funcionando sem migração. */
 @Injectable()
-export class IaService {
+export class IaService implements OnModuleInit {
+  private readonly logger = new Logger(IaService.name);
+
+  /** No boot, denuncia no log qualquer finalidade sensível que esteja saindo da rede (config
+   * legada anterior à trava, ou fallback global por variável de ambiente). Achado A1. */
+  onModuleInit(): void {
+    for (const v of this.avisosPrivacidade()) {
+      this.logger.warn(
+        `PRIVACIDADE/LGPD: a finalidade "${v.finalidade}" lê dado de cliente e está usando o ` +
+          `provedor "${v.provider}"${
+            v.viaEnv ? ' (fallback global por variável de ambiente)' : ''
+          } — o texto está SAINDO da rede. Reconfigure para um endpoint local em Config → IA.`,
+      );
+    }
+  }
+
   private arquivoConfig(): string {
     // Isolado por JEST_WORKER_ID em teste (mesmo motivo/corrida EBUSY de modelo-documento).
     if (process.env.NODE_ENV === 'test') {
@@ -171,6 +193,33 @@ export class IaService {
     return this.resolver(finalidade) !== null;
   }
 
+  /** Finalidades sensíveis (transcrição de cliente) que estão, na prática, saindo da rede —
+   * seja por config explícita externa (legada, anterior à trava do `salvar`) ou pelo fallback
+   * global Anthropic. Vazio = política de privacidade cumprida. Alimenta o aviso de boot e o
+   * módulo Prontidão do Sistema. Ver A1 da auditoria de 2026-08-12. */
+  avisosPrivacidade(): {
+    finalidade: FinalidadeIa;
+    provider: ProvedorIa;
+    viaEnv: boolean;
+  }[] {
+    const avisos: {
+      finalidade: FinalidadeIa;
+      provider: ProvedorIa;
+      viaEnv: boolean;
+    }[] = [];
+    for (const finalidade of FINALIDADES_SO_LOCAL) {
+      const r = this.resolver(finalidade);
+      if (r && r.config.provider !== 'local') {
+        avisos.push({
+          finalidade,
+          provider: r.config.provider,
+          viaEnv: r.viaEnv,
+        });
+      }
+    }
+    return avisos;
+  }
+
   status(finalidade: FinalidadeIa): StatusFinalidade {
     const def = FINALIDADES_IA.find((f) => f.id === finalidade)!;
     const resolvido = this.resolver(finalidade);
@@ -227,6 +276,17 @@ export class IaService {
     )
       ? (dados.provider as ProvedorIa)
       : 'anthropic';
+
+    // Trava de privacidade (A1): finalidade que lê dado de cliente só aceita provedor local.
+    // Vale só quando se ESTÁ configurando algo (provider externo com chave); limpar a
+    // finalidade (chave/URL em branco) continua permitido e cai nos ramos abaixo.
+    if (exigeProvedorLocal(finalidade) && provider !== 'local' && apiKey) {
+      throw new BadRequestException(
+        `A finalidade "${finalidade}" lê transcrição de reunião de cliente e, por privacidade ` +
+          `(LGPD), só pode usar o provedor local — o texto não pode sair da rede. Configure um ` +
+          `endpoint local (Ollama/LM Studio) em Config → IA, ou deixe a finalidade em branco.`,
+      );
+    }
 
     if (provider === 'local') {
       const baseUrl = (dados.baseUrl ?? '').trim();

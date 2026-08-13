@@ -40,6 +40,7 @@ import { BiIndicadoresModule } from './bi-indicadores/bi-indicadores.module';
 import { BiAgendaAlocacaoModule } from './bi-agenda-alocacao/bi-agenda-alocacao.module';
 import { BiMovimentosModule } from './bi-movimentos/bi-movimentos.module';
 import { SaudeModule } from './saude/saude.module';
+import { ProntidaoModule } from './prontidao/prontidao.module';
 
 @Module({
   imports: [
@@ -80,6 +81,7 @@ import { SaudeModule } from './saude/saude.module';
     // HealthModule, com outro público: `/api/health` responde ao Guardião em uma linha;
     // `/api/saude` é o relatório para gente ler — e vai junto no digest diário.
     SaudeModule,
+    ProntidaoModule,
     CatalogosModule,
     CronogramaModule,
     LevantamentoModule,

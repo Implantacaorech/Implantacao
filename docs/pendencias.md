@@ -1,7 +1,117 @@
 # Pendências — Evolução do Painel de Implantação
 
 > Backlog vivo dos assuntos em aberto (estratégia de automação, arquitetura e próximos passos).
-> Digite **"Pendências"** a qualquer momento para ver esta lista. — Atualizado em 2026-06-14.
+> Digite **"Pendências"** a qualquer momento para ver esta lista. — Atualizado em 2026-08-12.
+
+## 🛡️ Auditoria de prontidão dos 9 eixos (2026-08-12)
+
+> Auditoria completa (Segurança, Governança, Resiliência, Agentes autônomos, Detecção antes do
+> usuário, Alucinações, Custo por token, Fallback, Observabilidade), com evidência `arquivo:linha`,
+> execução das suítes e e2e na instância isolada (5199) — produção nunca tocada. Cada item traz
+> **dono** e **prazo**. Os itens marcados **[x] (2026-08-12)** já foram corrigidos nesta sessão,
+> com teste de regressão. A visão viva está no módulo **Sistema → Prontidão do Sistema**.
+
+### 🔴 Crítico
+- [x] **C1 — Segredo JWT de dev ativo em produção (corrigido 2026-08-12).** `NODE_ENV` nunca era
+  `production` no boot, então a guarda que exige `MIGRACAO_JWT_SECRET`/`_REFRESH_SECRET` não
+  disparava e o fallback publicado (`configuration.ts:96`) valeria — forja de token ADM.
+  **Correção:** `Iniciar_Painel_Novo.bat` passou a exportar `NODE_ENV=production`, e
+  `ehProducao()` (`configuration.ts`) trata **banco MariaDB configurado** como produção mesmo
+  sem a variável — fecha os caminhos `node dist/main.js`/serviço. Guarda: `configuration.spec.ts`.
+  **Dono:** software. **Prazo:** feito. *Ação humana ainda recomendada:* rotacionar os segredos
+  JWT atuais, já que o fallback esteve exposto no GitHub público. **Dono:** usuário. **Prazo:** 2026-08-19.
+- [x] **C2 — Path traversal na gravação de anexos (corrigido 2026-08-12).** `salvarArquivoGerado`
+  concatenava o `originalname` cru; `a/../../../../evil.js` escapava da pasta. **Correção:**
+  `nomeArquivoSeguro()` (`documentos.service.ts`) + teste `nome-arquivo-seguro.spec.ts`.
+  **Dono:** software. **Prazo:** feito.
+- [ ] **CR-1 — `main` sem branch protection num repositório PÚBLICO.** *(agrava a pendência já
+  aberta da migração ao GitLab, abaixo em §Linguagens.)* `gh api .../branches/main/protection` →
+  404; `private:false`. Contraria o ADR-0001. **Correção:** proteger `main` (status checks +
+  review) e priorizar a migração ao GitLab interno. **Dono:** usuário (precisa de permissão de
+  Administration no remoto). **Prazo:** 2026-08-26.
+
+### 🟠 Alto
+- [x] **A1 — Transcrição de cliente ia ao OpenRouter, sem trava (mitigado 2026-08-12).** A decisão
+  "finalidade sensível só usa provedor local" existia só como comentário; a config real apontava
+  `protocolos` para o OpenRouter. **Correção:** `FINALIDADES_SO_LOCAL` + trava em `IaService.salvar`
+  (recusa provedor externo em `protocolos`/`levantamento`), `avisosPrivacidade()` + aviso de boot e
+  visibilidade no módulo Prontidão. Testes em `ia.service.spec.ts`. **Ação humana pendente:** a
+  config de PRODUÇÃO ainda pode estar em OpenRouter — trocar para um endpoint **local** (provisionar
+  Ollama/LM Studio no servidor). **Dono:** usuário. **Prazo:** 2026-08-19.
+- [x] **A6 — `POST /projetos/:id/email` sem guard (corrigido 2026-08-12).** Qualquer autenticado
+  enviava e-mail arbitrário pela infra do Painel. **Correção:** `@Permissao('carteira', …)` em
+  `projeto-email.controller.ts`. **Dono:** software. **Prazo:** feito.
+- [x] **A7 — Ticket de mídia aceito como token de sessão (corrigido 2026-08-12).** O ticket
+  `escopo:'midia'` virava Bearer válido em rotas só-`JwtAuthGuard`. **Correção:** `JwtStrategy`
+  rejeita qualquer token com `escopo`; o streaming valida o ticket por conta própria. **Dono:**
+  software. **Prazo:** feito.
+- [ ] **A4 — Uploads sem limite de tamanho (DoS por OOM) em 10 rotas.** Nenhum `FileInterceptor`
+  declara `limits`, sem `MulterModule`. **Correção:** `limits.fileSize` por rota (generoso para
+  vídeo, apertado para anexo). **Dono:** software. **Prazo:** 2026-08-26.
+- [ ] **A5 — Auto-cadastro público cria conta ativa com acesso a dado de cliente.**
+  `cadastro.controller.ts:34,69-79` sem verificação de domínio corporativo nem aprovação.
+  **Correção:** allowlist de domínio + aprovação, ou desativar o auto-cadastro. **Dono:** usuário
+  (decisão de processo) + software. **Prazo:** 2026-08-26.
+- [ ] **A8 — ADM/Coordenador leem toda transcrição de todo cliente** (`protocolos.acesso.ts:31-35`),
+  contra a regra de privacidade declarada. **Correção:** decidir se a aprovação exige leitura
+  integral ou só metadados. **Dono:** usuário + software. **Prazo:** 2026-09-02.
+- [ ] **A9 — Custo de IA invisível e ilimitado.** `usage` do provedor descartado; sem teto que
+  interrompe. **Correção:** capturar `usage`, persistir tokens/custo por execução, teto diário que
+  interrompe. **Dono:** software. **Prazo:** 2026-09-09.
+- [ ] **A10 — Sem trilha de auditoria de IA** (quem/quando/finalidade/provedor/modelo/entrada/saída);
+  `/levantamento/sugerir` nem recebe `@CurrentUser`. **Correção:** tabela de execuções de IA.
+  **Dono:** software. **Prazo:** 2026-09-09.
+- [ ] **A11 — Canal de alerta (digest) nunca funcionou em produção.** 0 envios em 7,5 MB de log;
+  `MIGRACAO_DIGEST_PARA` não definida; `tick()` sem destinatário não loga. **Correção:** definir os
+  destinatários, logar sempre o motivo de não enviar, heartbeat do digest. **Dono:** usuário
+  (definir destinatários) + software (heartbeat/log). **Prazo:** 2026-08-19.
+- [ ] **A12 — 5xx e falhas só vão para o log**, sem notificação (`http-exception.filter.ts:63-68`).
+  **Correção:** contador de 5xx exposto como checagem em `/api/saude`. **Dono:** software.
+  **Prazo:** 2026-09-02.
+- [ ] **A13 — E-mail de passo sem fila, sem retry, sem reenvio.** Falha fica só registrada em
+  `emails_passo`. **Correção:** endpoint de reenvio a partir de `emails_passo` (mínimo) ou fila
+  persistida. **Dono:** software. **Prazo:** 2026-09-09.
+- [ ] **A14 — Oracle e OpenRouter sem timeout** (`disponibilidade.service.ts`, `ia.service.ts:299-301`).
+  **Correção:** aplicar `connectTimeout`/`callTimeout` e o `timeoutMs` do OpenRouter. **Dono:**
+  software. **Prazo:** 2026-08-26.
+- [ ] **A15 — Sem validação pós-geração da saída de IA** (código de menu inexistente não é rejeitado).
+  **Correção:** conferir o código de menu contra o dicionário antes de gravar. **Dono:** software.
+  **Prazo:** 2026-09-09.
+- [ ] **A16 — docservice sem log** (janela minimizada que morre no reinício). **Correção:** redirecionar
+  a saída do `docservice/iniciar.bat` para arquivo. **Dono:** software. **Prazo:** 2026-08-26.
+- [ ] **A17 — Backup nunca restaurado + runbook aponta para Postgres/Docker extinto.** **Correção:**
+  restore cronometrado num banco descartável, corrigir o runbook, cópia off-site. **Dono:** usuário
+  (executar o restore) + software (runbook). **Prazo:** 2026-08-26.
+- [ ] **A18 — Guarda do ADR-0002 não trava os 43 services que ainda injetam `Repository<T>`** — o
+  número pode crescer sem quebrar o CI. **Correção:** apertar a catraca por módulo já portado.
+  **Dono:** software. **Prazo:** 2026-09-16.
+- [ ] **A19 — Suíte e2e/Playwright fora do CI** (a que achou as 9 brechas de autorização).
+  **Correção:** job de CI (self-hosted ou instância efêmera). **Dono:** software. **Prazo:** 2026-09-16.
+
+### 🟡 Médio (seleção — lista completa no relatório da sessão)
+- [ ] **M1 — Swagger `/api/docs` público** — condicionar a não-produção ou por guard. **Dono:** software. **Prazo:** 2026-08-26.
+- [ ] **M2 — 12 rotas de escrita atrás de permissão de `consulta`** (inclui `concluir` passo). **Dono:** software. **Prazo:** 2026-09-09.
+- [ ] **M3 — `POST /fluxo/inbox` sem `@Permissao`** (lê a caixa IMAP). **Dono:** software. **Prazo:** 2026-08-26.
+- [ ] **M4 — `POST/PATCH /agentes/execucoes` com `@Roles()` vazio.** **Dono:** software. **Prazo:** 2026-09-02.
+- [ ] **M5 — Credenciais em claro em `backend/dados/`** (`ia_config.json`, `mariadb.env`, `smtp.json`, `imap.json`, CSV) — proteger por ACL, considerar cifra. **Dono:** usuário + software. **Prazo:** 2026-09-02.
+- [ ] **M6 — Detecção de ausência só para backup** (digest/robôs sem heartbeat). **Dono:** software. **Prazo:** 2026-09-09.
+- [ ] **M7 — Log de integridade ilegível (UTF-16 por `Out-File` sem `-Encoding`)** em `Verificar_Integridade_Novo.ps1:49`. **Dono:** software. **Prazo:** 2026-08-26.
+- [ ] **M8 — Leitor de log de saúde decide encoding pelo BOM do arquivo inteiro** e descarta as linhas novas de erro do backup. **Dono:** software. **Prazo:** 2026-08-26.
+- [ ] **M9 — Sem correlation-id** ponta a ponta. **Dono:** software. **Prazo:** 2026-09-16.
+- [ ] **M10 — Kill switch de IA vazando** (fallback global Anthropic) e sem desligamento em runtime dos robôs. **Dono:** software. **Prazo:** 2026-09-16.
+- [ ] **M11 — Sem detecção de reuso de refresh token** (revogar a família no replay). **Dono:** software. **Prazo:** 2026-09-16.
+- [ ] **M12 — `recuperarPresos` re-dispara IA a cada boot sem contador de tentativas.** **Dono:** software. **Prazo:** 2026-09-09.
+
+### 🔵 Baixo
+- [ ] Login sem throttle dedicado; `MIGRACAO_RATE_LIMIT=0` sem piso; tokens em `localStorage`;
+  `dias=7` hardcoded no registro de refresh; resposta de IA logada; log do painel sem rotação;
+  `webapp/_uploads/` sem retenção; comentário do `.bat` documenta URL `postgresql://` rejeitada.
+  **Dono:** software. **Prazo:** oportunístico.
+
+### Não verificado (exige o host, não o repositório)
+- Por qual comando o backend sobe hoje em produção e se os `MIGRACAO_*` estão populados; exposição
+  de rede da 5100 e firewall da 8001; se o HTTPS opcional está ligado; se as Tarefas Agendadas
+  estão ativas; DPA/retenção do OpenRouter; matriz real de permissões (está no banco).
 
 ## 🔑 Decisão que destrava a arquitetura
 - [x] **Onde os dados moram?** → **DECIDIDO: rede INTERNA** (servidor na rede; app agnóstico de

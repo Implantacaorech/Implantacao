@@ -65,6 +65,7 @@ export class ShellComponent {
   readonly podeBi = computed(() => this.podeDashboards() || this.podeClientesSiger());
   readonly podePermissoes = computed(() => this.perm.podeVer('permissoes'));
   readonly veSistema = computed(() => this.perm.podeVer('usuarios'));
+  readonly podeProntidao = computed(() => this.perm.podeVer('prontidao'));
   /** Mostra o cabeçalho do grupo Gestão se houver ao menos um item visível nele. */
   readonly temGestao = computed(
     () =>

@@ -44,15 +44,17 @@ describe('IaService', () => {
     expect(service.statusTodas().every((s) => !s.ativa)).toBe(true);
   });
 
+  // Usa `dicionario` (finalidade NÃO sensível) para os testes de provedor externo: desde a
+  // trava de privacidade A1, `protocolos`/`levantamento` só aceitam o provedor `local`.
   it('salva chave por finalidade de forma independente', () => {
-    service.salvar('protocolos', {
+    service.salvar('dicionario', {
       provider: 'anthropic',
-      apiKey: 'sk-ant-proto',
+      apiKey: 'sk-ant-dic',
       modelo: '',
     });
-    expect(service.disponivel('protocolos')).toBe(true);
-    expect(service.disponivel('dicionario')).toBe(false);
-    const st = service.status('protocolos');
+    expect(service.disponivel('dicionario')).toBe(true);
+    expect(service.disponivel('protocolos')).toBe(false);
+    const st = service.status('dicionario');
     expect(st.provider).toBe('anthropic');
     expect(st.modelo).toBe('claude-opus-4-8'); // default aplicado
   });
@@ -70,14 +72,14 @@ describe('IaService', () => {
   });
 
   it('chave vazia remove a configuração da finalidade', () => {
-    service.salvar('protocolos', {
+    service.salvar('dicionario', {
       provider: 'anthropic',
       apiKey: 'sk-ant',
       modelo: '',
     });
-    expect(service.disponivel('protocolos')).toBe(true);
-    service.salvar('protocolos', { apiKey: '' });
-    expect(service.disponivel('protocolos')).toBe(false);
+    expect(service.disponivel('dicionario')).toBe(true);
+    service.salvar('dicionario', { apiKey: '' });
+    expect(service.disponivel('dicionario')).toBe(false);
   });
 
   it('env var Anthropic é fallback global (viaEnv) para finalidades sem config própria', () => {
@@ -97,7 +99,7 @@ describe('IaService', () => {
   });
 
   it('completar despacha para o Anthropic SDK quando o provedor é anthropic', async () => {
-    service.salvar('protocolos', {
+    service.salvar('dicionario', {
       provider: 'anthropic',
       apiKey: 'sk-ant',
       modelo: 'claude-opus-4-8',
@@ -105,7 +107,7 @@ describe('IaService', () => {
     createMock.mockResolvedValue({
       content: [{ type: 'text', text: 'olá do claude' }],
     });
-    const texto = await service.completar('protocolos', {
+    const texto = await service.completar('dicionario', {
       system: 'sys',
       messages: [{ role: 'user', content: 'oi' }],
       maxTokens: 100,
@@ -343,5 +345,74 @@ describe('IaService', () => {
       .mockRejectedValue(new Error('rede caiu'));
     expect(await service.listarModelosOpenRouter()).toEqual([]);
     fetchMock.mockRestore();
+  });
+
+  /** Trava de privacidade/LGPD (A1, 2026-08-12): finalidade que lê dado de cliente só pode
+   * usar o provedor `local` — o texto não pode sair da rede. */
+  describe('trava de privacidade (só provedor local em finalidade sensível)', () => {
+    it.each(['protocolos', 'levantamento'] as const)(
+      'recusa salvar %s com provedor externo (anthropic)',
+      (finalidade) => {
+        expect(() =>
+          service.salvar(finalidade, {
+            provider: 'anthropic',
+            apiKey: 'sk-ant',
+            modelo: '',
+          }),
+        ).toThrow(/só pode usar o provedor local/);
+        expect(service.disponivel(finalidade)).toBe(false);
+      },
+    );
+
+    it('recusa salvar protocolos com openrouter', () => {
+      expect(() =>
+        service.salvar('protocolos', {
+          provider: 'openrouter',
+          apiKey: 'sk-or',
+          modelo: 'openai/gpt-4o-mini',
+        }),
+      ).toThrow(/só pode usar o provedor local/);
+    });
+
+    it('aceita provedor local em finalidade sensível', () => {
+      service.salvar('protocolos', {
+        provider: 'local',
+        apiKey: '',
+        modelo: 'qwen2.5:14b',
+        baseUrl: 'http://127.0.0.1:11434/v1',
+      });
+      expect(service.disponivel('protocolos')).toBe(true);
+      expect(service.status('protocolos').provider).toBe('local');
+    });
+
+    it('limpar a finalidade sensível (chave em branco) continua permitido', () => {
+      expect(() => service.salvar('protocolos', { apiKey: '' })).not.toThrow();
+    });
+  });
+
+  describe('avisosPrivacidade', () => {
+    it('vazio quando não há finalidade sensível saindo da rede', () => {
+      expect(service.avisosPrivacidade()).toEqual([]);
+    });
+
+    it('denuncia o fallback global por variável de ambiente numa finalidade sensível', () => {
+      process.env.MIGRACAO_ANTHROPIC_API_KEY = 'sk-ant-env';
+      const avisos = service.avisosPrivacidade();
+      const proto = avisos.find((a) => a.finalidade === 'protocolos');
+      expect(proto).toBeDefined();
+      expect(proto?.provider).toBe('anthropic');
+      expect(proto?.viaEnv).toBe(true);
+    });
+
+    it('não denuncia o dicionário (finalidade NÃO sensível) em provedor externo', () => {
+      service.salvar('dicionario', {
+        provider: 'openrouter',
+        apiKey: 'sk-or',
+        modelo: 'x/y',
+      });
+      expect(
+        service.avisosPrivacidade().some((a) => a.finalidade === 'dicionario'),
+      ).toBe(false);
+    });
   });
 });

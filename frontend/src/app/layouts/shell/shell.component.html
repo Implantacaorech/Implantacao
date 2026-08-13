@@ -177,6 +177,11 @@
         <a class="side-link" routerLink="/legado" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg>Assistente (legado)
         </a>
+        @if (podeProntidao()) {
+          <a class="side-link" routerLink="/prontidao" routerLinkActive="on">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-heart-pulse"/></svg>Prontidão do Sistema
+          </a>
+        }
       }
     </nav>
     <div class="side-rod">v1.1 · jul/2026</div>
