@@ -24,6 +24,15 @@ import {
  * transcrição para sempre, que é exatamente o defeito corrigido em `aguardarTranscricao`. */
 const TIMEOUT_LOCAL_MS = 10 * 60 * 1000;
 
+/** Teto de espera dos provedores REMOTOS (OpenRouter, Anthropic). Menor que o do local porque
+ * uma API na nuvem que não respondeu em 2 min está fora do ar, não "pensando devagar em CPU".
+ * Achado A14: sem teto, uma chamada pendurada deixava o protocolo preso em `Analisando` para
+ * sempre — exatamente o beco que `recuperarPresos`/`cancelar` existem para desfazer. */
+const TIMEOUT_REMOTO_MS = 2 * 60 * 1000;
+/** Teto curto para consultas auxiliares (catálogo de modelos): é conveniência de tela, não
+ * pode segurar a UI se a rede engasgar. */
+const TIMEOUT_CATALOGO_MS = 10 * 1000;
+
 export interface ConfigFinalidade {
   provider: ProvedorIa;
   apiKey: string;
@@ -331,7 +340,9 @@ export class IaService implements OnModuleInit {
    * seleção de modelo na tela Modo IA. Falha graciosamente (lista vazia) se a rede cair. */
   async listarModelosOpenRouter(): Promise<{ id: string; nome: string }[]> {
     try {
-      const resp = await fetch(`${OPENROUTER_BASE_URL}/models`);
+      const resp = await fetch(`${OPENROUTER_BASE_URL}/models`, {
+        signal: AbortSignal.timeout(TIMEOUT_CATALOGO_MS),
+      });
       if (!resp.ok) return [];
       const dados = (await resp.json()) as {
         data?: { id: string; name?: string }[];
@@ -357,7 +368,12 @@ export class IaService implements OnModuleInit {
     }
     const { config } = resolvido;
     if (config.provider === 'openrouter') {
-      return this.completarCompativel(config, OPENROUTER_BASE_URL, opcoes);
+      return this.completarCompativel(
+        config,
+        OPENROUTER_BASE_URL,
+        opcoes,
+        TIMEOUT_REMOTO_MS,
+      );
     }
     if (config.provider === 'local') {
       return this.completarCompativel(
@@ -376,7 +392,11 @@ export class IaService implements OnModuleInit {
     config: ConfigFinalidade,
     opcoes: OpcoesCompletar,
   ): Promise<string> {
-    const client = new Anthropic({ apiKey: config.apiKey });
+    // timeout: sem ele o SDK espera indefinidamente (A14). maxRetries=2 é o default do SDK.
+    const client = new Anthropic({
+      apiKey: config.apiKey,
+      timeout: TIMEOUT_REMOTO_MS,
+    });
     const resp = await client.messages.create({
       model: config.modelo || MODELO_ANTHROPIC_PADRAO,
       max_tokens: opcoes.maxTokens,

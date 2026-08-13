@@ -4,6 +4,7 @@ import { DocserviceSaudeRepository } from './repositories/docservice-saude.repos
 import { OperacaoArquivosRepository } from './repositories/operacao-arquivos.repository';
 import { SaudeBancoRepository } from './repositories/saude-banco.repository';
 import { ItemSaude, SaudeService } from './saude.service';
+import { contador5xx } from '../common/observabilidade/contador-5xx';
 
 const H = 60 * 60 * 1000;
 
@@ -48,6 +49,7 @@ describe('SaudeService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    contador5xx._resetar();
     tudoOk();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -76,10 +78,31 @@ describe('SaudeService', () => {
       'banco',
       'docservice',
       'email',
+      'erros_5xx',
       'guardiao',
       'transcricao',
     ]);
     expect(await service.problemas()).toEqual([]);
+  });
+
+  describe('erros 5xx', () => {
+    it('sem erros -> ok', async () => {
+      expect((await item('erros_5xx')).nivel).toBe('ok');
+    });
+
+    it('alguns erros -> aviso, com o último no detalhe', async () => {
+      contador5xx.registrar(500, '/api/x');
+      contador5xx.registrar(503, '/api/y');
+      const i = await item('erros_5xx');
+      expect(i.nivel).toBe('aviso');
+      expect(i.mensagem).toContain('2');
+      expect(i.detalhe).toContain('/api/y');
+    });
+
+    it('surto (>=25) -> crítico', async () => {
+      for (let n = 0; n < 25; n++) contador5xx.registrar(500, '/api/z');
+      expect((await item('erros_5xx')).nivel).toBe('critico');
+    });
   });
 
   describe('backup', () => {

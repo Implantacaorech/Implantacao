@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TranscricaoService } from '../transcricao/transcricao.service';
+import { contador5xx } from '../common/observabilidade/contador-5xx';
 import { DocserviceSaudeRepository } from './repositories/docservice-saude.repository';
 import { OperacaoArquivosRepository } from './repositories/operacao-arquivos.repository';
 import { SaudeBancoRepository } from './repositories/saude-banco.repository';
@@ -81,6 +82,7 @@ export class SaudeService {
       this.checarDocservice(),
       this.checarTranscricoes(),
       this.checarEmails(agora),
+      Promise.resolve(this.checarErros5xx()),
     ]);
     return {
       nivel: itens.reduce<NivelSaude>(
@@ -112,6 +114,29 @@ export class SaudeService {
         ? `Conexão respondendo (${r.dialeto}).`
         : 'O banco não respondeu — o painel está inutilizável.',
       detalhe: r.erro,
+    };
+  }
+
+  /** A12: erros internos (5xx) das últimas 24 h. Enquanto o painel "está no ar", um recurso
+   * pode estar quebrando 500 para todo mundo sem ninguém saber — foi o caso da tabela
+   * `preferencias_usuario` ausente por 5 min em 30/07. 1+ erro é aviso; um surto (≥ 25) é
+   * crítico. O contador é volátil (zera no restart), o que é adequado: interessa "está
+   * acontecendo agora?". */
+  private checarErros5xx(): ItemSaude {
+    const r = contador5xx.resumo();
+    const nivel: NivelSaude =
+      r.total24h === 0 ? 'ok' : r.total24h >= 25 ? 'critico' : 'aviso';
+    return {
+      chave: 'erros_5xx',
+      titulo: 'Erros internos (5xx)',
+      nivel,
+      mensagem:
+        r.total24h === 0
+          ? 'Nenhum erro interno nas últimas 24 h.'
+          : `${r.total24h} erro(s) interno(s) nas últimas 24 h.`,
+      detalhe: r.ultimo
+        ? `Último: ${r.ultimo.status} em ${r.ultimo.rota} (${r.ultimo.em}).`
+        : '',
     };
   }
 

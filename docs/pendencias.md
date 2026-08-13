@@ -61,24 +61,24 @@
 - [ ] **A10 — Sem trilha de auditoria de IA** (quem/quando/finalidade/provedor/modelo/entrada/saída);
   `/levantamento/sugerir` nem recebe `@CurrentUser`. **Correção:** tabela de execuções de IA.
   **Dono:** software. **Prazo:** 2026-09-09.
-- [ ] **A11 — Canal de alerta (digest) nunca funcionou em produção.** 0 envios em 7,5 MB de log;
-  `MIGRACAO_DIGEST_PARA` não definida; `tick()` sem destinatário não loga. **Correção:** definir os
-  destinatários, logar sempre o motivo de não enviar, heartbeat do digest. **Dono:** usuário
-  (definir destinatários) + software (heartbeat/log). **Prazo:** 2026-08-19.
-- [ ] **A12 — 5xx e falhas só vão para o log**, sem notificação (`http-exception.filter.ts:63-68`).
-  **Correção:** contador de 5xx exposto como checagem em `/api/saude`. **Dono:** software.
-  **Prazo:** 2026-09-02.
+- [~] **A11 — Canal de alerta (digest) nunca funcionou em produção.** 0 envios em 7,5 MB de log;
+  `MIGRACAO_DIGEST_PARA` não definida. **Feito (2026-08-12):** o `tick()` passou a **logar 1×/dia**
+  que não enviou por falta de destinatário (a ausência deixou de ser silenciosa).
+  **Falta (usuário):** definir `MIGRACAO_DIGEST_PARA`. **Prazo:** 2026-08-19.
+- [x] **A12 — 5xx só iam para o log (corrigido 2026-08-12).** Contador de 5xx de 24 h alimentado
+  pelo `HttpExceptionFilter` e exposto como checagem `erros_5xx` no `/api/saude` (sai no digest).
+  Guarda: `contador-5xx.spec.ts` e `saude.service.spec.ts`. **Dono:** software.
 - [ ] **A13 — E-mail de passo sem fila, sem retry, sem reenvio.** Falha fica só registrada em
   `emails_passo`. **Correção:** endpoint de reenvio a partir de `emails_passo` (mínimo) ou fila
   persistida. **Dono:** software. **Prazo:** 2026-09-09.
-- [ ] **A14 — Oracle e OpenRouter sem timeout** (`disponibilidade.service.ts`, `ia.service.ts:299-301`).
-  **Correção:** aplicar `connectTimeout`/`callTimeout` e o `timeoutMs` do OpenRouter. **Dono:**
-  software. **Prazo:** 2026-08-26.
+- [x] **A14 — Oracle e OpenRouter sem timeout (corrigido 2026-08-12).** `callTimeout` de 15 s na
+  conexão Oracle; timeout de 2 min no OpenRouter/Anthropic e 10 s no catálogo de modelos.
+  Guarda: `ia.service.spec.ts`. **Dono:** software.
 - [ ] **A15 — Sem validação pós-geração da saída de IA** (código de menu inexistente não é rejeitado).
   **Correção:** conferir o código de menu contra o dicionário antes de gravar. **Dono:** software.
   **Prazo:** 2026-09-09.
-- [ ] **A16 — docservice sem log** (janela minimizada que morre no reinício). **Correção:** redirecionar
-  a saída do `docservice/iniciar.bat` para arquivo. **Dono:** software. **Prazo:** 2026-08-26.
+- [x] **A16 — docservice sem log (corrigido 2026-08-12).** `docservice/iniciar.bat` passou a gravar
+  a saída em `C:\PainelBackups\docservice_stdout.log`. **Dono:** software.
 - [ ] **A17 — Backup nunca restaurado + runbook aponta para Postgres/Docker extinto.** **Correção:**
   restore cronometrado num banco descartável, corrigir o runbook, cópia off-site. **Dono:** usuário
   (executar o restore) + software (runbook). **Prazo:** 2026-08-26.
@@ -89,13 +89,14 @@
   **Correção:** job de CI (self-hosted ou instância efêmera). **Dono:** software. **Prazo:** 2026-09-16.
 
 ### 🟡 Médio (seleção — lista completa no relatório da sessão)
-- [ ] **M1 — Swagger `/api/docs` público** — condicionar a não-produção ou por guard. **Dono:** software. **Prazo:** 2026-08-26.
+
+- [x] **M1 — Swagger `/api/docs` público (corrigido 2026-08-12).** Sobe só fora de produção (mesmo sinal do C1). **Dono:** software.
 - [ ] **M2 — 12 rotas de escrita atrás de permissão de `consulta`** (inclui `concluir` passo). **Dono:** software. **Prazo:** 2026-09-09.
-- [ ] **M3 — `POST /fluxo/inbox` sem `@Permissao`** (lê a caixa IMAP). **Dono:** software. **Prazo:** 2026-08-26.
+- [x] **M3 — `POST /fluxo/inbox` sem `@Permissao` (corrigido 2026-08-12).** Exige `@Permissao('novo_cliente','alteracao')` como a rota irmã `criar`. **Dono:** software.
 - [ ] **M4 — `POST/PATCH /agentes/execucoes` com `@Roles()` vazio.** **Dono:** software. **Prazo:** 2026-09-02.
 - [ ] **M5 — Credenciais em claro em `backend/dados/`** (`ia_config.json`, `mariadb.env`, `smtp.json`, `imap.json`, CSV) — proteger por ACL, considerar cifra. **Dono:** usuário + software. **Prazo:** 2026-09-02.
 - [ ] **M6 — Detecção de ausência só para backup** (digest/robôs sem heartbeat). **Dono:** software. **Prazo:** 2026-09-09.
-- [ ] **M7 — Log de integridade ilegível (UTF-16 por `Out-File` sem `-Encoding`)** em `Verificar_Integridade_Novo.ps1:49`. **Dono:** software. **Prazo:** 2026-08-26.
+- [x] **M7 — Log de integridade ilegível (corrigido 2026-08-12).** A saída do `npm test` passou a ser capturada e anexada em UTF-8 sem BOM (o mesmo helper do resto do script), em `Verificar_Integridade_Novo.ps1`. **Dono:** software.
 - [ ] **M8 — Leitor de log de saúde decide encoding pelo BOM do arquivo inteiro** e descarta as linhas novas de erro do backup. **Dono:** software. **Prazo:** 2026-08-26.
 - [ ] **M9 — Sem correlation-id** ponta a ponta. **Dono:** software. **Prazo:** 2026-09-16.
 - [ ] **M10 — Kill switch de IA vazando** (fallback global Anthropic) e sem desligamento em runtime dos robôs. **Dono:** software. **Prazo:** 2026-09-16.

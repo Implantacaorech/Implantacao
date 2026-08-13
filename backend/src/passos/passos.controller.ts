@@ -14,6 +14,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { LIMITE_UPLOAD_DOC } from '../common/upload.constants';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -153,7 +154,9 @@ export class PassosController {
   @Post('passos/:numero/anexar-email')
   @Roles()
   @Permissao('carteira', 'alteracao')
-  @UseInterceptors(FileInterceptor('arquivo'))
+  @UseInterceptors(
+    FileInterceptor('arquivo', { limits: { fileSize: LIMITE_UPLOAD_DOC } }),
+  )
   @ApiOperation({
     summary:
       'Anexa o e-mail encaminhado do Outlook (.msg/.eml) — registro dos passos 4 e 6',
@@ -177,7 +180,9 @@ export class PassosController {
   @Post('passos/:numero/anexo-email')
   @Roles()
   @Permissao('carteira', 'alteracao')
-  @UseInterceptors(FileInterceptor('arquivo'))
+  @UseInterceptors(
+    FileInterceptor('arquivo', { limits: { fileSize: LIMITE_UPLOAD_DOC } }),
+  )
   @ApiOperation({
     summary:
       'Anexa um arquivo AO E-MAIL que o passo vai enviar (passo 16) — some do e-mail, não é ' +

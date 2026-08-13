@@ -13,6 +13,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { LIMITE_UPLOAD_DOC } from '../common/upload.constants';
 import {
   ApiBearerAuth,
   ApiConsumes,
@@ -57,7 +58,9 @@ export class ConfigGmailController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(...PERFIS_SISTEMA)
-  @UseInterceptors(FileInterceptor('client'))
+  @UseInterceptors(
+    FileInterceptor('client', { limits: { fileSize: LIMITE_UPLOAD_DOC } }),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary:

@@ -21,6 +21,7 @@ const CHECAGEM_MS = 30 * 60 * 1000; // checa a cada 30min — mesmo `time.sleep(
 export class RoboDigestService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger('RoboDigestService');
   private ultimoEnvio: string | null = null; // "AAAA-MM-DD" do último dia já enviado
+  private ultimoAviso: string | null = null; // "AAAA-MM-DD" do último aviso de "não enviei"
 
   constructor(
     private readonly config: ConfigService<AppConfig, true>,
@@ -49,15 +50,28 @@ export class RoboDigestService implements OnModuleInit, OnModuleDestroy {
       // A hora comparada é local; a data do "já enviei hoje" precisa ser local também, senão
       // a chave vira o dia seguinte às 21h e a trava do dia se solta antes da meia-noite.
       const hoje = hojeIso();
-      if (
-        agora.getHours() === hora &&
-        this.ultimoEnvio !== hoje &&
-        this.digest.destinos().length > 0
-      ) {
-        const r = await this.digest.enviar();
-        this.ultimoEnvio = hoje;
-        this.logger.log(`Digest diário: enviado=${r.ok}`);
+      // Fora da hora, ou já enviado hoje: nada a fazer, em silêncio.
+      if (agora.getHours() !== hora || this.ultimoEnvio === hoje) return;
+
+      // A11 (auditoria 2026-08-12): a ausência de destinatário era SILENCIOSA — o tick não
+      // fazia nada e não logava, então "não configurado", "não rodou" e "rodou e falhou" eram
+      // indistinguíveis de fora. Resultado real: 0 envios de digest em todo o log de produção,
+      // e o único canal de alerta do sistema nunca funcionou sem ninguém perceber. Agora, na
+      // hora do envio, a falta de destinatário vira um aviso no log (uma vez por dia).
+      if (this.digest.destinos().length === 0) {
+        if (this.ultimoAviso !== hoje) {
+          this.ultimoAviso = hoje;
+          this.logger.warn(
+            'Digest NÃO enviado hoje: sem destinatários. Defina a variável ' +
+              'MIGRACAO_DIGEST_PARA para o resumo diário (e a saúde do sistema) sair por e-mail.',
+          );
+        }
+        return;
       }
+
+      const r = await this.digest.enviar();
+      this.ultimoEnvio = hoje;
+      this.logger.log(`Digest diário: enviado=${r.ok}`);
     } catch (e) {
       this.logger.error(
         'Robô de digest falhou',

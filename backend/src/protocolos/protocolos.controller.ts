@@ -22,6 +22,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { LIMITE_UPLOAD_MIDIA } from '../common/upload.constants';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { extname, join } from 'path';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -99,7 +100,9 @@ export class ProtocolosController {
 
   @Post('novo')
   @HttpCode(HttpStatus.OK)
-  @UseInterceptors(FileInterceptor('video'))
+  @UseInterceptors(
+    FileInterceptor('video', { limits: { fileSize: LIMITE_UPLOAD_MIDIA } }),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary:
@@ -189,7 +192,9 @@ export class ProtocolosController {
 
   @Post('gravacao/:id/trecho')
   @HttpCode(HttpStatus.OK)
-  @UseInterceptors(FileInterceptor('audio'))
+  @UseInterceptors(
+    FileInterceptor('audio', { limits: { fileSize: LIMITE_UPLOAD_MIDIA } }),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary:

@@ -19,6 +19,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { LIMITE_UPLOAD_DOC } from '../common/upload.constants';
 import {
   ApiBearerAuth,
   ApiConsumes,
@@ -161,7 +162,9 @@ export class DocumentosController {
 
   @Post('projetos/:projetoId/anexar')
   @Permissao('carteira', 'alteracao')
-  @UseInterceptors(FileInterceptor('arquivo'))
+  @UseInterceptors(
+    FileInterceptor('arquivo', { limits: { fileSize: LIMITE_UPLOAD_DOC } }),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary: 'Anexa um documento manualmente à ficha do projeto',
@@ -249,7 +252,9 @@ export class DocumentosController {
 
   @Post('projetos/:projetoId/projeto/importar-levantamento')
   @HttpCode(HttpStatus.OK)
-  @UseInterceptors(FileInterceptor('arquivo'))
+  @UseInterceptors(
+    FileInterceptor('arquivo', { limits: { fileSize: LIMITE_UPLOAD_DOC } }),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary:

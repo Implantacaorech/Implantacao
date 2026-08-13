@@ -151,6 +151,8 @@ describe('IaService', () => {
     };
     expect(body.model).toBe('anthropic/claude-sonnet-4');
     expect(body.messages[0]).toEqual({ role: 'system', content: 'sys' });
+    // A14: a chamada remota tem teto de tempo (AbortSignal), senão fica pendurada.
+    expect((init as RequestInit).signal).toBeInstanceOf(AbortSignal);
     fetchMock.mockRestore();
   });
 

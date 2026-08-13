@@ -54,6 +54,10 @@ const SELECT_TECNICOS_PADRAO =
   'SELECT CODIGO AS codigo, TECNICO AS tecnico FROM SICLA.TECNICOS';
 
 const CACHE_TTL_MS = 180_000; // 180s — ver webapp/disponibilidade.py:_CACHE_TTL
+
+// A14: teto por round-trip da conexão Oracle (callTimeout). 15s é folgado para uma consulta
+// de agenda e curto o bastante para não pendurar o handler HTTP num banco lento.
+const TIMEOUT_ORACLE_MS = 15_000;
 const TEC_TTL_MS = 600_000; // 600s — ver webapp/disponibilidade.py:_TEC_TTL
 
 /** Disponibilidade dos consultores via banco externo (Oracle/SICLA, configurável pelo
@@ -219,6 +223,11 @@ export class DisponibilidadeService {
       password: senha,
       connectString,
     });
+    // A14: teto de tempo por round-trip. O SELECT é EDITÁVEL pelo Administrador; sem isto,
+    // uma consulta pesada ou o banco lento penduravam o handler HTTP até o TCP morrer.
+    // `callTimeout` aborta qualquer `execute()` que passe do limite (a base já teria fechado
+    // a conexão de outra forma). A abertura da conexão é limitada pelo TCP do SO.
+    connection.callTimeout = TIMEOUT_ORACLE_MS;
     try {
       return await fn(connection);
     } finally {

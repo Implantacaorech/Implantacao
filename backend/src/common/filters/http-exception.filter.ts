@@ -7,12 +7,25 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { contador5xx } from '../observabilidade/contador-5xx';
 
 /** Status HTTP que um erro CRU de middleware carrega (body-parser/multer usam `status`;
- * alguns pacotes usam `statusCode`). `null` quando não é um desses. */
+ * alguns pacotes usam `statusCode`). `null` quando não é um desses.
+ *
+ * O `MulterError` de limite de tamanho (A4) é um caso à parte: NÃO traz `status`/`statusCode`,
+ * só `name==='MulterError'` e `code`. Sem este mapeamento, um upload grande demais viraria 500
+ * genérico em vez do 413 que diz ao usuário o que aconteceu. */
 function statusDeErroCru(e: unknown): number | null {
   if (typeof e !== 'object' || e === null) return null;
-  const bruto = e as { status?: unknown; statusCode?: unknown };
+  const bruto = e as {
+    status?: unknown;
+    statusCode?: unknown;
+    name?: unknown;
+    code?: unknown;
+  };
+  if (bruto.name === 'MulterError') {
+    return bruto.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+  }
   const valor = bruto.status ?? bruto.statusCode;
   return typeof valor === 'number' && valor >= 400 && valor < 600
     ? valor
@@ -65,6 +78,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
       this.logger.error(
         exception instanceof Error ? exception.stack : String(exception),
       );
+    }
+
+    // A12: alimenta o contador de 5xx que o /api/saude expõe e o digest diário reporta —
+    // um erro interno deixa de ser invisível até o usuário reclamar.
+    if (statusCode >= 500) {
+      contador5xx.registrar(statusCode, request.url);
     }
 
     response.status(statusCode).json({

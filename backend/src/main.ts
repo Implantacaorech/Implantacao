@@ -12,7 +12,7 @@ import { assetsEstaticos } from './common/assets-estaticos';
 import { erroDeMiddleware } from './common/filters/erro-de-middleware';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
-import { AppConfig } from './config/configuration';
+import { AppConfig, ehProducao } from './config/configuration';
 import { httpsPainel } from './config/https';
 
 /** Teto do corpo JSON/urlencoded — o mesmo padrão do Express/Nest. Os DTOs já limitam cada
@@ -108,22 +108,33 @@ async function bootstrap(): Promise<void> {
   app.useGlobalInterceptors(new ResponseInterceptor());
   app.setGlobalPrefix('api');
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('Painel de Implantação — API')
-    .setDescription(
-      'API NestJS do Painel de Implantação (migração do backend Flask)',
-    )
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document);
+  // M1 (auditoria 2026-08-12): o Swagger em `/api/docs` era público e sem condicional de
+  // ambiente — expunha o mapa inteiro da API (rotas, DTOs, exemplos) a qualquer um que
+  // alcançasse a porta, um reconhecimento pronto para atacante. Passa a subir só FORA de
+  // produção (mesmo sinal do C1: NODE_ENV=production OU banco MariaDB real configurado).
+  const emProducao = ehProducao(
+    config.get('env', { infer: true }),
+    process.env.MIGRACAO_DB_URL,
+  );
+  if (!emProducao) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('Painel de Implantação — API')
+      .setDescription(
+        'API NestJS do Painel de Implantação (migração do backend Flask)',
+      )
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document);
+  }
+  const sufixoDocs = emProducao ? '' : ' — docs em /api/docs';
 
   const port = config.get('port', { infer: true });
   if (!tls || !servidorExpress) {
     await app.listen(port);
     console.log(
-      `Painel API rodando em http://localhost:${port}/api — docs em /api/docs`,
+      `Painel API rodando em http://localhost:${port}/api${sufixoDocs}`,
     );
     return;
   }
@@ -135,7 +146,7 @@ async function bootstrap(): Promise<void> {
   criarServidorHttps(tls.opcoes, servidorExpress).listen(tls.porta);
   console.log(
     `Painel API rodando em http://localhost:${port}/api e ` +
-      `https://localhost:${tls.porta}/api (${tls.origem}) — docs em /api/docs`,
+      `https://localhost:${tls.porta}/api (${tls.origem})${sufixoDocs}`,
   );
 }
 
