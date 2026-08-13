@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { contador5xx } from '../observabilidade/contador-5xx';
+import { requestIdAtual } from '../observabilidade/correlacao';
 
 /** Status HTTP que um erro CRU de middleware carrega (body-parser/multer usam `status`;
  * alguns pacotes usam `statusCode`). `null` quando não é um desses.
@@ -73,10 +74,15 @@ export class HttpExceptionFilter implements ExceptionFilter {
     // "Not Found") é texto em inglês pensado para debug, não o contrato estável da API.
     const errorCode = this.codigoParaStatus(statusCode);
 
+    const requestId = requestIdAtual();
+
     if (!isHttp && statusDeMiddleware === null) {
       // Erros não tratados nunca vazam detalhe interno para o cliente — só no log do servidor.
+      // O requestId no início amarra este stack ao "o usuário viu um erro" reportado (M9).
       this.logger.error(
-        exception instanceof Error ? exception.stack : String(exception),
+        `[req ${requestId || '-'}] ${request.method} ${request.url}\n${
+          exception instanceof Error ? exception.stack : String(exception)
+        }`,
       );
     }
 
@@ -96,6 +102,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
       details,
       timestamp: new Date().toISOString(),
       path: request.url,
+      // M9: devolve o correlation-id ao cliente — quem relata um erro pode citá-lo, e o
+      // suporte acha o stack exato no log. Também vai no cabeçalho x-request-id da resposta.
+      requestId,
     });
   }
 

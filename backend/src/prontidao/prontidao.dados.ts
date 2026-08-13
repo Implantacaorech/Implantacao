@@ -105,9 +105,9 @@ export const PRONTIDAO_EIXOS: EixoProntidao[] = [
   {
     numero: 9,
     nome: 'Observabilidade',
-    maturidade: 2,
+    maturidade: 3,
     resumo:
-      'Log persiste e sobrevive a restart, mas é texto sem correlação, o docservice não loga nada e não há métricas técnicas.',
+      'Log persiste e sobrevive a restart, o docservice agora grava log (A16) e há correlation-id ponta a ponta (M9) + contador de 5xx; ainda falta log estruturado (JSON) e métricas de latência por rota.',
   },
 ];
 
@@ -429,10 +429,10 @@ export const PRONTIDAO_ACHADOS: AchadoProntidao[] = [
     eixo: 9,
     evidencia: 'busca no repo = 0; só response.interceptor.ts',
     correcao:
-      'Middleware de correlation-id no log e propagado ao docservice/IA.',
-    status: 'aberto',
+      'Middleware de correlation-id (x-request-id) via AsyncLocalStorage: aceita/gera, ecoa na resposta, entra no log de erro e é propagado ao docservice (interceptor axios) e à IA.',
+    status: 'corrigido',
     dono: 'software',
-    prazo: '2026-09-16',
+    prazo: 'feito',
   },
   {
     codigo: 'M11',

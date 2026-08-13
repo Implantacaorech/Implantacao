@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import { firstValueFrom } from 'rxjs';
+import { propagarRequestId } from '../common/observabilidade/axios-correlacao';
 
 export interface ArquivoGerado {
   buffer: Buffer;
@@ -21,7 +22,9 @@ export type PreviewDocumento =
  * docs/migracao/02-decisao-arquitetura.md, "Arquitetura híbrida". */
 @Injectable()
 export class GeracaoDocumentosService {
-  constructor(private readonly http: HttpService) {}
+  constructor(private readonly http: HttpService) {
+    propagarRequestId(http); // M9: correlation-id nas chamadas ao docservice.
+  }
 
   /** Pré-visualização WYSIWYG (.docx -> PDF fiel via Word COM, com fallback em HTML; .xlsx
    * sempre em HTML) — equivalente a webapp/routes_fluxo.py:projeto_doc_ver. `caminho` já

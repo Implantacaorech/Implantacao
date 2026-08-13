@@ -13,6 +13,7 @@ import { erroDeMiddleware } from './common/filters/erro-de-middleware';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { AppConfig, ehProducao } from './config/configuration';
+import { correlacaoMiddleware } from './common/observabilidade/correlacao';
 import { httpsPainel } from './config/https';
 
 /** Teto do corpo JSON/urlencoded — o mesmo padrão do Express/Nest. Os DTOs já limitam cada
@@ -37,6 +38,10 @@ async function bootstrap(): Promise<void> {
       })
     : await NestFactory.create(AppModule, { bodyParser: false });
   const config = app.get(ConfigService<AppConfig, true>);
+
+  // PRIMEIRO middleware: dá a cada requisição um correlation-id (M9), disponível para todo o
+  // resto do ciclo (parsers, guards, handler, filtro de erro) e ecoado na resposta.
+  app.use(correlacaoMiddleware);
 
   // Mesmos parsers e o mesmo limite padrão que o Nest usaria (100 kb) — o que muda é só
   // quem os registra. Uploads continuam por multipart/multer, que não passa por aqui.

@@ -112,7 +112,12 @@
 - [ ] **M6 — Detecção de ausência só para backup** (digest/robôs sem heartbeat). **Dono:** software. **Prazo:** 2026-09-09.
 - [x] **M7 — Log de integridade ilegível (corrigido 2026-08-12).** A saída do `npm test` passou a ser capturada e anexada em UTF-8 sem BOM (o mesmo helper do resto do script), em `Verificar_Integridade_Novo.ps1`. **Dono:** software.
 - [ ] **M8 — Leitor de log de saúde decide encoding pelo BOM do arquivo inteiro** e descarta as linhas novas de erro do backup. **Dono:** software. **Prazo:** 2026-08-26.
-- [ ] **M9 — Sem correlation-id** ponta a ponta. **Dono:** software. **Prazo:** 2026-09-16.
+- [x] **M9 — Correlation-id ponta a ponta (corrigido 2026-08-13).** Middleware
+  (`common/observabilidade/correlacao.ts`) dá a cada requisição um `x-request-id` (aceito da
+  entrada se são, ou gerado), via `AsyncLocalStorage`; ecoa na resposta, entra no log de erro do
+  `HttpExceptionFilter` e no corpo do erro, e é propagado ao **docservice** (interceptor axios nos
+  3 clientes) e à **IA** (header do fetch). Guarda: `correlacao.spec.ts`. Eixo Observabilidade 2→3.
+  **Dono:** software.
 - [ ] **M10 — Kill switch de IA vazando** (fallback global Anthropic) e sem desligamento em runtime dos robôs. **Dono:** software. **Prazo:** 2026-09-16.
 - [ ] **M11 — Sem detecção de reuso de refresh token** (revogar a família no replay). **Dono:** software. **Prazo:** 2026-09-16.
 - [ ] **M12 — `recuperarPresos` re-dispara IA a cada boot sem contador de tentativas.** **Dono:** software. **Prazo:** 2026-09-09.

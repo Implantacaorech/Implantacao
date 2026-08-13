@@ -11,6 +11,10 @@ import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { IaTelemetriaService } from '../ia-telemetria/ia-telemetria.service';
 import {
+  CABECALHO_REQUEST_ID,
+  requestIdAtual,
+} from '../common/observabilidade/correlacao';
+import {
   exigeProvedorLocal,
   FINALIDADES_IA,
   FINALIDADES_SO_LOCAL,
@@ -526,6 +530,9 @@ export class IaService implements OnModuleInit {
     // Sem chave, sem cabeçalho: mandar `Bearer ` vazio faz alguns servidores recusarem com
     // 401 em vez de simplesmente ignorar a autenticação que não pediram.
     if (config.apiKey) headers.Authorization = `Bearer ${config.apiKey}`;
+    // M9: propaga o correlation-id da requisição, quando há uma (chamada por robô/boot não tem).
+    const requestId = requestIdAtual();
+    if (requestId) headers[CABECALHO_REQUEST_ID] = requestId;
 
     let resp: Response;
     try {

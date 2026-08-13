@@ -1,6 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
+import { propagarRequestId } from '../../common/observabilidade/axios-correlacao';
 
 /** Consulta o `/health` do docservice (FastAPI, processo separado na 8001).
  *
@@ -14,7 +15,9 @@ import { firstValueFrom } from 'rxjs';
  * "ECONNREFUSED 127.0.0.1:8001" ao tentar gravar uma reunião. */
 @Injectable()
 export class DocserviceSaudeRepository {
-  constructor(private readonly http: HttpService) {}
+  constructor(private readonly http: HttpService) {
+    propagarRequestId(http); // M9: correlation-id na checagem do docservice.
+  }
 
   async responde(): Promise<{ ok: boolean; detalhe: string }> {
     try {

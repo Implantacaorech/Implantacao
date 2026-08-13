@@ -1,4 +1,5 @@
 import { HttpService } from '@nestjs/axios';
+import { propagarRequestId } from '../common/observabilidade/axios-correlacao';
 import {
   Injectable,
   InternalServerErrorException,
@@ -52,7 +53,10 @@ function detalheErro(e: unknown): string {
  * docs/migracao/02-decisao-arquitetura.md, "Arquitetura híbrida". */
 @Injectable()
 export class TranscricaoService {
-  constructor(private readonly http: HttpService) {}
+  constructor(private readonly http: HttpService) {
+    // M9: propaga o correlation-id às chamadas ao docservice.
+    propagarRequestId(http);
+  }
 
   /** Dispara a transcrição. Lança se o vídeo não existir (404) ou se já houver um job em
    * andamento para este protocolo (409) — ambos erros de programação/estado inesperado do
