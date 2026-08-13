@@ -7,6 +7,7 @@ import { ClientesSiclaModule } from '../clientes-sicla/clientes-sicla.module';
 import { Projeto } from '../database/entities/projeto.entity';
 import { Protocolo } from '../database/entities/protocolo.entity';
 import { IaModule } from '../ia/ia.module';
+import { AgentesModule } from '../agentes/agentes.module';
 import { MatrizDetalhadaModule } from '../matriz-detalhada/matriz-detalhada.module';
 import { TranscricaoModule } from '../transcricao/transcricao.module';
 import { ProtocolosService } from './protocolos.service';
@@ -23,6 +24,8 @@ import { ProtocolosMidiaController } from './protocolos-midia.controller';
   imports: [
     TypeOrmModule.forFeature([Protocolo, Projeto]),
     IaModule,
+    // Telemetria de agentes: o robô de protocolos grava seu ciclo autônomo real (eixo 4).
+    AgentesModule,
     TranscricaoModule,
     // Taxonomia de menus do SIGER (derivada do Dicionário) — é contra ela que a transcrição
     // é casada para descobrir quais menus foram citados na gravação. Ver menus-mencionados.ts.

@@ -1,4 +1,5 @@
 import { IaService } from './ia.service';
+import { killSwitch } from '../common/automacao/kill-switch';
 import { existsSync, rmSync } from 'fs';
 import { join } from 'path';
 
@@ -30,11 +31,13 @@ describe('IaService', () => {
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.MIGRACAO_ANTHROPIC_MODELO;
     limparConfig();
+    killSwitch._resetar();
     service = new IaService();
   });
 
   afterEach(() => {
     limparConfig();
+    killSwitch._resetar();
     process.env = { ...envAntigo };
   });
 
@@ -57,6 +60,24 @@ describe('IaService', () => {
     const st = service.status('dicionario');
     expect(st.provider).toBe('anthropic');
     expect(st.modelo).toBe('claude-opus-4-8'); // default aplicado
+  });
+
+  it('com a automação pausada, completar recusa a chamada (eixo 4 — kill switch)', async () => {
+    service.salvar('dicionario', {
+      provider: 'anthropic',
+      apiKey: 'sk-ant-dic',
+      modelo: '',
+    });
+    killSwitch.pausar('gasto de IA disparou', 'adm');
+    await expect(
+      service.completar('dicionario', {
+        system: 's',
+        messages: [{ role: 'user', content: 'oi' }],
+        maxTokens: 10,
+      }),
+    ).rejects.toThrow(/pausada/i);
+    // O freio age ANTES de qualquer provedor: o SDK do Anthropic nem é chamado.
+    expect(createMock).not.toHaveBeenCalled();
   });
 
   it('aceita provedor openrouter com modelo próprio', () => {
@@ -492,6 +513,147 @@ describe('IaService', () => {
         s.completar('protocolos', { system: '', messages: [], maxTokens: 10 }),
       ).resolves.toBe('ok');
       fetchMock.mockRestore();
+    });
+  });
+
+  describe('eixo 6 — temperatura factual', () => {
+    it('manda temperatura baixa e fixa (0.2) por padrão ao provedor', async () => {
+      service.salvar('dicionario', {
+        provider: 'openrouter',
+        apiKey: 'sk-or',
+        modelo: 'openai/gpt-4o-mini',
+      });
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ choices: [{ message: { content: 'x' } }] }),
+      } as Response);
+      await service.completar('dicionario', {
+        system: 's',
+        messages: [{ role: 'user', content: 'oi' }],
+        maxTokens: 10,
+      });
+      const body = JSON.parse(
+        (fetchMock.mock.calls[0][1] as RequestInit).body as string,
+      ) as { temperature: number };
+      expect(body.temperature).toBe(0.2);
+      fetchMock.mockRestore();
+    });
+  });
+
+  describe('eixo 7 — roteamento por custo', () => {
+    function fetchOk() {
+      return jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ choices: [{ message: { content: 'x' } }] }),
+      } as Response);
+    }
+    function modeloEnviado(f: jest.SpyInstance): string {
+      return (
+        JSON.parse((f.mock.calls[0][1] as RequestInit).body as string) as {
+          model: string;
+        }
+      ).model;
+    }
+
+    it('tarefa PEQUENA usa o modelo econômico quando configurado', async () => {
+      service.salvar('dicionario', {
+        provider: 'openrouter',
+        apiKey: 'sk-or',
+        modelo: 'modelo-caro',
+        modeloEconomico: 'modelo-barato',
+      });
+      const f = fetchOk();
+      await service.completar('dicionario', {
+        system: 'oi',
+        messages: [{ role: 'user', content: 'curto' }],
+        maxTokens: 10,
+      });
+      expect(modeloEnviado(f)).toBe('modelo-barato');
+      f.mockRestore();
+    });
+
+    it('tarefa GRANDE usa o modelo pleno', async () => {
+      service.salvar('dicionario', {
+        provider: 'openrouter',
+        apiKey: 'sk-or',
+        modelo: 'modelo-caro',
+        modeloEconomico: 'modelo-barato',
+      });
+      const f = fetchOk();
+      await service.completar('dicionario', {
+        system: 'x'.repeat(5000),
+        messages: [],
+        maxTokens: 10,
+      });
+      expect(modeloEnviado(f)).toBe('modelo-caro');
+      f.mockRestore();
+    });
+
+    it('sem modelo econômico configurado, nada muda (usa o pleno)', async () => {
+      service.salvar('dicionario', {
+        provider: 'openrouter',
+        apiKey: 'sk-or',
+        modelo: 'modelo-caro',
+      });
+      const f = fetchOk();
+      await service.completar('dicionario', {
+        system: 'oi',
+        messages: [],
+        maxTokens: 10,
+      });
+      expect(modeloEnviado(f)).toBe('modelo-caro');
+      f.mockRestore();
+    });
+  });
+
+  describe('eixo 8 — failover entre provedores', () => {
+    it('provedor externo falha → cai para o fallback Anthropic (finalidade não sensível)', async () => {
+      process.env.MIGRACAO_ANTHROPIC_API_KEY = 'sk-ant-env';
+      service.salvar('dicionario', {
+        provider: 'openrouter',
+        apiKey: 'sk-or',
+        modelo: 'openai/gpt-4o-mini',
+      });
+      const f = jest
+        .spyOn(global, 'fetch')
+        .mockRejectedValue(new Error('openrouter caiu'));
+      createMock.mockResolvedValue({
+        content: [{ type: 'text', text: 'resposta do fallback' }],
+        usage: { input_tokens: 1, output_tokens: 1 },
+      });
+      const texto = await service.completar('dicionario', {
+        system: '',
+        messages: [],
+        maxTokens: 10,
+      });
+      expect(texto).toBe('resposta do fallback');
+      expect(createMock).toHaveBeenCalled();
+      f.mockRestore();
+    });
+
+    it('finalidade SENSÍVEL nunca faz failover externo — o texto não sai da rede', async () => {
+      process.env.MIGRACAO_ANTHROPIC_API_KEY = 'sk-ant-env';
+      service.salvar('protocolos', {
+        provider: 'local',
+        apiKey: '',
+        modelo: 'qwen2.5:14b',
+        baseUrl: 'http://127.0.0.1:11434/v1',
+      });
+      const f = jest
+        .spyOn(global, 'fetch')
+        .mockRejectedValue(new Error('serviço local caiu'));
+      await expect(
+        service.completar('protocolos', {
+          system: '',
+          messages: [],
+          maxTokens: 10,
+        }),
+      ).rejects.toThrow();
+      // O Anthropic (fallback) NÃO pode ter sido chamado: privacidade acima de disponibilidade.
+      expect(createMock).not.toHaveBeenCalled();
+      f.mockRestore();
     });
   });
 

@@ -6,7 +6,9 @@ import {
   validarMenuPrincipal,
 } from './validar-menus';
 
-const SISTEMA =
+// Exportado para o teste de regressão de prompt (eixo 6): o `prompts-regressao.spec.ts` trava
+// a remoção acidental das cláusulas de fundamentação (grounding) que seguram a alucinação.
+export const SISTEMA =
   'Você é um consultor especialista em documentação de treinamentos de sistemas ERP. ' +
   'Analise INTEGRALMENTE a transcrição da gravação de um treinamento do ERP SIGER (Rech) ' +
   'e produza um PROTOCOLO TÉCNICO em português do Brasil, considerando somente os ' +
@@ -86,7 +88,7 @@ const SISTEMA =
  * que a tela de revisão mostra no lugar da leitura da transcrição bruta. Roda separado da
  * análise de propósito: o JSON da análise já consome quase todo o orçamento de tokens de
  * saída, e um campo longo dentro dele sairia truncado (JSON inválido). */
-const SISTEMA_RESUMO =
+export const SISTEMA_RESUMO =
   'Você é um consultor especialista em documentação de treinamentos do ERP SIGER (Rech). ' +
   'Leia INTEGRALMENTE a transcrição de uma gravação de treinamento e escreva o REGISTRO ' +
   'COMPLETO do que foi feito, em português do Brasil — o texto deve cobrir TODA a ' +

@@ -38,6 +38,7 @@ import { temPapel } from '../common/constants/perfis';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { exigirAcessoProtocolo } from './protocolos.acesso';
 import { aplicarNomes, lerMapa, locutoresDe } from './locutores';
+import { montarRascunhoVisita } from './rascunho-visita';
 import { JwtService } from '@nestjs/jwt';
 import { ProtocolosService } from './protocolos.service';
 import { ProcessamentoProtocolosService } from './processamento-protocolos.service';
@@ -100,6 +101,11 @@ export class ProtocolosController {
 
   @Post('novo')
   @HttpCode(HttpStatus.OK)
+  // M2 (auditoria 2026-08-12): a classe declara `@Permissao('protocolos')` (nível CONSULTA), que
+  // sozinho deixava um usuário só-de-leitura criar/gravar/salvar/processar protocolo. Toda rota de
+  // ESCRITA passa a exigir `alteracao`. Todos os papéis internos têm `protocolos: alteracao` no
+  // padrão (só quem o ADM restringe a consulta fica de fora — e esse não deve mesmo escrever).
+  @Permissao('protocolos', 'alteracao')
   @UseInterceptors(
     FileInterceptor('video', { limits: { fileSize: LIMITE_UPLOAD_MIDIA } }),
   )
@@ -177,8 +183,22 @@ export class ProtocolosController {
     return new ApiEnvelope(await this.gravacao.buscarClientes(termo ?? ''));
   }
 
+  @Get('clientes-com-protocolo')
+  @ApiOperation({
+    summary:
+      'Clientes que já têm protocolo transcrito — seletor do "Preencher protocolo" (Portal Rech)',
+  })
+  async clientesComProtocolo(@CurrentUser() user: AuthUser) {
+    // Mesmo recorte por dono da listagem: não-ADM só vê os clientes do próprio material.
+    const itens = await this.protocolos.clientesComProtocolo(
+      temPapel(user, 'ADM') ? undefined : user.nome,
+    );
+    return new ApiEnvelope({ itens });
+  }
+
   @Post('gravacao')
   @HttpCode(HttpStatus.OK)
+  @Permissao('protocolos', 'alteracao') // M2: escrita → nível de alteração
   @ApiOperation({
     summary:
       'Abre uma gravação de reunião (presencial ou Teams) e começa a transcrever ao vivo',
@@ -192,6 +212,7 @@ export class ProtocolosController {
 
   @Post('gravacao/:id/trecho')
   @HttpCode(HttpStatus.OK)
+  @Permissao('protocolos', 'alteracao') // M2: escrita → nível de alteração
   @UseInterceptors(
     FileInterceptor('audio', { limits: { fileSize: LIMITE_UPLOAD_MIDIA } }),
   )
@@ -228,6 +249,7 @@ export class ProtocolosController {
 
   @Post('gravacao/:id/finalizar')
   @HttpCode(HttpStatus.OK)
+  @Permissao('protocolos', 'alteracao') // M2: escrita → nível de alteração
   @ApiOperation({
     summary:
       'Encerra a gravação, salva o áudio e dispara a análise de IA + resumo completo',
@@ -242,6 +264,7 @@ export class ProtocolosController {
 
   @Delete('gravacao/:id')
   @HttpCode(HttpStatus.OK)
+  @Permissao('protocolos', 'alteracao') // M2: escrita → nível de alteração
   @ApiOperation({
     summary: 'Descarta a gravação em andamento (áudio e registro)',
   })
@@ -283,6 +306,7 @@ export class ProtocolosController {
 
   @Post(':id/locutores')
   @HttpCode(HttpStatus.OK)
+  @Permissao('protocolos', 'alteracao') // M2: escrita → nível de alteração
   @ApiOperation({
     summary:
       'Define os NOMES dos locutores (P1 -> Ivian) — não reescreve a transcrição',
@@ -323,6 +347,7 @@ export class ProtocolosController {
 
   @Post(':id/salvar')
   @HttpCode(HttpStatus.OK)
+  @Permissao('protocolos', 'alteracao') // M2: escrita → nível de alteração
   @ApiOperation({ summary: 'Salva a edição humana dos campos de conteúdo' })
   async salvar(
     @Param('id', ParseIntPipe) id: number,
@@ -337,6 +362,7 @@ export class ProtocolosController {
 
   @Post(':id/processar')
   @HttpCode(HttpStatus.OK)
+  @Permissao('protocolos', 'alteracao') // M2: escrita → nível de alteração
   @ApiOperation({
     summary: '(Re)processa o vídeo — transcreve e analisa de novo',
   })
@@ -361,6 +387,7 @@ export class ProtocolosController {
 
   @Post(':id/cancelar')
   @HttpCode(HttpStatus.OK)
+  @Permissao('protocolos', 'alteracao') // M2: escrita → nível de alteração
   @ApiOperation({
     summary:
       'Cancela o processamento em andamento — mata a transcrição e destrava o protocolo',
@@ -378,6 +405,7 @@ export class ProtocolosController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(RolesGuard)
   @Roles(...PERFIS_APROVA_PROTOCOLO)
+  @Permissao('protocolos', 'alteracao') // M2: escrita → nível de alteração
   @ApiOperation({ summary: 'Aprova — publica na base de conhecimento' })
   async aprovar(
     @Param('id', ParseIntPipe) id: number,
@@ -393,6 +421,7 @@ export class ProtocolosController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(RolesGuard)
   @Roles(...PERFIS_APROVA_PROTOCOLO)
+  @Permissao('protocolos', 'alteracao') // M2: escrita → nível de alteração
   @ApiOperation({ summary: 'Reprova — devolve para ajuste' })
   async reprovar(
     @Param('id', ParseIntPipe) id: number,
@@ -408,6 +437,7 @@ export class ProtocolosController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(RolesGuard)
   @Roles(...PERFIS_APROVA_PROTOCOLO)
+  @Permissao('protocolos', 'alteracao') // M2: escrita → nível de alteração
   @ApiOperation({
     summary: 'Exclui o registro e o arquivo de vídeo/áudio original',
   })
@@ -453,6 +483,20 @@ export class ProtocolosController {
       }
     }
     return new ApiEnvelope(out);
+  }
+
+  @Get(':id/rascunho-visita')
+  @ApiOperation({
+    summary:
+      'Rascunho do "Registro de Atendimento em Visita" do Portal Rech, montado deste protocolo',
+  })
+  async rascunhoVisita(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser,
+  ) {
+    const p = await this.protocolos.buscarPorId(id);
+    exigirAcessoProtocolo(p, user);
+    return new ApiEnvelope(montarRascunhoVisita(p));
   }
 
   @Get(':id/video-ticket')

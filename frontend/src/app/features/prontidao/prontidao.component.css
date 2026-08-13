@@ -236,3 +236,36 @@
   color: var(--muted);
   border: 1px solid var(--line-2);
 }
+
+/* --- Kill switch de runtime (eixo 4) --- */
+.prt-automacao {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.prt-automacao.pausada {
+  border-left: 4px solid var(--err);
+  background: var(--err-bg);
+}
+.prt-auto-linha {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.prt-auto-motivo {
+  flex: 1 1 220px;
+  max-width: 340px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+}
+.prt-btn-perigo {
+  background: var(--err);
+  border-color: var(--err);
+  color: #fff;
+}
+.prt-btn-perigo:hover:not(:disabled) {
+  filter: brightness(0.95);
+}

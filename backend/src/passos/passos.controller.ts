@@ -229,6 +229,10 @@ export class PassosController {
 
   @Patch('pessoas')
   @Roles('ADM', 'Coordenador', 'Administrativo')
+  // M2 (auditoria 2026-08-12): rota de ESCRITA — exige nível de alteração em `carteira`, não só
+  // consulta. Os três papéis do @Roles já têm `carteira: alteracao` no padrão, então isto é
+  // defesa em profundidade (o gate de menu acompanha o gate de papel), não uma restrição nova.
+  @Permissao('carteira', 'alteracao')
   @ApiOperation({
     summary: 'Define a lista de levantadores ou de consultores (aceita vários)',
   })
@@ -259,6 +263,7 @@ export class PassosController {
 
   @Post('rns')
   @Roles(...PERFIS_AGENDAMENTO)
+  @Permissao('carteira', 'alteracao') // M2: escrita → nível de alteração
   @ApiOperation({ summary: 'Acrescenta uma RNS (a quantidade é livre)' })
   async criarRns(@Param('id', ParseIntPipe) id: number, @Body() dto: RnsDto) {
     return new ApiEnvelope(await this.rns.acrescentar(id, dto));
@@ -266,6 +271,7 @@ export class PassosController {
 
   @Patch('rns/:rnsId')
   @Roles(...PERFIS_AGENDAMENTO)
+  @Permissao('carteira', 'alteracao') // M2: escrita → nível de alteração
   @ApiOperation({ summary: 'Altera uma RNS do projeto' })
   async atualizarRns(
     @Param('id', ParseIntPipe) id: number,
@@ -277,6 +283,7 @@ export class PassosController {
 
   @Delete('rns/:rnsId')
   @Roles(...PERFIS_AGENDAMENTO)
+  @Permissao('carteira', 'alteracao') // M2: escrita → nível de alteração
   @ApiOperation({ summary: 'Remove uma RNS do projeto' })
   async removerRns(
     @Param('id', ParseIntPipe) id: number,

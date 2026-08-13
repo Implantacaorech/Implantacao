@@ -28,6 +28,50 @@
     </div>
   }
 
+  <!-- Kill switch de runtime (eixo 4): freio de emergência da automação e da IA -->
+  @if (d.automacao; as auto) {
+    <div class="painel prt-automacao" [class.pausada]="auto.pausado">
+      <div class="prt-auto-linha">
+        <strong>Automação e IA:</strong>
+        @if (auto.pausado) {
+          <span class="prt-badge st-aberto">PAUSADA</span>
+          <span class="dica"
+            >{{ auto.motivo }}{{ auto.por ? ' — por ' + auto.por : '' }}</span
+          >
+          <button
+            type="button"
+            class="btn"
+            [disabled]="alterandoAutomacao()"
+            (click)="retomarAutomacao()"
+          >
+            Retomar
+          </button>
+        } @else {
+          <span class="prt-badge st-corrigido">Ativa</span>
+          <input
+            #motivoInput
+            type="text"
+            class="prt-auto-motivo"
+            placeholder="Motivo (opcional)"
+            [disabled]="alterandoAutomacao()"
+          />
+          <button
+            type="button"
+            class="btn prt-btn-perigo"
+            [disabled]="alterandoAutomacao()"
+            (click)="pausarAutomacao(motivoInput.value); motivoInput.value = ''"
+          >
+            Pausar tudo
+          </button>
+        }
+      </div>
+      <div class="dica">
+        Freio de emergência: pausa os robôs de fundo e recusa toda chamada de IA. A pausa
+        sobrevive a um restart até alguém retomar.
+      </div>
+    </div>
+  }
+
   <!-- Cartões de topo -->
   <div class="prt-kpis">
     <div class="prt-kpi">

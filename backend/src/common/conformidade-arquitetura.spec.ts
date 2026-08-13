@@ -262,6 +262,15 @@ describe('Conformidade com o Guia Mestre de Arquitetura', () => {
       expect(main).toMatch(/'frame-src':\s*\[[^\]]*blob:/);
     });
 
+    it('a CSP libera o Portal Rech em frame-src (tela Execução → Protocolo)', () => {
+      // A tela Protocolo embute portalrech.com.br num iframe. Sem a origem no frame-src o
+      // navegador mostra "Este conteúdo está bloqueado" — bloqueio do NOSSO CSP, não do
+      // site (achado real de 2026-08-13).
+      expect(main).toMatch(
+        /'frame-src':\s*\[[^\]]*https:\/\/portalrech\.com\.br/,
+      );
+    });
+
     it('a validação global recusa campo não declarado no DTO', () => {
       // whitelist sem forbidNonWhitelisted descarta em silêncio; juntos, recusam com 400.
       expect(main).toMatch(/whitelist:\s*true/);

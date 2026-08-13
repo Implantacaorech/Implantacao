@@ -31,6 +31,32 @@ export class AgentesService {
     return this.repo.save(execucao);
   }
 
+  /** Registra, de forma best-effort, um CICLO já concluído de um ator AUTÔNOMO do próprio
+   * backend (um robô de fundo) como execução real de agente. Achado do eixo 4: a telemetria só
+   * tinha o que os subagentes do Claude Code reportavam por fora; nada refletia a automação que
+   * roda DENTRO do processo. Isto grava uma linha já finalizada (concluído/falhou) — nunca lança,
+   * porque um erro de telemetria não pode derrubar o robô. */
+  async registrarCiclo(
+    agente: string,
+    tarefa: string,
+    ok = true,
+  ): Promise<void> {
+    try {
+      await this.repo.save(
+        this.repo.create({
+          agente: agente.slice(0, 60),
+          tarefa: (tarefa ?? '').slice(0, 255),
+          agentePaiId: null,
+          status: ok ? 'concluido' : 'falhou',
+          resultado: null,
+          concluidoEm: new Date(),
+        }),
+      );
+    } catch {
+      /* telemetria é best-effort */
+    }
+  }
+
   async concluir(
     id: number,
     dto: ConcluirExecucaoDto,

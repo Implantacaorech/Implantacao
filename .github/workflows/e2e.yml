@@ -1,0 +1,98 @@
+# E2E (Playwright) — navegador real contra a instância ISOLADA (5199), nunca a 5100.
+#
+# Achado A19 da Auditoria de Prontidão dos 9 eixos (2026-08-12): a suíte e2e existia mas ficava
+# FORA do CI, então as regressões de autorização que ela cobre (cada caso nasceu de um defeito
+# real de 2026-08-05) só seriam pegas se alguém lembrasse de rodar à mão. Este job sobe uma
+# instância descartável (SQLite, sem SMTP), semeia os usuários e roda o Playwright.
+#
+# Começa em `workflow_dispatch` (manual) DE PROPÓSITO: como o job monta uma stack inteira, a
+# primeira execução precisa ser validada num run real antes de bloquear PRs. Depois que passar
+# verde uma vez, descomente o gatilho `pull_request` abaixo para rodar em todo PR — e, se quiser,
+# marque este check como obrigatório na proteção de branch.
+name: e2e (Playwright)
+
+on:
+  workflow_dispatch:
+  # pull_request:   # habilite após a primeira execução manual verde
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    env:
+      # Instância DESCARTÁVEL: SQLite, sem MIGRACAO_DB_URL (nada de MariaDB de produção), sem
+      # segredos de e-mail (nenhuma mensagem sai). Espelha e2e/README.md.
+      NODE_ENV: development
+      MIGRACAO_PORT: "5199"
+      MIGRACAO_DB_SQLITE: ${{ github.workspace }}/backend/dados/painel-e2e.sqlite
+      MIGRACAO_JWT_SECRET: e2e-ci-secret-0000000000
+      MIGRACAO_JWT_REFRESH_SECRET: e2e-ci-refresh-1111111111
+      MIGRACAO_FRONTEND_DIST: ${{ github.workspace }}/frontend/dist/frontend/browser
+      MIGRACAO_PROTOCOLOS_DIR: ${{ github.workspace }}/backend/dados/protocolos-e2e
+      MIGRACAO_RATE_LIMIT: "100000"
+      PAINEL_E2E_URL: http://localhost:5199
+      # hojeIso() é local de propósito (ver ci.yml); o fuso fixa a virada noturna.
+      TZ: America/Sao_Paulo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Backend — dependências e build
+        working-directory: backend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Frontend — dependências e build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      # ANTES de subir o servidor: cria o schema (SQLite synchronize) e o ADM com senha
+      # determinística. Rodar antes evita escrita concorrente no arquivo SQLite.
+      - name: Semear o ADM (schema + admin)
+        working-directory: backend
+        run: npm run seed:admin -- --login=adm --senha=Teste@123 --email=adm@rech.com.br --nome=Administrador
+
+      - name: Subir a instância isolada (5199) em segundo plano
+        working-directory: backend
+        run: |
+          node dist/main.js > "$GITHUB_WORKSPACE/painel-e2e.log" 2>&1 &
+          echo "started"
+
+      - name: Esperar a saúde — e PROVAR que é descartável
+        run: |
+          for i in $(seq 1 60); do
+            db=$(curl -sf http://localhost:5199/api/health | jq -r '.data.db' 2>/dev/null || true)
+            if [ "$db" = "better-sqlite3" ]; then echo "No ar (SQLite descartável)."; exit 0; fi
+            if [ -n "$db" ] && [ "$db" != "null" ]; then
+              echo "ERRO: /api/health respondeu db='$db' — NÃO é a instância descartável. Abortando."; exit 1
+            fi
+            sleep 2
+          done
+          echo "A instância não subiu a tempo. Log:"; cat "$GITHUB_WORKSPACE/painel-e2e.log" || true; exit 1
+
+      - name: Semear os usuários do e2e (via API)
+        run: node e2e/apoio/semear-usuarios.mjs
+
+      - name: e2e — dependências e Chromium
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Rodar Playwright
+        working-directory: e2e
+        run: npm test
+
+      - name: Relatório (só em falha)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-e2e
+          path: |
+            e2e/relatorio
+            painel-e2e.log
+          if-no-files-found: ignore

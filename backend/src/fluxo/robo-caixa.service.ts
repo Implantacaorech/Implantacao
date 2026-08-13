@@ -9,6 +9,11 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { AppConfig } from '../config/configuration';
 import { ImapIntakeService } from './imap-intake.service';
 import { FluxoService } from './fluxo.service';
+import { killSwitch } from '../common/automacao/kill-switch';
+import {
+  heartbeatRobos,
+  ROBO_CAIXA,
+} from '../common/observabilidade/heartbeat-robos';
 
 const NOME_INTERVALO = 'robo-caixa';
 
@@ -33,6 +38,14 @@ export class RoboCaixaService implements OnModuleInit, OnModuleDestroy {
     // consulta ao SICLA + cadastro do Comercial (passo 1). O robô só volta a rodar se
     // MIGRACAO_IMAP_INTAKE_ATIVO for ligado no ambiente.
     if (!this.config.get('imapIntakeAtivo', { infer: true })) {
+      // M6: registra como DESLIGADO — a saúde mostra "desligado por configuração" e não cobra
+      // batimento (é o estado padrão desde 2026-07-27, não uma falha).
+      heartbeatRobos.registrar(
+        ROBO_CAIXA,
+        'Robô da caixa de entrada (IMAP)',
+        false,
+        null,
+      );
       this.logger.log(
         'Robô da caixa desligado (entrada do processo é a consulta ao SICLA). ' +
           'Ligue com MIGRACAO_IMAP_INTAKE_ATIVO=1 para reativar.',
@@ -44,6 +57,12 @@ export class RoboCaixaService implements OnModuleInit, OnModuleDestroy {
     const intervalo = setInterval(() => {
       void this.tick();
     }, ms);
+    heartbeatRobos.registrar(
+      ROBO_CAIXA,
+      'Robô da caixa de entrada (IMAP)',
+      true,
+      ms,
+    );
     this.scheduler.addInterval(NOME_INTERVALO, intervalo);
   }
 
@@ -54,6 +73,9 @@ export class RoboCaixaService implements OnModuleInit, OnModuleDestroy {
   }
 
   async tick(): Promise<void> {
+    heartbeatRobos.bater(ROBO_CAIXA); // M6: o laço está vivo
+    // Eixo 4: automação pausada pelo ADM — o robô não cria projetos a partir da caixa.
+    if (killSwitch.pausado()) return;
     try {
       if (this.imap.configurado()) {
         const n = await this.imap.processarFechamentos(
@@ -66,6 +88,11 @@ export class RoboCaixaService implements OnModuleInit, OnModuleDestroy {
           this.logger.log(`Robô da caixa: ${n} fechamento(s) processado(s).`);
       }
     } catch (e) {
+      heartbeatRobos.bater(
+        ROBO_CAIXA,
+        'erro',
+        e instanceof Error ? e.message : String(e),
+      );
       this.logger.error(
         'Robô da caixa falhou',
         e instanceof Error ? e.stack : String(e),

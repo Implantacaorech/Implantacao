@@ -129,6 +129,9 @@ export class MatrizController {
 
   @Post(':id/salvar')
   @HttpCode(HttpStatus.OK)
+  // M2 (auditoria 2026-08-12): escrita → nível de alteração. O handler já reforça com
+  // `permissoes.podeAlterar(user, 'matriz')`; declarar no gate de menu deixa a regra explícita.
+  @Permissao('matriz', 'alteracao')
   @ApiOperation({ summary: 'Salva as notas (0-10) da ficha de um técnico' })
   async salvar(
     @Param('id', ParseIntPipe) id: number,
@@ -153,6 +156,7 @@ export class MatrizController {
 
   @Post('importar')
   @Roles(...PERFIS_SISTEMA)
+  @Permissao('matriz', 'alteracao') // M2: escrita → nível de alteração
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Reimporta docs/Matriz de Conhecimento.xlsx (aditivo, ADM)',

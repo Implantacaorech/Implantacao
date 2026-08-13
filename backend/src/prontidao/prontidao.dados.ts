@@ -49,16 +49,16 @@ export const PRONTIDAO_EIXOS: EixoProntidao[] = [
   {
     numero: 1,
     nome: 'Segurança',
-    maturidade: 2,
+    maturidade: 3,
     resumo:
-      'Fundamentos bons (Helmet, CSP, RBAC dinâmico, rotação de refresh); dois furos exploráveis já corrigidos (segredo JWT e path traversal).',
+      'Fundamentos bons (Helmet, CSP, RBAC dinâmico, rotação de refresh) com detecção de reuso de refresh (M11); rotas de escrita passam a exigir nível de alteração (M2, com teste de conformidade) e o boot denuncia a pasta de credenciais aberta (M5). Faltam ações do usuário: rotacionar segredos e trancar dados/ por ACL.',
   },
   {
     numero: 2,
     nome: 'Governança',
-    maturidade: 2,
+    maturidade: 3,
     resumo:
-      'Testes de conformidade e CI bloqueante existem, mas main sem proteção em repositório público, sem trilha de auditoria de IA e decisões sem ADR.',
+      'Conformidade travada no CI (stack, arquitetura, ADR-0002/A18 e agora rotas de escrita/M2) e trilha de auditoria de IA; a suíte e2e ganhou job de CI (A19, manual até a 1ª validação). Falta proteger a main (repositório público) e migrar ao GitLab.',
   },
   {
     numero: 3,
@@ -70,44 +70,44 @@ export const PRONTIDAO_EIXOS: EixoProntidao[] = [
   {
     numero: 4,
     nome: 'Agentes autônomos',
-    maturidade: 2,
+    maturidade: 4,
     resumo:
-      'Salvaguardas reais (nada é gravado sozinho, dedup), mas sem kill switch em runtime e telemetria não registra execução real.',
+      'Salvaguardas reais (nada é gravado sozinho, dedup) e agora um kill switch de runtime (Sistema → Automação) que pausa IA e robôs sem redeploy — persistido, sobrevive a restart; o robô de protocolos grava execução autônoma real na telemetria de agentes.',
   },
   {
     numero: 5,
     nome: 'Detecção antes do usuário',
-    maturidade: 2,
+    maturidade: 3,
     resumo:
-      'Diagnóstico (/api/saude) é bom; o canal de alerta (digest) nunca enviou em produção e 5xx só vai para log.',
+      'Diagnóstico (/api/saude) bom, contador de 5xx (A12) e agora heartbeat por robô (M6): um robô que parou de rodar vira alerta. Falta o usuário definir o destinatário do digest (A11) para o canal de alerta enfim enviar.',
   },
   {
     numero: 6,
     nome: 'Alucinações',
-    maturidade: 4,
+    maturidade: 5,
     resumo:
-      'Grounding real, invariante "IA não escreve no documento oficial" confirmada e validação pós-geração dos menus contra o catálogo (A15); ainda falta teste de regressão de prompt e temperatura factual explícita.',
+      'Grounding real, invariante "IA não escreve no documento oficial", validação pós-geração dos menus contra o catálogo (A15), temperatura factual fixa e teste de regressão que trava a remoção das cláusulas anti-alucinação do prompt.',
   },
   {
     numero: 7,
     nome: 'Custo por token',
-    maturidade: 3,
+    maturidade: 4,
     resumo:
-      'Agora há telemetria de tokens/custo por execução, teto diário que interrompe (opt-in) e custo visível no Monitoramento; falta roteamento por custo (modelo barato para tarefa simples).',
+      'Telemetria de tokens/custo por execução, teto diário que interrompe e custo visível no Monitoramento; agora com roteamento por custo (modelo econômico para tarefa simples, opt-in por finalidade).',
   },
   {
     numero: 8,
     nome: 'Fallback',
-    maturidade: 3,
+    maturidade: 4,
     resumo:
-      'docservice e SMTP degradam bem e registram, e o e-mail de passo falho já pode ser reenviado (A13); ainda falta failover automático entre provedores de IA.',
+      'docservice e SMTP degradam bem, o e-mail de passo falho é reenviável (A13) e agora há failover automático entre provedores de IA — respeitando a privacidade (finalidade sensível nunca sai da rede).',
   },
   {
     numero: 9,
     nome: 'Observabilidade',
-    maturidade: 3,
+    maturidade: 4,
     resumo:
-      'Log persiste e sobrevive a restart, o docservice agora grava log (A16) e há correlation-id ponta a ponta (M9) + contador de 5xx; ainda falta log estruturado (JSON) e métricas de latência por rota.',
+      'Log persiste e sobrevive a restart (A16), correlation-id ponta a ponta (M9) e contador de 5xx; agora com log estruturado JSON (opt-in via MIGRACAO_LOG_JSON) e métricas de latência por rota (p95) em /api/saude/metricas.',
   },
 ];
 
@@ -350,8 +350,11 @@ export const PRONTIDAO_ACHADOS: AchadoProntidao[] = [
     severidade: 'alto',
     eixo: 2,
     evidencia: 'ci.yml não referencia e2e/',
-    correcao: 'Job de CI (self-hosted ou instância efêmera).',
-    status: 'aberto',
+    correcao:
+      'Workflow .github/workflows/e2e.yml sobe instância descartável (SQLite/5199), semeia ' +
+      'usuários (semear-usuarios.mjs + seed:admin --senha) e roda o Playwright. Começa em ' +
+      'workflow_dispatch (manual); habilitar o gatilho de PR após a 1ª execução verde.',
+    status: 'mitigado',
     dono: 'software',
     prazo: '2026-09-16',
   },
@@ -369,14 +372,17 @@ export const PRONTIDAO_ACHADOS: AchadoProntidao[] = [
   },
   {
     codigo: 'M2',
-    titulo: '12 rotas de escrita atrás de permissão de consulta',
+    titulo: 'Rotas de escrita atrás de permissão de consulta',
     severidade: 'medio',
     eixo: 1,
-    evidencia: 'passos.controller.ts:77 (concluir) e outras',
-    correcao: 'Exigir nível de alteração nas rotas de escrita.',
-    status: 'aberto',
+    evidencia: 'passos/protocolos/matriz/projetos — escrita herdando consulta',
+    correcao:
+      'Escrita passa a exigir @Permissao(menu, alteracao) em passos (RNS/pessoas), protocolos, ' +
+      'matriz e projetos; `concluir` e `perguntar` seguem em consulta de propósito (documentado). ' +
+      'Teste de conformidade conformidade-permissoes-escrita.spec.ts trava rota nova em consulta.',
+    status: 'corrigido',
     dono: 'software',
-    prazo: '2026-09-09',
+    prazo: 'feito',
   },
   {
     codigo: 'M3',
@@ -395,8 +401,11 @@ export const PRONTIDAO_ACHADOS: AchadoProntidao[] = [
     severidade: 'medio',
     eixo: 1,
     evidencia: 'ia_config.json, mariadb.env, smtp.json, imap.json, CSV',
-    correcao: 'Proteger por ACL, considerar cifra.',
-    status: 'aberto',
+    correcao:
+      'Software: script tools/Proteger_Dados_ACL.ps1 (icacls, SIDs) tranca a pasta ao SYSTEM/' +
+      'Admins/dono, e o boot denuncia no log se a pasta seguir aberta a grupos amplos. ' +
+      'Falta: rodar o script (e avaliar cifra) — usuário.',
+    status: 'mitigado',
     dono: 'usuário + software',
     prazo: '2026-09-02',
   },
@@ -406,10 +415,13 @@ export const PRONTIDAO_ACHADOS: AchadoProntidao[] = [
     severidade: 'medio',
     eixo: 5,
     evidencia: 'saude.service.ts — sem heartbeat de digest/robôs',
-    correcao: 'Heartbeat de última execução por robô.',
-    status: 'aberto',
+    correcao:
+      'heartbeatRobos: cada robô (digest, caixa, protocolos) registra e bate a cada ciclo; o ' +
+      'SaudeService alarma robô ativo que parou de bater (com folga por process.uptime). Sai no ' +
+      'digest e na tela, como as demais checagens.',
+    status: 'corrigido',
     dono: 'software',
-    prazo: '2026-09-09',
+    prazo: 'feito',
   },
   {
     codigo: 'M7',

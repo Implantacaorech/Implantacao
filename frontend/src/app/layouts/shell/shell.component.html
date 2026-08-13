@@ -124,6 +124,12 @@
           <span class="side-tip">Consulta técnica do SIGER</span>
         </a>
       }
+      @if (podeProtocolo()) {
+        <a class="side-link" routerLink="/protocolo" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-link"/></svg>Protocolo
+          <span class="side-tip">Portal Rech</span>
+        </a>
+      }
       @if (temGestao()) {
         <div class="side-grp">Gestão</div>
         @if (podeCoordenacao()) {

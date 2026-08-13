@@ -178,6 +178,41 @@ export class ProtocolosService {
     return qb.getMany();
   }
 
+  /** Clientes que têm ao menos um protocolo COM transcrição — alimenta o seletor de cliente
+   * do "Preencher protocolo" (Portal Rech). Agrupa por `cliente`/`clienteCodigo` e conta
+   * quantos. Respeita o mesmo recorte por dono da listagem (`apenasDe`): quem não é ADM só
+   * vê os clientes do próprio material (+ o do robô do SharePoint). */
+  async clientesComProtocolo(
+    apenasDe?: string,
+  ): Promise<{ cliente: string; clienteCodigo: string; total: number }[]> {
+    const qb = this.repo
+      .createQueryBuilder('p')
+      .select('p.cliente', 'cliente')
+      .addSelect('p.clienteCodigo', 'clienteCodigo')
+      .addSelect('COUNT(*)', 'total')
+      .where('p.transcricao <> :vazio', { vazio: '' })
+      .andWhere("p.cliente <> ''")
+      .groupBy('p.cliente')
+      .addGroupBy('p.clienteCodigo')
+      .orderBy('p.cliente', 'ASC');
+    if (apenasDe) {
+      qb.andWhere(
+        "(p.responsavel = :apenasDe OR p.videoOrigem = 'sharepoint')",
+        { apenasDe },
+      );
+    }
+    const linhas = await qb.getRawMany<{
+      cliente: string;
+      clienteCodigo: string;
+      total: string | number;
+    }>();
+    return linhas.map((l) => ({
+      cliente: l.cliente,
+      clienteCodigo: l.clienteCodigo,
+      total: Number(l.total),
+    }));
+  }
+
   /** Gravações e vídeos ligados a um projeto, mais recentes primeiro — é a lista que o
    * Levantamento oferece para sugerir respostas a partir da reunião.
    *

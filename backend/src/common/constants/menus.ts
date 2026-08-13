@@ -57,6 +57,9 @@ export const MENUS: DefinicaoMenu[] = [
     grupo: 'Execução',
   },
   { chave: 'dicionario', rotulo: 'Dicionário Inteligente', grupo: 'Execução' },
+  // Protocolo: moldura do Portal Rech (portalrech.com.br) dentro do Painel. A chave é o
+  // singular porque 'protocolos' (plural) já pertence à Transcrição Áudio/Vídeo.
+  { chave: 'protocolo', rotulo: 'Protocolo', grupo: 'Execução' },
   { chave: 'coordenacao', rotulo: 'Coordenação', grupo: 'Gestão' },
   {
     chave: 'centro_operacional',
@@ -199,6 +202,16 @@ export const PADRAO_PERMISSOES: Record<
     Levantador: 'alteracao',
   },
   dicionario: { ADM: 'alteracao' },
+  // Protocolo (Portal Rech): mesma liberação da Transcrição Áudio/Vídeo — todo o time
+  // interno; o Comercial fica de fora por padrão (ajustável em Gestão → Permissões).
+  protocolo: {
+    ADM: 'alteracao',
+    Coordenador: 'alteracao',
+    Administrativo: 'alteracao',
+    GCI: 'alteracao',
+    Consultor: 'alteracao',
+    Levantador: 'alteracao',
+  },
   coordenacao: { ADM: 'alteracao', Coordenador: 'alteracao', GCI: 'alteracao' },
   centro_operacional: {
     ADM: 'alteracao',

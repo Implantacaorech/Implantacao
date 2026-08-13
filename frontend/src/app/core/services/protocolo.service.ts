@@ -6,6 +6,7 @@ import { ApiEnvelope } from '../models/api-envelope.model';
 import {
   BuscaClientesProtocolo,
   CampoTextoProtocolo,
+  ClienteComProtocolo,
   EstadoGravacao,
   FichaProtocolo,
   FiltroProtocolos,
@@ -13,6 +14,7 @@ import {
   GravacaoIniciada,
   IniciarGravacaoPayload,
   ListaProtocolos,
+  RascunhoVisita,
   StatusProcessamento,
 } from '../models/protocolo.model';
 
@@ -30,6 +32,27 @@ export class ProtocoloService {
       if (valor) params = params.set(chave, valor);
     }
     const r = await firstValueFrom(this.http.get<ApiEnvelope<ListaProtocolos>>(this.base, { params }));
+    return r.data;
+  }
+
+  /** Clientes que já têm protocolo transcrito — seletor do "Preencher protocolo". */
+  async clientesComProtocolo(): Promise<ClienteComProtocolo[]> {
+    const r = await firstValueFrom(
+      this.http.get<ApiEnvelope<{ itens: ClienteComProtocolo[] }>>(
+        `${this.base}/clientes-com-protocolo`,
+      ),
+    );
+    return r.data.itens;
+  }
+
+  /** Rascunho do "Registro de Atendimento em Visita" do Portal Rech, montado deste
+   * protocolo — texto pronto para o consultor colar/conferir no Portal (Caminho A). */
+  async rascunhoVisita(id: number): Promise<RascunhoVisita> {
+    const r = await firstValueFrom(
+      this.http.get<ApiEnvelope<RascunhoVisita>>(
+        `${this.base}/${id}/rascunho-visita`,
+      ),
+    );
     return r.data;
   }
 

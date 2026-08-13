@@ -8,5 +8,7 @@ import { AgentesService } from './agentes.service';
   imports: [TypeOrmModule.forFeature([AgenteExecucao])],
   controllers: [AgentesController],
   providers: [AgentesService],
+  // Exportado para o robô de protocolos gravar execução autônoma real (eixo 4).
+  exports: [AgentesService],
 })
 export class AgentesModule {}

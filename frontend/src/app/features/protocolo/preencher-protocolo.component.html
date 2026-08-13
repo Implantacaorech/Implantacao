@@ -1,0 +1,119 @@
+<div class="modal-fundo" (click)="fechar.emit()">
+  <div class="modal-cx largo" (click)="$event.stopPropagation()">
+    <div class="modal-cab">
+      <div>
+        <h2>Preencher protocolo</h2>
+        <p class="sub">
+          Monta o rascunho do Registro de Atendimento em Visita a partir de uma transcrição ou
+          gravação — copie e cole no Portal Rech.
+        </p>
+      </div>
+      <button class="modal-fechar" type="button" (click)="fechar.emit()" aria-label="Fechar">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-x"/></svg>
+      </button>
+    </div>
+
+    <div class="modal-corpo">
+      <div class="form-grid">
+        <label class="campo">
+          <span>1 · Cliente</span>
+          @if (carregandoClientes()) {
+            <select disabled><option>Carregando…</option></select>
+          } @else {
+            <select name="cliente" [ngModel]="clienteSel()" (ngModelChange)="onClienteAlterado($event)">
+              <option value="">Selecione o cliente…</option>
+              @for (c of clientes(); track c.cliente) {
+                <option [value]="c.cliente">{{ c.cliente }} ({{ c.total }})</option>
+              }
+            </select>
+          }
+        </label>
+
+        <label class="campo">
+          <span>2 · Transcrição / gravação</span>
+          <select
+            name="protocolo"
+            [disabled]="!clienteSel() || carregandoProtocolos() || protocolos().length === 0"
+            [ngModel]="protocoloSel()"
+            (ngModelChange)="onProtocoloAlterado($event)"
+          >
+            <option [ngValue]="null">
+              {{ carregandoProtocolos() ? 'Carregando…' : 'Selecione a base…' }}
+            </option>
+            @for (p of protocolos(); track p.id) {
+              <option [ngValue]="p.id">{{ rotuloProtocolo(p) }}</option>
+            }
+          </select>
+        </label>
+      </div>
+
+      @if (erro()) {
+        <div class="resultado erro">{{ erro() }}</div>
+      }
+
+      @if (carregandoRascunho()) {
+        <p class="dica">Montando o rascunho…</p>
+      }
+
+      @if (rascunho(); as r) {
+        <div class="grupo-campos">
+          <div class="grupo-titulo">Rascunho gerado</div>
+
+          <div class="pp-meta">
+            <div class="pp-meta-item">
+              <span class="pp-rot">Cliente</span>
+              <strong>{{ r.cliente }}<small>{{ r.clienteCodigo }}</small></strong>
+            </div>
+            <div class="pp-meta-item">
+              <span class="pp-rot">Módulo · Menu</span>
+              <strong>{{ r.atividade.modulo }} · {{ r.atividade.menu }}</strong>
+            </div>
+            <div class="pp-meta-item">
+              <span class="pp-rot">Início sugerido</span>
+              <strong>{{ r.dataInicioSugerida || '—' }}</strong>
+            </div>
+            <div class="pp-meta-item">
+              <span class="pp-rot">Fim sugerido</span>
+              <strong>{{ r.dataFimSugerida || '—' }}</strong>
+            </div>
+          </div>
+
+          @if (r.participantes.length) {
+            <div class="pp-campo">
+              <div class="pp-campo-cab">
+                <span>Participantes</span>
+                <button class="btn" type="button" (click)="copiar(r.participantes.join('\n'), 'part')">
+                  <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>
+                  {{ copiado() === 'part' ? 'Copiado!' : 'Copiar' }}
+                </button>
+              </div>
+              <p class="pp-part">{{ r.participantes.join(' · ') }}</p>
+            </div>
+          }
+
+          <div class="pp-campo">
+            <div class="pp-campo-cab">
+              <span>Descrição da atividade (colar no Portal)</span>
+              <button
+                class="btn primario"
+                type="button"
+                (click)="copiar(r.atividade.descricaoAtividade, 'desc')"
+              >
+                <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>
+                {{ copiado() === 'desc' ? 'Copiado!' : 'Copiar descrição' }}
+              </button>
+            </div>
+            <textarea class="pp-desc" rows="14" readonly>{{ r.atividade.descricaoAtividade }}</textarea>
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="modal-rod">
+      <a class="btn" href="https://portalrech.com.br/login" target="_blank" rel="noopener">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-link"/></svg> Abrir o Portal
+      </a>
+      <button class="btn" type="button" (click)="fechar.emit()">Fechar</button>
+    </div>
+  </div>
+</div>

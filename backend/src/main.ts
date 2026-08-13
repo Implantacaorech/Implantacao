@@ -12,8 +12,10 @@ import { assetsEstaticos } from './common/assets-estaticos';
 import { erroDeMiddleware } from './common/filters/erro-de-middleware';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { MetricasInterceptor } from './common/interceptors/metricas.interceptor';
 import { AppConfig, ehProducao } from './config/configuration';
 import { correlacaoMiddleware } from './common/observabilidade/correlacao';
+import { avisarSeDadosExpostos } from './common/seguranca/checar-acl-dados';
 import { httpsPainel } from './config/https';
 
 /** Teto do corpo JSON/urlencoded — o mesmo padrão do Express/Nest. Os DTOs já limitam cada
@@ -82,11 +84,17 @@ async function bootstrap(): Promise<void> {
       // página "Este conteúdo está bloqueado. Entre em contato com o proprietário do
       // site", sem erro nenhum no backend. O blob nasce da própria página; liberá-lo aqui
       // não abre a moldura para origem externa (isso é `frame-ancestors`, intocado).
+      //
+      // `https://portalrech.com.br`: a tela Execução → Protocolo embute o Portal Rech num
+      // iframe — sem esta origem no `frame-src`, o navegador mostrava a MESMA página de
+      // conteúdo bloqueado (achado de 2026-08-13; o bloqueio era do NOSSO CSP, o site não
+      // envia X-Frame-Options/CSP). Libera só este domínio, e só como MOLDURA embutida —
+      // quem pode nos emoldurar continua sendo `frame-ancestors`, intocado.
       contentSecurityPolicy: {
         useDefaults: true,
         directives: {
           'upgrade-insecure-requests': null,
-          'frame-src': ["'self'", 'blob:'],
+          'frame-src': ["'self'", 'blob:', 'https://portalrech.com.br'],
         },
       },
     }),
@@ -110,7 +118,12 @@ async function bootstrap(): Promise<void> {
     }),
   );
   app.useGlobalFilters(new HttpExceptionFilter());
-  app.useGlobalInterceptors(new ResponseInterceptor());
+  // MetricasInterceptor PRIMEIRO: envolve os demais, então mede a duração total da requisição
+  // (eixo 9). O ResponseInterceptor transforma o payload; a métrica não transforma nada.
+  app.useGlobalInterceptors(
+    new MetricasInterceptor(),
+    new ResponseInterceptor(),
+  );
   app.setGlobalPrefix('api');
 
   // M1 (auditoria 2026-08-12): o Swagger em `/api/docs` era público e sem condicional de
@@ -134,6 +147,10 @@ async function bootstrap(): Promise<void> {
     SwaggerModule.setup('api/docs', app, document);
   }
   const sufixoDocs = emProducao ? '' : ' — docs em /api/docs';
+
+  // M5 (auditoria 2026-08-12): denuncia no log se a pasta de credenciais (backend/dados) estiver
+  // aberta a grupos amplos (Everyone/Users). Best-effort e só em produção Windows.
+  avisarSeDadosExpostos();
 
   const port = config.get('port', { infer: true });
   if (!tls || !servidorExpress) {

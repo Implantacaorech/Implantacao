@@ -214,6 +214,15 @@ export const routes: Routes = [
           import('./features/dicionario/dicionario-documento.component').then((m) => m.DicionarioDocumentoComponent),
       },
       {
+        // Execução → Protocolo: moldura do Portal Rech (portalrech.com.br) dentro do
+        // Painel. Singular de propósito — 'protocolos' (plural) é a Transcrição.
+        path: 'protocolo',
+        canActivate: [permissaoGuard('protocolo')],
+        data: { titulo: 'Protocolo' },
+        loadComponent: () =>
+          import('./features/protocolo/protocolo.component').then((m) => m.ProtocoloComponent),
+      },
+      {
         path: 'protocolos/:id',
         canActivate: [permissaoGuard('protocolos')],
         data: { titulo: 'Transcrição Áudio/Vídeo — revisão' },

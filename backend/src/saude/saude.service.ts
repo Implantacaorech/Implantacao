@@ -1,6 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TranscricaoService } from '../transcricao/transcricao.service';
 import { contador5xx } from '../common/observabilidade/contador-5xx';
+import {
+  EstadoRobo,
+  heartbeatRobos,
+} from '../common/observabilidade/heartbeat-robos';
+import {
+  metricasLatencia,
+  ResumoRota,
+} from '../common/observabilidade/metricas-latencia';
 import { DocserviceSaudeRepository } from './repositories/docservice-saude.repository';
 import { OperacaoArquivosRepository } from './repositories/operacao-arquivos.repository';
 import { SaudeBancoRepository } from './repositories/saude-banco.repository';
@@ -38,6 +46,11 @@ const BYTES_MIN_BACKUP = 100 * 1024;
  * ser laço. Em 22/07/2026 ele reiniciou o painel **159 vezes em 13 h** sem que ninguém
  * fosse avisado: o guardião funcionou, o alarme é que não existia. */
 const REINICIOS_CRITICOS = 3;
+
+/** Folga antes de cobrar o batimento de um robô: 3× a cadência esperada. Abaixo disso, um tick
+ * atrasado é variação normal (a máquina hibernou, um ciclo demorou mais), não uma parada. A
+ * mesma folga vale para o começo: recém-subido, o robô ainda não teve tempo de rodar. Achado M6. */
+const FATOR_GRACA_ROBO = 3;
 
 const H = 60 * 60 * 1000;
 
@@ -84,14 +97,23 @@ export class SaudeService {
       this.checarEmails(agora),
       Promise.resolve(this.checarErros5xx()),
     ]);
+    // M6: um item por robô de fundo (digest, caixa, protocolos). Fica DEPOIS das checagens de
+    // infraestrutura, na mesma lista — sai pelos dois canais (tela e digest) como o resto.
+    const todos = [...itens, ...this.checarRobos()];
     return {
-      nivel: itens.reduce<NivelSaude>(
+      nivel: todos.reduce<NivelSaude>(
         (pior, i) => (PIOR[i.nivel] > PIOR[pior] ? i.nivel : pior),
         'ok',
       ),
-      itens,
+      itens: todos,
       verificadoEm: agora.toISOString(),
     };
+  }
+
+  /** Eixo 9: latência por rota (p95/média/máx). Alimentada pelo MetricasInterceptor; usada pela
+   * tela de Monitoramento para ver qual rota está degradando antes de virar reclamação. */
+  metricas(): ResumoRota[] {
+    return metricasLatencia.resumo();
   }
 
   /** Só o que NÃO está ok, para o digest diário e para o resumo do topo da tela. */
@@ -345,7 +367,77 @@ export class SaudeService {
     }
   }
 
+  /** M6: sinal de vida dos robôs de fundo (digest, caixa, protocolos). Um robô ATIVO que devia
+   * ter batido e não bateu é aviso — foi assim que toda automação deste projeto parou sem
+   * ninguém saber (o `setInterval` morria, o painel seguia no ar). Robô DESLIGADO por
+   * configuração (ex.: a caixa IMAP, padrão desde 2026-07-27) não é cobrado. A folga do
+   * `process.uptime()` evita alarmar um robô que ainda não teve tempo de rodar o primeiro
+   * ciclo depois de um restart. */
+  private checarRobos(): ItemSaude[] {
+    const uptimeMs = process.uptime() * 1000;
+    return heartbeatRobos.estado().map((r) => this.itemRobo(r, uptimeMs));
+  }
+
+  private itemRobo(r: EstadoRobo, uptimeMs: number): ItemSaude {
+    const base = (
+      nivel: NivelSaude,
+      mensagem: string,
+      detalhe = '',
+    ): ItemSaude => ({
+      chave: `robo_${r.chave}`,
+      titulo: r.titulo,
+      nivel,
+      mensagem,
+      detalhe,
+    });
+    if (!r.ativo) return base('ok', 'Desligado por configuração.');
+
+    const cadencia = r.cadenciaMs ?? 0;
+    const graca = cadencia * FATOR_GRACA_ROBO;
+    if (r.ultimoEm === null) {
+      // Ainda não bateu nesta vida do processo — pode ser cedo demais para cobrar.
+      if (cadencia === 0 || uptimeMs < graca) {
+        return base(
+          'ok',
+          `No ar — aguardando o primeiro ciclo (a cada ${this.duracao(cadencia)}).`,
+        );
+      }
+      return base(
+        'aviso',
+        `Ativo, mas não rodou nenhuma vez desde que o painel subiu (há ${this.duracao(uptimeMs)}).`,
+        'O laço do robô pode ter morrido no boot — confira o log do serviço.',
+      );
+    }
+
+    const idade = Date.now() - r.ultimoEm;
+    if (cadencia > 0 && idade > graca) {
+      return base(
+        'aviso',
+        `Sem sinal há ${this.duracao(idade)} (esperado a cada ${this.duracao(cadencia)}) — parou de rodar.`,
+        'Confira o log do serviço; um restart do painel reergue os robôs.',
+      );
+    }
+    if (r.ultimoStatus === 'erro') {
+      return base(
+        'aviso',
+        `Rodando, mas o último ciclo falhou (há ${this.duracao(idade)}).`,
+        r.ultimoDetalhe,
+      );
+    }
+    return base('ok', `Rodando — último ciclo há ${this.duracao(idade)}.`);
+  }
+
   // ------------------------------------------------------------------------ formatação
+
+  /** "menos de 1 min" / "12 min" / "2 h" / "3 dia(s)" — aproximação legível para não-técnico. */
+  private duracao(ms: number): string {
+    const min = Math.floor(ms / 60000);
+    if (min < 1) return 'menos de 1 min';
+    if (min < 60) return `${min} min`;
+    const horas = Math.floor(min / 60);
+    if (horas < 24) return `${horas} h`;
+    return `${Math.floor(horas / 24)} dia(s)`;
+  }
 
   private mb(bytes: number): string {
     return bytes >= 1024 * 1024

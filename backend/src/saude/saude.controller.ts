@@ -31,4 +31,14 @@ export class SaudeController {
   async diagnostico() {
     return new ApiEnvelope(await this.saude.diagnostico());
   }
+
+  @Get('metricas')
+  @Permissao('centro_operacional')
+  @ApiOperation({
+    summary:
+      'Latência por rota (p95/média/máx) das requisições desde o último restart (eixo 9)',
+  })
+  metricas() {
+    return new ApiEnvelope(this.saude.metricas());
+  }
 }

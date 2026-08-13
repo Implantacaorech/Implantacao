@@ -40,6 +40,7 @@ function fixtureProntidao(): Prontidao {
       maturidadeMedia: 1.5,
     },
     privacidadeAoVivo: [],
+    automacao: { pausado: false, motivo: '', por: '', em: null },
   };
 }
 
@@ -89,6 +90,26 @@ describe('ProntidaoComponent', () => {
     fixture.detectChanges();
     expect(comp.achadosFiltrados().every((a) => a.severidade === 'critico')).toBe(true);
     expect(comp.achadosFiltrados()).toHaveLength(1);
+  });
+
+  it('renderiza o kill switch (ativa) e chama o serviço ao pausar', async () => {
+    let motivoPausado: string | null = null;
+    const service: Partial<ProntidaoService> = {
+      obter: () => Promise.resolve(fixtureProntidao()),
+      pausar: (m: string) => {
+        motivoPausado = m;
+        return Promise.resolve({ pausado: true, motivo: m, por: 'adm', em: null });
+      },
+      retomar: () =>
+        Promise.resolve({ pausado: false, motivo: '', por: '', em: null }),
+    };
+    const fixture = montar(service);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Automação e IA');
+    await fixture.componentInstance.pausarAutomacao('teste');
+    expect(motivoPausado).toBe('teste');
   });
 
   it('mostra erro quando a chamada falha', async () => {

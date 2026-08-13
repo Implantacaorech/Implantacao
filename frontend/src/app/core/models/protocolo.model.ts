@@ -172,6 +172,34 @@ export interface FichaProtocolo {
   mapaLocutores: Record<string, string>;
 }
 
+/** Um cliente que já tem protocolo transcrito — alimenta o seletor do "Preencher
+ * protocolo". `total` é quantos protocolos aquele cliente tem. */
+export interface ClienteComProtocolo {
+  cliente: string;
+  clienteCodigo: string;
+  total: number;
+}
+
+/** Rascunho de uma ATIVIDADE do "Registro de Atendimento em Visita" do Portal Rech,
+ * montado de um protocolo (transcrição/gravação). Espelha `RascunhoVisita` do backend. */
+export interface RascunhoVisita {
+  protocoloId: number;
+  cliente: string;
+  clienteCodigo: string;
+  tituloProtocolo: string;
+  participantes: string[];
+  dataInicioSugerida: string | null;
+  dataFimSugerida: string | null;
+  duracaoSeg: number;
+  origem: VideoOrigem;
+  status: StatusProtocolo;
+  atividade: {
+    modulo: string;
+    menu: string;
+    descricaoAtividade: string;
+  };
+}
+
 export interface StatusProcessamento {
   status: StatusProtocolo;
   pct: number | null;

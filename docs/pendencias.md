@@ -66,9 +66,10 @@
   metadados, nunca o conteúdo (LGPD). `@CurrentUser` adicionado em `/levantamento/sugerir` e
   `/dicionario/perguntar`. O pipeline automático de protocolos registra como robô/sistema.
   **Dono:** software.
-- [ ] **A9-b — Roteamento de IA por custo** (novo, derivado do A9): tarefa simples deveria ir a
-  modelo barato/local automaticamente; hoje é estático por finalidade. **Dono:** software.
-  **Prazo:** 2026-09-23.
+- [x] **A9-b — Roteamento de IA por custo (corrigido 2026-08-13).** `ConfigFinalidade.modeloEconomico`
+  (opt-in por finalidade) + `OpcoesCompletar.tarefaSimples`: tarefa pequena (entrada < ~1k tokens)
+  ou marcada vai ao **modelo econômico**; a telemetria (A9) registra o modelo real usado. Eixo Custo
+  3→4. Guarda: bloco "eixo 7" em `ia.service.spec.ts`. **Dono:** software.
 - [~] **A11 — Canal de alerta (digest) nunca funcionou em produção.** 0 envios em 7,5 MB de log;
   `MIGRACAO_DIGEST_PARA` não definida. **Feito (2026-08-12):** o `tick()` passou a **logar 1×/dia**
   que não enviou por falta de destinatário (a ausência deixou de ser silenciosa).
@@ -100,17 +101,27 @@
   passou a contar os Services que injetam `@InjectRepository` e falha se o número **passar do
   baseline (43)** — Service novo violador quebra o CI; portar um módulo baixa o baseline. Não
   exige zerar já (fase 2), exige **não piorar**. **Dono:** software.
-- [ ] **A19 — Suíte e2e/Playwright fora do CI** (a que achou as 9 brechas de autorização).
-  **Correção:** job de CI (self-hosted ou instância efêmera). **Dono:** software. **Prazo:** 2026-09-16.
+- [~] **A19 — Suíte e2e/Playwright fora do CI.** **Feito (2026-08-13):** `.github/workflows/e2e.yml`
+  sobe a instância descartável (SQLite/5199), semeia os usuários (`seed:admin --senha` mais o
+  `e2e/apoio/semear-usuarios.mjs`) e roda o Playwright. Começa em `workflow_dispatch` (manual) até a 1ª
+  execução verde; depois habilitar o gatilho `pull_request`. **Dono:** software. **Prazo:** 2026-09-16.
+- [x] **Eixo 6 — Temperatura factual + regressão de prompt (corrigido 2026-08-13).** Temperatura
+  baixa e fixa (0.2) nas duas rotas de provedor (tarefa factual, criatividade é defeito) e
+  `prompts-regressao.spec.ts`, que trava a remoção das cláusulas anti-alucinação do prompt. Eixo
+  Alucinações 4→5. **Dono:** software.
+- [x] **Eixo 9 — Log estruturado (JSON) + latência por rota (corrigido 2026-08-13).**
+  `MetricasInterceptor` global mede a duração por TEMPLATE de rota (`metricas-latencia`, p95 em
+  `/api/saude/metricas`) e, com `MIGRACAO_LOG_JSON=1`, emite linha JSON por requisição
+  (requestId/rota/status/ms). Eixo Observabilidade 3→4. Guarda: `metricas-latencia.spec.ts`. **Dono:** software.
 
 ### 🟡 Médio (seleção — lista completa no relatório da sessão)
 
 - [x] **M1 — Swagger `/api/docs` público (corrigido 2026-08-12).** Sobe só fora de produção (mesmo sinal do C1). **Dono:** software.
-- [ ] **M2 — 12 rotas de escrita atrás de permissão de `consulta`** (inclui `concluir` passo). **Dono:** software. **Prazo:** 2026-09-09.
+- [x] **M2 — Rotas de escrita atrás de permissão de `consulta` (corrigido 2026-08-13).** Escrita passa a exigir `@Permissao(menu,'alteracao')` em passos (RNS/pessoas), protocolos, matriz e projetos; `concluir` e `perguntar` seguem em consulta de propósito (gate real no serviço/RAG só-ADM). Guarda: `conformidade-permissoes-escrita.spec.ts` trava rota nova em consulta. **Dono:** software.
 - [x] **M3 — `POST /fluxo/inbox` sem `@Permissao` (corrigido 2026-08-12).** Exige `@Permissao('novo_cliente','alteracao')` como a rota irmã `criar`. **Dono:** software.
 - [x] **M4 — `POST/PATCH /agentes/execucoes` com `@Roles()` vazio (corrigido 2026-08-13).** Passou a exigir `@Permissao('centro_operacional','alteracao')` — só quem opera o Centro (ou o agente com token ADM) grava telemetria. **Dono:** software.
-- [ ] **M5 — Credenciais em claro em `backend/dados/`** (`ia_config.json`, `mariadb.env`, `smtp.json`, `imap.json`, CSV) — proteger por ACL, considerar cifra. **Dono:** usuário + software. **Prazo:** 2026-09-02.
-- [ ] **M6 — Detecção de ausência só para backup** (digest/robôs sem heartbeat). **Dono:** software. **Prazo:** 2026-09-09.
+- [~] **M5 — Credenciais em claro em `backend/dados/`.** **Feito (2026-08-13, software):** `tools/Proteger_Dados_ACL.ps1` (icacls por SID) tranca a pasta ao SYSTEM/Admins/dono, e o boot denuncia no log se a pasta seguir aberta a grupos amplos (`checar-acl-dados.ts`, guarda `checar-acl-dados.spec.ts`). **Falta (usuário):** rodar o script e avaliar cifra. **Prazo:** 2026-09-02.
+- [x] **M6 — Robôs sem heartbeat (corrigido 2026-08-13).** `heartbeatRobos`: cada robô (digest, caixa, protocolos) registra e bate a cada ciclo; `SaudeService` alarma robô ativo que parou de bater (folga por `process.uptime`), saindo na tela e no digest. Guarda: `heartbeat-robos.spec.ts` + bloco M6 em `saude.service.spec.ts`. **Dono:** software.
 - [x] **M7 — Log de integridade ilegível (corrigido 2026-08-12).** A saída do `npm test` passou a ser capturada e anexada em UTF-8 sem BOM (o mesmo helper do resto do script), em `Verificar_Integridade_Novo.ps1`. **Dono:** software.
 - [ ] **M8 — Leitor de log de saúde decide encoding pelo BOM do arquivo inteiro** e descarta as linhas novas de erro do backup. **Dono:** software. **Prazo:** 2026-08-26.
 - [x] **M9 — Correlation-id ponta a ponta (corrigido 2026-08-13).** Middleware
@@ -119,7 +130,7 @@
   `HttpExceptionFilter` e no corpo do erro, e é propagado ao **docservice** (interceptor axios nos
   3 clientes) e à **IA** (header do fetch). Guarda: `correlacao.spec.ts`. Eixo Observabilidade 2→3.
   **Dono:** software.
-- [ ] **M10 — Kill switch de IA vazando** (fallback global Anthropic) e sem desligamento em runtime dos robôs. **Dono:** software. **Prazo:** 2026-09-16.
+- [x] **M10 — Kill switch de runtime (corrigido 2026-08-13).** `killSwitch` (persistido em `dados/`, sobrevive a restart) pausa IA e robôs de fundo sem redeploy — endpoint `/api/automacao` e toggle em Sistema → Prontidão. O failover de IA (eixo 8) respeita a privacidade: finalidade sensível NUNCA cai para provedor externo. Guarda: `kill-switch.spec.ts` + blocos eixo 4/8 em `ia.service.spec.ts`. **Dono:** software.
 - [x] **M11 — Detecção de reuso de refresh token (corrigido 2026-08-13).** O `refresh` distingue revogação por **rotação** × **logout**: reapresentar um token já ROTACIONADO (sinal de vazamento) revoga toda a família do usuário (motivo `replay`) e recusa; reapresentar um token de logout (aba velha) não escala. Coluna `motivo_revogacao` (migration `RefreshTokenMotivo`). Guarda em `auth.service.spec.ts`. **Dono:** software.
 - [ ] **M12 — `recuperarPresos` re-dispara IA a cada boot sem contador de tentativas.** **Dono:** software. **Prazo:** 2026-09-09.
 

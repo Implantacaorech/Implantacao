@@ -30,6 +30,14 @@ export interface AvisoPrivacidadeVivo {
   viaEnv: boolean;
 }
 
+/** Estado do kill switch de runtime (eixo 4). */
+export interface EstadoAutomacao {
+  pausado: boolean;
+  motivo: string;
+  por: string;
+  em: string | null;
+}
+
 export interface Prontidao {
   dataAuditoria: string;
   eixos: EixoProntidao[];
@@ -40,4 +48,5 @@ export interface Prontidao {
     maturidadeMedia: number;
   };
   privacidadeAoVivo: AvisoPrivacidadeVivo[];
+  automacao: EstadoAutomacao;
 }

@@ -9,6 +9,10 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { AppConfig } from '../config/configuration';
 import { DigestService } from './digest.service';
 import { hojeIso } from '../cronograma/datas.util';
+import {
+  heartbeatRobos,
+  ROBO_DIGEST,
+} from '../common/observabilidade/heartbeat-robos';
 
 const NOME_INTERVALO = 'robo-digest';
 const CHECAGEM_MS = 30 * 60 * 1000; // checa a cada 30min — mesmo `time.sleep(1800)` do Flask
@@ -34,6 +38,13 @@ export class RoboDigestService implements OnModuleInit, OnModuleDestroy {
     const intervalo = setInterval(() => {
       void this.tick();
     }, CHECAGEM_MS);
+    // M6: declara o batimento esperado (a cada CHECAGEM_MS) para a saúde saber cobrar vida.
+    heartbeatRobos.registrar(
+      ROBO_DIGEST,
+      'Robô do resumo diário (digest)',
+      true,
+      CHECAGEM_MS,
+    );
     this.scheduler.addInterval(NOME_INTERVALO, intervalo);
   }
 
@@ -44,6 +55,7 @@ export class RoboDigestService implements OnModuleInit, OnModuleDestroy {
   }
 
   async tick(): Promise<void> {
+    heartbeatRobos.bater(ROBO_DIGEST); // M6: o laço está vivo (mesmo que hoje não seja a hora)
     try {
       const hora = this.config.get('digestHora', { infer: true });
       const agora = new Date();
@@ -73,6 +85,11 @@ export class RoboDigestService implements OnModuleInit, OnModuleDestroy {
       this.ultimoEnvio = hoje;
       this.logger.log(`Digest diário: enviado=${r.ok}`);
     } catch (e) {
+      heartbeatRobos.bater(
+        ROBO_DIGEST,
+        'erro',
+        e instanceof Error ? e.message : String(e),
+      );
       this.logger.error(
         'Robô de digest falhou',
         e instanceof Error ? e.stack : String(e),

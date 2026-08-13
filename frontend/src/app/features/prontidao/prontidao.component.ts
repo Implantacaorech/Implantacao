@@ -25,6 +25,9 @@ export class ProntidaoComponent {
   readonly erro = signal<string | null>(null);
   readonly dados = signal<Prontidao | null>(null);
 
+  /** Kill switch de runtime (eixo 4): trava os botões enquanto a chamada está em voo. */
+  readonly alterandoAutomacao = signal(false);
+
   /** Filtros da tabela de achados. `null` = todos. */
   readonly filtroSeveridade = signal<Severidade | null>(null);
   readonly filtroStatus = signal<StatusAchado | null>(null);
@@ -80,6 +83,31 @@ export class ProntidaoComponent {
       this.erro.set('Não foi possível carregar a Prontidão do Sistema.');
     } finally {
       this.carregando.set(false);
+    }
+  }
+
+  /** Kill switch (eixo 4): pausa/retoma a automação e recarrega o estado ao vivo. */
+  async pausarAutomacao(motivo: string): Promise<void> {
+    this.alterandoAutomacao.set(true);
+    try {
+      await this.service.pausar(motivo);
+      await this.carregar();
+    } catch {
+      this.erro.set('Não foi possível pausar a automação.');
+    } finally {
+      this.alterandoAutomacao.set(false);
+    }
+  }
+
+  async retomarAutomacao(): Promise<void> {
+    this.alterandoAutomacao.set(true);
+    try {
+      await this.service.retomar();
+      await this.carregar();
+    } catch {
+      this.erro.set('Não foi possível retomar a automação.');
+    } finally {
+      this.alterandoAutomacao.set(false);
     }
   }
 

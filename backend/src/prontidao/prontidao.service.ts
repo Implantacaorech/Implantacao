@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { IaService } from '../ia/ia.service';
+import { EstadoAutomacao, killSwitch } from '../common/automacao/kill-switch';
 import {
   AchadoProntidao,
   EixoProntidao,
@@ -31,6 +32,9 @@ export interface ResumoProntidao {
   /** Sinal AO VIVO (calculado no request), não congelado nos dados da auditoria: se houver
    * itens aqui, dado de cliente está indo para provedor externo neste exato momento. */
   privacidadeAoVivo: AvisoPrivacidadeVivo[];
+  /** Estado AO VIVO do kill switch (eixo 4): automação/IA pausada ou ativa. A tela mostra e
+   * deixa o ADM alternar por `POST /api/automacao/{pausar,retomar}`. */
+  automacao: EstadoAutomacao;
 }
 
 /**
@@ -77,6 +81,7 @@ export class ProntidaoService {
       },
       // Recalcula a cada request: a config de IA pode mudar sem redeploy.
       privacidadeAoVivo: this.ia.avisosPrivacidade(),
+      automacao: killSwitch.estado(),
     };
   }
 }

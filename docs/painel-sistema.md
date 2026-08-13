@@ -1,5 +1,10 @@
 # Painel de Implantação — Documentação do Sistema
 
+> ⚠️ **Documento HISTÓRICO** — descreve o painel **Flask legado**, desligado em 2026-07-19 e
+> removido do repositório em 2026-07-29. O sistema em produção é o NestJS + Angular
+> (porta 5100). A visão atual, em nível de usuário, está em
+> **[manual-usuario-painel.md](manual-usuario-painel.md)**.
+>
 > Aplicação web (Flask) que conduz, controla e automatiza a implantação do ERP **SIGER®**
 > na Rech Informática. Centraliza a carteira de projetos por cliente, o fluxo de etapas,
 > a geração fiel de documentos, o agendamento de visitas e o monitoramento da operação.

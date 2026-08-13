@@ -1,0 +1,60 @@
+.pp-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.pp-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.pp-rot {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.pp-meta-item strong {
+  color: var(--navy);
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+}
+.pp-meta-item strong small {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.pp-campo {
+  margin-bottom: 16px;
+}
+.pp-campo-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.pp-campo-cab span {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+.pp-part {
+  margin: 0;
+  color: var(--ink);
+}
+.pp-desc {
+  width: 100%;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  white-space: pre;
+  resize: vertical;
+}

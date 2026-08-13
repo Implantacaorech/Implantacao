@@ -42,6 +42,7 @@ import { BiMovimentosModule } from './bi-movimentos/bi-movimentos.module';
 import { SaudeModule } from './saude/saude.module';
 import { ProntidaoModule } from './prontidao/prontidao.module';
 import { IaTelemetriaModule } from './ia-telemetria/ia-telemetria.module';
+import { AutomacaoModule } from './automacao/automacao.module';
 
 @Module({
   imports: [
@@ -88,6 +89,7 @@ import { IaTelemetriaModule } from './ia-telemetria/ia-telemetria.module';
     LevantamentoModule,
     IaModule,
     IaTelemetriaModule,
+    AutomacaoModule,
     ProtocolosModule,
     EmailModule,
     FluxoModule,

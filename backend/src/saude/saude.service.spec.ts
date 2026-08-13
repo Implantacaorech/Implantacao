@@ -5,8 +5,13 @@ import { OperacaoArquivosRepository } from './repositories/operacao-arquivos.rep
 import { SaudeBancoRepository } from './repositories/saude-banco.repository';
 import { ItemSaude, SaudeService } from './saude.service';
 import { contador5xx } from '../common/observabilidade/contador-5xx';
+import {
+  heartbeatRobos,
+  ROBO_DIGEST,
+} from '../common/observabilidade/heartbeat-robos';
 
 const H = 60 * 60 * 1000;
+const MIN = 60 * 1000;
 
 describe('SaudeService', () => {
   let service: SaudeService;
@@ -50,6 +55,7 @@ describe('SaudeService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     contador5xx._resetar();
+    heartbeatRobos._resetar();
     tudoOk();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -83,6 +89,47 @@ describe('SaudeService', () => {
       'transcricao',
     ]);
     expect(await service.problemas()).toEqual([]);
+  });
+
+  describe('robôs de fundo (M6)', () => {
+    it('robô desligado por configuração é ok, não vira problema', async () => {
+      heartbeatRobos.registrar(ROBO_DIGEST, 'Robô X', false, null);
+      const i = await item('robo_digest');
+      expect(i.nivel).toBe('ok');
+      expect(i.mensagem).toContain('Desligado');
+    });
+
+    it('robô ativo recém-subido (sem bater) espera o 1º ciclo sem alarmar', async () => {
+      // Cadência grande: o uptime do processo de teste está muito abaixo da folga (3×30min).
+      heartbeatRobos.registrar(ROBO_DIGEST, 'Robô X', true, 30 * MIN);
+      const i = await item('robo_digest');
+      expect(i.nivel).toBe('ok');
+      expect(i.mensagem).toContain('aguardando');
+    });
+
+    it('robô ativo que já devia ter rodado e nunca bateu vira aviso', async () => {
+      // Cadência mínima: a folga (3ms) já passou desde o boot, então a ausência é real.
+      heartbeatRobos.registrar(ROBO_DIGEST, 'Robô X', true, 1);
+      const i = await item('robo_digest');
+      expect(i.nivel).toBe('aviso');
+      expect(i.mensagem).toContain('não rodou');
+    });
+
+    it('robô que bateu agora está ok', async () => {
+      heartbeatRobos.registrar(ROBO_DIGEST, 'Robô X', true, 30 * MIN);
+      heartbeatRobos.bater(ROBO_DIGEST);
+      const i = await item('robo_digest');
+      expect(i.nivel).toBe('ok');
+      expect(i.mensagem).toContain('Rodando');
+    });
+
+    it('robô cujo último ciclo falhou vira aviso com o detalhe', async () => {
+      heartbeatRobos.registrar(ROBO_DIGEST, 'Robô X', true, 30 * MIN);
+      heartbeatRobos.bater(ROBO_DIGEST, 'erro', 'IMAP recusou a senha');
+      const i = await item('robo_digest');
+      expect(i.nivel).toBe('aviso');
+      expect(i.detalhe).toContain('IMAP recusou');
+    });
   });
 
   describe('erros 5xx', () => {

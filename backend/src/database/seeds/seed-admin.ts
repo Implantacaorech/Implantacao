@@ -6,7 +6,11 @@ import { Usuario } from '../entities/usuario.entity';
 
 /** Cria o primeiro usuário ADM se o banco ainda não tiver nenhum usuário ativo — substitui
  * o modo "login desabilitado = acesso total" do Flask (ver docs/migracao/02-decisao-arquitetura.md).
- * Uso: npm run seed:admin -- --login=admin --nome="Administrador" --email=adm@rech.com.br */
+ * Uso: npm run seed:admin -- --login=admin --nome="Administrador" --email=adm@rech.com.br
+ *
+ * `--senha=` define uma senha DETERMINÍSTICA (em vez da aleatória). Serve ao e2e/CI, que precisa
+ * de credenciais conhecidas para semear os demais usuários pela API — nunca use senha fixa fora
+ * de uma instância descartável (A19). Sem `--senha`, gera uma temporária como antes. */
 async function main(): Promise<void> {
   const args = Object.fromEntries(
     process.argv.slice(2).map((arg) => {
@@ -30,7 +34,8 @@ async function main(): Promise<void> {
     return;
   }
 
-  const senhaTemporaria = randomBytes(9).toString('base64url');
+  // `--senha` explícita (e2e/CI, instância descartável) OU uma temporária aleatória.
+  const senhaTemporaria = args.senha || randomBytes(9).toString('base64url');
   const senhaHash = await bcrypt.hash(senhaTemporaria, 12);
   await repo.save(
     repo.create({
@@ -47,7 +52,9 @@ async function main(): Promise<void> {
   console.log('Usuário ADM criado com sucesso.');
   console.log(`  login: ${login}`);
   console.log(
-    `  senha temporária (troque no primeiro acesso): ${senhaTemporaria}`,
+    args.senha
+      ? '  senha: definida via --senha (instância descartável)'
+      : `  senha temporária (troque no primeiro acesso): ${senhaTemporaria}`,
   );
   await AppDataSource.destroy();
 }

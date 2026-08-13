@@ -10,6 +10,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { IaTelemetriaService } from '../ia-telemetria/ia-telemetria.service';
+import { killSwitch } from '../common/automacao/kill-switch';
 import {
   CABECALHO_REQUEST_ID,
   requestIdAtual,
@@ -54,6 +55,18 @@ const TIMEOUT_REMOTO_MS = 2 * 60 * 1000;
  * pode segurar a UI se a rede engasgar. */
 const TIMEOUT_CATALOGO_MS = 10 * 1000;
 
+/** Temperatura FIXA e baixa para todas as finalidades: são tarefas FACTUAIS (estruturar a
+ * transcrição, responder com base no documento, extrair as respostas do questionário), onde
+ * criatividade é defeito — quanto mais determinístico, menos alucinação. Eixo 6 da auditoria de
+ * 2026-08-12. O caller pode sobrepor via `opcoes.temperatura`, mas o default é factual de
+ * propósito. */
+const TEMPERATURA_FACTUAL = 0.2;
+
+/** Abaixo deste tamanho de entrada (system + mensagens, em caracteres) a tarefa é considerada
+ * SIMPLES e pode ir ao modelo econômico da finalidade, quando houver um configurado — modelo
+ * barato para trabalho barato (roteamento por custo, eixo 7). ~4 mil caracteres ≈ 1 mil tokens. */
+const LIMIAR_TAREFA_SIMPLES_CHARS = 4000;
+
 export interface ConfigFinalidade {
   provider: ProvedorIa;
   apiKey: string;
@@ -61,6 +74,9 @@ export interface ConfigFinalidade {
   /** Só para `local`: URL base do endpoint compatível com a API da OpenAI, com o caminho da
    * versão incluído (ex.: `http://192.168.1.50:11434/v1`). */
   baseUrl?: string;
+  /** Modelo BARATO usado quando a tarefa é simples (eixo 7). Opcional — sem ele, a finalidade
+   * usa sempre `modelo`. Ex.: `claude-haiku-4-5` / `openai/gpt-4o-mini` / um modelo local menor. */
+  modeloEconomico?: string;
 }
 
 export interface StatusFinalidade {
@@ -74,6 +90,8 @@ export interface StatusFinalidade {
    * de rede interna; a CHAVE é que nunca sai daqui. */
   baseUrl: string;
   viaEnv: boolean;
+  /** Modelo econômico configurado para a finalidade (eixo 7), ou '' se não houver. */
+  modeloEconomico: string;
 }
 
 export interface MensagemIa {
@@ -85,6 +103,11 @@ export interface OpcoesCompletar {
   system: string;
   messages: MensagemIa[];
   maxTokens: number;
+  /** Temperatura da geração; default `TEMPERATURA_FACTUAL` (baixa) — ver eixo 6. */
+  temperatura?: number;
+  /** Dica de roteamento por custo (eixo 7): `true` força o modelo econômico; `false` força o
+   * modelo pleno; ausente = decide pelo tamanho da entrada. */
+  tarefaSimples?: boolean;
 }
 
 type ArquivoConfig = Partial<Record<FinalidadeIa, ConfigFinalidade>>;
@@ -267,6 +290,7 @@ export class IaService implements OnModuleInit {
       modelo: resolvido?.config.modelo ?? '',
       baseUrl: resolvido?.config.baseUrl ?? '',
       viaEnv: resolvido?.viaEnv ?? false,
+      modeloEconomico: resolvido?.config.modeloEconomico ?? '',
     };
   }
 
@@ -306,6 +330,8 @@ export class IaService implements OnModuleInit {
   salvar(finalidade: FinalidadeIa, dados: Partial<ConfigFinalidade>): void {
     const config = this.lerArquivo();
     const apiKey = (dados.apiKey ?? '').trim();
+    // Eixo 7: modelo econômico opcional por finalidade. Guardado só quando informado.
+    const modeloEconomico = (dados.modeloEconomico ?? '').trim();
     const provider: ProvedorIa = PROVEDORES_IA.includes(
       dados.provider as ProvedorIa,
     )
@@ -346,6 +372,7 @@ export class IaService implements OnModuleInit {
         apiKey,
         modelo,
         baseUrl: this.normalizarBaseUrl(baseUrl),
+        ...(modeloEconomico ? { modeloEconomico } : {}),
       };
       this.gravarArquivo(config);
       return;
@@ -357,7 +384,12 @@ export class IaService implements OnModuleInit {
       const modelo =
         (dados.modelo ?? '').trim() ||
         (provider === 'anthropic' ? MODELO_ANTHROPIC_PADRAO : '');
-      config[finalidade] = { provider, apiKey, modelo };
+      config[finalidade] = {
+        provider,
+        apiKey,
+        modelo,
+        ...(modeloEconomico ? { modeloEconomico } : {}),
+      };
     }
     this.gravarArquivo(config);
   }
@@ -393,16 +425,52 @@ export class IaService implements OnModuleInit {
     opcoes: OpcoesCompletar,
     meta?: MetaExecucaoIa,
   ): Promise<string> {
+    // Kill switch de runtime (eixo 4): pausada a automação, NENHUMA chamada de IA passa — nem
+    // local, nem externa. É o freio de emergência que o ADM aciona em Sistema → Automação.
+    const freio = killSwitch.estado();
+    if (freio.pausado) {
+      throw new ServiceUnavailableException(
+        `IA pausada pelo administrador${
+          freio.motivo ? ` — ${freio.motivo}` : ''
+        }. Retome em Sistema → Automação.`,
+      );
+    }
+
     const resolvido = this.resolver(finalidade);
     if (!resolvido) {
       throw new Error(
         `IA não configurada para a finalidade "${finalidade}" (Config → IA).`,
       );
     }
-    const { config } = resolvido;
-    const modelo =
-      config.modelo ||
-      (config.provider === 'anthropic' ? MODELO_ANTHROPIC_PADRAO : '');
+    const primaria = resolvido.config;
+    // Eixo 8: provedor de RESERVA para failover. NUNCA existe para finalidade sensível — ela não
+    // pode sair da rede, então prefere-se falhar a vazar (ver resolverAlternativa).
+    const alternativa = this.resolverAlternativa(finalidade, primaria);
+
+    try {
+      return await this.tentarCompletar(finalidade, primaria, opcoes, meta);
+    } catch (e) {
+      if (!alternativa) throw e;
+      this.logger.warn(
+        `IA: o provedor "${primaria.provider}" falhou para "${finalidade}" — tentando o ` +
+          `provedor de reserva "${alternativa.provider}". Causa: ${
+            e instanceof Error ? e.message : String(e)
+          }`,
+      );
+      return this.tentarCompletar(finalidade, alternativa, opcoes, meta);
+    }
+  }
+
+  /** Uma tentativa contra UM provedor: escolhe o modelo (roteamento por custo, eixo 7), respeita
+   * o teto de gasto (A9), mede o tempo e registra a telemetria (A9/A10). É o bloco que o failover
+   * (eixo 8) repete com o provedor de reserva quando o primeiro falha. */
+  private async tentarCompletar(
+    finalidade: FinalidadeIa,
+    config: ConfigFinalidade,
+    opcoes: OpcoesCompletar,
+    meta?: MetaExecucaoIa,
+  ): Promise<string> {
+    const modelo = this.escolherModelo(config, opcoes);
 
     // Teto de gasto (A9): só barra provedor EXTERNO (o local não tem custo por token) e só
     // quando o teto está configurado (>0). É a única parte da telemetria que PODE interromper.
@@ -418,7 +486,10 @@ export class IaService implements OnModuleInit {
 
     const inicio = Date.now();
     try {
-      const { texto, uso } = await this.despachar(config, opcoes);
+      const { texto, uso } = await this.despachar(
+        { ...config, modelo },
+        opcoes,
+      );
       await this.telemetria?.registrar({
         finalidade,
         provider: config.provider,
@@ -446,6 +517,47 @@ export class IaService implements OnModuleInit {
       });
       throw e;
     }
+  }
+
+  /** Eixo 7 (roteamento por custo): para uma TAREFA SIMPLES usa o `modeloEconomico` da
+   * finalidade, quando configurado — modelo barato para trabalho barato. Sem modelo econômico,
+   * nada muda. */
+  private escolherModelo(
+    config: ConfigFinalidade,
+    opcoes: OpcoesCompletar,
+  ): string {
+    const padrao =
+      config.modelo ||
+      (config.provider === 'anthropic' ? MODELO_ANTHROPIC_PADRAO : '');
+    if (config.modeloEconomico && this.ehTarefaSimples(opcoes)) {
+      return config.modeloEconomico;
+    }
+    return padrao;
+  }
+
+  /** Marca explícita (`opcoes.tarefaSimples`) vence; na ausência, decide pelo TAMANHO da entrada. */
+  private ehTarefaSimples(opcoes: OpcoesCompletar): boolean {
+    if (typeof opcoes.tarefaSimples === 'boolean') return opcoes.tarefaSimples;
+    const tamanho =
+      (opcoes.system?.length ?? 0) +
+      opcoes.messages.reduce((s, m) => s + m.content.length, 0);
+    return tamanho < LIMIAR_TAREFA_SIMPLES_CHARS;
+  }
+
+  /** Eixo 8: reserva de failover. A regra de PRIVACIDADE manda — finalidade sensível NUNCA cai
+   * para um provedor externo (o texto não pode sair da rede), então não tem reserva. Para as
+   * demais, o fallback global Anthropic serve de reserva, desde que a primária não seja ele. */
+  private resolverAlternativa(
+    finalidade: FinalidadeIa,
+    primaria: ConfigFinalidade,
+  ): ConfigFinalidade | null {
+    if (exigeProvedorLocal(finalidade)) return null;
+    const fb = this.fallbackAnthropic();
+    if (!fb) return null;
+    if (primaria.provider === 'anthropic' && primaria.apiKey === fb.apiKey) {
+      return null;
+    }
+    return { provider: 'anthropic', apiKey: fb.apiKey, modelo: fb.modelo };
   }
 
   /** Despacha para o provedor certo e devolve o texto + os tokens consumidos. */
@@ -486,6 +598,8 @@ export class IaService implements OnModuleInit {
     const resp = await client.messages.create({
       model: config.modelo || MODELO_ANTHROPIC_PADRAO,
       max_tokens: opcoes.maxTokens,
+      // Eixo 6: temperatura baixa e fixa — tarefa factual, criatividade é defeito aqui.
+      temperature: opcoes.temperatura ?? TEMPERATURA_FACTUAL,
       system: opcoes.system,
       messages: opcoes.messages,
     });
@@ -542,6 +656,8 @@ export class IaService implements OnModuleInit {
         body: JSON.stringify({
           model: config.modelo,
           max_tokens: opcoes.maxTokens,
+          // Eixo 6: temperatura baixa e fixa (mesmo motivo do Anthropic).
+          temperature: opcoes.temperatura ?? TEMPERATURA_FACTUAL,
           messages: [
             { role: 'system', content: opcoes.system },
             ...opcoes.messages,
