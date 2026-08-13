@@ -31,6 +31,10 @@ export interface AppConfig {
   imapIntakeAtivo: boolean;
   digestHora: number;
   digestPara: string;
+  /** Teto de gasto DIÁRIO de IA em dólares (achado A9). Ao ser atingido, novas chamadas de IA
+   * para provedor EXTERNO são interrompidas com erro claro. `0` = sem teto (padrão) — o
+   * mecanismo existe e é opt-in por ambiente, como o destinatário do digest. */
+  iaTetoDiarioUsd: number;
   /** Pasta onde a Tarefa Agendada deixa os zips do dump e os logs de operação (backup e
    * Guardião). É de onde a vigilância de saúde lê — ver src/saude/. */
   backupDir: string;
@@ -178,6 +182,13 @@ export default (): AppConfig => {
     // `digest_para.txt` do Flask não foi portado (sem UI que o gerencie; só o env var).
     digestHora: Number(process.env.MIGRACAO_DIGEST_HORA ?? 8),
     digestPara: process.env.MIGRACAO_DIGEST_PARA ?? '',
+    // Teto diário de gasto de IA (USD). 0 = desligado. Number('') e Number(undefined) viram
+    // NaN — normalizamos para 0 (desligado) para um valor mal digitado não virar teto zero
+    // acidental que barra toda IA.
+    iaTetoDiarioUsd: Math.max(
+      0,
+      Number(process.env.MIGRACAO_IA_TETO_DIARIO_USD ?? 0) || 0,
+    ),
     // Pasta de operação: zips do dump do MariaDB (`painel_novo_mariadb_*.zip`, gerados por
     // tools/Painel_Novo_Backup_MariaDB.ps1) e os logs do backup e do Guardião. O painel só
     // LÊ daqui — é o que permite responder "o backup de ontem saiu?" sem abrir o servidor.

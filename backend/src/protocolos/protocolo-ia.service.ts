@@ -292,11 +292,15 @@ export class ProtocoloIaService {
         `${menusReconhecidos.trim()}\n`
       : '';
     const user = `Vídeo: ${videoNome}${bloco}\n\nTRANSCRIÇÃO (com timestamps):\n${transcricao}`;
-    const bruto = await this.ia.completar('protocolos', {
-      system: SISTEMA,
-      messages: [{ role: 'user', content: user }],
-      maxTokens: 8000,
-    });
+    const bruto = await this.ia.completar(
+      'protocolos',
+      {
+        system: SISTEMA,
+        messages: [{ role: 'user', content: user }],
+        maxTokens: 8000,
+      },
+      { contexto: videoNome ? `protocolo: ${videoNome}` : 'protocolo' },
+    );
     const data = extraiJson(bruto);
     if (typeof data !== 'object' || data === null || Array.isArray(data)) {
       throw new Error('A IA não devolveu o JSON esperado.');
@@ -355,11 +359,19 @@ export class ProtocoloIaService {
         `${menusReconhecidos.trim()}\n`
       : '';
     const user = `Vídeo: ${videoNome}${bloco}\n\nTRANSCRIÇÃO (com timestamps):\n${transcricao}`;
-    const texto = await this.ia.completar('protocolos', {
-      system: SISTEMA_RESUMO,
-      messages: [{ role: 'user', content: user }],
-      maxTokens: 6000,
-    });
+    const texto = await this.ia.completar(
+      'protocolos',
+      {
+        system: SISTEMA_RESUMO,
+        messages: [{ role: 'user', content: user }],
+        maxTokens: 6000,
+      },
+      {
+        contexto: videoNome
+          ? `protocolo (resumo): ${videoNome}`
+          : 'protocolo (resumo)',
+      },
+    );
     return (texto || '').trim();
   }
 }

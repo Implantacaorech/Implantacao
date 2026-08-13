@@ -41,6 +41,7 @@ import { BiAgendaAlocacaoModule } from './bi-agenda-alocacao/bi-agenda-alocacao.
 import { BiMovimentosModule } from './bi-movimentos/bi-movimentos.module';
 import { SaudeModule } from './saude/saude.module';
 import { ProntidaoModule } from './prontidao/prontidao.module';
+import { IaTelemetriaModule } from './ia-telemetria/ia-telemetria.module';
 
 @Module({
   imports: [
@@ -86,6 +87,7 @@ import { ProntidaoModule } from './prontidao/prontidao.module';
     CronogramaModule,
     LevantamentoModule,
     IaModule,
+    IaTelemetriaModule,
     ProtocolosModule,
     EmailModule,
     FluxoModule,

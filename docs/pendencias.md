@@ -55,12 +55,20 @@
 - [ ] **A8 — ADM/Coordenador leem toda transcrição de todo cliente** (`protocolos.acesso.ts:31-35`),
   contra a regra de privacidade declarada. **Correção:** decidir se a aprovação exige leitura
   integral ou só metadados. **Dono:** usuário + software. **Prazo:** 2026-09-02.
-- [ ] **A9 — Custo de IA invisível e ilimitado.** `usage` do provedor descartado; sem teto que
-  interrompe. **Correção:** capturar `usage`, persistir tokens/custo por execução, teto diário que
-  interrompe. **Dono:** software. **Prazo:** 2026-09-09.
-- [ ] **A10 — Sem trilha de auditoria de IA** (quem/quando/finalidade/provedor/modelo/entrada/saída);
-  `/levantamento/sugerir` nem recebe `@CurrentUser`. **Correção:** tabela de execuções de IA.
-  **Dono:** software. **Prazo:** 2026-09-09.
+- [x] **A9 — Custo de IA invisível e ilimitado (corrigido 2026-08-13).** Novo módulo
+  `ia-telemetria`: o `usage` do provedor vira tokens/custo por execução (tabela de preços por
+  modelo); **teto diário** que interrompe chamadas externas ao estourar (`MIGRACAO_IA_TETO_DIARIO_USD`,
+  opt-in); custo (hoje/7 dias) e execuções **visíveis** na seção "Custo de IA" do Centro de
+  Monitoramento. Guarda: `ia-telemetria.service.spec.ts`, `precos-ia.spec.ts`, bloco de telemetria
+  em `ia.service.spec.ts`. **Falta:** roteamento por custo (item novo, abaixo). **Dono:** software.
+- [x] **A10 — Sem trilha de auditoria de IA (corrigido 2026-08-13).** A tabela `execucoes_ia`
+  grava cada chamada (finalidade, provedor, modelo, quem, quando, tokens, custo, status) — só
+  metadados, nunca o conteúdo (LGPD). `@CurrentUser` adicionado em `/levantamento/sugerir` e
+  `/dicionario/perguntar`. O pipeline automático de protocolos registra como robô/sistema.
+  **Dono:** software.
+- [ ] **A9-b — Roteamento de IA por custo** (novo, derivado do A9): tarefa simples deveria ir a
+  modelo barato/local automaticamente; hoje é estático por finalidade. **Dono:** software.
+  **Prazo:** 2026-09-23.
 - [~] **A11 — Canal de alerta (digest) nunca funcionou em produção.** 0 envios em 7,5 MB de log;
   `MIGRACAO_DIGEST_PARA` não definida. **Feito (2026-08-12):** o `tick()` passou a **logar 1×/dia**
   que não enviou por falta de destinatário (a ausência deixou de ser silenciosa).

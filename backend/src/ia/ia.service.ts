@@ -3,10 +3,13 @@ import {
   Injectable,
   Logger,
   OnModuleInit,
+  Optional,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import Anthropic from '@anthropic-ai/sdk';
 import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { IaTelemetriaService } from '../ia-telemetria/ia-telemetria.service';
 import {
   exigeProvedorLocal,
   FINALIDADES_IA,
@@ -17,6 +20,20 @@ import {
   PROVEDORES_IA,
   ProvedorIa,
 } from './ia.constants';
+
+/** Tokens consumidos numa chamada — `null` quando o provedor não devolveu `usage`. */
+interface UsoIa {
+  tokensEntrada: number | null;
+  tokensSaida: number | null;
+}
+
+/** Enriquecimento opcional para a telemetria (A10): quem disparou e um rótulo de contexto
+ * (NUNCA o conteúdo do prompt). Sem isto, a linha ainda registra finalidade/provedor/modelo/
+ * tokens/custo — só o "quem" fica como robô/sistema. */
+export interface MetaExecucaoIa {
+  solicitante?: string | null;
+  contexto?: string;
+}
 
 /** Teto de espera do serviço local. Generoso porque um modelo grande em CPU lendo 13 mil
  * tokens de transcrição leva minutos — e apertar isso transformaria "lento" em "quebrado".
@@ -79,6 +96,11 @@ type ArquivoConfig = Partial<Record<FinalidadeIa, ConfigFinalidade>>;
 @Injectable()
 export class IaService implements OnModuleInit {
   private readonly logger = new Logger(IaService.name);
+
+  // Telemetria é OPCIONAL de propósito: em teste o serviço é construído sem DI (construtor
+  // direto, sem argumentos), e ali não há telemetria — o registro simplesmente não acontece.
+  // Em produção o Nest injeta o IaTelemetriaService (IaModule importa o IaTelemetriaModule).
+  constructor(@Optional() private readonly telemetria?: IaTelemetriaService) {}
 
   /** No boot, denuncia no log qualquer finalidade sensível que esteja saindo da rede (config
    * legada anterior à trava, ou fallback global por variável de ambiente). Achado A1. */
@@ -355,10 +377,17 @@ export class IaService implements OnModuleInit {
     }
   }
 
-  /** Executa uma completude de chat para a finalidade, no provedor configurado. */
+  /** Executa uma completude de chat para a finalidade, no provedor configurado.
+   *
+   * A9/A10: mede o tempo, captura o `usage` do provedor e registra a chamada na telemetria
+   * (finalidade, provedor, modelo, tokens, custo estimado, quem/quando, status). O registro é
+   * best-effort — nunca derruba a chamada. O `meta` é opcional (quem disparou + rótulo de
+   * contexto). Se um teto diário de gasto estiver configurado e já tiver sido atingido, uma
+   * nova chamada a provedor EXTERNO é interrompida com erro claro. */
   async completar(
     finalidade: FinalidadeIa,
     opcoes: OpcoesCompletar,
+    meta?: MetaExecucaoIa,
   ): Promise<string> {
     const resolvido = this.resolver(finalidade);
     if (!resolvido) {
@@ -367,6 +396,59 @@ export class IaService implements OnModuleInit {
       );
     }
     const { config } = resolvido;
+    const modelo =
+      config.modelo ||
+      (config.provider === 'anthropic' ? MODELO_ANTHROPIC_PADRAO : '');
+
+    // Teto de gasto (A9): só barra provedor EXTERNO (o local não tem custo por token) e só
+    // quando o teto está configurado (>0). É a única parte da telemetria que PODE interromper.
+    if (
+      config.provider !== 'local' &&
+      (await this.telemetria?.tetoAtingido())
+    ) {
+      throw new ServiceUnavailableException(
+        'Teto diário de gasto de IA atingido — novas chamadas a provedor externo estão ' +
+          'suspensas até amanhã (ou aumente MIGRACAO_IA_TETO_DIARIO_USD).',
+      );
+    }
+
+    const inicio = Date.now();
+    try {
+      const { texto, uso } = await this.despachar(config, opcoes);
+      await this.telemetria?.registrar({
+        finalidade,
+        provider: config.provider,
+        modelo,
+        solicitante: meta?.solicitante ?? null,
+        contexto: meta?.contexto,
+        tokensEntrada: uso.tokensEntrada,
+        tokensSaida: uso.tokensSaida,
+        duracaoMs: Date.now() - inicio,
+        status: 'ok',
+      });
+      return texto;
+    } catch (e) {
+      await this.telemetria?.registrar({
+        finalidade,
+        provider: config.provider,
+        modelo,
+        solicitante: meta?.solicitante ?? null,
+        contexto: meta?.contexto,
+        tokensEntrada: null,
+        tokensSaida: null,
+        duracaoMs: Date.now() - inicio,
+        status: 'erro',
+        erro: e instanceof Error ? e.message : String(e),
+      });
+      throw e;
+    }
+  }
+
+  /** Despacha para o provedor certo e devolve o texto + os tokens consumidos. */
+  private despachar(
+    config: ConfigFinalidade,
+    opcoes: OpcoesCompletar,
+  ): Promise<{ texto: string; uso: UsoIa }> {
     if (config.provider === 'openrouter') {
       return this.completarCompativel(
         config,
@@ -391,7 +473,7 @@ export class IaService implements OnModuleInit {
   private async completarAnthropic(
     config: ConfigFinalidade,
     opcoes: OpcoesCompletar,
-  ): Promise<string> {
+  ): Promise<{ texto: string; uso: UsoIa }> {
     // timeout: sem ele o SDK espera indefinidamente (A14). maxRetries=2 é o default do SDK.
     const client = new Anthropic({
       apiKey: config.apiKey,
@@ -403,10 +485,18 @@ export class IaService implements OnModuleInit {
       system: opcoes.system,
       messages: opcoes.messages,
     });
-    return resp.content
+    const texto = resp.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
       .map((b) => b.text)
       .join('');
+    // A9: o `usage` do Anthropic era descartado — agora vira tokens de entrada/saída.
+    return {
+      texto,
+      uso: {
+        tokensEntrada: resp.usage?.input_tokens ?? null,
+        tokensSaida: resp.usage?.output_tokens ?? null,
+      },
+    };
   }
 
   /** Chat completions no dialeto da OpenAI — atende OpenRouter e qualquer serviço `local`
@@ -418,7 +508,7 @@ export class IaService implements OnModuleInit {
     baseUrl: string,
     opcoes: OpcoesCompletar,
     timeoutMs?: number,
-  ): Promise<string> {
+  ): Promise<{ texto: string; uso: UsoIa }> {
     const onde = config.provider === 'local' ? 'O serviço local' : 'OpenRouter';
     if (!config.modelo) {
       throw new Error(
@@ -467,7 +557,16 @@ export class IaService implements OnModuleInit {
     }
     const dados = (await resp.json()) as {
       choices?: { message?: { content?: string } }[];
+      usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
-    return dados.choices?.[0]?.message?.content ?? '';
+    // A9: o `usage` no dialeto da OpenAI (prompt_tokens/completion_tokens) era descartado.
+    // Nem todo servidor local devolve — daí o `?? null`.
+    return {
+      texto: dados.choices?.[0]?.message?.content ?? '',
+      uso: {
+        tokensEntrada: dados.usage?.prompt_tokens ?? null,
+        tokensSaida: dados.usage?.completion_tokens ?? null,
+      },
+    };
   }
 }

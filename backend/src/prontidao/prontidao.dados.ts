@@ -91,9 +91,9 @@ export const PRONTIDAO_EIXOS: EixoProntidao[] = [
   {
     numero: 7,
     nome: 'Custo por token',
-    maturidade: 1,
+    maturidade: 3,
     resumo:
-      'O usage do provedor é descartado, não há teto que interrompa e o gasto é invisível no painel.',
+      'Agora há telemetria de tokens/custo por execução, teto diário que interrompe (opt-in) e custo visível no Monitoramento; falta roteamento por custo (modelo barato para tarefa simples).',
   },
   {
     numero: 8,
@@ -227,10 +227,10 @@ export const PRONTIDAO_ACHADOS: AchadoProntidao[] = [
     eixo: 7,
     evidencia: 'ia.service.ts:326-329,388-391 — usage descartado; sem teto',
     correcao:
-      'Capturar usage, persistir tokens/custo, teto diário que interrompe.',
-    status: 'aberto',
+      'Módulo ia-telemetria: capta o usage → tokens/custo por execução; teto diário que interrompe (MIGRACAO_IA_TETO_DIARIO_USD); custo visível no Monitoramento.',
+    status: 'corrigido',
     dono: 'software',
-    prazo: '2026-09-09',
+    prazo: 'feito',
   },
   {
     codigo: 'A10',
@@ -240,8 +240,8 @@ export const PRONTIDAO_ACHADOS: AchadoProntidao[] = [
     evidencia:
       'levantamento.controller.ts:114 — sem @CurrentUser; nada persistido',
     correcao:
-      'Tabela de execuções de IA (quem, quando, finalidade, provedor, modelo, E/S).',
-    status: 'aberto',
+      'Tabela execucoes_ia grava cada chamada (quem, quando, finalidade, provedor, modelo, tokens, custo, status); @CurrentUser adicionado no levantamento/dicionário. Metadados apenas (LGPD).',
+    status: 'corrigido',
     dono: 'software',
     prazo: '2026-09-09',
   },

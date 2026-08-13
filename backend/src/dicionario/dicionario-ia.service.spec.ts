@@ -69,10 +69,12 @@ describe('DicionarioIaService', () => {
     dicionario.recuperarParaPergunta.mockResolvedValue([doc()]);
     ia.disponivel.mockReturnValue(true);
     ia.completar.mockResolvedValue('Resposta direta: use o menu 1.6-T [1].');
-    const r = await service.perguntar('como configurar CTB101');
+    const r = await service.perguntar('como configurar CTB101', 'Ana');
     expect(ia.completar).toHaveBeenCalledWith(
       'dicionario',
       expect.objectContaining({ maxTokens: 2000 }),
+      // 3º arg: meta de telemetria (A10) — solicitante + contexto.
+      expect.objectContaining({ solicitante: 'Ana', contexto: 'dicionário' }),
     );
     expect(r.iaDisponivel).toBe(true);
     expect(r.temFundamento).toBe(true);

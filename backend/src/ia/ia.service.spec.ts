@@ -392,6 +392,109 @@ describe('IaService', () => {
     });
   });
 
+  // A9/A10: quando a telemetria é injetada, cada chamada registra tokens/custo/quem, e o teto
+  // diário pode interromper. Em produção o Nest injeta o IaTelemetriaService; aqui usamos um
+  // dublê.
+  describe('telemetria (A9/A10)', () => {
+    function comTelemetria(over: Record<string, unknown> = {}) {
+      const telemetria = {
+        registrar: jest.fn().mockResolvedValue(undefined),
+        tetoAtingido: jest.fn().mockResolvedValue(false),
+        ...over,
+      };
+      const s = new IaService(telemetria as never);
+      return { s, telemetria };
+    }
+
+    it('registra a execução com os tokens do OpenRouter', async () => {
+      const { s, telemetria } = comTelemetria();
+      s.salvar('dicionario', {
+        provider: 'openrouter',
+        apiKey: 'sk-or',
+        modelo: 'openai/gpt-4o-mini',
+      });
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: 'oi' } }],
+            usage: { prompt_tokens: 100, completion_tokens: 40 },
+          }),
+      } as Response);
+
+      await s.completar(
+        'dicionario',
+        { system: '', messages: [], maxTokens: 10 },
+        { solicitante: 'Ana', contexto: 'dicionário' },
+      );
+
+      expect(telemetria.registrar).toHaveBeenCalledTimes(1);
+      const arg = telemetria.registrar.mock.calls[0][0];
+      expect(arg.tokensEntrada).toBe(100);
+      expect(arg.tokensSaida).toBe(40);
+      expect(arg.solicitante).toBe('Ana');
+      expect(arg.status).toBe('ok');
+      expect(arg.provider).toBe('openrouter');
+      fetchMock.mockRestore();
+    });
+
+    it('registra status erro quando a chamada falha, e propaga o erro', async () => {
+      const { s, telemetria } = comTelemetria();
+      s.salvar('dicionario', {
+        provider: 'openrouter',
+        apiKey: 'sk-or',
+        modelo: 'openai/gpt-4o-mini',
+      });
+      const fetchMock = jest
+        .spyOn(global, 'fetch')
+        .mockRejectedValue(new Error('rede caiu'));
+
+      await expect(
+        s.completar('dicionario', { system: '', messages: [], maxTokens: 10 }),
+      ).rejects.toThrow();
+      expect(telemetria.registrar.mock.calls[0][0].status).toBe('erro');
+      fetchMock.mockRestore();
+    });
+
+    it('teto diário atingido interrompe provedor externo antes de chamar', async () => {
+      const { s } = comTelemetria({
+        tetoAtingido: jest.fn().mockResolvedValue(true),
+      });
+      s.salvar('dicionario', {
+        provider: 'openrouter',
+        apiKey: 'sk-or',
+        modelo: 'openai/gpt-4o-mini',
+      });
+      const fetchMock = jest.spyOn(global, 'fetch');
+      await expect(
+        s.completar('dicionario', { system: '', messages: [], maxTokens: 10 }),
+      ).rejects.toThrow(/Teto diário/);
+      expect(fetchMock).not.toHaveBeenCalled();
+      fetchMock.mockRestore();
+    });
+
+    it('teto NÃO barra o provedor local (sem custo por token)', async () => {
+      const { s } = comTelemetria({
+        tetoAtingido: jest.fn().mockResolvedValue(true),
+      });
+      s.salvar('protocolos', {
+        provider: 'local',
+        apiKey: '',
+        modelo: 'qwen2.5:14b',
+        baseUrl: 'http://127.0.0.1:11434/v1',
+      });
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ choices: [{ message: { content: 'ok' } }] }),
+      } as Response);
+      await expect(
+        s.completar('protocolos', { system: '', messages: [], maxTokens: 10 }),
+      ).resolves.toBe('ok');
+      fetchMock.mockRestore();
+    });
+  });
+
   describe('avisosPrivacidade', () => {
     it('vazio quando não há finalidade sensível saindo da rede', () => {
       expect(service.avisosPrivacidade()).toEqual([]);

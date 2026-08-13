@@ -7,6 +7,8 @@ import { AtividadeService } from '../../core/services/atividade.service';
 import { ResultadoMonitoramento } from '../../core/models/monitoramento.model';
 import { ROTULO_NIVEL, ResultadoSaude } from '../../core/models/saude.model';
 import { SaudeService } from '../../core/services/saude.service';
+import { TelemetriaIa } from '../../core/models/ia-telemetria.model';
+import { IaTelemetriaService } from '../../core/services/ia-telemetria.service';
 import { AgentesGrafoComponent } from './agentes-grafo/agentes-grafo.component';
 
 @Component({
@@ -19,10 +21,16 @@ import { AgentesGrafoComponent } from './agentes-grafo/agentes-grafo.component';
 export class MonitoramentoComponent {
   private readonly service = inject(AtividadeService);
   private readonly saudeService = inject(SaudeService);
+  private readonly telemetriaService = inject(IaTelemetriaService);
 
   readonly carregando = signal(true);
   readonly erro = signal<string | null>(null);
   readonly dados = signal<ResultadoMonitoramento | null>(null);
+
+  /** Custo/execuções de IA (A9). Carrega por conta própria, como a saúde — é um bloco a mais,
+   * e uma falha aqui não pode derrubar o Monitoramento inteiro. */
+  readonly telemetriaIa = signal<TelemetriaIa | null>(null);
+  readonly telemetriaIaIndisponivel = signal(false);
 
   /** Saúde da INFRAESTRUTURA — backup, Guardião, docservice, banco, e-mail. Separada do
    * `d.saude` do painel, que é o percentual de projetos saudáveis (negócio, não máquina).
@@ -65,6 +73,7 @@ export class MonitoramentoComponent {
   constructor() {
     void this.carregar();
     void this.carregarSaude();
+    void this.carregarTelemetriaIa();
   }
 
   async carregar(): Promise<void> {
@@ -87,6 +96,15 @@ export class MonitoramentoComponent {
       // Sem erro na tela toda: o diagnóstico é um bloco a mais, e o Monitoramento continua
       // útil sem ele.
       this.saudeIndisponivel.set(true);
+    }
+  }
+
+  async carregarTelemetriaIa(): Promise<void> {
+    this.telemetriaIaIndisponivel.set(false);
+    try {
+      this.telemetriaIa.set(await this.telemetriaService.resumo());
+    } catch {
+      this.telemetriaIaIndisponivel.set(true);
     }
   }
 }

@@ -71,6 +71,10 @@ describe('ProtocoloIaService', () => {
     expect(ia.completar).toHaveBeenCalledWith(
       'protocolos',
       expect.objectContaining({ maxTokens: 8000 }),
+      // 3º arg: meta de telemetria (A10) — contexto com o nome do vídeo.
+      expect.objectContaining({
+        contexto: expect.stringContaining('video.mp4'),
+      }),
     );
     expect(campos.modulo).toBe('Estoque');
     expect(campos.menu).toBe('1.4-I');

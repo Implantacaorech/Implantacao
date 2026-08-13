@@ -11,6 +11,10 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissaoGuard } from '../permissoes/permissao.guard';
 import { Permissao } from '../common/decorators/permissao.decorator';
+import {
+  CurrentUser,
+  type AuthUser,
+} from '../common/decorators/current-user.decorator';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { DicionarioService } from './dicionario.service';
 import { DicionarioIaService } from './dicionario-ia.service';
@@ -56,8 +60,11 @@ export class DicionarioController {
   @ApiOperation({
     summary: 'Resposta em linguagem natural fundamentada nos documentos (RAG)',
   })
-  async perguntar(@Body() dto: PerguntarDicionarioDto) {
-    return new ApiEnvelope(await this.ia.perguntar(dto.pergunta));
+  async perguntar(
+    @Body() dto: PerguntarDicionarioDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return new ApiEnvelope(await this.ia.perguntar(dto.pergunta, user.nome));
   }
 
   @Get(':slug')
