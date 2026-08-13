@@ -186,6 +186,17 @@ describe('PassosNotificacaoService', () => {
               return Promise.resolve(e);
             },
             find: () => Promise.resolve(emailsGravados),
+            findOne: (opcoes: {
+              where?: { id?: number; projetoId?: number };
+            }) =>
+              Promise.resolve(
+                emailsGravados.find(
+                  (e) =>
+                    e.id === opcoes?.where?.id &&
+                    (opcoes?.where?.projetoId == null ||
+                      e.projetoId === opcoes?.where?.projetoId),
+                ) ?? null,
+              ),
           },
         },
         {
@@ -253,6 +264,75 @@ describe('PassosNotificacaoService', () => {
     const email = await service.montar(projeto(), 1);
     expect(email?.para).toEqual(['dora@rech.com.br']);
     expect(email?.assunto).toContain('Indústria Alfa');
+  });
+
+  // A13: reenvio de e-mail de passo que falhou.
+  describe('reenviar', () => {
+    function semearFalho(over: Partial<EmailPasso> = {}): void {
+      emailsGravados.push({
+        id: 10,
+        projetoId: 7,
+        passo: 8,
+        para: 'ana@rech.com.br, beto@rech.com.br',
+        assunto: 'Assunto do passo 8',
+        corpo: 'Corpo do passo 8',
+        anexo: '',
+        status: 'falhou',
+        erro: 'SMTP fora',
+        autor: 'Sistema',
+        ...over,
+      });
+    }
+
+    it('reenvia o e-mail falho com os destinatários/assunto/corpo gravados', async () => {
+      semearFalho();
+      const r = await service.reenviar(7, 10, 'Ana GCI');
+      expect(r.ok).toBe(true);
+      expect(enviados).toHaveLength(1);
+      expect(enviados[0].para).toEqual(['ana@rech.com.br', 'beto@rech.com.br']);
+      expect(enviados[0].assunto).toBe('Assunto do passo 8');
+      // Append-only: gravou uma NOVA linha com status enviado.
+      const nova = emailsGravados.find((e) => e.status === 'enviado');
+      expect(nova).toBeDefined();
+      expect(nova?.passo).toBe(8);
+      // E deixou rastro na timeline.
+      expect(eventosSalvos.some((e) => /REENVIADO/.test(e.descricao))).toBe(
+        true,
+      );
+    });
+
+    it('recusa reenviar um e-mail que já foi enviado', async () => {
+      semearFalho({ status: 'enviado' });
+      await expect(service.reenviar(7, 10, 'Ana GCI')).rejects.toThrow(
+        /já foi enviado/,
+      );
+    });
+
+    it('recusa quando o e-mail não existe no projeto', async () => {
+      await expect(service.reenviar(7, 999, 'Ana GCI')).rejects.toThrow(
+        /não encontrado/,
+      );
+    });
+
+    it('recusa quando não há destinatário registrado', async () => {
+      semearFalho({ para: '' });
+      await expect(service.reenviar(7, 10, 'Ana GCI')).rejects.toThrow(
+        /destinatário/,
+      );
+    });
+
+    it('reenvio que falha grava nova linha falhou e devolve ok=false', async () => {
+      configurado = false; // mailer não configurado -> não envia
+      semearFalho();
+      const r = await service.reenviar(7, 10, 'Ana GCI');
+      expect(r.ok).toBe(false);
+      const nova = emailsGravados.filter((e) => e.status === 'falhou');
+      // a original + a nova tentativa
+      expect(nova.length).toBeGreaterThanOrEqual(2);
+      expect(
+        eventosSalvos.some((e) => /reenvio FALHOU/.test(e.descricao)),
+      ).toBe(true);
+    });
   });
 
   it('passo 2 avisa o levantador designado, com a data agendada', async () => {

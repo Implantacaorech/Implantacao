@@ -108,6 +108,9 @@ export class PassosComponent {
   readonly documentos = signal<Documento[]>([]);
   /** Passos com o painel de registros aberto. */
   readonly registrosAbertos = signal<number[]>([]);
+  /** E-mail sendo reenviado agora (id) e o aviso do último reenvio (A13). */
+  readonly reenviando = signal<number | null>(null);
+  readonly avisoReenvio = signal<string | null>(null);
   /** E-mails com o corpo expandido. */
   readonly emailsAbertos = signal<number[]>([]);
 
@@ -164,6 +167,32 @@ export class PassosComponent {
     return e.status === 'sem_destinatario'
       ? 'sem destinatário'
       : 'falhou no envio';
+  }
+
+  /** Um e-mail que não saiu pode ser reenviado (A13) — desde que a pessoa tenha alteração na
+   * carteira. `sem_destinatario` não tem para quem reenviar; o backend recusa e a tela nem
+   * oferece o botão. */
+  podeReenviar(e: EmailRegistrado): boolean {
+    return !this.soConsulta() && e.status === 'falhou';
+  }
+
+  async reenviarEmail(e: EmailRegistrado): Promise<void> {
+    this.erro.set(null);
+    this.avisoReenvio.set(null);
+    this.reenviando.set(e.id);
+    try {
+      const r = await this.service.reenviarEmail(this.projetoId, e.id);
+      this.avisoReenvio.set(
+        r.ok
+          ? 'E-mail reenviado com sucesso.'
+          : `O reenvio falhou: ${r.erro || 'erro desconhecido'}.`,
+      );
+      await this.recarregarRegistros();
+    } catch (err) {
+      this.erro.set(this.mensagem(err));
+    } finally {
+      this.reenviando.set(null);
+    }
   }
 
   /** Baixa o documento do passo. Liberado a quem só tem consulta — foi o que o processo

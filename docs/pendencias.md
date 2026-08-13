@@ -76,9 +76,12 @@
 - [x] **A12 — 5xx só iam para o log (corrigido 2026-08-12).** Contador de 5xx de 24 h alimentado
   pelo `HttpExceptionFilter` e exposto como checagem `erros_5xx` no `/api/saude` (sai no digest).
   Guarda: `contador-5xx.spec.ts` e `saude.service.spec.ts`. **Dono:** software.
-- [ ] **A13 — E-mail de passo sem fila, sem retry, sem reenvio.** Falha fica só registrada em
-  `emails_passo`. **Correção:** endpoint de reenvio a partir de `emails_passo` (mínimo) ou fila
-  persistida. **Dono:** software. **Prazo:** 2026-09-09.
+- [x] **A13 — E-mail de passo sem reenvio (corrigido 2026-08-13).** `POST /projetos/:id/emails/:emailId/reenviar`
+  (`@Permissao('carteira','alteracao')`) + botão **Reenviar** nos e-mails com status `falhou` no
+  histórico do passo. Reusa o mesmo envio (reanexa os arquivos atuais) e, respeitando o
+  append-only da tabela, grava uma **nova linha** com o resultado + evento na timeline. Guarda:
+  bloco `reenviar` em `passos-notificacao.service.spec.ts`. Eixo Fallback 2→3. *Fila persistida
+  (retry automático) fica como evolução futura.* **Dono:** software.
 - [x] **A14 — Oracle e OpenRouter sem timeout (corrigido 2026-08-12).** `callTimeout` de 15 s na
   conexão Oracle; timeout de 2 min no OpenRouter/Anthropic e 10 s no catálogo de modelos.
   Guarda: `ia.service.spec.ts`. **Dono:** software.

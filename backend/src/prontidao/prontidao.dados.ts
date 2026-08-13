@@ -98,9 +98,9 @@ export const PRONTIDAO_EIXOS: EixoProntidao[] = [
   {
     numero: 8,
     nome: 'Fallback',
-    maturidade: 2,
+    maturidade: 3,
     resumo:
-      'docservice e SMTP degradam bem e registram; não há failover entre provedores de IA nem reenvio de e-mail falho.',
+      'docservice e SMTP degradam bem e registram, e o e-mail de passo falho já pode ser reenviado (A13); ainda falta failover automático entre provedores de IA.',
   },
   {
     numero: 9,
@@ -276,10 +276,10 @@ export const PRONTIDAO_ACHADOS: AchadoProntidao[] = [
     eixo: 8,
     evidencia: 'passos.service.ts:551 (void); sem endpoint de reenvio',
     correcao:
-      'Endpoint de reenvio a partir de emails_passo, ou fila persistida.',
-    status: 'aberto',
+      'POST /projetos/:id/emails/:emailId/reenviar + botão "Reenviar" no histórico do passo; reanexa os arquivos atuais e grava nova linha (append-only) com o resultado.',
+    status: 'corrigido',
     dono: 'software',
-    prazo: '2026-09-09',
+    prazo: 'feito',
   },
   {
     codigo: 'A14',

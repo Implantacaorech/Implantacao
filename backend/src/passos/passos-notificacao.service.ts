@@ -1,4 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { existsSync } from 'fs';
@@ -437,6 +442,88 @@ export class PassosNotificacaoService {
       where: { projetoId },
       order: { criadoEm: 'DESC' },
     });
+  }
+
+  /** Reenvia um e-mail de passo que NÃO saiu (status `falhou`). Achado A13 da auditoria de
+   * 2026-08-12: um e-mail de passo que falhava ficava só registrado em `emails_passo`, sem
+   * nenhum caminho de reenvio — alguém teria de copiar o corpo e mandar por fora do Painel.
+   *
+   * Reusa o mesmo envio da conclusão do passo, com os destinatários/assunto/corpo GRAVADOS e
+   * os anexos ATUAIS do passo (podem ter sido regerados ou removidos desde a falha). Respeita
+   * o invariante da tabela — histórico é append-only, nunca se edita uma linha —, então o
+   * reenvio grava uma NOVA linha com o resultado e um evento na timeline. */
+  async reenviar(
+    projetoId: number,
+    emailId: number,
+    autor: string,
+  ): Promise<{ ok: boolean; erro: string }> {
+    const original = await this.emails.findOne({
+      where: { id: emailId, projetoId },
+    });
+    if (!original) {
+      throw new NotFoundException(
+        'E-mail de passo não encontrado neste projeto.',
+      );
+    }
+    if (original.status === 'enviado') {
+      throw new BadRequestException(
+        'Este e-mail já foi enviado — não há o que reenviar.',
+      );
+    }
+    const para = original.para
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean);
+    if (para.length === 0) {
+      throw new BadRequestException(
+        'O e-mail não tem destinatário registrado — conclua o passo com um destinatário ' +
+          'válido para poder enviá-lo.',
+      );
+    }
+
+    // Reanexa os arquivos ATUAIS do passo — o mesmo caminho do envio original.
+    const anexos = await this.anexoDoPasso(projetoId, original.passo);
+
+    let ok = false;
+    let erro = 'e-mail não configurado';
+    if (this.mailer.configurado()) {
+      const r = await this.mailer.enviar(
+        para,
+        original.assunto,
+        original.corpo,
+        anexos,
+      );
+      ok = r.ok;
+      erro = r.erro ?? '';
+    }
+
+    await this.emails.save(
+      this.emails.create({
+        projetoId,
+        passo: original.passo,
+        para: original.para,
+        assunto: original.assunto,
+        corpo: original.corpo,
+        anexo: anexos
+          .map((a) => a.nomeArquivo ?? '')
+          .filter(Boolean)
+          .join(', ')
+          .slice(0, 255),
+        status: ok ? 'enviado' : 'falhou',
+        erro: ok ? '' : erro || 'Falha desconhecida no reenvio.',
+        autor,
+      }),
+    );
+
+    await this.registrar(
+      projetoId,
+      ok
+        ? `Passo ${original.passo}: e-mail REENVIADO a ${para.join(', ')} — ${original.assunto}`
+        : `Passo ${original.passo}: reenvio FALHOU (${original.assunto}): ${erro || '?'}`,
+      autor,
+    );
+
+    return { ok, erro: ok ? '' : erro || 'Falha desconhecida no reenvio.' };
   }
 
   private async registrar(

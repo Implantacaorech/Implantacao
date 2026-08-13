@@ -123,6 +123,23 @@ export class PassosController {
     return new ApiEnvelope(await this.passos.historicoDeEmails(id));
   }
 
+  @Post('emails/:emailId/reenviar')
+  @Roles()
+  @Permissao('carteira', 'alteracao')
+  @ApiOperation({
+    summary:
+      'Reenvia um e-mail de passo que falhou (A13) — grava uma nova linha no histórico com o resultado',
+  })
+  async reenviarEmail(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('emailId', ParseIntPipe) emailId: number,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return new ApiEnvelope(
+      await this.passos.reenviarEmail(id, emailId, user.nome),
+    );
+  }
+
   @Post('passos/:numero/conferir')
   @Roles()
   @Permissao('carteira', 'alteracao')

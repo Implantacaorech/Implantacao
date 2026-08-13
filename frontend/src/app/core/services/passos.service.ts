@@ -115,6 +115,20 @@ export class PassosService {
     return res.data;
   }
 
+  /** Reenvia um e-mail de passo que falhou (A13). Devolve o resultado do envio. */
+  async reenviarEmail(
+    projetoId: number,
+    emailId: number,
+  ): Promise<{ ok: boolean; erro: string }> {
+    const res = await firstValueFrom(
+      this.http.post<ApiEnvelope<{ ok: boolean; erro: string }>>(
+        `${this.base(projetoId)}/emails/${emailId}/reenviar`,
+        {},
+      ),
+    );
+    return res.data;
+  }
+
   // --- Destinatários por passo (Sistema → Ferramentas, só ADM) ---
 
   async destinatarios(): Promise<DestinatariosPassoResposta> {
