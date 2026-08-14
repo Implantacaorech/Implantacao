@@ -28,6 +28,8 @@ describe('ProcessamentoProtocolosService', () => {
     atualizarStatus: jest.fn(),
     atualizar: jest.fn(),
     listar: jest.fn(),
+    // Linha de histórico do aviso de áudio incompleto (cobertura-audio.ts).
+    salvarHistorico: jest.fn(),
   };
   const ia = { analisar: jest.fn(), resumirCompleto: jest.fn() };
   const transcricao = {

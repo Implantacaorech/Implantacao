@@ -18,6 +18,7 @@ import { EXTS, STATUS_EM_PROCESSAMENTO } from './protocolos.constants';
 import { StatusProtocolo } from '../database/entities/protocolo.entity';
 import { montarVocabulario } from './vocabulario';
 import { aplicarNomes, lerMapa } from './locutores';
+import { avisoAudioIncompleto } from './cobertura-audio';
 import { formatarParaPrompt, menusMencionados } from './menus-mencionados';
 import { codigosValidosDoCatalogo } from './validar-menus';
 import { MenusSigerService } from '../matriz-detalhada/menus-siger.service';
@@ -607,6 +608,9 @@ export class ProcessamentoProtocolosService implements OnApplicationBootstrap {
     }
 
     let texto = (p.transcricao || '').trim();
+    // Duração da mídia para o aviso de áudio incompleto: no reprocessamento vem do banco;
+    // na transcrição nova, do que o transcritor mediu (atribuída mais abaixo).
+    let duracaoSeg = p.duracaoSeg || 0;
     if (!texto && !existsSync(p.videoCaminho || '')) {
       await this.protocolos.atualizarStatus(
         id,
@@ -635,6 +639,7 @@ export class ProcessamentoProtocolosService implements OnApplicationBootstrap {
           duracaoSeg: t.duracaoSeg,
         });
         texto = t.transcricao.trim();
+        duracaoSeg = t.duracaoSeg || 0;
         if (!texto) {
           throw new Error('Transcrição vazia (vídeo sem fala reconhecível?).');
         }
@@ -670,7 +675,24 @@ export class ProcessamentoProtocolosService implements OnApplicationBootstrap {
         menus,
         codigosValidos,
       );
+      // Gravação com microfone morto no meio (caso do protocolo 76): a análise sai fiel ao
+      // pouco que havia, e sem este aviso o protocolo magro passa com cara de normal — o
+      // revisor precisa saber que o resto da mídia está sem fala ANTES de aprovar (e de
+      // decidir se dá para regravar). Mesmo formato/lugar dos avisos da validação A15.
+      const avisoAudio = avisoAudioIncompleto(texto, duracaoSeg);
+      if (avisoAudio) {
+        campos.pendencias = [campos.pendencias, avisoAudio]
+          .filter((s) => (s || '').trim())
+          .join('\n');
+      }
       await this.protocolos.atualizar(id, { ...campos, textoIa: bruto });
+      if (avisoAudio) {
+        await this.protocolos.salvarHistorico(
+          id,
+          'Áudio possivelmente incompleto (fala termina muito antes do fim da mídia) — ver pendências.',
+          autor,
+        );
+      }
       await this.protocolos.atualizar(id, {
         resumoCompleto: await this.resumoCompleto(
           textoIa,
