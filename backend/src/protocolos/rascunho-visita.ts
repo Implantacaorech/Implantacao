@@ -20,6 +20,12 @@ export interface RascunhoVisita {
   protocoloId: number;
   cliente: string;
   clienteCodigo: string;
+  /** Nome fantasia do cliente — vem do SICLA (o protocolo não guarda). Para exibir
+   * "código - fantasia" (ex.: "16897 - BRASOJA"). */
+  clienteFantasia?: string;
+  /** Contato sugerido (responsável do cliente no SICLA) — pré-preenche o "Contato do
+   * atendimento" quando a gravação não tem participantes nomeados. */
+  contatoSugerido?: string;
   tituloProtocolo: string;
   /** Nomes dos participantes (do mapa de locutores). Vazio quando a gravação não separou
    * vozes ou ninguém foi renomeado. */

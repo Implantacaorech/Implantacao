@@ -5,6 +5,7 @@ import { ProtocoloService } from '../../core/services/protocolo.service';
 /** Stub do service para o painel embutido não tentar falar HTTP no teste. */
 const serviceFake: Partial<ProtocoloService> = {
   clientesComProtocolo: () => Promise.resolve([]),
+  credencialPortal: () => Promise.resolve({ tem: false, login: '' }),
 };
 
 function montar() {
@@ -52,5 +53,20 @@ describe('ProtocoloComponent', () => {
     expect(
       fixture.nativeElement.querySelector('app-preencher-protocolo'),
     ).toBeTruthy();
+  });
+
+  it('ao criar a visita, fecha o painel e recarrega o iframe para a lista do Portal', () => {
+    const fixture = montar();
+    fixture.componentInstance.mostrarPreencher.set(true);
+    fixture.detectChanges();
+
+    fixture.componentInstance.onProtocoloCriado();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.mostrarPreencher()).toBe(false);
+    const iframe = fixture.nativeElement.querySelector(
+      'iframe.proto-frame',
+    ) as HTMLIFrameElement;
+    expect(iframe.src).toContain('/protocolo/lista');
   });
 });

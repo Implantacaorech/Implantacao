@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, ElementRef, signal, viewChild } from '@angular/core';
 import { PreencherProtocoloComponent } from './preencher-protocolo.component';
 
 /** Tela Execução → Protocolo. Moldura do Portal Rech dentro do Painel: o site permite ser
@@ -19,6 +19,23 @@ export class ProtocoloComponent {
    * DomSanitizer sem necessidade. */
   readonly urlPortal = 'https://portalrech.com.br/login';
 
+  /** Lista de visitas do Portal — para onde a moldura vai após criar um rascunho, para o
+   * novo registro pendente aparecer. */
+  private readonly urlPortalLista = 'https://portalrech.com.br/protocolo/lista';
+
+  /** Referência ao iframe do Portal, para recarregá-lo após criar a visita. */
+  private readonly portalFrame =
+    viewChild<ElementRef<HTMLIFrameElement>>('portalFrame');
+
   /** Visibilidade do painel "Preencher protocolo". */
   readonly mostrarPreencher = signal(false);
+
+  /** Chamado quando o painel cria a visita (rascunho pendente): fecha o painel e atualiza a
+   * página do Portal para o novo registro aparecer. Definir `src` direto no elemento nativo
+   * não passa pelo sanitizer do Angular (não é binding), então não precisa do DomSanitizer. */
+  onProtocoloCriado(): void {
+    this.mostrarPreencher.set(false);
+    const frame = this.portalFrame()?.nativeElement;
+    if (frame) frame.src = this.urlPortalLista;
+  }
 }

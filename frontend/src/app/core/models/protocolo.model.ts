@@ -186,6 +186,10 @@ export interface RascunhoVisita {
   protocoloId: number;
   cliente: string;
   clienteCodigo: string;
+  /** Nome fantasia (do SICLA) — para exibir "código - fantasia". */
+  clienteFantasia?: string;
+  /** Contato sugerido (responsável do cliente no SICLA). */
+  contatoSugerido?: string;
   tituloProtocolo: string;
   participantes: string[];
   dataInicioSugerida: string | null;
@@ -198,6 +202,39 @@ export interface RascunhoVisita {
     menu: string;
     descricaoAtividade: string;
   };
+}
+
+/** Se o consultor já salvou a credencial do Portal Rech (só o login volta, nunca a senha). */
+export interface StatusCredencialPortal {
+  tem: boolean;
+  login: string;
+}
+
+/** Campos do atendimento enviados para criar a visita (rascunho) no Portal. O código do
+ * cliente NÃO vai aqui — o backend o lê do próprio protocolo. */
+export interface EnviarVisitaPortalPayload {
+  /** Código do cliente (SICLA) para localizar a empresa no Portal — vazio usa o do protocolo. */
+  clienteCodigo?: string;
+  dataInicioVisita: string;
+  dataFimVisita: string;
+  dataInicioDeslocamento: string;
+  dataFimDeslocamento: string;
+  custoPedagio?: number;
+  custoEstadia?: number;
+  custoAlimentacao?: number;
+  custoEstacionamento?: number;
+  kmInicial?: number;
+  kmFinal?: number;
+  descricaoAtividade: string;
+  /** Nome do módulo (casa com o módulo no Portal). */
+  modulo?: string;
+  /** Nome do contato do atendimento (casa com um contato da empresa no Portal). */
+  contatoNome?: string;
+}
+
+/** Resultado do envio: o id da visita criada como rascunho no Portal. */
+export interface ResultadoEnvioPortal {
+  visitaId: number;
 }
 
 export interface StatusProcessamento {

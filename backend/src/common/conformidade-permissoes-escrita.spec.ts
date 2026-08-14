@@ -41,6 +41,22 @@ const ESCRITA_CONSULTA_PERMITIDA: {
       'POST de CONSULTA (pergunta ao RAG) — não persiste estado do cliente; o menu ' +
       'dicionário é só-ADM por padrão. É um POST por carregar corpo, não uma escrita.',
   },
+  {
+    arquivo: 'protocolos/protocolos.controller.ts',
+    rota: 'portal/credencial',
+    motivo:
+      'Salvar/remover a PRÓPRIA credencial do Portal Rech é configuração pessoal, não escrita ' +
+      'nos dados de protocolos. Quem abre o painel "Preencher protocolo" (protocolos consulta) ' +
+      'precisa cadastrar seu login do Portal — exigir alteração trancava a função (403, 2026-08-13).',
+  },
+  {
+    arquivo: 'protocolos/protocolos.controller.ts',
+    rota: ':id/enviar-portal',
+    motivo:
+      'Não grava nada nos NOSSOS protocolos: cria um rascunho de visita no Portal Rech (sistema ' +
+      'externo), autenticado com a credencial do próprio consultor sobre uma transcrição dele. ' +
+      'Exigir alteração de protocolos trancava a função para quem só tem consulta (403, 2026-08-13).',
+  },
 ];
 
 function controllers(): string[] {

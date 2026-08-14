@@ -14,10 +14,14 @@
 </div>
 
 @if (mostrarPreencher()) {
-  <app-preencher-protocolo (fechar)="mostrarPreencher.set(false)" />
+  <app-preencher-protocolo
+    (fechar)="mostrarPreencher.set(false)"
+    (criada)="onProtocoloCriado()"
+  />
 }
 
 <iframe
+  #portalFrame
   class="proto-frame"
   src="https://portalrech.com.br/login"
   title="Portal Rech — Protocolo"

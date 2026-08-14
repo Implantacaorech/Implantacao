@@ -15,6 +15,8 @@ import { ProtocoloIaService } from './protocolo-ia.service';
 import { ProcessamentoProtocolosService } from './processamento-protocolos.service';
 import { GravacaoProtocolosService } from './gravacao-protocolos.service';
 import { RoboProtocolosService } from './robo-protocolos.service';
+import { PortalCredencialService } from './portal-credencial.service';
+import { PortalRechService } from './portal-rech.service';
 import { ProtocolosController } from './protocolos.controller';
 import { ProtocolosMidiaController } from './protocolos-midia.controller';
 
@@ -49,6 +51,8 @@ import { ProtocolosMidiaController } from './protocolos-midia.controller';
     ProcessamentoProtocolosService,
     GravacaoProtocolosService,
     RoboProtocolosService,
+    PortalCredencialService,
+    PortalRechService,
   ],
   exports: [
     ProtocolosService,

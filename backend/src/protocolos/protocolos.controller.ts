@@ -46,6 +46,10 @@ import { GravacaoProtocolosService } from './gravacao-protocolos.service';
 import { TranscricaoService } from '../transcricao/transcricao.service';
 import { SalvarEdicaoProtocoloDto } from './dto/salvar-edicao-protocolo.dto';
 import { ListarProtocolosDto } from './dto/listar-protocolos.dto';
+import { SalvarCredencialPortalDto } from './dto/salvar-credencial-portal.dto';
+import { EnviarVisitaPortalDto } from './dto/enviar-visita-portal.dto';
+import { PortalCredencialService } from './portal-credencial.service';
+import { PortalRechService } from './portal-rech.service';
 import {
   FinalizarGravacaoDto,
   IniciarGravacaoDto,
@@ -76,6 +80,8 @@ export class ProtocolosController {
     private readonly gravacao: GravacaoProtocolosService,
     private readonly transcricao: TranscricaoService,
     private readonly jwt: JwtService,
+    private readonly portalCred: PortalCredencialService,
+    private readonly portalRech: PortalRechService,
   ) {}
 
   @Get()
@@ -194,6 +200,44 @@ export class ProtocolosController {
       temPapel(user, 'ADM') ? undefined : user.nome,
     );
     return new ApiEnvelope({ itens });
+  }
+
+  // -------------------------------------------- credencial do Portal Rech (por usuário)
+  // Declaradas ANTES de @Get(':id') — 'portal/credencial' cairia no ParseIntPipe do :id.
+
+  @Get('portal/credencial')
+  @ApiOperation({
+    summary: 'Se o usuário já salvou a credencial do Portal Rech (só o login volta)',
+  })
+  credencialPortal(@CurrentUser() user: AuthUser) {
+    return new ApiEnvelope({
+      tem: this.portalCred.tem(user.sub),
+      login: this.portalCred.loginDe(user.sub),
+    });
+  }
+
+  @Post('portal/credencial')
+  @HttpCode(HttpStatus.OK)
+  // Herda o nível de CONSULTA da classe de propósito (sem o override de 'alteracao'): salvar
+  // a PRÓPRIA credencial do Portal é uma configuração pessoal, não uma escrita nos dados de
+  // protocolos (M2). Quem consegue abrir o painel "Preencher protocolo" (protocolos consulta)
+  // precisa poder cadastrar seu login do Portal — senão o botão fica inutilizável para ele.
+  @ApiOperation({ summary: 'Salva a credencial do Portal Rech do próprio usuário' })
+  salvarCredencialPortal(
+    @Body() dto: SalvarCredencialPortalDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    this.portalCred.salvar(user.sub, dto.login, dto.senha ?? '');
+    return new ApiEnvelope({ tem: true, login: this.portalCred.loginDe(user.sub) });
+  }
+
+  @Delete('portal/credencial')
+  @HttpCode(HttpStatus.OK)
+  // Consulta (herda da classe): mexer na PRÓPRIA credencial é pessoal, não escrita de dados.
+  @ApiOperation({ summary: 'Remove a credencial do Portal Rech do próprio usuário' })
+  removerCredencialPortal(@CurrentUser() user: AuthUser) {
+    this.portalCred.remover(user.sub);
+    return new ApiEnvelope({ tem: false });
   }
 
   @Post('gravacao')
@@ -496,7 +540,83 @@ export class ProtocolosController {
   ) {
     const p = await this.protocolos.buscarPorId(id);
     exigirAcessoProtocolo(p, user);
-    return new ApiEnvelope(montarRascunhoVisita(p));
+    const rascunho = montarRascunhoVisita(p);
+    // Protocolo sem código do cliente (gravação que não capturou o SICLA): busca no SICLA
+    // pelo NOME e preenche código + fantasia + contato. É o que faz "16897 - BRASOJA"
+    // aparecer e a empresa ser achada por código no Portal. Best-effort: SICLA fora do ar
+    // não trava o rascunho — o campo de código continua editável na tela.
+    if (!rascunho.clienteCodigo && p.cliente.trim()) {
+      try {
+        const cs = (await this.gravacao.buscarClientes(p.cliente)).clientes ?? [];
+        const match =
+          cs.find((c) => c.cliente === p.cliente) ??
+          (cs.length === 1 ? cs[0] : undefined);
+        if (match) {
+          rascunho.clienteCodigo = match.codigo;
+          rascunho.clienteFantasia = match.fantasia;
+          rascunho.contatoSugerido = match.contatoNome;
+        }
+      } catch {
+        // SICLA indisponível — segue sem código; a tela permite digitar.
+      }
+    }
+    return new ApiEnvelope(rascunho);
+  }
+
+  @Post(':id/enviar-portal')
+  @HttpCode(HttpStatus.OK)
+  // Consulta (herda da classe): não grava nada nos NOSSOS protocolos — cria um rascunho no
+  // Portal Rech, num sistema externo, autenticado com a credencial do PRÓPRIO consultor sobre
+  // uma transcrição dele. Exigir 'alteracao' de protocolos aqui trancava a função para quem só
+  // tem consulta (foi o 403 que o usuário viu ao salvar/enviar em 2026-08-13).
+  @ApiOperation({
+    summary:
+      'Cria a visita (rascunho) no Portal Rech com a credencial do usuário e devolve o id para conferir lá',
+  })
+  async enviarPortal(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: EnviarVisitaPortalDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    const cred = this.portalCred.obter(user.sub);
+    if (!cred) {
+      // 422 (não 401): o usuário está logado no Painel; falta é a credencial DO PORTAL. A tela
+      // usa `precisaCredencial` para abrir a captura obrigatória antes de tentar de novo.
+      throw new UnprocessableEntityException({
+        message: 'Salve sua credencial do Portal Rech antes de preencher.',
+        precisaCredencial: true,
+      });
+    }
+    const p = await this.protocolos.buscarPorId(id);
+    exigirAcessoProtocolo(p, user);
+    // Código do cliente: o do PROTOCOLO é o padrão; a tela pode sobrepor (campo editável) para
+    // resgatar protocolo sem código ou com código a corrigir. Só identifica a EMPRESA no Portal
+    // para a busca — a visita nasce no login do próprio consultor de qualquer forma.
+    const clienteCodigo =
+      (dto.clienteCodigo ?? '').trim() || p.clienteCodigo;
+    const { visitaId } = await this.portalRech.criarRascunhoVisita(cred, {
+      clienteCodigo,
+      clienteNome: p.cliente,
+      dataInicioVisita: dto.dataInicioVisita,
+      dataFimVisita: dto.dataFimVisita,
+      dataInicioDeslocamento: dto.dataInicioDeslocamento,
+      dataFimDeslocamento: dto.dataFimDeslocamento,
+      custoPedagio: dto.custoPedagio ?? 0,
+      custoEstadia: dto.custoEstadia ?? 0,
+      custoAlimentacao: dto.custoAlimentacao ?? 0,
+      custoEstacionamento: dto.custoEstacionamento ?? 0,
+      kmInicial: dto.kmInicial ?? null,
+      kmFinal: dto.kmFinal ?? null,
+      descricaoAtividade: dto.descricaoAtividade,
+      modulo: dto.modulo ?? p.modulo,
+      contatoNome: dto.contatoNome ?? '',
+    });
+    await this.protocolos.salvarHistorico(
+      id,
+      `Visita criada no Portal Rech (rascunho #${visitaId}) para conferência.`,
+      user.nome,
+    );
+    return new ApiEnvelope({ visitaId });
   }
 
   @Get(':id/video-ticket')
