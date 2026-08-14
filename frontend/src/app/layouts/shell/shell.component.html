@@ -38,6 +38,7 @@
   <symbol id="ic-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></symbol>
   <symbol id="ic-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
   <symbol id="ic-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></symbol>
+  <symbol id="ic-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
 </defs></svg>
 
 <div class="app" [class.side-open]="sideAberta()" id="app">
@@ -128,6 +129,12 @@
         <a class="side-link" routerLink="/protocolo" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-link"/></svg>Protocolo
           <span class="side-tip">Portal Rech</span>
+        </a>
+      }
+      @if (podeRechEdu()) {
+        <a class="side-link" routerLink="/rechedu" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-book"/></svg>RechEdu
+          <span class="side-tip">Portal de educação</span>
         </a>
       }
       @if (temGestao()) {

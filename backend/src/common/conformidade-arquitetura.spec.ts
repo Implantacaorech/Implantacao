@@ -271,6 +271,14 @@ describe('Conformidade com o Guia Mestre de Arquitetura', () => {
       );
     });
 
+    it('a CSP libera o RechEdu em frame-src (tela Execução → RechEdu)', () => {
+      // Mesma mecânica da tela Protocolo: www.rechedu.com.br roda emoldurado num iframe e,
+      // sem a origem no frame-src, o navegador bloqueia a moldura em silêncio.
+      expect(main).toMatch(
+        /'frame-src':\s*\[[^\]]*https:\/\/www\.rechedu\.com\.br/,
+      );
+    });
+
     it('a validação global recusa campo não declarado no DTO', () => {
       // whitelist sem forbidNonWhitelisted descarta em silêncio; juntos, recusam com 400.
       expect(main).toMatch(/whitelist:\s*true/);

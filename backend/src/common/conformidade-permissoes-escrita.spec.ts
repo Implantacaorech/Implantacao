@@ -50,6 +50,14 @@ const ESCRITA_CONSULTA_PERMITIDA: {
       'precisa cadastrar seu login do Portal — exigir alteração trancava a função (403, 2026-08-13).',
   },
   {
+    arquivo: 'rechedu/rechedu.controller.ts',
+    rota: 'credencial',
+    motivo:
+      'Salvar/remover a PRÓPRIA credencial do RechEdu é configuração pessoal, não escrita em ' +
+      'dados do sistema — mesma decisão da credencial do Portal Rech acima. Quem enxerga a ' +
+      'tela RechEdu (consulta) precisa poder cadastrar o próprio login do portal de educação.',
+  },
+  {
     arquivo: 'protocolos/protocolos.controller.ts',
     rota: ':id/enviar-portal',
     motivo:

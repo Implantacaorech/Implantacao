@@ -223,6 +223,15 @@ export const routes: Routes = [
           import('./features/protocolo/protocolo.component').then((m) => m.ProtocoloComponent),
       },
       {
+        // Execução → RechEdu: moldura do portal de educação (www.rechedu.com.br) —
+        // irmã da tela Protocolo logo acima, com credencial própria por consultor.
+        path: 'rechedu',
+        canActivate: [permissaoGuard('rechedu')],
+        data: { titulo: 'RechEdu' },
+        loadComponent: () =>
+          import('./features/rechedu/rechedu.component').then((m) => m.RecheduComponent),
+      },
+      {
         path: 'protocolos/:id',
         canActivate: [permissaoGuard('protocolos')],
         data: { titulo: 'Transcrição Áudio/Vídeo — revisão' },

@@ -60,6 +60,9 @@ export const MENUS: DefinicaoMenu[] = [
   // Protocolo: moldura do Portal Rech (portalrech.com.br) dentro do Painel. A chave é o
   // singular porque 'protocolos' (plural) já pertence à Transcrição Áudio/Vídeo.
   { chave: 'protocolo', rotulo: 'Protocolo', grupo: 'Execução' },
+  // RechEdu: moldura do portal de educação (www.rechedu.com.br), irmã da tela Protocolo —
+  // mesmo desenho (iframe + credencial própria do consultor guardada no backend).
+  { chave: 'rechedu', rotulo: 'RechEdu', grupo: 'Execução' },
   { chave: 'coordenacao', rotulo: 'Coordenação', grupo: 'Gestão' },
   {
     chave: 'centro_operacional',
@@ -205,6 +208,16 @@ export const PADRAO_PERMISSOES: Record<
   // Protocolo (Portal Rech): mesma liberação da Transcrição Áudio/Vídeo — todo o time
   // interno; o Comercial fica de fora por padrão (ajustável em Gestão → Permissões).
   protocolo: {
+    ADM: 'alteracao',
+    Coordenador: 'alteracao',
+    Administrativo: 'alteracao',
+    GCI: 'alteracao',
+    Consultor: 'alteracao',
+    Levantador: 'alteracao',
+  },
+  // RechEdu: mesma liberação da tela Protocolo — todo o time interno; o Comercial fica de
+  // fora por padrão (ajustável em Gestão → Permissões).
+  rechedu: {
     ADM: 'alteracao',
     Coordenador: 'alteracao',
     Administrativo: 'alteracao',

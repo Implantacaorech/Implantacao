@@ -90,11 +90,19 @@ async function bootstrap(): Promise<void> {
       // conteúdo bloqueado (achado de 2026-08-13; o bloqueio era do NOSSO CSP, o site não
       // envia X-Frame-Options/CSP). Libera só este domínio, e só como MOLDURA embutida —
       // quem pode nos emoldurar continua sendo `frame-ancestors`, intocado.
+      //
+      // `https://www.rechedu.com.br`: mesma situação na tela Execução → RechEdu (o site
+      // também não envia X-Frame-Options/CSP — verificado em 2026-08-14).
       contentSecurityPolicy: {
         useDefaults: true,
         directives: {
           'upgrade-insecure-requests': null,
-          'frame-src': ["'self'", 'blob:', 'https://portalrech.com.br'],
+          'frame-src': [
+            "'self'",
+            'blob:',
+            'https://portalrech.com.br',
+            'https://www.rechedu.com.br',
+          ],
         },
       },
     }),
