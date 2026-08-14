@@ -42,9 +42,13 @@ export interface MetaExecucaoIa {
 
 /** Teto de espera do serviço local. Generoso porque um modelo grande em CPU lendo 13 mil
  * tokens de transcrição leva minutos — e apertar isso transformaria "lento" em "quebrado".
- * Existir, porém, é obrigatório: sem teto, um servidor engasgado penduraria o pipeline de
- * transcrição para sempre, que é exatamente o defeito corrigido em `aguardarTranscricao`. */
-const TIMEOUT_LOCAL_MS = 10 * 60 * 1000;
+ * Dimensionado pelo MEDIDO na máquina de produção (i7-1255U, CPU puro, qwen2.5:7b,
+ * 2026-08-14): ~22 tokens/s lendo o prompt e ~4 tokens/s gerando — um protocolo completo de
+ * um vídeo real (10 mil tokens de transcrição + ~2 mil de saída) passa de 15 minutos, então
+ * 10 não bastavam. Existir, porém, é obrigatório: sem teto, um servidor engasgado penduraria
+ * o pipeline de transcrição para sempre, que é exatamente o defeito corrigido em
+ * `aguardarTranscricao`. */
+const TIMEOUT_LOCAL_MS = 30 * 60 * 1000;
 
 /** Teto de espera dos provedores REMOTOS (OpenRouter, Anthropic). Menor que o do local porque
  * uma API na nuvem que não respondeu em 2 min está fora do ar, não "pensando devagar em CPU".
@@ -54,6 +58,32 @@ const TIMEOUT_REMOTO_MS = 2 * 60 * 1000;
 /** Teto curto para consultas auxiliares (catálogo de modelos): é conveniência de tela, não
  * pode segurar a UI se a rede engasgar. */
 const TIMEOUT_CATALOGO_MS = 10 * 1000;
+
+/** O `fetch` do Node desiste se os CABEÇALHOS da resposta não chegarem em 5 min (padrão do
+ * undici embutido) — e um servidor local sem streaming (Ollama) só manda os cabeçalhos
+ * DEPOIS de gerar o corpo inteiro, então qualquer geração acima de 5 min morria como
+ * "fetch failed" ANTES de `TIMEOUT_LOCAL_MS` valer (protocolo 76, 2026-08-14: duas
+ * tentativas mortas aos 5min00s exatos, com o Ollama de pé). O Node não exporta o Agent
+ * embutido; a classe é alcançada pelo dispatcher global (symbol público que o undici
+ * registra em `globalThis`). Tetos zerados de propósito: o teto REAL de cada chamada é o
+ * `AbortSignal.timeout` que `despachar` sempre passa — dois relógios para a mesma espera só
+ * confundem. Se o symbol sumir numa versão futura do Node, devolve `undefined` e a chamada
+ * segue no fetch puro — volta o teto de 5 min, não nasce um erro novo. */
+// O symbol só nasce no PRIMEIRO fetch do processo — sem isto, a primeira chamada de IA após
+// o boot ainda sairia sem dispatcher (com o teto de 5 min). Um data-URL resolve na hora,
+// sem tocar a rede.
+void fetch('data:,').catch(() => undefined);
+let dispatcherIa: object | undefined;
+function dispatcherSemTetoDeCabecalhos(): object | undefined {
+  if (dispatcherIa) return dispatcherIa;
+  const global = globalThis as Record<symbol, unknown>;
+  const atual = global[Symbol.for('undici.globalDispatcher.1')];
+  const Agent = atual?.constructor as
+    (new (opts: object) => object) | undefined;
+  if (typeof Agent !== 'function') return undefined;
+  dispatcherIa = new Agent({ headersTimeout: 0, bodyTimeout: 0 });
+  return dispatcherIa;
+}
 
 /** Temperatura FIXA e baixa para todas as finalidades: são tarefas FACTUAIS (estruturar a
  * transcrição, responder com base no documento, extrair as respostas do questionário), onde
@@ -625,7 +655,10 @@ export class IaService implements OnModuleInit {
     config: ConfigFinalidade,
     baseUrl: string,
     opcoes: OpcoesCompletar,
-    timeoutMs?: number,
+    // Obrigatório: com o teto de cabeçalhos do undici zerado (ver
+    // `dispatcherSemTetoDeCabecalhos`), este AbortSignal é o ÚNICO relógio da chamada —
+    // sem ele, um servidor engasgado penduraria o pipeline para sempre (defeito A14).
+    timeoutMs: number,
   ): Promise<{ texto: string; uso: UsoIa }> {
     const onde = config.provider === 'local' ? 'O serviço local' : 'OpenRouter';
     if (!config.modelo) {
@@ -648,6 +681,7 @@ export class IaService implements OnModuleInit {
     const requestId = requestIdAtual();
     if (requestId) headers[CABECALHO_REQUEST_ID] = requestId;
 
+    const dispatcher = dispatcherSemTetoDeCabecalhos();
     let resp: Response;
     try {
       resp = await fetch(`${baseUrl}/chat/completions`, {
@@ -663,9 +697,21 @@ export class IaService implements OnModuleInit {
             ...opcoes.messages,
           ],
         }),
-        ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
+        signal: AbortSignal.timeout(timeoutMs),
+        ...(dispatcher ? { dispatcher } : {}),
       });
     } catch (e) {
+      // O estouro do teto é um caso SEU, com mensagem própria: dizer "não respondeu" para
+      // uma geração que estava andando, só que devagar, mandaria o operador caçar um
+      // servidor fora do ar que está de pé. Checa pelo `name` (não `instanceof`): o
+      // DOMException do abort nasce no realm do Node e não passa num `instanceof Error`
+      // de outro realm (é o caso do Jest).
+      if ((e as { name?: unknown } | null)?.name === 'TimeoutError') {
+        throw new Error(
+          `${onde} não terminou em ${Math.round(timeoutMs / 60000)} min (${baseUrl}) — ` +
+            'modelo lento demais para o tamanho desta transcrição, ou servidor engasgado.',
+        );
+      }
       // Servidor local desligado/inalcançável é o caso comum, e o erro cru do fetch
       // ("fetch failed") não diz nada a quem vai consertar.
       throw new Error(

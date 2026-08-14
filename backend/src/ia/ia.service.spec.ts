@@ -316,6 +316,76 @@ describe('IaService', () => {
       ).rejects.toThrow('http://192.168.1.50:11434/v1');
       fetchMock.mockRestore();
     });
+
+    /** Regressão do defeito de 2026-08-14 (protocolo 76): o teto de CABEÇALHOS padrão do
+     * fetch do Node (undici, 5 min) matava a geração local como "fetch failed" — Ollama sem
+     * streaming só manda os cabeçalhos DEPOIS de gerar o corpo inteiro, e em CPU isso passa
+     * de 5 min. O conserto entrega à chamada um dispatcher com esse teto zerado; sem o
+     * dispatcher, o defeito volta silencioso (o teto de 30 min nunca chega a valer). */
+    it('entrega um dispatcher sem teto de cabeçalhos ao fetch', async () => {
+      configurarLocal();
+      /** O symbol do undici vive no global do realm do NODE, que a sandbox do Jest não
+       * enxerga — semeia um Agent de mentira onde o serviço procura. Em produção a
+       * inicialização é real (fetch de data-URL no load do módulo, conferido à mão). */
+      class AgenteFalso {
+        constructor(
+          public readonly opts: {
+            headersTimeout?: number;
+            bodyTimeout?: number;
+          } = {},
+        ) {}
+      }
+      const simbolo = Symbol.for('undici.globalDispatcher.1');
+      const g = globalThis as Record<symbol, unknown>;
+      const anterior = g[simbolo];
+      g[simbolo] = new AgenteFalso();
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ choices: [{ message: { content: 'ok' } }] }),
+      } as Response);
+
+      await service.completar('protocolos', {
+        system: '',
+        messages: [],
+        maxTokens: 10,
+      });
+
+      const init = fetchMock.mock.calls[0][1] as RequestInit & {
+        dispatcher?: AgenteFalso;
+      };
+      expect(init.dispatcher).toBeInstanceOf(AgenteFalso);
+      // Tetos zerados: o único relógio da chamada é o AbortSignal do `despachar`.
+      expect(init.dispatcher?.opts).toMatchObject({
+        headersTimeout: 0,
+        bodyTimeout: 0,
+      });
+      g[simbolo] = anterior;
+      fetchMock.mockRestore();
+    });
+
+    /** Estourar o teto NÃO é "servidor fora do ar": a geração estava andando, só que devagar.
+     * Dizer "não respondeu" mandaria o operador caçar um servidor de pé. */
+    it('estouro do teto vira mensagem de lentidão, com o teto em minutos', async () => {
+      configurarLocal();
+      const fetchMock = jest
+        .spyOn(global, 'fetch')
+        .mockRejectedValue(
+          new DOMException(
+            'The operation was aborted due to timeout',
+            'TimeoutError',
+          ),
+        );
+
+      await expect(
+        service.completar('protocolos', {
+          system: '',
+          messages: [],
+          maxTokens: 10,
+        }),
+      ).rejects.toThrow('não terminou em 30 min');
+      fetchMock.mockRestore();
+    });
   });
 
   it('completar lança quando a finalidade não está configurada', async () => {
