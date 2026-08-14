@@ -16,6 +16,8 @@ import { LevantamentoModule } from './levantamento/levantamento.module';
 import { IaModule } from './ia/ia.module';
 import { ProtocolosModule } from './protocolos/protocolos.module';
 import { RecheduModule } from './rechedu/rechedu.module';
+import { AgendaModule } from './agenda/agenda.module';
+import { RnsModule } from './rns/rns.module';
 import { EmailModule } from './email/email.module';
 import { FluxoModule } from './fluxo/fluxo.module';
 import { DisponibilidadeModule } from './disponibilidade/disponibilidade.module';
@@ -93,6 +95,8 @@ import { AutomacaoModule } from './automacao/automacao.module';
     AutomacaoModule,
     ProtocolosModule,
     RecheduModule,
+    AgendaModule,
+    RnsModule,
     EmailModule,
     FluxoModule,
     DisponibilidadeModule,

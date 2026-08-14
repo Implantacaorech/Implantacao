@@ -26,6 +26,8 @@ const ROTAS_ESTATICAS = [
   '/protocolos',
   '/protocolos/gravar',
   '/dicionario',
+  '/agenda',
+  '/rns',
   '/matriz',
   '/matriz-detalhada',
   '/matriz-funcoes',

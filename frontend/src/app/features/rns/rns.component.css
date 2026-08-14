@@ -1,0 +1,27 @@
+/* Tela Execução → RNS — consulta de assuntos nas RNS do SICLA. */
+
+.rns-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.rns-head .dica { margin-top: 4px; }
+.rns-stat { font-size: .9rem; color: var(--muted); white-space: nowrap; padding-top: 8px; }
+.rns-stat strong { color: var(--ink); font-size: 1.05rem; }
+
+.rns-aviso { margin: 0 0 8px; }
+
+/* Pedido/Item alinham como número — é a coluna que o consultor copia. */
+.rns-num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; font-weight: 600; }
+
+/* O assunto é a coluna que estica; o resto fica no conteúdo. */
+.rns-assunto { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.rns-linha { cursor: pointer; }
+.rns-linha.on td { background: var(--surface-2); }
+
+/* Detalhe expandido: grupos lado a lado, cada um com pares rótulo→valor. */
+.rns-det > td { background: var(--surface); padding: 14px 18px; }
+.rns-det-vg { margin-bottom: 12px; white-space: pre-wrap; color: var(--ink); }
+.rns-det-grps { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px 22px; }
+.rns-det-tit { font-weight: 700; font-size: .8rem; text-transform: uppercase; letter-spacing: .03em;
+  color: var(--muted); margin-bottom: 6px; }
+.rns-det-cps { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: .86rem; }
+.rns-det-cps > span { color: var(--muted); white-space: nowrap; }
+.rns-det-cps > b { font-weight: 500; overflow-wrap: anywhere; }

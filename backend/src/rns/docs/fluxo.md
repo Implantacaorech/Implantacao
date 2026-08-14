@@ -1,0 +1,34 @@
+# Fluxo — módulo `rns`
+
+```
+Tela Execução → RNS (Angular)
+  │  abre / muda "Criadas de/até"
+  ▼
+GET /rns?ini&fim ──► JwtAuthGuard ──► PermissaoGuard (menu `rns`, nível consulta)
+  │
+  ▼
+RnsController.consultar(dto)
+  │
+  ▼
+RnsService.periodo()        sanea a janela (default mês-1 → mês+1; teto 366 dias)
+RnsService.consultar()
+  │  configurado? ─── não ──► { itens: [], erro: "Conexão com o SICLA não configurada…" }
+  │  sim
+  ▼
+DisponibilidadeService.executarSql(SQL_CONSULTA_RNS, {data_ini, data_fim}, LIMITE)
+  │  ok? ─── não ──► { itens: [], erro: mensagem amigável (ORA-…, timeout…) }
+  │  sim
+  ▼
+normalizarLinhaRns() por linha ──► { itens, total, limite, truncado, erro: null }
+  │
+  ▼
+Tela: busca por assunto + filtros de status/tipo EM MEMÓRIA (sem nova ida ao SICLA),
+linha clicada expande o detalhe com todos os campos.
+```
+
+Pontos de atenção:
+
+- O `callTimeout` da conexão (A14, no `DisponibilidadeService`) limita o tempo de uma
+  consulta pesada — o handler HTTP não fica pendurado.
+- `maxRows = LIMITE_CONSULTA_RNS` corta o resultado no Oracle; o serviço sinaliza o corte
+  via `truncado` para a tela avisar em vez de esconder.

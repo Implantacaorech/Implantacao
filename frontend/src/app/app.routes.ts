@@ -232,6 +232,25 @@ export const routes: Routes = [
           import('./features/rechedu/rechedu.component').then((m) => m.RecheduComponent),
       },
       {
+        // Execução → Agenda: calendário de compromissos dos técnicos (origem SICLA),
+        // aberto já filtrado no usuário logado e em visão semanal por padrão.
+        path: 'agenda',
+        canActivate: [permissaoGuard('agenda')],
+        data: { titulo: 'Agenda' },
+        loadComponent: () =>
+          import('./features/agenda-calendario/agenda-calendario.component').then(
+            (m) => m.AgendaCalendarioComponent,
+          ),
+      },
+      {
+        // Execução → RNS: consulta de assuntos nas RNS do SICLA (LISTA_ITEMPED) — o
+        // consultor pesquisa um assunto e vê as RNS relacionadas (Pedido + Item).
+        path: 'rns',
+        canActivate: [permissaoGuard('rns')],
+        data: { titulo: 'RNS' },
+        loadComponent: () => import('./features/rns/rns.component').then((m) => m.RnsComponent),
+      },
+      {
         path: 'protocolos/:id',
         canActivate: [permissaoGuard('protocolos')],
         data: { titulo: 'Transcrição Áudio/Vídeo — revisão' },

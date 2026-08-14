@@ -13,6 +13,8 @@
  * prospect — que aqui é feita via o JOIN com `PEDIDOIMP`/`RNS`: uma linha só carrega
  * FANTASIA/GRUPO_ECONOMICO quando está de fato ligada a uma RNS de implantação. */
 
+import { textoAparado } from '../common/utils/texto.util';
+
 // ── Página "Alocação de Agendas - Calendário" ─────────────────────────────────────────
 
 /** Compromissos de técnicos (Manutenção OU Implantação — `TIPO_SUPORTE` é filtro, não
@@ -98,6 +100,41 @@ export interface DiaAlocacao {
   /** 0 = domingo … 6 = sábado. */
   diaSemana: number;
   compromissos: LinhaAlocacao[];
+}
+
+/** Normaliza uma linha CRUA de `POWERBI_IMP_LISTACOMPROMISSOS_2` (chaves em qualquer caixa,
+ * valores de qualquer tipo) para `LinhaAlocacao`. Compartilhada entre o BI "Alocação de
+ * Agendas" e a tela Execução → Agenda de propósito: as duas leem a MESMA origem e qualquer
+ * divergência de leitura entre elas seria defeito, não escolha. */
+export function normalizarLinhaAlocacao(
+  bruta: Record<string, unknown>,
+): LinhaAlocacao {
+  const l: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(bruta)) l[(k || '').toUpperCase()] = v;
+  const numero = (v: unknown): number => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+  return {
+    codigo: numero(l.CODIGO),
+    dia: textoAparado(l.DIA).slice(0, 10),
+    horaIni: textoAparado(l.HORA_INI),
+    horaFim: textoAparado(l.HORA_FIM),
+    status: STATUS_ALOCACAO[numero(l.STATUS)] ?? textoAparado(l.STATUS),
+    assunto: textoAparado(l.ASSUNTO),
+    minutos: numero(l.MINUTOS),
+    rns:
+      l.PEDIDOIMP === null || l.PEDIDOIMP === undefined
+        ? null
+        : numero(l.PEDIDOIMP),
+    especie: numero(l.ESPECIE),
+    especieDes: textoAparado(l.ESPECIEDES),
+    tecnico: textoAparado(l.TECNICO),
+    tipoSuporte: textoAparado(l.TIPO_SUPORTE),
+    fantasia: textoAparado(l.FANTASIA),
+    rnsDescricao: textoAparado(l.RNS_DESCRICAO),
+    grupoEconomico: textoAparado(l.GRUPO_ECONOMICO),
+  };
 }
 
 export interface ResumoStatusAlocacao {

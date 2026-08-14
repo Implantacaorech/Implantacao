@@ -137,6 +137,18 @@
           <span class="side-tip">Portal de educação</span>
         </a>
       }
+      @if (podeAgenda()) {
+        <a class="side-link" routerLink="/agenda" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-calendar"/></svg>Agenda
+          <span class="side-tip">Agendas e compromissos</span>
+        </a>
+      }
+      @if (podeRns()) {
+        <a class="side-link" routerLink="/rns" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>RNS
+          <span class="side-tip">Consulta de assuntos (SICLA)</span>
+        </a>
+      }
       @if (temGestao()) {
         <div class="side-grp">Gestão</div>
         @if (podeCoordenacao()) {

@@ -13,8 +13,8 @@ import {
   ResumoStatusAlocacao,
   SQL_CALENDARIO_ALOCACAO,
   SQL_HORAS_APLICADAS,
-  STATUS_ALOCACAO,
   TotaisHorasAplicadas,
+  normalizarLinhaAlocacao,
 } from './bi-agenda-alocacao.constants';
 
 export interface QueryCalendarioAlocacao {
@@ -136,32 +136,6 @@ export class BiAgendaAlocacaoService {
     return { mes: m, ini, fim: proximo };
   }
 
-  private normalizarAlocacao(bruta: Record<string, unknown>): LinhaAlocacao {
-    const l: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(bruta)) l[(k || '').toUpperCase()] = v;
-
-    return {
-      codigo: this.numero(l.CODIGO),
-      dia: this.texto(l.DIA).slice(0, 10),
-      horaIni: this.texto(l.HORA_INI),
-      horaFim: this.texto(l.HORA_FIM),
-      status: STATUS_ALOCACAO[this.numero(l.STATUS)] ?? this.texto(l.STATUS),
-      assunto: this.texto(l.ASSUNTO),
-      minutos: this.numero(l.MINUTOS),
-      rns:
-        l.PEDIDOIMP === null || l.PEDIDOIMP === undefined
-          ? null
-          : this.numero(l.PEDIDOIMP),
-      especie: this.numero(l.ESPECIE),
-      especieDes: this.texto(l.ESPECIEDES),
-      tecnico: this.texto(l.TECNICO),
-      tipoSuporte: this.texto(l.TIPO_SUPORTE),
-      fantasia: this.texto(l.FANTASIA),
-      rnsDescricao: this.texto(l.RNS_DESCRICAO),
-      grupoEconomico: this.texto(l.GRUPO_ECONOMICO),
-    };
-  }
-
   private vazioCalendario(
     mes: string,
     erro: string | null,
@@ -202,7 +176,7 @@ export class BiAgendaAlocacaoService {
     );
     if (!r.ok) return this.vazioCalendario(mes, r.mensagem);
 
-    const todas = r.linhas.map((l) => this.normalizarAlocacao(l));
+    const todas = r.linhas.map((l) => normalizarLinhaAlocacao(l));
 
     const preds = [
       {

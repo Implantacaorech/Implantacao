@@ -63,6 +63,12 @@ export const MENUS: DefinicaoMenu[] = [
   // RechEdu: moldura do portal de educação (www.rechedu.com.br), irmã da tela Protocolo —
   // mesmo desenho (iframe + credencial própria do consultor guardada no backend).
   { chave: 'rechedu', rotulo: 'RechEdu', grupo: 'Execução' },
+  // Agenda: calendário de compromissos dos técnicos (mesma origem SICLA do BI "Alocação de
+  // Agendas"), aberto já filtrado no usuário logado, em visão semanal por padrão.
+  { chave: 'agenda', rotulo: 'Agenda', grupo: 'Execução' },
+  // RNS: consulta de assuntos nas RNS do SICLA (LISTA_ITEMPED) — o consultor pesquisa um
+  // assunto e vê as RNS relacionadas (Pedido + Item), no molde do Dicionário Inteligente.
+  { chave: 'rns', rotulo: 'RNS', grupo: 'Execução' },
   { chave: 'coordenacao', rotulo: 'Coordenação', grupo: 'Gestão' },
   {
     chave: 'centro_operacional',
@@ -224,6 +230,27 @@ export const PADRAO_PERMISSOES: Record<
     GCI: 'alteracao',
     Consultor: 'alteracao',
     Levantador: 'alteracao',
+  },
+  // Agenda: consulta de compromissos — todo o time interno, como a Transcrição e o
+  // Protocolo; o Comercial fica de fora por padrão (ajustável em Gestão → Permissões).
+  // `consulta` basta: a tela só lê o SICLA, não há ação de escrita.
+  agenda: {
+    ADM: 'alteracao',
+    Coordenador: 'consulta',
+    Administrativo: 'consulta',
+    GCI: 'consulta',
+    Consultor: 'consulta',
+    Levantador: 'consulta',
+  },
+  // RNS: consulta de assuntos — só leitura do SICLA, mesma liberação da Agenda; o
+  // Comercial fica de fora por padrão (ajustável em Gestão → Permissões).
+  rns: {
+    ADM: 'alteracao',
+    Coordenador: 'consulta',
+    Administrativo: 'consulta',
+    GCI: 'consulta',
+    Consultor: 'consulta',
+    Levantador: 'consulta',
   },
   coordenacao: { ADM: 'alteracao', Coordenador: 'alteracao', GCI: 'alteracao' },
   centro_operacional: {
