@@ -206,3 +206,70 @@
   white-space: nowrap;
 }
 
+/* ── VISITAS DO PORTAL: filtros locais e visão do gráfico ───────────────────────────── */
+.vp-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  padding: 10px 14px 0;
+}
+.vp-filtros label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--navy);
+}
+.vp-filtros select,
+.vp-filtros input {
+  font-size: 0.82rem;
+  font-weight: 400;
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-family: inherit;
+  background: #fff;
+  color: inherit;
+  min-width: 120px;
+  max-width: 220px;
+}
+.vp-grafico-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 14px 0;
+}
+.vp-grafico-tit {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--navy);
+}
+/* Seletor Geral | Mês atual | Semana atual — segmentado, compacto. */
+.vp-visao {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.vp-visao button {
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border: none;
+  background: #fff;
+  color: var(--navy);
+  cursor: pointer;
+}
+.vp-visao button + button {
+  border-left: 1px solid var(--line);
+}
+.vp-visao button.on {
+  background: var(--brand);
+  color: #fff;
+}
+

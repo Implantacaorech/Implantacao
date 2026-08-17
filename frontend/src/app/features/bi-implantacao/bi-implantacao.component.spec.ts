@@ -469,5 +469,99 @@ describe('BiImplantacaoComponent', () => {
       expect(comp.aprovadoSim('Não')).toBe(false);
       expect(comp.aprovadoSim('')).toBe(false);
     });
+
+    // ── Filtros locais, gráfico por contato e visões ─────────────────────────────────
+    async function comFiltraveis() {
+      const linhas = [linha({ codigo: 1, cliente: 10, fantasia: 'ALFA' })];
+      const visitas = [
+        visita({ cliente: 10, contato: 'Ana', consultor: 'Silva', protocolo: 1, aprovado: 'Sim' }),
+        visita({ cliente: 10, contato: 'Ana', consultor: 'Rocha', protocolo: 2, aprovado: 'Não' }),
+        visita({ cliente: 10, contato: 'Beto', consultor: 'Silva', protocolo: 3, aprovado: 'Sim' }),
+      ];
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado({ linhas })),
+        visitasPortal: () => Promise.resolve(resultadoVisitas({ linhas: visitas })),
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+      return comp;
+    }
+
+    it('filtros do painel recortam tabela e contadores; as opções cascateiam', async () => {
+      const comp = await comFiltraveis();
+
+      comp.vpContato.set('Ana');
+      // ordem de exibição: consultor Rocha < Silva dentro do mesmo contato
+      expect(comp.visitasFiltradas().map((v) => v.protocolo)).toEqual([2, 1]);
+      expect(comp.visitasAprovadas()).toBe(1);
+      // a PRÓPRIA dimensão não se restringe (senão não daria para trocar a escolha)…
+      expect(comp.opcoesVisitasContato()).toEqual(['Ana', 'Beto']);
+      // …mas as demais encolhem para o recorte
+      expect(comp.opcoesVisitasConsultor()).toEqual(['Rocha', 'Silva']);
+
+      comp.vpConsultor.set('Rocha');
+      expect(comp.visitasFiltradas().map((v) => v.protocolo)).toEqual([2]);
+      expect(comp.opcoesVisitasContato()).toEqual(['Ana']);
+
+      comp.limparFiltrosVisitas();
+      expect(comp.visitasFiltradas()).toHaveLength(3);
+    });
+
+    it('filtro por nº de protocolo (contém)', async () => {
+      const comp = await comFiltraveis();
+      comp.vpProtocolo.set('3');
+      expect(comp.visitasFiltradas().map((v) => v.protocolo)).toEqual([3]);
+    });
+
+    it('gráfico soma protocolos por contato (aprovados × não), mais volumosos primeiro', async () => {
+      const linhas = [linha({ codigo: 1, cliente: 10, fantasia: 'ALFA' })];
+      const visitas = [
+        visita({ cliente: 10, contato: 'Ana', aprovado: 'Sim' }),
+        visita({ cliente: 10, contato: 'Ana', aprovado: 'Não' }),
+        visita({ cliente: 10, contato: 'Ana', aprovado: 'Sim' }),
+        visita({ cliente: 10, contato: 'Beto', aprovado: 'Não' }),
+      ];
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado({ linhas })),
+        visitasPortal: () => Promise.resolve(resultadoVisitas({ linhas: visitas })),
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const cfg = comp.graficoVisitasContato();
+      expect(cfg?.data.labels).toEqual(['Ana', 'Beto']);
+      expect(cfg?.data.datasets[0].data).toEqual([2, 0]); // aprovados
+      expect(cfg?.data.datasets[1].data).toEqual([1, 1]); // não aprovados
+    });
+
+    it('visão mensal/semanal recorta o gráfico pela data de hoje (o filtro do painel também vale nele)', async () => {
+      const linhas = [linha({ codigo: 1, cliente: 10, fantasia: 'ALFA' })];
+      const visitas = [
+        visita({ cliente: 10, contato: 'Ana', data: '2026-08-17' }), // semana E mês
+        visita({ cliente: 10, contato: 'Ana', data: '2026-08-03' }), // só o mês
+        visita({ cliente: 10, contato: 'Ana', data: '2026-07-10' }), // fora dos dois
+      ];
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado({ linhas })),
+        visitasPortal: () => Promise.resolve(resultadoVisitas({ linhas: visitas })),
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+      vi.spyOn(comp as unknown as { hojeLocal: () => string }, 'hojeLocal')
+        .mockReturnValue('2026-08-17');
+
+      const total = (): number => {
+        const cfg = comp.graficoVisitasContato();
+        return (cfg?.data.datasets ?? []).reduce(
+          (a, d) => a + (d.data as number[]).reduce((x, y) => x + y, 0),
+          0,
+        );
+      };
+      expect(total()).toBe(3); // geral
+      comp.visaoVisitas.set('mensal');
+      expect(total()).toBe(2);
+      comp.visaoVisitas.set('semanal'); // semana de segunda 17/08 a domingo 23/08
+      expect(total()).toBe(1);
+    });
   });
 });

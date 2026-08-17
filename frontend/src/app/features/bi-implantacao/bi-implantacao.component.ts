@@ -15,6 +15,11 @@ import {
 import { opcoesVisiveis } from './bi-filtros.util';
 import { mensagemErroBi } from './bi-erro.util';
 import { BiFiltrosStore } from './bi-filtros.store';
+import {
+  TOP_CONTATOS_GRAFICO,
+  VisaoVisitas,
+  dentroDaVisao,
+} from './visitas-portal.util';
 
 /** Cores por status — as MESMAS do relatório original (medida DAX do calendário do
  * `BI_clientes.pbix`), para quem vem do Power BI reconhecer a tela de imediato. */
@@ -178,12 +183,161 @@ export class BiImplantacaoComponent {
       );
   });
 
+  // ── Filtros locais do painel de visitas ─────────────────────────────────────────────
+  // Agem SOBRE as visitas já recortadas por cliente/período (`visitasVisiveis`): tabela,
+  // contadores do título, gráfico e exportação enxergam o mesmo conjunto filtrado.
+  readonly vpEmpresa = signal('');
+  readonly vpContato = signal('');
+  readonly vpConsultor = signal('');
+  readonly vpTurno = signal('');
+  readonly vpAprovado = signal('');
+  readonly vpProtocolo = signal('');
+  /** Recorte temporal do GRÁFICO de contatos: geral | mês atual | semana atual. */
+  readonly visaoVisitas = signal<VisaoVisitas>('geral');
+
+  /** Aplica os filtros locais, opcionalmente ignorando UMA dimensão — é o que faz as
+   * opções de cada select cascatearem (mesma regra `emCascata` dos filtros da tela: sem
+   * ignorar a própria dimensão, marcar um contato encolheria a lista para só ele). */
+  private filtrarVisitas(ignorar = ''): LinhaVisitaPortalBi[] {
+    const protocolo = this.vpProtocolo().trim();
+    const casa = (dim: string, sel: string, valor: string) =>
+      ignorar === dim || !sel || sel === valor;
+    return this.visitasVisiveis().filter(
+      (v) =>
+        casa('empresa', this.vpEmpresa(), v.empresa) &&
+        casa('contato', this.vpContato(), v.contato) &&
+        casa('consultor', this.vpConsultor(), v.consultor) &&
+        casa('turno', this.vpTurno(), v.turno) &&
+        casa('aprovado', this.vpAprovado(), v.aprovado) &&
+        (ignorar === 'protocolo' ||
+          !protocolo ||
+          String(v.protocolo ?? '').includes(protocolo)),
+    );
+  }
+
+  readonly visitasFiltradas = computed(() => this.filtrarVisitas());
+
+  private opcoesVisitasDe(
+    dim: string,
+    valor: (v: LinhaVisitaPortalBi) => string,
+  ): string[] {
+    const s = new Set<string>();
+    for (const v of this.filtrarVisitas(dim)) {
+      const x = valor(v);
+      if (x) s.add(x);
+    }
+    return [...s].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }
+
+  readonly opcoesVisitasEmpresa = computed(() => this.opcoesVisitasDe('empresa', (v) => v.empresa));
+  readonly opcoesVisitasContato = computed(() => this.opcoesVisitasDe('contato', (v) => v.contato));
+  readonly opcoesVisitasConsultor = computed(() => this.opcoesVisitasDe('consultor', (v) => v.consultor));
+  readonly opcoesVisitasTurno = computed(() => this.opcoesVisitasDe('turno', (v) => v.turno));
+  readonly opcoesVisitasAprovado = computed(() => this.opcoesVisitasDe('aprovado', (v) => v.aprovado));
+
   readonly visitasAprovadas = computed(
-    () => this.visitasVisiveis().filter((v) => this.aprovadoSim(v.aprovado)).length,
+    () => this.visitasFiltradas().filter((v) => this.aprovadoSim(v.aprovado)).length,
   );
+
+  limparFiltrosVisitas(): void {
+    this.vpEmpresa.set('');
+    this.vpContato.set('');
+    this.vpConsultor.set('');
+    this.vpTurno.set('');
+    this.vpAprovado.set('');
+    this.vpProtocolo.set('');
+  }
 
   aprovadoSim(aprovado: string): boolean {
     return (aprovado || '').trim().toLowerCase() === 'sim';
+  }
+
+  /** AAAA-MM-DD LOCAL (`toISOString` é UTC — à noite, no fuso de Brasília, viraria
+   * "amanhã"). Método, e não constante, para o teste poder fixar a data. */
+  protected hojeLocal(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  /** Protocolos por CONTATO (aprovados × não aprovados) na visão escolhida, os mais
+   * volumosos primeiro — alimenta o gráfico e o aviso de contatos fora do top. */
+  private readonly contatosDoGrafico = computed(() => {
+    const visao = this.visaoVisitas();
+    const hoje = this.hojeLocal();
+    const mapa = new Map<string, { aprovados: number; naoAprovados: number }>();
+    for (const v of this.visitasFiltradas()) {
+      if (!dentroDaVisao(v.data, visao, hoje)) continue;
+      const k = v.contato || '(sem contato)';
+      const c = mapa.get(k) ?? { aprovados: 0, naoAprovados: 0 };
+      if (this.aprovadoSim(v.aprovado)) c.aprovados += 1;
+      else c.naoAprovados += 1;
+      mapa.set(k, c);
+    }
+    return [...mapa.entries()]
+      .map(([contato, c]) => ({ contato, ...c, total: c.aprovados + c.naoAprovados }))
+      .sort((a, b) => b.total - a.total || a.contato.localeCompare(b.contato, 'pt-BR'));
+  });
+
+  readonly topContatosGrafico = TOP_CONTATOS_GRAFICO;
+  readonly contatosOcultosGrafico = computed(() =>
+    Math.max(0, this.contatosDoGrafico().length - TOP_CONTATOS_GRAFICO),
+  );
+
+  /** Barras empilhadas por contato: verde = aprovados, vermelho = não aprovados. */
+  readonly graficoVisitasContato = computed<ChartConfiguration | null>(() => {
+    const top = this.contatosDoGrafico().slice(0, TOP_CONTATOS_GRAFICO);
+    if (top.length === 0) return null;
+    return {
+      type: 'bar',
+      data: {
+        labels: top.map((c) => c.contato),
+        datasets: [
+          { label: 'Aprovados', data: top.map((c) => c.aprovados), backgroundColor: '#10b981' },
+          { label: 'Não aprovados', data: top.map((c) => c.naoAprovados), backgroundColor: '#ef4444' },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        scales: {
+          x: { stacked: true },
+          y: {
+            stacked: true,
+            beginAtZero: true,
+            ticks: { precision: 0 },
+            title: { display: true, text: 'protocolos' },
+          },
+        },
+      },
+    };
+  });
+
+  /** Exporta as visitas FILTRADAS para Excel (CSV com BOM — mesma receita do Resumo, que o
+   * Excel pt-BR abre direto com acentos corretos). */
+  exportarVisitasCsv(): void {
+    const cab = [
+      'Empresa', 'Código cliente', 'Contato', 'Consultor', 'Protocolo',
+      'Data', 'Horário', 'Turno', 'Aprovado',
+    ];
+    const escapar = (v: string | number): string => {
+      const s = String(v ?? '');
+      return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const linhas = this.visitasFiltradas().map((v) =>
+      [
+        v.empresa, v.cliente ?? '', v.contato, v.consultor, v.protocolo ?? '',
+        v.data, v.horario, v.turno, v.aprovado,
+      ].map(escapar).join(';'),
+    );
+    // BOM na frente: faz o Excel abrir como UTF-8 — sem ele, acento sai trocado.
+    const csv = `\uFEFF${cab.join(';')}\n${linhas.join('\n')}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `visitas-portal_${this.dataIni}_a_${this.dataFim}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   /** Painel "CONTROLE DE HORAS" — porte fiel da medida DAX `Grafico_Horas_HTML` do

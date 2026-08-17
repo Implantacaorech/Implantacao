@@ -200,13 +200,84 @@
   <div class="bi-card">
     <div class="bi-card-tit">
       Visitas do Portal Rech — aprovação
-      ({{ visitasVisiveis().length }} · {{ visitasAprovadas() }} aprovada(s))
+      ({{ visitasFiltradas().length }} · {{ visitasAprovadas() }} aprovada(s))
     </div>
     @if (erroVisitas()) {
       <p class="dica">{{ erroVisitas() }}</p>
     } @else if (carregandoVisitas()) {
       <p class="dica">Carregando…</p>
     } @else {
+      <!-- Filtros locais do painel (em cascata) + exportação: valem para os contadores do
+           título, para o gráfico e para a tabela — tudo sobre as visitas já recortadas por
+           cliente/período. -->
+      <div class="vp-filtros">
+        <label>Empresa
+          <select [ngModel]="vpEmpresa()" (ngModelChange)="vpEmpresa.set($event)">
+            <option value="">(todas)</option>
+            @for (o of opcoesVisitasEmpresa(); track o) { <option [value]="o">{{ o }}</option> }
+          </select>
+        </label>
+        <label>Contato
+          <select [ngModel]="vpContato()" (ngModelChange)="vpContato.set($event)">
+            <option value="">(todos)</option>
+            @for (o of opcoesVisitasContato(); track o) { <option [value]="o">{{ o }}</option> }
+          </select>
+        </label>
+        <label>Consultor
+          <select [ngModel]="vpConsultor()" (ngModelChange)="vpConsultor.set($event)">
+            <option value="">(todos)</option>
+            @for (o of opcoesVisitasConsultor(); track o) { <option [value]="o">{{ o }}</option> }
+          </select>
+        </label>
+        <label>Turno
+          <select [ngModel]="vpTurno()" (ngModelChange)="vpTurno.set($event)">
+            <option value="">(todos)</option>
+            @for (o of opcoesVisitasTurno(); track o) { <option [value]="o">{{ o }}</option> }
+          </select>
+        </label>
+        <label>Aprovado
+          <select [ngModel]="vpAprovado()" (ngModelChange)="vpAprovado.set($event)">
+            <option value="">(todos)</option>
+            @for (o of opcoesVisitasAprovado(); track o) { <option [value]="o">{{ o }}</option> }
+          </select>
+        </label>
+        <label>Protocolo
+          <input type="search" placeholder="nº…"
+                 [ngModel]="vpProtocolo()" (ngModelChange)="vpProtocolo.set($event)" />
+        </label>
+        <button type="button" class="bi-btn" (click)="limparFiltrosVisitas()">Limpar</button>
+        <button type="button" class="bi-btn" (click)="exportarVisitasCsv()"
+                [disabled]="visitasFiltradas().length === 0">
+          Exportar Excel
+        </button>
+      </div>
+
+      <!-- Protocolos por contato: aprovados × não aprovados, com visão geral/mês/semana. -->
+      <div class="vp-grafico-cab">
+        <span class="vp-grafico-tit">Protocolos por contato — aprovados × não aprovados</span>
+        <div class="vp-visao" role="group" aria-label="Visão do gráfico">
+          <button type="button" [class.on]="visaoVisitas() === 'geral'"
+                  (click)="visaoVisitas.set('geral')">Geral</button>
+          <button type="button" [class.on]="visaoVisitas() === 'mensal'"
+                  (click)="visaoVisitas.set('mensal')">Mês atual</button>
+          <button type="button" [class.on]="visaoVisitas() === 'semanal'"
+                  (click)="visaoVisitas.set('semanal')">Semana atual</button>
+        </div>
+      </div>
+      <div class="bi-canvas">
+        @if (graficoVisitasContato(); as cfg) {
+          <canvas [appChart]="cfg"></canvas>
+        } @else {
+          <p class="dica">— sem protocolos na visão escolhida —</p>
+        }
+      </div>
+      @if (contatosOcultosGrafico() > 0) {
+        <p class="dica">
+          Gráfico mostra os {{ topContatosGrafico }} contatos com mais protocolos —
+          +{{ contatosOcultosGrafico() }} fora dele (use os filtros acima para focar).
+        </p>
+      }
+
       @if (visitasResultado()?.truncado) {
         <p class="dica">
           O período tem mais visitas que o teto de {{ visitasResultado()?.limite }} linhas —
@@ -228,7 +299,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (v of visitasVisiveis(); track $index) {
+            @for (v of visitasFiltradas(); track $index) {
               <tr>
                 <td>{{ v.empresa || '—' }}</td>
                 <td>{{ v.contato || '—' }}</td>
@@ -245,7 +316,7 @@
             } @empty {
               <tr>
                 <td colspan="8" class="dica">
-                  — nenhuma visita do Portal para os clientes filtrados no período —
+                  — nenhuma visita do Portal para os clientes/filtros atuais no período —
                 </td>
               </tr>
             }

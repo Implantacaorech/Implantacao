@@ -210,6 +210,13 @@ aprovação), na tela Resumo, logo abaixo do CONTROLE DE HORAS.
   ignorado. O painel usa teto próprio (`LIMITE_VISITAS_PORTAL` = 20 mil) e o `ORDER BY` do
   SQL virou `INICIO DESC` (política de corte: excedente descarta as mais antigas); a ordem
   de exibição (empresa → contato → consultor → data) é aplicada pela tela, em memória.
+- **Filtros locais, gráfico e exportação** (2026-08-17): acima da tabela há filtros em
+  cascata por Empresa/Contato/Consultor/Turno/Aprovado + busca por nº de protocolo — valem
+  para os contadores do título, para o gráfico e para o "Exportar Excel" (CSV com BOM, o
+  mesmo formato do Resumo). O gráfico de barras empilhadas mostra **protocolos por contato**
+  (verde = aprovados, vermelho = não aprovados; top 15 contatos por volume), com visão
+  **Geral / Mês atual / Semana atual** (semana de segunda a domingo — recorte puro em
+  `visitas-portal.util.ts`, testável com data fixa).
 
 ### Filtros padrão das telas
 
