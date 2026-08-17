@@ -185,13 +185,17 @@ aprovação), na tela Resumo, logo abaixo do CONTROLE DE HORAS.
   `bi_visitas_portal`): semeada no boot com o default embutido
   (`SQL_VISITAS_PORTAL_PADRAO` em `bi-implantacao.constants.ts`) e editável pelo
   Administrador sem deploy — mesmo desenho da `rns_lista_itemped` da tela Execução → RNS.
-  As tabelas (`visita`, `visita_aprovacao`, `empresa`, `contato`, `usuario`) são as do banco
-  do **Portal Rech**; se a conexão configurada em Disponibilidade não as enxergar, o ajuste
-  (prefixo de schema/owner) é feito na própria consulta, pela tela.
-- A consulta original do usuário usava `DATE()`/`TIME()` (MySQL) — viraram
-  `TO_CHAR(..., 'YYYY-MM-DD')`/`TO_CHAR(..., 'HH24:MI:SS')` no default (a conexão é Oracle),
-  e ela ganhou `:data_ini`/`:data_fim` opcionais (o De/Até da tela) e a coluna
-  `e.CODIGO_CLIENTE` (código do cliente no SICLA).
+- A consulta original do usuário lia as tabelas do banco do **Portal Rech**
+  (`visita`/`visita_aprovacao`/`empresa`/`contato`/`usuario`) com `DATE()`/`TIME()` (MySQL).
+  **Essas tabelas não existem no Oracle da conexão** (ORA-00942 na primeira execução em
+  produção; conferido no catálogo `ALL_OBJECTS` em 2026-08-17 — o banco do Portal é outro,
+  fora do alcance). A consulta vigente lê o equivalente do SICLA, **`SICLA.LISTA_VISITAS`**,
+  preservando aliases/CASE/ORDER BY: EMPRESA ← `CLIFANTASIA`, CODIGO_CLIENTE ← `CLIENTE`,
+  CONTATO ← `CONTATO`, CONSULTOR ← `TECNOME`, PROTOCOLO ← `PROTOCOLO` (nº do atendimento, o
+  mesmo da tela Extrato; alternativas: `PROTOCOLOVIS`/`CODVISITA`), DATA/HORÁRIO/TURNO ←
+  `INICIO` e **APROVADO ← `RECEBIDA`** (1 = Sim — melhor equivalente encontrado no SICLA
+  para a `visita_aprovacao.APROVADO` do Portal). Ganhou também `:data_ini`/`:data_fim`
+  opcionais (o De/Até da tela).
 - **O painel respeita SEMPRE o cliente filtrado**: só entram visitas dos clientes visíveis na
   tabela de implantações (todos os filtros da tela + busca local valem nele). O casamento é
   por `CODIGO_CLIENTE`, com fallback pelo nome fantasia (`visitasVisiveis` no componente).

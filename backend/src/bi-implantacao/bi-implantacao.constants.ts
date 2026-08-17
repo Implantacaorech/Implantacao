@@ -400,88 +400,79 @@ export const SLUG_CONSULTA_VISITAS_PORTAL = 'bi_visitas_portal';
 export const NOME_CONSULTA_VISITAS_PORTAL =
   'BI — Visitas do Portal Rech (aprovação)';
 
-/** Painel do Resumo de Implantação: protocolos de visita do Portal Rech (empresa, contato,
- * consultor, data/horário, turno e aprovação), lidos das tabelas do PORTAL
- * (`visita`/`visita_aprovacao`/`empresa`/`contato`/`usuario`).
+/** Painel do Resumo de Implantação: visitas com status de aprovação (empresa, contato,
+ * consultor, protocolo, data/horário e turno).
  *
- * O SELECT abaixo é o DEFAULT embutido — a versão vigente é a do Consultas BD
- * (`SLUG_CONSULTA_VISITAS_PORTAL`) — e é a consulta do usuário (2026-08-17), com três
- * adaptações mecânicas:
+ * A consulta ORIGINAL do usuário (2026-08-17) lia as tabelas do banco do PORTAL RECH
+ * (`visita`/`visita_aprovacao`/`empresa`/`contato`/`usuario`) — essas tabelas NÃO existem
+ * no Oracle da conexão (ORA-00942; conferido no catálogo `ALL_OBJECTS` em 2026-08-17: o
+ * banco do Portal é outro, fora do alcance desta conexão). O default abaixo lê o
+ * equivalente do SICLA, `SICLA.LISTA_VISITAS` (as visitas registradas/enviadas ao SICLA),
+ * preservando os aliases, o CASE de turno e o ORDER BY do original:
  *
- * 1. `DATE(...)`/`TIME(...)` (funções MySQL, inexistentes no Oracle da conexão) viraram
- *    `TO_CHAR(..., 'YYYY-MM-DD')`/`TO_CHAR(..., 'HH24:MI:SS')` — mesmo formato no fio,
- *    inclusive nas comparações do CASE de TURNO (texto 'HH24:MI:SS' compara na mesma ordem
- *    que a hora);
- * 2. ganhou o recorte de período opcional por `:data_ini`/`:data_fim` (fim INCLUSIVE),
- *    porque o painel vive na tela Resumo, cujo De/Até é o único filtro que vai ao banco —
- *    mesma decisão de `SQL_RESUMO_IMPLANTACAO`;
- * 3. ganhou a coluna `e.CODIGO_CLIENTE` — é o código do cliente no SICLA (contrato do
- *    Portal: `empresa.codigoCliente` = "Código no SICLA"), e é por ela que a tela faz o
- *    painel respeitar SEMPRE o cliente filtrado nos demais filtros do Resumo (pedido do
- *    usuário em 2026-08-17).
+ *   EMPRESA ← CLIFANTASIA · CODIGO_CLIENTE ← CLIENTE (código do cliente no SICLA — amarra
+ *   o painel ao cliente filtrado) · CONTATO ← CONTATO · CONSULTOR ← TECNOME ·
+ *   PROTOCOLO ← PROTOCOLO (nº do atendimento, o mesmo da tela Extrato) ·
+ *   DATA/HORARIO/TURNO ← INICIO · APROVADO ← RECEBIDA (1 = Sim).
  *
- * Os demais nomes/aliases das colunas e o ORDER BY são os da consulta original — os aliases
- * são o contrato com a tela. */
+ * O recorte de período (`:data_ini`/`:data_fim`, fim INCLUSIVE) segue o De/Até da tela —
+ * mesma decisão de `SQL_RESUMO_IMPLANTACAO`. A versão vigente é a do Consultas BD
+ * (`SLUG_CONSULTA_VISITAS_PORTAL`): o Administrador edita sem deploy — é lá que se troca
+ * PROTOCOLO por PROTOCOLOVIS/CODVISITA, se preferirem o nº do registro de visita. */
 export const SQL_VISITAS_PORTAL_PADRAO = `-- Consulta do painel "Visitas do Portal Rech" (BI Implantação Clientes SIGER → Resumo,
 -- abaixo do CONTROLE DE HORAS). Semeada pelo Painel; editável aqui.
--- AJUSTE SE PRECISO: as tabelas (visita, visita_aprovacao, empresa, contato, usuario) são as
--- do banco do PORTAL RECH — se a conexão configurada em Disponibilidade não as enxergar
--- direto, prefixe o schema/owner correto (ex.: PORTAL.VISITA) e salve aqui, sem deploy.
+-- As tabelas do banco do PORTAL (visita, visita_aprovacao, empresa, contato, usuario) NÃO
+-- existem no Oracle do SICLA (ORA-00942, verificado no catálogo em 2026-08-17) — esta
+-- versão lê o equivalente do SICLA, SICLA.LISTA_VISITAS (as visitas registradas/enviadas
+-- ao SICLA). De/para dos campos:
+--   EMPRESA    <- CLIFANTASIA          CONTATO   <- CONTATO
+--   CONSULTOR  <- TECNOME              PROTOCOLO <- PROTOCOLO (nº do atendimento, o mesmo
+--                                        da tela Extrato; para o nº do registro de visita,
+--                                        troque por PROTOCOLOVIS ou CODVISITA)
+--   APROVADO   <- RECEBIDA (1 = Sim)   DATA/HORARIO/TURNO <- INICIO
 -- :data_ini/:data_fim são supridos automaticamente pelo De/Até da tela (fim inclusive);
 -- removê-los desliga o recorte de período. Mantenha os ALIASES das colunas: são o contrato
 -- com a tela — CODIGO_CLIENTE em especial é o que amarra a visita ao cliente filtrado nos
 -- demais filtros do Resumo (é o código do cliente no SICLA).
 SELECT
-    e.NOME_FANTASIA AS EMPRESA,
-    e.CODIGO_CLIENTE AS CODIGO_CLIENTE,
-    c.NOME AS CONTATO,
-    u.SOBRENOME AS CONSULTOR,
-    va.ID_VISITA AS PROTOCOLO,
+    v.CLIFANTASIA AS EMPRESA,
+    v.CLIENTE AS CODIGO_CLIENTE,
+    v.CONTATO AS CONTATO,
+    v.TECNOME AS CONSULTOR,
+    v.PROTOCOLO AS PROTOCOLO,
 
-    TO_CHAR(v.DATA_INICIO_VISITA, 'YYYY-MM-DD') AS DATA,
+    TO_CHAR(v.INICIO, 'YYYY-MM-DD') AS DATA,
 
-    TO_CHAR(v.DATA_INICIO_VISITA, 'HH24:MI:SS') AS HORARIO,
+    TO_CHAR(v.INICIO, 'HH24:MI:SS') AS HORARIO,
 
     CASE
-        WHEN TO_CHAR(v.DATA_INICIO_VISITA, 'HH24:MI:SS') BETWEEN '07:00:00' AND '12:59:59'
+        WHEN TO_CHAR(v.INICIO, 'HH24:MI:SS') BETWEEN '07:00:00' AND '12:59:59'
             THEN 'MANHÃ'
 
-        WHEN TO_CHAR(v.DATA_INICIO_VISITA, 'HH24:MI:SS') BETWEEN '13:00:00' AND '19:00:00'
+        WHEN TO_CHAR(v.INICIO, 'HH24:MI:SS') BETWEEN '13:00:00' AND '19:00:00'
             THEN 'TARDE'
 
-        WHEN TO_CHAR(v.DATA_INICIO_VISITA, 'HH24:MI:SS') BETWEEN '19:01:00' AND '23:59:59'
+        WHEN TO_CHAR(v.INICIO, 'HH24:MI:SS') BETWEEN '19:01:00' AND '23:59:59'
             THEN 'NOITE'
 
         ELSE 'FORA DO TURNO'
     END AS TURNO,
 
     CASE
-        WHEN va.APROVADO = 1 THEN 'Sim'
+        WHEN v.RECEBIDA = 1 THEN 'Sim'
         ELSE 'Não'
     END AS APROVADO
 
-FROM visita_aprovacao va
+FROM SICLA.LISTA_VISITAS v
 
-INNER JOIN visita v
-    ON v.ID = va.ID_VISITA
-
-INNER JOIN empresa e
-    ON e.CODIGO_CLIENTE = v.ID_EMPRESA
-
-INNER JOIN contato c
-    ON c.ID = v.ID_CONTATO
-
-INNER JOIN usuario u
-    ON u.ID = v.ID_USUARIO
-
-WHERE (:data_ini IS NULL OR v.DATA_INICIO_VISITA >= TO_DATE(:data_ini, 'YYYY-MM-DD'))
-  AND (:data_fim IS NULL OR v.DATA_INICIO_VISITA <  TO_DATE(:data_fim, 'YYYY-MM-DD') + 1)
+WHERE (:data_ini IS NULL OR v.INICIO >= TO_DATE(:data_ini, 'YYYY-MM-DD'))
+  AND (:data_fim IS NULL OR v.INICIO <  TO_DATE(:data_fim, 'YYYY-MM-DD') + 1)
 
 ORDER BY
-    e.NOME_FANTASIA,
-    c.NOME,
-    u.SOBRENOME,
-    v.DATA_INICIO_VISITA`;
+    v.CLIFANTASIA,
+    v.CONTATO,
+    v.TECNOME,
+    v.INICIO`;
 
 /** Uma visita do Portal já normalizada — os campos seguem os ALIASES do SELECT. */
 export interface LinhaVisitaPortal {
