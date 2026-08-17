@@ -191,11 +191,12 @@ aprovação), na tela Resumo, logo abaixo do CONTROLE DE HORAS.
   produção; conferido no catálogo `ALL_OBJECTS` em 2026-08-17 — o banco do Portal é outro,
   fora do alcance). A consulta vigente lê o equivalente do SICLA, **`SICLA.LISTA_VISITAS`**,
   preservando aliases/CASE/ORDER BY: EMPRESA ← `CLIFANTASIA`, CODIGO_CLIENTE ← `CLIENTE`,
-  CONTATO ← `CONTATO`, CONSULTOR ← `TECNOME`, PROTOCOLO ← `PROTOCOLO` (nº do atendimento, o
-  mesmo da tela Extrato; alternativas: `PROTOCOLOVIS`/`CODVISITA`), DATA/HORÁRIO/TURNO ←
-  `INICIO` e **APROVADO ← `RECEBIDA`** (1 = Sim — melhor equivalente encontrado no SICLA
-  para a `visita_aprovacao.APROVADO` do Portal). Ganhou também `:data_ini`/`:data_fim`
-  opcionais (o De/Até da tela).
+  CONTATO ← `CONTATO`, CONSULTOR ← `TECNOME`, PROTOCOLO ← `PROTOCOLOVIS` (o nº do
+  **protocolo da visita**, que cresce junto com a data — a coluna `PROTOCOLO` da view é o
+  atendimento que ORIGINOU a visita e mostrava números "que não existem"; corrigido em
+  2026-08-17), DATA/HORÁRIO/TURNO ← `INICIO` e **APROVADO ← `RECEBIDA`** (1 = Sim — melhor
+  equivalente encontrado no SICLA para a `visita_aprovacao.APROVADO` do Portal). Ganhou
+  também `:data_ini`/`:data_fim` opcionais (o De/Até da tela).
 - **O painel respeita SEMPRE o cliente filtrado**: só entram visitas dos clientes visíveis na
   tabela de implantações (todos os filtros da tela + busca local valem nele). O casamento é
   por `CODIGO_CLIENTE`, com fallback pelo nome fantasia (`visitasVisiveis` no componente).

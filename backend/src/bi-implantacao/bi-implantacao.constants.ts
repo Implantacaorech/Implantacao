@@ -412,7 +412,9 @@ export const NOME_CONSULTA_VISITAS_PORTAL =
  *
  *   EMPRESA ← CLIFANTASIA · CODIGO_CLIENTE ← CLIENTE (código do cliente no SICLA — amarra
  *   o painel ao cliente filtrado) · CONTATO ← CONTATO · CONSULTOR ← TECNOME ·
- *   PROTOCOLO ← PROTOCOLO (nº do atendimento, o mesmo da tela Extrato) ·
+ *   PROTOCOLO ← PROTOCOLOVIS (o nº do PROTOCOLO DA VISITA — cresce junto com a data; a
+ *   coluna PROTOCOLO da view é o atendimento que ORIGINOU a visita e mostrava números que
+ *   "não existem" para quem consulta visitas, correção de 2026-08-17) ·
  *   DATA/HORARIO/TURNO ← INICIO · APROVADO ← RECEBIDA (1 = Sim).
  *
  * O recorte de período (`:data_ini`/`:data_fim`, fim INCLUSIVE) segue o De/Até da tela —
@@ -434,9 +436,10 @@ export const SQL_VISITAS_PORTAL_PADRAO = `-- Consulta do painel "Visitas do Port
 -- versão lê o equivalente do SICLA, SICLA.LISTA_VISITAS (as visitas registradas/enviadas
 -- ao SICLA). De/para dos campos:
 --   EMPRESA    <- CLIFANTASIA          CONTATO   <- CONTATO
---   CONSULTOR  <- TECNOME              PROTOCOLO <- PROTOCOLO (nº do atendimento, o mesmo
---                                        da tela Extrato; para o nº do registro de visita,
---                                        troque por PROTOCOLOVIS ou CODVISITA)
+--   CONSULTOR  <- TECNOME              PROTOCOLO <- PROTOCOLOVIS (nº do PROTOCOLO DA
+--                                        VISITA; a coluna PROTOCOLO da view é o
+--                                        atendimento que originou a visita, e CODVISITA é
+--                                        o código interno do registro)
 --   APROVADO   <- RECEBIDA (1 = Sim)   DATA/HORARIO/TURNO <- INICIO
 -- :data_ini/:data_fim são supridos automaticamente pelo De/Até da tela (fim inclusive);
 -- removê-los desliga o recorte de período. Mantenha os ALIASES das colunas: são o contrato
@@ -452,7 +455,7 @@ SELECT
     v.CLIENTE AS CODIGO_CLIENTE,
     v.CONTATO AS CONTATO,
     v.TECNOME AS CONSULTOR,
-    v.PROTOCOLO AS PROTOCOLO,
+    v.PROTOCOLOVIS AS PROTOCOLO,
 
     TO_CHAR(v.INICIO, 'YYYY-MM-DD') AS DATA,
 
