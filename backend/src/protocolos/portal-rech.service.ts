@@ -41,6 +41,25 @@ export interface VisitaPortalInput {
   contatoNome?: string;
 }
 
+/** Uma visita LISTADA do Portal, no recorte que o painel do BI consome. A listagem
+ * (`GET visita`) é ESCOPADA À CREDENCIAL: devolve as visitas do próprio usuário logado
+ * (sondado com dados reais em 2026-08-17 — 76 visitas, 1 `nomeUsuario`). */
+export interface VisitaPortalListada {
+  /** O `id` da visita no Portal — é o número de PROTOCOLO que o time usa (faixa 130.000+). */
+  id: number;
+  /** Código do cliente no SICLA (`codigoCliente` da empresa). */
+  codigoCliente: number | null;
+  nomeEmpresa: string;
+  nomeContato: string;
+  nomeUsuario: string;
+  /** Início da visita em "AAAA-MM-DD HH:MM:SS" no fuso do servidor (o Portal manda epoch
+   * em milissegundos). Vazio quando a visita não tem data. */
+  inicio: string;
+  /** Como o Portal devolve: APROVADO | PENDENTE | … — é a aprovação REAL (não existe
+   * espelho confiável dela no SICLA). */
+  statusAprovacao: string;
+}
+
 /** Cliente da API do Portal Rech (portalrech.com.br) para criar o "Registro de Atendimento
  * em Visita" como RASCUNHO — o envio ao SICLA continua sendo um clique do consultor DENTRO do
  * Portal (decisão: abrir pré-preenchido para conferir). Sai por `fetch` (mesmo padrão de saída
@@ -402,5 +421,53 @@ export class PortalRechService {
     const v = (valor || '').trim();
     if (!v) return v;
     return /T\d{2}:\d{2}$/.test(v) ? `${v}:00` : v;
+  }
+
+  /** Lista as visitas do Portal DA CREDENCIAL informada (a API escopa por usuário logado),
+   * paginando `GET visita` até a última página. Alimenta o painel "Visitas do Portal Rech"
+   * do BI — é a fonte da VERDADE do protocolo (`id`) e da aprovação (`statusAprovacao`):
+   * o SICLA não carrega nenhum dos dois de forma confiável (VISITAS.PROTOCOLOVIS e
+   * LISTA_VISITAS.PROTOCOLOVIS divergem entre si E do Portal — visto em 2026-08-17). */
+  async listarVisitas(cred: CredencialPortal): Promise<VisitaPortalListada[]> {
+    const { token } = await this.autenticar(cred);
+    const TAM = 2000;
+    const MAX_PAGINAS = 30;
+    const out: VisitaPortalListada[] = [];
+    for (let page = 0; page < MAX_PAGINAS; page++) {
+      const visitas = this.lista(
+        await this.getJson(`visita?size=${TAM}&page=${page}`, token),
+      );
+      if (visitas.length === 0) break;
+      for (const v of visitas) {
+        const codigo = Number(v['codigoCliente']);
+        out.push({
+          id: Number(v['id']),
+          codigoCliente:
+            v['codigoCliente'] == null || !Number.isFinite(codigo)
+              ? null
+              : codigo,
+          nomeEmpresa: String(v['nomeEmpresa'] ?? ''),
+          nomeContato: String(v['nomeContato'] ?? ''),
+          nomeUsuario: String(v['nomeUsuario'] ?? ''),
+          inicio: this.epochLocal(v['dataInicioVisita']),
+          statusAprovacao: String(v['statusAprovacao'] ?? ''),
+        });
+      }
+      if (visitas.length < TAM) break;
+    }
+    return out;
+  }
+
+  /** Epoch em ms → "AAAA-MM-DD HH:MM:SS" no fuso LOCAL do servidor (Brasília). NÃO usar
+   * `toISOString` aqui: deslocaria o horário em -3h e mudaria data e turno da visita. */
+  private epochLocal(ms: unknown): string {
+    const n = Number(ms);
+    if (!Number.isFinite(n) || n <= 0) return '';
+    const d = new Date(n);
+    const p = (x: number) => String(x).padStart(2, '0');
+    return (
+      `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ` +
+      `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+    );
   }
 }

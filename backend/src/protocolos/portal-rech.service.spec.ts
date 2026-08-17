@@ -89,6 +89,93 @@ describe('PortalRechService', () => {
     });
   });
 
+  describe('listarVisitas', () => {
+    const loginOk = () =>
+      resp({
+        headers: { 'Rech-Portal-Token-Autenticacao': TOKEN },
+        json: { id: 70 },
+      });
+
+    it('autentica, pagina e normaliza (epoch ms → data/hora LOCAL)', async () => {
+      // 2026-08-06 08:30:00 no fuso de Brasília (o servidor roda em BRT) — montado a
+      // partir do horário LOCAL para o teste não depender do fuso da máquina.
+      const inicioMs = new Date(2026, 7, 6, 8, 30, 0).getTime();
+      fetchMock
+        .mockResolvedValueOnce(loginOk())
+        .mockResolvedValueOnce(
+          resp({
+            json: {
+              content: [
+                {
+                  id: 135089,
+                  codigoCliente: 3631,
+                  nomeEmpresa: 'MELBROS CALCADOS',
+                  nomeContato: 'Ernani Martini',
+                  nomeUsuario: 'Everton',
+                  dataInicioVisita: inicioMs,
+                  statusAprovacao: 'APROVADO',
+                },
+                {
+                  id: 135090,
+                  codigoCliente: null,
+                  dataInicioVisita: null,
+                  statusAprovacao: 'PENDENTE',
+                },
+              ],
+            },
+          }),
+        );
+      const visitas = await svc.listarVisitas(cred);
+      expect(visitas).toEqual([
+        {
+          id: 135089,
+          codigoCliente: 3631,
+          nomeEmpresa: 'MELBROS CALCADOS',
+          nomeContato: 'Ernani Martini',
+          nomeUsuario: 'Everton',
+          inicio: '2026-08-06 08:30:00',
+          statusAprovacao: 'APROVADO',
+        },
+        {
+          id: 135090,
+          codigoCliente: null,
+          nomeEmpresa: '',
+          nomeContato: '',
+          nomeUsuario: '',
+          inicio: '',
+          statusAprovacao: 'PENDENTE',
+        },
+      ]);
+      const [urlVisitas, init] = fetchMock.mock.calls[1];
+      expect(urlVisitas).toBe('https://portal.test/api/visita?size=2000&page=0');
+      expect((init as RequestInit).headers).toMatchObject({
+        Authorization: TOKEN,
+      });
+    });
+
+    it('percorre as páginas até a última (página cheia → pede a próxima)', async () => {
+      const cheia = Array.from({ length: 2000 }, (_, i) => ({ id: i + 1 }));
+      fetchMock
+        .mockResolvedValueOnce(loginOk())
+        .mockResolvedValueOnce(resp({ json: { content: cheia } }))
+        .mockResolvedValueOnce(resp({ json: { content: [{ id: 9999 }] } }));
+      const visitas = await svc.listarVisitas(cred);
+      expect(visitas).toHaveLength(2001);
+      expect(fetchMock.mock.calls[2][0]).toBe(
+        'https://portal.test/api/visita?size=2000&page=1',
+      );
+    });
+
+    it('GET recusado vira BadGateway (com a rota no erro)', async () => {
+      fetchMock
+        .mockResolvedValueOnce(loginOk())
+        .mockResolvedValueOnce(resp({ status: 500 }));
+      await expect(svc.listarVisitas(cred)).rejects.toBeInstanceOf(
+        BadGatewayException,
+      );
+    });
+  });
+
   describe('resolverIdEmpresa', () => {
     it('casa por codigoCliente numa página Spring (content)', async () => {
       fetchMock.mockResolvedValueOnce(

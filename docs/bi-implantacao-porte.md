@@ -181,35 +181,29 @@ Adicionado em 2026-08-17 (pedido do usuário — não existia no `.pbix`): tabel
 do **Portal Rech** (empresa, contato, consultor, protocolo, data, horário, turno e
 aprovação), na tela Resumo, logo abaixo do CONTROLE DE HORAS.
 
-- **A consulta inteira vive no Consultas BD** (Sistema → Consulta BD, slug
-  `bi_visitas_portal`): semeada no boot com o default embutido
-  (`SQL_VISITAS_PORTAL_PADRAO` em `bi-implantacao.constants.ts`) e editável pelo
-  Administrador sem deploy — mesmo desenho da `rns_lista_itemped` da tela Execução → RNS.
-- A consulta original do usuário lia as tabelas do banco do **Portal Rech**
-  (`visita`/`visita_aprovacao`/`empresa`/`contato`/`usuario`) com `DATE()`/`TIME()` (MySQL).
-  **Essas tabelas não existem no Oracle da conexão** (ORA-00942 na primeira execução em
-  produção; conferido no catálogo `ALL_OBJECTS` em 2026-08-17 — o banco do Portal é outro,
-  fora do alcance). A consulta vigente lê o equivalente do SICLA, **`SICLA.LISTA_VISITAS`**,
-  preservando aliases/CASE/ORDER BY: EMPRESA ← `CLIFANTASIA`, CODIGO_CLIENTE ← `CLIENTE`,
-  CONTATO ← `CONTATO`, CONSULTOR ← `TECNOME`, PROTOCOLO ← `PROTOCOLOVIS` (**o ID da visita
-  no PORTAL chega ao SICLA nesta coluna** — faixa 130.000+, provado com o protocolo real
-  135096 em 2026-08-17; `CODVISITA` é o contador interno do SICLA, ~125–128 mil, e a coluna
-  `PROTOCOLO` da view é o atendimento que ORIGINOU a visita — ambos exibiram números "que
-  não existem"), DATA/HORÁRIO/TURNO ← `INICIO` e **APROVADO ← `RECEBIDA`** (1 = Sim — melhor
-  equivalente encontrado no SICLA para a `visita_aprovacao.APROVADO` do Portal; a revisão
-  trocou os INNER por LEFT JOIN, semântica que a view plana já entrega). Ganhou também
-  `:data_ini`/`:data_fim` opcionais (o De/Até da tela).
+- **Fonte: a API do Portal Rech, com a credencial do usuário logado** (desde 2026-08-17,
+  fim do dia): `PortalRechService.listarVisitas` pagina `GET /api/v1/visita` — a listagem
+  do Portal é **escopada por usuário** (cada consultor vê as próprias visitas, mesma
+  credencial da tela Execução → Protocolo; sem credencial salva, o card explica onde
+  salvar). O item traz `id` (o nº de PROTOCOLO que o time usa, faixa 130.000+),
+  `codigoCliente` (código SICLA), `nomeEmpresa`/`nomeContato`/`nomeUsuario`,
+  `dataInicioVisita` (epoch ms → data/hora local) e **`statusAprovacao`**
+  (APROVADO/PENDENTE — APROVADO → "Sim").
+- **Por que não o SICLA** (a lição do dia 2026-08-17): a consulta original do usuário lia o
+  banco do Portal, inacessível desta rede (ORA-00942). As tentativas de espelhar pelo SICLA
+  falharam uma a uma — `LISTA_VISITAS.PROTOCOLO` (atendimento de origem), `CODVISITA`
+  (contador interno ~125–128 mil) e `PROTOCOLOVIS` (diverge ENTRE tabela e view E do nº
+  real do Portal; protocolos reais 135089/135096 provaram) — e a aprovação do Portal nem
+  existe no SICLA (`RECEBIDA` é outra coisa: 135089 estava APROVADO no Portal com
+  RECEBIDA=0). A consulta `bi_visitas_portal` do Consultas BD foi **descontinuada e
+  removida**.
 - **O painel respeita SEMPRE o cliente filtrado**: só entram visitas dos clientes visíveis na
   tabela de implantações (todos os filtros da tela + busca local valem nele). O casamento é
-  por `CODIGO_CLIENTE`, com fallback pelo nome fantasia (`visitasVisiveis` no componente).
-- Endpoint: `GET /bi-implantacao/visitas-portal` (`dataIni`/`dataFim`), mesmo gate
-  `bi_implantacao`. A tela só reconsulta o banco quando o De/Até muda.
-- **Teto e ordem** (lição de 2026-08-17): o filtro de cliente roda na tela, DEPOIS do corte
-  do Oracle — com o teto geral de 5 mil e `ORDER BY` alfabético, um período de 12 meses
-  (~7,9 mil visitas) descartava clientes inteiros do fim do alfabeto e o filtro parecia
-  ignorado. O painel usa teto próprio (`LIMITE_VISITAS_PORTAL` = 20 mil) e o `ORDER BY` do
-  SQL virou `INICIO DESC` (política de corte: excedente descarta as mais antigas); a ordem
-  de exibição (empresa → contato → consultor → data) é aplicada pela tela, em memória.
+  por `codigoCliente`, com fallback pelo nome fantasia (`visitasVisiveis` no componente).
+- Endpoint: `GET /bi-implantacao/visitas-portal` (`dataIni`/`dataFim` + usuário do JWT),
+  mesmo gate `bi_implantacao`. A tela só reconsulta o Portal quando o De/Até muda; o
+  recorte de período é aplicado no backend (a API do Portal não filtra por data — o volume
+  por usuário é pequeno).
 - **Filtros locais, gráfico e exportação** (2026-08-17): acima da tabela há filtros em
   cascata por Empresa/Contato/Consultor/Turno/Aprovado + busca por nº de protocolo — valem
   para os contadores do título, para o gráfico e para o "Exportar Excel" (CSV com BOM, o

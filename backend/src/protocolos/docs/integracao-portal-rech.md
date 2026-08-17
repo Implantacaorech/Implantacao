@@ -81,6 +81,7 @@ Content-Type: application/json
 | `GET modulo` | Módulo da atividade (**obrigatório**) | Case pela `descricao` (contém, nos dois sentidos) ou pegue o primeiro |
 | `GET tipoatividade?search=status eq A` | Tipo de atividade (opcional, mas preencher evita o "Selecione um tipo") | Primeiro ativo |
 | `POST visita` | Criar o registro (rascunho) | Ver payload abaixo |
+| `GET visita?size=2000&page=N` | Listar as visitas **do usuário logado** (a listagem é escopada à credencial — sondado 2026-08-17) | Alimenta o painel "Visitas do Portal Rech" do BI. Campos úteis: `id` (o nº de protocolo que o time usa), `codigoCliente` (SICLA), `nomeEmpresa`/`nomeContato`/`nomeUsuario`, `dataInicioVisita` (epoch ms) e `statusAprovacao` (APROVADO/PENDENTE). `GET visita/{id}` também responde. Endpoints `visitaaprovacao`/`visita-aprovacao` dão 403 — a aprovação vem no próprio item |
 
 ### `POST /api/v1/visita` — o payload
 

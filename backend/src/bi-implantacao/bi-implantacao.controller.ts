@@ -3,6 +3,10 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissaoGuard } from '../permissoes/permissao.guard';
 import { Permissao } from '../common/decorators/permissao.decorator';
+import {
+  CurrentUser,
+  type AuthUser,
+} from '../common/decorators/current-user.decorator';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { BiImplantacaoService } from './bi-implantacao.service';
 import {
@@ -36,10 +40,13 @@ export class BiImplantacaoController {
   @Get('visitas-portal')
   @ApiOperation({
     summary:
-      'Visitas do Portal Rech (aprovação) — painel do Resumo; SQL editável no Consultas BD (slug bi_visitas_portal)',
+      'Visitas do usuário no Portal Rech com a aprovação real (statusAprovacao) — lidas da API do Portal com a credencial dele',
   })
-  async visitasPortal(@Query() query: QueryVisitasPortalDto) {
-    return new ApiEnvelope(await this.bi.visitasPortal(query));
+  async visitasPortal(
+    @Query() query: QueryVisitasPortalDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return new ApiEnvelope(await this.bi.visitasPortal(query, user.sub));
   }
 
   @Get('extrato')

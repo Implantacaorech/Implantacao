@@ -59,6 +59,10 @@ import { ProtocolosMidiaController } from './protocolos-midia.controller';
     ProtocoloIaService,
     ProcessamentoProtocolosService,
     GravacaoProtocolosService,
+    // O painel "Visitas do Portal Rech" do BI lê a API do Portal com a credencial do
+    // usuário logado — mesma dupla de serviços da tela Protocolo.
+    PortalCredencialService,
+    PortalRechService,
   ],
 })
 export class ProtocolosModule {}

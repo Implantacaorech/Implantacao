@@ -25,7 +25,17 @@ describe('BiImplantacaoController (HTTP)', () => {
       providers: [{ provide: BiImplantacaoService, useValue: bi }],
     })
       .overrideGuard(JwtAuthGuard)
-      .useValue({ canActivate: () => true })
+      // Injeta o req.user que o JwtAuthGuard real colocaria — o @CurrentUser da rota de
+      // visitas lê user.sub (sem isso, a rota estoura em user undefined).
+      .useValue({
+        canActivate: (ctx: import('@nestjs/common').ExecutionContext) => {
+          const req = ctx
+            .switchToHttp()
+            .getRequest<{ user?: { sub: number } }>();
+          req.user = { sub: 7 };
+          return true;
+        },
+      })
       .overrideGuard(PermissaoGuard)
       .useValue({ canActivate: () => true })
       .compile();
@@ -156,11 +166,12 @@ describe('BiImplantacaoController (HTTP)', () => {
   });
 
   describe('GET /bi-implantacao/visitas-portal', () => {
-    it('aceita a chamada sem filtro nenhum e com o período do De/Até', async () => {
+    it('aceita a chamada sem filtro e passa o período E o usuário logado ao serviço', async () => {
       await request(app.getHttpServer())
         .get('/bi-implantacao/visitas-portal')
         .expect(200);
-      expect(bi.visitasPortal).toHaveBeenCalled();
+      // a credencial do Portal é POR USUÁRIO — o id de quem chamou tem que chegar
+      expect(bi.visitasPortal).toHaveBeenCalledWith(expect.anything(), 7);
 
       await request(app.getHttpServer())
         .get('/bi-implantacao/visitas-portal')

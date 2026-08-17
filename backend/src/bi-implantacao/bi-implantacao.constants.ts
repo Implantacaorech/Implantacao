@@ -392,132 +392,31 @@ export interface ResumoStatusAgenda {
 
 // ── Painel "Visitas do Portal Rech" (Resumo, abaixo do CONTROLE DE HORAS) ─────────────
 
-/** A consulta do painel como CONSULTA NOMEADA do Consultas BD (Sistema → Consulta BD):
- * o serviço semeia o SQL padrão abaixo sob este slug no boot e passa a usar a versão
- * gravada lá — o Administrador edita a consulta pelo painel, sem deploy (mesmo desenho da
- * `rns_lista_itemped` da tela Execução → RNS). */
-export const SLUG_CONSULTA_VISITAS_PORTAL = 'bi_visitas_portal';
-export const NOME_CONSULTA_VISITAS_PORTAL =
-  'BI — Visitas do Portal Rech (aprovação)';
-
-/** Painel do Resumo de Implantação: visitas com status de aprovação (empresa, contato,
- * consultor, protocolo, data/horário e turno).
+/** Uma visita do Portal Rech já normalizada para a tela.
  *
- * A consulta ORIGINAL do usuário (2026-08-17) lia as tabelas do banco do PORTAL RECH
- * (`visita`/`visita_aprovacao`/`empresa`/`contato`/`usuario`) — essas tabelas NÃO existem
- * no Oracle da conexão (ORA-00942; conferido no catálogo `ALL_OBJECTS` em 2026-08-17: o
- * banco do Portal é outro, fora do alcance desta conexão). O default abaixo lê o
- * equivalente do SICLA, `SICLA.LISTA_VISITAS` (as visitas registradas/enviadas ao SICLA),
- * preservando os aliases, o CASE de turno e o ORDER BY do original:
- *
- *   EMPRESA ← CLIFANTASIA · CODIGO_CLIENTE ← CLIENTE (código do cliente no SICLA — amarra
- *   o painel ao cliente filtrado) · CONTATO ← CONTATO · CONSULTOR ← TECNOME ·
- *   PROTOCOLO ← PROTOCOLOVIS (o `v.ID AS PROTOCOLO` da consulta original: o ID da visita
- *   no PORTAL chega ao SICLA como PROTOCOLOVIS — provado com o protocolo real 135096 em
- *   2026-08-17. CODVISITA é o contador INTERNO do SICLA, faixa ~125–128 mil, que exibiu
- *   "protocolos que não existem"; a coluna PROTOCOLO da view é o atendimento que ORIGINOU
- *   a visita, idem) ·
- *   DATA/HORARIO/TURNO ← INICIO · APROVADO ← RECEBIDA (1 = Sim).
- *
- * A revisão do usuário também trocou os INNER JOIN por LEFT JOIN (toda visita aparece,
- * mesmo sem registro de aprovação/contato/usuário) — semântica que `LISTA_VISITAS` já
- * entrega por ser uma view plana, com o CASE tratando nulo como 'Não'.
- *
- * O recorte de período (`:data_ini`/`:data_fim`, fim INCLUSIVE) segue o De/Até da tela —
- * mesma decisão de `SQL_RESUMO_IMPLANTACAO`. A versão vigente é a do Consultas BD
- * (`SLUG_CONSULTA_VISITAS_PORTAL`): o Administrador edita sem deploy — é lá que se troca
- * CODVISITA por PROTOCOLOVIS/PROTOCOLO, se preferirem exibir outro número.
- *
- * ⚠️ O ORDER BY aqui NÃO é a ordem de exibição — é a política de corte do teto de linhas.
- * O `maxRows` do driver corta na ordem do ORDER BY; com a ordem alfabética original, um
- * período com mais linhas que o teto descartava CLIENTES INTEIROS do fim do alfabeto antes
- * do filtro de cliente da tela rodar (visto em produção em 2026-08-17: ~7,9 mil visitas em
- * 12 meses × teto de 5 mil). `INICIO DESC` faz o excedente cortar as visitas mais ANTIGAS.
- * A ordem de exibição (empresa → contato → consultor → data, a da consulta original do
- * usuário) é aplicada pela tela, em memória. */
-export const SQL_VISITAS_PORTAL_PADRAO = `-- Consulta do painel "Visitas do Portal Rech" (BI Implantação Clientes SIGER → Resumo,
--- abaixo do CONTROLE DE HORAS). Semeada pelo Painel; editável aqui.
--- As tabelas do banco do PORTAL (visita, visita_aprovacao, empresa, contato, usuario) NÃO
--- existem no Oracle do SICLA (ORA-00942, verificado no catálogo em 2026-08-17) — esta
--- versão lê o equivalente do SICLA, SICLA.LISTA_VISITAS (as visitas registradas/enviadas
--- ao SICLA). De/para dos campos:
---   EMPRESA    <- CLIFANTASIA          CONTATO   <- CONTATO
---   CONSULTOR  <- TECNOME              PROTOCOLO <- PROTOCOLOVIS (o ID da visita no
---                                        PORTAL chega ao SICLA nesta coluna — faixa
---                                        130.000+; NÃO usar CODVISITA, contador interno
---                                        do SICLA, nem PROTOCOLO, o atendimento que
---                                        originou a visita)
---   APROVADO   <- RECEBIDA (1 = Sim)   DATA/HORARIO/TURNO <- INICIO
--- :data_ini/:data_fim são supridos automaticamente pelo De/Até da tela (fim inclusive);
--- removê-los desliga o recorte de período. Mantenha os ALIASES das colunas: são o contrato
--- com a tela — CODIGO_CLIENTE em especial é o que amarra a visita ao cliente filtrado nos
--- demais filtros do Resumo (é o código do cliente no SICLA).
--- O ORDER BY é a POLÍTICA DE CORTE do teto de linhas, não a ordem de exibição: quando o
--- período tem mais linhas que o teto, o driver corta na ordem do ORDER BY — INICIO DESC
--- garante que o excedente descarte as visitas mais ANTIGAS (na ordem alfabética original,
--- clientes inteiros do fim do alfabeto sumiam). A tela exibe ordenado por empresa →
--- contato → consultor → data, em memória.
-SELECT
-    v.CLIFANTASIA AS EMPRESA,
-    v.CLIENTE AS CODIGO_CLIENTE,
-    v.CONTATO AS CONTATO,
-    v.TECNOME AS CONSULTOR,
-    v.PROTOCOLOVIS AS PROTOCOLO,
-
-    TO_CHAR(v.INICIO, 'YYYY-MM-DD') AS DATA,
-
-    TO_CHAR(v.INICIO, 'HH24:MI:SS') AS HORARIO,
-
-    CASE
-        WHEN TO_CHAR(v.INICIO, 'HH24:MI:SS') BETWEEN '07:00:00' AND '12:59:59'
-            THEN 'MANHÃ'
-
-        WHEN TO_CHAR(v.INICIO, 'HH24:MI:SS') BETWEEN '13:00:00' AND '19:00:00'
-            THEN 'TARDE'
-
-        WHEN TO_CHAR(v.INICIO, 'HH24:MI:SS') BETWEEN '19:01:00' AND '23:59:59'
-            THEN 'NOITE'
-
-        ELSE 'FORA DO TURNO'
-    END AS TURNO,
-
-    CASE
-        WHEN v.RECEBIDA = 1 THEN 'Sim'
-        ELSE 'Não'
-    END AS APROVADO
-
-FROM SICLA.LISTA_VISITAS v
-
-WHERE (:data_ini IS NULL OR v.INICIO >= TO_DATE(:data_ini, 'YYYY-MM-DD'))
-  AND (:data_fim IS NULL OR v.INICIO <  TO_DATE(:data_fim, 'YYYY-MM-DD') + 1)
-
-ORDER BY
-    v.INICIO DESC`;
-
-/** Teto de linhas do painel de visitas — MAIOR que o `LIMITE_LINHAS` geral de propósito:
- * o filtro de cliente roda NA TELA, depois do corte do Oracle, então o corte precisa ser
- * raro para o filtro enxergar o período inteiro. Em 2026-08-17 a view tinha ~7,9 mil
- * visitas em 12 meses (o teto de 5 mil truncava a janela padrão); 20 mil dá ~2,5 anos de
- * folga no volume atual, com payload na casa do extrato (que já traz 10 mil linhas mais
- * pesadas). */
-export const LIMITE_VISITAS_PORTAL = 20000;
-
-/** Uma visita do Portal já normalizada — os campos seguem os ALIASES do SELECT. */
+ * A fonte é a **API do Portal** (`PortalRechService.listarVisitas`, com a credencial do
+ * usuário logado) — NÃO o SICLA. A consulta original do usuário (2026-08-17) lia o banco
+ * do Portal (`visita`/`visita_aprovacao`/…), inacessível desta rede; as tentativas de
+ * espelhar pelo SICLA falharam uma a uma: `VISITAS.PROTOCOLOVIS` e
+ * `LISTA_VISITAS.PROTOCOLOVIS` divergem entre si E do nº real do Portal (protocolos
+ * 135089/135096 provaram), e a aprovação do Portal (`statusAprovacao`) nem existe lá
+ * (`RECEBIDA` é outra coisa). A consulta `bi_visitas_portal` do Consultas BD foi
+ * descontinuada junto. */
 export interface LinhaVisitaPortal {
   empresa: string;
-  /** `CODIGO_CLIENTE` do Portal = código do cliente no SICLA — chave com que a tela casa a
+  /** Código do cliente no SICLA (`codigoCliente` do Portal) — chave com que a tela casa a
    * visita com o cliente filtrado nos demais filtros do Resumo. */
   cliente: number | null;
   contato: string;
   consultor: string;
+  /** O `id` da visita no Portal — o nº de protocolo que o time usa (faixa 130.000+). */
   protocolo: number | null;
-  /** AAAA-MM-DD (ou '' quando a coluna vier vazia). */
+  /** AAAA-MM-DD (ou '' quando a visita não tem data). */
   data: string;
-  /** HH:MM:SS, como a consulta devolve. */
+  /** HH:MM:SS. */
   horario: string;
-  /** MANHÃ | TARDE | NOITE | FORA DO TURNO (calculado no SQL). */
+  /** MANHÃ | TARDE | NOITE | FORA DO TURNO (o mesmo CASE da consulta original). */
   turno: string;
-  /** 'Sim'/'Não' como o SQL devolve — texto, não boolean, para a edição da consulta no
-   * Consultas BD poder mudar o rótulo sem quebrar a tela. */
+  /** 'Sim' quando `statusAprovacao` = APROVADO; 'Não' para o resto (PENDENTE etc.). */
   aprovado: string;
 }
