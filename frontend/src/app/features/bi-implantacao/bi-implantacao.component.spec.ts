@@ -389,6 +389,26 @@ describe('BiImplantacaoComponent', () => {
       expect(comp.visitasVisiveis().map((v) => v.protocolo)).toEqual([1]);
     });
 
+    it('exibe ordenado por empresa → contato → consultor → data/hora (o SQL manda as mais recentes primeiro)', async () => {
+      const linhas = [
+        linha({ codigo: 1, cliente: 10, fantasia: 'ALFA', grupoEconomico: 'G1' }),
+        linha({ codigo: 2, cliente: 20, fantasia: 'BETA', grupoEconomico: 'G2' }),
+      ];
+      // ordem de chegada = INICIO DESC (política de corte do teto), não a de exibição
+      const visitas = [
+        visita({ cliente: 20, empresa: 'BETA', protocolo: 3, data: '2026-08-15' }),
+        visita({ cliente: 10, empresa: 'ALFA', protocolo: 2, data: '2026-08-14', horario: '14:00:00' }),
+        visita({ cliente: 10, empresa: 'ALFA', protocolo: 1, data: '2026-08-14', horario: '08:00:00' }),
+      ];
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado({ linhas })),
+        visitasPortal: () => Promise.resolve(resultadoVisitas({ linhas: visitas })),
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(comp.visitasVisiveis().map((v) => v.protocolo)).toEqual([1, 2, 3]);
+    });
+
     it('casa pelo nome fantasia quando a consulta editada não devolve o código', async () => {
       const linhas = [linha({ codigo: 1, cliente: 10, fantasia: 'ALFA' })];
       const visitas = [

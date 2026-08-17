@@ -146,7 +146,12 @@ export class BiImplantacaoComponent {
    * filtros da tela (grupo, RNS, consultor, busca…) valem também neste painel, sempre
    * respeitando o cliente filtrado. O casamento é pelo código do cliente no SICLA
    * (`CODIGO_CLIENTE` do Portal), com fallback pelo nome fantasia quando a consulta
-   * editada não devolver o código. */
+   * editada não devolver o código.
+   *
+   * A ordem de exibição (empresa → contato → consultor → data/hora) é aplicada AQUI, não no
+   * SQL: lá o ORDER BY é a política de corte do teto de linhas (INICIO DESC, para um
+   * período grande demais descartar as visitas mais antigas — na ordem alfabética original,
+   * o corte engolia clientes inteiros do fim do alfabeto e o filtro parecia ignorado). */
   readonly visitasVisiveis = computed<LinhaVisitaPortalBi[]>(() => {
     const r = this.visitasResultado();
     if (!r) return [];
@@ -157,11 +162,20 @@ export class BiImplantacaoComponent {
       const nome = (l.fantasia || '').trim().toUpperCase();
       if (nome) nomes.add(nome);
     }
-    return r.linhas.filter(
-      (v) =>
-        (v.cliente !== null && codigos.has(v.cliente)) ||
-        nomes.has((v.empresa || '').trim().toUpperCase()),
-    );
+    return r.linhas
+      .filter(
+        (v) =>
+          (v.cliente !== null && codigos.has(v.cliente)) ||
+          nomes.has((v.empresa || '').trim().toUpperCase()),
+      )
+      .sort(
+        (a, b) =>
+          a.empresa.localeCompare(b.empresa, 'pt-BR') ||
+          a.contato.localeCompare(b.contato, 'pt-BR') ||
+          a.consultor.localeCompare(b.consultor, 'pt-BR') ||
+          a.data.localeCompare(b.data) ||
+          a.horario.localeCompare(b.horario),
+      );
   });
 
   readonly visitasAprovadas = computed(

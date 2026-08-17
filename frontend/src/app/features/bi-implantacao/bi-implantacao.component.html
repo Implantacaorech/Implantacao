@@ -209,8 +209,8 @@
     } @else {
       @if (visitasResultado()?.truncado) {
         <p class="dica">
-          A consulta bateu no teto de {{ visitasResultado()?.limite }} linhas — estreite o
-          período para ver tudo.
+          O período tem mais visitas que o teto de {{ visitasResultado()?.limite }} linhas —
+          vieram as mais recentes; estreite o De/Até para ver as antigas.
         </p>
       }
       <div class="bi-tab-wrap">

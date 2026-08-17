@@ -201,6 +201,12 @@ aprovação), na tela Resumo, logo abaixo do CONTROLE DE HORAS.
   por `CODIGO_CLIENTE`, com fallback pelo nome fantasia (`visitasVisiveis` no componente).
 - Endpoint: `GET /bi-implantacao/visitas-portal` (`dataIni`/`dataFim`), mesmo gate
   `bi_implantacao`. A tela só reconsulta o banco quando o De/Até muda.
+- **Teto e ordem** (lição de 2026-08-17): o filtro de cliente roda na tela, DEPOIS do corte
+  do Oracle — com o teto geral de 5 mil e `ORDER BY` alfabético, um período de 12 meses
+  (~7,9 mil visitas) descartava clientes inteiros do fim do alfabeto e o filtro parecia
+  ignorado. O painel usa teto próprio (`LIMITE_VISITAS_PORTAL` = 20 mil) e o `ORDER BY` do
+  SQL virou `INICIO DESC` (política de corte: excedente descarta as mais antigas); a ordem
+  de exibição (empresa → contato → consultor → data) é aplicada pela tela, em memória.
 
 ### Filtros padrão das telas
 

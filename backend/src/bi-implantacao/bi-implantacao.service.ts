@@ -14,6 +14,7 @@ import {
   LinhaVisitaPortal,
   LIMITE_LINHAS,
   LIMITE_LINHAS_EXTRATO,
+  LIMITE_VISITAS_PORTAL,
   MESES_PADRAO,
   NOME_CONSULTA_VISITAS_PORTAL,
   ResumoStatusAgenda,
@@ -584,7 +585,7 @@ export class BiImplantacaoService implements OnModuleInit {
       periodo,
       linhas: [],
       total: 0,
-      limite: LIMITE_LINHAS,
+      limite: LIMITE_VISITAS_PORTAL,
       truncado: false,
       erro,
     };
@@ -618,7 +619,7 @@ export class BiImplantacaoService implements OnModuleInit {
       sql,
       binds,
       undefined,
-      LIMITE_LINHAS,
+      LIMITE_VISITAS_PORTAL,
     );
     if (!r.ok) return this.vazioVisitas(periodo, r.mensagem);
 
@@ -627,8 +628,8 @@ export class BiImplantacaoService implements OnModuleInit {
       periodo,
       linhas,
       total: linhas.length,
-      limite: LIMITE_LINHAS,
-      truncado: linhas.length >= LIMITE_LINHAS,
+      limite: LIMITE_VISITAS_PORTAL,
+      truncado: linhas.length >= LIMITE_VISITAS_PORTAL,
       erro: null,
     };
   }
