@@ -78,12 +78,13 @@ export class PortalDbService {
 
   salvarConfig(dados: Partial<ConfigPortalDb>): ConfigPortalDb {
     const cfg = this.carregarConfig();
+    // Object.assign em vez de atribuição indexada — mesma razão do DisponibilidadeService:
+    // o TS não estreita a união de chaves vinda de um `keyof[]`, mesmo sendo todas string.
+    const camposEditados: Record<string, string> = {};
     for (const campo of CAMPOS_TEXTO) {
-      // Campos de texto sempre sobrescrevem (aparados); só a senha tem a regra de manter.
-      (cfg as Record<string, unknown>)[campo] = (
-        (dados[campo] as string) ?? ''
-      ).trim();
+      camposEditados[campo] = ((dados[campo] as string) ?? '').trim();
     }
+    Object.assign(cfg, camposEditados);
     cfg.ativo = Boolean(dados.ativo);
     const senha = (dados.senha ?? '').trim();
     if (senha) cfg.senha = senha;
