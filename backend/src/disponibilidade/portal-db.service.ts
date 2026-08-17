@@ -133,6 +133,16 @@ export class PortalDbService {
     };
   }
 
+  /** Remove as linhas que são SÓ comentário (`-- …`) — ver o porquê no `executarSql`.
+   * Linhas com SQL + comentário no fim ficam como estão (evita mexer num `--` que possa
+   * estar dentro de uma string). */
+  private semComentariosDeLinha(sql: string): string {
+    return sql
+      .split('\n')
+      .filter((l) => !l.trimStart().startsWith('--'))
+      .join('\n');
+  }
+
   /** Pula comentários de linha/bloco do INÍCIO — só para validar que é SELECT/WITH (o SQL
    * executado é o original). Mesma regra da Disponibilidade. */
   private semComentariosIniciais(sql: string): string {
@@ -193,7 +203,21 @@ export class PortalDbService {
         dateStrings: true,
         connectTimeout: TIMEOUT_MS,
       });
-      const [rows] = await conn.execute({ sql, timeout: TIMEOUT_MS }, params);
+      // `query()` (interpolação no cliente, com escaping), NÃO `execute()`: o prepared
+      // statement binário do MySQL não infere o tipo de um bind usado em contexto
+      // `:bind IS NULL OR coluna >= :bind` e recusa com "Incorrect arguments to
+      // mysqld_stmt_execute" (visto na 1ª execução real, 2026-08-17). Seguro aqui:
+      // só SELECT e binds controlados pelo backend.
+      //
+      // E o SQL vai SEM os comentários de linha inteira: o compilador de placeholders
+      // nomeados do driver não é ciente de comentários — um `:nome` citado num comentário
+      // embaralha o mapeamento dos valores e a consulta devolve 0 linhas EM SILÊNCIO
+      // (também visto em 2026-08-17). O texto com comentários continua no Consultas BD;
+      // só o envio é limpo.
+      const [rows] = await conn.query(
+        { sql: this.semComentariosDeLinha(sql), timeout: TIMEOUT_MS },
+        params,
+      );
       const todas = Array.isArray(rows)
         ? (rows as Record<string, unknown>[])
         : [];

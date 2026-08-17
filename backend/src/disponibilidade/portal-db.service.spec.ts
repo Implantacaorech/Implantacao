@@ -83,12 +83,12 @@ describe('PortalDbService', () => {
       expect(r.mensagem).toContain('não configurada');
     });
 
-    it('conecta com namedPlaceholders/dateStrings, executa e corta no teto', async () => {
+    it('conecta com namedPlaceholders/dateStrings, roda via query() e corta no teto', async () => {
       const end = jest.fn().mockResolvedValue(undefined);
-      const execute = jest
+      const query = jest
         .fn()
         .mockResolvedValue([[{ PROTOCOLO: 1 }, { PROTOCOLO: 2 }], []]);
-      createConnection.mockResolvedValue({ execute, end });
+      createConnection.mockResolvedValue({ query, end });
 
       const r = await svc.executarSql(
         'SELECT ID AS PROTOCOLO FROM visita WHERE DATA >= :data_ini',
@@ -106,7 +106,9 @@ describe('PortalDbService', () => {
           dateStrings: true,
         }),
       );
-      expect(execute).toHaveBeenCalledWith(
+      // query() e não execute(): o prepared binário recusa bind em contexto IS NULL
+      // ("Incorrect arguments to mysqld_stmt_execute").
+      expect(query).toHaveBeenCalledWith(
         expect.objectContaining({ sql: expect.stringContaining('SELECT') }),
         { data_ini: '2026-08-01' },
       );
@@ -116,10 +118,24 @@ describe('PortalDbService', () => {
       expect(end).toHaveBeenCalled(); // conexão sempre fechada
     });
 
+    it('remove linhas de comentário antes de enviar (um :bind citado em comentário embaralha o driver)', async () => {
+      const end = jest.fn().mockResolvedValue(undefined);
+      const query = jest.fn().mockResolvedValue([[], []]);
+      createConnection.mockResolvedValue({ query, end });
+
+      await svc.executarSql(
+        '-- binds: data_ini e data_fim vêm da tela\nSELECT 1 FROM visita WHERE DATA >= :data_ini',
+        { data_ini: '2026-08-01' },
+      );
+      const enviado = (query.mock.calls[0][0] as { sql: string }).sql;
+      expect(enviado).not.toContain('--');
+      expect(enviado).toContain('SELECT 1 FROM visita');
+    });
+
     it('erro do driver vira mensagem amigável (e a conexão fecha)', async () => {
       const end = jest.fn().mockResolvedValue(undefined);
       createConnection.mockResolvedValue({
-        execute: jest.fn().mockRejectedValue(new Error('Access denied')),
+        query: jest.fn().mockRejectedValue(new Error('Access denied')),
         end,
       });
       const r = await svc.executarSql('SELECT 1');

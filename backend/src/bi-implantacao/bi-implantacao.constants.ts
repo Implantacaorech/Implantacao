@@ -418,10 +418,12 @@ export const CONEXAO_CONSULTA_VISITAS_PORTAL = 'portal';
 export const SQL_VISITAS_PORTAL_PADRAO = `-- Consulta do painel "Visitas do Portal Rech" (BI Implantação Clientes SIGER → Resumo,
 -- abaixo do CONTROLE DE HORAS). Semeada pelo Painel; editável aqui.
 -- Roda no BANCO DO PORTAL RECH (conexao = portal — cadastre a conexão nesta mesma tela);
--- dialeto MySQL/MariaDB. :data_ini/:data_fim são supridos pelo De/Até da tela (fim
--- inclusive); removê-los desliga o recorte de período. Mantenha os ALIASES das colunas:
--- são o contrato com a tela — CODIGO_CLIENTE é o código do cliente no SICLA e é o que
--- amarra a visita ao cliente filtrado nos demais filtros do Resumo.
+-- dialeto MySQL/MariaDB. Os binds de período (data_ini/data_fim, com dois-pontos na
+-- frente no corpo do SQL) são supridos pelo De/Até da tela, fim inclusive; removê-los
+-- desliga o recorte. NÃO escreva um bind com dois-pontos DENTRO de comentário: o driver
+-- embaralha os valores. Mantenha os ALIASES das colunas: são o contrato com a tela —
+-- CODIGO_CLIENTE é o código do cliente no SICLA e é o que amarra a visita ao cliente
+-- filtrado nos demais filtros do Resumo.
 SELECT
     e.NOME_FANTASIA AS EMPRESA,
     e.CODIGO_CLIENTE AS CODIGO_CLIENTE,
