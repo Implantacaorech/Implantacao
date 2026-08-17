@@ -20,6 +20,7 @@ import {
   VisaoVisitas,
   dentroDaVisao,
 } from './visitas-portal.util';
+import { ROTULOS_NAS_BARRAS } from './chart-rotulos.util';
 
 /** Cores por status — as MESMAS do relatório original (medida DAX do calendário do
  * `BI_clientes.pbix`), para quem vem do Power BI reconhecer a tela de imediato. */
@@ -192,18 +193,24 @@ export class BiImplantacaoComponent {
   readonly vpTurno = signal('');
   readonly vpAprovado = signal('');
   readonly vpProtocolo = signal('');
-  /** Recorte temporal do GRÁFICO de contatos: geral | mês atual | semana atual. */
+  /** Recorte temporal do PAINEL INTEIRO (tabela, contadores, gráfico e exportação):
+   * geral | mês atual | semana atual. */
   readonly visaoVisitas = signal<VisaoVisitas>('geral');
 
-  /** Aplica os filtros locais, opcionalmente ignorando UMA dimensão — é o que faz as
-   * opções de cada select cascatearem (mesma regra `emCascata` dos filtros da tela: sem
-   * ignorar a própria dimensão, marcar um contato encolheria a lista para só ele). */
+  /** Aplica a VISÃO (geral/mês/semana — vale para o painel INTEIRO: tabela, contadores,
+   * gráfico e exportação) e os filtros locais, opcionalmente ignorando UMA dimensão — é o
+   * que faz as opções de cada select cascatearem (mesma regra `emCascata` dos filtros da
+   * tela: sem ignorar a própria dimensão, marcar um contato encolheria a lista para só
+   * ele). */
   private filtrarVisitas(ignorar = ''): LinhaVisitaPortalBi[] {
     const protocolo = this.vpProtocolo().trim();
+    const visao = this.visaoVisitas();
+    const hoje = this.hojeLocal();
     const casa = (dim: string, sel: string, valor: string) =>
       ignorar === dim || !sel || sel === valor;
     return this.visitasVisiveis().filter(
       (v) =>
+        dentroDaVisao(v.data, visao, hoje) &&
         casa('empresa', this.vpEmpresa(), v.empresa) &&
         casa('contato', this.vpContato(), v.contato) &&
         casa('consultor', this.vpConsultor(), v.consultor) &&
@@ -259,14 +266,12 @@ export class BiImplantacaoComponent {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
-  /** Protocolos por CONTATO (aprovados × não aprovados) na visão escolhida, os mais
-   * volumosos primeiro — alimenta o gráfico e o aviso de contatos fora do top. */
+  /** Protocolos por CONTATO (aprovados × não aprovados), os mais volumosos primeiro —
+   * alimenta o gráfico e o aviso de contatos fora do top. A visão e os filtros já vêm
+   * aplicados por `visitasFiltradas` (o gráfico enxerga o MESMO conjunto da tabela). */
   private readonly contatosDoGrafico = computed(() => {
-    const visao = this.visaoVisitas();
-    const hoje = this.hojeLocal();
     const mapa = new Map<string, { aprovados: number; naoAprovados: number }>();
     for (const v of this.visitasFiltradas()) {
-      if (!dentroDaVisao(v.data, visao, hoje)) continue;
       const k = v.contato || '(sem contato)';
       const c = mapa.get(k) ?? { aprovados: 0, naoAprovados: 0 };
       if (this.aprovadoSim(v.aprovado)) c.aprovados += 1;
@@ -283,7 +288,8 @@ export class BiImplantacaoComponent {
     Math.max(0, this.contatosDoGrafico().length - TOP_CONTATOS_GRAFICO),
   );
 
-  /** Barras empilhadas por contato: verde = aprovados, vermelho = não aprovados. */
+  /** Barras empilhadas por contato: verde = aprovados, vermelho = não aprovados. Os
+   * valores ficam escritos nas barras (plugin `ROTULOS_NAS_BARRAS`), não só no tooltip. */
   readonly graficoVisitasContato = computed<ChartConfiguration | null>(() => {
     const top = this.contatosDoGrafico().slice(0, TOP_CONTATOS_GRAFICO);
     if (top.length === 0) return null;
@@ -296,6 +302,7 @@ export class BiImplantacaoComponent {
           { label: 'Não aprovados', data: top.map((c) => c.naoAprovados), backgroundColor: '#ef4444' },
         ],
       },
+      plugins: [ROTULOS_NAS_BARRAS],
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -305,6 +312,8 @@ export class BiImplantacaoComponent {
           y: {
             stacked: true,
             beginAtZero: true,
+            // Folga no topo para o TOTAL escrito acima da pilha não ser cortado.
+            grace: '10%',
             ticks: { precision: 0 },
             title: { display: true, text: 'protocolos' },
           },
@@ -430,7 +439,8 @@ export class BiImplantacaoComponent {
   readonly porStatusVisivel = computed(() => this.agruparVisiveis((l) => l.statusRns, true));
   readonly porTecnicoVisivel = computed(() => this.agruparVisiveis((l) => l.tecnico));
 
-  /** Previsto × realizado por status. */
+  /** Previsto × realizado por status. Os valores ficam escritos acima das barras
+   * (plugin `ROTULOS_NAS_BARRAS`), não só no tooltip. */
   readonly graficoStatus = computed<ChartConfiguration | null>(() => {
     const dados = this.porStatusVisivel();
     if (dados.length === 0) return null;
@@ -453,6 +463,7 @@ export class BiImplantacaoComponent {
           },
         ],
       },
+      plugins: [ROTULOS_NAS_BARRAS],
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -467,7 +478,14 @@ export class BiImplantacaoComponent {
             },
           },
         },
-        scales: { y: { beginAtZero: true, title: { display: true, text: 'horas' } } },
+        scales: {
+          y: {
+            beginAtZero: true,
+            // Folga no topo para o valor escrito acima da barra não ser cortado.
+            grace: '10%',
+            title: { display: true, text: 'horas' },
+          },
+        },
       },
     };
   });

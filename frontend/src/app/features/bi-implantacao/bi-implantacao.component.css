@@ -248,6 +248,17 @@
   font-size: 0.82rem;
   color: var(--navy);
 }
+/* Bloco "Visão" na linha de filtros — mesmo desenho dos labels dos selects. */
+.vp-filtro-visao {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.vp-filtro-visao-tit {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--navy);
+}
 /* Seletor Geral | Mês atual | Semana atual — segmentado, compacto. */
 .vp-visao {
   display: inline-flex;

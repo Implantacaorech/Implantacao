@@ -203,13 +203,16 @@ aprovação), na tela Resumo, logo abaixo do CONTROLE DE HORAS.
 - Endpoint: `GET /bi-implantacao/visitas-portal` (`dataIni`/`dataFim`), mesmo gate
   `bi_implantacao`. A tela só reconsulta o banco quando o De/Até muda; os binds
   `:data_ini`/`:data_fim` só são passados se o SQL vigente os referenciar.
-- **Filtros locais, gráfico e exportação** (2026-08-17): acima da tabela há filtros em
-  cascata por Empresa/Contato/Consultor/Turno/Aprovado + busca por nº de protocolo — valem
-  para os contadores do título, para o gráfico e para o "Exportar Excel" (CSV com BOM, o
-  mesmo formato do Resumo). O gráfico de barras empilhadas mostra **protocolos por contato**
-  (verde = aprovados, vermelho = não aprovados; top 15 contatos por volume), com visão
-  **Geral / Mês atual / Semana atual** (semana de segunda a domingo — recorte puro em
-  `visitas-portal.util.ts`, testável com data fixa).
+- **Filtros locais, visão, gráfico e exportação** (2026-08-17): acima da tabela há filtros
+  em cascata por Empresa/Contato/Consultor/Turno/Aprovado + busca por nº de protocolo +
+  a visão **Geral / Mês atual / Semana atual** (semana de segunda a domingo — recorte puro
+  em `visitas-portal.util.ts`, testável com data fixa). Filtros E visão valem para o painel
+  **inteiro**: contadores do título, gráfico, tabela e "Exportar Excel" (CSV com BOM, o
+  mesmo formato do Resumo) enxergam o mesmo conjunto. O gráfico de barras empilhadas mostra
+  **protocolos por contato** (verde = aprovados, vermelho = não aprovados; top 15 por
+  volume) com os **valores escritos nas barras** e o total sobre cada pilha
+  (`chart-rotulos.util.ts`, plugin inline do Chart.js — também aplicado ao "Horas por
+  status").
 
 ### Filtros padrão das telas
 

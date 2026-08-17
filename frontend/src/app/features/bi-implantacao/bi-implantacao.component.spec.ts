@@ -534,7 +534,7 @@ describe('BiImplantacaoComponent', () => {
       expect(cfg?.data.datasets[1].data).toEqual([1, 1]); // não aprovados
     });
 
-    it('visão mensal/semanal recorta o gráfico pela data de hoje (o filtro do painel também vale nele)', async () => {
+    it('visão mensal/semanal recorta o PAINEL INTEIRO (tabela, contadores e gráfico)', async () => {
       const linhas = [linha({ codigo: 1, cliente: 10, fantasia: 'ALFA' })];
       const visitas = [
         visita({ cliente: 10, contato: 'Ana', data: '2026-08-17' }), // semana E mês
@@ -550,18 +550,34 @@ describe('BiImplantacaoComponent', () => {
       vi.spyOn(comp as unknown as { hojeLocal: () => string }, 'hojeLocal')
         .mockReturnValue('2026-08-17');
 
-      const total = (): number => {
+      const totalGrafico = (): number => {
         const cfg = comp.graficoVisitasContato();
         return (cfg?.data.datasets ?? []).reduce(
           (a, d) => a + (d.data as number[]).reduce((x, y) => x + y, 0),
           0,
         );
       };
-      expect(total()).toBe(3); // geral
+      expect(comp.visitasFiltradas()).toHaveLength(3); // geral
+      expect(totalGrafico()).toBe(3);
+
       comp.visaoVisitas.set('mensal');
-      expect(total()).toBe(2);
+      expect(comp.visitasFiltradas()).toHaveLength(2); // a TABELA acompanha a visão
+      expect(comp.visitasAprovadas()).toBe(2); // contadores também (default aprovado=Sim)
+      expect(totalGrafico()).toBe(2);
+
       comp.visaoVisitas.set('semanal'); // semana de segunda 17/08 a domingo 23/08
-      expect(total()).toBe(1);
+      expect(comp.visitasFiltradas()).toHaveLength(1);
+      expect(totalGrafico()).toBe(1);
+    });
+
+    it('os gráficos carregam o plugin que escreve os valores nas barras', async () => {
+      const comp = await comVisitas();
+      expect(
+        comp.graficoVisitasContato()?.plugins?.some((p) => p.id === 'rotulosNasBarras'),
+      ).toBe(true);
+      expect(
+        comp.graficoStatus()?.plugins?.some((p) => p.id === 'rotulosNasBarras'),
+      ).toBe(true);
     });
   });
 });

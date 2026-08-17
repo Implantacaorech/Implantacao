@@ -245,6 +245,19 @@
           <input type="search" placeholder="nº…"
                  [ngModel]="vpProtocolo()" (ngModelChange)="vpProtocolo.set($event)" />
         </label>
+        <!-- A visão recorta o PAINEL INTEIRO: contadores do título, gráfico, tabela e
+             exportação (pedido do usuário em 2026-08-17 — antes valia só no gráfico). -->
+        <div class="vp-filtro-visao">
+          <span class="vp-filtro-visao-tit">Visão</span>
+          <div class="vp-visao" role="group" aria-label="Visão do painel">
+            <button type="button" [class.on]="visaoVisitas() === 'geral'"
+                    (click)="visaoVisitas.set('geral')">Geral</button>
+            <button type="button" [class.on]="visaoVisitas() === 'mensal'"
+                    (click)="visaoVisitas.set('mensal')">Mês atual</button>
+            <button type="button" [class.on]="visaoVisitas() === 'semanal'"
+                    (click)="visaoVisitas.set('semanal')">Semana atual</button>
+          </div>
+        </div>
         <button type="button" class="bi-btn" (click)="limparFiltrosVisitas()">Limpar</button>
         <button type="button" class="bi-btn" (click)="exportarVisitasCsv()"
                 [disabled]="visitasFiltradas().length === 0">
@@ -252,17 +265,9 @@
         </button>
       </div>
 
-      <!-- Protocolos por contato: aprovados × não aprovados, com visão geral/mês/semana. -->
+      <!-- Protocolos por contato: aprovados × não aprovados (mesmo conjunto da tabela). -->
       <div class="vp-grafico-cab">
         <span class="vp-grafico-tit">Protocolos por contato — aprovados × não aprovados</span>
-        <div class="vp-visao" role="group" aria-label="Visão do gráfico">
-          <button type="button" [class.on]="visaoVisitas() === 'geral'"
-                  (click)="visaoVisitas.set('geral')">Geral</button>
-          <button type="button" [class.on]="visaoVisitas() === 'mensal'"
-                  (click)="visaoVisitas.set('mensal')">Mês atual</button>
-          <button type="button" [class.on]="visaoVisitas() === 'semanal'"
-                  (click)="visaoVisitas.set('semanal')">Semana atual</button>
-        </div>
       </div>
       <div class="bi-canvas">
         @if (graficoVisitasContato(); as cfg) {
