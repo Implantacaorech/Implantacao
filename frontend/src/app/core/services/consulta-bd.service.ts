@@ -3,7 +3,12 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiEnvelope } from '../models/api-envelope.model';
-import { ConsultaBD, ResultadoExecucaoSql, SalvarConsultaBdPayload } from '../models/consulta-bd.model';
+import {
+  ConfigPortalDb,
+  ConsultaBD,
+  ResultadoExecucaoSql,
+  SalvarConsultaBdPayload,
+} from '../models/consulta-bd.model';
 
 @Injectable({ providedIn: 'root' })
 export class ConsultaBdService {
@@ -37,6 +42,30 @@ export class ConsultaBdService {
   async testar(slug: string): Promise<ResultadoExecucaoSql> {
     const res = await firstValueFrom(
       this.http.post<ApiEnvelope<ResultadoExecucaoSql>>(`${this.base}/${slug}/testar`, {}),
+    );
+    return res.data;
+  }
+
+  // ── Conexão com o banco do Portal Rech (as consultas com conexao='portal' rodam nela) ──
+
+  private readonly basePortalDb = `${environment.apiUrl}/config/portal-db`;
+
+  async portalDbStatus(): Promise<ConfigPortalDb> {
+    const res = await firstValueFrom(this.http.get<ApiEnvelope<ConfigPortalDb>>(this.basePortalDb));
+    return res.data;
+  }
+
+  /** Salva a conexão — senha em branco mantém a atual. */
+  async portalDbSalvar(dto: Partial<ConfigPortalDb> & { senha?: string }): Promise<ConfigPortalDb> {
+    const res = await firstValueFrom(
+      this.http.post<ApiEnvelope<ConfigPortalDb>>(this.basePortalDb, dto),
+    );
+    return res.data;
+  }
+
+  async portalDbTestar(): Promise<{ ok: boolean; mensagem: string }> {
+    const res = await firstValueFrom(
+      this.http.post<ApiEnvelope<{ ok: boolean; mensagem: string }>>(`${this.basePortalDb}/testar`, {}),
     );
     return res.data;
   }

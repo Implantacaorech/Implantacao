@@ -1,9 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BiImplantacaoService } from './bi-implantacao.service';
 import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
-import { PortalCredencialService } from '../protocolos/portal-credencial.service';
-import { PortalRechService } from '../protocolos/portal-rech.service';
-import { ESPECIES_CALENDARIO, SQL_AGENDAS } from './bi-implantacao.constants';
+import { ConsultaBdService } from '../disponibilidade/consulta-bd.service';
+import { PortalDbService } from '../disponibilidade/portal-db.service';
+import {
+  CONEXAO_CONSULTA_VISITAS_PORTAL,
+  ESPECIES_CALENDARIO,
+  NOME_CONSULTA_VISITAS_PORTAL,
+  SLUG_CONSULTA_VISITAS_PORTAL,
+  SQL_AGENDAS,
+  SQL_VISITAS_PORTAL_PADRAO,
+} from './bi-implantacao.constants';
 
 /** Linhas no formato CRU que o driver Oracle devolve (colunas MAIÚSCULAS), como em
  * POWERBI.POWERBI_IMPLANTACAO_RESUMO. */
@@ -79,8 +86,8 @@ const LINHAS_ORACLE = [
 describe('BiImplantacaoService', () => {
   let service: BiImplantacaoService;
   const disponibilidade = { configurado: jest.fn(), executarSql: jest.fn() };
-  const credenciaisPortal = { obter: jest.fn() };
-  const portal = { listarVisitas: jest.fn() };
+  const consultas = { porSlug: jest.fn(), salvar: jest.fn() };
+  const portalDb = { configurado: jest.fn(), executarSql: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -88,8 +95,8 @@ describe('BiImplantacaoService', () => {
       providers: [
         BiImplantacaoService,
         { provide: DisponibilidadeService, useValue: disponibilidade },
-        { provide: PortalCredencialService, useValue: credenciaisPortal },
-        { provide: PortalRechService, useValue: portal },
+        { provide: ConsultaBdService, useValue: consultas },
+        { provide: PortalDbService, useValue: portalDb },
       ],
     }).compile();
     service = module.get(BiImplantacaoService);
@@ -100,8 +107,16 @@ describe('BiImplantacaoService', () => {
       colunas: [],
       linhas: LINHAS_ORACLE,
     });
-    credenciaisPortal.obter.mockReturnValue({ login: 'a@rech', senha: 'x' });
-    portal.listarVisitas.mockResolvedValue([]);
+    // Sem versão editada no Consultas BD → vale o SQL default embutido.
+    consultas.porSlug.mockResolvedValue(null);
+    consultas.salvar.mockResolvedValue(null);
+    portalDb.configurado.mockReturnValue(true);
+    portalDb.executarSql.mockResolvedValue({
+      ok: true,
+      mensagem: '0 linha(s).',
+      colunas: [],
+      linhas: [],
+    });
   });
 
   describe('periodo', () => {
@@ -1001,29 +1016,84 @@ describe('BiImplantacaoService', () => {
     });
   });
 
-  describe('visitasPortal (painel abaixo do CONTROLE DE HORAS — fonte: API do Portal)', () => {
-    const VISITA_PORTAL = {
-      id: 135089,
-      codigoCliente: 3631,
-      nomeEmpresa: 'MELBROS CALCADOS',
-      nomeContato: 'Ernani Martini',
-      nomeUsuario: 'Everton',
-      inicio: '2026-08-06 08:30:00',
-      statusAprovacao: 'APROVADO',
+  describe('visitasPortal (painel abaixo do CONTROLE DE HORAS — banco do Portal)', () => {
+    const VISITA_MYSQL = {
+      EMPRESA: 'MELBROS CALCADOS',
+      CODIGO_CLIENTE: 3631,
+      CONTATO: 'Ernani Martini',
+      CONSULTOR: 'Everton',
+      PROTOCOLO: 135089,
+      DATA: '2026-08-06',
+      HORARIO: '08:30:00',
+      TURNO: 'MANHÃ',
+      APROVADO: 'Sim',
     };
 
-    it('lê as visitas do Portal com a credencial do usuário logado', async () => {
-      portal.listarVisitas.mockResolvedValue([VISITA_PORTAL]);
-      const r = await service.visitasPortal(
-        { dataIni: '2026-08-01', dataFim: '2026-08-31' },
-        7,
-      );
-      expect(credenciaisPortal.obter).toHaveBeenCalledWith(7);
-      expect(portal.listarVisitas).toHaveBeenCalledWith({
-        login: 'a@rech',
-        senha: 'x',
+    beforeEach(() => {
+      portalDb.executarSql.mockResolvedValue({
+        ok: true,
+        mensagem: '1 linha(s).',
+        colunas: [],
+        linhas: [VISITA_MYSQL],
+      });
+    });
+
+    it('semeia o SQL default no boot com conexao=portal (sem sobrescrever edição)', async () => {
+      const nodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'development';
+      try {
+        await service.onModuleInit();
+        expect(consultas.salvar).toHaveBeenCalledWith(
+          SLUG_CONSULTA_VISITAS_PORTAL,
+          {
+            nome: NOME_CONSULTA_VISITAS_PORTAL,
+            sql: SQL_VISITAS_PORTAL_PADRAO,
+            ordem: expect.any(Number),
+            mostrarGrafico: false,
+            conexao: CONEXAO_CONSULTA_VISITAS_PORTAL,
+          },
+        );
+
+        // Já existe (editada ou não): não encosta.
+        consultas.salvar.mockClear();
+        consultas.porSlug.mockResolvedValue({ sql: 'SELECT 1' });
+        await service.onModuleInit();
+        expect(consultas.salvar).not.toHaveBeenCalled();
+      } finally {
+        process.env.NODE_ENV = nodeEnv;
+      }
+    });
+
+    it('roda o SQL default no BANCO DO PORTAL com os binds de período', async () => {
+      const r = await service.visitasPortal({
+        dataIni: '2026-08-01',
+        dataFim: '2026-08-31',
       });
       expect(r.erro).toBeNull();
+      const [sql, binds] = portalDb.executarSql.mock.calls[0];
+      expect(sql).toBe(SQL_VISITAS_PORTAL_PADRAO);
+      expect(binds).toEqual({
+        data_ini: '2026-08-01',
+        data_fim: '2026-08-31',
+      });
+      // o painel NÃO passa pelo Oracle da Disponibilidade
+      expect(disponibilidade.executarSql).not.toHaveBeenCalled();
+    });
+
+    it('usa a versão EDITADA do Consultas BD, só com os binds que ela referencia', async () => {
+      consultas.porSlug.mockResolvedValue({ sql: 'SELECT 1 AS PROTOCOLO' });
+      await service.visitasPortal({
+        dataIni: '2026-08-01',
+        dataFim: '2026-08-31',
+      });
+      const [sql, binds] = portalDb.executarSql.mock.calls[0];
+      expect(sql).toBe('SELECT 1 AS PROTOCOLO');
+      expect(binds).toEqual({});
+    });
+
+    it('normaliza os aliases da consulta para o formato do frontend', async () => {
+      const r = await service.visitasPortal({});
+      expect(r.total).toBe(1);
       expect(r.linhas[0]).toEqual({
         empresa: 'MELBROS CALCADOS',
         cliente: 3631,
@@ -1035,57 +1105,58 @@ describe('BiImplantacaoService', () => {
         turno: 'MANHÃ',
         aprovado: 'Sim',
       });
-      // o painel NÃO passa pelo Oracle da Disponibilidade
-      expect(disponibilidade.executarSql).not.toHaveBeenCalled();
     });
 
-    it('sem credencial salva, avisa como salvar em vez de quebrar', async () => {
-      credenciaisPortal.obter.mockReturnValue(null);
-      const r = await service.visitasPortal({}, 7);
-      expect(r.erro).toContain('credencial do Portal Rech');
+    it('valores nulos viram texto vazio / cliente e protocolo nulos', async () => {
+      portalDb.executarSql.mockResolvedValue({
+        ok: true,
+        mensagem: '1 linha(s).',
+        colunas: [],
+        linhas: [
+          {
+            EMPRESA: null,
+            CODIGO_CLIENTE: null,
+            CONTATO: null,
+            CONSULTOR: null,
+            PROTOCOLO: null,
+            DATA: null,
+            HORARIO: null,
+            TURNO: null,
+            APROVADO: 'Não',
+          },
+        ],
+      });
+      const r = await service.visitasPortal({});
+      expect(r.linhas[0]).toEqual({
+        empresa: '',
+        cliente: null,
+        contato: '',
+        consultor: '',
+        protocolo: null,
+        data: '',
+        horario: '',
+        turno: '',
+        aprovado: 'Não',
+      });
+    });
+
+    it('sem a conexão do banco do Portal cadastrada, avisa onde cadastrar', async () => {
+      portalDb.configurado.mockReturnValue(false);
+      const r = await service.visitasPortal({});
+      expect(r.erro).toContain('Sistema → Consulta BD');
       expect(r.linhas).toEqual([]);
-      expect(portal.listarVisitas).not.toHaveBeenCalled();
+      expect(portalDb.executarSql).not.toHaveBeenCalled();
     });
 
-    it('aplica o De/Até da tela (fim inclusive) sobre a data de início', async () => {
-      portal.listarVisitas.mockResolvedValue([
-        { ...VISITA_PORTAL, id: 1, inicio: '2026-07-31 10:00:00' },
-        { ...VISITA_PORTAL, id: 2, inicio: '2026-08-01 10:00:00' },
-        { ...VISITA_PORTAL, id: 3, inicio: '2026-08-31 23:00:00' },
-        { ...VISITA_PORTAL, id: 4, inicio: '2026-09-01 00:30:00' },
-      ]);
-      const r = await service.visitasPortal(
-        { dataIni: '2026-08-01', dataFim: '2026-08-31' },
-        7,
-      );
-      expect(r.linhas.map((l) => l.protocolo)).toEqual([2, 3]);
-    });
-
-    it('mapeia statusAprovacao (APROVADO → Sim; PENDENTE etc. → Não) e calcula o turno', async () => {
-      portal.listarVisitas.mockResolvedValue([
-        { ...VISITA_PORTAL, id: 1, statusAprovacao: 'PENDENTE', inicio: '2026-08-06 13:00:00' },
-        { ...VISITA_PORTAL, id: 2, statusAprovacao: 'APROVADO', inicio: '2026-08-06 20:00:00' },
-        { ...VISITA_PORTAL, id: 3, statusAprovacao: '', inicio: '2026-08-06 06:30:00' },
-        { ...VISITA_PORTAL, id: 4, statusAprovacao: 'aprovado', inicio: '' },
-      ]);
-      const r = await service.visitasPortal(
-        { dataIni: '2026-08-01', dataFim: '2026-08-31' },
-        7,
-      );
-      const por = (id: number) => r.linhas.find((l) => l.protocolo === id);
-      expect(por(1)).toMatchObject({ aprovado: 'Não', turno: 'TARDE' });
-      expect(por(2)).toMatchObject({ aprovado: 'Sim', turno: 'NOITE' });
-      expect(por(3)).toMatchObject({ aprovado: 'Não', turno: 'FORA DO TURNO' });
-      // sem data de início, fica fora do recorte de período (não há onde encaixá-la)
-      expect(por(4)).toBeUndefined();
-    });
-
-    it('erro do Portal vira o erro do painel, sem derrubar a tela', async () => {
-      portal.listarVisitas.mockRejectedValue(
-        new Error('Usuário ou senha do Portal Rech recusados.'),
-      );
-      const r = await service.visitasPortal({}, 7);
-      expect(r.erro).toContain('recusados');
+    it('erro do banco do Portal vira o erro do painel, sem derrubar a tela', async () => {
+      portalDb.executarSql.mockResolvedValue({
+        ok: false,
+        mensagem: "Banco do Portal Rech: Access denied for user 'x'",
+        colunas: [],
+        linhas: [],
+      });
+      const r = await service.visitasPortal({});
+      expect(r.erro).toContain('Access denied');
       expect(r.linhas).toEqual([]);
     });
   });

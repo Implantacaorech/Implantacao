@@ -7,6 +7,9 @@ export interface ConsultaBD {
   colunaData: string;
   colunaSituacao: string;
   mostrarGrafico: boolean;
+  /** Em qual conexão externa a consulta roda: 'sicla' (Oracle) ou 'portal' (banco do
+   * Portal Rech, cadastrado na mesma tela). */
+  conexao: string;
 }
 
 export interface SalvarConsultaBdPayload {
@@ -16,7 +19,19 @@ export interface SalvarConsultaBdPayload {
   colunaData?: string;
   colunaSituacao?: string;
   mostrarGrafico?: boolean;
+  conexao?: string;
   slug?: string;
+}
+
+/** Configuração da conexão com o banco do Portal Rech (a senha nunca volta do backend). */
+export interface ConfigPortalDb {
+  host: string;
+  porta: string;
+  banco: string;
+  usuario: string;
+  url: string;
+  ativo: boolean;
+  temSenha: boolean;
 }
 
 export interface ResultadoExecucaoSql {

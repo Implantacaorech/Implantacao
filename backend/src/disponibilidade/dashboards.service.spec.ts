@@ -2,11 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DashboardsService } from './dashboards.service';
 import { ConsultaBdService } from './consulta-bd.service';
 import { DisponibilidadeService } from './disponibilidade.service';
+import { PortalDbService } from './portal-db.service';
 
 describe('DashboardsService', () => {
   let service: DashboardsService;
   const consultas = { listar: jest.fn(), porSlug: jest.fn() };
   const disponibilidade = { configurado: jest.fn(), executarSql: jest.fn() };
+  const portalDb = { configurado: jest.fn(), executarSql: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -15,6 +17,7 @@ describe('DashboardsService', () => {
         DashboardsService,
         { provide: ConsultaBdService, useValue: consultas },
         { provide: DisponibilidadeService, useValue: disponibilidade },
+        { provide: PortalDbService, useValue: portalDb },
       ],
     }).compile();
     service = module.get(DashboardsService);

@@ -92,6 +92,7 @@ export class ConsultaBdService implements OnModuleInit {
       colunaData?: string;
       colunaSituacao?: string;
       mostrarGrafico?: boolean;
+      conexao?: string;
     } = {},
   ): Promise<ConsultaBD | null> {
     const slug = this.normalizarSlug(slugBruto);
@@ -105,6 +106,7 @@ export class ConsultaBdService implements OnModuleInit {
         colunaData: dados.colunaData ?? '',
         colunaSituacao: dados.colunaSituacao ?? '',
         mostrarGrafico: dados.mostrarGrafico ?? false,
+        conexao: dados.conexao ?? 'sicla',
       });
     } else {
       if (dados.nome !== undefined) c.nome = dados.nome;
@@ -114,6 +116,7 @@ export class ConsultaBdService implements OnModuleInit {
         c.colunaSituacao = dados.colunaSituacao;
       if (dados.mostrarGrafico !== undefined)
         c.mostrarGrafico = dados.mostrarGrafico;
+      if (dados.conexao !== undefined) c.conexao = dados.conexao;
     }
     if (dados.ordem !== undefined) c.ordem = dados.ordem;
     return this.repo.save(c);

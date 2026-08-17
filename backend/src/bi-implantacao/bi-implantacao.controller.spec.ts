@@ -166,12 +166,11 @@ describe('BiImplantacaoController (HTTP)', () => {
   });
 
   describe('GET /bi-implantacao/visitas-portal', () => {
-    it('aceita a chamada sem filtro e passa o período E o usuário logado ao serviço', async () => {
+    it('aceita a chamada sem filtro nenhum e com o período do De/Até', async () => {
       await request(app.getHttpServer())
         .get('/bi-implantacao/visitas-portal')
         .expect(200);
-      // a credencial do Portal é POR USUÁRIO — o id de quem chamou tem que chegar
-      expect(bi.visitasPortal).toHaveBeenCalledWith(expect.anything(), 7);
+      expect(bi.visitasPortal).toHaveBeenCalled();
 
       await request(app.getHttpServer())
         .get('/bi-implantacao/visitas-portal')

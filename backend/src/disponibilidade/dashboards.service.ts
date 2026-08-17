@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConsultaBdService } from './consulta-bd.service';
 import { DisponibilidadeService } from './disponibilidade.service';
+import { PortalDbService } from './portal-db.service';
 import { hojeIso } from '../cronograma/datas.util';
 import { textoAparado } from '../common/utils/texto.util';
 
@@ -71,6 +72,7 @@ export class DashboardsService {
   constructor(
     private readonly consultas: ConsultaBdService,
     private readonly disponibilidade: DisponibilidadeService,
+    private readonly portalDb: PortalDbService,
   ) {}
 
   private addMonths(iso: string, n: number): string {
@@ -202,17 +204,20 @@ export class DashboardsService {
       };
     }
     base.nome = consulta.nome;
-    if (!this.disponibilidade.configurado()) {
+    // Cada consulta roda na SUA conexão (campo `conexao`): 'portal' = banco do Portal
+    // Rech (MySQL); default = Oracle da Disponibilidade.
+    const noPortal = consulta.conexao === 'portal';
+    if (!noPortal && !this.disponibilidade.configurado()) {
       return {
         ...base,
         erro: 'Conexão externa (Consultas BD → Disponibilidade) não configurada ou inativa.',
       };
     }
 
-    const r = await this.disponibilidade.executarSql(consulta.sql, {
-      data_ini: periodo.inicio,
-      data_fim: periodo.fim,
-    });
+    const binds = { data_ini: periodo.inicio, data_fim: periodo.fim };
+    const r = noPortal
+      ? await this.portalDb.executarSql(consulta.sql, binds)
+      : await this.disponibilidade.executarSql(consulta.sql, binds);
     if (!r.ok) return { ...base, erro: r.mensagem };
 
     const colunaData = consulta.colunaData.toUpperCase();

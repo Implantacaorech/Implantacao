@@ -1,14 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
-import { PortalCredencialService } from '../protocolos/portal-credencial.service';
-import {
-  PortalRechService,
-  VisitaPortalListada,
-} from '../protocolos/portal-rech.service';
+import { ConsultaBdService } from '../disponibilidade/consulta-bd.service';
+import { PortalDbService } from '../disponibilidade/portal-db.service';
 import { hojeIso } from '../cronograma/datas.util';
 import { textoAparado } from '../common/utils/texto.util';
 import {
   AgrupamentoResumo,
+  CONEXAO_CONSULTA_VISITAS_PORTAL,
   COR_STATUS_AGENDA,
   DiaAgenda,
   LinhaAgenda,
@@ -18,13 +16,17 @@ import {
   LinhaVisitaPortal,
   LIMITE_LINHAS,
   LIMITE_LINHAS_EXTRATO,
+  LIMITE_VISITAS_PORTAL,
   MESES_PADRAO,
+  NOME_CONSULTA_VISITAS_PORTAL,
   ResumoStatusAgenda,
+  SLUG_CONSULTA_VISITAS_PORTAL,
   SQL_AGENDAS,
   SQL_EXTRATO_DESCRICAO,
   SQL_EXTRATO_HORAS,
   SQL_RESUMO_IMPLANTACAO,
   SQL_RNS_VINCULADAS,
+  SQL_VISITAS_PORTAL_PADRAO,
   TotaisExtrato,
   TotaisResumo,
   TotaisRns,
@@ -228,12 +230,38 @@ export interface ResultadoVisitasPortal {
  * memória, de propósito: assim as listas de opções saem do próprio conjunto do período, sem
  * uma segunda ida ao banco — mesmo desenho já usado em `DashboardsService`. */
 @Injectable()
-export class BiImplantacaoService {
+export class BiImplantacaoService implements OnModuleInit {
+  private readonly logger = new Logger('BiImplantacaoService');
+
   constructor(
     private readonly disponibilidade: DisponibilidadeService,
-    private readonly credenciaisPortal: PortalCredencialService,
-    private readonly portal: PortalRechService,
+    private readonly consultas: ConsultaBdService,
+    private readonly portalDb: PortalDbService,
   ) {}
+
+  /** Semeia a consulta do painel "Visitas do Portal Rech" (idempotente) para o
+   * Administrador editar na tela de Consultas BD — com `conexao = 'portal'`, ela roda no
+   * banco do Portal Rech cadastrado na mesma tela. Não sobrescreve se já existir. */
+  async onModuleInit(): Promise<void> {
+    if (process.env.NODE_ENV === 'test') return;
+    try {
+      const existe = await this.consultas.porSlug(SLUG_CONSULTA_VISITAS_PORTAL);
+      if (!existe) {
+        await this.consultas.salvar(SLUG_CONSULTA_VISITAS_PORTAL, {
+          nome: NOME_CONSULTA_VISITAS_PORTAL,
+          sql: SQL_VISITAS_PORTAL_PADRAO,
+          ordem: 96,
+          mostrarGrafico: false,
+          conexao: CONEXAO_CONSULTA_VISITAS_PORTAL,
+        });
+      }
+    } catch (e) {
+      this.logger.error(
+        'Falha ao semear a consulta de visitas do Portal no Consultas BD',
+        e instanceof Error ? e.stack : String(e),
+      );
+    }
+  }
 
   private somaMeses(iso: string, n: number): string {
     const [ano, mes, dia] = iso.split('-').map(Number);
@@ -531,31 +559,25 @@ export class BiImplantacaoService {
 
   // ── Painel "Visitas do Portal Rech" (Resumo, abaixo do CONTROLE DE HORAS) ────────────
 
-  /** Mesmo CASE de turno da consulta original do usuário (comparação de texto HH:MM:SS —
-   * fixa em largura, ordena igual à hora). O vão 19:00:01–19:00:59 → FORA DO TURNO é do
-   * original e foi mantido. */
-  private turnoDe(horario: string): string {
-    if (horario >= '07:00:00' && horario <= '12:59:59') return 'MANHÃ';
-    if (horario >= '13:00:00' && horario <= '19:00:00') return 'TARDE';
-    if (horario >= '19:01:00' && horario <= '23:59:59') return 'NOITE';
-    return 'FORA DO TURNO';
-  }
-
-  private linhaDeVisitaPortal(v: VisitaPortalListada): LinhaVisitaPortal {
-    const horario = v.inicio.slice(11, 19);
+  private normalizarVisita(bruta: Record<string, unknown>): LinhaVisitaPortal {
+    const l: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(bruta)) l[(k || '').toUpperCase()] = v;
     return {
-      empresa: this.texto(v.nomeEmpresa),
-      cliente: v.codigoCliente,
-      contato: this.texto(v.nomeContato),
-      consultor: this.texto(v.nomeUsuario),
-      protocolo: Number.isFinite(v.id) ? v.id : null,
-      data: v.inicio.slice(0, 10),
-      horario,
-      turno: this.turnoDe(horario),
-      // O Portal responde APROVADO | PENDENTE | … — o painel é binário de propósito
-      // (pedido do usuário: "quantos aprovados e quantos não aprovados").
-      aprovado:
-        v.statusAprovacao.trim().toUpperCase() === 'APROVADO' ? 'Sim' : 'Não',
+      empresa: this.texto(l.EMPRESA),
+      cliente:
+        l.CODIGO_CLIENTE === null || l.CODIGO_CLIENTE === undefined
+          ? null
+          : this.numero(l.CODIGO_CLIENTE),
+      contato: this.texto(l.CONTATO),
+      consultor: this.texto(l.CONSULTOR),
+      protocolo:
+        l.PROTOCOLO === null || l.PROTOCOLO === undefined
+          ? null
+          : this.numero(l.PROTOCOLO),
+      data: this.texto(l.DATA).slice(0, 10),
+      horario: this.texto(l.HORARIO).slice(0, 8),
+      turno: this.texto(l.TURNO),
+      aprovado: this.texto(l.APROVADO),
     };
   }
 
@@ -567,59 +589,54 @@ export class BiImplantacaoService {
       periodo,
       linhas: [],
       total: 0,
-      limite: 0,
+      limite: LIMITE_VISITAS_PORTAL,
       truncado: false,
       erro,
     };
   }
 
-  /** Visitas do Portal Rech com a aprovação REAL — lidas da API DO PORTAL, com a
-   * credencial do usuário logado (a listagem do Portal é escopada por usuário: cada
-   * consultor vê as próprias visitas, mesma credencial da tela Execução → Protocolo).
+  /** TODOS os protocolos de visita do Portal (de todos os consultores), com a aprovação
+   * real — o SQL vive no **Consultas BD** (slug `bi_visitas_portal`, semeado no boot,
+   * editável sem deploy) e roda no **banco do Portal Rech** (`conexao = 'portal'`,
+   * cadastrado na mesma tela).
    *
-   * A fonte deixou de ser o SICLA em 2026-08-17: nem `VISITAS.PROTOCOLOVIS` nem
-   * `LISTA_VISITAS.PROTOCOLOVIS` carregam o nº de protocolo do Portal de forma confiável
-   * (divergem entre si e do Portal — protocolos reais 135089/135096 provaram), e a
-   * aprovação do Portal não existe no SICLA (`RECEBIDA` é outra coisa). */
+   * Nem SICLA nem API do Portal servem aqui (2026-08-17): o SICLA não espelha protocolo/
+   * aprovação, e a listagem da API é escopada por usuário — o painel precisa de todos os
+   * protocolos do cliente filtrado. */
   async visitasPortal(
     query: QueryVisitasPortal,
-    usuarioId: number,
   ): Promise<ResultadoVisitasPortal> {
     const periodo = this.periodo(query);
-    const cred = this.credenciaisPortal.obter(usuarioId);
-    if (!cred) {
+    if (!this.portalDb.configurado()) {
       return this.vazioVisitas(
         periodo,
-        'Salve sua credencial do Portal Rech (Execução → Protocolo) para ver suas visitas aqui.',
+        'Conexão com o banco do Portal Rech não configurada — cadastre em Sistema → Consulta BD.',
       );
     }
 
-    let visitas: VisitaPortalListada[];
-    try {
-      visitas = await this.portal.listarVisitas(cred);
-    } catch (e) {
-      return this.vazioVisitas(
-        periodo,
-        e instanceof Error ? e.message : String(e),
-      );
-    }
+    const c = await this.consultas.porSlug(SLUG_CONSULTA_VISITAS_PORTAL);
+    const sql = (c?.sql ?? '').trim() || SQL_VISITAS_PORTAL_PADRAO;
 
-    // O recorte de período (De/Até da tela, fim inclusive) é aplicado aqui — a API do
-    // Portal não filtra por data; o volume é pequeno (a listagem é só do usuário).
-    const linhas = visitas
-      .filter((v) => {
-        const d = v.inicio.slice(0, 10);
-        return d >= periodo.inicio && d <= periodo.fim;
-      })
-      .map((v) => this.linhaDeVisitaPortal(v));
+    // Só passa os binds que o SQL vigente referencia (o Administrador pode editá-lo sem
+    // :data_ini/:data_fim — o painel só perde o recorte de período).
+    const binds: Record<string, string> = {};
+    if (/:data_ini\b/.test(sql)) binds.data_ini = periodo.inicio;
+    if (/:data_fim\b/.test(sql)) binds.data_fim = periodo.fim;
 
+    const r = await this.portalDb.executarSql(
+      sql,
+      binds,
+      LIMITE_VISITAS_PORTAL,
+    );
+    if (!r.ok) return this.vazioVisitas(periodo, r.mensagem);
+
+    const linhas = r.linhas.map((l) => this.normalizarVisita(l));
     return {
       periodo,
       linhas,
       total: linhas.length,
-      // Sem teto: a listagem é por usuário (dezenas de visitas), não a base inteira.
-      limite: 0,
-      truncado: false,
+      limite: LIMITE_VISITAS_PORTAL,
+      truncado: linhas.length >= LIMITE_VISITAS_PORTAL,
       erro: null,
     };
   }

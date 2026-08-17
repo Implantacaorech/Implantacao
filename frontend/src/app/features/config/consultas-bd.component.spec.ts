@@ -20,6 +20,7 @@ function consulta(over: Partial<ConsultaBD> = {}): ConsultaBD {
     colunaData: 'DATA',
     colunaSituacao: '',
     mostrarGrafico: true,
+    conexao: 'sicla',
     ...over,
   };
 }

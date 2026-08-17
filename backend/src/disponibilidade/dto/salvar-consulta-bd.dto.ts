@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsInt, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString } from 'class-validator';
 
 export class SalvarConsultaBdDto {
   @ApiPropertyOptional() @IsOptional() @IsString() nome?: string;
@@ -8,4 +8,13 @@ export class SalvarConsultaBdDto {
   @ApiPropertyOptional() @IsOptional() @IsString() colunaData?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() colunaSituacao?: string;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() mostrarGrafico?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      "Conexão onde a consulta roda: 'sicla' (Oracle da Disponibilidade) ou 'portal' (banco do Portal Rech)",
+    enum: ['sicla', 'portal'],
+  })
+  @IsOptional()
+  @IsIn(['sicla', 'portal'])
+  conexao?: string;
 }

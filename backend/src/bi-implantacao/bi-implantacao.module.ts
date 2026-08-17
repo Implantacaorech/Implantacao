@@ -1,17 +1,16 @@
 import { Module } from '@nestjs/common';
 import { DisponibilidadeModule } from '../disponibilidade/disponibilidade.module';
-import { ProtocolosModule } from '../protocolos/protocolos.module';
 import { BiImplantacaoService } from './bi-implantacao.service';
 import { BiImplantacaoController } from './bi-implantacao.controller';
 
 /** BI de Implantação — lê as views do schema POWERBI do SICLA pela conexão Oracle que o
  * DisponibilidadeModule já expõe (`executarSql`). Não tem entidade/tabela própria: é tela
- * de leitura sobre dado que vive no SICLA. Exceção: o painel "Visitas do Portal Rech" lê a
- * API DO PORTAL com a credencial do usuário logado (`PortalRechService`/
- * `PortalCredencialService`, do ProtocolosModule) — o SICLA não carrega o nº de protocolo
- * nem a aprovação do Portal de forma confiável (ver bi-implantacao.constants.ts). */
+ * de leitura sobre dado que vive no SICLA. Exceção: o painel "Visitas do Portal Rech" roda
+ * a consulta `bi_visitas_portal` (Consultas BD) no BANCO DO PORTAL RECH (`PortalDbService`,
+ * também do DisponibilidadeModule) — o SICLA não carrega o nº de protocolo nem a aprovação
+ * do Portal de forma confiável (ver bi-implantacao.constants.ts). */
 @Module({
-  imports: [DisponibilidadeModule, ProtocolosModule],
+  imports: [DisponibilidadeModule],
   controllers: [BiImplantacaoController],
   providers: [BiImplantacaoService],
   exports: [BiImplantacaoService],

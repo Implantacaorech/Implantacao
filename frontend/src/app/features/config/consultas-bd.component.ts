@@ -7,7 +7,7 @@ import { LinhaOcupacao } from '../../core/models/config-disponibilidade.model';
 import { ConsultaBdService } from '../../core/services/consulta-bd.service';
 import { ConsultaBD, ResultadoExecucaoSql } from '../../core/models/consulta-bd.model';
 
-type Aba = 'disponibilidade' | 'nova' | string;
+type Aba = 'disponibilidade' | 'portal-db' | 'nova' | string;
 
 @Component({
   selector: 'app-consultas-bd',
@@ -66,6 +66,20 @@ export class ConsultasBdComponent {
     colunaData: [''],
     colunaSituacao: [''],
     mostrarGrafico: [false],
+    conexao: ['sicla'],
+  });
+
+  // Conexão com o BANCO DO PORTAL RECH (MySQL) — as consultas com conexao='portal' (ex.:
+  // a do painel Visitas do Portal no BI) rodam nela.
+  readonly portalDbConfigurado = signal(false);
+  readonly formPortalDb = this.fb.nonNullable.group({
+    host: [''],
+    porta: [''],
+    banco: [''],
+    usuario: [''],
+    senha: [''],
+    url: [''],
+    ativo: [false],
   });
 
   constructor() {
@@ -79,7 +93,11 @@ export class ConsultasBdComponent {
     try {
       this.consultas.set(await this.service.listar());
       const slugs = new Set(this.consultas().map((c) => c.slug));
-      this.aba.set(aba === 'disponibilidade' || aba === 'nova' || slugs.has(aba) ? aba : 'disponibilidade');
+      this.aba.set(
+        aba === 'disponibilidade' || aba === 'portal-db' || aba === 'nova' || slugs.has(aba)
+          ? aba
+          : 'disponibilidade',
+      );
       await this.carregarAbaAtual();
     } catch {
       this.erro.set('Não foi possível carregar as consultas.');
@@ -94,6 +112,10 @@ export class ConsultasBdComponent {
       const status = await this.disponibilidadeService.status();
       this.formDisponibilidade.patchValue({ ...status, senha: '' });
       this.configurado.set(status.configurado);
+    } else if (aba === 'portal-db') {
+      const cfg = await this.service.portalDbStatus();
+      this.formPortalDb.patchValue({ ...cfg, senha: '' });
+      this.portalDbConfigurado.set(cfg.ativo && (!!cfg.url || (!!cfg.host && !!cfg.banco)));
     } else if (aba === 'nova') {
       this.formNova.reset({ nome: '', slug: '', sql: '' });
     } else {
@@ -113,6 +135,34 @@ export class ConsultasBdComponent {
     await this.router
       .navigate(aba === 'disponibilidade' ? ['/config/consultas-bd'] : ['/config/consultas-bd', aba])
       .catch(() => undefined);
+  }
+
+  /** Salva (e opcionalmente testa) a conexão com o banco do Portal Rech. */
+  async salvarPortalDb(testar: boolean): Promise<void> {
+    if (this.salvando()) return;
+    this.salvando.set(true);
+    this.erro.set(null);
+    this.aviso.set(null);
+    try {
+      const dados = this.formPortalDb.getRawValue();
+      const dto: Partial<typeof dados> = { ...dados };
+      if (!dto.senha) delete dto.senha;
+      const cfg = await this.service.portalDbSalvar(dto);
+      this.portalDbConfigurado.set(cfg.ativo && (!!cfg.url || (!!cfg.host && !!cfg.banco)));
+      this.formPortalDb.patchValue({ senha: '' });
+      this.aviso.set('Conexão salva.');
+      if (testar) {
+        this.testando.set(true);
+        const r = await this.service.portalDbTestar();
+        if (r.ok) this.aviso.set(r.mensagem);
+        else this.erro.set(r.mensagem);
+      }
+    } catch (e) {
+      this.erro.set(this.mensagemErro(e, 'Não foi possível salvar a conexão do banco do Portal.'));
+    } finally {
+      this.salvando.set(false);
+      this.testando.set(false);
+    }
   }
 
   private mensagemErro(e: unknown, padrao: string): string {

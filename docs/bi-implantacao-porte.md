@@ -181,29 +181,28 @@ Adicionado em 2026-08-17 (pedido do usuário — não existia no `.pbix`): tabel
 do **Portal Rech** (empresa, contato, consultor, protocolo, data, horário, turno e
 aprovação), na tela Resumo, logo abaixo do CONTROLE DE HORAS.
 
-- **Fonte: a API do Portal Rech, com a credencial do usuário logado** (desde 2026-08-17,
-  fim do dia): `PortalRechService.listarVisitas` pagina `GET /api/v1/visita` — a listagem
-  do Portal é **escopada por usuário** (cada consultor vê as próprias visitas, mesma
-  credencial da tela Execução → Protocolo; sem credencial salva, o card explica onde
-  salvar). O item traz `id` (o nº de PROTOCOLO que o time usa, faixa 130.000+),
-  `codigoCliente` (código SICLA), `nomeEmpresa`/`nomeContato`/`nomeUsuario`,
-  `dataInicioVisita` (epoch ms → data/hora local) e **`statusAprovacao`**
-  (APROVADO/PENDENTE — APROVADO → "Sim").
-- **Por que não o SICLA** (a lição do dia 2026-08-17): a consulta original do usuário lia o
-  banco do Portal, inacessível desta rede (ORA-00942). As tentativas de espelhar pelo SICLA
-  falharam uma a uma — `LISTA_VISITAS.PROTOCOLO` (atendimento de origem), `CODVISITA`
-  (contador interno ~125–128 mil) e `PROTOCOLOVIS` (diverge ENTRE tabela e view E do nº
-  real do Portal; protocolos reais 135089/135096 provaram) — e a aprovação do Portal nem
-  existe no SICLA (`RECEBIDA` é outra coisa: 135089 estava APROVADO no Portal com
-  RECEBIDA=0). A consulta `bi_visitas_portal` do Consultas BD foi **descontinuada e
-  removida**.
+- **Fonte: o BANCO DO PORTAL RECH (MySQL), conexão cadastrada pelo ADM** em Sistema →
+  Consulta BD → aba **"Banco do Portal Rech"** (`PortalDbService`, segredo em
+  `dados/portal_db.json`, mesmo padrão da Disponibilidade). A consulta do usuário (MySQL,
+  `visita`/`visita_aprovacao`/`empresa`/`contato`/`usuario`) **vive no Consultas BD**
+  (slug `bi_visitas_portal`, semeada no boot, editável sem deploy) com **`conexao =
+  'portal'`** — o campo `conexao` (sicla | portal) nasceu junto (migration
+  `ConsultaBdConexao`), e o Testar da tela e os Dashboards roteiam o executor por ele.
+  Assim o painel mostra **TODOS os protocolos** (de todos os consultores), sempre
+  respeitando o cliente filtrado.
+- **Por que nem o SICLA nem a API do Portal** (a lição do dia 2026-08-17): o SICLA não
+  espelha nem o protocolo nem a aprovação — `LISTA_VISITAS.PROTOCOLO` é o atendimento de
+  origem, `CODVISITA` é contador interno (~125–128 mil), `PROTOCOLOVIS` diverge ENTRE
+  tabela e view E do nº real do Portal (protocolos reais 135089/135096 provaram), e
+  `RECEBIDA` não é a aprovação (135089 APROVADO no Portal com RECEBIDA=0). Já a API do
+  Portal (`GET /api/v1/visita`, ver `PortalRechService.listarVisitas`) traz o dado certo
+  mas é **escopada por usuário** — não serve para ver todos os protocolos do cliente.
 - **O painel respeita SEMPRE o cliente filtrado**: só entram visitas dos clientes visíveis na
   tabela de implantações (todos os filtros da tela + busca local valem nele). O casamento é
   por `codigoCliente`, com fallback pelo nome fantasia (`visitasVisiveis` no componente).
-- Endpoint: `GET /bi-implantacao/visitas-portal` (`dataIni`/`dataFim` + usuário do JWT),
-  mesmo gate `bi_implantacao`. A tela só reconsulta o Portal quando o De/Até muda; o
-  recorte de período é aplicado no backend (a API do Portal não filtra por data — o volume
-  por usuário é pequeno).
+- Endpoint: `GET /bi-implantacao/visitas-portal` (`dataIni`/`dataFim`), mesmo gate
+  `bi_implantacao`. A tela só reconsulta o banco quando o De/Até muda; os binds
+  `:data_ini`/`:data_fim` só são passados se o SQL vigente os referenciar.
 - **Filtros locais, gráfico e exportação** (2026-08-17): acima da tabela há filtros em
   cascata por Empresa/Contato/Consultor/Turno/Aprovado + busca por nº de protocolo — valem
   para os contadores do título, para o gráfico e para o "Exportar Excel" (CSV com BOM, o

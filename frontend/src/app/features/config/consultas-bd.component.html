@@ -5,12 +5,13 @@
     <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-table"/></svg>
     Consultas BD (Administrador)
   </h1>
-  <p class="dica">Uma conexão externa (banco interno/SICLA) e várias consultas SQL nomeadas por assunto — a aba
-    <strong>Disponibilidade</strong> alimenta o agendador de visitas; as demais alimentam os <strong>Dashboards</strong>.
-    Tela exclusiva do perfil Administrador.</p>
+  <p class="dica">Duas conexões externas — <strong>Disponibilidade</strong> (Oracle/SICLA, alimenta o agendador) e
+    <strong>Banco do Portal Rech</strong> (MySQL, alimenta o painel de protocolos do BI) — e várias consultas SQL
+    nomeadas por assunto, cada uma rodando na conexão escolhida. Tela exclusiva do perfil Administrador.</p>
 
   <div class="cbd-abas">
     <button type="button" class="cbd-aba" [class.on]="aba() === 'disponibilidade'" (click)="trocarAba('disponibilidade')">Disponibilidade</button>
+    <button type="button" class="cbd-aba" [class.on]="aba() === 'portal-db'" (click)="trocarAba('portal-db')">Banco do Portal Rech</button>
     @for (c of consultas(); track c.slug) {
       <button type="button" class="cbd-aba" [class.on]="aba() === c.slug" (click)="trocarAba(c.slug)">{{ c.nome }}</button>
     }
@@ -114,6 +115,40 @@
         <span class="dica" style="margin:0 0 0 auto;align-self:center">Status: <strong>{{ configurado() ? 'configurado' : 'pendente' }}</strong></span>
       </div>
     </form>
+  } @else if (aba() === 'portal-db') {
+    <form class="painel" [formGroup]="formPortalDb" (ngSubmit)="salvarPortalDb(false)">
+      <label class="campo flex-linha">
+        <input type="checkbox" formControlName="ativo" style="width:auto" />
+        <span style="margin:0">Ativar conexão com o banco do Portal Rech</span>
+      </label>
+
+      <h3>Conexão (MySQL/MariaDB)</h3>
+      <p class="dica" style="margin:0 0 8px">É o banco do <strong>Portal Rech</strong> (portalrech.com.br) — as consultas
+        desta tela marcadas com conexão <strong>Portal</strong> rodam nele (ex.: a
+        <strong>BI — Visitas do Portal Rech</strong>, do painel de protocolos do BI). Preencha os campos
+        <strong>ou</strong> cole a URL completa (a URL tem prioridade). Use um usuário somente leitura.</p>
+      <div class="grade2">
+        <label class="campo"><span>Host / Servidor</span><input formControlName="host" placeholder="ex.: 192.168.0.20" /></label>
+        <label class="campo"><span>Porta</span><input formControlName="porta" placeholder="ex.: 3306" /></label>
+        <label class="campo"><span>Banco</span><input formControlName="banco" placeholder="ex.: portalrech" /></label>
+        <label class="campo"><span>Usuário (somente leitura)</span><input formControlName="usuario" /></label>
+        <label class="campo"><span>Senha</span><input type="password" formControlName="senha" placeholder="(em branco mantém a atual)" /></label>
+      </div>
+      <label class="campo">
+        <span>URL completa (opcional — substitui os campos acima)</span>
+        <input formControlName="url" placeholder="ex.: mysql://usuario:senha@host:3306/banco" />
+      </label>
+
+      <div class="acoes" style="margin-top:var(--sp-3)">
+        <button class="btn primario" type="submit" [disabled]="salvando()">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ salvando() ? 'Salvando…' : 'Salvar' }}
+        </button>
+        <button class="btn" type="button" [disabled]="salvando()" (click)="salvarPortalDb(true)">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> {{ testando() ? 'Testando…' : 'Salvar e testar' }}
+        </button>
+        <span class="dica" style="margin:0 0 0 auto;align-self:center">Status: <strong>{{ portalDbConfigurado() ? 'configurado' : 'pendente' }}</strong></span>
+      </div>
+    </form>
   } @else if (aba() === 'nova') {
     <form class="painel" [formGroup]="formNova" (ngSubmit)="criarConsulta()">
       <label class="campo"><span>Nome da consulta (assunto)</span>
@@ -129,8 +164,17 @@
     </form>
   } @else if (consultaAtual()) {
     <form class="painel" [formGroup]="formConsulta" (ngSubmit)="salvarConsulta(false)">
-      <label class="campo"><span>Nome</span><input formControlName="nome" /></label>
-      <label class="campo"><span>SQL (SELECT) — mesma conexão da aba Disponibilidade</span>
+      <div class="grade2">
+        <label class="campo"><span>Nome</span><input formControlName="nome" /></label>
+        <label class="campo">
+          <span>Conexão onde a consulta roda</span>
+          <select formControlName="conexao">
+            <option value="sicla">SICLA (Oracle — a da aba Disponibilidade)</option>
+            <option value="portal">Banco do Portal Rech (MySQL)</option>
+          </select>
+        </label>
+      </div>
+      <label class="campo"><span>SQL (SELECT) — no dialeto da conexão escolhida</span>
         <textarea formControlName="sql" rows="12" class="txt-mono"></textarea></label>
 
       <h3>Dashboard (opcional)</h3>

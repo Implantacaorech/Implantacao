@@ -41,4 +41,11 @@ export class ConsultaBD {
 
   @Column({ name: 'mostrar_grafico', default: false })
   mostrarGrafico: boolean;
+
+  // Em QUAL conexão externa a consulta roda: 'sicla' (Oracle da Disponibilidade — o
+  // comportamento de sempre) ou 'portal' (banco do Portal Rech, MySQL, cadastrado em
+  // Sistema → Consulta BD). O Testar desta tela, os Dashboards e o painel de visitas do
+  // BI roteiam o executor por este campo.
+  @Column({ length: 20, default: 'sicla' })
+  conexao: string;
 }
