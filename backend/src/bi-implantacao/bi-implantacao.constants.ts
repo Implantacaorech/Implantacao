@@ -412,15 +412,19 @@ export const NOME_CONSULTA_VISITAS_PORTAL =
  *
  *   EMPRESA ← CLIFANTASIA · CODIGO_CLIENTE ← CLIENTE (código do cliente no SICLA — amarra
  *   o painel ao cliente filtrado) · CONTATO ← CONTATO · CONSULTOR ← TECNOME ·
- *   PROTOCOLO ← PROTOCOLOVIS (o nº do PROTOCOLO DA VISITA — cresce junto com a data; a
- *   coluna PROTOCOLO da view é o atendimento que ORIGINOU a visita e mostrava números que
- *   "não existem" para quem consulta visitas, correção de 2026-08-17) ·
+ *   PROTOCOLO ← CODVISITA (o ID do registro da visita — espelha o `v.ID AS PROTOCOLO` da
+ *   revisão do usuário de 2026-08-17; PROTOCOLOVIS é o nº de protocolo da visita e a
+ *   coluna PROTOCOLO da view é o atendimento que ORIGINOU a visita) ·
  *   DATA/HORARIO/TURNO ← INICIO · APROVADO ← RECEBIDA (1 = Sim).
+ *
+ * A revisão do usuário também trocou os INNER JOIN por LEFT JOIN (toda visita aparece,
+ * mesmo sem registro de aprovação/contato/usuário) — semântica que `LISTA_VISITAS` já
+ * entrega por ser uma view plana, com o CASE tratando nulo como 'Não'.
  *
  * O recorte de período (`:data_ini`/`:data_fim`, fim INCLUSIVE) segue o De/Até da tela —
  * mesma decisão de `SQL_RESUMO_IMPLANTACAO`. A versão vigente é a do Consultas BD
  * (`SLUG_CONSULTA_VISITAS_PORTAL`): o Administrador edita sem deploy — é lá que se troca
- * PROTOCOLO por PROTOCOLOVIS/CODVISITA, se preferirem o nº do registro de visita.
+ * CODVISITA por PROTOCOLOVIS/PROTOCOLO, se preferirem exibir outro número.
  *
  * ⚠️ O ORDER BY aqui NÃO é a ordem de exibição — é a política de corte do teto de linhas.
  * O `maxRows` do driver corta na ordem do ORDER BY; com a ordem alfabética original, um
@@ -436,10 +440,10 @@ export const SQL_VISITAS_PORTAL_PADRAO = `-- Consulta do painel "Visitas do Port
 -- versão lê o equivalente do SICLA, SICLA.LISTA_VISITAS (as visitas registradas/enviadas
 -- ao SICLA). De/para dos campos:
 --   EMPRESA    <- CLIFANTASIA          CONTATO   <- CONTATO
---   CONSULTOR  <- TECNOME              PROTOCOLO <- PROTOCOLOVIS (nº do PROTOCOLO DA
---                                        VISITA; a coluna PROTOCOLO da view é o
---                                        atendimento que originou a visita, e CODVISITA é
---                                        o código interno do registro)
+--   CONSULTOR  <- TECNOME              PROTOCOLO <- CODVISITA (ID do registro da visita,
+--                                        o v.ID da consulta original; PROTOCOLOVIS é o nº
+--                                        de protocolo da visita e PROTOCOLO é o
+--                                        atendimento que originou a visita)
 --   APROVADO   <- RECEBIDA (1 = Sim)   DATA/HORARIO/TURNO <- INICIO
 -- :data_ini/:data_fim são supridos automaticamente pelo De/Até da tela (fim inclusive);
 -- removê-los desliga o recorte de período. Mantenha os ALIASES das colunas: são o contrato
@@ -455,7 +459,7 @@ SELECT
     v.CLIENTE AS CODIGO_CLIENTE,
     v.CONTATO AS CONTATO,
     v.TECNOME AS CONSULTOR,
-    v.PROTOCOLOVIS AS PROTOCOLO,
+    v.CODVISITA AS PROTOCOLO,
 
     TO_CHAR(v.INICIO, 'YYYY-MM-DD') AS DATA,
 
