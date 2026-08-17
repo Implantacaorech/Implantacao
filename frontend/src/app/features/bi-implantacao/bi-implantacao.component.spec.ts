@@ -2,7 +2,12 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { BiImplantacaoComponent } from './bi-implantacao.component';
 import { BiImplantacaoService } from '../../core/services/bi-implantacao.service';
-import { LinhaResumoBi, ResultadoResumoBi } from '../../core/models/bi-implantacao.model';
+import {
+  LinhaResumoBi,
+  LinhaVisitaPortalBi,
+  ResultadoResumoBi,
+  ResultadoVisitasPortalBi,
+} from '../../core/models/bi-implantacao.model';
 
 function linha(over: Partial<LinhaResumoBi> = {}): LinhaResumoBi {
   return {
@@ -65,14 +70,50 @@ function resultado(over: Partial<ResultadoResumoBi> = {}): ResultadoResumoBi {
   };
 }
 
+function visita(over: Partial<LinhaVisitaPortalBi> = {}): LinhaVisitaPortalBi {
+  return {
+    empresa: 'ALFA',
+    cliente: 10,
+    contato: 'Iloni',
+    consultor: 'Remeling',
+    protocolo: 4821,
+    data: '2026-08-13',
+    horario: '08:30:00',
+    turno: 'MANHÃ',
+    aprovado: 'Sim',
+    ...over,
+  };
+}
+
+function resultadoVisitas(
+  over: Partial<ResultadoVisitasPortalBi> = {},
+): ResultadoVisitasPortalBi {
+  const linhas = over.linhas ?? [];
+  return {
+    periodo: { inicio: '2025-07-29', fim: '2026-07-29' },
+    linhas,
+    total: linhas.length,
+    limite: 5000,
+    truncado: false,
+    erro: null,
+    ...over,
+  };
+}
+
 describe('BiImplantacaoComponent', () => {
   function montar(service: Partial<BiImplantacaoService>) {
     // Alguns testes montam o componente mais de uma vez (varrendo faixas de percentual);
     // sem o reset, o TestBed recusa uma segunda configuração.
     TestBed.resetTestingModule();
+    // O componente sempre busca as visitas do Portal junto com o resumo — os testes que
+    // não são sobre o painel ganham um mock vazio para não estourar em `undefined`.
+    const completo: Partial<BiImplantacaoService> = {
+      visitasPortal: () => Promise.resolve(resultadoVisitas()),
+      ...service,
+    };
     TestBed.configureTestingModule({
       imports: [BiImplantacaoComponent],
-      providers: [provideRouter([]), { provide: BiImplantacaoService, useValue: service }],
+      providers: [provideRouter([]), { provide: BiImplantacaoService, useValue: completo }],
     });
     return TestBed.createComponent(BiImplantacaoComponent);
   }
@@ -311,5 +352,102 @@ describe('BiImplantacaoComponent', () => {
       resumo: () => Promise.resolve(resultado({ linhas: [], porStatus: [] })),
     });
     expect(comp.graficoStatus()).toBeNull();
+  });
+
+  // ── Painel "Visitas do Portal Rech" (abaixo do CONTROLE DE HORAS) ──────────────────
+  describe('visitas do Portal Rech', () => {
+    /** Duas implantações (clientes 10-ALFA e 20-BETA) e três visitas: uma de cada + uma
+     * de um cliente SEM implantação no período (99). */
+    async function comVisitas() {
+      const linhas = [
+        linha({ codigo: 1, cliente: 10, fantasia: 'ALFA', grupoEconomico: 'G1' }),
+        linha({ codigo: 2, cliente: 20, fantasia: 'BETA', grupoEconomico: 'G2' }),
+      ];
+      const visitas = [
+        visita({ cliente: 10, empresa: 'ALFA', protocolo: 1, aprovado: 'Sim' }),
+        visita({ cliente: 20, empresa: 'BETA', protocolo: 2, aprovado: 'Não' }),
+        visita({ cliente: 99, empresa: 'GAMA', protocolo: 3 }),
+      ];
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado({ linhas })),
+        visitasPortal: () => Promise.resolve(resultadoVisitas({ linhas: visitas })),
+      });
+      // a busca das visitas roda DEPOIS do resumo — flush dos microtasks pendentes
+      await Promise.resolve();
+      await Promise.resolve();
+      return comp;
+    }
+
+    it('mostra SÓ as visitas dos clientes visíveis na tabela (cliente filtrado sempre vale)', async () => {
+      const comp = await comVisitas();
+      // GAMA (cliente 99) não tem implantação no recorte → fica de fora
+      expect(comp.visitasVisiveis().map((v) => v.protocolo)).toEqual([1, 2]);
+      expect(comp.visitasAprovadas()).toBe(1);
+
+      // a busca local corta a tabela para ALFA → o painel acompanha
+      comp.busca.set('ALFA');
+      expect(comp.visitasVisiveis().map((v) => v.protocolo)).toEqual([1]);
+    });
+
+    it('casa pelo nome fantasia quando a consulta editada não devolve o código', async () => {
+      const linhas = [linha({ codigo: 1, cliente: 10, fantasia: 'ALFA' })];
+      const visitas = [
+        visita({ cliente: null, empresa: 'alfa', protocolo: 7 }),
+        visita({ cliente: null, empresa: 'GAMA', protocolo: 8 }),
+      ];
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado({ linhas })),
+        visitasPortal: () => Promise.resolve(resultadoVisitas({ linhas: visitas })),
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(comp.visitasVisiveis().map((v) => v.protocolo)).toEqual([7]);
+    });
+
+    it('trocar um filtro local NÃO volta ao banco; o De/Até sim', async () => {
+      const visitasPortal = vi.fn().mockResolvedValue(resultadoVisitas());
+      const resumo = vi.fn().mockResolvedValue(resultado());
+      const comp = await pronto({ resumo, visitasPortal });
+      await Promise.resolve();
+      expect(visitasPortal).toHaveBeenCalledTimes(1);
+
+      // filtro local: mesmo período → nada de nova consulta
+      comp.alternar(comp.statusSel, '6-Concluída');
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(visitasPortal).toHaveBeenCalledTimes(1);
+
+      // período novo → reconsulta
+      resumo.mockResolvedValue(
+        resultado({ periodo: { inicio: '2026-01-01', fim: '2026-06-30' } }),
+      );
+      await comp.carregar();
+      expect(visitasPortal).toHaveBeenCalledTimes(2);
+      expect(visitasPortal).toHaveBeenLastCalledWith({
+        dataIni: '2026-01-01',
+        dataFim: '2026-06-30',
+      });
+    });
+
+    it('erro do painel não derruba a tela (fica só no card de visitas)', async () => {
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado()),
+        visitasPortal: () =>
+          Promise.resolve(resultadoVisitas({ erro: 'ORA-00942: tabela ou view inexistente' })),
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(comp.erroVisitas()).toContain('ORA-00942');
+      expect(comp.erro()).toBeNull();
+      expect(comp.linhas()).toHaveLength(1);
+    });
+
+    it('identifica aprovação sem depender de caixa', async () => {
+      const comp = await pronto({ resumo: () => Promise.resolve(resultado()) });
+      expect(comp.aprovadoSim('Sim')).toBe(true);
+      expect(comp.aprovadoSim('SIM')).toBe(true);
+      expect(comp.aprovadoSim('Não')).toBe(false);
+      expect(comp.aprovadoSim('')).toBe(false);
+    });
   });
 });

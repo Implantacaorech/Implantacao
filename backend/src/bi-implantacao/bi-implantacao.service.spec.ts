@@ -1,7 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BiImplantacaoService } from './bi-implantacao.service';
 import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
-import { ESPECIES_CALENDARIO, SQL_AGENDAS } from './bi-implantacao.constants';
+import { ConsultaBdService } from '../disponibilidade/consulta-bd.service';
+import {
+  ESPECIES_CALENDARIO,
+  NOME_CONSULTA_VISITAS_PORTAL,
+  SLUG_CONSULTA_VISITAS_PORTAL,
+  SQL_AGENDAS,
+  SQL_VISITAS_PORTAL_PADRAO,
+} from './bi-implantacao.constants';
 
 /** Linhas no formato CRU que o driver Oracle devolve (colunas MAIÚSCULAS), como em
  * POWERBI.POWERBI_IMPLANTACAO_RESUMO. */
@@ -77,6 +84,7 @@ const LINHAS_ORACLE = [
 describe('BiImplantacaoService', () => {
   let service: BiImplantacaoService;
   const disponibilidade = { configurado: jest.fn(), executarSql: jest.fn() };
+  const consultas = { porSlug: jest.fn(), salvar: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -84,6 +92,7 @@ describe('BiImplantacaoService', () => {
       providers: [
         BiImplantacaoService,
         { provide: DisponibilidadeService, useValue: disponibilidade },
+        { provide: ConsultaBdService, useValue: consultas },
       ],
     }).compile();
     service = module.get(BiImplantacaoService);
@@ -94,6 +103,9 @@ describe('BiImplantacaoService', () => {
       colunas: [],
       linhas: LINHAS_ORACLE,
     });
+    // Sem versão editada no Consultas BD → vale o SQL default embutido.
+    consultas.porSlug.mockResolvedValue(null);
+    consultas.salvar.mockResolvedValue(null);
   });
 
   describe('periodo', () => {
@@ -990,6 +1002,146 @@ describe('BiImplantacaoService', () => {
       const r = await service.descricaoCompleta(1, '2026-01-01 00:00');
       expect(r.erro).toContain('não configurada');
       expect(disponibilidade.executarSql).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('visitasPortal (painel abaixo do CONTROLE DE HORAS)', () => {
+    const VISITA_ORACLE = {
+      EMPRESA: 'DEG / DALCERO',
+      CODIGO_CLIENTE: 3180,
+      CONTATO: 'Iloni',
+      CONSULTOR: 'Remeling',
+      PROTOCOLO: 4821,
+      DATA: '2026-08-13',
+      HORARIO: '08:30:00',
+      TURNO: 'MANHÃ',
+      APROVADO: 'Sim',
+    };
+
+    beforeEach(() => {
+      disponibilidade.executarSql.mockResolvedValue({
+        ok: true,
+        mensagem: '1 linha(s).',
+        colunas: [],
+        linhas: [VISITA_ORACLE],
+      });
+    });
+
+    it('semeia o SQL default no boot quando ainda não existe (sem sobrescrever edição)', async () => {
+      const nodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'development';
+      try {
+        await service.onModuleInit();
+        expect(consultas.salvar).toHaveBeenCalledWith(
+          SLUG_CONSULTA_VISITAS_PORTAL,
+          {
+            nome: NOME_CONSULTA_VISITAS_PORTAL,
+            sql: SQL_VISITAS_PORTAL_PADRAO,
+            ordem: expect.any(Number),
+            mostrarGrafico: false,
+          },
+        );
+
+        // Já existe (editada ou não): não encosta.
+        consultas.salvar.mockClear();
+        consultas.porSlug.mockResolvedValue({ sql: 'SELECT 1 FROM dual' });
+        await service.onModuleInit();
+        expect(consultas.salvar).not.toHaveBeenCalled();
+      } finally {
+        process.env.NODE_ENV = nodeEnv;
+      }
+    });
+
+    it('usa o SQL default (com os binds de período) quando não há versão editada', async () => {
+      const r = await service.visitasPortal({
+        dataIni: '2026-08-01',
+        dataFim: '2026-08-31',
+      });
+      expect(r.erro).toBeNull();
+      const [sql, binds] = disponibilidade.executarSql.mock.calls[0];
+      expect(sql).toBe(SQL_VISITAS_PORTAL_PADRAO);
+      expect(binds).toEqual({
+        data_ini: '2026-08-01',
+        data_fim: '2026-08-31',
+      });
+    });
+
+    it('usa a versão EDITADA do Consultas BD, só com os binds que ela referencia', async () => {
+      consultas.porSlug.mockResolvedValue({
+        sql: 'SELECT 1 AS PROTOCOLO FROM dual',
+      });
+      await service.visitasPortal({
+        dataIni: '2026-08-01',
+        dataFim: '2026-08-31',
+      });
+      // bind sobrando derrubaria o Oracle com ORA-01036
+      const [sql, binds] = disponibilidade.executarSql.mock.calls[0];
+      expect(sql).toBe('SELECT 1 AS PROTOCOLO FROM dual');
+      expect(binds).toEqual({});
+    });
+
+    it('normaliza os aliases da consulta para o formato do frontend', async () => {
+      const r = await service.visitasPortal({});
+      expect(r.total).toBe(1);
+      expect(r.linhas[0]).toEqual({
+        empresa: 'DEG / DALCERO',
+        cliente: 3180,
+        contato: 'Iloni',
+        consultor: 'Remeling',
+        protocolo: 4821,
+        data: '2026-08-13',
+        horario: '08:30:00',
+        turno: 'MANHÃ',
+        aprovado: 'Sim',
+      });
+    });
+
+    it('valores nulos viram texto vazio / cliente e protocolo nulos', async () => {
+      disponibilidade.executarSql.mockResolvedValue({
+        ok: true,
+        mensagem: '1 linha(s).',
+        colunas: [],
+        linhas: [
+          {
+            EMPRESA: null,
+            CODIGO_CLIENTE: null,
+            CONTATO: null,
+            CONSULTOR: null,
+            PROTOCOLO: null,
+            DATA: null,
+            HORARIO: null,
+            TURNO: null,
+            APROVADO: 'Não',
+          },
+        ],
+      });
+      const r = await service.visitasPortal({});
+      expect(r.linhas[0]).toEqual({
+        empresa: '',
+        cliente: null,
+        contato: '',
+        consultor: '',
+        protocolo: null,
+        data: '',
+        horario: '',
+        turno: '',
+        aprovado: 'Não',
+      });
+    });
+
+    it('propaga erro do banco e avisa se a conexão não está configurada', async () => {
+      disponibilidade.executarSql.mockResolvedValue({
+        ok: false,
+        mensagem: 'ORA-00942: tabela ou view inexistente',
+        colunas: [],
+        linhas: [],
+      });
+      expect((await service.visitasPortal({})).erro).toContain('ORA-00942');
+
+      disponibilidade.configurado.mockReturnValue(false);
+      const r = await service.visitasPortal({});
+      expect(r.erro).toContain('não configurada');
+      expect(r.linhas).toEqual([]);
     });
   });
 });

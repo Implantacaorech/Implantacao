@@ -15,6 +15,7 @@ describe('BiImplantacaoController (HTTP)', () => {
   const bi = {
     resumo: jest.fn(),
     extrato: jest.fn(),
+    visitasPortal: jest.fn(),
     descricaoCompleta: jest.fn(),
   };
 
@@ -50,6 +51,7 @@ describe('BiImplantacaoController (HTTP)', () => {
     jest.clearAllMocks();
     bi.resumo.mockResolvedValue({ linhas: [] });
     bi.extrato.mockResolvedValue({ linhas: [] });
+    bi.visitasPortal.mockResolvedValue({ linhas: [] });
     bi.descricaoCompleta.mockResolvedValue({
       descricao: 'x',
       tamanho: 1,
@@ -150,6 +152,30 @@ describe('BiImplantacaoController (HTTP)', () => {
         .query({ status: '6-Concluída' })
         .expect(200);
       expect(bi.resumo.mock.calls[0][0].status).toEqual(['6-Concluída']);
+    });
+  });
+
+  describe('GET /bi-implantacao/visitas-portal', () => {
+    it('aceita a chamada sem filtro nenhum e com o período do De/Até', async () => {
+      await request(app.getHttpServer())
+        .get('/bi-implantacao/visitas-portal')
+        .expect(200);
+      expect(bi.visitasPortal).toHaveBeenCalled();
+
+      await request(app.getHttpServer())
+        .get('/bi-implantacao/visitas-portal')
+        .query({ dataIni: '2025-08-17', dataFim: '2026-08-17' })
+        .expect(200);
+      const q = bi.visitasPortal.mock.calls[1][0];
+      expect(q.dataIni).toBe('2025-08-17');
+      expect(q.dataFim).toBe('2026-08-17');
+    });
+
+    it('recusa parâmetro desconhecido em vez de ignorá-lo silenciosamente', async () => {
+      await request(app.getHttpServer())
+        .get('/bi-implantacao/visitas-portal')
+        .query({ inventado: 'x' })
+        .expect(400);
     });
   });
 });

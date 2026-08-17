@@ -7,8 +7,10 @@ import { BiImplantacaoService } from '../../core/services/bi-implantacao.service
 import {
   AgrupamentoBi,
   LinhaResumoBi,
+  LinhaVisitaPortalBi,
   OpcaoRnsBi,
   ResultadoResumoBi,
+  ResultadoVisitasPortalBi,
 } from '../../core/models/bi-implantacao.model';
 import { opcoesVisiveis } from './bi-filtros.util';
 import { mensagemErroBi } from './bi-erro.util';
@@ -54,6 +56,14 @@ export class BiImplantacaoComponent {
   readonly carregando = signal(true);
   readonly erro = signal<string | null>(null);
   readonly resultado = signal<ResultadoResumoBi | null>(null);
+
+  // ── Painel "Visitas do Portal Rech" (abaixo do CONTROLE DE HORAS) ──────────────────
+  readonly visitasResultado = signal<ResultadoVisitasPortalBi | null>(null);
+  readonly carregandoVisitas = signal(false);
+  readonly erroVisitas = signal<string | null>(null);
+  /** Período já buscado — evita reconsultar o banco a cada clique de filtro (os filtros
+   * de cliente são aplicados em memória; só o De/Até muda o recorte que vai ao banco). */
+  private periodoVisitas = '';
 
   // Filtros vindos do STORE compartilhado: o que se marca aqui vale nas outras abas.
   private readonly store = inject(BiFiltrosStore);
@@ -131,6 +141,36 @@ export class BiImplantacaoComponent {
       horasBonificadas: s((x) => x.horasBonificadas),
     };
   });
+
+  /** Visitas do Portal Rech restritas aos CLIENTES visíveis na tabela — assim TODOS os
+   * filtros da tela (grupo, RNS, consultor, busca…) valem também neste painel, sempre
+   * respeitando o cliente filtrado. O casamento é pelo código do cliente no SICLA
+   * (`CODIGO_CLIENTE` do Portal), com fallback pelo nome fantasia quando a consulta
+   * editada não devolver o código. */
+  readonly visitasVisiveis = computed<LinhaVisitaPortalBi[]>(() => {
+    const r = this.visitasResultado();
+    if (!r) return [];
+    const codigos = new Set<number>();
+    const nomes = new Set<string>();
+    for (const l of this.linhas()) {
+      if (l.cliente !== null && l.cliente !== undefined) codigos.add(l.cliente);
+      const nome = (l.fantasia || '').trim().toUpperCase();
+      if (nome) nomes.add(nome);
+    }
+    return r.linhas.filter(
+      (v) =>
+        (v.cliente !== null && codigos.has(v.cliente)) ||
+        nomes.has((v.empresa || '').trim().toUpperCase()),
+    );
+  });
+
+  readonly visitasAprovadas = computed(
+    () => this.visitasVisiveis().filter((v) => this.aprovadoSim(v.aprovado)).length,
+  );
+
+  aprovadoSim(aprovado: string): boolean {
+    return (aprovado || '').trim().toLowerCase() === 'sim';
+  }
 
   /** Painel "CONTROLE DE HORAS" — porte fiel da medida DAX `Grafico_Horas_HTML` do
    * `BI_clientes.pbix`, reescrita em Angular (o original montava HTML dentro do DAX).
@@ -288,10 +328,32 @@ export class BiImplantacaoComponent {
       if (r.erro) this.erro.set(r.erro);
       this.dataIni = r.periodo.inicio;
       this.dataFim = r.periodo.fim;
+      void this.carregarVisitas(r.periodo.inicio, r.periodo.fim);
     } catch (e) {
       this.erro.set(mensagemErroBi(e, 'o Resumo de Implantação'));
     } finally {
       this.carregando.set(false);
+    }
+  }
+
+  /** Busca as visitas do Portal Rech do período — só volta ao banco quando o De/Até muda;
+   * o recorte por cliente é aplicado em memória (`visitasVisiveis`). */
+  private async carregarVisitas(inicio: string, fim: string): Promise<void> {
+    const chave = `${inicio}|${fim}`;
+    if (chave === this.periodoVisitas) return;
+    this.periodoVisitas = chave;
+    this.carregandoVisitas.set(true);
+    this.erroVisitas.set(null);
+    try {
+      const r = await this.service.visitasPortal({ dataIni: inicio, dataFim: fim });
+      this.visitasResultado.set(r);
+      if (r.erro) this.erroVisitas.set(r.erro);
+    } catch (e) {
+      this.visitasResultado.set(null);
+      this.erroVisitas.set(mensagemErroBi(e, 'as Visitas do Portal Rech'));
+      this.periodoVisitas = ''; // permite tentar de novo no próximo carregar()
+    } finally {
+      this.carregandoVisitas.set(false);
     }
   }
 

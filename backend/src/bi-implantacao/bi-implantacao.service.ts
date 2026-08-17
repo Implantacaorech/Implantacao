@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
+import { ConsultaBdService } from '../disponibilidade/consulta-bd.service';
 import { hojeIso } from '../cronograma/datas.util';
 import { textoAparado } from '../common/utils/texto.util';
 import {
@@ -10,15 +11,19 @@ import {
   LinhaExtrato,
   LinhaResumo,
   LinhaRns,
+  LinhaVisitaPortal,
   LIMITE_LINHAS,
   LIMITE_LINHAS_EXTRATO,
   MESES_PADRAO,
+  NOME_CONSULTA_VISITAS_PORTAL,
   ResumoStatusAgenda,
+  SLUG_CONSULTA_VISITAS_PORTAL,
   SQL_AGENDAS,
   SQL_EXTRATO_DESCRICAO,
   SQL_EXTRATO_HORAS,
   SQL_RESUMO_IMPLANTACAO,
   SQL_RNS_VINCULADAS,
+  SQL_VISITAS_PORTAL_PADRAO,
   TotaisExtrato,
   TotaisResumo,
   TotaisRns,
@@ -198,6 +203,22 @@ export interface ResultadoResumo {
   erro: string | null;
 }
 
+export interface QueryVisitasPortal {
+  dataIni?: string;
+  dataFim?: string;
+}
+
+export interface ResultadoVisitasPortal {
+  periodo: { inicio: string; fim: string };
+  /** As visitas do período, já na ordem do SQL (empresa → contato → consultor → data). */
+  linhas: LinhaVisitaPortal[];
+  total: number;
+  limite: number;
+  /** A consulta bateu no teto de linhas — há mais visitas no período do que o que veio. */
+  truncado: boolean;
+  erro: string | null;
+}
+
 /** Tela "Resumo de Implantação" — porte da página homônima do BI `BI_clientes.pbix` para
  * dentro do Painel, lendo a MESMA view Oracle que o Power BI lia
  * (`POWERBI.POWERBI_IMPLANTACAO_RESUMO`) pela conexão já configurada em Disponibilidade.
@@ -206,8 +227,36 @@ export interface ResultadoResumo {
  * memória, de propósito: assim as listas de opções saem do próprio conjunto do período, sem
  * uma segunda ida ao banco — mesmo desenho já usado em `DashboardsService`. */
 @Injectable()
-export class BiImplantacaoService {
-  constructor(private readonly disponibilidade: DisponibilidadeService) {}
+export class BiImplantacaoService implements OnModuleInit {
+  private readonly logger = new Logger('BiImplantacaoService');
+
+  constructor(
+    private readonly disponibilidade: DisponibilidadeService,
+    private readonly consultas: ConsultaBdService,
+  ) {}
+
+  /** Semeia a consulta do painel "Visitas do Portal Rech" (idempotente) para o
+   * Administrador editar na tela de Consultas BD. Não sobrescreve se já existir —
+   * respeita edição manual (mesmo desenho do `RnsService`). */
+  async onModuleInit(): Promise<void> {
+    if (process.env.NODE_ENV === 'test') return;
+    try {
+      const existe = await this.consultas.porSlug(SLUG_CONSULTA_VISITAS_PORTAL);
+      if (!existe) {
+        await this.consultas.salvar(SLUG_CONSULTA_VISITAS_PORTAL, {
+          nome: NOME_CONSULTA_VISITAS_PORTAL,
+          sql: SQL_VISITAS_PORTAL_PADRAO,
+          ordem: 96,
+          mostrarGrafico: false,
+        });
+      }
+    } catch (e) {
+      this.logger.error(
+        'Falha ao semear a consulta de visitas do Portal no Consultas BD',
+        e instanceof Error ? e.stack : String(e),
+      );
+    }
+  }
 
   private somaMeses(iso: string, n: number): string {
     const [ano, mes, dia] = iso.split('-').map(Number);
@@ -499,6 +548,87 @@ export class BiImplantacaoService {
         tiposCliente: (query.tipoCliente ?? []).filter(Boolean),
         rns: (query.rns ?? []).filter(Boolean),
       },
+      erro: null,
+    };
+  }
+
+  // ── Painel "Visitas do Portal Rech" (Resumo, abaixo do CONTROLE DE HORAS) ────────────
+
+  private normalizarVisita(bruta: Record<string, unknown>): LinhaVisitaPortal {
+    const l: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(bruta)) l[(k || '').toUpperCase()] = v;
+    return {
+      empresa: this.texto(l.EMPRESA),
+      cliente:
+        l.CODIGO_CLIENTE === null || l.CODIGO_CLIENTE === undefined
+          ? null
+          : this.numero(l.CODIGO_CLIENTE),
+      contato: this.texto(l.CONTATO),
+      consultor: this.texto(l.CONSULTOR),
+      protocolo:
+        l.PROTOCOLO === null || l.PROTOCOLO === undefined
+          ? null
+          : this.numero(l.PROTOCOLO),
+      data: this.texto(l.DATA).slice(0, 10),
+      horario: this.texto(l.HORARIO),
+      turno: this.texto(l.TURNO),
+      aprovado: this.texto(l.APROVADO),
+    };
+  }
+
+  private vazioVisitas(
+    periodo: { inicio: string; fim: string },
+    erro: string | null,
+  ): ResultadoVisitasPortal {
+    return {
+      periodo,
+      linhas: [],
+      total: 0,
+      limite: LIMITE_LINHAS,
+      truncado: false,
+      erro,
+    };
+  }
+
+  /** Visitas do Portal Rech com o status de aprovação — o SQL vive no **Consultas BD**
+   * (slug `bi_visitas_portal`, semeado no boot) e roda na mesma conexão da Disponibilidade;
+   * o Administrador o edita pelo painel, sem deploy. */
+  async visitasPortal(
+    query: QueryVisitasPortal,
+  ): Promise<ResultadoVisitasPortal> {
+    const periodo = this.periodo(query);
+    if (!this.disponibilidade.configurado()) {
+      return this.vazioVisitas(
+        periodo,
+        'Conexão com o SICLA não configurada ou inativa (Ferramentas → Disponibilidade).',
+      );
+    }
+
+    const c = await this.consultas.porSlug(SLUG_CONSULTA_VISITAS_PORTAL);
+    const sql = (c?.sql ?? '').trim() || SQL_VISITAS_PORTAL_PADRAO;
+
+    // Só passa os binds que o SQL vigente referencia: o Administrador pode ter editado a
+    // consulta sem :data_ini/:data_fim, e bind sobrando derruba o Oracle com ORA-01036 —
+    // o painel apenas perde o recorte de período, que é o esperado.
+    const binds: Record<string, string> = {};
+    if (/:data_ini\b/.test(sql)) binds.data_ini = periodo.inicio;
+    if (/:data_fim\b/.test(sql)) binds.data_fim = periodo.fim;
+
+    const r = await this.disponibilidade.executarSql(
+      sql,
+      binds,
+      undefined,
+      LIMITE_LINHAS,
+    );
+    if (!r.ok) return this.vazioVisitas(periodo, r.mensagem);
+
+    const linhas = r.linhas.map((l) => this.normalizarVisita(l));
+    return {
+      periodo,
+      linhas,
+      total: linhas.length,
+      limite: LIMITE_LINHAS,
+      truncado: linhas.length >= LIMITE_LINHAS,
       erro: null,
     };
   }

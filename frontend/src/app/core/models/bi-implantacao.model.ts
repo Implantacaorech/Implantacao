@@ -90,6 +90,40 @@ export interface FiltroResumoBi {
   rns?: string[];
 }
 
+// ── Painel "Visitas do Portal Rech" (Resumo, abaixo do CONTROLE DE HORAS) ─────────────
+
+/** Uma visita do Portal Rech com o status de aprovação — os campos seguem os ALIASES da
+ * consulta `bi_visitas_portal` (editável em Sistema → Consulta BD). */
+export interface LinhaVisitaPortalBi {
+  empresa: string;
+  /** Código do cliente no SICLA (`empresa.CODIGO_CLIENTE` do Portal) — é por ele que o
+   * painel respeita o cliente filtrado nos demais filtros do Resumo. */
+  cliente: number | null;
+  contato: string;
+  consultor: string;
+  protocolo: number | null;
+  data: string;
+  horario: string;
+  /** MANHÃ | TARDE | NOITE | FORA DO TURNO (calculado no SQL). */
+  turno: string;
+  /** 'Sim'/'Não', como a consulta devolve. */
+  aprovado: string;
+}
+
+export interface ResultadoVisitasPortalBi {
+  periodo: { inicio: string; fim: string };
+  linhas: LinhaVisitaPortalBi[];
+  total: number;
+  limite: number;
+  truncado: boolean;
+  erro: string | null;
+}
+
+export interface FiltroVisitasPortalBi {
+  dataIni?: string;
+  dataFim?: string;
+}
+
 // ── Página "Extrato de Protocolo/Horas" ───────────────────────────────────────────────
 
 export interface LinhaExtratoBi {

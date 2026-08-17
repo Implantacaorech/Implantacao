@@ -9,10 +9,12 @@ import {
   FiltroResumoBi,
   FiltroRnsBi,
   FiltroAgendasBi,
+  FiltroVisitasPortalBi,
   ResultadoExtratoBi,
   ResultadoResumoBi,
   ResultadoRnsBi,
   ResultadoAgendasBi,
+  ResultadoVisitasPortalBi,
 } from '../models/bi-implantacao.model';
 
 @Injectable({ providedIn: 'root' })
@@ -55,6 +57,24 @@ export class BiImplantacaoService {
       filtros: this.listas(d.filtros, chaves),
       selecionados: this.listas(d.selecionados, chaves),
     };
+  }
+
+  /** Painel "Visitas do Portal Rech" do Resumo — SQL editável no Consultas BD
+   * (slug `bi_visitas_portal`); o recorte de período é o mesmo De/Até da tela. */
+  async visitasPortal(
+    filtro: FiltroVisitasPortalBi = {},
+  ): Promise<ResultadoVisitasPortalBi> {
+    let params = new HttpParams();
+    if (filtro.dataIni) params = params.set('dataIni', filtro.dataIni);
+    if (filtro.dataFim) params = params.set('dataFim', filtro.dataFim);
+    const res = await firstValueFrom(
+      this.http.get<ApiEnvelope<ResultadoVisitasPortalBi>>(
+        `${this.base}/visitas-portal`,
+        { params },
+      ),
+    );
+    const d = res.data;
+    return { ...d, linhas: d.linhas ?? [] };
   }
 
   async extrato(filtro: FiltroExtratoBi = {}): Promise<ResultadoExtratoBi> {

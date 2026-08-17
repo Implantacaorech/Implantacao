@@ -175,6 +175,29 @@ mantidos como estão para não divergir do SICLA.)*
 
 **As 4 páginas estão portadas.** O `.pbix` vira material de consulta; o que vale é o código.
 
+### Painel "Visitas do Portal Rech — aprovação" (Resumo, abaixo do CONTROLE DE HORAS)
+
+Adicionado em 2026-08-17 (pedido do usuário — não existia no `.pbix`): tabela com as visitas
+do **Portal Rech** (empresa, contato, consultor, protocolo, data, horário, turno e
+aprovação), na tela Resumo, logo abaixo do CONTROLE DE HORAS.
+
+- **A consulta inteira vive no Consultas BD** (Sistema → Consulta BD, slug
+  `bi_visitas_portal`): semeada no boot com o default embutido
+  (`SQL_VISITAS_PORTAL_PADRAO` em `bi-implantacao.constants.ts`) e editável pelo
+  Administrador sem deploy — mesmo desenho da `rns_lista_itemped` da tela Execução → RNS.
+  As tabelas (`visita`, `visita_aprovacao`, `empresa`, `contato`, `usuario`) são as do banco
+  do **Portal Rech**; se a conexão configurada em Disponibilidade não as enxergar, o ajuste
+  (prefixo de schema/owner) é feito na própria consulta, pela tela.
+- A consulta original do usuário usava `DATE()`/`TIME()` (MySQL) — viraram
+  `TO_CHAR(..., 'YYYY-MM-DD')`/`TO_CHAR(..., 'HH24:MI:SS')` no default (a conexão é Oracle),
+  e ela ganhou `:data_ini`/`:data_fim` opcionais (o De/Até da tela) e a coluna
+  `e.CODIGO_CLIENTE` (código do cliente no SICLA).
+- **O painel respeita SEMPRE o cliente filtrado**: só entram visitas dos clientes visíveis na
+  tabela de implantações (todos os filtros da tela + busca local valem nele). O casamento é
+  por `CODIGO_CLIENTE`, com fallback pelo nome fantasia (`visitasVisiveis` no componente).
+- Endpoint: `GET /bi-implantacao/visitas-portal` (`dataIni`/`dataFim`), mesmo gate
+  `bi_implantacao`. A tela só reconsulta o banco quando o De/Até muda.
+
 ### Filtros padrão das telas
 
 Toda página do BI no Painel oferece o mesmo conjunto: **Grupo econômico · RNS de Implantação ·

@@ -11,6 +11,7 @@ import {
   QueryExtratoDto,
   QueryResumoDto,
   QueryRnsDto,
+  QueryVisitasPortalDto,
 } from './dto/query-resumo.dto';
 
 /** BI de Implantação — porte das páginas do `BI_clientes.pbix` (Power BI) para dentro do
@@ -30,6 +31,15 @@ export class BiImplantacaoController {
   })
   async resumo(@Query() query: QueryResumoDto) {
     return new ApiEnvelope(await this.bi.resumo(query));
+  }
+
+  @Get('visitas-portal')
+  @ApiOperation({
+    summary:
+      'Visitas do Portal Rech (aprovação) — painel do Resumo; SQL editável no Consultas BD (slug bi_visitas_portal)',
+  })
+  async visitasPortal(@Query() query: QueryVisitasPortalDto) {
+    return new ApiEnvelope(await this.bi.visitasPortal(query));
   }
 
   @Get('extrato')
