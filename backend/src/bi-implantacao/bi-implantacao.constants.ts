@@ -412,9 +412,11 @@ export const NOME_CONSULTA_VISITAS_PORTAL =
  *
  *   EMPRESA ← CLIFANTASIA · CODIGO_CLIENTE ← CLIENTE (código do cliente no SICLA — amarra
  *   o painel ao cliente filtrado) · CONTATO ← CONTATO · CONSULTOR ← TECNOME ·
- *   PROTOCOLO ← CODVISITA (o ID do registro da visita — espelha o `v.ID AS PROTOCOLO` da
- *   revisão do usuário de 2026-08-17; PROTOCOLOVIS é o nº de protocolo da visita e a
- *   coluna PROTOCOLO da view é o atendimento que ORIGINOU a visita) ·
+ *   PROTOCOLO ← PROTOCOLOVIS (o `v.ID AS PROTOCOLO` da consulta original: o ID da visita
+ *   no PORTAL chega ao SICLA como PROTOCOLOVIS — provado com o protocolo real 135096 em
+ *   2026-08-17. CODVISITA é o contador INTERNO do SICLA, faixa ~125–128 mil, que exibiu
+ *   "protocolos que não existem"; a coluna PROTOCOLO da view é o atendimento que ORIGINOU
+ *   a visita, idem) ·
  *   DATA/HORARIO/TURNO ← INICIO · APROVADO ← RECEBIDA (1 = Sim).
  *
  * A revisão do usuário também trocou os INNER JOIN por LEFT JOIN (toda visita aparece,
@@ -440,10 +442,11 @@ export const SQL_VISITAS_PORTAL_PADRAO = `-- Consulta do painel "Visitas do Port
 -- versão lê o equivalente do SICLA, SICLA.LISTA_VISITAS (as visitas registradas/enviadas
 -- ao SICLA). De/para dos campos:
 --   EMPRESA    <- CLIFANTASIA          CONTATO   <- CONTATO
---   CONSULTOR  <- TECNOME              PROTOCOLO <- CODVISITA (ID do registro da visita,
---                                        o v.ID da consulta original; PROTOCOLOVIS é o nº
---                                        de protocolo da visita e PROTOCOLO é o
---                                        atendimento que originou a visita)
+--   CONSULTOR  <- TECNOME              PROTOCOLO <- PROTOCOLOVIS (o ID da visita no
+--                                        PORTAL chega ao SICLA nesta coluna — faixa
+--                                        130.000+; NÃO usar CODVISITA, contador interno
+--                                        do SICLA, nem PROTOCOLO, o atendimento que
+--                                        originou a visita)
 --   APROVADO   <- RECEBIDA (1 = Sim)   DATA/HORARIO/TURNO <- INICIO
 -- :data_ini/:data_fim são supridos automaticamente pelo De/Até da tela (fim inclusive);
 -- removê-los desliga o recorte de período. Mantenha os ALIASES das colunas: são o contrato
@@ -459,7 +462,7 @@ SELECT
     v.CLIENTE AS CODIGO_CLIENTE,
     v.CONTATO AS CONTATO,
     v.TECNOME AS CONSULTOR,
-    v.CODVISITA AS PROTOCOLO,
+    v.PROTOCOLOVIS AS PROTOCOLO,
 
     TO_CHAR(v.INICIO, 'YYYY-MM-DD') AS DATA,
 

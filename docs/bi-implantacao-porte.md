@@ -191,11 +191,11 @@ aprovação), na tela Resumo, logo abaixo do CONTROLE DE HORAS.
   produção; conferido no catálogo `ALL_OBJECTS` em 2026-08-17 — o banco do Portal é outro,
   fora do alcance). A consulta vigente lê o equivalente do SICLA, **`SICLA.LISTA_VISITAS`**,
   preservando aliases/CASE/ORDER BY: EMPRESA ← `CLIFANTASIA`, CODIGO_CLIENTE ← `CLIENTE`,
-  CONTATO ← `CONTATO`, CONSULTOR ← `TECNOME`, PROTOCOLO ← `CODVISITA` (o **ID do registro
-  da visita**, espelhando o `v.ID AS PROTOCOLO` da revisão do usuário de 2026-08-17;
-  `PROTOCOLOVIS` é o nº de protocolo da visita e a coluna `PROTOCOLO` da view é o
-  atendimento que ORIGINOU a visita — as duas primeiras escolhas mostravam números "que não
-  existem"), DATA/HORÁRIO/TURNO ← `INICIO` e **APROVADO ← `RECEBIDA`** (1 = Sim — melhor
+  CONTATO ← `CONTATO`, CONSULTOR ← `TECNOME`, PROTOCOLO ← `PROTOCOLOVIS` (**o ID da visita
+  no PORTAL chega ao SICLA nesta coluna** — faixa 130.000+, provado com o protocolo real
+  135096 em 2026-08-17; `CODVISITA` é o contador interno do SICLA, ~125–128 mil, e a coluna
+  `PROTOCOLO` da view é o atendimento que ORIGINOU a visita — ambos exibiram números "que
+  não existem"), DATA/HORÁRIO/TURNO ← `INICIO` e **APROVADO ← `RECEBIDA`** (1 = Sim — melhor
   equivalente encontrado no SICLA para a `visita_aprovacao.APROVADO` do Portal; a revisão
   trocou os INNER por LEFT JOIN, semântica que a view plana já entrega). Ganhou também
   `:data_ini`/`:data_fim` opcionais (o De/Até da tela).
