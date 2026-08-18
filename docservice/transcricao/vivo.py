@@ -203,14 +203,23 @@ class SessaoVivo(object):
 
     def texto(self):
         """Transcrição acumulada, no mesmo formato do pipeline de vídeo ('[MM:SS] fala'),
-        com os timestamps já deslocados para a linha do tempo da reunião."""
+        com os timestamps já deslocados para a linha do tempo da reunião.
+
+        O deslocamento é recalculado AQUI, acumulando as durações na ordem de `seq` — e não
+        lido do `inicio` gravado na chegada. O gravado segue a ordem de CHEGADA, e trecho
+        chegando fora de ordem (retry do navegador, requisições em paralelo) produzia linha
+        do tempo embaralhada na tela: '[0:34] ...' aparecendo depois de '[0:44] ...'
+        (observado em 2026-08-18). A ordem de seq é a mesma da junção final do .wav, então
+        o timestamp mostrado bate com o áudio salvo."""
         linhas = []
         with self.trava:
-            for t in self.trechos:
+            inicio = 0.0
+            for t in self.trechos:  # ordenados por seq (adicionar_trecho mantém)
                 for s in t["segmentos"] or []:
                     linhas.append(
-                        "[%s] %s" % (_fmt_ts(t["inicio"] + (s.get("inicio") or 0)), s["texto"])
+                        "[%s] %s" % (_fmt_ts(inicio + (s.get("inicio") or 0)), s["texto"])
                     )
+                inicio += t["duracao"]
         return "\n".join(linhas)
 
     def estado(self):

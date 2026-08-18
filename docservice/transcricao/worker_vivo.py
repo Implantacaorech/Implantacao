@@ -22,11 +22,23 @@ Protocolo (uma linha JSON por mensagem, UTF-8):
 import json
 import os
 import sys
+import wave
+
+import antialucinacao
 
 
 def _responder(payload):
     sys.stdout.write(json.dumps(payload, ensure_ascii=False) + "\n")
     sys.stdout.flush()
+
+
+def _carregar_trecho(caminho):
+    """Lê o WAV do trecho (16 kHz mono s16 — formato garantido pelo vivo.py) como array
+    float, que é o que o faster-whisper aceita no lugar do arquivo. É por aqui que as
+    defesas de áudio baixo entram (ver antialucinacao.py)."""
+    with wave.open(caminho, "rb") as w:
+        pcm = w.readframes(w.getnframes())
+    return antialucinacao.amostras_float(pcm)
 
 
 def main():
@@ -63,6 +75,15 @@ def main():
         seq = pedido.get("seq")
         caminho = pedido.get("caminho") or ""
         try:
+            audio = _carregar_trecho(caminho)
+            # Trecho mudo/ruído de fundo: transcrever isso só produz invenção ("polvo,
+            # polvo, polvo..." — caso de 2026-08-18). Nem chama o modelo.
+            if antialucinacao.eh_silencio(audio):
+                _responder({"evento": "trecho", "seq": seq, "segmentos": []})
+                continue
+            # Fala gravada baixa (o microfone desta máquina capta em ~-43 dBFS) ganha
+            # ganho antes do modelo — só para transcrever; o arquivo fica como veio.
+            audio = antialucinacao.normalizar(audio)
             opcoes = dict(
                 language="pt",
                 vad_filter=True,
@@ -76,12 +97,14 @@ def main():
             )
             if hotwords:
                 opcoes["hotwords"] = hotwords
-            segmentos, _info = model.transcribe(caminho, **opcoes)
+            segmentos, _info = model.transcribe(audio, **opcoes)
             itens = []
             for seg in segmentos:
                 texto = (seg.text or "").strip()
                 if texto:
                     itens.append({"inicio": float(seg.start or 0), "texto": texto})
+            # Mesmo texto em 3+ segmentos seguidos é loop de alucinação, não fala.
+            itens = antialucinacao.colapsar_repeticoes(itens)
             _responder({"evento": "trecho", "seq": seq, "segmentos": itens})
         except Exception as e:  # noqa: BLE001 — qualquer falha vira erro DO TRECHO, não da sessão
             _responder({
