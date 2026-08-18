@@ -111,7 +111,7 @@
               </button>
               <div class="ag-col-corpo">
                 @for (c of d.compromissos; track $index) {
-                  <div class="ag-card" [class.ag-card-rns]="c.rns"
+                  <div class="ag-card"
                        [style.border-left-color]="corBorda(c.status)" [title]="dicaDe(c)"
                        role="button" tabindex="0"
                        (click)="abrirCompromisso(c)" (keydown.enter)="abrirCompromisso(c)">
@@ -169,9 +169,9 @@
         @if (d.compromissos.length > 0) {
           <div class="ag-dia-lista">
             @for (c of d.compromissos; track $index) {
-              <div class="painel compacto ag-dia-card" [class.ag-card-rns]="c.rns"
+              <div class="painel compacto ag-dia-card"
                    [style.border-left-color]="corBorda(c.status)"
-                   [title]="c.rns ? 'Clique para ver a agenda e o resumo da RNS ' + c.rns : 'Clique para ver os detalhes da agenda'"
+                   title="Clique para ver os detalhes da agenda"
                    role="button" tabindex="0"
                    (click)="abrirCompromisso(c)" (keydown.enter)="abrirCompromisso(c)">
                 <div class="ag-dia-hora">
@@ -213,8 +213,8 @@
 }
 
 <!-- Modal do compromisso: os dados da AGENDA no desenho do cartão "Agendas do Técnico"
-     do BI Alocação (+ a observação do SICLA) e, se houver RNS vinculada, o resumo
-     completo dela — a MESMA ficha da tela Execução → RNS — logo abaixo. -->
+     do BI Alocação + a observação do SICLA. (O resumo completo da RNS saiu daqui em
+     2026-08-18 a pedido do usuário — a ficha continua na tela Execução → RNS.) -->
 @if (compromissoAberto(); as c) {
   <div class="modal-fundo" (click)="fecharCompromisso()">
     <div class="modal-cx largo" (click)="$event.stopPropagation()">
@@ -227,7 +227,7 @@
           <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-x"/></svg>
         </button>
       </div>
-      <div class="modal-corpo ag-rns-corpo">
+      <div class="modal-corpo ag-modal-corpo">
         <article class="ag-det" [style.border-left-color]="corBorda(c.status)">
           <header class="ag-det-topo">
             <span class="ag-det-cli">{{ c.fantasia || c.assunto || '— sem cliente ligado —' }}</span>
@@ -256,22 +256,6 @@
             <div class="ag-det-obs-tit">📝 Observação da agenda</div>
             <div class="ag-det-obs-txt">{{ c.observacao }}</div>
           </div>
-        }
-
-        @if (c.rns) {
-          <h4 class="ag-rns-tit">Resumo completo da RNS {{ c.rns }}</h4>
-          @if (rnsCarregando()) {
-            <p class="dica">Buscando o resumo da RNS {{ c.rns }} no SICLA…</p>
-          } @else if (rnsErro()) {
-            <div class="resultado erro">{{ rnsErro() }}</div>
-          } @else if (rnsDetalhe(); as det) {
-            @for (item of det.itens; track (item.codigo ?? $index)) {
-              @if (det.itens.length > 1) {
-                <h4 class="ag-rns-item">Item {{ item.item }}@if (item.sugestao) { — {{ item.sugestao }}}</h4>
-              }
-              <app-rns-detalhe [linha]="item" />
-            }
-          }
         }
       </div>
       <div class="modal-rod">

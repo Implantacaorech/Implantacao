@@ -2,15 +2,12 @@ import { Component, WritableSignal, computed, inject, signal } from '@angular/co
 import { FormsModule } from '@angular/forms';
 import { AgendaCalendarioService } from '../../core/services/agenda-calendario.service';
 import { AuthService } from '../../core/services/auth.service';
-import { RnsService } from '../../core/services/rns.service';
 import {
   CompromissoAgenda,
   DiaAgenda,
   ResultadoAgendaCalendario,
   UsuarioAgenda,
 } from '../../core/models/agenda-calendario.model';
-import { ResultadoDetalheRns } from '../../core/models/rns.model';
-import { RnsDetalheComponent } from '../rns/rns-detalhe.component';
 
 export type VisaoAgenda = 'dia' | 'semana' | 'mes';
 
@@ -93,14 +90,13 @@ function hojeIsoLocal(): string {
 @Component({
   selector: 'app-agenda-calendario',
   standalone: true,
-  imports: [FormsModule, RnsDetalheComponent],
+  imports: [FormsModule],
   templateUrl: './agenda-calendario.component.html',
   styleUrl: './agenda-calendario.component.css',
 })
 export class AgendaCalendarioComponent {
   private readonly service = inject(AgendaCalendarioService);
   private readonly auth = inject(AuthService);
-  private readonly rnsService = inject(RnsService);
 
   readonly carregando = signal(true);
   readonly erro = signal<string | null>(null);
@@ -129,9 +125,6 @@ export class AgendaCalendarioComponent {
   /** Compromisso clicado — abre o modal com os dados da agenda (horário, duração,
    * espécie, status, observação); null = fechado. */
   readonly compromissoAberto = signal<CompromissoAgenda | null>(null);
-  readonly rnsCarregando = signal(false);
-  readonly rnsErro = signal<string | null>(null);
-  readonly rnsDetalhe = signal<ResultadoDetalheRns | null>(null);
 
   constructor() {
     // Carga inicial JÁ filtrada no usuário logado — primeiro com o nome do login; quando a
@@ -364,35 +357,15 @@ export class AgendaCalendarioComponent {
 
   /** Clique num compromisso (visões semana e dia): abre o modal com os dados da AGENDA —
    * horário, duração, espécie, status e observação, no mesmo desenho do cartão "Agendas
-   * do Técnico" do BI Alocação (pedido do usuário em 2026-08-18). Se houver RNS
-   * vinculada, o resumo completo dela (a ficha da tela Execução → RNS) carrega abaixo. */
-  async abrirCompromisso(c: CompromissoAgenda): Promise<void> {
+   * do Técnico" do BI Alocação (pedido do usuário em 2026-08-18). O resumo completo da
+   * RNS que já morou aqui saiu no mesmo dia, também a pedido do usuário — no calendário
+   * só interessam os dados da agenda (a ficha continua na tela Execução → RNS). */
+  abrirCompromisso(c: CompromissoAgenda): void {
     this.compromissoAberto.set(c);
-    this.rnsDetalhe.set(null);
-    this.rnsErro.set(null);
-    if (!c.rns) {
-      this.rnsCarregando.set(false);
-      return;
-    }
-    this.rnsCarregando.set(true);
-    try {
-      const r = await this.rnsService.detalhar(c.rns);
-      this.rnsDetalhe.set(r);
-      if (r.erro) this.rnsErro.set(r.erro);
-    } catch {
-      this.rnsErro.set(
-        'Não foi possível buscar o resumo da RNS. Verifique a conexão (e a sua permissão no módulo RNS) e tente de novo.',
-      );
-    } finally {
-      this.rnsCarregando.set(false);
-    }
   }
 
   fecharCompromisso(): void {
     this.compromissoAberto.set(null);
-    this.rnsDetalhe.set(null);
-    this.rnsErro.set(null);
-    this.rnsCarregando.set(false);
   }
 
   // ── Ajuda do template ──────────────────────────────────────────────────────────────
@@ -481,9 +454,8 @@ export class AgendaCalendarioComponent {
       c.fantasia,
       this.rotuloStatus(c.status),
       c.assunto,
-      c.rns
-        ? `RNS ${c.rns} — clique para ver a agenda e o resumo da RNS`
-        : 'Clique para ver os detalhes da agenda',
+      c.rns ? `RNS ${c.rns}` : '',
+      'Clique para ver os detalhes da agenda',
     ];
     return partes.filter(Boolean).join('\n');
   }

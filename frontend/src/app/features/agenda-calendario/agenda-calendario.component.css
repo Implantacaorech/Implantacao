@@ -54,17 +54,14 @@
 
 /* ── Resumo completo da RNS (clique no compromisso) ───────────────────────────────── */
 /* TODO compromisso é clicável — abre o modal com os dados da agenda (horário, duração,
- * espécie, status, observação); com RNS vinculada, a ficha completa vem junto. */
+ * espécie, status, observação). */
 .ag-card{cursor:pointer}
 .ag-card:hover,.ag-card:focus-visible{background:var(--surface-2);border-color:var(--line-2)}
 .ag-dia-card{cursor:pointer}
 .ag-dia-card:hover,.ag-dia-card:focus-visible{background:var(--surface-2)}
 .ag-rns-tag{color:var(--accent-700);font-size:.72rem;font-weight:600}
-/* Fundo recuado no corpo do modal — os cartões da ficha (var(--surface)) ganham relevo. */
-.ag-rns-corpo{background:var(--surface-2)}
-.ag-rns-item{margin:16px 0 8px;color:var(--navy);font-size:.9rem}
-.ag-rns-item:first-child{margin-top:0}
-.ag-rns-tit{margin:14px 0 8px;color:var(--navy);font-size:.95rem}
+/* Fundo recuado no corpo do modal — os cartões (var(--surface)) ganham relevo. */
+.ag-modal-corpo{background:var(--surface-2)}
 
 /* Detalhe da agenda no modal — o MESMO desenho do cartão "Agendas do Técnico" do BI
  * Alocação (al-item), com a observação do SICLA num bloco próprio. */
