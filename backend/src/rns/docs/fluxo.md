@@ -15,7 +15,10 @@ RnsService.consultar()
   │  configurado? ─── não ──► { itens: [], erro: "Conexão com o SICLA não configurada…" }
   │  sim
   ▼
-DisponibilidadeService.executarSql(SQL_CONSULTA_RNS, {data_ini, data_fim}, LIMITE)
+RnsService.sqlConsulta()      SQL vigente: Consultas BD `rns_lista_itemped`, ou o default
+  │                           (só passa os binds que o SQL vigente referencia)
+  ▼
+DisponibilidadeService.executarSql(sql, {data_ini?, data_fim?}, LIMITE)
   │  ok? ─── não ──► { itens: [], erro: mensagem amigável (ORA-…, timeout…) }
   │  sim
   ▼

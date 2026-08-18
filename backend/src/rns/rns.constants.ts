@@ -1,10 +1,20 @@
 import { textoAparado } from '../common/utils/texto.util';
 
+/** A consulta da tela RNS como CONSULTA NOMEADA do Consultas BD (Sistema → Consulta BD):
+ * o serviço semeia o SQL padrão abaixo sob este slug no boot e passa a usar a versão
+ * gravada lá — o Administrador edita a consulta pelo painel, sem deploy (mesmo desenho da
+ * `lista_tecnicos_sicla` do cadastro de Usuários). */
+export const SLUG_CONSULTA_RNS = 'rns_lista_itemped';
+export const NOME_CONSULTA_RNS = 'RNS — Consulta de assuntos (LISTA_ITEMPED)';
+
 /** Tela **Execução → RNS** — consulta de assuntos nas RNS do SICLA.
  *
  * Fonte: `SICLA.LISTA_ITEMPED` (a view de pedidos/itens de RNS do SICLA), lida pela MESMA
  * conexão Oracle da Disponibilidade — o idioma das outras leituras do SICLA (BI, Agenda,
- * Usuários). O SELECT abaixo é o do usuário (2026-08-14), com três adaptações mecânicas:
+ * Usuários). O SELECT abaixo é o DEFAULT embutido — a versão vigente é a do Consultas BD
+ * (`SLUG_CONSULTA_RNS`) — e é o SELECT do usuário (revisão de 2026-08-17: + `DETALHAMENTO`,
+ * `MOTIVO`, `PARECERENG`; SEM o filtro `PEDIDOPAI IS NULL` — pais E filhas na lista; o
+ * `VISAOGERAL` duplicado da revisão foi mantido uma vez só), com três adaptações mecânicas:
  *
  * 1. prefixo de schema `SICLA.` (a conexão configurada lê `SICLA.LISTA_CLIENTES`/
  *    `LISTA_TECNICOS` assim — sem depender de sinônimo do usuário Oracle);
@@ -13,11 +23,14 @@ import { textoAparado } from '../common/utils/texto.util';
  * 3. as colunas DATE saem por `TO_CHAR(..., 'YYYY-MM-DD')` para o formato no fio ser
  *    estável (mesma decisão de `SQL_CALENDARIO_ALOCACAO`).
  *
- * `PEDIDOPAI IS NULL` mantido: só o item PAI (a RNS em si), sem as filhas — as filhas
- * aparecem agregadas na própria linha (`RNSFILHAS`). O ORDER BY é o da consulta original
- * (ordem de backlog/prioridade do SICLA) e usa colunas fora do SELECT (`BACKLOGTIP`,
- * `DATAPREVISTAORD`) — válido porque a consulta lê a view diretamente. */
-export const SQL_CONSULTA_RNS = `SELECT
+ * O ORDER BY é o da consulta original (ordem de backlog/prioridade do SICLA) e usa colunas
+ * fora do SELECT (`BACKLOGTIP`, `DATAPREVISTAORD`) — válido porque lê a view diretamente. */
+export const SQL_CONSULTA_RNS_PADRAO = `-- Consulta da tela Execução → RNS (semeada pelo Painel; editável aqui).
+-- :data_ini/:data_fim são supridos automaticamente: pela janela "Criadas de/até" da tela
+-- RNS e, no Testar desta tela, por uma janela genérica de 1 ano. Mantenha os dois binds —
+-- sem eles a tela RNS perde o filtro de período. Datas devem sair como texto AAAA-MM-DD
+-- (TO_CHAR) e os nomes das colunas devem ser mantidos: são o contrato com a tela.
+SELECT
   ITM.CLIENTE,
   ITM.STATUS,
   ITM.SUGESTAO,
@@ -67,11 +80,13 @@ export const SQL_CONSULTA_RNS = `SELECT
   ITM.PONTOS,
   ITM.PROTOCOLO,
   ITM.RNSFILHAS,
-  ITM.VALOR_COB
+  ITM.VALOR_COB,
+  ITM.DETALHAMENTO,
+  ITM.MOTIVO,
+  ITM.PARECERENG
 FROM SICLA.LISTA_ITEMPED ITM
 WHERE ITM.DATACRI >= TO_DATE(:data_ini, 'YYYY-MM-DD')
   AND ITM.DATACRI <  TO_DATE(:data_fim, 'YYYY-MM-DD') + 1
-  AND ITM.PEDIDOPAI IS NULL
 ORDER BY
   ITM.BACKLOGTIP DESC,
   ITM.BACKLOGDES,
@@ -150,6 +165,9 @@ export interface LinhaRns {
   rnsFilhas: string;
   // Outros
   valorCob: number | null;
+  detalhamento: string;
+  motivo: string;
+  parecerEng: string;
 }
 
 /** Número de verdade ou null — nunca 0 por engano: `Number(null)` é 0 e gravaria "pedido 0"
@@ -217,5 +235,8 @@ export function normalizarLinhaRns(bruta: Record<string, unknown>): LinhaRns {
     protocolo: textoAparado(l.PROTOCOLO),
     rnsFilhas: textoAparado(l.RNSFILHAS),
     valorCob: numeroOuNull(l.VALOR_COB),
+    detalhamento: textoAparado(l.DETALHAMENTO),
+    motivo: textoAparado(l.MOTIVO),
+    parecerEng: textoAparado(l.PARECERENG),
   };
 }

@@ -6,6 +6,7 @@ import { Permissao } from '../common/decorators/permissao.decorator';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { RnsService } from './rns.service';
 import { QueryConsultaRnsDto } from './dto/query-consulta-rns.dto';
+import { QueryDetalheRnsDto } from './dto/query-detalhe-rns.dto';
 
 /** Tela **Execução → RNS** — consulta de assuntos nas RNS do SICLA (`LISTA_ITEMPED`).
  * Gate pelo menu `rns`: só leitura, então o nível `consulta` (default do decorator) basta
@@ -25,5 +26,14 @@ export class RnsController {
   })
   async consultar(@Query() query: QueryConsultaRnsDto) {
     return new ApiEnvelope(await this.servico.consultar(query));
+  }
+
+  @Get('detalhe')
+  @ApiOperation({
+    summary:
+      'Resumo completo de UMA RNS (todos os itens do pedido) — aberto pelo calendário da Agenda',
+  })
+  async detalhar(@Query() query: QueryDetalheRnsDto) {
+    return new ApiEnvelope(await this.servico.detalhar(query.numero));
   }
 }

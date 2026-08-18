@@ -7,7 +7,9 @@ contexto (status, datas, responsáveis, versões, valores) no detalhe.
 
 A origem é a view `SICLA.LISTA_ITEMPED` (pedidos/itens de RNS), lida pela **mesma conexão
 Oracle da Disponibilidade** — o idioma das outras leituras do SICLA (BIs, Agenda,
-Usuários). O SELECT é o fornecido pelo usuário em 2026-08-14 (ver `regras-negocio.md`).
+Usuários). O SELECT é o fornecido pelo usuário (revisão 2026-08-17) e vive como **consulta
+nomeada no Consultas BD** (Sistema → Consulta BD, slug `rns_lista_itemped`): semeado no
+boot e editável pelo Administrador sem deploy (ver `regras-negocio.md`).
 
 ## Arquivos
 
@@ -15,7 +17,7 @@ Usuários). O SELECT é o fornecido pelo usuário em 2026-08-14 (ver `regras-neg
 | ------------------------------ | --------------------------------------------------------- |
 | `rns.controller.ts`            | `GET /rns` — valida a query e delega                      |
 | `rns.service.ts`               | Janela saneada + leitura do SICLA + contrato da tela      |
-| `rns.constants.ts`             | O SQL, o teto de linhas e a normalização de linha         |
+| `rns.constants.ts`             | SQL default, slug do Consultas BD, teto e normalização    |
 | `dto/query-consulta-rns.dto.ts`| Janela `ini`/`fim` (opcionais)                            |
 | `rns.module.ts`                | Amarra tudo; importa `DisponibilidadeModule`              |
 
