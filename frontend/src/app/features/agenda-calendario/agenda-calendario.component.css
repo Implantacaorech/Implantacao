@@ -52,6 +52,16 @@
   -webkit-line-clamp:2;-webkit-box-orient:vertical}
 .ag-tec{color:var(--muted);font-size:.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+/* ── Resumo completo da RNS (clique no compromisso) ───────────────────────────────── */
+/* Compromisso COM RNS vinculada é clicável — abre o modal com a ficha completa. */
+.ag-card-rns{cursor:pointer}
+.ag-card-rns:hover,.ag-card-rns:focus-visible{background:var(--surface-2);border-color:var(--line-2)}
+.ag-rns-tag{color:var(--accent-700);font-size:.72rem;font-weight:600}
+/* Fundo recuado no corpo do modal — os cartões da ficha (var(--surface)) ganham relevo. */
+.ag-rns-corpo{background:var(--surface-2)}
+.ag-rns-item{margin:16px 0 8px;color:var(--navy);font-size:.9rem}
+.ag-rns-item:first-child{margin-top:0}
+
 /* ── Grade mensal ─────────────────────────────────────────────────────────────────── */
 .ag-mes{min-width:920px}
 .ag-mes-cab{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--line)}

@@ -64,6 +64,9 @@ export interface LinhaRns {
   rnsFilhas: string;
   // Outros
   valorCob: number | null;
+  detalhamento: string;
+  motivo: string;
+  parecerEng: string;
 }
 
 export interface ResultadoConsultaRns {
@@ -75,5 +78,14 @@ export interface ResultadoConsultaRns {
   limite: number;
   /** Bateu no teto de linhas — há mais RNS no período do que o que veio. */
   truncado: boolean;
+  erro: string | null;
+}
+
+/** Resumo completo de UMA RNS (`GET /rns/detalhe`) — todos os itens do pedido, em ordem
+ * de item. É o que o modal do calendário da Agenda mostra ao clicar num compromisso. */
+export interface ResultadoDetalheRns {
+  numero: number;
+  itens: LinhaRns[];
+  total: number;
   erro: string | null;
 }

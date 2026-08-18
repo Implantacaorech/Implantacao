@@ -2,12 +2,15 @@ import { Component, WritableSignal, computed, inject, signal } from '@angular/co
 import { FormsModule } from '@angular/forms';
 import { AgendaCalendarioService } from '../../core/services/agenda-calendario.service';
 import { AuthService } from '../../core/services/auth.service';
+import { RnsService } from '../../core/services/rns.service';
 import {
   CompromissoAgenda,
   DiaAgenda,
   ResultadoAgendaCalendario,
   UsuarioAgenda,
 } from '../../core/models/agenda-calendario.model';
+import { ResultadoDetalheRns } from '../../core/models/rns.model';
+import { RnsDetalheComponent } from '../rns/rns-detalhe.component';
 
 export type VisaoAgenda = 'dia' | 'semana' | 'mes';
 
@@ -80,13 +83,14 @@ function hojeIsoLocal(): string {
 @Component({
   selector: 'app-agenda-calendario',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, RnsDetalheComponent],
   templateUrl: './agenda-calendario.component.html',
   styleUrl: './agenda-calendario.component.css',
 })
 export class AgendaCalendarioComponent {
   private readonly service = inject(AgendaCalendarioService);
   private readonly auth = inject(AuthService);
+  private readonly rnsService = inject(RnsService);
 
   readonly carregando = signal(true);
   readonly erro = signal<string | null>(null);
@@ -107,6 +111,15 @@ export class AgendaCalendarioComponent {
   readonly statusSel = signal<string[]>([]);
   readonly busca = signal('');
   readonly filtrosAbertos = signal(false);
+
+  // ── Resumo completo da RNS (modal aberto pelo clique num compromisso) ──────────────
+
+  /** Compromisso clicado — abre o modal; null = fechado. Guarda o compromisso inteiro
+   * para o cabeçalho mostrar cliente/assunto enquanto a ficha carrega. */
+  readonly rnsAberta = signal<CompromissoAgenda | null>(null);
+  readonly rnsCarregando = signal(false);
+  readonly rnsErro = signal<string | null>(null);
+  readonly rnsDetalhe = signal<ResultadoDetalheRns | null>(null);
 
   constructor() {
     // Carga inicial JÁ filtrada no usuário logado — primeiro com o nome do login; quando a
@@ -319,6 +332,42 @@ export class AgendaCalendarioComponent {
     await this.carregar();
   }
 
+  // ── Resumo completo da RNS ─────────────────────────────────────────────────────────
+
+  /** Clique num compromisso (visões semana e dia): abre o modal com o resumo completo da
+   * RNS vinculada — a MESMA ficha da tela Execução → RNS. Compromisso sem RNS não abre. */
+  async abrirRns(c: CompromissoAgenda): Promise<void> {
+    if (!c.rns) return;
+    this.rnsAberta.set(c);
+    this.rnsDetalhe.set(null);
+    this.rnsErro.set(null);
+    this.rnsCarregando.set(true);
+    try {
+      const r = await this.rnsService.detalhar(c.rns);
+      this.rnsDetalhe.set(r);
+      if (r.erro) this.rnsErro.set(r.erro);
+    } catch {
+      this.rnsErro.set(
+        'Não foi possível buscar o resumo da RNS. Verifique a conexão (e a sua permissão no módulo RNS) e tente de novo.',
+      );
+    } finally {
+      this.rnsCarregando.set(false);
+    }
+  }
+
+  fecharRns(): void {
+    this.rnsAberta.set(null);
+    this.rnsDetalhe.set(null);
+    this.rnsErro.set(null);
+    this.rnsCarregando.set(false);
+  }
+
+  /** Subtítulo do modal: cliente · assunto · técnico do compromisso clicado (só o que
+   * estiver preenchido). */
+  subtituloRns(c: CompromissoAgenda): string {
+    return [c.fantasia, c.assunto, c.tecnico].filter(Boolean).join(' · ');
+  }
+
   // ── Ajuda do template ──────────────────────────────────────────────────────────────
 
   /** Grafia do usuário logado NA TABELA de usuários — é a que bate com o `TECNICO` do
@@ -390,6 +439,7 @@ export class AgendaCalendarioComponent {
       c.fantasia,
       this.rotuloStatus(c.status),
       c.assunto,
+      c.rns ? `RNS ${c.rns} — clique para abrir o resumo completo` : '',
     ];
     return partes.filter(Boolean).join('\n');
   }

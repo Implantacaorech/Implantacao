@@ -23,6 +23,13 @@
            placeholder="assunto, cliente, módulo, consultor, nº do pedido…" autocomplete="off" />
   </label>
   <label class="campo estreito">
+    <span>Cliente</span>
+    <select [ngModel]="clienteSel()" (ngModelChange)="clienteSel.set($event)" name="cliente">
+      <option value="">(todos)</option>
+      @for (c of clienteOpcoes(); track c) { <option [value]="c">{{ c }}</option> }
+    </select>
+  </label>
+  <label class="campo estreito">
     <span>Status</span>
     <select [ngModel]="statusSel()" (ngModelChange)="statusSel.set($event)" name="status">
       <option value="">(todos)</option>
@@ -45,6 +52,11 @@
     <input type="date" [ngModel]="fim()" (ngModelChange)="definirPeriodo('fim', $event)" name="fim" />
   </label>
   <button class="btn ghost" type="button" (click)="limparFiltros()" [disabled]="!temFiltro()">Limpar</button>
+  <button class="btn ghost rns-btn-grafico" type="button" [class.on]="graficoAberto()"
+          [attr.aria-pressed]="graficoAberto()" (click)="graficoAberto.set(!graficoAberto())"
+          title="Distribuição das RNS por tipo (gráfico de pizza)">
+    {{ graficoAberto() ? 'Ocultar gráfico' : 'Gráfico por tipo' }}
+  </button>
 </div>
 
 @if (carregando()) {
@@ -55,6 +67,19 @@
       O período tem mais RNS do que o teto de {{ resultado()?.limite | number: '1.0-0' }} linhas —
       a busca enxerga só o que veio. Estreite as datas para cobrir tudo.
     </p>
+  }
+  @if (graficoAberto()) {
+    <div class="cercado rns-grafico">
+      <div class="rns-grafico-cab">
+        <span class="rns-grafico-tit">RNS por tipo</span>
+        <span class="dica">o gráfico segue a busca e os filtros · clique numa fatia para filtrar a lista pelo tipo (clique de novo para desfazer)</span>
+      </div>
+      @if (graficoTipos(); as cfg) {
+        <div class="rns-grafico-area"><canvas [appChart]="cfg"></canvas></div>
+      } @else {
+        <p class="dica">— nenhuma RNS no recorte atual —</p>
+      }
+    </div>
   }
   <div class="tabela-wrap cercado">
     <table class="tabela rns-tab">
@@ -88,83 +113,9 @@
           @if (estaAberta(l)) {
             <tr class="rns-det">
               <td colspan="9">
-                @if (l.visaoGeral) {
-                  <div class="rns-det-vg">{{ l.visaoGeral }}</div>
-                }
-                <div class="rns-det-grps">
-                  <div class="rns-det-grp">
-                    <div class="rns-det-tit">Identificação</div>
-                    <div class="rns-det-cps">
-                      <span>Pedido / Item</span><b>{{ ou(l.pedido) }} / {{ ou(l.item) }}</b>
-                      <span>Código</span><b>{{ ou(l.codigo) }}</b>
-                      <span>Cliente (cód.)</span><b>{{ ou(l.cliente) }}</b>
-                      <span>Projeto</span><b>{{ ou(l.projeto) }}</b>
-                      <span>Tipo / Subtipo</span><b>{{ ou(l.tipoDes) }} {{ l.subtipo ? '· ' + l.subtipo : '' }}</b>
-                      <span>Prioridade</span><b>{{ ou(l.prioridade) }}</b>
-                      <span>Prioridade A / Ana</span><b>{{ ou(l.prioridadeA) }} / {{ ou(l.prioridadeAna) }}</b>
-                      <span>Backlog</span><b>{{ ou(l.backlogDes) }}</b>
-                      <span>Fase</span><b>{{ ou(l.faseDes) }}</b>
-                      <span>Requisito</span><b>{{ ou(l.requisitoDes) }}</b>
-                      <span>Status público</span><b>{{ ou(l.statusPubDes) }}</b>
-                      <span>Disponível / Tem req.</span><b>{{ ou(l.disponivel) }} / {{ ou(l.temReq) }}</b>
-                    </div>
-                  </div>
-                  <div class="rns-det-grp">
-                    <div class="rns-det-tit">Datas</div>
-                    <div class="rns-det-cps">
-                      <span>Criação</span><b>{{ dataBr(l.dataCri) }}</b>
-                      <span>Desejada</span><b>{{ dataBr(l.dataDesejada) }}</b>
-                      <span>Prevista</span><b>{{ dataBr(l.dataPrevista) }}</b>
-                      <span>Prev. fim produção</span><b>{{ dataBr(l.dataPrevFimProd) }}</b>
-                      <span>Status 8</span><b>{{ dataBr(l.dataStatus8) }}</b>
-                      <span>Status 10</span><b>{{ dataBr(l.dataStatus10) }}</b>
-                      <span>Dias de triagem</span><b>{{ ou(l.diasTriagem) }}</b>
-                    </div>
-                  </div>
-                  <div class="rns-det-grp">
-                    <div class="rns-det-tit">Cliente · Produto</div>
-                    <div class="rns-det-cps">
-                      <span>Fantasia</span><b>{{ ou(l.fantasia) }}</b>
-                      <span>Sigla</span><b>{{ ou(l.sigla) }}</b>
-                      <span>Contato</span><b>{{ ou(l.contato) }}</b>
-                      <span>Versão atual</span><b>{{ ou(l.versaoAtu) }}</b>
-                      <span>Versão liberada</span><b>{{ ou(l.versaoLib) }}</b>
-                      <span>Mín. p/ geração</span><b>{{ ou(l.minVerGeracao) }}</b>
-                    </div>
-                  </div>
-                  <div class="rns-det-grp">
-                    <div class="rns-det-tit">Responsáveis</div>
-                    <div class="rns-det-cps">
-                      <span>Consultor</span><b>{{ ou(l.resNome) }}</b>
-                      <span>Analista</span><b>{{ ou(l.anaNome) }}</b>
-                      <span>Val. coordenador</span><b>{{ ou(l.valCoordenadorDes) }}</b>
-                      <span>Val. técnico</span><b>{{ ou(l.valTecnicoDes) }}</b>
-                      <span>Val. grupo</span><b>{{ ou(l.valGrupoDes) }}</b>
-                      <span>Função</span><b>{{ ou(l.funcaoDes) }}</b>
-                      <span>Representante</span><b>{{ ou(l.represenDes) }}</b>
-                      <span>Product owner</span><b>{{ ou(l.productOwnerDes) }}</b>
-                    </div>
-                  </div>
-                  <div class="rns-det-grp">
-                    <div class="rns-det-tit">Organização · Produção</div>
-                    <div class="rns-det-cps">
-                      <span>Célula</span><b>{{ ou(l.celula) }}</b>
-                      <span>Menu</span><b>{{ ou(l.menu) }}</b>
-                      <span>Time</span><b>{{ ou(l.timeDes) }}</b>
-                      <span>Turnos previstos</span><b>{{ ou(l.turnosPrev) }}</b>
-                      <span>Pontos</span><b>{{ ou(l.pontos) }}</b>
-                    </div>
-                  </div>
-                  <div class="rns-det-grp">
-                    <div class="rns-det-tit">Protocolo · RNS · Valor</div>
-                    <div class="rns-det-cps">
-                      <span>Protocolo</span><b>{{ ou(l.protocolo) }}</b>
-                      <span>RNS filhas</span><b>{{ ou(l.rnsFilhas) }}</b>
-                      <span>Valor cobrança</span>
-                      <b>@if (l.valorCob !== null) { R$ {{ l.valorCob | number: '1.2-2' }} } @else { — }</b>
-                    </div>
-                  </div>
-                </div>
+                <!-- A ficha (resumo completo) é o componente compartilhado com o modal do
+                     calendário da Agenda — um só desenho de ficha para o sistema. -->
+                <app-rns-detalhe [linha]="l" />
               </td>
             </tr>
           }

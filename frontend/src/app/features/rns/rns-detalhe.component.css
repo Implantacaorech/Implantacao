@@ -1,0 +1,32 @@
+/* Ficha de uma RNS (resumo completo) — cartões por grupo, usada no detalhe expandido da
+ * tela Execução → RNS e no modal do calendário da Agenda. Cada linha rótulo→valor tem
+ * respiro e separador próprios — foi o "bloco compactado" que o usuário apontou em
+ * 2026-08-17. */
+
+:host { display: block; }
+
+.rns-det-vg { margin: 0 0 14px; padding: 10px 14px; background: var(--surface);
+  border: 1px solid var(--line); border-left: 4px solid var(--accent);
+  border-radius: var(--r-sm); white-space: pre-wrap; font-weight: 600; color: var(--navy); }
+.rns-det-grps { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px; align-items: start; }
+.rns-det-grp { background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r-md); padding: 12px 14px 6px; }
+.rns-det-tit { margin: 0 0 4px; padding-bottom: 7px; border-bottom: 1px solid var(--line);
+  font-weight: 700; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--navy); }
+.rns-det-cps { margin: 0; }
+/* Estilo "razão": rótulo à esquerda, valor à direita, separador tracejado entre linhas. */
+.rns-det-cp { display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+  padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: .875rem; line-height: 1.4; }
+.rns-det-cp:last-child { border-bottom: 0; }
+.rns-det-cp > dt { color: var(--muted); white-space: nowrap; }
+.rns-det-cp > dd { margin: 0; font-weight: 600; color: var(--ink); text-align: right;
+  overflow-wrap: anywhere; }
+.rns-det-cp > dd.vazio { color: var(--faint); font-weight: 400; }
+
+/* Textos longos (detalhamento, motivo, parecer): cartão de largura cheia, quebra preservada. */
+.rns-det-txt { margin-top: 12px; padding: 12px 14px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--r-md); white-space: pre-wrap;
+  color: var(--ink); font-size: .88rem; line-height: 1.5; }
+.rns-det-txt .rns-det-tit { margin-bottom: 6px; }

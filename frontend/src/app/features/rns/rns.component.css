@@ -7,6 +7,16 @@
 
 .rns-aviso { margin: 0 0 8px; }
 
+/* Botão do gráfico com estado "ligado" visível (o painel pode estar fora da dobra). */
+.rns-btn-grafico.on { background: var(--accent-weak); border-color: var(--accent); color: var(--accent-700); }
+
+/* Painel do gráfico de pizza (RNS por tipo) — deriva das linhas visíveis, como a tabela. */
+.rns-grafico { margin: 0 0 12px; padding: 12px 16px; background: var(--surface); }
+.rns-grafico-cab { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.rns-grafico-tit { font-weight: 700; color: var(--navy); }
+/* Chart.js com `maintainAspectRatio: false` exige um contêiner com altura própria. */
+.rns-grafico-area { position: relative; height: 320px; max-width: 640px; margin: 0 auto; }
+
 /* Pedido/Item alinham como número — é a coluna que o consultor copia. */
 .rns-num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; font-weight: 600; }
 
@@ -16,12 +26,6 @@
 .rns-linha { cursor: pointer; }
 .rns-linha.on td { background: var(--surface-2); }
 
-/* Detalhe expandido: grupos lado a lado, cada um com pares rótulo→valor. */
-.rns-det > td { background: var(--surface); padding: 14px 18px; }
-.rns-det-vg { margin-bottom: 12px; white-space: pre-wrap; color: var(--ink); }
-.rns-det-grps { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px 22px; }
-.rns-det-tit { font-weight: 700; font-size: .8rem; text-transform: uppercase; letter-spacing: .03em;
-  color: var(--muted); margin-bottom: 6px; }
-.rns-det-cps { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: .86rem; }
-.rns-det-cps > span { color: var(--muted); white-space: nowrap; }
-.rns-det-cps > b { font-weight: 500; overflow-wrap: anywhere; }
+/* Detalhe expandido: a linha só dá o fundo recuado — a ficha em si (grupos, textos
+ * longos) é o componente compartilhado `app-rns-detalhe` (rns-detalhe.component.css). */
+.rns-det > td { background: var(--surface-2); padding: 16px 20px 18px; }

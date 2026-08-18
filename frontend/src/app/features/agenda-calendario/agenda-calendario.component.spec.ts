@@ -3,12 +3,14 @@ import { signal } from '@angular/core';
 import { AgendaCalendarioComponent } from './agenda-calendario.component';
 import { AgendaCalendarioService } from '../../core/services/agenda-calendario.service';
 import { AuthService } from '../../core/services/auth.service';
+import { RnsService } from '../../core/services/rns.service';
 import {
   CompromissoAgenda,
   DiaAgenda,
   ResultadoAgendaCalendario,
   UsuarioAgenda,
 } from '../../core/models/agenda-calendario.model';
+import { LinhaRns, ResultadoDetalheRns } from '../../core/models/rns.model';
 
 function compromisso(over: Partial<CompromissoAgenda> = {}): CompromissoAgenda {
   return {
@@ -92,6 +94,46 @@ function fakeService(linhas: CompromissoAgenda[], erro: string | null = null) {
   };
 }
 
+/** Item mínimo de `LISTA_ITEMPED` para o modal do resumo — só o que os testes checam. */
+function itemRns(over: Partial<LinhaRns> = {}): LinhaRns {
+  return {
+    pedido: 138571, item: 1, codigo: 1, cliente: 1, status: '3',
+    sugestao: 'Implantação RAMADA', tipo: '', subtipo: '', projeto: '',
+    prioridadeA: '', prioridade: null, prioridadeAna: '', disponivel: '', temReq: '',
+    tipoDes: '', statusDes: '3-Aprovada', statusPubDes: '', backlogDes: '', faseDes: '',
+    requisitoDes: '', dataCri: '2026-08-01', dataDesejada: '', dataPrevista: '',
+    dataPrevFimProd: '', dataStatus8: '', dataStatus10: '', diasTriagem: null,
+    resNome: '', sigla: '', fantasia: 'RAMADA', visaoGeral: '', contato: '',
+    versaoAtu: '', versaoLib: '', minVerGeracao: '', anaNome: '',
+    valCoordenadorDes: '', valTecnicoDes: '', valGrupoDes: '', funcaoDes: '',
+    represenDes: '', productOwnerDes: '', celula: '', menu: '', turnosPrev: null,
+    timeDes: '', pontos: null, protocolo: '', rnsFilhas: '', valorCob: null,
+    detalhamento: '', motivo: '', parecerEng: '',
+    ...over,
+  };
+}
+
+/** Fake do serviço de RNS: responde o resumo (ou falha) e registra os números pedidos. */
+function fakeRnsService(
+  itens: LinhaRns[] = [itemRns()],
+  opts: { erro?: string | null; rejeita?: boolean } = {},
+) {
+  const pedidos: number[] = [];
+  return {
+    pedidos,
+    detalhar: (numero: number): Promise<ResultadoDetalheRns> => {
+      pedidos.push(numero);
+      if (opts.rejeita) return Promise.reject(new Error('rede'));
+      return Promise.resolve({
+        numero,
+        itens,
+        total: itens.length,
+        erro: opts.erro ?? null,
+      });
+    },
+  };
+}
+
 /** Usuária logada com ACENTO no cadastro do Painel — a tabela grava sem acento; a carga
  * inicial tem de casar mesmo assim e adotar a grafia da tabela. */
 const AUTH_FAKE = {
@@ -105,20 +147,27 @@ const AUTH_FAKE = {
 };
 
 describe('AgendaCalendarioComponent (Execução → Agenda)', () => {
-  function montar(service: ReturnType<typeof fakeService>) {
+  function montar(
+    service: ReturnType<typeof fakeService>,
+    rns: ReturnType<typeof fakeRnsService> = fakeRnsService(),
+  ) {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [AgendaCalendarioComponent],
       providers: [
         { provide: AgendaCalendarioService, useValue: service },
         { provide: AuthService, useValue: AUTH_FAKE },
+        { provide: RnsService, useValue: rns },
       ],
     });
     return TestBed.createComponent(AgendaCalendarioComponent);
   }
 
-  async function pronto(service: ReturnType<typeof fakeService>) {
-    const fixture = montar(service);
+  async function pronto(
+    service: ReturnType<typeof fakeService>,
+    rns: ReturnType<typeof fakeRnsService> = fakeRnsService(),
+  ) {
+    const fixture = montar(service, rns);
     fixture.detectChanges();
     await fixture.whenStable();
     return fixture.componentInstance;
@@ -249,5 +298,55 @@ describe('AgendaCalendarioComponent (Execução → Agenda)', () => {
     const comp = await pronto(svc);
     expect(comp.erro()).toContain('SICLA');
     expect(comp.compromissosVisiveis()).toEqual([]);
+  });
+
+  describe('resumo completo da RNS (clique no compromisso)', () => {
+    it('clique num compromisso COM RNS abre o modal e busca o resumo pelo número', async () => {
+      const rns = fakeRnsService([
+        itemRns({ item: 1 }),
+        itemRns({ item: 2, codigo: 2, sugestao: 'Conversão de produtos' }),
+      ]);
+      const comp = await pronto(fakeService([compromisso()]), rns);
+
+      await comp.abrirRns(compromisso()); // rns: 138571 (molde)
+      expect(rns.pedidos).toEqual([138571]);
+      expect(comp.rnsAberta()?.rns).toBe(138571);
+      expect(comp.rnsCarregando()).toBe(false);
+      expect(comp.rnsErro()).toBeNull();
+      // O resumo completo traz TODOS os itens do pedido.
+      expect(comp.rnsDetalhe()?.itens.map((i) => i.item)).toEqual([1, 2]);
+    });
+
+    it('compromisso SEM RNS vinculada não abre nada', async () => {
+      const rns = fakeRnsService();
+      const comp = await pronto(fakeService([]), rns);
+      await comp.abrirRns(compromisso({ rns: null }));
+      expect(comp.rnsAberta()).toBeNull();
+      expect(rns.pedidos).toEqual([]);
+    });
+
+    it('erro do backend (ou RNS inexistente) aparece DENTRO do modal', async () => {
+      const rns = fakeRnsService([], { erro: 'A RNS 138571 não foi encontrada no SICLA.' });
+      const comp = await pronto(fakeService([]), rns);
+      await comp.abrirRns(compromisso());
+      expect(comp.rnsAberta()).not.toBeNull();
+      expect(comp.rnsErro()).toContain('não foi encontrada');
+    });
+
+    it('falha de rede vira mensagem amigável, sem derrubar o componente', async () => {
+      const rns = fakeRnsService([], { rejeita: true });
+      const comp = await pronto(fakeService([]), rns);
+      await comp.abrirRns(compromisso());
+      expect(comp.rnsErro()).toContain('Não foi possível buscar o resumo');
+    });
+
+    it('fechar o modal limpa o estado do resumo', async () => {
+      const comp = await pronto(fakeService([]));
+      await comp.abrirRns(compromisso());
+      comp.fecharRns();
+      expect(comp.rnsAberta()).toBeNull();
+      expect(comp.rnsDetalhe()).toBeNull();
+      expect(comp.rnsErro()).toBeNull();
+    });
   });
 });

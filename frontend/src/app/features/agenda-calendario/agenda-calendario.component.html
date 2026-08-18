@@ -100,10 +100,14 @@
               </button>
               <div class="ag-col-corpo">
                 @for (c of d.compromissos; track $index) {
-                  <div class="ag-card" [style.border-left-color]="corBorda(c.status)" [title]="dicaDe(c)">
+                  <div class="ag-card" [class.ag-card-rns]="c.rns"
+                       [style.border-left-color]="corBorda(c.status)" [title]="dicaDe(c)"
+                       [attr.role]="c.rns ? 'button' : null" [attr.tabindex]="c.rns ? 0 : null"
+                       (click)="abrirRns(c)" (keydown.enter)="abrirRns(c)">
                     <span class="ag-hora">{{ c.horaIni }}–{{ c.horaFim }}</span>
                     <span class="ag-cli">{{ c.fantasia || c.assunto || '(sem assunto)' }}</span>
                     @if (!minhasAgendas()) { <span class="ag-tec">{{ c.tecnico }}</span> }
+                    @if (c.rns) { <span class="ag-rns-tag">RNS {{ c.rns }}</span> }
                   </div>
                 } @empty {
                   <div class="ag-livre">livre</div>
@@ -154,7 +158,11 @@
         @if (d.compromissos.length > 0) {
           <div class="ag-dia-lista">
             @for (c of d.compromissos; track $index) {
-              <div class="painel compacto ag-dia-card" [style.border-left-color]="corBorda(c.status)">
+              <div class="painel compacto ag-dia-card" [class.ag-card-rns]="c.rns"
+                   [style.border-left-color]="corBorda(c.status)"
+                   [title]="c.rns ? 'RNS ' + c.rns + ' — clique para abrir o resumo completo' : ''"
+                   [attr.role]="c.rns ? 'button' : null" [attr.tabindex]="c.rns ? 0 : null"
+                   (click)="abrirRns(c)" (keydown.enter)="abrirRns(c)">
                 <div class="ag-dia-hora">
                   <strong>{{ c.horaIni }}–{{ c.horaFim }}</strong>
                   <small>{{ duracao(c.minutos) }}</small>
@@ -191,4 +199,38 @@
       Nenhum compromisso {{ minhasAgendas() ? 'seu' : '' }} no período — ajuste o filtro ou navegue com ‹ ›.
     </div>
   }
+}
+
+<!-- Modal do resumo completo da RNS — a MESMA ficha da tela Execução → RNS. -->
+@if (rnsAberta(); as c) {
+  <div class="modal-fundo" (click)="fecharRns()">
+    <div class="modal-cx largo" (click)="$event.stopPropagation()">
+      <div class="modal-cab">
+        <div>
+          <h3>RNS {{ c.rns }} — resumo completo</h3>
+          <p class="sub dica">{{ subtituloRns(c) }}</p>
+        </div>
+        <button class="modal-fechar" type="button" (click)="fecharRns()" aria-label="Fechar">
+          <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-x"/></svg>
+        </button>
+      </div>
+      <div class="modal-corpo ag-rns-corpo">
+        @if (rnsCarregando()) {
+          <p class="dica">Buscando o resumo da RNS {{ c.rns }} no SICLA…</p>
+        } @else if (rnsErro()) {
+          <div class="resultado erro">{{ rnsErro() }}</div>
+        } @else if (rnsDetalhe(); as det) {
+          @for (item of det.itens; track (item.codigo ?? $index)) {
+            @if (det.itens.length > 1) {
+              <h4 class="ag-rns-item">Item {{ item.item }}@if (item.sugestao) { — {{ item.sugestao }}}</h4>
+            }
+            <app-rns-detalhe [linha]="item" />
+          }
+        }
+      </div>
+      <div class="modal-rod">
+        <button type="button" class="btn" (click)="fecharRns()">Fechar</button>
+      </div>
+    </div>
+  </div>
 }

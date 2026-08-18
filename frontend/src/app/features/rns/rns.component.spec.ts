@@ -66,6 +66,9 @@ function linha(over: Partial<LinhaRns> = {}): LinhaRns {
     protocolo: '',
     rnsFilhas: '',
     valorCob: 1500.5,
+    detalhamento: '',
+    motivo: '',
+    parecerEng: '',
     ...over,
   };
 }
@@ -159,6 +162,16 @@ describe('RnsComponent (Execução → RNS)', () => {
     expect(comp.visiveis().map((l) => l.pedido)).toEqual([1]);
   });
 
+  it('a busca também olha o detalhamento/motivo/parecer (textos longos da RNS)', async () => {
+    const svc = fakeService([
+      linha({ pedido: 1, detalhamento: 'Layout do arquivo de comissões por representante' }),
+      linha({ pedido: 2 }),
+    ]);
+    const comp = await pronto(svc);
+    comp.busca.set('comissoes');
+    expect(comp.visiveis().map((l) => l.pedido)).toEqual([1]);
+  });
+
   it('acha a RNS pelo número do pedido', async () => {
     const svc = fakeService([linha({ pedido: 138643 }), linha({ pedido: 999, item: 2 })]);
     const comp = await pronto(svc);
@@ -166,14 +179,19 @@ describe('RnsComponent (Execução → RNS)', () => {
     expect(comp.visiveis().map((l) => l.pedido)).toEqual([138643]);
   });
 
-  it('filtros de status e tipo refinam junto com a busca', async () => {
+  it('filtros de cliente, status e tipo refinam junto com a busca', async () => {
     const svc = fakeService([
-      linha({ pedido: 1, statusDes: '3-Aprovada', tipoDes: '6-Conversão' }),
-      linha({ pedido: 2, statusDes: '10-Entregue', tipoDes: '6-Conversão' }),
-      linha({ pedido: 3, statusDes: '3-Aprovada', tipoDes: '5-Implementação' }),
+      linha({ pedido: 1, statusDes: '3-Aprovada', tipoDes: '6-Conversão', fantasia: 'RAMADA' }),
+      linha({ pedido: 2, statusDes: '10-Entregue', tipoDes: '6-Conversão', fantasia: 'WLG Distribuidora' }),
+      linha({ pedido: 3, statusDes: '3-Aprovada', tipoDes: '5-Implementação', fantasia: 'RAMADA' }),
     ]);
     const comp = await pronto(svc);
     expect(comp.statusOpcoes()).toEqual(['10-Entregue', '3-Aprovada']);
+    // Opções de cliente: distintas, em ordem alfabética pt-BR.
+    expect(comp.clienteOpcoes()).toEqual(['RAMADA', 'WLG Distribuidora']);
+
+    comp.clienteSel.set('RAMADA');
+    expect(comp.visiveis().map((l) => l.pedido)).toEqual([1, 3]);
 
     comp.statusSel.set('3-Aprovada');
     expect(comp.visiveis().map((l) => l.pedido)).toEqual([1, 3]);
@@ -182,6 +200,58 @@ describe('RnsComponent (Execução → RNS)', () => {
     expect(comp.visiveis().map((l) => l.pedido)).toEqual([1]);
 
     comp.limparFiltros();
+    expect(comp.visiveis()).toHaveLength(3);
+  });
+
+  it('a pizza agrupa as RNS visíveis por tipo, na ordem do select, com "(sem tipo)" por último', async () => {
+    const svc = fakeService([
+      linha({ pedido: 1, tipoDes: '6-Conversão' }),
+      linha({ pedido: 2, tipoDes: '5-Implementação', statusDes: '10-Entregue' }),
+      linha({ pedido: 3, tipoDes: '6-Conversão' }),
+      linha({ pedido: 4, tipoDes: '' }),
+    ]);
+    const comp = await pronto(svc);
+    expect(comp.porTipoVisivel()).toEqual([
+      { tipo: '5-Implementação', quantidade: 1 },
+      { tipo: '6-Conversão', quantidade: 2 },
+      { tipo: '(sem tipo)', quantidade: 1 },
+    ]);
+
+    // O gráfico responde aos filtros como a tabela — e a COR segue o tipo, não a
+    // posição: filtrar não repinta as fatias que sobram.
+    const corAntes = comp.corTipo('6-Conversão');
+    comp.statusSel.set('3-Aprovada');
+    expect(comp.porTipoVisivel()).toEqual([
+      { tipo: '6-Conversão', quantidade: 2 },
+      { tipo: '(sem tipo)', quantidade: 1 },
+    ]);
+    expect(comp.corTipo('6-Conversão')).toBe(corAntes);
+  });
+
+  it('clique na fatia filtra pelo tipo; de novo desfaz; "(sem tipo)" não filtra', async () => {
+    const svc = fakeService([
+      linha({ pedido: 1, tipoDes: '6-Conversão' }),
+      linha({ pedido: 2, tipoDes: '5-Implementação' }),
+      linha({ pedido: 3, tipoDes: '' }),
+    ]);
+    const comp = await pronto(svc);
+
+    const cfg = comp.graficoTipos();
+    expect(cfg?.type).toBe('pie');
+    expect(cfg?.data.labels).toEqual(['5-Implementação', '6-Conversão', '(sem tipo)']);
+    expect(cfg?.data.datasets[0].data).toEqual([1, 1, 1]);
+
+    // Clique simulado na 2ª fatia (o Chart.js entrega o índice do elemento atingido).
+    type CliquePizza = (e: unknown, elems: { index: number }[]) => void;
+    (cfg?.options?.onClick as unknown as CliquePizza)(null, [{ index: 1 }]);
+    expect(comp.tipoSel()).toBe('6-Conversão');
+    expect(comp.visiveis().map((l) => l.pedido)).toEqual([1]);
+
+    comp.filtrarPorTipo('6-Conversão');
+    expect(comp.tipoSel()).toBe('');
+
+    comp.filtrarPorTipo('(sem tipo)');
+    expect(comp.tipoSel()).toBe('');
     expect(comp.visiveis()).toHaveLength(3);
   });
 
