@@ -251,6 +251,15 @@ export const routes: Routes = [
         loadComponent: () => import('./features/rns/rns.component').then((m) => m.RnsComponent),
       },
       {
+        // Execução → Wall-e: base de conhecimento pesquisável sobre o acervo documental
+        // dos chats do bot Wall-e (fonte somente leitura, indexada no banco do Painel).
+        path: 'walle',
+        canActivate: [permissaoGuard('walle')],
+        data: { titulo: 'Wall-e' },
+        loadComponent: () =>
+          import('./features/walle/walle.component').then((m) => m.WalleComponent),
+      },
+      {
         path: 'protocolos/:id',
         canActivate: [permissaoGuard('protocolos')],
         data: { titulo: 'Transcrição Áudio/Vídeo — revisão' },

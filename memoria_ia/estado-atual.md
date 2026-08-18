@@ -45,6 +45,13 @@ stack novo.
   `webapp/`) + a ponte `legado_cli` para o assistente administrativo.
 - Importação do e-mail de fechamento (IMAP), notificações por e-mail, robô da caixa — agora
   em `backend/src/email/`, `backend/src/fluxo/`.
+- **Consulta Wall-e** (2026-08-18): Execução → Wall-e (chave `walle`, abaixo do RNS) —
+  base de conhecimento sobre o acervo dos chats do bot Wall-e (`R:\GRM\CHAT_WALLE\`,
+  **fonte SOMENTE LEITURA**, indexada nas tabelas `walle_*`). Busca híbrida em memória,
+  visão por chat, SQLs documentais (nunca executados) e síntese por IA com finalidade
+  `walle` **só-local** (§21-A.10) que degrada para busca-guiada. Fonte B (metadados de
+  `SICLA.CHAT_WALLE`) editável em Consultas BD, slug `walle_chats_sicla`. Módulo:
+  `backend/src/walle/` (6 docs em `docs/`); tela: `frontend/src/app/features/walle/`.
 
 ## Processo de 21 passos (2026-07-30)
 

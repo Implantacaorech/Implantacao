@@ -149,6 +149,12 @@
           <span class="side-tip">Consulta de assuntos (SICLA)</span>
         </a>
       }
+      @if (podeWalle()) {
+        <a class="side-link" routerLink="/walle" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>Wall-e
+          <span class="side-tip">Base de conhecimento dos chats</span>
+        </a>
+      }
       @if (temGestao()) {
         <div class="side-grp">Gestão</div>
         @if (podeCoordenacao()) {

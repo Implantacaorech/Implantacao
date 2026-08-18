@@ -38,6 +38,9 @@ export interface AppConfig {
   /** Pasta onde a Tarefa Agendada deixa os zips do dump e os logs de operação (backup e
    * Guardião). É de onde a vigilância de saúde lê — ver src/saude/. */
   backupDir: string;
+  /** Raiz do acervo documental dos chats do Wall-e (share de rede). SOMENTE LEITURA —
+   * regra inegociável: o Painel lê/indexa, nunca grava lá (ver src/walle/). */
+  walleAcervoDir: string;
   frontendDistPath: string;
   legadoPythonExe: string;
   legadoWebappDir: string;
@@ -193,6 +196,11 @@ export default (): AppConfig => {
     // tools/Painel_Novo_Backup_MariaDB.ps1) e os logs do backup e do Guardião. O painel só
     // LÊ daqui — é o que permite responder "o backup de ontem saiu?" sem abrir o servidor.
     backupDir: process.env.MIGRACAO_BACKUP_DIR ?? 'C:\\PainelBackups',
+    // Acervo dos chats do Wall-e (espelho documental em share de rede). O Painel trata a
+    // pasta como fonte oficial SOMENTE LEITURA: indexa para o MariaDB e pesquisa por lá;
+    // nenhum processo grava, cria ou renomeia nada dentro dela — nem cache, nem log.
+    walleAcervoDir:
+      process.env.MIGRACAO_WALLE_ACERVO_DIR ?? 'R:\\GRM\\CHAT_WALLE',
     // Onde fica o build de produção do Angular (`ng build`, saída em
     // frontend/dist/frontend/browser) — o NestJS serve esses arquivos estáticos direto
     // (ver main.ts/ServeStaticModule), um único processo/porta em produção, mesmo padrão

@@ -180,6 +180,23 @@
     clique, e a gravação sai pelo mesmo PATCH de sempre, com a autoria de quem aceitou.
     Finalidade de IA própria (`levantamento`), chave separada em Config → IA.
   - [ ] Os demais: próximo passo, rascunho de e-mail e riscos (RAID).
+- [~] **Consulta Wall-e (base de conhecimento)** *(2026-08-18)* — módulo `backend/src/walle/`
+  com a tela Execução → Wall-e (chave `walle`): indexa o acervo documental dos chats do bot
+  Wall-e (`R:\GRM\CHAT_WALLE\`, **fonte somente leitura — regra inegociável**) nas tabelas
+  `walle_*`, com busca híbrida (identificadores + lexical + expansão semântica), visão por
+  chat, "também pode ser útil", SQLs documentais e síntese por IA (finalidade `walle`,
+  **só-local** por §21-A.10, com degradação para fontes). O que resta:
+  - [ ] **Embeddings/RAG completo** — o roadmap do Vault já registra "RAG de verdade: não
+    iniciado (decisão de hospedagem/custo)". Caminho natural: endpoint `/embeddings` no
+    docservice (Python local, privacidade por construção) + coluna vetorial. Com ~20
+    documentos a busca lexical resolve; reavaliar quando o acervo crescer uma ordem de
+    grandeza. Decisão de arquitetura relevante ⇒ exige ADR (§21-A.2).
+  - [ ] **Validar a Fonte B contra o Oracle real** — o SQL semeado (`walle_chats_sicla`,
+    editável em Consultas BD) usa as colunas da DDL oficial de `SICLA.CHAT_WALLE`; falta
+    rodar contra produção e, se o DBA liberar `LISTA_CHAT_WALLE`/`DIALOGO`, expandir para
+    os diálogos (§23 da especificação — reconstruir pergunta→resposta→arquivo).
+  - [ ] **Configurar o provedor local da finalidade `walle`** em Config → IA (sem isso a
+    síntese degrada para busca-guiada — funcional, mas sem resposta redigida).
 - [ ] **Pipeline de Conversão + gate de virada** (reconciliação origem×destino, SIT/UAT, pendências, docs obrigatórios).
 - [ ] **Disparadores de fim de fluxo** (critério de saída do hypercare → Termo + e-mails + RNS para manutenção).
 - [x] **Feito:** **Alertas proativos** — uso oficial vencido, SLA de 5 dias úteis do Cronograma, Em risco, Hypercare prolongado e projeto parado; painel no Coordenação + badge no menu (respeita o perfil).

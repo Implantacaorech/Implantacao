@@ -1,0 +1,301 @@
+<div class="wl-head">
+  <div>
+    <h1 class="pagina-titulo">Wall-e <small>base de conhecimento</small></h1>
+    <p class="dica">
+      Pesquise análises, SQLs, investigações e soluções já produzidas nos chats do Wall-e.
+      A fonte é somente leitura — a tela consulta o índice do Painel.
+    </p>
+  </div>
+  @if (status(); as st) {
+    <div class="wl-stat">
+      <span class="count">{{ st.arquivos }} arquivo(s) · {{ st.chats }} chat(s)</span>
+      @if (st.ultimaAtualizacao) {
+        <span class="dica">Atualizado em {{ st.ultimaAtualizacao | date: 'dd/MM/yyyy HH:mm' }}</span>
+      }
+      @if (!st.fonteDisponivel) {
+        <span class="badge wl-fonte-fora">fonte indisponível — índice preservado</span>
+      }
+      @if (podeAtualizar()) {
+        <button class="btn ghost pequeno" (click)="atualizarAcervo()" [disabled]="atualizando()">
+          {{ atualizando() ? 'Atualizando…' : 'Atualizar acervo' }}
+        </button>
+      }
+    </div>
+  }
+</div>
+
+@if (erro()) {
+  <div class="resultado erro">{{ erro() }}</div>
+}
+
+<div class="barra-filtros">
+  <label class="campo largo">
+    <span>Pesquisa</span>
+    <input
+      type="search"
+      name="q"
+      placeholder="Ex.: já foi investigado problema de integração com WhatsApp?"
+      [ngModel]="q()"
+      (ngModelChange)="q.set($event)"
+      (keydown.enter)="pesquisar()"
+    />
+  </label>
+  <label class="campo estreito">
+    <span>Categoria</span>
+    <select name="categoria" [ngModel]="categoria()" (ngModelChange)="categoria.set($event)">
+      <option value="">Todas</option>
+      <option value="analise">Análise</option>
+      <option value="investigacao">Investigação</option>
+      <option value="causa-raiz">Causa-raiz</option>
+      <option value="sql">SQL</option>
+      <option value="log">Log</option>
+      <option value="planejamento">Planejamento</option>
+      <option value="estatistica">Estatística</option>
+      <option value="proposta">Proposta</option>
+      <option value="imagem">Imagem</option>
+      <option value="outro">Outro</option>
+    </select>
+  </label>
+  <label class="campo estreito">
+    <span>Origem</span>
+    <select name="origem" [ngModel]="origem()" (ngModelChange)="origem.set($event)">
+      <option value="">Todas</option>
+      <option value="produzido">Produzido pelo Wall-e</option>
+      <option value="insumo">Insumo recebido</option>
+      <option value="indeterminado">Indeterminado</option>
+    </select>
+  </label>
+  <label class="campo estreito">
+    <span>Chat</span>
+    <input
+      type="number"
+      name="chat"
+      placeholder="nº"
+      [ngModel]="chatFiltro()"
+      (ngModelChange)="chatFiltro.set($event)"
+    />
+  </label>
+  <div class="acoes">
+    <button class="btn primario" (click)="pesquisar()" [disabled]="carregando()">Pesquisar</button>
+    <button
+      class="btn"
+      (click)="perguntar()"
+      [disabled]="carregando() || q().trim() === ''"
+      title="Busca + síntese pela IA local, com as fontes citadas"
+    >
+      Perguntar
+    </button>
+    <button class="btn ghost" (click)="limparFiltros()" [disabled]="!temFiltro()">Limpar</button>
+  </div>
+</div>
+
+@if (carregando()) {
+  <p>Consultando o acervo…</p>
+} @else {
+  @if (respostaIa(); as ia) {
+    <div class="painel wl-ia" [class.wl-ia-sem-fundamento]="!ia.temFundamento">
+      <div class="wl-ia-cab">
+        <strong>Resposta do acervo</strong>
+        @if (!ia.iaDisponivel) {
+          <span class="badge">síntese por IA não configurada — mostrando as fontes</span>
+        }
+      </div>
+      <div class="wl-ia-texto">{{ ia.resposta }}</div>
+      @if (ia.fontes.length > 0) {
+        <div class="wl-fontes">
+          <span class="dica">Fontes:</span>
+          @for (f of ia.fontes; track f.arquivoId) {
+            <button class="chip wl-chip-acao" (click)="abrirArquivo(f.arquivoId)">
+              [{{ f.indice }}] {{ f.titulo }} (chat {{ f.chat }})
+            </button>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  @if (busca(); as b) {
+    <p class="wl-resumo">{{ b.resumo }}</p>
+
+    @if (b.assuntosRelacionados.length > 0) {
+      <div class="wl-assuntos">
+        <span class="dica">Assuntos relacionados:</span>
+        @for (a of b.assuntosRelacionados; track a) {
+          <button class="chip wl-chip-acao" (click)="pesquisarAssunto(a)">{{ a }}</button>
+        }
+      </div>
+    }
+
+    <div class="grade wl-grade">
+      @for (r of b.resultados; track r.arquivoId) {
+        <div class="card wl-card">
+          <div class="wl-card-cab">
+            <strong class="wl-card-titulo">{{ r.titulo }}</strong>
+            @if (r.relevancia > 0) {
+              <span [class]="'badge wl-conf wl-conf-' + r.confianca">
+                {{ r.relevancia }}% · {{ rotuloConfianca(r.confianca) }}
+              </span>
+            }
+          </div>
+          <div class="wl-card-meta">
+            <span class="b">Chat {{ r.chat }}</span>
+            <span class="chip">{{ r.categoria }}</span>
+            <span class="chip">{{ r.origem }}</span>
+            @if (r.modificadoEm) {
+              <span class="dica">{{ r.modificadoEm | date: 'dd/MM/yyyy' }}</span>
+            }
+          </div>
+          @if (r.chatDescricao || r.tecnico || r.sistema) {
+            <div class="dica">
+              {{ r.chatDescricao }}
+              @if (r.tecnico) { · {{ r.tecnico }} }
+              @if (r.sistema) { · {{ r.sistema }} }
+            </div>
+          }
+          @if (r.resumo) {
+            <p class="wl-card-resumo">{{ r.resumo }}</p>
+          }
+          @if (r.evidencias.length > 0) {
+            <p class="dica wl-evidencias">Encontrado por: {{ r.evidencias.join('; ') }}</p>
+          }
+          <div class="acoes">
+            <button class="btn pequeno" (click)="abrirArquivo(r.arquivoId)">Abrir</button>
+            <button class="btn ghost pequeno" (click)="abrirChat(r.chat)">Ver chat</button>
+          </div>
+        </div>
+      } @empty {
+        <div class="estado-vazio">
+          — nenhum documento encontrado no acervo consultado
+          @if (temFiltro()) { (com os filtros atuais) }
+          —
+        </div>
+      }
+    </div>
+
+    @if (b.sqlsRelacionados.length > 0) {
+      <div class="painel compacto wl-sqls">
+        <strong>SQLs relacionados</strong>
+        <p class="dica">Conteúdo documental para consulta — nada é executado a partir daqui.</p>
+        @for (s of b.sqlsRelacionados; track s.arquivoId) {
+          <div class="wl-sql-linha">
+            <span>{{ s.objetivo }} <span class="dica">(chat {{ s.chat }})</span></span>
+            <span class="wl-sql-tags">
+              @for (op of s.operacoes; track op) { <span class="chip">{{ op }}</span> }
+              @for (t of s.tabelas; track t) { <span class="chip wl-chip-tabela">{{ t }}</span> }
+            </span>
+            <button class="btn ghost pequeno" (click)="abrirArquivo(s.arquivoId)">Abrir</button>
+          </div>
+        }
+      </div>
+    }
+
+    @if (b.tambemPodeSerUtil.length > 0) {
+      <div class="painel compacto">
+        <strong>Também pode ser útil</strong>
+        @for (u of b.tambemPodeSerUtil; track u.arquivoId) {
+          <div class="wl-util-linha">
+            <span>
+              {{ u.titulo }} <span class="dica">(chat {{ u.chat }})</span>
+              <span class="dica wl-util-motivo">{{ u.motivo }}</span>
+            </span>
+            <button class="btn ghost pequeno" (click)="abrirArquivo(u.arquivoId)">Abrir</button>
+          </div>
+        }
+      </div>
+    }
+
+    @if (b.sugestoes.length > 0) {
+      <div class="wl-assuntos">
+        <span class="dica">Você também pode pesquisar:</span>
+        @for (s of b.sugestoes; track s) {
+          <button class="chip wl-chip-acao" (click)="pesquisarAssunto(s)">{{ s }}</button>
+        }
+      </div>
+    }
+
+    <p class="dica wl-cobertura">{{ b.cobertura }}</p>
+  }
+}
+
+@if (chatAberto(); as vc) {
+  <div class="painel wl-detalhe">
+    <div class="wl-detalhe-cab">
+      <strong>Chat {{ vc.chat.codigo }}</strong>
+      @if (vc.chat.descricao) { <span>— {{ vc.chat.descricao }}</span> }
+      <button class="btn ghost pequeno wl-fechar" (click)="fecharChat()">Fechar</button>
+    </div>
+    <div class="wl-card-meta">
+      @if (vc.chat.tecnico) { <span class="chip">Técnico: {{ vc.chat.tecnico }}</span> }
+      @if (vc.chat.sistema) { <span class="chip">Sistema: {{ vc.chat.sistema }}</span> }
+      <span class="chip">{{ vc.chat.totalArquivos }} arquivo(s)</span>
+      <span class="dica">
+        metadados: {{ vc.chat.origemMetadados === 'oracle' ? 'SICLA' : 'somente acervo' }}
+      </span>
+    </div>
+    @if (vc.assuntos.length > 0) {
+      <div class="wl-assuntos">
+        <span class="dica">Assuntos:</span>
+        @for (a of vc.assuntos; track a) {
+          <button class="chip wl-chip-acao" (click)="pesquisarAssunto(a)">{{ a }}</button>
+        }
+      </div>
+    }
+    <div class="tabela-wrap cercado">
+      <table class="tabela">
+        <thead>
+          <tr><th>Arquivo</th><th>Categoria</th><th>Origem</th><th>Modificado</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (a of vc.arquivos; track a.id) {
+            <tr>
+              <td>{{ a.titulo || a.nome }}</td>
+              <td>{{ a.categoria }}</td>
+              <td>{{ a.origem }}</td>
+              <td>{{ a.modificadoEm | date: 'dd/MM/yyyy HH:mm' }}</td>
+              <td><button class="btn ghost pequeno" (click)="abrirArquivo(a.id)">Abrir</button></td>
+            </tr>
+          } @empty {
+            <tr><td class="tabela-vazia" colspan="5">— chat sem arquivos ativos —</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (vc.relacionados.length > 0) {
+      <div class="wl-assuntos">
+        <span class="dica">Chats relacionados:</span>
+        @for (rel of vc.relacionados; track rel.codigo) {
+          <button class="chip wl-chip-acao" (click)="abrirChat(rel.codigo)" [title]="rel.motivo">
+            Chat {{ rel.codigo }}@if (rel.descricao) { — {{ rel.descricao }} }
+          </button>
+        }
+      </div>
+    }
+  </div>
+}
+
+@if (arquivoAberto(); as arq) {
+  <div class="painel wl-detalhe">
+    <div class="wl-detalhe-cab">
+      <strong>{{ arq.titulo || arq.nome }}</strong>
+      <span class="dica">chat {{ arq.chatCodigo }} · {{ arq.caminhoRelativo }}</span>
+      <button class="btn ghost pequeno wl-fechar" (click)="fecharArquivo()">Fechar</button>
+    </div>
+    <div class="wl-card-meta">
+      <span class="chip">{{ arq.categoria }}</span>
+      <span class="chip">{{ arq.origem }}</span>
+      @if (arq.modificadoEm) {
+        <span class="dica">{{ arq.modificadoEm | date: 'dd/MM/yyyy HH:mm' }}</span>
+      }
+      @if (arq.removido) {
+        <span class="badge wl-fonte-fora">removido da fonte — versão indexada</span>
+      }
+    </div>
+    @if (imagemUrl(); as url) {
+      <img class="wl-imagem" [src]="url" [alt]="arq.nome" />
+    } @else if (arq.conteudo) {
+      <pre class="wl-conteudo">{{ arq.conteudo }}</pre>
+    } @else {
+      <p class="dica">Sem conteúdo textual extraído para este arquivo.</p>
+    }
+  </div>
+}
