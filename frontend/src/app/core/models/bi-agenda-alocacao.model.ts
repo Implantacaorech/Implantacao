@@ -14,6 +14,8 @@ export interface LinhaAlocacaoBi {
   especieDes: string;
   tecnico: string;
   tipoSuporte: string;
+  /** Observação da agenda no SICLA (pauta, link da reunião…) — pode ser longa. */
+  observacao: string;
   fantasia: string;
   rnsDescricao: string;
   grupoEconomico: string;

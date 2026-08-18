@@ -53,14 +53,37 @@
 .ag-tec{color:var(--muted);font-size:.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ── Resumo completo da RNS (clique no compromisso) ───────────────────────────────── */
-/* Compromisso COM RNS vinculada é clicável — abre o modal com a ficha completa. */
-.ag-card-rns{cursor:pointer}
-.ag-card-rns:hover,.ag-card-rns:focus-visible{background:var(--surface-2);border-color:var(--line-2)}
+/* TODO compromisso é clicável — abre o modal com os dados da agenda (horário, duração,
+ * espécie, status, observação); com RNS vinculada, a ficha completa vem junto. */
+.ag-card{cursor:pointer}
+.ag-card:hover,.ag-card:focus-visible{background:var(--surface-2);border-color:var(--line-2)}
+.ag-dia-card{cursor:pointer}
+.ag-dia-card:hover,.ag-dia-card:focus-visible{background:var(--surface-2)}
 .ag-rns-tag{color:var(--accent-700);font-size:.72rem;font-weight:600}
 /* Fundo recuado no corpo do modal — os cartões da ficha (var(--surface)) ganham relevo. */
 .ag-rns-corpo{background:var(--surface-2)}
 .ag-rns-item{margin:16px 0 8px;color:var(--navy);font-size:.9rem}
 .ag-rns-item:first-child{margin-top:0}
+.ag-rns-tit{margin:14px 0 8px;color:var(--navy);font-size:.95rem}
+
+/* Detalhe da agenda no modal — o MESMO desenho do cartão "Agendas do Técnico" do BI
+ * Alocação (al-item), com a observação do SICLA num bloco próprio. */
+.ag-det{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line-2);
+  border-radius:var(--r-md);padding:12px 14px;margin-bottom:12px}
+.ag-det-topo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.ag-det-cli{font-weight:700;color:var(--navy);flex:1;min-width:140px}
+.ag-det-chip{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;
+  padding:2px 10px;font-size:.72rem;font-weight:600;color:var(--muted);white-space:nowrap}
+.ag-det-crit{color:#fff;border-radius:12px;padding:2px 10px;font-size:.72rem;font-weight:700}
+.ag-det-as{color:var(--muted);font-size:.9rem;margin-bottom:8px}
+.ag-det-linha{font-size:.9rem;margin:3px 0}
+.ag-det-rot{color:var(--muted)}
+.ag-det-pe{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:.85rem;margin-top:8px}
+.ag-det-data{margin-left:auto;color:var(--accent-700);font-weight:600}
+.ag-det-obs{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);
+  padding:12px 14px;margin-bottom:12px}
+.ag-det-obs-tit{font-weight:700;font-size:.8rem;color:var(--navy);margin-bottom:6px}
+.ag-det-obs-txt{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.9rem;color:var(--ink)}
 
 /* ── Grade mensal ─────────────────────────────────────────────────────────────────── */
 .ag-mes{min-width:920px}

@@ -53,9 +53,17 @@ describe('AgendaService (tela Execução → Agenda)', () => {
   });
 
   describe('usuarios (filtro de técnicos da tela)', () => {
-    it('devolve só ativos com nome, e SÓ id e nome — nada do resto do cadastro', async () => {
+    it('devolve TODOS os cadastrados com nome (ativos ou não), e SÓ id e nome', async () => {
+      // Inativo entra de propósito: a maioria dos técnicos importados do SICLA nunca
+      // ativou login e mesmo assim tem agenda — cortar por `ativo` escondia o filtro.
       users.listar.mockResolvedValue([
-        { id: 1, nome: 'Liliana Côrtes', ativo: true, senhaHash: 'x', email: 'l@r' },
+        {
+          id: 1,
+          nome: 'Liliana Côrtes',
+          ativo: true,
+          senhaHash: 'x',
+          email: 'l@r',
+        },
         { id: 2, nome: 'Alex Ramos', ativo: false, senhaHash: 'y' },
         { id: 3, nome: '   ', ativo: true },
         { id: 4, nome: ' Bruna Prado ', ativo: true },
@@ -63,6 +71,7 @@ describe('AgendaService (tela Execução → Agenda)', () => {
       const r = await service.usuarios();
       expect(r).toEqual([
         { id: 1, nome: 'Liliana Côrtes' },
+        { id: 2, nome: 'Alex Ramos' },
         { id: 4, nome: 'Bruna Prado' },
       ]);
     });
@@ -135,6 +144,27 @@ describe('AgendaService (tela Execução → Agenda)', () => {
         '14:00',
       ]);
       expect(dia12?.compromissos[1].status).toBe('3-Agendada');
+    });
+
+    it('a OBSERVAÇÃO da agenda (JOIN com SICLA.COMPROMISSOS) chega no compromisso', async () => {
+      disponibilidade.executarSql.mockResolvedValue({
+        ok: true,
+        mensagem: '',
+        colunas: [],
+        linhas: [
+          compromisso({ OBSERVACAO: 'Pauta:\r\n- revisão de cadastros' }),
+          compromisso({ CODIGO: 2, OBSERVACAO: null }),
+        ],
+      });
+      const r = await service.calendario({
+        ini: '2026-08-09',
+        fim: '2026-08-15',
+      });
+      const cs = r.dias.find((d) => d.dia === '2026-08-12')?.compromissos ?? [];
+      expect(cs.map((c) => c.observacao)).toEqual([
+        'Pauta:\r\n- revisão de cadastros',
+        '',
+      ]);
     });
 
     it('conta compromissos DISTINTOS por código — 2 técnicos no mesmo não dobram', async () => {

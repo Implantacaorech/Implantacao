@@ -35,6 +35,16 @@ const COR_BORDA: Record<string, string> = {
   '7-Não realizada': '#b8860b',
 };
 
+/** Faixas de criticidade pela DURAÇÃO do compromisso (minutos) — mesmas faixas/cores do
+ * cartão "Agendas do Técnico" do BI Alocação (`bi-alocacao-calendario`), de propósito:
+ * o modal desta tela mostra a agenda no MESMO desenho daquele cartão. */
+const CRITICIDADE: { ate: number; rotulo: string; cor: string }[] = [
+  { ate: 60, rotulo: 'NORMAL', cor: '#22c55e' },
+  { ate: 120, rotulo: 'MÉDIO', cor: '#f0b429' },
+  { ate: 240, rotulo: 'ALTO', cor: '#f97316' },
+  { ate: Infinity, rotulo: 'CRÍTICO', cor: '#e11d48' },
+];
+
 /** Sem acento, caixa nem espaço duplicado — é assim que o nome do usuário do Painel é
  * comparado com o `TECNICO` do SICLA (os dois nascem de `LISTA_TECNICOS.NOME`, mas um
  * cadastro pode divergir em caixa/acento). */
@@ -109,14 +119,16 @@ export class AgendaCalendarioComponent {
   readonly responsaveisSel = signal<string[]>([]);
   readonly buscaTecnico = signal('');
   readonly statusSel = signal<string[]>([]);
+  /** Códigos de espécie selecionados (como texto — é o valor do checkbox). */
+  readonly especiesSel = signal<string[]>([]);
   readonly busca = signal('');
   readonly filtrosAbertos = signal(false);
 
-  // ── Resumo completo da RNS (modal aberto pelo clique num compromisso) ──────────────
+  // ── Detalhe do compromisso (modal aberto pelo clique) ──────────────────────────────
 
-  /** Compromisso clicado — abre o modal; null = fechado. Guarda o compromisso inteiro
-   * para o cabeçalho mostrar cliente/assunto enquanto a ficha carrega. */
-  readonly rnsAberta = signal<CompromissoAgenda | null>(null);
+  /** Compromisso clicado — abre o modal com os dados da agenda (horário, duração,
+   * espécie, status, observação); null = fechado. */
+  readonly compromissoAberto = signal<CompromissoAgenda | null>(null);
   readonly rnsCarregando = signal(false);
   readonly rnsErro = signal<string | null>(null);
   readonly rnsDetalhe = signal<ResultadoDetalheRns | null>(null);
@@ -189,6 +201,8 @@ export class AgendaCalendarioComponent {
     }
     const st = this.statusSel();
     if (st.length > 0 && !st.includes(c.status)) return false;
+    const esp = this.especiesSel();
+    if (esp.length > 0 && !esp.includes(String(c.especie))) return false;
     const q = this.busca().trim().toLowerCase();
     if (!q) return true;
     return (
@@ -196,6 +210,7 @@ export class AgendaCalendarioComponent {
       c.assunto.toLowerCase().includes(q) ||
       c.grupoEconomico.toLowerCase().includes(q) ||
       c.tecnico.toLowerCase().includes(q) ||
+      (c.observacao ?? '').toLowerCase().includes(q) ||
       String(c.rns ?? '').includes(q)
     );
   }
@@ -252,8 +267,21 @@ export class AgendaCalendarioComponent {
     () =>
       (this.minhasAgendas() ? 0 : this.responsaveisSel().length) +
       this.statusSel().length +
+      this.especiesSel().length +
       (this.busca().trim() ? 1 : 0),
   );
+
+  /** Espécies presentes na JANELA carregada (não só no visível — senão marcar uma espécie
+   * faria as outras sumirem do filtro). Valor = código; rótulo = descrição do SICLA. */
+  readonly especieOpcoes = computed(() => {
+    const mapa = new Map<number, string>();
+    for (const d of this.resultado()?.dias ?? [])
+      for (const c of d.compromissos)
+        if (c.especie) mapa.set(c.especie, c.especieDes || `Espécie ${c.especie}`);
+    return [...mapa.entries()]
+      .map(([especie, rotulo]) => ({ valor: String(especie), rotulo }))
+      .sort((a, b) => a.rotulo.localeCompare(b.rotulo, 'pt-BR'));
+  });
 
   /** Usuários da tabela que passam na busca do próprio filtro (são ~250 ativos). */
   readonly usuariosVisiveis = computed(() => {
@@ -332,15 +360,20 @@ export class AgendaCalendarioComponent {
     await this.carregar();
   }
 
-  // ── Resumo completo da RNS ─────────────────────────────────────────────────────────
+  // ── Detalhe do compromisso (modal) ─────────────────────────────────────────────────
 
-  /** Clique num compromisso (visões semana e dia): abre o modal com o resumo completo da
-   * RNS vinculada — a MESMA ficha da tela Execução → RNS. Compromisso sem RNS não abre. */
-  async abrirRns(c: CompromissoAgenda): Promise<void> {
-    if (!c.rns) return;
-    this.rnsAberta.set(c);
+  /** Clique num compromisso (visões semana e dia): abre o modal com os dados da AGENDA —
+   * horário, duração, espécie, status e observação, no mesmo desenho do cartão "Agendas
+   * do Técnico" do BI Alocação (pedido do usuário em 2026-08-18). Se houver RNS
+   * vinculada, o resumo completo dela (a ficha da tela Execução → RNS) carrega abaixo. */
+  async abrirCompromisso(c: CompromissoAgenda): Promise<void> {
+    this.compromissoAberto.set(c);
     this.rnsDetalhe.set(null);
     this.rnsErro.set(null);
+    if (!c.rns) {
+      this.rnsCarregando.set(false);
+      return;
+    }
     this.rnsCarregando.set(true);
     try {
       const r = await this.rnsService.detalhar(c.rns);
@@ -355,17 +388,11 @@ export class AgendaCalendarioComponent {
     }
   }
 
-  fecharRns(): void {
-    this.rnsAberta.set(null);
+  fecharCompromisso(): void {
+    this.compromissoAberto.set(null);
     this.rnsDetalhe.set(null);
     this.rnsErro.set(null);
     this.rnsCarregando.set(false);
-  }
-
-  /** Subtítulo do modal: cliente · assunto · técnico do compromisso clicado (só o que
-   * estiver preenchido). */
-  subtituloRns(c: CompromissoAgenda): string {
-    return [c.fantasia, c.assunto, c.tecnico].filter(Boolean).join(' · ');
   }
 
   // ── Ajuda do template ──────────────────────────────────────────────────────────────
@@ -400,6 +427,7 @@ export class AgendaCalendarioComponent {
     this.responsaveisSel.set([]);
     this.buscaTecnico.set('');
     this.statusSel.set([]);
+    this.especiesSel.set([]);
     this.busca.set('');
   }
 
@@ -424,6 +452,20 @@ export class AgendaCalendarioComponent {
     return m === 0 ? `${h}h` : `${h}h ${m}m`;
   }
 
+  private faixaCriticidade(minutos: number) {
+    return (
+      CRITICIDADE.find((f) => minutos < f.ate) ?? CRITICIDADE[CRITICIDADE.length - 1]
+    );
+  }
+
+  criticidade(minutos: number): string {
+    return this.faixaCriticidade(minutos).rotulo;
+  }
+
+  corCriticidade(minutos: number): string {
+    return this.faixaCriticidade(minutos).cor;
+  }
+
   dataBr(iso: string): string {
     return iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '—';
   }
@@ -439,7 +481,9 @@ export class AgendaCalendarioComponent {
       c.fantasia,
       this.rotuloStatus(c.status),
       c.assunto,
-      c.rns ? `RNS ${c.rns} — clique para abrir o resumo completo` : '',
+      c.rns
+        ? `RNS ${c.rns} — clique para ver a agenda e o resumo da RNS`
+        : 'Clique para ver os detalhes da agenda',
     ];
     return partes.filter(Boolean).join('\n');
   }

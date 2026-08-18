@@ -29,7 +29,12 @@ import { textoAparado } from '../common/utils/texto.util';
  * `PEDIDOIMP` preenchidos batem com `POWERBI_IMP_RNIMPLANTACAO_2.CODIGO`) só preenche
  * FANTASIA/RNS/GRUPO_ECONOMICO quando a linha está de fato ligada a uma implantação; o
  * calendário mostra a linha do mesmo jeito quando não está (compromisso interno, sem
- * `PEDIDOIMP`). */
+ * `PEDIDOIMP`).
+ *
+ * O JOIN com `SICLA.COMPROMISSOS` traz a OBSERVAÇÃO da agenda (pedido do usuário em
+ * 2026-08-18) — a view do POWERBI não a expõe, e `CODIGO` casa 1:1 com a tabela
+ * (confirmado: 6.165 de 6.165 linhas da janela casavam; 2.683 tinham observação). É CLOB:
+ * chega como texto porque a conexão faz `fetchAsString = [CLOB]`. */
 export const SQL_CALENDARIO_ALOCACAO = `SELECT
   l.CODIGO,
   TO_CHAR(l.DATADIA, 'YYYY-MM-DD') AS DIA,
@@ -43,10 +48,12 @@ export const SQL_CALENDARIO_ALOCACAO = `SELECT
   l.ESPECIEDES,
   l.TECNICO,
   l.TIPO_SUPORTE,
+  co.OBSERVACAO,
   r.FANTASIA,
   r.DESCRICAO AS RNS_DESCRICAO,
   c.GRECONDES AS GRUPO_ECONOMICO
 FROM POWERBI.POWERBI_IMP_LISTACOMPROMISSOS_2 l
+LEFT JOIN SICLA.COMPROMISSOS co ON co.CODIGO = l.CODIGO
 LEFT JOIN POWERBI.POWERBI_IMP_RNIMPLANTACAO_2 r ON r.CODIGO = l.PEDIDOIMP
 LEFT JOIN SICLA.LISTA_CLIENTES c ON c.CODIGO = r.CLIENTE
 WHERE l.DATADIA >= TO_DATE(:mes_ini, 'YYYY-MM-DD')
@@ -88,6 +95,8 @@ export interface LinhaAlocacao {
   especieDes: string;
   tecnico: string;
   tipoSuporte: string;
+  /** Observação da agenda no SICLA (pauta, link da reunião…) — pode ser longa. */
+  observacao: string;
   fantasia: string;
   rnsDescricao: string;
   grupoEconomico: string;
@@ -131,6 +140,7 @@ export function normalizarLinhaAlocacao(
     especieDes: textoAparado(l.ESPECIEDES),
     tecnico: textoAparado(l.TECNICO),
     tipoSuporte: textoAparado(l.TIPO_SUPORTE),
+    observacao: textoAparado(l.OBSERVACAO),
     fantasia: textoAparado(l.FANTASIA),
     rnsDescricao: textoAparado(l.RNS_DESCRICAO),
     grupoEconomico: textoAparado(l.GRUPO_ECONOMICO),

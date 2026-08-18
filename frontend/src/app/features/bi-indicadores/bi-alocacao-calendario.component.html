@@ -212,6 +212,9 @@
                 @if (c.fantasia && c.assunto) { <div class="al-item-as">{{ c.assunto }}</div> }
                 <div class="al-item-linha">⏰ <span class="al-item-rot">Horário:</span> {{ c.horaIni }} - {{ c.horaFim }}</div>
                 <div class="al-item-linha">⏱ <span class="al-item-rot">Duração:</span> {{ duracao(c.minutos) }}</div>
+                @if (c.observacao) {
+                  <div class="al-item-obs">📝 {{ c.observacao }}</div>
+                }
                 <div class="al-item-pe">
                   <span class="al-ponto" [style.background]="corBorda(c.status)"></span>
                   {{ rotuloStatus(c.status) }}

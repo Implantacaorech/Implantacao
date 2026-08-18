@@ -55,14 +55,16 @@ export class AgendaService {
     private readonly users: UsersService,
   ) {}
 
-  /** Técnicos para o filtro da tela — a TABELA `usuarios` do Painel (só ativos e com nome),
-   * não apenas quem tem compromisso no período. É dela que a tela resolve o usuário logado
-   * na carga inicial. Sai só `id` e `nome` de propósito: o resto do cadastro (e-mail,
-   * papéis, hash) não pertence a esta tela. */
+  /** Técnicos para o filtro da tela — a TABELA `usuarios` do Painel INTEIRA (com nome),
+   * ativos OU NÃO: a maioria dos técnicos importados do SICLA nunca ativou login
+   * (218 de 252 em 2026-08-18) e as agendas deles existem do mesmo jeito — cortar por
+   * `ativo` escondia quase todo mundo do filtro (defeito apontado pelo usuário). É dela
+   * que a tela resolve o usuário logado na carga inicial. Sai só `id` e `nome` de
+   * propósito: o resto do cadastro (e-mail, papéis, hash) não pertence a esta tela. */
   async usuarios(): Promise<{ id: number; nome: string }[]> {
     const todos = await this.users.listar();
     return todos
-      .filter((u) => u.ativo && (u.nome ?? '').trim() !== '')
+      .filter((u) => (u.nome ?? '').trim() !== '')
       .map((u) => ({ id: u.id, nome: u.nome.trim() }));
   }
 

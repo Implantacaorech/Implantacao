@@ -22,6 +22,7 @@ function compromisso(over: Partial<LinhaAlocacaoBi> = {}): LinhaAlocacaoBi {
     especieDes: 'Atendimento Externo NÃO COBRADO',
     tecnico: 'Liliana',
     tipoSuporte: 'Implantação',
+    observacao: '',
     fantasia: 'RAMADA',
     rnsDescricao: 'RAMADA - implantação',
     grupoEconomico: 'RAMADA',

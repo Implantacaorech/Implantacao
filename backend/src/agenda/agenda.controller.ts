@@ -28,7 +28,8 @@ export class AgendaController {
 
   @Get('usuarios')
   @ApiOperation({
-    summary: 'Usuários ativos do Painel (id e nome) para o filtro de técnicos',
+    summary:
+      'Usuários do Painel (id e nome, ativos ou não) para o filtro de técnicos',
   })
   async usuarios() {
     return new ApiEnvelope(await this.servico.usuarios());

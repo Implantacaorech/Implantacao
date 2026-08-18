@@ -262,6 +262,17 @@
   color: var(--muted);
   margin-right: 3px;
 }
+/* Observação da agenda (SICLA) — texto livre do consultor, quebras preservadas. */
+.al-item-obs {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+  padding: 6px 9px;
+  margin: 5px 0 2px;
+  font-size: 0.76rem;
+  color: var(--ink);
+}
 .al-item-pe {
   display: flex;
   align-items: center;

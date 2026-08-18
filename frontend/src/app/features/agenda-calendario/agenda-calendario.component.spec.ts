@@ -26,6 +26,7 @@ function compromisso(over: Partial<CompromissoAgenda> = {}): CompromissoAgenda {
     especieDes: 'Atendimento Externo',
     tecnico: 'LILIANA CORTES',
     tipoSuporte: 'Implantação',
+    observacao: '',
     fantasia: 'RAMADA',
     rnsDescricao: 'RAMADA - implantação',
     grupoEconomico: 'RAMADA',
@@ -308,45 +309,74 @@ describe('AgendaCalendarioComponent (Execução → Agenda)', () => {
       ]);
       const comp = await pronto(fakeService([compromisso()]), rns);
 
-      await comp.abrirRns(compromisso()); // rns: 138571 (molde)
+      await comp.abrirCompromisso(compromisso()); // rns: 138571 (molde)
       expect(rns.pedidos).toEqual([138571]);
-      expect(comp.rnsAberta()?.rns).toBe(138571);
+      expect(comp.compromissoAberto()?.rns).toBe(138571);
       expect(comp.rnsCarregando()).toBe(false);
       expect(comp.rnsErro()).toBeNull();
       // O resumo completo traz TODOS os itens do pedido.
       expect(comp.rnsDetalhe()?.itens.map((i) => i.item)).toEqual([1, 2]);
     });
 
-    it('compromisso SEM RNS vinculada não abre nada', async () => {
+    it('compromisso SEM RNS abre o modal com a agenda, sem buscar RNS', async () => {
       const rns = fakeRnsService();
       const comp = await pronto(fakeService([]), rns);
-      await comp.abrirRns(compromisso({ rns: null }));
-      expect(comp.rnsAberta()).toBeNull();
+      await comp.abrirCompromisso(
+        compromisso({ rns: null, observacao: 'Pauta: revisão de cadastros' }),
+      );
+      expect(comp.compromissoAberto()?.observacao).toBe('Pauta: revisão de cadastros');
+      expect(comp.rnsCarregando()).toBe(false);
       expect(rns.pedidos).toEqual([]);
     });
 
     it('erro do backend (ou RNS inexistente) aparece DENTRO do modal', async () => {
       const rns = fakeRnsService([], { erro: 'A RNS 138571 não foi encontrada no SICLA.' });
       const comp = await pronto(fakeService([]), rns);
-      await comp.abrirRns(compromisso());
-      expect(comp.rnsAberta()).not.toBeNull();
+      await comp.abrirCompromisso(compromisso());
+      expect(comp.compromissoAberto()).not.toBeNull();
       expect(comp.rnsErro()).toContain('não foi encontrada');
     });
 
     it('falha de rede vira mensagem amigável, sem derrubar o componente', async () => {
       const rns = fakeRnsService([], { rejeita: true });
       const comp = await pronto(fakeService([]), rns);
-      await comp.abrirRns(compromisso());
+      await comp.abrirCompromisso(compromisso());
       expect(comp.rnsErro()).toContain('Não foi possível buscar o resumo');
     });
 
     it('fechar o modal limpa o estado do resumo', async () => {
       const comp = await pronto(fakeService([]));
-      await comp.abrirRns(compromisso());
-      comp.fecharRns();
-      expect(comp.rnsAberta()).toBeNull();
+      await comp.abrirCompromisso(compromisso());
+      comp.fecharCompromisso();
+      expect(comp.compromissoAberto()).toBeNull();
       expect(comp.rnsDetalhe()).toBeNull();
       expect(comp.rnsErro()).toBeNull();
+    });
+  });
+
+  describe('filtro de espécie (pedido do usuário em 2026-08-18)', () => {
+    it('as opções saem da janela carregada e a seleção recorta a lista', async () => {
+      const comp = await naSemanaFixa(
+        fakeService([
+          compromisso({ codigo: 1, especie: 92, especieDes: 'Atendimento Externo' }),
+          compromisso({ codigo: 2, especie: 90, especieDes: 'Produção Interna' }),
+          compromisso({ codigo: 3, especie: 90, especieDes: 'Produção Interna' }),
+        ]),
+      );
+      comp.verTodas();
+      expect(comp.especieOpcoes()).toEqual([
+        { valor: '92', rotulo: 'Atendimento Externo' },
+        { valor: '90', rotulo: 'Produção Interna' },
+      ]);
+
+      comp.especiesSel.set(['90']);
+      expect(comp.totalVisivel()).toBe(2);
+      // As opções NÃO encolhem com o próprio filtro (senão desmarcar ficaria impossível).
+      expect(comp.especieOpcoes()).toHaveLength(2);
+
+      comp.limparFiltros();
+      expect(comp.especiesSel()).toEqual([]);
+      expect(comp.totalVisivel()).toBe(3);
     });
   });
 });
