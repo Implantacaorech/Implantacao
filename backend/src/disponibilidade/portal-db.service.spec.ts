@@ -1,14 +1,15 @@
 import { rmSync } from 'fs';
 import { join } from 'path';
+import { createConnection as createConnectionReal } from 'mysql2/promise';
 import { PortalDbService } from './portal-db.service';
 
 // mysql2 é mockado por completo: os testes cobrem config, guarda de SELECT e o roteamento
 // de binds/opções — a conexão real só existe em produção, com o banco do Portal cadastrado.
+// `jest.mock` é içado acima dos imports, então o símbolo importado acima JÁ é o mock — daí
+// bastar a asserção de tipo (o `require()` que fazia esse papel é barrado pelo lint).
 jest.mock('mysql2/promise', () => ({ createConnection: jest.fn() }));
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { createConnection } = require('mysql2/promise') as {
-  createConnection: jest.Mock;
-};
+
+const createConnection = createConnectionReal as unknown as jest.Mock;
 
 describe('PortalDbService', () => {
   let svc: PortalDbService;
@@ -44,7 +45,12 @@ describe('PortalDbService', () => {
     });
 
     it('senha em branco na edição MANTÉM a atual (regra da Disponibilidade)', () => {
-      svc.salvarConfig({ host: 'h', banco: 'b', senha: 'original', ativo: true });
+      svc.salvarConfig({
+        host: 'h',
+        banco: 'b',
+        senha: 'original',
+        ativo: true,
+      });
       svc.salvarConfig({ host: 'h2', banco: 'b', senha: '', ativo: true });
       const cfg = svc.carregarConfig();
       expect(cfg.host).toBe('h2');
@@ -52,7 +58,10 @@ describe('PortalDbService', () => {
     });
 
     it('URL completa também configura (prevalece sobre os campos)', () => {
-      svc.salvarConfig({ url: 'mysql://u:p@10.0.0.5:3307/portal', ativo: true });
+      svc.salvarConfig({
+        url: 'mysql://u:p@10.0.0.5:3307/portal',
+        ativo: true,
+      });
       expect(svc.configurado()).toBe(true);
     });
   });

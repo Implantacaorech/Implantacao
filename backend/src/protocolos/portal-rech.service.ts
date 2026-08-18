@@ -17,6 +17,16 @@ const BASE_PADRAO = 'https://portalrech.com.br/api/v1/';
  * volta como `Authorization` nas chamadas seguintes. */
 const HEADER_TOKEN = 'Rech-Portal-Token-Autenticacao';
 
+/** Texto de um campo do JSON do Portal, que chega como `unknown`. Só string, número e
+ * booleano viram texto: um objeto/array cai no padrão em vez de virar o inútil
+ * `"[object Object]"` — que era o que `String(campo ?? '')` produzia se a API mudasse a forma
+ * de um campo (e o que o lint apontava em `no-base-to-string`). */
+function texto(v: unknown, padrao = ''): string {
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  return padrao;
+}
+
 /** Dados do atendimento que este serviço envia — já validados/ajustados pelo consultor na
  * tela. As 4 datas vêm no formato do `datetime-local` (`YYYY-MM-DDTHH:MM`). */
 export interface VisitaPortalInput {
@@ -149,7 +159,7 @@ export class PortalRechService {
   private lista(dados: unknown): Record<string, unknown>[] {
     if (Array.isArray(dados)) return dados as Record<string, unknown>[];
     if (dados && typeof dados === 'object' && 'content' in dados) {
-      const c = (dados as { content: unknown }).content;
+      const c = dados.content;
       if (Array.isArray(c)) return c as Record<string, unknown>[];
     }
     return [];
@@ -177,9 +187,7 @@ export class PortalRechService {
     // fantasia — e PARA assim que acha, sem baixar o resto. Cap de páginas evita loop infinito.
     const alvo = cod ? Number(cod) : NaN;
     const igualNome = (v: unknown): boolean =>
-      String(v ?? '')
-        .trim()
-        .toLowerCase() === nome;
+      texto(v).trim().toLowerCase() === nome;
     const TAM = 2000;
     const MAX_PAGINAS = 30;
     let vistas = 0;
@@ -244,17 +252,13 @@ export class PortalRechService {
       token,
     );
     const ativos = lista.filter(
-      (c) => String(c['status'] ?? 'A').toUpperCase() !== 'I',
+      (c) => texto(c['status'], 'A').toUpperCase() !== 'I',
     );
     const candidatos = ativos.length ? ativos : lista;
     const nome = contatoNome.trim().toLowerCase();
     const match =
       (nome
-        ? candidatos.find((c) =>
-            String(c['nome'] ?? '')
-              .toLowerCase()
-              .includes(nome),
-          )
+        ? candidatos.find((c) => texto(c['nome']).toLowerCase().includes(nome))
         : undefined) ?? candidatos[0];
     if (!match || match['id'] == null) {
       throw new UnprocessableEntityException(
@@ -263,7 +267,7 @@ export class PortalRechService {
     }
     return {
       idContato: Number(match['id']),
-      nomeContato: String(match['nome'] ?? contatoNome),
+      nomeContato: texto(match['nome'], contatoNome),
     };
   }
 
@@ -278,7 +282,7 @@ export class PortalRechService {
     const match =
       (nome
         ? lista.find((m) => {
-            const d = String(m['descricao'] ?? '').toLowerCase();
+            const d = texto(m['descricao']).toLowerCase();
             return d.includes(nome) || (d.length > 0 && nome.includes(d));
           })
         : undefined) ?? lista[0];
@@ -292,9 +296,7 @@ export class PortalRechService {
 
   /** Um tipo de atividade ativo (id) — o Portal aceita nulo, mas preencher evita o "Selecione
    * um tipo". Pega o primeiro ativo; nulo se não houver. */
-  private async resolverIdTipoAtividade(
-    token: string,
-  ): Promise<number | null> {
+  private async resolverIdTipoAtividade(token: string): Promise<number | null> {
     const lista = await this.buscarFiltrado(
       'tipoatividade',
       'status eq A',
@@ -446,11 +448,11 @@ export class PortalRechService {
             v['codigoCliente'] == null || !Number.isFinite(codigo)
               ? null
               : codigo,
-          nomeEmpresa: String(v['nomeEmpresa'] ?? ''),
-          nomeContato: String(v['nomeContato'] ?? ''),
-          nomeUsuario: String(v['nomeUsuario'] ?? ''),
+          nomeEmpresa: texto(v['nomeEmpresa']),
+          nomeContato: texto(v['nomeContato']),
+          nomeUsuario: texto(v['nomeUsuario']),
           inicio: this.epochLocal(v['dataInicioVisita']),
-          statusAprovacao: String(v['statusAprovacao'] ?? ''),
+          statusAprovacao: texto(v['statusAprovacao']),
         });
       }
       if (visitas.length < TAM) break;

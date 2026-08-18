@@ -94,16 +94,23 @@ export class PortalDbService {
 
   configurado(cfg?: ConfigPortalDb): boolean {
     const c = cfg ?? this.carregarConfig();
-    return Boolean(c.ativo && (c.url.trim() || (c.host.trim() && c.banco.trim())));
+    return Boolean(
+      c.ativo && (c.url.trim() || (c.host.trim() && c.banco.trim())),
+    );
   }
 
   /** `mysql://usuario:senha@host:porta/banco` → partes (mesma regra da Disponibilidade). */
-  private parsearUrl(
-    url: string,
-  ): { usuario: string; senha: string; host: string; porta: string; banco: string } | null {
-    const m = /^[\w+]+:\/\/([^:@/]+)(?::([^@]*))?@([^:/]+)(?::(\d+))?\/(.*)$/.exec(
-      url.trim(),
-    );
+  private parsearUrl(url: string): {
+    usuario: string;
+    senha: string;
+    host: string;
+    porta: string;
+    banco: string;
+  } | null {
+    const m =
+      /^[\w+]+:\/\/([^:@/]+)(?::([^@]*))?@([^:/]+)(?::(\d+))?\/(.*)$/.exec(
+        url.trim(),
+      );
     if (!m) return null;
     return {
       usuario: decodeURIComponent(m[1]),
@@ -173,7 +180,12 @@ export class PortalDbService {
     const cfg = this.carregarConfig();
     const sql = (sqlBruto || '').trim();
     if (!sql) {
-      return { ok: false, mensagem: 'Consulta vazia.', colunas: [], linhas: [] };
+      return {
+        ok: false,
+        mensagem: 'Consulta vazia.',
+        colunas: [],
+        linhas: [],
+      };
     }
     const inicio = this.semComentariosIniciais(sql)
       .replace(/^\(/, '')
@@ -223,7 +235,12 @@ export class PortalDbService {
         : [];
       const linhas = todas.slice(0, limite);
       const colunas = linhas.length > 0 ? Object.keys(linhas[0]) : [];
-      return { ok: true, mensagem: `${linhas.length} linha(s).`, colunas, linhas };
+      return {
+        ok: true,
+        mensagem: `${linhas.length} linha(s).`,
+        colunas,
+        linhas,
+      };
     } catch (e) {
       const texto = e instanceof Error ? e.message : String(e);
       return {

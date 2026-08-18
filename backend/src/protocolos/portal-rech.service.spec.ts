@@ -50,7 +50,7 @@ describe('PortalRechService', () => {
   beforeEach(() => {
     svc = new PortalRechService();
     fetchMock = jest.fn();
-    global.fetch = fetchMock as unknown as typeof fetch;
+    global.fetch = fetchMock;
   });
 
   describe('autenticar', () => {
@@ -100,31 +100,29 @@ describe('PortalRechService', () => {
       // 2026-08-06 08:30:00 no fuso de Brasília (o servidor roda em BRT) — montado a
       // partir do horário LOCAL para o teste não depender do fuso da máquina.
       const inicioMs = new Date(2026, 7, 6, 8, 30, 0).getTime();
-      fetchMock
-        .mockResolvedValueOnce(loginOk())
-        .mockResolvedValueOnce(
-          resp({
-            json: {
-              content: [
-                {
-                  id: 135089,
-                  codigoCliente: 3631,
-                  nomeEmpresa: 'MELBROS CALCADOS',
-                  nomeContato: 'Ernani Martini',
-                  nomeUsuario: 'Everton',
-                  dataInicioVisita: inicioMs,
-                  statusAprovacao: 'APROVADO',
-                },
-                {
-                  id: 135090,
-                  codigoCliente: null,
-                  dataInicioVisita: null,
-                  statusAprovacao: 'PENDENTE',
-                },
-              ],
-            },
-          }),
-        );
+      fetchMock.mockResolvedValueOnce(loginOk()).mockResolvedValueOnce(
+        resp({
+          json: {
+            content: [
+              {
+                id: 135089,
+                codigoCliente: 3631,
+                nomeEmpresa: 'MELBROS CALCADOS',
+                nomeContato: 'Ernani Martini',
+                nomeUsuario: 'Everton',
+                dataInicioVisita: inicioMs,
+                statusAprovacao: 'APROVADO',
+              },
+              {
+                id: 135090,
+                codigoCliente: null,
+                dataInicioVisita: null,
+                statusAprovacao: 'PENDENTE',
+              },
+            ],
+          },
+        }),
+      );
       const visitas = await svc.listarVisitas(cred);
       expect(visitas).toEqual([
         {
@@ -147,7 +145,9 @@ describe('PortalRechService', () => {
         },
       ]);
       const [urlVisitas, init] = fetchMock.mock.calls[1];
-      expect(urlVisitas).toBe('https://portal.test/api/visita?size=2000&page=0');
+      expect(urlVisitas).toBe(
+        'https://portal.test/api/visita?size=2000&page=0',
+      );
       expect((init as RequestInit).headers).toMatchObject({
         Authorization: TOKEN,
       });
@@ -295,18 +295,30 @@ describe('PortalRechService', () => {
         }),
       );
       await expect(
-        (svc as unknown as {
-          resolverContato: (t: string, e: number, n: string) => Promise<unknown>;
-        }).resolverContato(TOKEN, 99, 'iloni'),
+        (
+          svc as unknown as {
+            resolverContato: (
+              t: string,
+              e: number,
+              n: string,
+            ) => Promise<unknown>;
+          }
+        ).resolverContato(TOKEN, 99, 'iloni'),
       ).resolves.toEqual({ idContato: 7, nomeContato: 'Iloni Souza' });
     });
 
     it('empresa sem contato vira UnprocessableEntity', async () => {
       fetchMock.mockResolvedValueOnce(resp({ json: { content: [] } }));
       await expect(
-        (svc as unknown as {
-          resolverContato: (t: string, e: number, n: string) => Promise<unknown>;
-        }).resolverContato(TOKEN, 99, ''),
+        (
+          svc as unknown as {
+            resolverContato: (
+              t: string,
+              e: number,
+              n: string,
+            ) => Promise<unknown>;
+          }
+        ).resolverContato(TOKEN, 99, ''),
       ).rejects.toBeInstanceOf(UnprocessableEntityException);
     });
   });

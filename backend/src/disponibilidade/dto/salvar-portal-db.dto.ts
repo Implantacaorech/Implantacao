@@ -10,7 +10,8 @@ export class SalvarPortalDbDto {
   @ApiPropertyOptional() @IsOptional() @IsString() usuario?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() senha?: string;
   @ApiPropertyOptional({
-    description: 'URL completa (mysql://usuario:senha@host:porta/banco) — prevalece',
+    description:
+      'URL completa (mysql://usuario:senha@host:porta/banco) — prevalece',
   })
   @IsOptional()
   @IsString()
