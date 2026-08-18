@@ -213,6 +213,14 @@ aprovação), na tela Resumo, logo abaixo do CONTROLE DE HORAS.
   volume) com os **valores escritos nas barras** e o total sobre cada pilha
   (`chart-rotulos.util.ts`, plugin inline do Chart.js — também aplicado ao "Horas por
   status").
+- **Enviar por e-mail** (2026-08-17): botão ao lado do Exportar abre a caixa de envio
+  (destinatários separados por `;`, assunto e texto pré-preenchidos pelo modelo
+  **`bi-visitas-portal`**, editável em Gestão → Modelos de E-mail). O backend gera um
+  **PDF** (pdfkit, A4 paisagem) com o recorte aplicado, o gráfico (PNG do próprio canvas
+  da tela) e a tabela filtrada, e envia pelo meio configurado do Painel (Microsoft
+  365/SMTP) — `POST /bi-implantacao/visitas-portal/enviar-email` (exceção catalogada em
+  `conformidade-permissoes-escrita.spec.ts`: envio EXTERNO do que o usuário de consulta já
+  vê; a rota tem limite de corpo próprio de 6 MB no `main.ts` por causa do PNG).
 
 ### Filtros padrão das telas
 

@@ -1,8 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException } from '@nestjs/common';
 import { BiImplantacaoService } from './bi-implantacao.service';
 import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
 import { ConsultaBdService } from '../disponibilidade/consulta-bd.service';
 import { PortalDbService } from '../disponibilidade/portal-db.service';
+import { MailerService } from '../email/mailer.service';
+import { ModeloEmailService } from '../email/modelo-email.service';
 import {
   CONEXAO_CONSULTA_VISITAS_PORTAL,
   ESPECIES_CALENDARIO,
@@ -88,6 +91,8 @@ describe('BiImplantacaoService', () => {
   const disponibilidade = { configurado: jest.fn(), executarSql: jest.fn() };
   const consultas = { porSlug: jest.fn(), salvar: jest.fn() };
   const portalDb = { configurado: jest.fn(), executarSql: jest.fn() };
+  const mailer = { enviar: jest.fn() };
+  const modelosEmail = { porSlug: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -97,6 +102,8 @@ describe('BiImplantacaoService', () => {
         { provide: DisponibilidadeService, useValue: disponibilidade },
         { provide: ConsultaBdService, useValue: consultas },
         { provide: PortalDbService, useValue: portalDb },
+        { provide: MailerService, useValue: mailer },
+        { provide: ModeloEmailService, useValue: modelosEmail },
       ],
     }).compile();
     service = module.get(BiImplantacaoService);
@@ -1158,6 +1165,103 @@ describe('BiImplantacaoService', () => {
       const r = await service.visitasPortal({});
       expect(r.erro).toContain('Access denied');
       expect(r.linhas).toEqual([]);
+    });
+  });
+
+  describe('enviar visitas por e-mail (PDF anexo)', () => {
+    const LINHA_TELA = {
+      empresa: 'MELBROS CALCADOS',
+      cliente: 3631,
+      contato: 'Ernani Martini',
+      consultor: 'Everton',
+      protocolo: 135089,
+      data: '2026-08-06',
+      horario: '08:30:00',
+      turno: 'MANHÃ',
+      aprovado: 'Sim',
+    };
+
+    beforeEach(() => {
+      mailer.enviar.mockResolvedValue({ ok: true, erro: null });
+      modelosEmail.porSlug.mockResolvedValue(null);
+    });
+
+    it('modelo da caixa: a versão salva em Modelos de E-mail prevalece; sem ela, o padrão', async () => {
+      modelosEmail.porSlug.mockResolvedValue({
+        assunto: 'ASSUNTO EDITADO',
+        corpo: 'CORPO EDITADO',
+      });
+      expect(await service.modeloEmailVisitas()).toEqual({
+        assunto: 'ASSUNTO EDITADO',
+        corpo: 'CORPO EDITADO',
+      });
+
+      modelosEmail.porSlug.mockResolvedValue(null);
+      const padrao = await service.modeloEmailVisitas();
+      expect(padrao.assunto).toContain('Portal Rech');
+      expect(padrao.corpo).toContain('anexo');
+    });
+
+    it('recusa destinatário inválido com aviso claro (400)', async () => {
+      await expect(
+        service.enviarVisitasPorEmail({
+          para: 'nao-e-email',
+          assunto: 'x',
+          corpo: 'y',
+          recorte: [],
+          linhas: [],
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(mailer.enviar).not.toHaveBeenCalled();
+    });
+
+    it('gera o PDF e envia para os destinatários (separados por ;) com o anexo', async () => {
+      const r = await service.enviarVisitasPorEmail({
+        para: 'coord@rech.com.br; gci@rech.com.br',
+        assunto: 'Protocolos',
+        corpo: 'Segue anexo.',
+        recorte: ['Período: 01/08 a 17/08'],
+        linhas: [LINHA_TELA, { ...LINHA_TELA, protocolo: 1, aprovado: 'Não' }],
+      });
+      expect(r.ok).toBe(true);
+      const [destinos, assunto, corpo, anexos] = mailer.enviar.mock.calls[0];
+      expect(destinos).toEqual(['coord@rech.com.br', 'gci@rech.com.br']);
+      expect(assunto).toBe('Protocolos');
+      expect(corpo).toBe('Segue anexo.');
+      expect(anexos).toHaveLength(1);
+      expect(anexos[0].nomeArquivo).toBe('visitas-portal-rech.pdf');
+      // o arquivo temporário do anexo é apagado depois do envio
+      const { existsSync } = jest.requireActual<typeof import('fs')>('fs');
+      expect(existsSync(anexos[0].caminho)).toBe(false);
+    });
+
+    it('gráfico com data URL inválida é ignorado (envia sem imagem, não quebra)', async () => {
+      const r = await service.enviarVisitasPorEmail({
+        para: 'a@rech.com.br',
+        assunto: 'x',
+        corpo: 'y',
+        graficoPng: 'data:image/png;base64,%%%não-é-base64-de-png%%%',
+        recorte: [],
+        linhas: [LINHA_TELA],
+      });
+      expect(r.ok).toBe(true);
+      expect(mailer.enviar).toHaveBeenCalled();
+    });
+
+    it('falha do envio volta como { ok: false, erro } — a tela mostra o motivo', async () => {
+      mailer.enviar.mockResolvedValue({
+        ok: false,
+        erro: 'Nenhum meio de envio configurado',
+      });
+      const r = await service.enviarVisitasPorEmail({
+        para: 'a@rech.com.br',
+        assunto: 'x',
+        corpo: 'y',
+        recorte: [],
+        linhas: [],
+      });
+      expect(r.ok).toBe(false);
+      expect(r.erro).toContain('meio de envio');
     });
   });
 });

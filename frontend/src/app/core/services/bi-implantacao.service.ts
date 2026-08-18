@@ -5,11 +5,13 @@ import { environment } from '../../../environments/environment';
 import { ApiEnvelope } from '../models/api-envelope.model';
 import {
   DescricaoCompletaBi,
+  EnvioVisitasEmailBi,
   FiltroExtratoBi,
   FiltroResumoBi,
   FiltroRnsBi,
   FiltroAgendasBi,
   FiltroVisitasPortalBi,
+  ModeloEmailVisitasBi,
   ResultadoExtratoBi,
   ResultadoResumoBi,
   ResultadoRnsBi,
@@ -75,6 +77,30 @@ export class BiImplantacaoService {
     );
     const d = res.data;
     return { ...d, linhas: d.linhas ?? [] };
+  }
+
+  /** Assunto/corpo padrão da caixa "Enviar por e-mail" do painel de visitas. */
+  async modeloEmailVisitas(): Promise<ModeloEmailVisitasBi> {
+    const res = await firstValueFrom(
+      this.http.get<ApiEnvelope<ModeloEmailVisitasBi>>(
+        `${this.base}/visitas-portal/modelo-email`,
+      ),
+    );
+    return res.data;
+  }
+
+  /** Envia o painel de visitas por e-mail — o backend gera o PDF (recorte + gráfico +
+   * tabela) e anexa. */
+  async enviarVisitasEmail(
+    envio: EnvioVisitasEmailBi,
+  ): Promise<{ ok: boolean; erro: string | null }> {
+    const res = await firstValueFrom(
+      this.http.post<ApiEnvelope<{ ok: boolean; erro: string | null }>>(
+        `${this.base}/visitas-portal/enviar-email`,
+        envio,
+      ),
+    );
+    return res.data;
   }
 
   async extrato(filtro: FiltroExtratoBi = {}): Promise<ResultadoExtratoBi> {

@@ -65,6 +65,14 @@ const ESCRITA_CONSULTA_PERMITIDA: {
       'externo), autenticado com a credencial do próprio consultor sobre uma transcrição dele. ' +
       'Exigir alteração de protocolos trancava a função para quem só tem consulta (403, 2026-08-13).',
   },
+  {
+    arquivo: 'bi-implantacao/bi-implantacao.controller.ts',
+    rota: 'visitas-portal/enviar-email',
+    motivo:
+      'Não grava nada no sistema: envia por E-MAIL (saída externa) o mesmo recorte que o usuário ' +
+      'de consulta já está VENDO no painel de visitas, como PDF. O BI é tela de leitura — exigir ' +
+      'alteração de bi_implantacao trancaria o envio para todo perfil de consulta.',
+  },
 ];
 
 function controllers(): string[] {

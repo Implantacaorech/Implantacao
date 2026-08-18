@@ -1,4 +1,12 @@
-import { Component, WritableSignal, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  ViewChild,
+  WritableSignal,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ChartConfiguration } from 'chart.js/auto';
 import { ChartDirective } from '../../core/directives/chart.directive';
@@ -321,6 +329,113 @@ export class BiImplantacaoComponent {
       },
     };
   });
+
+  // ── "Enviar por e-mail" (PDF com o recorte, o gráfico e a tabela) ───────────────────
+  @ViewChild('canvasVisitas')
+  private canvasVisitas?: ElementRef<HTMLCanvasElement>;
+
+  readonly emailAberto = signal(false);
+  readonly emailPara = signal('');
+  readonly emailAssunto = signal('');
+  readonly emailCorpo = signal('');
+  readonly enviandoEmail = signal(false);
+  readonly emailErro = signal<string | null>(null);
+  readonly emailOk = signal<string | null>(null);
+  /** O modelo só é buscado uma vez — depois a caixa preserva o que o usuário digitou. */
+  private modeloEmailCarregado = false;
+
+  async abrirEnvioEmail(): Promise<void> {
+    this.emailErro.set(null);
+    this.emailOk.set(null);
+    this.emailAberto.set(true);
+    if (this.modeloEmailCarregado) return;
+    try {
+      const m = await this.service.modeloEmailVisitas();
+      if (!this.emailAssunto().trim()) this.emailAssunto.set(m.assunto);
+      if (!this.emailCorpo().trim()) this.emailCorpo.set(m.corpo);
+      this.modeloEmailCarregado = true;
+    } catch {
+      // Sem o modelo (ex.: backend antigo no ar), a caixa abre em branco — dá para digitar.
+    }
+  }
+
+  fecharEnvioEmail(): void {
+    if (!this.enviandoEmail()) this.emailAberto.set(false);
+  }
+
+  private rotuloVisao(): string {
+    const v = this.visaoVisitas();
+    return v === 'mensal'
+      ? 'Mês atual'
+      : v === 'semanal'
+        ? 'Semana atual (segunda a domingo)'
+        : 'Geral (todo o período)';
+  }
+
+  /** Descrição legível do recorte em vigor — vira o bloco "Recorte aplicado" do PDF. */
+  private descreverRecorte(): string[] {
+    const r: string[] = [
+      `Período: ${this.dataBr(this.dataIni)} a ${this.dataBr(this.dataFim)}`,
+      `Visão: ${this.rotuloVisao()}`,
+    ];
+    const se = (nome: string, valor: string) => {
+      if (valor) r.push(`${nome}: ${valor}`);
+    };
+    se('Empresa', this.vpEmpresa());
+    se('Contato', this.vpContato());
+    se('Consultor', this.vpConsultor());
+    se('Turno', this.vpTurno());
+    se('Aprovado', this.vpAprovado());
+    if (this.vpProtocolo().trim()) r.push(`Protocolo contém: ${this.vpProtocolo().trim()}`);
+    if (this.qtdFiltrosAtivos() > 0) {
+      r.push(
+        `Filtros da tela do Resumo ativos: ${this.qtdFiltrosAtivos()} ` +
+          '(o painel considera só os clientes visíveis na tabela de implantações)',
+      );
+    }
+    return r;
+  }
+
+  /** PNG do canvas do gráfico — indisponível (sem gráfico / navegador sem canvas) vira
+   * ausência: o PDF sai só com o recorte e a tabela. */
+  private capturarGrafico(): string | undefined {
+    try {
+      const dataUrl = this.canvasVisitas?.nativeElement?.toDataURL('image/png');
+      return dataUrl && dataUrl.startsWith('data:image/png') ? dataUrl : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  async enviarEmailVisitas(): Promise<void> {
+    if (this.enviandoEmail()) return;
+    if (!this.emailPara().trim()) {
+      this.emailErro.set('Informe o e-mail de destino.');
+      return;
+    }
+    this.enviandoEmail.set(true);
+    this.emailErro.set(null);
+    try {
+      const r = await this.service.enviarVisitasEmail({
+        para: this.emailPara().trim(),
+        assunto: this.emailAssunto().trim(),
+        corpo: this.emailCorpo(),
+        graficoPng: this.capturarGrafico(),
+        recorte: this.descreverRecorte(),
+        linhas: this.visitasFiltradas(),
+      });
+      if (r.ok) {
+        this.emailOk.set('E-mail enviado com o PDF em anexo.');
+        this.emailAberto.set(false);
+      } else {
+        this.emailErro.set(r.erro || 'Falha no envio.');
+      }
+    } catch (e) {
+      this.emailErro.set(mensagemErroBi(e, 'o envio do e-mail'));
+    } finally {
+      this.enviandoEmail.set(false);
+    }
+  }
 
   /** Exporta as visitas FILTRADAS para Excel (CSV com BOM — mesma receita do Resumo, que o
    * Excel pt-BR abre direto com acentos corretos). */

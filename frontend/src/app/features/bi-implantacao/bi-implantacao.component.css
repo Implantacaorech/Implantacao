@@ -284,3 +284,70 @@
   color: #fff;
 }
 
+/* Confirmação do envio, ao lado dos botões. */
+.vp-email-ok {
+  align-self: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #10b981;
+}
+
+/* ── Caixa "Enviar por e-mail" ──────────────────────────────────────────────────────── */
+.vp-modal-fundo {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+.vp-modal {
+  background: var(--surface, #fff);
+  border-radius: 10px;
+  padding: 18px;
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+.vp-modal-tit {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  color: var(--navy);
+}
+.vp-modal-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--navy);
+}
+.vp-modal-campo input,
+.vp-modal-campo textarea {
+  font-size: 0.84rem;
+  font-weight: 400;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-family: inherit;
+  resize: vertical;
+}
+.vp-modal-acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+.vp-btn-enviar {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+}
+.vp-btn-enviar:hover:not(:disabled) {
+  color: #fff;
+  filter: brightness(1.08);
+}
+

@@ -1,9 +1,17 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
 import { ConsultaBdService } from '../disponibilidade/consulta-bd.service';
 import { PortalDbService } from '../disponibilidade/portal-db.service';
+import { MailerService } from '../email/mailer.service';
+import { ModeloEmailService } from '../email/modelo-email.service';
+import { MODELOS_EMAIL_PADRAO } from '../email/modelo-email.constants';
 import { hojeIso } from '../cronograma/datas.util';
 import { textoAparado } from '../common/utils/texto.util';
+import { EnviarVisitasEmailDto } from './dto/enviar-visitas-email.dto';
+import { gerarPdfVisitasPortal } from './visitas-portal-pdf';
 import {
   AgrupamentoResumo,
   CONEXAO_CONSULTA_VISITAS_PORTAL,
@@ -237,6 +245,8 @@ export class BiImplantacaoService implements OnModuleInit {
     private readonly disponibilidade: DisponibilidadeService,
     private readonly consultas: ConsultaBdService,
     private readonly portalDb: PortalDbService,
+    private readonly mailer: MailerService,
+    private readonly modelosEmail: ModeloEmailService,
   ) {}
 
   /** Semeia a consulta do painel "Visitas do Portal Rech" (idempotente) para o
@@ -639,6 +649,117 @@ export class BiImplantacaoService implements OnModuleInit {
       truncado: linhas.length >= LIMITE_VISITAS_PORTAL,
       erro: null,
     };
+  }
+
+  /** Slug do texto padrão do "Enviar por e-mail" do painel — editável em Modelos de
+   * E-mail; o fallback embutido cobre banco recém-criado antes do seed. */
+  private static readonly SLUG_MODELO_EMAIL_VISITAS = 'bi-visitas-portal';
+
+  /** Assunto + corpo padrão da caixa de envio (a versão editada no Modelos de E-mail
+   * prevalece sobre o constante embutido). */
+  async modeloEmailVisitas(): Promise<{ assunto: string; corpo: string }> {
+    const slug = BiImplantacaoService.SLUG_MODELO_EMAIL_VISITAS;
+    const salvo = await this.modelosEmail.porSlug(slug);
+    if (salvo) return { assunto: salvo.assunto, corpo: salvo.corpo };
+    const padrao = MODELOS_EMAIL_PADRAO.find((m) => m.slug === slug);
+    return {
+      assunto: padrao?.assunto ?? 'Protocolos de visita do Portal Rech',
+      corpo: padrao?.corpo ?? '',
+    };
+  }
+
+  /** Uma linha vinda da TELA (camelCase, já filtrada) re-sancionada campo a campo — o
+   * payload é do navegador, então nada entra no PDF sem passar por texto/número. */
+  private linhaVisitaDaTela(bruta: Record<string, unknown>): LinhaVisitaPortal {
+    const num = (v: unknown): number | null => {
+      if (v === null || v === undefined || v === '') return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+    return {
+      empresa: this.texto(bruta.empresa),
+      cliente: num(bruta.cliente),
+      contato: this.texto(bruta.contato),
+      consultor: this.texto(bruta.consultor),
+      protocolo: num(bruta.protocolo),
+      data: this.texto(bruta.data).slice(0, 10),
+      horario: this.texto(bruta.horario).slice(0, 8),
+      turno: this.texto(bruta.turno).slice(0, 20),
+      aprovado: this.texto(bruta.aprovado).slice(0, 10),
+    };
+  }
+
+  /** PNG do canvas (data URL) → Buffer, validando a assinatura do formato — o campo vem do
+   * navegador e não pode virar anexo sem conferência. Inválido = sem gráfico no PDF. */
+  private pngDe(dataUrl?: string): Buffer | null {
+    const m = /^data:image\/png;base64,(.+)$/.exec((dataUrl ?? '').trim());
+    if (!m) return null;
+    try {
+      const buf = Buffer.from(m[1], 'base64');
+      const ehPng =
+        buf.length > 8 &&
+        buf[0] === 0x89 &&
+        buf[1] === 0x50 &&
+        buf[2] === 0x4e &&
+        buf[3] === 0x47;
+      return ehPng ? buf : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Gera o PDF (recorte + gráfico + tabela) e envia por e-mail pelo meio configurado do
+   * Painel (Microsoft 365/SMTP) — o botão "Enviar por e-mail" do painel de visitas. */
+  async enviarVisitasPorEmail(
+    dto: EnviarVisitasEmailDto,
+  ): Promise<{ ok: boolean; erro: string | null }> {
+    const destinos = (dto.para || '')
+      .split(/[;,]/)
+      .map((d) => d.trim())
+      .filter(Boolean);
+    const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (destinos.length === 0 || destinos.some((d) => !emailValido.test(d))) {
+      throw new BadRequestException(
+        'Informe um ou mais e-mails válidos, separados por ; ou ,',
+      );
+    }
+
+    const linhas = (dto.linhas ?? []).map((l) => this.linhaVisitaDaTela(l));
+    const aprovados = linhas.filter(
+      (l) => l.aprovado.trim().toLowerCase() === 'sim',
+    ).length;
+    const agora = new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    const pdf = await gerarPdfVisitasPortal({
+      geradoEm:
+        `${p(agora.getDate())}/${p(agora.getMonth() + 1)}/${agora.getFullYear()} ` +
+        `${p(agora.getHours())}:${p(agora.getMinutes())}`,
+      recorte: (dto.recorte ?? []).map((r) => textoAparado(r)).filter(Boolean),
+      totais: {
+        total: linhas.length,
+        aprovados,
+        naoAprovados: linhas.length - aprovados,
+      },
+      graficoPng: this.pngDe(dto.graficoPng),
+      linhas,
+    });
+
+    // O MailerService anexa por CAMINHO de arquivo — o PDF passa por um temporário que
+    // some no finally, dê certo ou errado o envio.
+    const dir = mkdtempSync(join(tmpdir(), 'painel-visitas-'));
+    const caminho = join(dir, 'visitas-portal-rech.pdf');
+    try {
+      writeFileSync(caminho, pdf);
+      const r = await this.mailer.enviar(
+        destinos,
+        textoAparado(dto.assunto) || 'Protocolos de visita do Portal Rech',
+        dto.corpo ?? '',
+        [{ caminho, nomeArquivo: 'visitas-portal-rech.pdf' }],
+      );
+      return { ok: r.ok, erro: r.erro };
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   }
 
   // ── Página "Extrato de Protocolo/Horas" ──────────────────────────────────────────────

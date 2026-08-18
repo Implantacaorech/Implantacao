@@ -47,6 +47,14 @@ async function bootstrap(): Promise<void> {
 
   // Mesmos parsers e o mesmo limite padrão que o Nest usaria (100 kb) — o que muda é só
   // quem os registra. Uploads continuam por multipart/multer, que não passa por aqui.
+  //
+  // EXCEÇÃO consciente, ANTES do parser global (o primeiro que parseia ganha): o envio do
+  // painel de visitas por e-mail carrega o PNG do gráfico (data URL) e as linhas filtradas
+  // — não cabe nos 100 kb. Só esta rota aceita mais.
+  app.use(
+    '/api/bi-implantacao/visitas-portal/enviar-email',
+    express.json({ limit: '6mb' }),
+  );
   app.use(express.json({ limit: LIMITE_CORPO }));
   app.use(express.urlencoded({ extended: true, limit: LIMITE_CORPO }));
   app.use(erroDeMiddleware());

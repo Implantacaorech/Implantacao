@@ -579,5 +579,80 @@ describe('BiImplantacaoComponent', () => {
         comp.graficoStatus()?.plugins?.some((p) => p.id === 'rotulosNasBarras'),
       ).toBe(true);
     });
+
+    it('a caixa de e-mail abre pré-preenchida pelo modelo (sem apagar o que o usuário digitou)', async () => {
+      const modeloEmailVisitas = vi
+        .fn()
+        .mockResolvedValue({ assunto: 'Assunto padrão', corpo: 'Corpo padrão' });
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado()),
+        modeloEmailVisitas,
+      });
+      await comp.abrirEnvioEmail();
+      expect(comp.emailAberto()).toBe(true);
+      expect(comp.emailAssunto()).toBe('Assunto padrão');
+      expect(comp.emailCorpo()).toBe('Corpo padrão');
+
+      comp.emailCorpo.set('texto meu');
+      comp.fecharEnvioEmail();
+      await comp.abrirEnvioEmail();
+      expect(comp.emailCorpo()).toBe('texto meu'); // modelo não sobrescreve edição
+      expect(modeloEmailVisitas).toHaveBeenCalledTimes(1);
+    });
+
+    it('envia as linhas FILTRADAS com a descrição do recorte; sucesso fecha a caixa', async () => {
+      const enviarVisitasEmail = vi.fn().mockResolvedValue({ ok: true, erro: null });
+      const linhas = [linha({ codigo: 1, cliente: 10, fantasia: 'ALFA' })];
+      const visitas = [
+        visita({ cliente: 10, contato: 'Ana', protocolo: 1 }),
+        visita({ cliente: 10, contato: 'Beto', protocolo: 2 }),
+      ];
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado({ linhas })),
+        visitasPortal: () => Promise.resolve(resultadoVisitas({ linhas: visitas })),
+        modeloEmailVisitas: () => Promise.resolve({ assunto: 'A', corpo: 'C' }),
+        enviarVisitasEmail,
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      await comp.abrirEnvioEmail();
+      comp.emailPara.set('coord@rech.com.br');
+      comp.vpContato.set('Ana'); // o envio respeita o filtro em vigor
+      await comp.enviarEmailVisitas();
+
+      const envio = enviarVisitasEmail.mock.calls[0][0];
+      expect(envio.para).toBe('coord@rech.com.br');
+      expect(envio.linhas.map((l: { protocolo: number }) => l.protocolo)).toEqual([1]);
+      expect(envio.recorte.join('\n')).toContain('Contato: Ana');
+      expect(envio.recorte.join('\n')).toContain('Período:');
+      expect(comp.emailAberto()).toBe(false);
+      expect(comp.emailOk()).toContain('enviado');
+    });
+
+    it('falha do envio fica na caixa (não fecha, mostra o motivo)', async () => {
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado()),
+        modeloEmailVisitas: () => Promise.resolve({ assunto: 'A', corpo: 'C' }),
+        enviarVisitasEmail: () =>
+          Promise.resolve({ ok: false, erro: 'Nenhum meio de envio configurado' }),
+      });
+      await comp.abrirEnvioEmail();
+      comp.emailPara.set('a@rech.com.br');
+      await comp.enviarEmailVisitas();
+      expect(comp.emailAberto()).toBe(true);
+      expect(comp.emailErro()).toContain('meio de envio');
+    });
+
+    it('sem destinatário, avisa e não chama o backend', async () => {
+      const enviarVisitasEmail = vi.fn();
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado()),
+        enviarVisitasEmail,
+      });
+      await comp.enviarEmailVisitas();
+      expect(comp.emailErro()).toContain('destino');
+      expect(enviarVisitasEmail).not.toHaveBeenCalled();
+    });
   });
 });

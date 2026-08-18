@@ -16,6 +16,8 @@ describe('BiImplantacaoController (HTTP)', () => {
     resumo: jest.fn(),
     extrato: jest.fn(),
     visitasPortal: jest.fn(),
+    modeloEmailVisitas: jest.fn(),
+    enviarVisitasPorEmail: jest.fn(),
     descricaoCompleta: jest.fn(),
   };
 
@@ -62,6 +64,8 @@ describe('BiImplantacaoController (HTTP)', () => {
     bi.resumo.mockResolvedValue({ linhas: [] });
     bi.extrato.mockResolvedValue({ linhas: [] });
     bi.visitasPortal.mockResolvedValue({ linhas: [] });
+    bi.modeloEmailVisitas.mockResolvedValue({ assunto: 'A', corpo: 'C' });
+    bi.enviarVisitasPorEmail.mockResolvedValue({ ok: true, erro: null });
     bi.descricaoCompleta.mockResolvedValue({
       descricao: 'x',
       tamanho: 1,
@@ -185,6 +189,37 @@ describe('BiImplantacaoController (HTTP)', () => {
       await request(app.getHttpServer())
         .get('/bi-implantacao/visitas-portal')
         .query({ inventado: 'x' })
+        .expect(400);
+    });
+
+    it('modelo-email não é engolido pela rota de listagem', async () => {
+      await request(app.getHttpServer())
+        .get('/bi-implantacao/visitas-portal/modelo-email')
+        .expect(200);
+      expect(bi.modeloEmailVisitas).toHaveBeenCalled();
+      expect(bi.visitasPortal).not.toHaveBeenCalled();
+    });
+
+    it('enviar-email aceita o payload da tela e repassa ao serviço', async () => {
+      await request(app.getHttpServer())
+        .post('/bi-implantacao/visitas-portal/enviar-email')
+        .send({
+          para: 'coord@rech.com.br',
+          assunto: 'Protocolos',
+          corpo: 'Segue anexo.',
+          recorte: ['Período: 01/08 a 17/08'],
+          linhas: [{ empresa: 'MELBROS', protocolo: 135089 }],
+        })
+        .expect(200);
+      expect(bi.enviarVisitasPorEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ para: 'coord@rech.com.br' }),
+      );
+    });
+
+    it('enviar-email recusa campo desconhecido (whitelist do pipe)', async () => {
+      await request(app.getHttpServer())
+        .post('/bi-implantacao/visitas-portal/enviar-email')
+        .send({ para: 'a@b.c', assunto: 'x', corpo: 'y', recorte: [], linhas: [], hack: 1 })
         .expect(400);
     });
   });

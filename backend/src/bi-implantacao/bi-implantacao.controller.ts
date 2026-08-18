@@ -1,4 +1,13 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissaoGuard } from '../permissoes/permissao.guard';
@@ -13,6 +22,7 @@ import {
   QueryRnsDto,
   QueryVisitasPortalDto,
 } from './dto/query-resumo.dto';
+import { EnviarVisitasEmailDto } from './dto/enviar-visitas-email.dto';
 
 /** BI de Implantação — porte das páginas do `BI_clientes.pbix` (Power BI) para dentro do
  * Painel. Gate pelo menu `bi_implantacao` do painel de Permissões. */
@@ -40,6 +50,25 @@ export class BiImplantacaoController {
   })
   async visitasPortal(@Query() query: QueryVisitasPortalDto) {
     return new ApiEnvelope(await this.bi.visitasPortal(query));
+  }
+
+  @Get('visitas-portal/modelo-email')
+  @ApiOperation({
+    summary:
+      'Assunto e texto padrão da caixa "Enviar por e-mail" (modelo bi-visitas-portal, editável em Modelos de E-mail)',
+  })
+  async modeloEmailVisitas() {
+    return new ApiEnvelope(await this.bi.modeloEmailVisitas());
+  }
+
+  @Post('visitas-portal/enviar-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Envia o painel por e-mail com o PDF anexo (recorte + gráfico + tabela filtrada)',
+  })
+  async enviarVisitasEmail(@Body() dto: EnviarVisitasEmailDto) {
+    return new ApiEnvelope(await this.bi.enviarVisitasPorEmail(dto));
   }
 
   @Get('extrato')

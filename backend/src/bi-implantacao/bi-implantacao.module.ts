@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DisponibilidadeModule } from '../disponibilidade/disponibilidade.module';
+import { EmailModule } from '../email/email.module';
 import { BiImplantacaoService } from './bi-implantacao.service';
 import { BiImplantacaoController } from './bi-implantacao.controller';
 
@@ -10,7 +11,9 @@ import { BiImplantacaoController } from './bi-implantacao.controller';
  * também do DisponibilidadeModule) — o SICLA não carrega o nº de protocolo nem a aprovação
  * do Portal de forma confiável (ver bi-implantacao.constants.ts). */
 @Module({
-  imports: [DisponibilidadeModule],
+  // EmailModule: o "Enviar por e-mail" do painel de visitas usa o MailerService (envio com
+  // o PDF anexo) e o ModeloEmailService (texto padrão editável em Modelos de E-mail).
+  imports: [DisponibilidadeModule, EmailModule],
   controllers: [BiImplantacaoController],
   providers: [BiImplantacaoService],
   exports: [BiImplantacaoService],

@@ -92,6 +92,15 @@ export class ModeloEmailService implements OnModuleInit {
     return m;
   }
 
+  /** Modelo pelo slug (o identificador estável dos semeados) — `null` se não existir.
+   * É como as telas que enviam e-mail avulso (ex.: painel de visitas do BI) buscam seu
+   * texto padrão, com fallback no constante embutido. */
+  async porSlug(slug: string): Promise<ModeloEmail | null> {
+    const s = (slug || '').trim();
+    if (!s) return null;
+    return this.repo.findOne({ where: { slug: s } });
+  }
+
   async salvar(
     dados: {
       nome?: string;

@@ -124,6 +124,27 @@ export interface FiltroVisitasPortalBi {
   dataFim?: string;
 }
 
+/** Texto padrão da caixa "Enviar por e-mail" (modelo `bi-visitas-portal`, editável em
+ * Modelos de E-mail). */
+export interface ModeloEmailVisitasBi {
+  assunto: string;
+  corpo: string;
+}
+
+/** Payload do envio do painel por e-mail — a tela manda o que ESTÁ MOSTRANDO (linhas
+ * filtradas + gráfico como PNG + descrição do recorte); o backend gera o PDF e envia. */
+export interface EnvioVisitasEmailBi {
+  /** Um ou mais e-mails separados por ; ou , */
+  para: string;
+  assunto: string;
+  corpo: string;
+  /** PNG do canvas do gráfico (data URL) — ausente quando não há gráfico. */
+  graficoPng?: string;
+  /** Linhas descritivas do recorte aplicado (período, visão, filtros). */
+  recorte: string[];
+  linhas: LinhaVisitaPortalBi[];
+}
+
 // ── Página "Extrato de Protocolo/Horas" ───────────────────────────────────────────────
 
 export interface LinhaExtratoBi {
