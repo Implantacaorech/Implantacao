@@ -126,6 +126,20 @@ export class AgendaCalendarioComponent {
    * espécie, status, observação); null = fechado. */
   readonly compromissoAberto = signal<CompromissoAgenda | null>(null);
 
+  /** Participantes do compromisso aberto — a view traz uma linha POR técnico com o mesmo
+   * `codigo`, então a lista sai da própria janela carregada (SEM os filtros da tela:
+   * mesmo em "minhas agendas" os colegas da mesma agenda aparecem aqui). */
+  readonly participantesAberto = computed<string[]>(() => {
+    const c = this.compromissoAberto();
+    if (!c) return [];
+    const nomes = new Set<string>();
+    for (const d of this.resultado()?.dias ?? [])
+      for (const x of d.compromissos)
+        if (x.codigo === c.codigo && x.tecnico) nomes.add(x.tecnico);
+    if (c.tecnico) nomes.add(c.tecnico);
+    return [...nomes].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  });
+
   constructor() {
     // Carga inicial JÁ filtrada no usuário logado — primeiro com o nome do login; quando a
     // tabela de usuários chega, verMinhas troca pela grafia da tabela (a que bate com o

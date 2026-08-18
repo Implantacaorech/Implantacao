@@ -242,6 +242,10 @@
           @if (c.especieDes) {
             <div class="ag-det-linha">🏷 <span class="ag-det-rot">Espécie:</span> {{ c.especieDes }}</div>
           }
+          @if (participantesAberto().length > 0) {
+            <div class="ag-det-linha">👥 <span class="ag-det-rot">Participantes:</span>
+              {{ participantesAberto().join(' · ') }}</div>
+          }
           <div class="ag-det-pe">
             <span class="ag-ponto" [style.background]="corBorda(c.status)"></span>
             {{ rotuloStatus(c.status) }}

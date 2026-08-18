@@ -265,6 +265,21 @@ describe('AgendaCalendarioComponent (Execução → Agenda)', () => {
       expect(comp.compromissoAberto()).toBeNull();
     });
 
+    it('lista os participantes: as linhas por técnico do MESMO código, sem os filtros da tela', async () => {
+      const comp = await naSemanaFixa(
+        fakeService([
+          compromisso({ codigo: 10, tecnico: 'LILIANA CORTES' }),
+          compromisso({ codigo: 10, tecnico: 'Alex Ramos' }),
+          compromisso({ codigo: 11, tecnico: 'Bruna Prado' }),
+        ]),
+      );
+      // Filtro em "minhas agendas" (só LILIANA visível) — e mesmo assim o colega da
+      // MESMA agenda aparece como participante.
+      expect(comp.minhasAgendas()).toBe(true);
+      comp.abrirCompromisso(compromisso({ codigo: 10, tecnico: 'LILIANA CORTES' }));
+      expect(comp.participantesAberto()).toEqual(['Alex Ramos', 'LILIANA CORTES']);
+    });
+
     it('criticidade segue as faixas do BI Alocação (duração em minutos)', async () => {
       const comp = await pronto(fakeService([]));
       expect(comp.criticidade(50)).toBe('NORMAL');
