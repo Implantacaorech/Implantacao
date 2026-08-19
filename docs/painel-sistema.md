@@ -553,9 +553,12 @@ O **Dicionário** é outro caso: lê documentação do SIGER, conteúdo nosso �
 externo é uma escolha razoável. É exatamente para permitir essa separação que as chaves são
 por finalidade.
 
-Espera do serviço local: teto de **10 minutos** por chamada. Generoso porque um modelo grande
-em CPU lendo 13 mil tokens leva minutos; existe porque sem teto um servidor engasgado
-penduraria o pipeline de transcrição.
+Espera do serviço local: a resposta é lida em **streaming**, e o relógio é uma **janela de
+inatividade de 30 min** que zera a cada pedaço de texto gerado — não um teto total. Em CPU a
+~3 tokens/s, uma resposta longa passa de 30 min *trabalhando*, e um teto total matava
+geração legítima (erro de 2026-08-19). Geração viva termina (limitada por `maxTokens` e por
+um teto-backstop de 3 h); servidor que fica meia hora sem emitir nada é travamento de
+verdade e cai do mesmo jeito.
 
 ---
 

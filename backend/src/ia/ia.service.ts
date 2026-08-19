@@ -40,15 +40,22 @@ export interface MetaExecucaoIa {
   contexto?: string;
 }
 
-/** Teto de espera do serviço local. Generoso porque um modelo grande em CPU lendo 13 mil
- * tokens de transcrição leva minutos — e apertar isso transformaria "lento" em "quebrado".
- * Dimensionado pelo MEDIDO na máquina de produção (i7-1255U, CPU puro, qwen2.5:7b,
- * 2026-08-14): ~22 tokens/s lendo o prompt e ~4 tokens/s gerando — um protocolo completo de
- * um vídeo real (10 mil tokens de transcrição + ~2 mil de saída) passa de 15 minutos, então
- * 10 não bastavam. Existir, porém, é obrigatório: sem teto, um servidor engasgado penduraria
- * o pipeline de transcrição para sempre, que é exatamente o defeito corrigido em
- * `aguardarTranscricao`. */
-const TIMEOUT_LOCAL_MS = 30 * 60 * 1000;
+/** Janela máxima do serviço local SEM PRODUZIR TEXTO NOVO. A resposta do provedor local é
+ * lida em STREAMING e este relógio zera a cada pedaço de texto gerado — NÃO é teto total.
+ * A distinção importa porque, na máquina de produção (i7-1255U, CPU pura, qwen2.5:7b,
+ * medido 2026-08-14), o modelo lê ~22 tokens/s e gera ~4 tokens/s: um protocolo grande passa
+ * de 30 min TRABALHANDO, e era exatamente isso que o teto total de 30 min matava
+ * (erro de 2026-08-19 — "não terminou em 30 min" com o modelo gerando normalmente).
+ * A janela cobre a fase muda de leitura do prompt (32k de contexto a 22 tok/s ≈ 25 min);
+ * começada a geração, só dispara se o servidor ficar meia hora sem emitir NADA — travamento
+ * de verdade (defeito A14), não lentidão. */
+const INATIVIDADE_LOCAL_MS = 30 * 60 * 1000;
+
+/** Teto TOTAL de segurança do serviço local, bem acima de qualquer geração legítima medida
+ * (leitura ~25 min + 8 mil tokens de saída a 4 tok/s ≈ 33 min ⇒ ~1 h no pior caso real).
+ * Existe para um servidor que goteje um token por minuto não segurar o pipeline por um dia —
+ * a janela de inatividade sozinha não pega esse caso. */
+const TETO_TOTAL_LOCAL_MS = 3 * 60 * 60 * 1000;
 
 /** Teto de espera dos provedores REMOTOS (OpenRouter, Anthropic). Menor que o do local porque
  * uma API na nuvem que não respondeu em 2 min está fora do ar, não "pensando devagar em CPU".
@@ -608,9 +615,10 @@ export class IaService implements OnModuleInit {
         config,
         config.baseUrl ?? '',
         opcoes,
-        // Modelo local não tem catálogo remoto para consultar, e um servidor engasgado
-        // simplesmente não responde. Sem teto, o pipeline de transcrição ficaria pendurado.
-        TIMEOUT_LOCAL_MS,
+        // Janela de INATIVIDADE do streaming, não teto total — geração lenta mas viva
+        // termina; servidor que ficou meia hora sem emitir nada é travamento (A14) e cai.
+        INATIVIDADE_LOCAL_MS,
+        true,
       );
     }
     return this.completarAnthropic(config, opcoes);
@@ -650,15 +658,23 @@ export class IaService implements OnModuleInit {
   /** Chat completions no dialeto da OpenAI — atende OpenRouter e qualquer serviço `local`
    * (Ollama, LM Studio, vLLM). A única diferença entre eles é a URL base e o fato de a chave
    * ser opcional no local; o corpo da requisição é idêntico, então o código é um só. O
-   * `system` vira a primeira mensagem com role `system`. */
+   * `system` vira a primeira mensagem com role `system`.
+   *
+   * Com `streaming` (provedor local), a resposta é pedida em SSE e o `timeoutMs` vira janela
+   * de INATIVIDADE: o relógio zera a cada pedaço de texto gerado. Um teto total fixo não
+   * distingue "gerando devagar" de "travado" — em CPU a 4 tokens/s, uma resposta longa passa
+   * de 30 min trabalhando, e era isso que matava a transcrição em 2026-08-19. Com a janela
+   * por atividade, geração viva termina (limitada por `maxTokens` e pelo teto-backstop
+   * `TETO_TOTAL_LOCAL_MS`) e servidor mudo continua caindo. */
   private async completarCompativel(
     config: ConfigFinalidade,
     baseUrl: string,
     opcoes: OpcoesCompletar,
     // Obrigatório: com o teto de cabeçalhos do undici zerado (ver
-    // `dispatcherSemTetoDeCabecalhos`), este AbortSignal é o ÚNICO relógio da chamada —
-    // sem ele, um servidor engasgado penduraria o pipeline para sempre (defeito A14).
+    // `dispatcherSemTetoDeCabecalhos`), estes relógios são os ÚNICOS da chamada —
+    // sem eles, um servidor engasgado penduraria o pipeline para sempre (defeito A14).
     timeoutMs: number,
+    streaming = false,
   ): Promise<{ texto: string; uso: UsoIa }> {
     const onde = config.provider === 'local' ? 'O serviço local' : 'OpenRouter';
     if (!config.modelo) {
@@ -682,60 +698,194 @@ export class IaService implements OnModuleInit {
     if (requestId) headers[CABECALHO_REQUEST_ID] = requestId;
 
     const dispatcher = dispatcherSemTetoDeCabecalhos();
-    let resp: Response;
-    try {
-      resp = await fetch(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          model: config.modelo,
-          max_tokens: opcoes.maxTokens,
-          // Eixo 6: temperatura baixa e fixa (mesmo motivo do Anthropic).
-          temperature: opcoes.temperatura ?? TEMPERATURA_FACTUAL,
-          messages: [
-            { role: 'system', content: opcoes.system },
-            ...opcoes.messages,
-          ],
-        }),
-        signal: AbortSignal.timeout(timeoutMs),
-        ...(dispatcher ? { dispatcher } : {}),
-      });
-    } catch (e) {
-      // O estouro do teto é um caso SEU, com mensagem própria: dizer "não respondeu" para
-      // uma geração que estava andando, só que devagar, mandaria o operador caçar um
-      // servidor fora do ar que está de pé. Checa pelo `name` (não `instanceof`): o
-      // DOMException do abort nasce no realm do Node e não passa num `instanceof Error`
-      // de outro realm (é o caso do Jest).
-      if ((e as { name?: unknown } | null)?.name === 'TimeoutError') {
-        throw new Error(
-          `${onde} não terminou em ${Math.round(timeoutMs / 60000)} min (${baseUrl}) — ` +
-            'modelo lento demais para o tamanho desta transcrição, ou servidor engasgado.',
+
+    // Relógios do modo streaming. `motivoAborto` guarda POR QUE o abort disparou: o
+    // DOMException é idêntico nos dois casos, e a mensagem precisa distinguir "nunca começou"
+    // de "parou no meio" de "passou do teto total".
+    const controlador = new AbortController();
+    let motivoAborto: 'inatividade' | 'tetoTotal' | null = null;
+    let gerouTexto = false;
+    let timerInatividade: ReturnType<typeof setTimeout> | undefined;
+    let timerTetoTotal: ReturnType<typeof setTimeout> | undefined;
+    const rearmarInatividade = () => {
+      clearTimeout(timerInatividade);
+      timerInatividade = setTimeout(() => {
+        motivoAborto = 'inatividade';
+        controlador.abort();
+      }, timeoutMs);
+    };
+
+    // O abort/timeout é um caso NOSSO, com mensagem própria: dizer "não respondeu" para uma
+    // geração que estava andando, só que devagar, mandaria o operador caçar um servidor fora
+    // do ar que está de pé. Checa pelo `name` (não `instanceof`): o DOMException do abort
+    // nasce no realm do Node e não passa num `instanceof Error` de outro realm (Jest).
+    const traduzirErro = (e: unknown): Error => {
+      if (motivoAborto === 'tetoTotal') {
+        return new Error(
+          `${onde} não terminou em ${Math.round(TETO_TOTAL_LOCAL_MS / 3600000)} h no total ` +
+            `(${baseUrl}) — transcrição grande demais para o modelo nesta máquina.`,
+        );
+      }
+      const nome = (e as { name?: unknown } | null)?.name;
+      if (
+        motivoAborto === 'inatividade' ||
+        nome === 'TimeoutError' ||
+        nome === 'AbortError'
+      ) {
+        const min = Math.round(timeoutMs / 60000);
+        if (gerouTexto) {
+          return new Error(
+            `${onde} parou no meio da resposta (${min} min sem texto novo — ${baseUrl}) — ` +
+              'servidor engasgado; use Processar agora para tentar de novo.',
+          );
+        }
+        return new Error(
+          streaming
+            ? `${onde} não começou a responder em ${min} min (${baseUrl}) — ` +
+              'modelo lento demais para o tamanho desta transcrição, ou servidor engasgado.'
+            : `${onde} não terminou em ${min} min (${baseUrl}) — ` +
+              'modelo lento demais para o tamanho desta transcrição, ou servidor engasgado.',
         );
       }
       // Servidor local desligado/inalcançável é o caso comum, e o erro cru do fetch
       // ("fetch failed") não diz nada a quem vai consertar.
-      throw new Error(
+      return new Error(
         `${onde} não respondeu (${baseUrl}): ${e instanceof Error ? e.message : String(e)}`,
       );
-    }
-    if (!resp.ok) {
-      const detalhe = await resp.text().catch(() => '');
-      throw new Error(
-        `${onde} respondeu ${resp.status}: ${detalhe.slice(0, 300)}`,
-      );
-    }
-    const dados = (await resp.json()) as {
-      choices?: { message?: { content?: string } }[];
-      usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
-    // A9: o `usage` no dialeto da OpenAI (prompt_tokens/completion_tokens) era descartado.
-    // Nem todo servidor local devolve — daí o `?? null`.
-    return {
-      texto: dados.choices?.[0]?.message?.content ?? '',
-      uso: {
-        tokensEntrada: dados.usage?.prompt_tokens ?? null,
-        tokensSaida: dados.usage?.completion_tokens ?? null,
-      },
-    };
+
+    try {
+      if (streaming) {
+        rearmarInatividade();
+        timerTetoTotal = setTimeout(() => {
+          motivoAborto = 'tetoTotal';
+          controlador.abort();
+        }, TETO_TOTAL_LOCAL_MS);
+      }
+      let resp: Response;
+      try {
+        resp = await fetch(`${baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            model: config.modelo,
+            max_tokens: opcoes.maxTokens,
+            // Eixo 6: temperatura baixa e fixa (mesmo motivo do Anthropic).
+            temperature: opcoes.temperatura ?? TEMPERATURA_FACTUAL,
+            messages: [
+              { role: 'system', content: opcoes.system },
+              ...opcoes.messages,
+            ],
+            // `include_usage` traz os tokens no último evento — sem ele o streaming perderia
+            // a telemetria (A9) que a resposta de uma vez sempre teve.
+            ...(streaming
+              ? { stream: true, stream_options: { include_usage: true } }
+              : {}),
+          }),
+          signal: streaming
+            ? controlador.signal
+            : AbortSignal.timeout(timeoutMs),
+          ...(dispatcher ? { dispatcher } : {}),
+        });
+      } catch (e) {
+        throw traduzirErro(e);
+      }
+      if (!resp.ok) {
+        const detalhe = await resp.text().catch(() => '');
+        throw new Error(
+          `${onde} respondeu ${resp.status}: ${detalhe.slice(0, 300)}`,
+        );
+      }
+
+      const tipoResposta = resp.headers?.get?.('content-type') ?? '';
+      if (
+        !streaming ||
+        !tipoResposta.includes('text/event-stream') ||
+        !resp.body
+      ) {
+        // Resposta de uma vez: OpenRouter, ou um serviço local que ignorou o `stream`.
+        const dados = (await resp.json()) as {
+          choices?: { message?: { content?: string } }[];
+          usage?: { prompt_tokens?: number; completion_tokens?: number };
+        };
+        // A9: o `usage` no dialeto da OpenAI (prompt_tokens/completion_tokens) era descartado.
+        // Nem todo servidor local devolve — daí o `?? null`.
+        return {
+          texto: dados.choices?.[0]?.message?.content ?? '',
+          uso: {
+            tokensEntrada: dados.usage?.prompt_tokens ?? null,
+            tokensSaida: dados.usage?.completion_tokens ?? null,
+          },
+        };
+      }
+
+      try {
+        return await this.lerStreamCompativel(resp.body, onde, () => {
+          gerouTexto = true;
+          rearmarInatividade();
+        });
+      } catch (e) {
+        throw traduzirErro(e);
+      }
+    } finally {
+      clearTimeout(timerInatividade);
+      clearTimeout(timerTetoTotal);
+    }
+  }
+
+  /** Lê a resposta SSE do dialeto da OpenAI (`data: {...}` por linha, `data: [DONE]` no fim),
+   * avisando `aoGerarTexto` a cada delta com conteúdo — é esse aviso que zera o relógio de
+   * inatividade do chamador. Devolve o texto concatenado e o `usage` do último evento
+   * (presente quando o servidor honra `stream_options.include_usage`; senão, fica null). */
+  private async lerStreamCompativel(
+    corpo: ReadableStream<Uint8Array>,
+    onde: string,
+    aoGerarTexto: () => void,
+  ): Promise<{ texto: string; uso: UsoIa }> {
+    let texto = '';
+    const uso: UsoIa = { tokensEntrada: null, tokensSaida: null };
+    let pendente = '';
+    const decodificador = new TextDecoder();
+    for await (const pedaco of corpo as unknown as AsyncIterable<Uint8Array>) {
+      pendente += decodificador.decode(pedaco, { stream: true });
+      let quebra: number;
+      // Só linhas COMPLETAS são interpretadas — um evento partido na fronteira de dois
+      // chunks fica em `pendente` até a quebra de linha chegar.
+      while ((quebra = pendente.indexOf('\n')) >= 0) {
+        const linha = pendente.slice(0, quebra).trim();
+        pendente = pendente.slice(quebra + 1);
+        if (!linha.startsWith('data:')) continue;
+        const dado = linha.slice(5).trim();
+        if (!dado || dado === '[DONE]') continue;
+        let evento: {
+          choices?: { delta?: { content?: string } }[];
+          usage?: { prompt_tokens?: number; completion_tokens?: number } | null;
+          error?: unknown;
+        };
+        try {
+          evento = JSON.parse(dado) as typeof evento;
+        } catch {
+          continue; // lixo no meio do stream não derruba a geração inteira
+        }
+        // Erro no MEIO do stream (o status 200 já foi): sem isto ele passaria batido e a
+        // resposta voltaria truncada com cara de completa.
+        if (evento.error) {
+          throw new Error(
+            `${onde} devolveu erro no meio da resposta: ` +
+              JSON.stringify(evento.error).slice(0, 300),
+          );
+        }
+        const delta = evento.choices?.[0]?.delta?.content;
+        if (delta) {
+          texto += delta;
+          aoGerarTexto();
+        }
+        if (evento.usage) {
+          uso.tokensEntrada = evento.usage.prompt_tokens ?? null;
+          uso.tokensSaida = evento.usage.completion_tokens ?? null;
+        }
+      }
+    }
+    return { texto, uso };
   }
 }

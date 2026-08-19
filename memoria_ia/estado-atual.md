@@ -229,8 +229,10 @@ OpenRouter já era um `fetch` no dialeto da OpenAI, então virou um método só
   `Bearer ` vazio faz alguns servidores responderem 401 em vez de ignorar.
 - Modelo é **obrigatório** no `local` (não há padrão possível: é o nome carregado naquele
   servidor) e a URL é validada ao salvar, não na primeira chamada horas depois.
-- Timeout de **10 min** por chamada: generoso para modelo grande em CPU, mas existe — sem
-  teto, um servidor engasgado penduraria o pipeline de transcrição.
+- Espera (revisto 2026-08-19): resposta em **streaming** com **janela de inatividade de
+  30 min** que zera a cada texto gerado + teto-backstop total de 3 h. O teto total fixo
+  (10 e depois 30 min) matava geração legítima em CPU (~3 tok/s) com o erro "não terminou
+  em 30 min"; agora só cai servidor realmente mudo — engasgado continua caindo (A14).
 - ⚠️ A máquina de desenvolvimento (i7-1255U) **não** é a de produção — o servidor oficial terá
   recursos melhores, e é lá que o modelo local faz sentido de verdade.
 

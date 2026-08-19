@@ -364,9 +364,10 @@ describe('IaService', () => {
       fetchMock.mockRestore();
     });
 
-    /** Estourar o teto NÃO é "servidor fora do ar": a geração estava andando, só que devagar.
-     * Dizer "não respondeu" mandaria o operador caçar um servidor de pé. */
-    it('estouro do teto vira mensagem de lentidão, com o teto em minutos', async () => {
+    /** Estourar a janela SEM NENHUM texto ainda NÃO é "servidor fora do ar": o modelo pode
+     * estar lendo um prompt gigante. Dizer "não respondeu" mandaria o operador caçar um
+     * servidor de pé. */
+    it('janela de inatividade sem nenhum texto vira mensagem de lentidão, em minutos', async () => {
       configurarLocal();
       const fetchMock = jest
         .spyOn(global, 'fetch')
@@ -383,7 +384,117 @@ describe('IaService', () => {
           messages: [],
           maxTokens: 10,
         }),
-      ).rejects.toThrow('não terminou em 30 min');
+      ).rejects.toThrow('não começou a responder em 30 min');
+      fetchMock.mockRestore();
+    });
+
+    /** Regressão do erro de 2026-08-19: a resposta local é lida em STREAMING e o relógio de
+     * inatividade zera a cada delta — sem isso, um teto TOTAL de 30 min matava gerações que
+     * estavam andando (4 tokens/s em CPU não terminam uma resposta longa em meia hora). */
+    it('pede streaming ao serviço local e junta os deltas do SSE', async () => {
+      configurarLocal();
+      const enc = new TextEncoder();
+      const corpo = (async function* () {
+        yield enc.encode(
+          'data: {"choices":[{"delta":{"content":"olá "}}]}\n\n',
+        );
+        // Evento partido na fronteira de dois chunks: só pode ser interpretado inteiro.
+        yield enc.encode('data: {"choices":[{"delta":{"con');
+        yield enc.encode('tent":"do stream"}}]}\n\n');
+        yield enc.encode(
+          'data: {"choices":[],"usage":{"prompt_tokens":12,"completion_tokens":5}}\n\n',
+        );
+        yield enc.encode('data: [DONE]\n\n');
+      })();
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        headers: new Headers({ 'content-type': 'text/event-stream' }),
+        body: corpo,
+      } as unknown as Response);
+
+      const texto = await service.completar('protocolos', {
+        system: 'sys',
+        messages: [{ role: 'user', content: 'oi' }],
+        maxTokens: 300,
+      });
+
+      expect(texto).toBe('olá do stream');
+      const body = JSON.parse(
+        (fetchMock.mock.calls[0][1] as RequestInit).body as string,
+      ) as { stream?: boolean; stream_options?: { include_usage?: boolean } };
+      expect(body.stream).toBe(true);
+      // Sem include_usage o streaming perderia os tokens da telemetria (A9).
+      expect(body.stream_options?.include_usage).toBe(true);
+      fetchMock.mockRestore();
+    });
+
+    /** Servidor que RESPONDEU mas ignorou o `stream` (proxy, versão antiga): a resposta de
+     * uma vez continua aceita — streaming é otimização, não pré-requisito. */
+    it('serviço local que ignora o stream cai na resposta de uma vez', async () => {
+      configurarLocal();
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: () =>
+          Promise.resolve({ choices: [{ message: { content: 'sem sse' } }] }),
+      } as unknown as Response);
+      await expect(
+        service.completar('protocolos', {
+          system: '',
+          messages: [],
+          maxTokens: 10,
+        }),
+      ).resolves.toBe('sem sse');
+      fetchMock.mockRestore();
+    });
+
+    /** Parar NO MEIO da geração é outro caso: já havia texto andando, o servidor engasgou.
+     * A mensagem diz isso — e não manda caçar um servidor "fora do ar" que está de pé. */
+    it('stream que para no meio vira mensagem de servidor engasgado', async () => {
+      configurarLocal();
+      const enc = new TextEncoder();
+      const corpo = (async function* () {
+        yield enc.encode(
+          'data: {"choices":[{"delta":{"content":"começou"}}]}\n\n',
+        );
+        // O abort da janela de inatividade derruba a leitura do body com AbortError.
+        throw new DOMException('This operation was aborted', 'AbortError');
+      })();
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        headers: new Headers({ 'content-type': 'text/event-stream' }),
+        body: corpo,
+      } as unknown as Response);
+      await expect(
+        service.completar('protocolos', {
+          system: '',
+          messages: [],
+          maxTokens: 10,
+        }),
+      ).rejects.toThrow('parou no meio da resposta');
+      fetchMock.mockRestore();
+    });
+
+    /** Erro embutido no MEIO do stream (o status 200 já foi): sem esta checagem a resposta
+     * voltaria truncada com cara de completa. */
+    it('evento de erro no meio do stream derruba a chamada com o detalhe', async () => {
+      configurarLocal();
+      const enc = new TextEncoder();
+      const corpo = (async function* () {
+        yield enc.encode('data: {"error":{"message":"out of memory"}}\n\n');
+      })();
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        headers: new Headers({ 'content-type': 'text/event-stream' }),
+        body: corpo,
+      } as unknown as Response);
+      await expect(
+        service.completar('protocolos', {
+          system: '',
+          messages: [],
+          maxTokens: 10,
+        }),
+      ).rejects.toThrow('out of memory');
       fetchMock.mockRestore();
     });
   });
@@ -582,6 +693,43 @@ describe('IaService', () => {
       await expect(
         s.completar('protocolos', { system: '', messages: [], maxTokens: 10 }),
       ).resolves.toBe('ok');
+      fetchMock.mockRestore();
+    });
+
+    /** A9 no modo streaming: os tokens vêm no ÚLTIMO evento (include_usage) e têm de chegar
+     * à telemetria do mesmo jeito que na resposta de uma vez. */
+    it('registra os tokens do último evento do stream local', async () => {
+      const { s, telemetria } = comTelemetria();
+      s.salvar('protocolos', {
+        provider: 'local',
+        apiKey: '',
+        modelo: 'qwen2.5:7b',
+        baseUrl: 'http://127.0.0.1:11434/v1',
+      });
+      const enc = new TextEncoder();
+      const corpo = (async function* () {
+        yield enc.encode('data: {"choices":[{"delta":{"content":"ok"}}]}\n\n');
+        yield enc.encode(
+          'data: {"choices":[],"usage":{"prompt_tokens":900,"completion_tokens":70}}\n\n',
+        );
+        yield enc.encode('data: [DONE]\n\n');
+      })();
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        headers: new Headers({ 'content-type': 'text/event-stream' }),
+        body: corpo,
+      } as unknown as Response);
+
+      await s.completar('protocolos', {
+        system: '',
+        messages: [],
+        maxTokens: 10,
+      });
+
+      const arg = telemetria.registrar.mock.calls[0][0];
+      expect(arg.tokensEntrada).toBe(900);
+      expect(arg.tokensSaida).toBe(70);
+      expect(arg.status).toBe('ok');
       fetchMock.mockRestore();
     });
   });
