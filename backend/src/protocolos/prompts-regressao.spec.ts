@@ -1,4 +1,8 @@
-import { SISTEMA, SISTEMA_RESUMO } from './protocolo-ia.service';
+import {
+  SISTEMA,
+  SISTEMA_MAPA,
+  SISTEMA_RESUMO,
+} from './protocolo-ia.service';
 import { PROTO_MODULOS } from './protocolos.constants';
 
 /**
@@ -40,6 +44,18 @@ describe('Regressão de prompt — grounding anti-alucinação (eixo 6)', () => 
     it('proíbe inventar e prende o resumo à transcrição', () => {
       expect(SISTEMA_RESUMO).toContain('NUNCA invente');
       expect(SISTEMA_RESUMO).toContain('apenas o que está na transcrição');
+    });
+  });
+
+  describe('SISTEMA_MAPA (registro parcial da condensação)', () => {
+    it('proíbe inventar e prende o registro à parte recebida', () => {
+      expect(SISTEMA_MAPA).toContain('NUNCA invente');
+      expect(SISTEMA_MAPA).toContain('Informação não detalhada no vídeo');
+    });
+
+    it('proíbe normalizar/inventar códigos de menu — o consolidado alimenta a validação A15', () => {
+      expect(SISTEMA_MAPA).toContain('AO PÉ DA LETRA');
+      expect(SISTEMA_MAPA).toContain('não invente códigos');
     });
   });
 });

@@ -233,6 +233,11 @@ OpenRouter já era um `fetch` no dialeto da OpenAI, então virou um método só
   30 min** que zera a cada texto gerado + teto-backstop total de 3 h. O teto total fixo
   (10 e depois 30 min) matava geração legítima em CPU (~3 tok/s) com o erro "não terminou
   em 30 min"; agora só cai servidor realmente mudo — engasgado continua caindo (A14).
+- Transcrição longa (também 2026-08-19): acima de ~38 mil caracteres o `ProtocoloIaService`
+  **condensa em partes** (map-reduce, prompt `SISTEMA_MAPA`, cache por transcrição) antes da
+  análise/resumo. Sem isso, prompt de 43.959 tokens fez o Ollama truncar o COMEÇO (as
+  instruções) e a resposta veio em prosa — "A IA não devolveu o JSON esperado". O mesmo
+  risco existe, ainda sem tratamento, na `sugestao-levantamento` (transcrição de reunião).
 - ⚠️ A máquina de desenvolvimento (i7-1255U) **não** é a de produção — o servidor oficial terá
   recursos melhores, e é lá que o modelo local faz sentido de verdade.
 

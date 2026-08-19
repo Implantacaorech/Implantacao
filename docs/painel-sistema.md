@@ -560,6 +560,15 @@ geração legítima (erro de 2026-08-19). Geração viva termina (limitada por `
 um teto-backstop de 3 h); servidor que fica meia hora sem emitir nada é travamento de
 verdade e cai do mesmo jeito.
 
+Transcrição longa: acima de ~38 mil caracteres, o `ProtocoloIaService` **condensa em
+partes** antes de analisar (map-reduce). Motivo, medido no mesmo 2026-08-19: um vídeo longo
+virou um prompt de 43.959 tokens e o Ollama **truncou o começo** — as instruções — e a
+resposta veio em prosa ("A IA não devolveu o JSON esperado"). Cada parte (~30 mil
+caracteres, quebrada em fim de linha para preservar os timestamps) vira um registro
+detalhado pelo prompt `SISTEMA_MAPA`; a análise e o resumo finais leem o consolidado. A
+condensação roda **uma vez** por transcrição (cache) — o resumo e o "Processar agora"
+reaproveitam; parte que falha ganha uma nova tentativa antes de derrubar o pipeline.
+
 ---
 
 ## 11. Segurança

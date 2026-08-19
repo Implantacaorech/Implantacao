@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { IaService } from '../ia/ia.service';
 import { PROTO_CAMPOS_TEXTO, PROTO_MODULOS } from './protocolos.constants';
 import {
@@ -175,6 +175,79 @@ export const SISTEMA_RESUMO =
   'Arquivo FX/OFX: Formato de arquivo digital fornecido pelas instituições bancárias para ' +
   'importação de movimentos financeiros no sistema.';
 
+/** Acima deste tamanho de transcrição (em caracteres) a leitura única é trocada pela
+ * CONDENSAÇÃO EM PARTES. Dimensionado pelo caso real de 2026-08-19: um vídeo longo virou um
+ * prompt de 43.959 tokens e o servidor local (32k de contexto) TRUNCOU o começo do prompt —
+ * exatamente onde estavam as instruções de responder em JSON — e a resposta veio em prosa
+ * ("A IA não devolveu o JSON esperado"). O log do Ollama mostrou o corte em 16.386 tokens de
+ * ENTRADA; a ~3,5 caracteres por token em pt-BR, 38 mil caracteres de transcrição + o prompt
+ * de sistema (~3 mil tokens) ficam com folga abaixo desse teto. */
+const LIMITE_CHARS_LEITURA_UNICA = 38_000;
+
+/** Tamanho alvo de cada parte na condensação (~9 mil tokens): cabe com folga no teto de
+ * entrada observado e mantém cada chamada num tempo razoável em CPU. */
+const ALVO_CHARS_PARTE = 30_000;
+
+/** Teto de saída de cada registro parcial. Baixo de propósito: o consolidado das partes é a
+ * ENTRADA da análise final e precisa caber lá também (um vídeo de ~5 h dá ~8 partes;
+ * 8 × 1.200 tokens + prompt de sistema ainda ficam abaixo do teto de entrada). */
+const MAX_TOKENS_MAPA = 1200;
+
+/** Prompt do registro PARCIAL (fase de mapa da condensação): extrai de UMA parte da
+ * transcrição tudo o que a análise final precisa, preservando códigos e timestamps ao pé da
+ * letra. Carrega as mesmas cláusulas de fundamentação dos outros dois prompts — o
+ * `prompts-regressao.spec.ts` trava a remoção acidental delas. */
+export const SISTEMA_MAPA =
+  'Você é um consultor especialista em documentação de treinamentos do ERP SIGER (Rech). ' +
+  'Você receberá UMA PARTE da transcrição de uma gravação longa, que foi dividida em partes ' +
+  'sequenciais. Escreva o REGISTRO TÉCNICO DETALHADO desta parte, em português do Brasil — ' +
+  'ele será consolidado com o das demais partes para documentar o treinamento inteiro.\n\n' +
+  'REGRAS:\n' +
+  '1. NUNCA invente informação — use apenas o que está realmente nesta parte da transcrição.\n' +
+  "2. Se faltar detalhe, escreva exatamente: 'Informação não detalhada no vídeo'.\n" +
+  '3. Preserve AO PÉ DA LETRA códigos de menu (ex.: 3.4-L), nomes de telas/rotinas, teclas e ' +
+  'parâmetros citados — não normalize, não complete e não invente códigos.\n' +
+  '4. Referencie o tempo da gravação entre colchetes, ex.: [12:35], em cada bloco.\n' +
+  '5. Descarte conversa paralela, cumprimentos, assuntos pessoais/comerciais e repetições — ' +
+  'só conteúdo técnico do treinamento.\n\n' +
+  'FORMATO: texto corrido estruturado em blocos, um por menu/rotina/assunto técnico tratado ' +
+  'nesta parte, cada um com: o que foi executado (ações e passo a passo demonstrado), ' +
+  'configurações e parâmetros alterados, conceitos definidos pelo consultor, perguntas do ' +
+  'participante com as respostas dadas, e pendências citadas. Sem introdução nem conclusão — ' +
+  'apenas o registro.';
+
+/** Divide a transcrição em partes de até `alvoChars`, quebrando SEMPRE em fim de linha —
+ * cada linha carrega seu timestamp, então nenhuma parte começa no meio de uma fala. Linha
+ * única maior que o alvo (transcrição sem quebras) é fatiada no duro, que é o único jeito. */
+export function dividirTranscricaoEmPartes(
+  texto: string,
+  alvoChars: number,
+): string[] {
+  if (texto.length <= alvoChars) return [texto];
+  const partes: string[] = [];
+  let atual: string[] = [];
+  let tamanho = 0;
+  const fecharParte = () => {
+    if (atual.length > 0) {
+      partes.push(atual.join('\n'));
+      atual = [];
+      tamanho = 0;
+    }
+  };
+  for (let linha of texto.split('\n')) {
+    while (linha.length > alvoChars) {
+      fecharParte();
+      partes.push(linha.slice(0, alvoChars));
+      linha = linha.slice(alvoChars);
+    }
+    if (tamanho + linha.length + 1 > alvoChars) fecharParte();
+    atual.push(linha);
+    tamanho += linha.length + 1;
+  }
+  fecharParte();
+  return partes;
+}
+
 // camelCase (entidade) -> snake_case (chave que a IA devolve, igual ao prompt/ao Flask).
 const CHAVE_IA: Record<string, string> = {
   titulo: 'titulo',
@@ -276,10 +349,121 @@ function extraiJson(txt: string): unknown {
  * webapp/protocolo_ia.py (o legado ficou na estrutura antiga). */
 @Injectable()
 export class ProtocoloIaService {
+  private readonly logger = new Logger(ProtocoloIaService.name);
+
+  /** Condensações já feitas, chaveadas pela transcrição ORIGINAL. Existe para a 2ª chamada
+   * do pipeline (resumo completo) e para o "Processar agora" de uma nova tentativa não
+   * repagarem a fase de mapa — que é a parte cara (em CPU, dezenas de minutos). Guarda só as
+   * últimas; não é para crescer. */
+  private readonly cacheCondensacao = new Map<string, string>();
+
   constructor(private readonly ia: IaService) {}
 
   disponivel(): boolean {
     return this.ia.disponivel('protocolos');
+  }
+
+  /** Transcrição que não cabe numa leitura única vira um REGISTRO CONSOLIDADO: divide em
+   * partes (`dividirTranscricaoEmPartes`), extrai o registro detalhado de cada uma
+   * (`SISTEMA_MAPA`) e junta tudo na ordem. Sem isto, o servidor local trunca o COMEÇO do
+   * prompt — as instruções — e devolve prosa (caso de 2026-08-19). Abaixo do limite, a
+   * transcrição passa intacta, comportamento de sempre. */
+  private async condensarSeNecessario(
+    transcricao: string,
+    videoNome: string,
+  ): Promise<{ texto: string; condensado: boolean }> {
+    if (transcricao.length <= LIMITE_CHARS_LEITURA_UNICA) {
+      return { texto: transcricao, condensado: false };
+    }
+    const emCache = this.cacheCondensacao.get(transcricao);
+    if (emCache) return { texto: emCache, condensado: true };
+
+    let texto = transcricao;
+    // Uma rodada normalmente basta (reduz ~8×); a segunda cobre gravação extrema. Se ainda
+    // assim passar do limite, segue adiante mesmo — o caso é teórico (dezenas de horas).
+    for (
+      let rodada = 0;
+      rodada < 2 && texto.length > LIMITE_CHARS_LEITURA_UNICA;
+      rodada++
+    ) {
+      texto = await this.condensarUmaRodada(texto, videoNome);
+    }
+
+    this.cacheCondensacao.set(transcricao, texto);
+    while (this.cacheCondensacao.size > 4) {
+      const maisAntiga = this.cacheCondensacao.keys().next().value;
+      if (maisAntiga === undefined) break;
+      this.cacheCondensacao.delete(maisAntiga);
+    }
+    return { texto, condensado: true };
+  }
+
+  private async condensarUmaRodada(
+    texto: string,
+    videoNome: string,
+  ): Promise<string> {
+    const partes = dividirTranscricaoEmPartes(texto, ALVO_CHARS_PARTE);
+    this.logger.log(
+      `Transcrição de ${texto.length} caracteres não cabe numa leitura única — ` +
+        `condensando em ${partes.length} parte(s) antes da análise (${videoNome || 'vídeo'}).`,
+    );
+    const registros: string[] = [];
+    for (let i = 0; i < partes.length; i++) {
+      registros.push(
+        await this.mapearParte(partes[i], i + 1, partes.length, videoNome),
+      );
+      this.logger.log(
+        `Parte ${i + 1}/${partes.length} da transcrição registrada.`,
+      );
+    }
+    return registros
+      .map((r, i) => `=== Parte ${i + 1} de ${registros.length} ===\n${r.trim()}`)
+      .join('\n\n');
+  }
+
+  private async mapearParte(
+    parte: string,
+    n: number,
+    total: number,
+    videoNome: string,
+  ): Promise<string> {
+    const opcoes = {
+      system: SISTEMA_MAPA,
+      messages: [
+        {
+          role: 'user' as const,
+          content:
+            `Vídeo: ${videoNome}\nParte ${n} de ${total} da transcrição.\n\n` +
+            `TRANSCRIÇÃO DESTA PARTE (com timestamps):\n${parte}`,
+        },
+      ],
+      maxTokens: MAX_TOKENS_MAPA,
+    };
+    const meta = {
+      contexto: `protocolo (parte ${n}/${total}): ${videoNome || 'vídeo'}`,
+    };
+    try {
+      return await this.ia.completar('protocolos', opcoes, meta);
+    } catch (e) {
+      // Uma parte que falha no meio de uma condensação longa custaria a rodada inteira —
+      // uma nova tentativa antes de desistir é barata perto do que já foi gasto.
+      this.logger.warn(
+        `Parte ${n}/${total} falhou (${
+          e instanceof Error ? e.message : String(e)
+        }) — tentando de novo.`,
+      );
+      return await this.ia.completar('protocolos', opcoes, meta);
+    }
+  }
+
+  /** Corpo do pedido: a transcrição direta, ou — quando condensada — o registro consolidado,
+   * apresentado como tal para a IA não procurar uma "transcrição" que não veio. */
+  private corpoDoPedido(texto: string, condensado: boolean): string {
+    return condensado
+      ? 'A gravação é longa e a transcrição foi processada em partes sequenciais. O ' +
+          'REGISTRO CONSOLIDADO abaixo (com timestamps) substitui a transcrição — trate-o ' +
+          `como a transcrição para este trabalho:\n${texto}`
+      : `TRANSCRIÇÃO (com timestamps):\n${texto}`;
   }
 
   /** `menusReconhecidos` é a lista de menus do catálogo REAL do SIGER que foram encontrados
@@ -296,12 +480,16 @@ export class ProtocoloIaService {
     // que um código "não existe".
     codigosValidos: Set<string> = new Set(),
   ): Promise<ResultadoAnaliseIa> {
+    const { texto, condensado } = await this.condensarSeNecessario(
+      transcricao,
+      videoNome,
+    );
     const bloco = menusReconhecidos.trim()
       ? '\n\nMENUS DO SIGER RECONHECIDOS NESTA GRAVAÇÃO (catálogo oficial — use ESTES ' +
         'códigos e nomes; não invente nem reescreva o código):\n' +
         `${menusReconhecidos.trim()}\n`
       : '';
-    const user = `Vídeo: ${videoNome}${bloco}\n\nTRANSCRIÇÃO (com timestamps):\n${transcricao}`;
+    const user = `Vídeo: ${videoNome}${bloco}\n\n${this.corpoDoPedido(texto, condensado)}`;
     const bruto = await this.ia.completar(
       'protocolos',
       {
@@ -313,7 +501,13 @@ export class ProtocoloIaService {
     );
     const data = extraiJson(bruto);
     if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-      throw new Error('A IA não devolveu o JSON esperado.');
+      // O começo da resposta diz o que aconteceu de verdade (prosa? recusa? vazio?) — sem
+      // ele, o diagnóstico exige reproduzir uma chamada de dezenas de minutos.
+      const trecho = (bruto || '').trim().slice(0, 200);
+      throw new Error(
+        'A IA não devolveu o JSON esperado.' +
+          (trecho ? ` A resposta começou com: "${trecho}"` : ' (resposta vazia)'),
+      );
     }
     const bruto_data = data as Record<string, unknown>;
     const campos: ResultadoAnaliseIa['campos'] = {};
@@ -399,6 +593,12 @@ export class ProtocoloIaService {
     videoNome = '',
     menusReconhecidos = '',
   ): Promise<string> {
+    // Mesma condensação da `analisar` — e, como o pipeline chama as duas com a MESMA
+    // transcrição, a segunda sai do cache: a fase cara roda uma vez só.
+    const { texto, condensado } = await this.condensarSeNecessario(
+      transcricao,
+      videoNome,
+    );
     const bloco = menusReconhecidos.trim()
       ? '\n\nMENUS DO SIGER RECONHECIDOS NESTA GRAVAÇÃO (catálogo oficial — use ESTES ' +
         'códigos e nomes nos títulos dos blocos; não invente nem reescreva o código).\n' +
@@ -409,8 +609,8 @@ export class ProtocoloIaService {
         'candidato.\n' +
         `${menusReconhecidos.trim()}\n`
       : '';
-    const user = `Vídeo: ${videoNome}${bloco}\n\nTRANSCRIÇÃO (com timestamps):\n${transcricao}`;
-    const texto = await this.ia.completar(
+    const user = `Vídeo: ${videoNome}${bloco}\n\n${this.corpoDoPedido(texto, condensado)}`;
+    const resposta = await this.ia.completar(
       'protocolos',
       {
         system: SISTEMA_RESUMO,
@@ -423,6 +623,6 @@ export class ProtocoloIaService {
           : 'protocolo (resumo)',
       },
     );
-    return (texto || '').trim();
+    return (resposta || '').trim();
   }
 }
