@@ -285,13 +285,16 @@ export class PassosComponent {
     // no fim dessa mesma tela e é ela que conclui o passo. Enquanto o 10 abria direto em
     // 'Gerar Projeto', o documento saía sem ninguém revisar o que veio do levantamento.
     //
-    // 11 é a Conferência: o Administrativo abre o Projeto no layout da Rech para revisar e
-    // baixar antes de mandar ao cliente. 13 "Elaborar o cronograma e incluir as agendas no
-    // SICLA" abre a AGENDA de Visitas (calendário com a distribuição pelos turnos LIVRES do
-    // técnico no SICLA). Todos mostram "Abrir" E "Concluir".
+    // O 11 (Conferência) NÃO abre tela: o Administrativo confere o Projeto pelos botões
+    // "Visualizar" e "Baixar" do próprio cartão e o envia por "Redigir e-mail" — a tela de
+    // origem que ele abria virou supérflua quando o passo 10 passou a montar o documento a
+    // partir da etapa 3 (decisão do usuário, 2026-08-20).
+    //
+    // 13 "Elaborar o cronograma e incluir as agendas no SICLA" abre a AGENDA de Visitas
+    // (calendário com a distribuição pelos turnos LIVRES do técnico no SICLA). Todos mostram
+    // "Abrir" E "Concluir".
     3: ['levantamento'],
     10: ['editar', 'projeto'],
-    11: ['projeto', 'origem'],
     13: ['agenda'],
     14: ['checklist'],
   };

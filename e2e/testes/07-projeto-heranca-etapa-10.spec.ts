@@ -49,8 +49,9 @@ test.describe('Etapa 10 — o Projeto herda o Levantamento da etapa 3', () => {
     await expect(passo10).toBeVisible({ timeout: 15_000 });
     await passo10.getByRole('link', { name: /abrir/i }).click();
 
-    // O destino do passo 10 mudou de 'projeto/origem' para a edição estruturada: é ali que o
-    // GCI revisa o levantamento antes de o cliente receber o documento para assinar.
+    // O passo 10 leva à edição estruturada: é ali que o GCI revisa o levantamento antes de
+    // o cliente receber o documento para assinar. A antiga tela 'Gerar Projeto' não existe
+    // mais — foi removida junto com o botão Abrir do passo 11.
     await expect(page).toHaveURL(new RegExp(`/projetos/${id}/editar/projeto`), { timeout: 15_000 });
     await expect(page.getByRole('heading', { level: 1 })).toContainText(/Projeto de Implantação/i);
   });
@@ -153,6 +154,67 @@ test.describe('Etapa 10 — o Projeto herda o Levantamento da etapa 3', () => {
 
     await expect(page).toHaveURL(new RegExp(`/projetos/${id}/editar/projeto`), { timeout: 15_000 });
     await expect(page.getByRole('heading', { level: 1 })).toContainText(/Projeto de Implantação/i);
+  });
+  test('o Cronograma Macro é preenchido por seletor de data, não texto livre', async ({
+    page,
+    request,
+  }) => {
+    const id = await projetoNoPasso(request, 'Cliente Datas Etapa 10', 9);
+    await entrarComSucesso(page, USUARIOS.gci);
+    await page.goto(`/projetos/${id}/editar/projeto`);
+
+    const macro = page.locator('div.painel').filter({ hasText: 'Cronograma Macro' }).first();
+    await expect(macro).toBeVisible({ timeout: 15_000 });
+    const datas = macro.locator('input[type="date"]');
+    await expect(datas).toHaveCount(7);
+
+    await datas.first().fill('2026-11-03');
+    await page.getByRole('button', { name: /^Salvar$/ }).click();
+    await expect(page.locator('.resultado.ok')).toContainText('Salvo.', { timeout: 15_000 });
+
+    await page.reload();
+    await expect(
+      page.locator('div.painel').filter({ hasText: 'Cronograma Macro' }).first()
+        .locator('input[type="date"]').first(),
+    ).toHaveValue('2026-11-03', { timeout: 15_000 });
+  });
+
+  test('o rótulo somente-leitura não desalinha o campo vizinho na mesma linha', async ({
+    page,
+    request,
+  }) => {
+    // "Razão Social" traz a dica "(do fechamento)"; enquanto ela caía numa linha própria, o
+    // input descia e ficava desalinhado do CNPJ ao lado (relatado pelo usuário em 2026-08-20).
+    const id = await projetoNoPasso(request, 'Cliente Alinhamento', 9);
+    await entrarComSucesso(page, USUARIOS.gci);
+    await page.goto(`/projetos/${id}/editar/projeto`);
+
+    const cabecalho = page.locator('div.painel').filter({ hasText: 'Cabeçalho' }).first();
+    await expect(cabecalho).toBeVisible({ timeout: 15_000 });
+    const razao = await cabecalho.locator('input').first().boundingBox();
+    const cnpj = await cabecalho.locator('input').nth(1).boundingBox();
+    expect(razao).not.toBeNull();
+    expect(cnpj).not.toBeNull();
+    // Mesma linha da grade: os dois inputs têm de começar na mesma altura (1px de folga
+    // para arredondamento de layout).
+    expect(Math.abs(razao!.y - cnpj!.y)).toBeLessThanOrEqual(1);
+  });
+
+  test('o passo 11 não oferece mais o botão Abrir', async ({ page, request }) => {
+    // A tela "Gerar Projeto" que ele abria foi removida: o Administrativo confere o documento
+    // pelo Visualizar/Baixar do próprio cartão e envia por Redigir e-mail.
+    const id = await projetoNoPasso(request, 'Cliente Passo 11', 9);
+    await entrarComSucesso(page, USUARIOS.administrativo);
+    await page.goto(`/projetos/${id}/passos`);
+
+    const passo11 = page
+      .locator('div.painel')
+      .filter({ hasText: 'Conferência do Projeto' })
+      .first();
+    await expect(passo11).toBeVisible({ timeout: 15_000 });
+    await expect(passo11.getByRole('link', { name: /^Abrir$/ })).toHaveCount(0);
+    // O que o passo precisa continua ali.
+    await expect(passo11.getByRole('button', { name: /Redigir e-mail/i })).toHaveCount(1);
   });
 });
 

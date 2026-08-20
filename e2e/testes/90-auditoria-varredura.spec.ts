@@ -146,7 +146,7 @@ test.describe('Auditoria — varredura de rotas', () => {
     coletar(page, achados, () => atual);
 
     await entrarComSucesso(page, USUARIOS.adm);
-    for (const sufixo of ['', '/dados', '/passos', '/levantamento', '/cronograma', '/checklist', '/agenda', '/email', '/projeto/origem']) {
+    for (const sufixo of ['', '/dados', '/passos', '/levantamento', '/cronograma', '/checklist', '/agenda', '/email']) {
       atual = `/projetos/${id}${sufixo}`;
       await visitar(page, atual, achados);
     }

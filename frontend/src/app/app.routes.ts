@@ -102,12 +102,6 @@ export const routes: Routes = [
         loadComponent: () => import('./features/doc-editar/doc-editar.component').then((m) => m.DocEditarComponent),
       },
       {
-        path: 'projetos/:id/projeto/origem',
-        data: { titulo: 'Gerar Projeto' },
-        loadComponent: () =>
-          import('./features/projeto-origem/projeto-origem.component').then((m) => m.ProjetoOrigemComponent),
-      },
-      {
         path: 'projetos/:id/documentos/:docId/ver',
         data: { titulo: 'Pré-visualização' },
         loadComponent: () =>

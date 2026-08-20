@@ -1,3 +1,20 @@
 .grade2 .campo-larga {
   grid-column: 1 / -1;
 }
+
+/* Alinhamento dos campos na mesma linha da grade.
+ *
+ * A dica "(do fechamento)" dos campos somente-leitura é um <small>, e o estilo global
+ * `.campo small{display:block}` (styles.css) a jogava para uma linha própria: o rótulo virava
+ * duas linhas, o input descia e ficava desalinhado do vizinho — visível no Cabeçalho, com a
+ * Razão Social abaixo do CNPJ. Aqui a dica volta a ser inline, e a grade passa a alinhar os
+ * campos pela base, para o caso de um rótulo longo quebrar mesmo assim (o Cronograma Macro
+ * tem rótulos bem maiores que a coluna). */
+.grade2 {
+  align-items: end;
+}
+
+.campo > span small {
+  display: inline;
+  margin-top: 0;
+}

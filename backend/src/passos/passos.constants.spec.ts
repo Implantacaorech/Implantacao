@@ -132,12 +132,15 @@ describe('mapa dos 21 passos do processo', () => {
       Object.keys(PERFIS_TELA_DO_PASSO)
         .map(Number)
         .sort((a, b) => a - b),
-    ).toEqual([3, 10, 11, 13, 14]);
+    ).toEqual([3, 10, 13, 14]);
     expect(PERFIS_TELA_DO_PASSO[3]).toEqual(PERFIS_GERA_LEVANTAMENTO);
     expect(PERFIS_TELA_DO_PASSO[10]).toEqual(PERFIS_GERA_LEVANTAMENTO);
-    expect(PERFIS_TELA_DO_PASSO[11]).toEqual(PERFIS_GERA_LEVANTAMENTO);
     expect(PERFIS_TELA_DO_PASSO[13]).toEqual(PERFIS_GERA_CRONOGRAMA);
     expect(PERFIS_TELA_DO_PASSO[14]).toEqual(PERFIS_GERA_CRONOGRAMA);
+    // O 11 (Conferência do Projeto) saiu em 2026-08-20: ele não leva mais a tela nenhuma —
+    // o Administrativo confere pelo "Visualizar"/"Baixar" do próprio cartão do passo e envia
+    // ao cliente por "Redigir e-mail".
+    expect(PERFIS_TELA_DO_PASSO[11]).toBeUndefined();
   });
 
   it('deixa abrir o Levantamento quem não é o responsável por concluí-lo', () => {

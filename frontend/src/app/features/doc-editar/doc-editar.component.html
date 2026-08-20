@@ -64,6 +64,9 @@
                 @if (c.tipo === 'textarea') {
                   <textarea rows="2" [ngModel]="campo(c.chave)" name="{{ c.chave }}"
                             (ngModelChange)="onCampoChange(c.chave, $event)"></textarea>
+                } @else if (c.tipo === 'data') {
+                  <input type="date" [ngModel]="campo(c.chave)" name="{{ c.chave }}"
+                         (ngModelChange)="onCampoChange(c.chave, $event)" />
                 } @else if (c.tipo === 'ro') {
                   <input [value]="campo(c.chave)" readonly style="background:var(--surface-2,var(--surface-2));color:var(--muted)" />
                 } @else {

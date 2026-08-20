@@ -242,6 +242,41 @@ def test_gera_projeto_nao_repete_o_valor_de_cadastros_no_campo_seguinte():
     assert "CNPJ: 11.111.111/0001-11" in textos
 
 
+def test_cronograma_macro_do_projeto_sai_em_dd_mm_aaaa():
+    """A tela grava a data em ISO (o <input type="date"> nao produz outra coisa), mas o
+    documento que vai ao cliente e brasileiro. Valor antigo, digitado a mao em dd/mm/aaaa,
+    tem de continuar saindo igual."""
+    payload = {
+        "slug": "projeto",
+        "modo": "auto",
+        "modeloBase64": _template_base64("projeto.docx"),
+        "projeto": {"id": 1, "cliente": "Cliente Datas", "modulos": "FAT"},
+        "docConteudo": {
+            "crono_levantamento": "2026-08-10",      # ISO, vindo do seletor de data
+            "crono_treinamento": "15/09/2026",       # legado, digitado a mao
+            "crono_inicio": "a combinar",            # nao e data: sai como esta
+        },
+        "indiceModulos": [{"sigla": "FAT", "nome": "Faturamento"}],
+        "indiceTopicos": [],
+        "levantamentoRespostas": [],
+        "cronogramaItens": [],
+    }
+    r = client.post("/gerar/documento-fiel", json=payload)
+    assert r.status_code == 200
+
+    doc = Document(io.BytesIO(r.content))
+    macro = [t for t in doc.tables
+             if t.rows and (t.rows[0].cells[0].text or "").strip().lower() == "fase"][0]
+    por_etapa = {(row.cells[1].text or "").strip(): (row.cells[2].text or "").strip()
+                 for row in macro.rows[1:]}
+
+    assert por_etapa["Levantamento de requisitos"] == "10/08/2026"
+    assert por_etapa["Treinamento"] == "15/09/2026"
+    assert por_etapa["Data de Início do Uso oficial"] == "a combinar"
+    # Nenhuma data pode vazar em ISO para o documento assinado pelo cliente.
+    assert "2026-08-10" not in "\n".join(por_etapa.values())
+
+
 def test_gera_cronograma_preenche_cliente_consultor_horas_e_linhas():
     payload = {
         "slug": "cronograma",

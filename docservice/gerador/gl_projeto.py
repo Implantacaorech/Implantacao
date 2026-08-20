@@ -3,7 +3,7 @@
 import db
 import preencher_layout as PL
 from gl_comum import (_conteudo, _num, _por_extenso, _hoje, _norm, _eh_marcador,
-                      _inserir_textos_depois, _PROJ_GRUPOS)
+                      _data_iso, _inserir_textos_depois, _PROJ_GRUPOS)
 
 
 def _repl_projeto(p):
@@ -226,6 +226,17 @@ def _preencher_detalhamento_projeto(doc, projeto, guia=False):
     return n
 
 
+def _data_br(valor):
+    """Data do Cronograma Macro no formato do documento (dd/mm/aaaa).
+
+    A tela grava ISO (aaaa-mm-dd), que é o que o <input type="date"> produz desde que esses
+    campos deixaram de ser texto livre. `_data_iso` aceita os dois formatos, então valor
+    antigo, digitado à mão em dd/mm/aaaa, continua saindo certo; o que não for data
+    reconhecível vai para o documento como está, sem virar texto vazio."""
+    d = _data_iso(valor)
+    return d.strftime("%d/%m/%Y") if d else (valor or "").strip()
+
+
 def _preencher_projeto_tabelas(doc, projeto):
     """Preenche no Projeto a Tabela de Usuários e o Cronograma Macro a partir do DocConteudo."""
     cont = db.doc_conteudo(projeto.get("id"), "projeto") if projeto.get("id") else {}
@@ -248,7 +259,7 @@ def _preencher_projeto_tabelas(doc, projeto):
                 et = (row.cells[col_et].text or "").strip().lower()
                 key = next((k for (kw, k) in crono if kw in et), None)
                 if key and cont.get(key):
-                    row.cells[col_per].text = cont[key]
+                    row.cells[col_per].text = _data_br(cont[key])
         # Tabela de Usuários: Nome | E-mail | Área | Assina
         if hdr[0] == "nome" and any("assina" in h for h in hdr):
             base = t.rows[1:]

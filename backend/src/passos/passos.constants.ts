@@ -92,12 +92,12 @@ export const PERFIS_POR_RESPONSAVEL: Record<ResponsavelPasso, Perfil[]> = {
 export const PERFIS_TELA_DO_PASSO: Record<number, Perfil[]> = {
   // 3 = Levantamento (LevantamentoController usa PERFIS_GERA_LEVANTAMENTO).
   3: PERFIS_GERA_LEVANTAMENTO,
-  // 10 = Gerar Projeto — mesma lista de `podeGerar('projeto')`.
+  // 10 = Criação do Projeto: a tela de edição estruturada, onde o GCI revisa o que veio da
+  // etapa 3 e gera o documento — mesma lista de `podeGerar('projeto')`.
   10: PERFIS_GERA_LEVANTAMENTO,
-  // 11 = Conferência do Projeto: o Administrativo abre o Projeto no layout da Rech para
-  // revisar e baixar antes de mandar ao cliente. Quem confere é o Administrativo, mas o GCI
-  // e a Coordenação validam junto — mesma lista de quem gera o documento.
-  11: PERFIS_GERA_LEVANTAMENTO,
+  // O 11 (Conferência do Projeto) saiu daqui em 2026-08-20: ele não leva mais a tela
+  // nenhuma. O Administrativo confere pelo "Visualizar"/"Baixar" do próprio cartão do passo
+  // e envia ao cliente por "Redigir e-mail".
   // 13 = Agenda de Visitas e 14 = Check-list, ambos da trilha do cronograma.
   13: PERFIS_GERA_CRONOGRAMA,
   14: PERFIS_GERA_CRONOGRAMA,
@@ -375,11 +375,6 @@ export const PASSOS_COM_MARCACAO: Record<number, string> = {
  * habilita o anexo naquele passo, desde que ele redija e-mail
  * (`PASSOS_COM_REDACAO_DE_EMAIL`). */
 export const PASSOS_COM_ANEXO_LIVRE = new Set([16]);
-
-/** Passo cuja conclusão exige que o trabalho tenha sido marcado como FINALIZADO na tela de
- * origem — o cronograma (13) pode ser refeito quantas vezes o consultor quiser, e só fecha
- * quando ele mesmo declarar que acabou. */
-export const PASSO_CRONOGRAMA = 13;
 
 /** Extensões aceitas no anexo de e-mail: formato nativo do Outlook (.msg) e o padrão
  * de e-mail exportado (.eml). */
