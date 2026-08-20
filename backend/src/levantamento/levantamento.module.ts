@@ -10,6 +10,8 @@ import { RepositoriosModule } from '../database/repositories/repositorios.module
 import { LevantamentoRespostaService } from './levantamento-resposta.service';
 import { LevantamentoPresencaService } from './levantamento-presenca.service';
 import { DocConteudoService } from './doc-conteudo.service';
+import { HerancaProjetoService } from './heranca-projeto.service';
+import { HerancaLevantamentoRepository } from './repositories/heranca-levantamento.repository';
 import { SugestaoLevantamentoService } from './sugestao-levantamento.service';
 import { LevantamentoController } from './levantamento.controller';
 
@@ -30,8 +32,10 @@ import { LevantamentoController } from './levantamento.controller';
     LevantamentoRespostaService,
     LevantamentoPresencaService,
     DocConteudoService,
+    HerancaProjetoService,
+    HerancaLevantamentoRepository,
     SugestaoLevantamentoService,
   ],
-  exports: [LevantamentoRespostaService, DocConteudoService],
+  exports: [LevantamentoRespostaService, DocConteudoService, HerancaProjetoService],
 })
 export class LevantamentoModule {}

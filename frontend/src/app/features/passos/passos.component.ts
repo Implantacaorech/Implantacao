@@ -277,13 +277,20 @@ export class PassosComponent {
   private static readonly TELA_POR_PASSO: Record<number, string[]> = {
     // Quem pode ABRIR cada uma vem do backend em `p.podeAbrir` — é a permissão da TELA, não
     // a de concluir o passo (ver PERFIS_TELA_DO_PASSO no backend).
-    // 3 (levantamento) e 14 (check-list) abrem a tela para PREENCHER. 10 gera o Projeto.
+    // 3 (levantamento) e 14 (check-list) abrem a tela para PREENCHER.
+    //
+    // 10 abre a EDIÇÃO do Projeto, não a geração direta: o Projeto de Implantação herda tudo
+    // que foi levantado na etapa 3, e o GCI entra aqui para revisar e ajustar antes de gerar
+    // (regra do usuário, 2026-08-20 — ver HerancaProjetoService no backend). A geração fica
+    // no fim dessa mesma tela e é ela que conclui o passo. Enquanto o 10 abria direto em
+    // 'Gerar Projeto', o documento saía sem ninguém revisar o que veio do levantamento.
+    //
     // 11 é a Conferência: o Administrativo abre o Projeto no layout da Rech para revisar e
     // baixar antes de mandar ao cliente. 13 "Elaborar o cronograma e incluir as agendas no
     // SICLA" abre a AGENDA de Visitas (calendário com a distribuição pelos turnos LIVRES do
     // técnico no SICLA). Todos mostram "Abrir" E "Concluir".
     3: ['levantamento'],
-    10: ['projeto', 'origem'],
+    10: ['editar', 'projeto'],
     11: ['projeto', 'origem'],
     13: ['agenda'],
     14: ['checklist'],

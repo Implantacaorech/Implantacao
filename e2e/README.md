@@ -20,7 +20,12 @@ $Raiz = "C:\SEG-EVE\OneDrive - rech.com.br\PortalImplantacao\Implantacao"
 $Base = "$env:TEMP\painel-e2e"
 
 New-Item -ItemType Directory -Force -Path "$Base\dados", "$Base\protocolos" | Out-Null
-if (-not (Test-Path "$Base\tools")) { cmd /c mklink /J "$Base\tools" "$Raiz\tools" | Out-Null }
+# O backend resolve os insumos como `cwd/../tools` (layouts fiéis, indice_topicos.yaml,
+# checklist_modulos.yaml). Com o cwd em $Base, isso é `$env:TEMP\tools` — o junction TEM de
+# ficar aí. Enquanto ele ficava em "$Base\tools", o `seedDefaults()` não achava layout
+# nenhum e QUALQUER geração de documento respondia 404 na instância isolada (corrigido em
+# 2026-08-20, ao cobrir o passo 10 no e2e).
+if (-not (Test-Path "$env:TEMP\tools")) { cmd /c mklink /J "$env:TEMP\tools" "$Raiz\tools" | Out-Null }
 Set-Location $Base
 
 # CRÍTICO: as variáveis de usuário do Windows apontam para o MariaDB e o HTTPS de PRODUÇÃO.
@@ -45,6 +50,21 @@ Confirme que subiu **descartável** antes de qualquer coisa:
 ```
 
 Se responder `mariadb`, **pare**: a variável de produção vazou para o processo.
+
+Confirme também que os layouts foram semeados — sem eles, todo teste de geração de
+documento falha com 404:
+
+```powershell
+Get-ChildItem "$env:TEMP\painel-e2e\dados\modelos_documento"   # tem de listar os 4 arquivos
+```
+
+Se a pasta estiver vazia, o junction de `tools` está no lugar errado. O seed só roda uma
+vez: corrija o junction, apague `$env:TEMP\painel-e2e\dados\painel-teste.sqlite` e suba de
+novo.
+
+> ⚠️ Os comandos de seed do passo 2 NÃO limpam `MIGRACAO_DB_URL` sozinhos. Essa
+> variável está no ambiente do Windows apontando para o **MariaDB de produção** — rode-os no
+> mesmo shell em que você a removeu, ou prefixe com `env -u MIGRACAO_DB_URL`.
 
 ### 2. Crie os usuários de teste
 

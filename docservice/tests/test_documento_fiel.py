@@ -108,6 +108,77 @@ def test_gera_projeto_modo_modelo_preenche_cliente():
     assert "CNPJ: 00.000.000/0001-00" in texto
 
 
+def test_gera_projeto_modo_auto_preenche_escopo_equipes_e_detalhamento():
+    """modo=auto é o caminho do PASSO 10 (Criação do Projeto) — gerar o documento é o que
+    conclui o passo. Cobre os campos da tela 'Projeto — edição estruturada' que a geração
+    ignorava (`empresas`, `conversoes`, `encarregado`), o Detalhamento vindo das respostas
+    do Levantamento e a remoção das áreas não contratadas."""
+    payload = {
+        "slug": "projeto",
+        "modo": "auto",
+        "modeloBase64": _template_base64("projeto.docx"),
+        "projeto": {
+            "id": 1,
+            "cliente": "Metalurgica Teste Ltda",
+            "cnpj": "12.345.678/0001-90",
+            "gci": "GCI Teste",
+            "consultor": "Consultor Teste",
+            "modulos": "FAT",
+            "horasCobradas": "120",
+            "horasBonificadas": "20",
+        },
+        "docConteudo": {
+            "objetivos": "Padronizar o processo comercial no SIGER.",
+            "empresas": "Matriz - 12.345.678/0001-90\nFilial - 12.345.678/0002-70",
+            "conversoes": "Converter clientes, produtos e titulos em aberto.",
+            "redator": "Redator Teste",
+            "encarregado": "Fulano da Silva",
+        },
+        "indiceModulos": [{"sigla": "FAT", "nome": "Faturamento"}],
+        "indiceTopicos": [{"moduloSigla": "FAT", "topico": "Emissao de pedido", "adicional": ""}],
+        "levantamentoRespostas": [
+            {"moduloSigla": "FAT", "topico": "Emissao de pedido",
+             "resposta": "Pedido digitado pelo representante."}
+        ],
+        "cronogramaItens": [],
+    }
+    r = client.post("/gerar/documento-fiel", json=payload)
+    assert r.status_code == 200
+
+    doc = Document(io.BytesIO(r.content))
+    texto = _texto_completo(doc)
+
+    # Cabeçalho e objetivos (já cobertos no modo=modelo, mantidos como âncora do modo=auto)
+    assert "Nome do Cliente: Metalurgica Teste Ltda" in texto
+    assert "CNPJ: 12.345.678/0001-90" in texto
+    assert "Padronizar o processo comercial no SIGER." in texto
+
+    # Escopo — campos que a geração perdia: a tela gravava e o .docx saía em branco.
+    assert "Matriz - 12.345.678/0001-90" in texto
+    assert "Filial - 12.345.678/0002-70" in texto
+    assert "Converter clientes, produtos e titulos em aberto." in texto
+
+    # Equipes — as três linhas da Rech e a do cliente.
+    assert "Gerente de Contas do Projeto: GCI Teste" in texto
+    assert "Redator do Projeto: Redator Teste" in texto
+    assert "Consultor/Implantador: Consultor Teste" in texto
+    assert "Encarregado pelo Projeto: Fulano da Silva" in texto
+
+    # Detalhamento das Rotinas: só a área contratada, preenchida pelo Levantamento.
+    assert "Vendas e Faturamento" in texto
+    assert "Emissao de pedido: Pedido digitado pelo representante." in texto
+    assert "Controle de Compras" not in texto     # área sem módulo contratado -> removida
+    assert "Gestão da Produção" not in texto      # grupo que ficou vazio -> removido
+
+    # Tempo estimado e fecho.
+    assert "120 horas cobradas" in texto
+    assert "20 horas bonificadas" in texto
+
+    # Nenhum marcador do layout pode vazar para o documento entregue ao cliente.
+    assert "<" not in texto or ">" not in texto
+    assert "(preencher)" not in texto
+
+
 def test_gera_cronograma_preenche_cliente_consultor_horas_e_linhas():
     payload = {
         "slug": "cronograma",

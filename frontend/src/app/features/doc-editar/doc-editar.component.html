@@ -12,6 +12,10 @@
     @if (doc === 'levantamento') {
       As <strong>perguntas por módulo</strong> ficam em
       <a [routerLink]="['/projetos', projetoId, 'levantamento']">Responder levantamento</a>.
+    } @else {
+      Os campos já vêm <strong>preenchidos com o que foi levantado na etapa 3</strong> — revise,
+      ajuste o que for necessário e gere o Projeto no fim da página. Campo que você ainda não
+      editou continua acompanhando o <a [routerLink]="['/projetos', projetoId, 'levantamento']">Levantamento</a>.
     }
   </p>
 
@@ -73,10 +77,23 @@
     }
 
     <div class="acoes" style="margin-top:var(--sp-3)">
-      <button class="btn primario" type="submit" [disabled]="salvando()">
+      <button class="btn" type="submit" [disabled]="salvando() || gerando()">
         <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> Salvar
       </button>
+      @if (doc === 'projeto') {
+        <button class="btn primario" type="button" [disabled]="salvando() || gerando()"
+                (click)="salvarEGerar()">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>
+          {{ gerando() ? 'Gerando…' : 'Salvar e gerar o Projeto' }}
+        </button>
+      }
       <a class="btn btn-voltar" [routerLink]="['/projetos', projetoId]">← Voltar à ficha</a>
     </div>
+    @if (doc === 'projeto') {
+      <p class="sub" style="margin-top:var(--sp-2)">
+        Gerar o Projeto <strong>conclui o passo 10</strong> e libera o passo 11, em que o
+        Administrativo confere o documento e envia ao cliente para assinatura.
+      </p>
+    }
   </form>
 }

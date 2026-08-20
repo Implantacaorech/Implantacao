@@ -52,7 +52,9 @@ SPEC = {
                 ("consultor", "Consultor / Implantador", "texto", "consultor"),
                 ("encarregado", "Encarregado pelo Projeto (cliente)", "texto", "contato_nome"),
             ]},
-            {"titulo": "Tabela de Usuários", "tipo": "tabela", "prefixo": "usu", "linhas": 4,
+            # 5 linhas, iguais às de Usuários-chave do Levantamento (a etapa 10 herda a
+            # etapa 3) — com 4, o 5º usuário levantado sumia sem aviso.
+            {"titulo": "Tabela de Usuários", "tipo": "tabela", "prefixo": "usu", "linhas": 5,
              "colunas": [("nome", "Nome"), ("email", "E-mail"),
                          ("area", "Área de Atuação no SIGER"), ("assina", "Assina Protocolo")]},
             {"titulo": "Cronograma Macro", "campos": [

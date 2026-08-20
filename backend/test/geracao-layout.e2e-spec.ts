@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import * as bcrypt from 'bcrypt';
+import { readFileSync } from 'fs';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AppModule } from '../src/app.module';
@@ -10,6 +11,9 @@ import { Usuario } from '../src/database/entities/usuario.entity';
 import { Projeto } from '../src/database/entities/projeto.entity';
 import { IndiceTopico } from '../src/database/entities/indice-topico.entity';
 import { CronogramaItem } from '../src/database/entities/cronograma-item.entity';
+import { ProjetoPasso } from '../src/database/entities/projeto-passo.entity';
+import { DocConteudo } from '../src/database/entities/doc-conteudo.entity';
+import { LevantamentoResposta } from '../src/database/entities/levantamento-resposta.entity';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
 import { ModeloDocumentoService } from '../src/catalogos/modelo-documento.service';
@@ -50,6 +54,10 @@ seTiverInsumo(
   let projetos: Repository<Projeto>;
   let indiceRepo: Repository<IndiceTopico>;
   let cronogramaRepo: Repository<CronogramaItem>;
+  let passosRepo: Repository<ProjetoPasso>;
+  let docConteudoRepo: Repository<DocConteudo>;
+  let respostasRepo: Repository<LevantamentoResposta>;
+  let modelos: ModeloDocumentoService;
   let fake: GeracaoDocumentosServiceFake;
   let tokenAdm: string;
   let tokenConsultor: string;
@@ -84,6 +92,9 @@ seTiverInsumo(
     projetos = moduleFixture.get(getRepositoryToken(Projeto));
     indiceRepo = moduleFixture.get(getRepositoryToken(IndiceTopico));
     cronogramaRepo = moduleFixture.get(getRepositoryToken(CronogramaItem));
+    passosRepo = moduleFixture.get(getRepositoryToken(ProjetoPasso));
+    docConteudoRepo = moduleFixture.get(getRepositoryToken(DocConteudo));
+    respostasRepo = moduleFixture.get(getRepositoryToken(LevantamentoResposta));
     fake = moduleFixture.get<GeracaoDocumentosServiceFake>(
       GeracaoDocumentosService,
     );
@@ -146,8 +157,8 @@ seTiverInsumo(
 
     // Usa os layouts fiéis reais do repositório (tools/templates/layouts/) — mesmo padrão
     // de cadastros.e2e-spec.ts.
-    const modeloDocumentoService = moduleFixture.get(ModeloDocumentoService);
-    await modeloDocumentoService.seedDefaults();
+    modelos = moduleFixture.get(ModeloDocumentoService);
+    await modelos.seedDefaults();
   });
 
   afterAll(async () => {
@@ -302,5 +313,172 @@ seTiverInsumo(
         e.descricao.includes('pelo layout oficial (cronograma)'),
       ),
     ).toBe(true);
+  });
+  // --- Ligação layout (Cadastro de Modelos) x passo 10 "Criação do Projeto" ---------------
+  //
+  // O passo 10 não tem botão "Concluir" próprio: ele fecha SOZINHO quando o Projeto é gerado
+  // (DocumentosService.PASSO_POR_TIPO -> projeto: 10). Os dois testes abaixo cobrem as duas
+  // pontas dessa ligação — o arquivo que alimenta a geração e o passo que ela fecha —, que
+  // nenhum caso desta suíte verificava.
+
+  it('gera o Projeto com o arquivo VIGENTE do Cadastro de Modelos (slug projeto) e conclui o passo 10', async () => {
+    const pid = await criarProjeto();
+    // O passo 10 depende do 8; sem ele a conclusão automática só registra o motivo e para.
+    await passosRepo.save(
+      passosRepo.create({ projetoId: pid, passo: 8, concluidoPor: 'setup' }),
+    );
+
+    const res = await auth(
+      request(server()).post(`/api/projetos/${pid}/gerar-layout/projeto`),
+    );
+    expect(res.status).toBe(200);
+    expect(fake.ultimoCorpo.slug).toBe('projeto');
+    expect(fake.ultimoCorpo.modo).toBe('auto');
+
+    // A ligação em si: o modelo enviado ao docservice é o arquivo vigente do slug 'projeto'
+    // no Cadastro de Modelos — trocar a versão pela tela troca o layout gerado aqui.
+    const modelo = await modelos.porSlug('projeto');
+    expect(modelo).not.toBeNull();
+    const caminho = await modelos.arquivoPath(modelo!.id);
+    expect(caminho).not.toBeNull();
+    expect(fake.ultimoCorpo.modeloBase64).toBe(
+      readFileSync(caminho!).toString('base64'),
+    );
+
+    const passo10 = await passosRepo.findOne({
+      where: { projetoId: pid, passo: 10 },
+    });
+    expect(passo10).not.toBeNull();
+
+    const docs = await auth(
+      request(server()).get(`/api/projetos/${pid}/documentos`),
+    );
+    expect(
+      docs.body.data.some((d: { tipo: string }) => d.tipo === 'projeto'),
+    ).toBe(true);
+  });
+
+  it('modo=modelo (layout em branco) NÃO conclui o passo 10', async () => {
+    const pid = await criarProjeto();
+    await passosRepo.save(
+      passosRepo.create({ projetoId: pid, passo: 8, concluidoPor: 'setup' }),
+    );
+
+    const res = await auth(
+      request(server()).post(
+        `/api/projetos/${pid}/gerar-layout/projeto?modo=modelo`,
+      ),
+    );
+    expect(res.status).toBe(200);
+
+    // Baixar o layout em branco para preencher à mão não é entregar o Projeto (achado de
+    // 2026-08-05): o arquivo fica anexado, o passo continua aberto.
+    const passo10 = await passosRepo.findOne({
+      where: { projetoId: pid, passo: 10 },
+    });
+    expect(passo10).toBeNull();
+  });
+  // --- Etapa 3 (Levantamento) alimenta a etapa 10 (Projeto) -------------------------------
+  //
+  // Regra do usuário (2026-08-20): o Projeto não é redigido do zero — ele herda o que foi
+  // levantado na etapa 3, o GCI revisa na tela do passo 10 e só então o passo 11 (conferência
+  // do Administrativo + envio para assinatura) faz sentido.
+
+  /** Preenche a etapa 3 do projeto: campos estruturados + questionário respondido. */
+  async function preencherLevantamento(pid: number): Promise<void> {
+    await docConteudoRepo.save(
+      [
+        ['objetivos', 'Padronizar o processo comercial no SIGER.'],
+        ['filiais', 'Matriz em Novo Hamburgo e filial em Campo Bom.'],
+        ['usu_0_nome', 'Fulano da Silva'],
+        ['usu_0_email', 'fulano@cliente.com.br'],
+        ['usu_0_atrib', 'Comercial'],
+      ].map(([campo, valor]) =>
+        docConteudoRepo.create({
+          projetoId: pid,
+          doc: 'levantamento',
+          campo,
+          valor,
+        }),
+      ),
+    );
+    await respostasRepo.save(
+      respostasRepo.create({
+        projetoId: pid,
+        ordem: 0,
+        moduloSigla: 'FAT',
+        modulo: 'Faturamento',
+        topico: 'Emissão de NF',
+        resposta: 'Emitida pelo faturamento após liberação do comercial.',
+      }),
+    );
+  }
+
+  it('a tela do passo 10 já abre com o que foi levantado na etapa 3', async () => {
+    const pid = await criarProjeto();
+    await preencherLevantamento(pid);
+
+    const res = await auth(
+      request(server()).get(`/api/projetos/${pid}/doc-conteudo/projeto`),
+    );
+    expect(res.status).toBe(200);
+    const v = res.body.data as Record<string, string>;
+
+    expect(v.objetivos).toBe('Padronizar o processo comercial no SIGER.');
+    expect(v.empresas).toBe('Matriz em Novo Hamburgo e filial em Campo Bom.');
+    expect(v.usu_0_nome).toBe('Fulano da Silva');
+    expect(v.usu_0_email).toBe('fulano@cliente.com.br');
+    // "Atribuições" da etapa 3 vira "Área de Atuação no SIGER" no Projeto.
+    expect(v.usu_0_area).toBe('Comercial');
+    // O Detalhamento de Rotinas chega MONTADO, para o GCI revisar antes de gerar — antes
+    // ele só existia dentro do .docx pronto.
+    expect(v.det_vendas_modulos).toBe('FAT — Faturamento');
+    expect(v.det_vendas_detalhamento).toBe(
+      'Emissão de NF: Emitida pelo faturamento após liberação do comercial.',
+    );
+  });
+
+  it('o que o GCI edita na etapa 10 vence a herança e é o que vai para o documento', async () => {
+    const pid = await criarProjeto();
+    await preencherLevantamento(pid);
+    await passosRepo.save(
+      passosRepo.create({ projetoId: pid, passo: 8, concluidoPor: 'setup' }),
+    );
+
+    // O GCI ajusta os objetivos e deixa o resto como veio da etapa 3.
+    await auth(
+      request(server())
+        .put(`/api/projetos/${pid}/doc-conteudo/projeto`)
+        .send({ objetivos: 'Objetivos revisados pelo GCI.', empresas: '' }),
+    );
+
+    const relido = await auth(
+      request(server()).get(`/api/projetos/${pid}/doc-conteudo/projeto`),
+    );
+    const v = relido.body.data as Record<string, string>;
+    expect(v.objetivos).toBe('Objetivos revisados pelo GCI.');
+    // Campo salvo em branco continua acompanhando a etapa 3 — apagar não pode deixar o
+    // Projeto mais pobre que o Levantamento que o originou.
+    expect(v.empresas).toBe('Matriz em Novo Hamburgo e filial em Campo Bom.');
+
+    // Gerar daqui é o fecho do passo 10: o docservice recebe exatamente o que estava na tela.
+    const res = await auth(
+      request(server()).post(`/api/projetos/${pid}/gerar-layout/projeto`),
+    );
+    expect(res.status).toBe(200);
+    expect(fake.ultimoCorpo.docConteudo.objetivos).toBe(
+      'Objetivos revisados pelo GCI.',
+    );
+    expect(fake.ultimoCorpo.docConteudo.empresas).toBe(
+      'Matriz em Novo Hamburgo e filial em Campo Bom.',
+    );
+    expect(fake.ultimoCorpo.docConteudo.det_vendas_detalhamento).toBe(
+      'Emissão de NF: Emitida pelo faturamento após liberação do comercial.',
+    );
+
+    const passo10 = await passosRepo.findOne({
+      where: { projetoId: pid, passo: 10 },
+    });
+    expect(passo10).not.toBeNull();
   });
 });

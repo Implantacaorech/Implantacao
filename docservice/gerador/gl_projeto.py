@@ -2,7 +2,8 @@
 """Geração fiel — parte do PROJETO de Implantação (detalhamento + tabelas + respostas)."""
 import db
 import preencher_layout as PL
-from gl_comum import (_conteudo, _num, _por_extenso, _hoje, _norm, _eh_marcador, _PROJ_GRUPOS)
+from gl_comum import (_conteudo, _num, _por_extenso, _hoje, _norm, _eh_marcador,
+                      _inserir_textos_depois, _PROJ_GRUPOS)
 
 
 def _repl_projeto(p):
@@ -24,6 +25,13 @@ def _repl_projeto(p):
         paras.append(("Redator do Projeto", "Redator do Projeto: %s" % val("redator")))
     if val("consultor", "consultor"):
         paras.append(("Consultor/Implantador", "Consultor/Implantador: %s" % val("consultor", "consultor")))
+    # Lado CLIENTE das Equipes de Trabalho — o layout traz a linha "Encarregado pelo Projeto:"
+    # em paralelo às três da Rech, mas ela nunca era preenchida: a tela de edição gravava
+    # `encarregado` em DocConteudo e a geração ignorava, então o campo saía em branco em todo
+    # Projeto (defeito herdado do webapp/gl_projeto.py do Flask).
+    if val("encarregado", "contato_nome"):
+        paras.append(("Encarregado pelo Projeto",
+                      "Encarregado pelo Projeto: %s" % val("encarregado", "contato_nome")))
     hb, hc = _num(p.get("horas_bonificadas")), _num(p.get("horas_cobradas"))
     if hb:
         repl.append(("<XX horas bonificadas>", "%s horas bonificadas" % hb))
@@ -31,6 +39,39 @@ def _repl_projeto(p):
         repl.append(("<XX horas cobradas>", "%s horas cobradas" % hc))
     paras.append(("Novo Hamburgo", "Novo Hamburgo, %s." % _por_extenso(_hoje())))
     return repl, paras
+
+
+def _linhas(texto):
+    """Quebra um textarea da tela de edição em linhas não vazias."""
+    return [l.strip() for l in (texto or "").splitlines() if l.strip()]
+
+
+def _preencher_escopo_projeto(doc, projeto):
+    """Escopo → 'Empresas contempladas' e 'Conversões': escreve os textos que a tela do
+    Projeto grava em DocConteudo (`empresas`, `conversoes`).
+
+    Os dois campos existem na tela desde que ela foi criada, mas nenhum gerador os lia — o
+    marcador '(preencher)' do layout acabava apagado por `remover_marcadores_docx` e o texto
+    digitado se perdia. Cada valor entra como parágrafo(s) logo abaixo do rótulo do layout,
+    preservando o estilo do título (mesma mecânica dos blocos do Levantamento)."""
+    cont = db.doc_conteudo(projeto.get("id"), "projeto") if projeto.get("id") else {}
+    if not cont:
+        return 0
+    alvos = [
+        ("estão contempladas no referido projeto as seguintes empresas", "empresas"),
+        ("conversões", "conversoes"),
+    ]
+    n = 0
+    for rotulo, campo in alvos:
+        itens = _linhas(cont.get(campo))
+        if not itens:
+            continue
+        for p in doc.paragraphs:
+            if _norm(p.text).startswith(rotulo):
+                _inserir_textos_depois(p, itens)
+                n += 1
+                break
+    return n
 
 
 def _emitir_lista_detalhamento(anchor_p, itens):
@@ -183,7 +224,9 @@ def _preencher_projeto_tabelas(doc, projeto):
         if hdr[0] == "nome" and any("assina" in h for h in hdr):
             base = t.rows[1:]
             usuarios = []
-            for i in range(4):
+            # 5 linhas: mesma quantidade dos Usuários-chave do Levantamento, de onde a
+            # etapa 10 herda a tabela. `t.add_row()` cobre o que passar do modelo.
+            for i in range(5):
                 nome = (cont.get("usu_%d_nome" % i) or "").strip()
                 if nome:
                     usuarios.append([nome, cont.get("usu_%d_email" % i, ""),

@@ -94,10 +94,13 @@ const SPEC: Record<DocumentoConteudo, { titulo: string; secoesBase: Secao[] }> =
         ],
       },
       {
+        // 5 linhas, iguais às de Usuários-chave do Levantamento: a etapa 10 herda a etapa 3
+        // (ver HerancaProjetoService no backend) e, com 4, o 5º usuário levantado sumia sem
+        // aviso. O layout .docx cresce a tabela sozinho quando faltam linhas.
         titulo: 'Tabela de Usuários',
         tipo: 'tabela',
         prefixo: 'usu',
-        linhas: 4,
+        linhas: 5,
         colunas: [
           ['nome', 'Nome'],
           ['email', 'E-mail'],

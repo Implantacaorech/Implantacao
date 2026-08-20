@@ -91,7 +91,13 @@ export const routes: Routes = [
       },
       {
         path: 'projetos/:id/editar/:doc',
-        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'GCI')],
+        // Mesma lista de PERFIS_GERA_LEVANTAMENTO no backend, que é o @Roles do
+        // LevantamentoController (onde moram os endpoints de doc-conteudo) e o
+        // PERFIS_TELA_DO_PASSO do passo 10. O 'Levantador' faltava aqui: desde que o passo
+        // 10 passou a abrir esta tela, ele veria o botão "Abrir" que o backend autoriza e
+        // esbarraria no guard da rota — o defeito que PERFIS_TELA_DO_PASSO existe para
+        // evitar ("o botão não prometer o que a tela recusa").
+        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'GCI', 'Levantador')],
         data: { titulo: 'Edição estruturada' },
         loadComponent: () => import('./features/doc-editar/doc-editar.component').then((m) => m.DocEditarComponent),
       },
