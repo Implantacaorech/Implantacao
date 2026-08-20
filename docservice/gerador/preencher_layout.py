@@ -70,15 +70,26 @@ def set_paragrafo_por_prefixo(doc, prefixo, texto):
 _MARCADOR = re.compile(r"<[^<>]{0,300}>")
 
 
+# Pontuação que o layout deixa GRUDADA no marcador ("<Detalhar ...>."): tirado o marcador,
+# sobra um parágrafo só com ela.
+_SO_PONTUACAO = re.compile(r"^[\s.:;,\-–—]*$")
+
+
 def remover_marcadores_docx(doc):
     """Remove TODOS os marcadores <...> restantes (não preenchidos) do documento —
-    corpo, tabelas e cabeçalhos/rodapés. Aplicar por último, após os preenchimentos."""
+    corpo, tabelas e cabeçalhos/rodapés. Aplicar por último, após os preenchimentos.
+
+    Se o que sobrar no parágrafo for só pontuação, ele é esvaziado: no layout do Projeto os
+    marcadores vêm como "<Detalhar ...>." e o ponto final ficava órfão numa linha sozinha,
+    aparecendo como sujeira no documento que vai para o cliente assinar."""
     n = 0
     for p in _iter_paragraphs(doc):
         full = "".join(r.text for r in p.runs)
         if "<" in full and ">" in full:
             novo = _MARCADOR.sub("", full)
             novo = re.sub(r"[ \t]{2,}", " ", novo).rstrip()
+            if _SO_PONTUACAO.match(novo):
+                novo = ""
             if novo != full:
                 _aplica_no_paragrafo(p, novo)
                 n += 1

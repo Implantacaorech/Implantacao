@@ -178,6 +178,69 @@ def test_gera_projeto_modo_auto_preenche_escopo_equipes_e_detalhamento():
     assert "<" not in texto or ">" not in texto
     assert "(preencher)" not in texto
 
+    # Erro de digitacao do layout oficial, corrigido em 2026-08-20: era "Da de Inicio".
+    macro = [t for t in doc.tables if t.rows and (t.rows[0].cells[0].text or "").strip().lower() == "fase"]
+    assert macro, "tabela Cronograma Macro nao encontrada no layout"
+    etapas = [(row.cells[1].text or "").strip() for row in macro[0].rows[1:]]
+    assert "Data de Início do Uso oficial" in etapas
+    assert "Da de Início do Uso oficial" not in etapas
+
+
+def test_gera_projeto_preenche_o_bloco_cadastros_e_nao_deixa_ponto_orfao():
+    """Bloco "Cadastros" do layout: os três campos passaram a existir na tela do Projeto e o
+    gerador os escreve NO LUGAR do marcador. Antes o bloco saía vazio em todo Projeto e o
+    ponto final grudado no marcador ("<Detalhar ...>.") ficava órfão numa linha sozinha."""
+    payload = {
+        "slug": "projeto",
+        "modo": "auto",
+        "modeloBase64": _template_base64("projeto.docx"),
+        "projeto": {"id": 1, "cliente": "Cliente Cadastros", "modulos": "FAT"},
+        "docConteudo": {
+            "cad_clientes": "Codigo sequencial; compartilhar cadastro entre as duas empresas.",
+            "cad_produtos": "Codificacao por familia.\nUnidade de medida vem do fornecedor.",
+        },
+        "indiceModulos": [{"sigla": "FAT", "nome": "Faturamento"}],
+        "indiceTopicos": [],
+        "levantamentoRespostas": [],
+        "cronogramaItens": [],
+    }
+    r = client.post("/gerar/documento-fiel", json=payload)
+    assert r.status_code == 200
+    doc = Document(io.BytesIO(r.content))
+    textos = [p.text for p in doc.paragraphs]
+    texto = "\n".join(textos)
+
+    assert "Codigo sequencial; compartilhar cadastro entre as duas empresas." in texto
+    # Textarea com várias linhas vira uma linha por parágrafo, não tudo emendado.
+    assert "Codificacao por familia." in textos
+    assert "Unidade de medida vem do fornecedor." in textos
+
+    # `cad_outros` ficou em branco: o marcador some E o ponto órfão não fica para trás.
+    assert "Outros pontos gerais do projeto" in textos
+    assert not [t for t in textos if t.strip() in (".", ":", "-")]
+
+
+def test_gera_projeto_nao_repete_o_valor_de_cadastros_no_campo_seguinte():
+    """O marcador substituído é o do PRÓPRIO rótulo. O 'CNPJ:' logo abaixo de 'Estão
+    contempladas ... as seguintes empresas:' é outro campo e não pode ser sobrescrito."""
+    payload = {
+        "slug": "projeto",
+        "modo": "auto",
+        "modeloBase64": _template_base64("projeto.docx"),
+        "projeto": {"id": 1, "cliente": "Cliente Escopo", "cnpj": "11.111.111/0001-11",
+                    "modulos": "FAT"},
+        "docConteudo": {"empresas": "Matriz e filial."},
+        "indiceModulos": [{"sigla": "FAT", "nome": "Faturamento"}],
+        "indiceTopicos": [],
+        "levantamentoRespostas": [],
+        "cronogramaItens": [],
+    }
+    r = client.post("/gerar/documento-fiel", json=payload)
+    assert r.status_code == 200
+    textos = [p.text for p in Document(io.BytesIO(r.content)).paragraphs]
+    assert "Matriz e filial." in textos
+    assert "CNPJ: 11.111.111/0001-11" in textos
+
 
 def test_gera_cronograma_preenche_cliente_consultor_horas_e_linhas():
     payload = {

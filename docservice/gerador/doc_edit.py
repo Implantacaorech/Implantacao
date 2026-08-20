@@ -46,6 +46,15 @@ SPEC = {
                 ("empresas", "Empresas contempladas no projeto", "textarea", ""),
                 ("conversoes", "Conversões — detalhamento", "textarea", ""),
             ]},
+            # Bloco "Cadastros" do layout. Não herda a etapa 3: são definições alinhadas COM O
+            # CLIENTE no projeto (compartilhamento, codificação, campos além do padrão), que
+            # não existem como pergunta no Levantamento. Sem estes campos o bloco saía vazio
+            # em todo Projeto — o layout tem o marcador, mas nada o preenchia.
+            {"titulo": "Cadastros", "campos": [
+                ("cad_clientes", "Clientes e Fornecedores", "textarea", ""),
+                ("cad_produtos", "Produtos/Serviços", "textarea", ""),
+                ("cad_outros", "Outros pontos gerais do projeto", "textarea", ""),
+            ]},
             {"titulo": "Equipes", "campos": [
                 ("gerente_contas", "Gerente de Contas (GCI)", "texto", "gci"),
                 ("redator", "Redator do Projeto", "texto", ""),

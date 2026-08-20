@@ -85,6 +85,18 @@ const SPEC: Record<DocumentoConteudo, { titulo: string; secoesBase: Secao[] }> =
         ],
       },
       {
+        // Bloco "Cadastros" do layout. NÃO herda a etapa 3: são definições alinhadas com o
+        // cliente dentro do projeto (compartilhamento, codificação, campos além do padrão),
+        // que não existem como pergunta no Levantamento. Sem estes campos o bloco saía vazio
+        // em todo Projeto — o layout tem o marcador, mas nada o preenchia.
+        titulo: 'Cadastros',
+        campos: [
+          { chave: 'cad_clientes', label: 'Clientes e Fornecedores', tipo: 'textarea', origem: '' },
+          { chave: 'cad_produtos', label: 'Produtos/Serviços', tipo: 'textarea', origem: '' },
+          { chave: 'cad_outros', label: 'Outros pontos gerais do projeto', tipo: 'textarea', origem: '' },
+        ],
+      },
+      {
         titulo: 'Equipes',
         campos: [
           { chave: 'gerente_contas', label: 'Gerente de Contas (GCI)', tipo: 'texto', origem: 'gci' },

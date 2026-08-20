@@ -46,31 +46,60 @@ def _linhas(texto):
     return [l.strip() for l in (texto or "").splitlines() if l.strip()]
 
 
-def _preencher_escopo_projeto(doc, projeto):
-    """Escopo → 'Empresas contempladas' e 'Conversões': escreve os textos que a tela do
-    Projeto grava em DocConteudo (`empresas`, `conversoes`).
+def _marcador_apos(paras, i):
+    """Índice do 1º parágrafo-marcador ('<...>') logo depois de `i`, pulando os vazios.
+    Devolve None se o próximo parágrafo com texto não for um marcador — assim um rótulo cujo
+    campo seguinte é outra coisa (por exemplo o 'CNPJ:' abaixo das empresas) nunca é
+    sobrescrito por engano."""
+    for j in range(i + 1, min(i + 4, len(paras))):
+        t = (paras[j].text or "").strip()
+        if not t:
+            continue
+        return j if t.startswith("<") else None
+    return None
 
-    Os dois campos existem na tela desde que ela foi criada, mas nenhum gerador os lia — o
-    marcador '(preencher)' do layout acabava apagado por `remover_marcadores_docx` e o texto
-    digitado se perdia. Cada valor entra como parágrafo(s) logo abaixo do rótulo do layout,
-    preservando o estilo do título (mesma mecânica dos blocos do Levantamento)."""
+
+def _preencher_escopo_projeto(doc, projeto):
+    """Escopo e Cadastros: escreve no layout os textos que a tela do Projeto grava em
+    DocConteudo (`empresas`, `conversoes`, `cad_clientes`, `cad_produtos`, `cad_outros`).
+
+    Todos existem na tela mas nenhum gerador os lia — o marcador '(preencher)' do layout
+    acabava apagado por `remover_marcadores_docx` e o texto digitado se perdia; o bloco
+    'Cadastros' saía vazio em todo Projeto entregue ao cliente.
+
+    Duas mecânicas, conforme o layout: onde o rótulo é seguido de um parágrafo-marcador
+    próprio (os Cadastros), o marcador é SUBSTITUÍDO — assim nem sobra o '.' solto que ele
+    deixava para trás. Onde o marcador está embutido no próprio rótulo ('Conversões') ou o
+    parágrafo seguinte é outro campo ('CNPJ:', abaixo das empresas), o texto entra como
+    parágrafo(s) logo abaixo, preservando o estilo do título."""
     cont = db.doc_conteudo(projeto.get("id"), "projeto") if projeto.get("id") else {}
     if not cont:
         return 0
+    # (rótulo normalizado, campo, substitui_o_marcador_seguinte)
     alvos = [
-        ("estão contempladas no referido projeto as seguintes empresas", "empresas"),
-        ("conversões", "conversoes"),
+        ("estão contempladas no referido projeto as seguintes empresas", "empresas", False),
+        ("conversões", "conversoes", False),
+        ("clientes e fornecedores", "cad_clientes", True),
+        ("produtos/serviços", "cad_produtos", True),
+        ("outros pontos gerais do projeto", "cad_outros", True),
     ]
     n = 0
-    for rotulo, campo in alvos:
+    for rotulo, campo, substitui in alvos:
         itens = _linhas(cont.get(campo))
         if not itens:
             continue
-        for p in doc.paragraphs:
-            if _norm(p.text).startswith(rotulo):
+        paras = doc.paragraphs
+        for i, p in enumerate(paras):
+            if not _norm(p.text).startswith(rotulo):
+                continue
+            alvo = _marcador_apos(paras, i) if substitui else None
+            if alvo is not None:
+                PL._aplica_no_paragrafo(paras[alvo], itens[0])
+                _inserir_textos_depois(paras[alvo], itens[1:])
+            else:
                 _inserir_textos_depois(p, itens)
-                n += 1
-                break
+            n += 1
+            break
     return n
 
 
