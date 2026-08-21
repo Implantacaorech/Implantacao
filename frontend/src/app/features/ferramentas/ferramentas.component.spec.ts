@@ -28,9 +28,9 @@ describe('FerramentasComponent', () => {
       fixture.nativeElement.querySelectorAll('a.tool') as NodeListOf<HTMLAnchorElement>,
     ).map((a) => a.getAttribute('href'));
     expect(destinos).toEqual([
+      '/config/graph',
       '/config/email',
       '/config/imap',
-      '/config/gmail',
       '/config/ia',
       '/config/modelos-email',
       '/config/destinatarios-passo',

@@ -318,11 +318,11 @@ export const routes: Routes = [
           import('./features/config/config-imap.component').then((m) => m.ConfigImapComponent),
       },
       {
-        path: 'config/gmail',
+        path: 'config/graph',
         canActivate: [perfilGuard('ADM')],
-        data: { titulo: 'Config — Gmail API' },
+        data: { titulo: 'Config — E-mail (Microsoft 365)' },
         loadComponent: () =>
-          import('./features/config/config-gmail.component').then((m) => m.ConfigGmailComponent),
+          import('./features/config/config-graph.component').then((m) => m.ConfigGraphComponent),
       },
       {
         path: 'config/ia',

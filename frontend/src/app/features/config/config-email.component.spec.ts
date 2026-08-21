@@ -6,7 +6,7 @@ import { StatusConfigEmail } from '../../core/models/config-email.model';
 
 function status(over: Partial<StatusConfigEmail> = {}): StatusConfigEmail {
   return {
-    host: 'smtp.gmail.com',
+    host: 'smtp.office365.com',
     port: '587',
     user: 'implantacao@rech.com.br',
     remetente: 'implantacao@rech.com.br',
@@ -30,7 +30,7 @@ describe('ConfigEmailComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const comp = fixture.componentInstance;
-    expect(comp.form.getRawValue().host).toBe('smtp.gmail.com');
+    expect(comp.form.getRawValue().host).toBe('smtp.office365.com');
     expect(comp.form.getRawValue().senha).toBe('');
     expect(comp.configurado()).toBe(true);
   });

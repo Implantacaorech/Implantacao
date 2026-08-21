@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import * as nodemailer from 'nodemailer';
-import { GmailService, ResultadoEnvio } from './gmail.service';
+import { GraphService } from './graph.service';
+import { ResultadoEnvio } from './resultado-envio';
 import { Anexo } from './anexo';
 
 export interface ConfigSmtp {
@@ -14,15 +15,25 @@ export interface ConfigSmtp {
   useTls: boolean;
 }
 
-/** E-mail interno (SMTP) do Painel: configuração local + envio + (via `GmailService`)
- * bypass opcional por API quando o SMTP estiver bloqueado na rede. A senha fica só na
- * máquina (`dados/smtp.json`) — nunca versionada nem no banco; variáveis de ambiente
- * `MIGRACAO_SMTP_*` têm prioridade sobre o arquivo. Espelha webapp/mailer.py — `templates()`
- * (os 3 modelos hardcoded) não foi portado: está morto no Flask original, substituído
- * pelo `ModeloEmail` (ver ModeloEmailService). */
+/** E-mail interno do Painel: configuração local + envio, escolhendo o meio disponível.
+ *
+ * O caminho oficial é o **Microsoft Graph** (`GraphService`), a caixa da Rech; o SMTP daqui
+ * é o alternativo, para o caso de o TI entregar um relay interno em vez do registro de
+ * aplicativo — com o usuário em branco, o envio sai sem autenticação, que é como um relay
+ * liberado por IP funciona. O primeiro meio configurado ganha, e quem chama `enviar` não
+ * precisa saber qual foi.
+ *
+ * O envio pela API do **Gmail** existiu aqui até 2026-08-17, como saída para o SMTP
+ * bloqueado na rede; saiu do projeto quando a caixa passou a ser Microsoft (ver histórico
+ * do git se precisar do fluxo OAuth delegado que ele usava).
+ *
+ * A senha fica só na máquina (`dados/smtp.json`) — nunca versionada nem no banco; variáveis
+ * de ambiente `MIGRACAO_SMTP_*` têm prioridade sobre o arquivo. Espelha webapp/mailer.py —
+ * `templates()` (os 3 modelos hardcoded) não foi portado: está morto no Flask original,
+ * substituído pelo `ModeloEmail` (ver ModeloEmailService). */
 @Injectable()
 export class MailerService {
-  constructor(private readonly gmail: GmailService) {}
+  constructor(private readonly graph: GraphService) {}
 
   private arquivo(): string {
     const dir =
@@ -78,8 +89,8 @@ export class MailerService {
     useTls?: boolean;
     senha?: string;
   }): ConfigSmtp {
-    // replace, não só trim: senha de app do Gmail vem formatada com espaços internos
-    // quando copiada da tela do Google — mesmo achado de imap-intake.service.ts.
+    // replace, não só trim: senha de app costuma ser colada com os espaços internos com que
+    // é exibida — mesmo achado de imap-intake.service.ts.
     const senha = (dados.senha || '').replace(/\s+/g, '');
     const cfg: ConfigSmtp = {
       host: (dados.host || '').trim(),
@@ -95,26 +106,31 @@ export class MailerService {
   }
 
   configurado(): boolean {
-    if (this.gmail.configurado()) return true;
+    if (this.graph.configurado()) return true;
     const c = this.carregarConfig();
     return Boolean(c.host && c.remetente);
   }
 
   /** Envia um e-mail de texto, com anexos opcionais. `destino` pode ser string (1 ou
-   * vários separados por vírgula) ou lista. Se a API do Gmail estiver autorizada, usa
-   * ela (HTTPS); senão, SMTP. */
+   * vários separados por vírgula) ou lista. Usa o Microsoft Graph quando configurado
+   * (HTTPS); senão, SMTP. */
   async enviar(
     destino: string | string[],
     assunto: string,
     corpo: string,
     anexos: Anexo[] = [],
   ): Promise<ResultadoEnvio> {
-    if (this.gmail.configurado()) {
-      return this.gmail.enviar(destino, assunto, corpo, anexos);
+    if (this.graph.configurado()) {
+      return this.graph.enviar(destino, assunto, corpo, anexos);
     }
     const c = this.carregarConfig();
     if (!c.host) {
-      return { ok: false, erro: 'SMTP não configurado (Config → E-mail).' };
+      return {
+        ok: false,
+        erro:
+          'Nenhum meio de envio configurado — configure o Microsoft 365 em Config → ' +
+          'E-mail (Microsoft 365) ou o SMTP em Config → E-mail.',
+      };
     }
     const para = Array.isArray(destino)
       ? destino.filter(Boolean).join(', ')
@@ -153,13 +169,14 @@ export class MailerService {
     if (codigo === 'ENOTFOUND' || codigo === 'EAI_AGAIN') {
       return (
         `Servidor SMTP não encontrado (${host}). Confira o host em Config → E-mail — ` +
-        'ex.: smtp.gmail.com (587, TLS) ou smtp.office365.com.'
+        'ex.: smtp.office365.com (587, TLS) ou o endereço do relay interno.'
       );
     }
     if (texto.toLowerCase().includes('auth')) {
       return (
-        'Falha de autenticação (usuário/senha rejeitados). Gmail e Outlook/365 exigem ' +
-        'uma SENHA DE APP (não a senha normal). Confira em Config → E-mail.'
+        'Falha de autenticação (usuário/senha rejeitados). O Microsoft 365 não aceita mais ' +
+        'usuário e senha no SMTP: use Config → E-mail (Microsoft 365). Num relay interno, ' +
+        'deixe o usuário em branco (o relay autoriza pelo IP do servidor).'
       );
     }
     return texto;
