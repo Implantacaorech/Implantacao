@@ -133,20 +133,6 @@ def _acao_gerar_do_projeto(payload):
     return {"arquivo": caminho, "log": log}
 
 
-def _acao_docx_paragrafos(payload):
-    """Extrai o texto de cada parágrafo não vazio de um .docx — usado por "Projeto
-    origem" (fonte "importar"/"importado") para casar tópicos do Levantamento com o texto
-    do Mapeamento preenchido. Não toca em banco nenhum (nem o antigo, nem o novo) — só lê
-    o arquivo. Espelha o começo de webapp/db.py:levantamento_importar_respostas (a
-    extração; o casamento tópico->resposta é feito no NestJS, que é quem tem as linhas do
-    Levantamento no schema novo)."""
-    from docx import Document as _Docx
-
-    doc = _Docx(payload["caminho"])
-    paragrafos = [(p.text or "") for p in doc.paragraphs if (p.text or "").strip()]
-    return {"paragrafos": paragrafos}
-
-
 _ACOES = {
     "ia_status": _acao_ia_status,
     "saude": _acao_saude,
@@ -161,7 +147,6 @@ _ACOES = {
     "save_upload_yaml": _acao_save_upload_yaml,
     "gerar": _acao_gerar,
     "gerar_do_projeto": _acao_gerar_do_projeto,
-    "docx_paragrafos": _acao_docx_paragrafos,
 }
 
 

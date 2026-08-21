@@ -192,18 +192,30 @@ assunto aparece — para conferir a origem em um clique.
   própria, separada de Protocolos e Dicionário). Sem ela, a tela explica o que fazer em vez
   de oferecer o botão.
 
-### 5.5 Gate de origem do Projeto (`/projetos/<id>/projeto/origem`)
-O Projeto **nasce do Levantamento**. A tela oferece três origens:
-- **Dados em tela** — usa as respostas preenchidas no painel;
-- **Levantamento importado (.docx)** — importa um documento e extrai as respostas;
-- **Modelo manual** — gera um Projeto pré-preenchido pelos cadastros/Índice, para completar à mão.
+### 5.5 Criação do Projeto (`/projetos/<id>/editar/projeto`)
+O Projeto **nasce do Levantamento** — não é redigido do zero. É o **passo 10**: a tela abre
+já preenchida com o que foi levantado na **etapa 3** (objetivos, empresas, usuários-chave e o
+Detalhamento de Rotinas montado das respostas do questionário), o GCI revisa e ajusta o que
+for necessário, e gera o documento ali mesmo. Gerar é o que **conclui o passo 10** e libera o
+**11**, em que o Administrativo confere e envia ao cliente para assinatura.
+
+A herança é um **fallback vivo**: enquanto o campo do Projeto estiver vazio, o valor é
+recalculado da etapa 3 a cada leitura, então correção feita no Levantamento depois ainda
+chega ao Projeto; assim que o GCI salva, o valor dele vence. Detalhe em
+`backend/src/levantamento/heranca-projeto.service.ts`.
+
+> A tela **"Gerar Projeto"** (`/projeto/origem`), que escolhia entre dados em tela, um
+> Levantamento `.docx` importado ou um modelo em branco, **foi removida em 2026-08-21** junto
+> com os endpoints de importação: com o Projeto montado a partir da etapa 3, ela deixou de
+> ter função. Gerar o layout **em branco**, para preencher à mão, continua possível por
+> `/gerar-layout/projeto?modo=modelo`.
 
 ### 5.6 Geração fiel de documentos
 Os documentos de fase são gerados **fielmente pelos layouts oficiais cadastrados** (troca só
 os marcadores/placeholders, preservando o template Rech). Atalhos:
 - `/projetos/<id>/gerar/<tipo>` — gera respeitando o gate de etapa;
 - `/projetos/<id>/gerar-layout/<slug>` — gera pelo layout vigente, independente da fase;
-- O **Projeto** sempre passa pelo gate de origem (5.5).
+- O **Projeto** é gerado pela tela de edição do passo 10 (5.5), que é o que conclui o passo.
 
 ### 5.7 Cronograma e Check-list editáveis
 Planos em tabela editável, com histórico de modificações:
@@ -633,7 +645,7 @@ Apoio: `db.py` (dados), `gerar_layout.py` + `gl_*` (geração fiel), `mailer.py`
 `/anexar` · `/nota` · `/doc/<id>/ver`
 
 **Etapas:** `/definir_gci` · `/agendar` · `/designar` · `/consultores` · `/levantamento` ·
-`/projeto/origem` · `/gerar/<tipo>` · `/gerar-layout/<slug>` · `/gerar_pendentes` · `/editar/<doc>`
+`/gerar/<tipo>` · `/gerar-layout/<slug>` · `/gerar_pendentes` · `/editar/<doc>`
 
 **Planos:** `/cronograma` (+`/seed`,`/gerar`) · `/checklist` (+`/seed`)
 
