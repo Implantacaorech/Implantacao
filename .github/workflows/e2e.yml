@@ -5,15 +5,21 @@
 # real de 2026-08-05) só seriam pegas se alguém lembrasse de rodar à mão. Este job sobe uma
 # instância descartável (SQLite, sem SMTP), semeia os usuários e roda o Playwright.
 #
-# Começa em `workflow_dispatch` (manual) DE PROPÓSITO: como o job monta uma stack inteira, a
-# primeira execução precisa ser validada num run real antes de bloquear PRs. Depois que passar
-# verde uma vez, descomente o gatilho `pull_request` abaixo para rodar em todo PR — e, se quiser,
-# marque este check como obrigatório na proteção de branch.
+# Roda em todo PR desde 2026-08-21, junto do `ci.yml` — antes era só `workflow_dispatch`, à
+# espera de uma execução manual verde que ninguém rodava. O que faltava para ligar não era a
+# validação manual, e sim uma guarda: os layouts fiéis (`tools/templates/layouts/`) são
+# ignorados no git de propósito, então no CI o Cadastro de Modelos nasce sem arquivo e QUALQUER
+# geração de documento responde 404. O único caso que gera documento agora pergunta à instância
+# se ela tem o layout e se PULA quando não tem (e2e/apoio/insumo-local.ts) — o resto da suíte,
+# que é o que interessa aqui (autorização e gates dos 21 passos), não depende de layout nenhum.
+# Verificado local em 2026-08-21 numa instância sem layouts: 64 passam, 1 pula.
+#
+# `workflow_dispatch` fica para rodar à mão quando se quiser.
 name: e2e (Playwright)
 
 on:
   workflow_dispatch:
-  # pull_request:   # habilite após a primeira execução manual verde
+  pull_request:
 
 jobs:
   e2e:

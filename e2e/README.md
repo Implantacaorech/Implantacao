@@ -8,6 +8,19 @@ passos valem de ponta a ponta.
 > ⚠️ **Nunca aponte para a porta 5100.** É o Painel em **produção**. Estes testes concluem
 > passos, criam projetos e disparam e-mails. O `playwright.config.ts` recusa a 5100 no boot.
 
+## No CI
+
+Desde 2026-08-21 esta suíte roda **em todo pull request**, pelo workflow
+[`.github/workflows/e2e.yml`](../.github/workflows/e2e.yml) — o job monta a stack inteira
+(build do backend e do frontend, instância descartável na 5199, semeadura dos usuários) e
+executa o Playwright em Chromium. `workflow_dispatch` continua disponível para rodar à mão.
+
+Um caso aparece **pulado** lá, de propósito: o que **gera** o Projeto depende dos layouts
+oficiais em `tools/templates/layouts/`, que são ignorados no git (binários com o timbre da
+Rech, que não se publica). Em vez de falhar, ele pergunta à instância se o Cadastro de
+Modelos tem o arquivo e se pula quando não tem — ver `apoio/insumo-local.ts`, gêmeo do
+`seTiverInsumo` do backend. Na sua máquina, com os layouts presentes, ele roda inteiro.
+
 ## Como rodar
 
 ### 1. Suba a instância isolada (porta 5199)
@@ -94,6 +107,7 @@ o `e2e/playwright.config.ts` é detectado — dá para rodar e depurar caso a ca
 | `testes/02-passos-integridade.spec.ts` | os 21 passos na tela, responsáveis, bloqueio com motivo, RN-1 (trilhas paralelas), RN-5 (conferência), RN-6 (definitivo), escape de HTML |
 | `testes/03-comercial-passo-5.spec.ts` | o Comercial conclui o passo 5 (dele) e **não** ganha ação num passo alheio |
 | `testes/04-permissoes-fluxo.spec.ts` | RN-10 pelos caminhos que **não** passam pelo `PassosController` (anexo, geração de documento, `PUT /projetos/:id`, `POST /fluxo/criar`), destinatários de e-mail, RN-4, homônimo e tamanho de corpo |
+| `testes/07-projeto-heranca-etapa-10.spec.ts` | etapa 10 herdando a etapa 3: a tela abre preenchida, o GCI edita, gerar conclui o passo 10 e libera o 11; Cronograma Macro como campo de data; alinhamento dos campos; passo 11 sem "Abrir" |
 
 ## De onde vieram estes testes
 

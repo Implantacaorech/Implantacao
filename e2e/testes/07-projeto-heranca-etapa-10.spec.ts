@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { SENHA, USUARIOS, entrarComSucesso, projetoNoPasso, token } from '../apoio/painel';
+import { SEM_LAYOUTS, appGeraPeloLayout } from '../apoio/insumo-local';
 
 /** GCI DESIGNADO pelo `projetoNoPasso` — é dele o passo 10 neste projeto. Entrar com o `gci`
  * genérico abre a tela (a permissão de PERFIL basta para isso), mas a RN-10 não deixa ele
@@ -103,6 +104,10 @@ test.describe('Etapa 10 — o Projeto herda o Levantamento da etapa 3', () => {
   });
 
   test('gerar pela tela de edição conclui o passo 10 e libera o 11', async ({ page, request }) => {
+    // Este é o único caso da suíte que GERA documento, então é o único que depende dos
+    // layouts oficiais — que não vão para o git. No CI ele aparece como pulado, com o motivo.
+    test.skip(!(await appGeraPeloLayout(request)), SEM_LAYOUTS);
+
     const id = await projetoNoPasso(request, 'Cliente Herança Gera', 9);
     await preencherEtapa3(request, id);
 

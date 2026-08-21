@@ -149,6 +149,11 @@ porta 5199** (SQLite descartável, `cwd` fora de `backend/` para o `smtp.json` n
 encontrado). ⚠️ **Nunca aponte o e2e para a 5100** — é produção, e os testes concluem passos
 e disparam e-mail; o `playwright.config.ts` recusa essa porta no boot.
 
+Desde 2026-08-21 o e2e também roda **em todo PR**, por `.github/workflows/e2e.yml`. Lá o caso
+que GERA documento aparece pulado: os layouts oficiais não vão para o git, e o caso pergunta à
+instância se ela os tem antes de rodar (`e2e/apoio/insumo-local.ts`). Rodar local continua
+valendo — é onde a geração é de fato exercitada.
+
 **Auditoria 360° do sistema** (antes de uma entrega/virada, ou quando pedirem "auditoria
 geral"/"testar tudo"): skill **`auditoria-geral-sistema`** — percorre frontend, backend,
 APIs, banco, permissões, navegação, formulários, layout, responsividade, console, network,
