@@ -20,9 +20,7 @@ export class HerancaLevantamentoRepository {
   ) {}
 
   /** Campos estruturados do Levantamento do projeto (campo -> valor já aparado). */
-  async camposDoLevantamento(
-    projetoId: number,
-  ): Promise<Map<string, string>> {
+  async camposDoLevantamento(projetoId: number): Promise<Map<string, string>> {
     const linhas = await this.conteudo.find({
       where: { projetoId, doc: 'levantamento' },
     });
@@ -30,9 +28,7 @@ export class HerancaLevantamentoRepository {
   }
 
   /** Questionário respondido, na ordem em que aparece na tela do Levantamento. */
-  async respostasDoProjeto(
-    projetoId: number,
-  ): Promise<LevantamentoResposta[]> {
+  async respostasDoProjeto(projetoId: number): Promise<LevantamentoResposta[]> {
     return this.respostas.find({
       where: { projetoId },
       order: { ordem: 'ASC', id: 'ASC' },

@@ -20,12 +20,20 @@ export interface AreaProjeto {
 }
 
 export const AREAS_PROJETO: AreaProjeto[] = [
-  { chave: 'vendas', nome: 'Vendas e Faturamento', siglas: ['FAT', 'PDV', 'OSE', 'SAC'] },
+  {
+    chave: 'vendas',
+    nome: 'Vendas e Faturamento',
+    siglas: ['FAT', 'PDV', 'OSE', 'SAC'],
+  },
   { chave: 'estoque', nome: 'Controle de Estoque', siglas: ['EST'] },
   { chave: 'compras', nome: 'Controle de Compras', siglas: ['COM', 'TLO'] },
   { chave: 'industrial', nome: 'Gestão Industrial', siglas: ['GIN', 'GCA'] },
   { chave: 'financeiro', nome: 'Controle Financeiro', siglas: ['FIN', 'GCO'] },
-  { chave: 'fiscal', nome: 'Livros Fiscais', siglas: ['LFI', 'CTB', 'GPA', 'AUE'] },
+  {
+    chave: 'fiscal',
+    nome: 'Livros Fiscais',
+    siglas: ['LFI', 'CTB', 'GPA', 'AUE'],
+  },
 ];
 
 /** Siglas dos módulos contratados de um projeto, a partir do campo livre `modulos`. */

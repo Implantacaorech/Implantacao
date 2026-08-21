@@ -102,7 +102,9 @@ describe('HerancaProjetoService — etapa 3 (Levantamento) alimenta a etapa 10 (
 
     const v = await svc.valores(1);
 
-    expect(v.det_vendas_modulos).toBe('FAT — Faturamento, PDV — Frente de Caixa');
+    expect(v.det_vendas_modulos).toBe(
+      'FAT — Faturamento, PDV — Frente de Caixa',
+    );
     expect(v.det_vendas_detalhamento).toBe(
       'Emissão de pedido: Digitado pelo representante.\n' +
         'Fechamento de caixa: Conferência diária por turno.',
@@ -121,7 +123,8 @@ describe('HerancaProjetoService — etapa 3 (Levantamento) alimenta a etapa 10 (
         {
           moduloSigla: 'FAT',
           topico: 'Venda por consignação',
-          resposta: 'Este campo foi desconsiderado, pois esta funcionalidade não será utilizada pelo cliente.',
+          resposta:
+            'Este campo foi desconsiderado, pois esta funcionalidade não será utilizada pelo cliente.',
           naoUtilizado: true,
         },
       ],

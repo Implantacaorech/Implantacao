@@ -71,7 +71,10 @@ export class HerancaProjetoService {
     }
 
     // --- Detalhamento das Rotinas, por área contratada -------------------------------
-    Object.assign(out, await this.detalhamentoPorArea(projetoId, projeto.modulos));
+    Object.assign(
+      out,
+      await this.detalhamentoPorArea(projetoId, projeto.modulos),
+    );
     return out;
   }
 
@@ -91,10 +94,7 @@ export class HerancaProjetoService {
     const siglas = siglasContratadas(modulos);
     const daSigla = areaPorSigla();
     const nomeDoModulo = new Map(
-      (await this.indice.modulos()).map((m) => [
-        m.sigla.toUpperCase(),
-        m.nome,
-      ]),
+      (await this.indice.modulos()).map((m) => [m.sigla.toUpperCase(), m.nome]),
     );
 
     const respostas = await this.levantamento.respostasDoProjeto(projetoId);
@@ -111,7 +111,8 @@ export class HerancaProjetoService {
       const topico = (r.topico || '').trim();
       const resposta = (r.resposta || '').trim();
       if (r.naoUtilizado) {
-        if (topico) naoPrevistas.set(area, [...(naoPrevistas.get(area) ?? []), topico]);
+        if (topico)
+          naoPrevistas.set(area, [...(naoPrevistas.get(area) ?? []), topico]);
         continue;
       }
       if (!resposta) continue;

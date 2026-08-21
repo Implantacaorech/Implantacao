@@ -36,6 +36,10 @@ import { LevantamentoController } from './levantamento.controller';
     HerancaLevantamentoRepository,
     SugestaoLevantamentoService,
   ],
-  exports: [LevantamentoRespostaService, DocConteudoService, HerancaProjetoService],
+  exports: [
+    LevantamentoRespostaService,
+    DocConteudoService,
+    HerancaProjetoService,
+  ],
 })
 export class LevantamentoModule {}
