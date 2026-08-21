@@ -91,6 +91,17 @@ describe('Conformidade com a stack obrigatória (Padrão Rech §4.8)', () => {
   describe('banco: MariaDB é o único dialeto de produção aceito', () => {
     const semUrl = { ...process.env };
 
+    beforeEach(() => {
+      // Apontar para um banco REAL faz `configuration()` exigir os segredos de JWT. Eles
+      // existem no ambiente de quem desenvolve, e por isso o teste passava aqui e falhava no
+      // CI, que não os define. Definir no próprio teste tira a suíte da dependência do
+      // ambiente e, mais importante, garante que o que estamos medindo é o DIALETO — sem
+      // isto, `toThrow(/MariaDB/)` casava com a mensagem do segredo faltando, e o caso
+      // passaria mesmo se a guarda de dialeto fosse removida (achado de 2026-08-21).
+      process.env.MIGRACAO_JWT_SECRET = 'teste-conformidade-0000000000';
+      process.env.MIGRACAO_JWT_REFRESH_SECRET = 'teste-conformidade-1111111111';
+    });
+
     afterEach(() => {
       process.env = { ...semUrl };
     });
@@ -113,7 +124,11 @@ describe('Conformidade com a stack obrigatória (Padrão Rech §4.8)', () => {
         'sqlserver://host/painel',
       ]) {
         process.env.MIGRACAO_DB_URL = url;
-        expect(() => configuration()).toThrow(/MariaDB/);
+        // Casa com a mensagem da guarda de DIALETO (`exigirMariaDb`), não com um /MariaDB/
+        // solto que qualquer outro erro do boot satisfaria.
+        expect(() => configuration()).toThrow(
+          /MIGRACAO_DB_URL aponta para .*banco obrigatório do Padrão Rech/s,
+        );
       }
     });
 
