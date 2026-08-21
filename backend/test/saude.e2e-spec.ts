@@ -120,7 +120,7 @@ describe('Saúde da infraestrutura (e2e)', () => {
     expect(res.status).toBe(403);
   });
 
-  it('devolve as seis checagens, com o banco respondendo', async () => {
+  it('devolve as sete checagens, com o banco respondendo', async () => {
     const res = await auth(request(server()).get('/api/saude'), tokenAdm);
     expect(res.status).toBe(200);
 
@@ -130,6 +130,7 @@ describe('Saúde da infraestrutura (e2e)', () => {
       'banco',
       'docservice',
       'email',
+      'erros_5xx',
       'guardiao',
       'transcricao',
     ]);

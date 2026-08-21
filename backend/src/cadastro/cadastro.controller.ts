@@ -45,7 +45,7 @@ export class CadastroController {
     }
     if (!this.mailer.configurado()) {
       throw new BadRequestException(
-        'E-mail não configurado neste Painel — peça ao Administrador para configurar em Config → E-mail/Gmail.',
+        'E-mail não configurado neste Painel — peça ao Administrador para configurar em Config → E-mail (Microsoft 365).',
       );
     }
     const codigo = this.cadastro.gerarCodigo();

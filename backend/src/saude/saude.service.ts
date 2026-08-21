@@ -357,7 +357,7 @@ export class SaudeService {
         `${r.total} e-mail(s) do processo não saíram nas últimas 24 h.`,
         r.ultimoErro
           ? `Último erro: ${r.ultimoErro}`
-          : 'Confira Config → E-mail / Gmail API.',
+          : 'Confira Config → E-mail (Microsoft 365).',
       );
     } catch (e) {
       this.logger.warn(
