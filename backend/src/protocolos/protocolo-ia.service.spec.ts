@@ -363,7 +363,12 @@ describe('dividirTranscricaoEmPartes', () => {
 
   it('linha única maior que o alvo é fatiada no duro (transcrição sem quebras)', () => {
     const partes = dividirTranscricaoEmPartes('x'.repeat(95), 30);
-    expect(partes).toEqual(['x'.repeat(30), 'x'.repeat(30), 'x'.repeat(30), 'xxxxx']);
+    expect(partes).toEqual([
+      'x'.repeat(30),
+      'x'.repeat(30),
+      'x'.repeat(30),
+      'xxxxx',
+    ]);
   });
 });
 

@@ -25,7 +25,11 @@ const PNG_1PX = Buffer.from(
 describe('gerarPdfVisitasPortal', () => {
   const base = {
     geradoEm: '17/08/2026 15:00',
-    recorte: ['Período: 01/08/2026 a 17/08/2026', 'Visão: geral', 'Empresa: MELBROS'],
+    recorte: [
+      'Período: 01/08/2026 a 17/08/2026',
+      'Visão: geral',
+      'Empresa: MELBROS',
+    ],
     totais: { total: 2, aprovados: 1, naoAprovados: 1 },
   };
 

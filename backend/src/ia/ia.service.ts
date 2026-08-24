@@ -742,9 +742,9 @@ export class IaService implements OnModuleInit {
         return new Error(
           streaming
             ? `${onde} não começou a responder em ${min} min (${baseUrl}) — ` +
-              'modelo lento demais para o tamanho desta transcrição, ou servidor engasgado.'
+                'modelo lento demais para o tamanho desta transcrição, ou servidor engasgado.'
             : `${onde} não terminou em ${min} min (${baseUrl}) — ` +
-              'modelo lento demais para o tamanho desta transcrição, ou servidor engasgado.',
+                'modelo lento demais para o tamanho desta transcrição, ou servidor engasgado.',
         );
       }
       // Servidor local desligado/inalcançável é o caso comum, e o erro cru do fetch

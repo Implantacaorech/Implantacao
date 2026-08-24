@@ -26,11 +26,25 @@ export class EnviarVisitaPortalDto {
   @ApiProperty() @IsString() dataInicioDeslocamento: string;
   @ApiProperty() @IsString() dataFimDeslocamento: string;
 
-  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) custoPedagio?: number;
-  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) custoEstadia?: number;
-  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0)
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  custoPedagio?: number;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  custoEstadia?: number;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   custoAlimentacao?: number;
-  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0)
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   custoEstacionamento?: number;
 
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) kmInicial?: number;
@@ -42,9 +56,16 @@ export class EnviarVisitaPortalDto {
   descricaoAtividade: string;
 
   /** Nome do módulo escolhido na tela — casa com a descrição do módulo no Portal. */
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) modulo?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  modulo?: string;
 
   /** Nome do contato do atendimento — casa com um contato da empresa no Portal. */
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120)
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
   contatoNome?: string;
 }

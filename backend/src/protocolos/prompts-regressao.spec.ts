@@ -1,8 +1,4 @@
-import {
-  SISTEMA,
-  SISTEMA_MAPA,
-  SISTEMA_RESUMO,
-} from './protocolo-ia.service';
+import { SISTEMA, SISTEMA_MAPA, SISTEMA_RESUMO } from './protocolo-ia.service';
 import { PROTO_MODULOS } from './protocolos.constants';
 
 /**

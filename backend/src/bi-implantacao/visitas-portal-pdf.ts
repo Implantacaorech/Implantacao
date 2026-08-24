@@ -22,7 +22,11 @@ const CINZA = '#6b7280';
 const ZEBRA = '#f3f6fb';
 
 /** Colunas da tabela — mesmas da tela, com larguras que somam a área útil do A4 paisagem. */
-const COLUNAS: { titulo: string; campo: keyof LinhaVisitaPortal; largura: number }[] = [
+const COLUNAS: {
+  titulo: string;
+  campo: keyof LinhaVisitaPortal;
+  largura: number;
+}[] = [
   { titulo: 'Empresa', campo: 'empresa', largura: 200 },
   { titulo: 'Contato', campo: 'contato', largura: 130 },
   { titulo: 'Consultor', campo: 'consultor', largura: 90 },
@@ -35,10 +39,15 @@ const COLUNAS: { titulo: string; campo: keyof LinhaVisitaPortal; largura: number
 const ALTURA_LINHA = 16;
 
 function dataBr(iso: string): string {
-  return iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '—';
+  return iso
+    ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`
+    : '—';
 }
 
-function valorCelula(l: LinhaVisitaPortal, campo: keyof LinhaVisitaPortal): string {
+function valorCelula(
+  l: LinhaVisitaPortal,
+  campo: keyof LinhaVisitaPortal,
+): string {
   const v = l[campo];
   if (campo === 'data') return dataBr(String(v ?? ''));
   if (v === null || v === undefined || v === '') return '—';
@@ -71,17 +80,20 @@ export function gerarPdfVisitasPortal(d: DadosPdfVisitas): Promise<Buffer> {
     doc.text(`Gerado pelo Painel de Implantação em ${d.geradoEm}`);
     doc.moveDown(0.6);
 
-    doc.font('Helvetica-Bold').fontSize(10).fillColor(NAVY).text('Recorte aplicado');
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(10)
+      .fillColor(NAVY)
+      .text('Recorte aplicado');
     doc.font('Helvetica').fontSize(9).fillColor('#111827');
     for (const linha of d.recorte) doc.text(`• ${linha}`);
     doc.moveDown(0.4);
 
     doc.font('Helvetica-Bold').fontSize(10).fillColor(NAVY);
-    doc.text(
-      `${d.totais.total} protocolo(s)  ·  `,
-      { continued: true },
-    );
-    doc.fillColor(VERDE).text(`${d.totais.aprovados} aprovado(s)`, { continued: true });
+    doc.text(`${d.totais.total} protocolo(s)  ·  `, { continued: true });
+    doc
+      .fillColor(VERDE)
+      .text(`${d.totais.aprovados} aprovado(s)`, { continued: true });
     doc.fillColor(NAVY).text('  ·  ', { continued: true });
     doc.fillColor(VERMELHO).text(`${d.totais.naoAprovados} não aprovado(s)`);
     doc.moveDown(0.6);
@@ -156,7 +168,9 @@ export function gerarPdfVisitasPortal(d: DadosPdfVisitas): Promise<Buffer> {
     });
 
     if (d.linhas.length === 0) {
-      doc.fillColor(CINZA).text('— nenhum protocolo no recorte —', margem, doc.y + 4);
+      doc
+        .fillColor(CINZA)
+        .text('— nenhum protocolo no recorte —', margem, doc.y + 4);
     }
 
     doc.end();

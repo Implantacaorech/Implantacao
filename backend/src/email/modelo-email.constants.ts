@@ -184,7 +184,8 @@ export const MODELOS_EMAIL_PADRAO: ModeloEmailPadrao[] = [
     // usuário ajusta o texto na caixa de envio antes de mandar.
     slug: 'bi-visitas-portal',
     nome: 'BI — Visitas do Portal Rech (envio do painel)',
-    assunto: 'Protocolos de visita do Portal Rech — acompanhamento de aprovação',
+    assunto:
+      'Protocolos de visita do Portal Rech — acompanhamento de aprovação',
     corpo:
       'Olá,\n\n' +
       'Segue em anexo o relatório de protocolos de visita do Portal Rech (PDF), com o ' +

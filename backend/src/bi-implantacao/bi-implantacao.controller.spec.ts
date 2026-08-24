@@ -219,7 +219,14 @@ describe('BiImplantacaoController (HTTP)', () => {
     it('enviar-email recusa campo desconhecido (whitelist do pipe)', async () => {
       await request(app.getHttpServer())
         .post('/bi-implantacao/visitas-portal/enviar-email')
-        .send({ para: 'a@b.c', assunto: 'x', corpo: 'y', recorte: [], linhas: [], hack: 1 })
+        .send({
+          para: 'a@b.c',
+          assunto: 'x',
+          corpo: 'y',
+          recorte: [],
+          linhas: [],
+          hack: 1,
+        })
         .expect(400);
     });
   });

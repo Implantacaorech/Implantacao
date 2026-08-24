@@ -40,7 +40,8 @@ export class EnviarVisitasEmailDto {
 
   @ApiProperty({
     type: [String],
-    description: 'Linhas descritivas do recorte aplicado (período, visão, filtros)',
+    description:
+      'Linhas descritivas do recorte aplicado (período, visão, filtros)',
   })
   @IsArray()
   @ArrayMaxSize(40)

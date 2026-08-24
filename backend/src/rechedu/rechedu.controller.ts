@@ -34,7 +34,8 @@ export class RecheduController {
 
   @Get('credencial')
   @ApiOperation({
-    summary: 'Se o usuário já salvou a credencial do RechEdu (só o login volta)',
+    summary:
+      'Se o usuário já salvou a credencial do RechEdu (só o login volta)',
   })
   credencialRechEdu(@CurrentUser() user: AuthUser) {
     return new ApiEnvelope({
@@ -64,7 +65,9 @@ export class RecheduController {
   @Delete('credencial')
   @HttpCode(HttpStatus.OK)
   // Consulta (herda da classe): mexer na PRÓPRIA credencial é pessoal, não escrita de dados.
-  @ApiOperation({ summary: 'Remove a credencial do RechEdu do próprio usuário' })
+  @ApiOperation({
+    summary: 'Remove a credencial do RechEdu do próprio usuário',
+  })
   removerCredencial(@CurrentUser() user: AuthUser) {
     this.credencial.remover(user.sub);
     return new ApiEnvelope({ tem: false });

@@ -417,7 +417,9 @@ export class ProtocoloIaService {
       );
     }
     return registros
-      .map((r, i) => `=== Parte ${i + 1} de ${registros.length} ===\n${r.trim()}`)
+      .map(
+        (r, i) => `=== Parte ${i + 1} de ${registros.length} ===\n${r.trim()}`,
+      )
       .join('\n\n');
   }
 
@@ -506,7 +508,9 @@ export class ProtocoloIaService {
       const trecho = (bruto || '').trim().slice(0, 200);
       throw new Error(
         'A IA não devolveu o JSON esperado.' +
-          (trecho ? ` A resposta começou com: "${trecho}"` : ' (resposta vazia)'),
+          (trecho
+            ? ` A resposta começou com: "${trecho}"`
+            : ' (resposta vazia)'),
       );
     }
     const bruto_data = data as Record<string, unknown>;

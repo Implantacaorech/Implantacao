@@ -207,7 +207,8 @@ export class ProtocolosController {
 
   @Get('portal/credencial')
   @ApiOperation({
-    summary: 'Se o usuário já salvou a credencial do Portal Rech (só o login volta)',
+    summary:
+      'Se o usuário já salvou a credencial do Portal Rech (só o login volta)',
   })
   credencialPortal(@CurrentUser() user: AuthUser) {
     return new ApiEnvelope({
@@ -222,19 +223,26 @@ export class ProtocolosController {
   // a PRÓPRIA credencial do Portal é uma configuração pessoal, não uma escrita nos dados de
   // protocolos (M2). Quem consegue abrir o painel "Preencher protocolo" (protocolos consulta)
   // precisa poder cadastrar seu login do Portal — senão o botão fica inutilizável para ele.
-  @ApiOperation({ summary: 'Salva a credencial do Portal Rech do próprio usuário' })
+  @ApiOperation({
+    summary: 'Salva a credencial do Portal Rech do próprio usuário',
+  })
   salvarCredencialPortal(
     @Body() dto: SalvarCredencialPortalDto,
     @CurrentUser() user: AuthUser,
   ) {
     this.portalCred.salvar(user.sub, dto.login, dto.senha ?? '');
-    return new ApiEnvelope({ tem: true, login: this.portalCred.loginDe(user.sub) });
+    return new ApiEnvelope({
+      tem: true,
+      login: this.portalCred.loginDe(user.sub),
+    });
   }
 
   @Delete('portal/credencial')
   @HttpCode(HttpStatus.OK)
   // Consulta (herda da classe): mexer na PRÓPRIA credencial é pessoal, não escrita de dados.
-  @ApiOperation({ summary: 'Remove a credencial do Portal Rech do próprio usuário' })
+  @ApiOperation({
+    summary: 'Remove a credencial do Portal Rech do próprio usuário',
+  })
   removerCredencialPortal(@CurrentUser() user: AuthUser) {
     this.portalCred.remover(user.sub);
     return new ApiEnvelope({ tem: false });
@@ -547,7 +555,8 @@ export class ProtocolosController {
     // não trava o rascunho — o campo de código continua editável na tela.
     if (!rascunho.clienteCodigo && p.cliente.trim()) {
       try {
-        const cs = (await this.gravacao.buscarClientes(p.cliente)).clientes ?? [];
+        const cs =
+          (await this.gravacao.buscarClientes(p.cliente)).clientes ?? [];
         const match =
           cs.find((c) => c.cliente === p.cliente) ??
           (cs.length === 1 ? cs[0] : undefined);
@@ -592,8 +601,7 @@ export class ProtocolosController {
     // Código do cliente: o do PROTOCOLO é o padrão; a tela pode sobrepor (campo editável) para
     // resgatar protocolo sem código ou com código a corrigir. Só identifica a EMPRESA no Portal
     // para a busca — a visita nasce no login do próprio consultor de qualquer forma.
-    const clienteCodigo =
-      (dto.clienteCodigo ?? '').trim() || p.clienteCodigo;
+    const clienteCodigo = (dto.clienteCodigo ?? '').trim() || p.clienteCodigo;
     const { visitaId } = await this.portalRech.criarRascunhoVisita(cred, {
       clienteCodigo,
       clienteNome: p.cliente,
