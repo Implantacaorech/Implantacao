@@ -69,9 +69,6 @@ export const MENUS: DefinicaoMenu[] = [
   // RNS: consulta de assuntos nas RNS do SICLA (LISTA_ITEMPED) — o consultor pesquisa um
   // assunto e vê as RNS relacionadas (Pedido + Item), no molde do Dicionário Inteligente.
   { chave: 'rns', rotulo: 'RNS', grupo: 'Execução' },
-  // Wall-e: base de conhecimento pesquisável sobre o acervo documental dos chats do bot
-  // Wall-e (R:\GRM\CHAT_WALLE — fonte SOMENTE LEITURA, indexada no banco do Painel).
-  { chave: 'walle', rotulo: 'Wall-e', grupo: 'Execução' },
   { chave: 'coordenacao', rotulo: 'Coordenação', grupo: 'Gestão' },
   {
     chave: 'centro_operacional',
@@ -248,16 +245,6 @@ export const PADRAO_PERMISSOES: Record<
   // RNS: consulta de assuntos — só leitura do SICLA, mesma liberação da Agenda; o
   // Comercial fica de fora por padrão (ajustável em Gestão → Permissões).
   rns: {
-    ADM: 'alteracao',
-    Coordenador: 'consulta',
-    Administrativo: 'consulta',
-    GCI: 'consulta',
-    Consultor: 'consulta',
-    Levantador: 'consulta',
-  },
-  // Wall-e: consulta à base de conhecimento — só leitura para o time; `alteracao` (ADM)
-  // habilita o botão "Atualizar acervo" (reindexação). O Comercial fica de fora por padrão.
-  walle: {
     ADM: 'alteracao',
     Coordenador: 'consulta',
     Administrativo: 'consulta',

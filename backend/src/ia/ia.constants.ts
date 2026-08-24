@@ -18,11 +18,7 @@ export const PROVEDORES_IA: ProvedorIa[] = ['anthropic', 'openrouter', 'local'];
 
 /** Cada uso de IA no Painel é uma "finalidade" com chave/provedor/modelo PRÓPRIOS — o usuário
  * pediu campos separados por finalidade, não uma chave global compartilhada. */
-export type FinalidadeIa =
-  | 'protocolos'
-  | 'dicionario'
-  | 'levantamento'
-  | 'walle';
+export type FinalidadeIa = 'protocolos' | 'dicionario' | 'levantamento';
 
 export interface DefinicaoFinalidade {
   id: FinalidadeIa;
@@ -50,13 +46,6 @@ export const FINALIDADES_IA: DefinicaoFinalidade[] = [
       'Sugere as respostas do questionário de Levantamento a partir da transcrição da ' +
       'reunião gravada. As sugestões nunca são gravadas sozinhas — quem responde é o GCI.',
   },
-  {
-    id: 'walle',
-    rotulo: 'Consulta Wall-e',
-    descricao:
-      'Síntese em linguagem natural sobre o acervo dos chats do Wall-e (RAG). O acervo ' +
-      'contém dados de cliente — só aceita provedor local.',
-  },
 ];
 
 export const FINALIDADE_IDS: FinalidadeIa[] = FINALIDADES_IA.map((f) => f.id);
@@ -76,9 +65,6 @@ export const FINALIDADE_IDS: FinalidadeIa[] = FINALIDADES_IA.map((f) => f.id);
 export const FINALIDADES_SO_LOCAL: FinalidadeIa[] = [
   'protocolos',
   'levantamento',
-  // Acervo dos chats do Wall-e: as análises citam clientes, logs e dados de produção do
-  // SICLA — mesmo racional das transcrições: o texto não sai da rede (§21-A.10).
-  'walle',
 ];
 export function exigeProvedorLocal(finalidade: FinalidadeIa): boolean {
   return FINALIDADES_SO_LOCAL.includes(finalidade);

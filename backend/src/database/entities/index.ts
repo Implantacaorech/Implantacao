@@ -36,9 +36,6 @@ import { PreferenciaUsuario } from './preferencia-usuario.entity';
 import { DestinatarioPassoConfig } from './destinatario-passo.entity';
 import { EmailPasso } from './email-passo.entity';
 import { ExecucaoIa } from './execucao-ia.entity';
-import { WalleChat } from './walle-chat.entity';
-import { WalleArquivo } from './walle-arquivo.entity';
-import { WalleEntidade } from './walle-entidade.entity';
 
 export * from './usuario.entity';
 export * from './projeto.entity';
@@ -78,9 +75,6 @@ export * from './preferencia-usuario.entity';
 export * from './destinatario-passo.entity';
 export * from './email-passo.entity';
 export * from './execucao-ia.entity';
-export * from './walle-chat.entity';
-export * from './walle-arquivo.entity';
-export * from './walle-entidade.entity';
 
 // Lista única usada por DatabaseModule (runtime) e AppDataSource (CLI de migrations) —
 // evita as duas listas divergirem conforme novas entidades são adicionadas.
@@ -123,7 +117,4 @@ export const ENTITIES = [
   DestinatarioPassoConfig,
   EmailPasso,
   ExecucaoIa,
-  WalleChat,
-  WalleArquivo,
-  WalleEntidade,
 ];
