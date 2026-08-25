@@ -391,6 +391,26 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/config/api-dados.component').then((m) => m.ApiDadosComponent),
       },
+      // Criar/editar uma consulta da API pela TELA. Sem `:slug` é consulta nova; com `:slug`
+      // abre a existente. As duas usam o mesmo componente — o formulário é o mesmo.
+      {
+        path: 'config/api-dados/consulta',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Nova consulta da API' },
+        loadComponent: () =>
+          import('./features/config/api-dados-consulta.component').then(
+            (m) => m.ApiDadosConsultaComponent,
+          ),
+      },
+      {
+        path: 'config/api-dados/consulta/:slug',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Consulta da API' },
+        loadComponent: () =>
+          import('./features/config/api-dados-consulta.component').then(
+            (m) => m.ApiDadosConsultaComponent,
+          ),
+      },
       // ── Área BI ─────────────────────────────────────────────────────────────────
       // Uma entrada só no menu ("BI"), com duas abas de 1º nível — cada uma um BI — e
       // subabas dentro delas. O RBAC continua separado: `dashboards` libera o BI

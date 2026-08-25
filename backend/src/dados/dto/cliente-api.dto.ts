@@ -17,13 +17,15 @@ export class CriarClienteApiDto {
 
   @ApiProperty({
     description:
-      'Escopos permitidos. A lista válida vem de GET /api/dados/v1/clientes/escopos.',
-    example: ['sicla:leitura'],
+      'Consultas que este token poderá chamar, pelo nome. A lista válida vem de ' +
+      'GET /api/dados/v1/admin/clientes/consultas-disponiveis. A autorização é POR ' +
+      'CONSULTA: o token não alcança nada além do que estiver aqui.',
+    example: ['sicla.rns.listar', 'sicla.rns.detalhar'],
   })
   @IsArray()
   @ArrayNotEmpty()
   @IsString({ each: true })
-  escopos: string[];
+  consultas: string[];
 
   @ApiPropertyOptional({
     description: 'Para que serve / quem é o responsável.',
@@ -41,11 +43,13 @@ export class AtualizarClienteApiDto {
   @MaxLength(160)
   nome?: string;
 
-  @ApiPropertyOptional({ example: ['sicla:leitura', 'portal_rech:leitura'] })
+  @ApiPropertyOptional({
+    example: ['sicla.rns.listar', 'portal.visitas.listar'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  escopos?: string[];
+  consultas?: string[];
 
   @ApiPropertyOptional()
   @IsOptional()

@@ -67,8 +67,9 @@
     <h2>Catálogo — {{ catalogo()?.total }} consulta(s), contrato {{ catalogo()?.versao }}</h2>
     <p class="dica">
       O SQL não aparece aqui de propósito: é detalhe de implementação e revela o schema de um
-      sistema de terceiro. Consulta nova é uma entrada em
-      <code>backend/src/dados/catalogo/catalogo.ts</code>.
+      sistema de terceiro. Uma consulta chega ao catálogo por dois caminhos: entrada em
+      <code>backend/src/dados/catalogo/catalogo.ts</code> (contrato revisado, exige release) ou
+      <strong>criada nesta tela</strong>, no bloco abaixo.
     </p>
     @for (grupo of porConexao(); track grupo.chave) {
       <h3>{{ rotuloConexao(grupo.chave) }}</h3>
@@ -101,6 +102,53 @@
     }
   </section>
 
+  <!-- ── Consultas criadas pela tela ──────────────────────────────────────────── -->
+  <section class="painel">
+    <h2>Consultas criadas pela tela</h2>
+    <p class="dica">
+      Cole o SELECT, clique em <strong>Testar</strong> e o contrato sai do próprio banco:
+      parâmetros e colunas de retorno. Publicar é um passo à parte — enquanto não publicar, a
+      consulta serve só aos Dashboards e <strong>não</strong> pode ser autorizada num token.
+    </p>
+    <div class="acoes">
+      <a class="btn primario" routerLink="/config/api-dados/consulta">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg> Nova consulta
+      </a>
+    </div>
+    <div class="tabela-wrap">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Identificador</th><th>Nome</th><th>Conexão</th><th>Nome na API</th>
+            <th>Situação</th><th>Teto</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of consultasDeTela(); track c.slug) {
+            <tr>
+              <td>
+                <a [routerLink]="['/config/api-dados/consulta', c.slug]"><code>{{ c.slug }}</code></a>
+              </td>
+              <td>{{ c.nome }}</td>
+              <td>{{ rotuloConexao(c.conexao) }}</td>
+              <td>@if (c.nomeApi) { <code>{{ c.nomeApi }}</code> } @else { <span class="dica">—</span> }</td>
+              <td>
+                @if (c.publicada) {
+                  <svg class="svgi svgi-xs ic-ok" aria-hidden="true"><use href="#ic-check-circle"/></svg> No catálogo
+                } @else {
+                  <span class="dica">Rascunho</span>
+                }
+              </td>
+              <td class="num">{{ c.limiteLinhas || '—' }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="dica">Nenhuma consulta criada pela tela.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <!-- ── Clientes de máquina ──────────────────────────────────────────────────── -->
   <section class="painel">
     <h2>Clientes de máquina</h2>
@@ -109,8 +157,8 @@
     }
     <p class="dica">
       Outro sistema da Rech, agente de IA ou ferramenta de BI. Autenticam por
-      <code>X-API-Key</code> e podem exatamente os escopos marcados — não têm menu nem perfil.
-      Pessoa não precisa de chave: usa o próprio login do Painel.
+      <code>X-API-Key</code> e podem chamar exatamente as consultas marcadas — não têm menu
+      nem perfil. Pessoa não precisa de token: usa o próprio login do Painel.
     </p>
 
     <form [formGroup]="form" (ngSubmit)="criar()">
@@ -123,16 +171,33 @@
         </label>
       </div>
       <fieldset class="escopos">
-        <legend>Escopos</legend>
-        @for (e of escopos(); track e) {
-          <label class="escopo-item">
-            <input
-              type="checkbox"
-              [checked]="escopoMarcado(e)"
-              (change)="alternarEscopo(e, $any($event.target).checked)"
-            />
-            <code>{{ e }}</code>
-          </label>
+        <legend>Consultas que este token poderá chamar</legend>
+        <p class="dica">
+          A autorização é <strong>por consulta</strong>: o token não alcança nada além do que
+          estiver marcado aqui. Marque o mínimo necessário.
+        </p>
+        @for (grupo of porConexao(); track grupo.chave) {
+          <div class="grupo-escopo">
+            <label class="escopo-item cabecalho">
+              <input
+                type="checkbox"
+                [checked]="grupoInteiroMarcado(grupo.chave)"
+                (change)="alternarGrupo(grupo.chave, $any($event.target).checked)"
+              />
+              <strong>{{ rotuloConexao(grupo.chave) }}</strong>
+            </label>
+            @for (c of grupo.consultas; track c.nome) {
+              <label class="escopo-item">
+                <input
+                  type="checkbox"
+                  [checked]="consultaMarcada(c.nome)"
+                  (change)="alternarConsulta(c.nome, $any($event.target).checked)"
+                />
+                <code>{{ c.nome }}</code>
+                <span class="dica">{{ c.titulo }}</span>
+              </label>
+            }
+          </div>
         }
       </fieldset>
       <div class="acoes">
@@ -147,7 +212,7 @@
       <table class="tabela">
         <thead>
           <tr>
-            <th>Nome</th><th>Prefixo</th><th>Escopos</th><th>Situação</th>
+            <th>Nome</th><th>Prefixo</th><th>Consultas autorizadas</th><th>Situação</th>
             <th>Último uso</th><th>Ações</th>
           </tr>
         </thead>
@@ -157,8 +222,8 @@
               <td>{{ c.nome }}<br /><span class="dica">{{ c.observacao }}</span></td>
               <td><code>{{ c.prefixo }}</code></td>
               <td>
-                @for (e of c.escopos; track e) {
-                  <span class="tag-param">{{ e }}</span>
+                @for (nome of c.consultas; track nome) {
+                  <span class="tag-param">{{ nome }}</span>
                 }
               </td>
               <td>{{ c.ativo ? 'Ativo' : 'Revogado' }}</td>

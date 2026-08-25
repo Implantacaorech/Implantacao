@@ -48,4 +48,36 @@ export class ConsultaBD {
   // BI roteiam o executor por este campo.
   @Column({ length: 20, default: 'sicla' })
   conexao: string;
+
+  // ── Publicação na API de Dados (ADR-0003) ──────────────────────────────────────────
+  // Uma consulta salva pode ser só um dashboard interno (o caso histórico) OU virar uma
+  // consulta do CATÁLOGO, chamável por token. Os campos abaixo só valem no segundo caso e
+  // são preenchidos pela tela de criação, com o Testar descobrindo binds e colunas.
+
+  /** Nome PÚBLICO no catálogo (`<origem>.<assunto>.<ação>`). Vazio = a consulta não é
+   * publicada; existe só para os Dashboards/Testar, como antes. */
+  @Column({ name: 'nome_api', length: 80, default: '' })
+  nomeApi: string;
+
+  /** `true` a coloca em `GET /api/dados/v1/consultas` e a torna autorizável num token. */
+  @Column({ default: false })
+  publicada: boolean;
+
+  /** Contrato dos parâmetros, em JSON: `[{nome,tipo,obrigatorio,descricao,maxTamanho}]`.
+   * Os NOMES saem do próprio SQL (extrairBinds); o operador escolhe o tipo. */
+  @Column({ type: 'text', nullable: true })
+  parametros: string | null;
+
+  /** Colunas que a consulta devolve, em JSON — preenchidas pelo Testar, que executa com
+   * limite 1 e lê o metaData do driver. É o que documenta a SAÍDA para quem consome. */
+  @Column({ type: 'text', nullable: true })
+  colunas: string | null;
+
+  /** Teto de linhas trazidas do banco. Obrigatório para publicar: sem ele, um SELECT sem
+   * WHERE vira um tiro no Oracle. */
+  @Column({ name: 'limite_linhas', default: 0 })
+  limiteLinhas: number;
+
+  @Column({ name: 'cache_segundos', default: 0 })
+  cacheSegundos: number;
 }

@@ -4,9 +4,11 @@ import { ClienteApi } from '../database/entities/cliente-api.entity';
 import { ConsultaBD } from '../database/entities/consulta-bd.entity';
 import { CatalogoSeedService } from './catalogo-seed.service';
 import { ConsultaBdService } from './consulta-bd.service';
+import { ConsultasPublicadasService } from './consultas-publicadas.service';
 import { ConexaoPortalService } from './conexoes/conexao-portal.service';
 import { ConexaoSiclaService } from './conexoes/conexao-sicla.service';
 import { ClienteApiService } from './cliente-api.service';
+import { CatalogoService } from './catalogo/catalogo.service';
 import { ConexoesService } from './conexoes/conexoes.service';
 import { DadosAdminController } from './dados-admin.controller';
 import { DadosController } from './dados.controller';
@@ -29,8 +31,10 @@ import { ClienteApiRepository } from './repositories/cliente-api.repository';
   controllers: [DadosController, DadosAdminController],
   providers: [
     DadosService,
+    CatalogoService,
     CatalogoSeedService,
     ConsultaBdService,
+    ConsultasPublicadasService,
     ConexoesService,
     ConexaoSiclaService,
     ConexaoPortalService,
@@ -42,6 +46,7 @@ import { ClienteApiRepository } from './repositories/cliente-api.repository';
   // Consultas BD / Disponibilidade), que editam o que este módulo executa.
   exports: [
     DadosService,
+    CatalogoService,
     ConexoesService,
     ConsultaBdService,
     ConexaoSiclaService,

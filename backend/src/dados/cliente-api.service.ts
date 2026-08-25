@@ -7,7 +7,7 @@ import {
 import { compare, hash } from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { ClienteApi } from '../database/entities/cliente-api.entity';
-import { escoposDisponiveis } from './catalogo/catalogo';
+import { CatalogoService } from './catalogo/catalogo.service';
 import { ClienteApiRepository } from './repositories/cliente-api.repository';
 
 /** Prefixo humano da chave — identifica de longe (num log, num .env de terceiro) que
@@ -20,7 +20,7 @@ export interface ClienteApiPublico {
   id: number;
   nome: string;
   prefixo: string;
-  escopos: string[];
+  consultas: string[];
   ativo: boolean;
   observacao: string;
   criadoEm: Date;
@@ -37,19 +37,25 @@ export interface ClienteApiCriado extends ClienteApiPublico {
  *
  * Por que chave própria e não o JWT do Painel: o JWT é de pessoa — vive 15 min, carrega
  * perfil e menus, e morre quando a pessoa sai da empresa. Integração precisa de credencial
- * de sistema, com escopo próprio, revogável isoladamente e rastreável no log. */
+ * de sistema, revogável isoladamente e rastreável no log.
+ *
+ * A autorização é POR CONSULTA: o token carrega a lista de nomes que pode chamar. Um token
+ * emitido para o painel de RNS não serve para o extrato de horas. */
 @Injectable()
 export class ClienteApiService {
   private readonly logger = new Logger('ClienteApiService');
 
-  constructor(private readonly repo: ClienteApiRepository) {}
+  constructor(
+    private readonly repo: ClienteApiRepository,
+    private readonly catalogo: CatalogoService,
+  ) {}
 
   private publicar(c: ClienteApi): ClienteApiPublico {
     return {
       id: c.id,
       nome: c.nome,
       prefixo: c.prefixo,
-      escopos: this.lista(c.escopos),
+      consultas: this.lista(c.consultas),
       ativo: c.ativo,
       observacao: c.observacao,
       criadoEm: c.criadoEm,
@@ -64,48 +70,50 @@ export class ClienteApiService {
       .filter(Boolean);
   }
 
-  /** Só escopo que EXISTE no catálogo entra — senão um erro de digitação viraria um cliente
+  /** Só consulta que EXISTE no catálogo entra — senão um erro de digitação viraria um token
    * que autentica e nunca consegue chamar nada, com 403 sem explicação. */
-  private validarEscopos(escopos: string[]): string {
-    const validos = escoposDisponiveis();
-    const limpos = [...new Set(escopos.map((e) => e.trim()).filter(Boolean))];
-    if (limpos.length === 0) {
+  private async validarConsultas(consultas: string[]): Promise<string> {
+    // Contra o catálogo EFETIVO: uma consulta publicada pela tela também pode ser autorizada.
+    const validas = await this.catalogo.nomes();
+    const limpas = [...new Set(consultas.map((e) => e.trim()).filter(Boolean))];
+    if (limpas.length === 0) {
       throw new BadRequestException(
-        `Informe ao menos um escopo. Disponíveis: ${validos.join(', ')}.`,
+        'Informe ao menos uma consulta que este token poderá chamar.',
       );
     }
-    const invalidos = limpos.filter((e) => !validos.includes(e));
-    if (invalidos.length) {
+    const invalidas = limpas.filter((e) => !validas.includes(e));
+    if (invalidas.length) {
       throw new BadRequestException(
-        `Escopo inexistente: ${invalidos.join(', ')}. Disponíveis: ${validos.join(', ')}.`,
+        `Consulta inexistente: ${invalidas.join(', ')}. Veja o catálogo em Sistema → API de Dados.`,
       );
     }
-    return limpos.join(',');
+    return limpas.join(',');
   }
 
   async listar(): Promise<ClienteApiPublico[]> {
     return (await this.repo.listar()).map((c) => this.publicar(c));
   }
 
-  escopos(): string[] {
-    return escoposDisponiveis();
+  /** Catálogo de nomes que um token pode autorizar — alimenta a lista da tela. */
+  async consultasDisponiveis(): Promise<string[]> {
+    return this.catalogo.nomes();
   }
 
   async criar(dados: {
     nome: string;
-    escopos: string[];
+    consultas: string[];
     observacao?: string;
   }): Promise<ClienteApiCriado> {
     const nome = (dados.nome || '').trim();
     if (!nome) throw new BadRequestException('Informe o nome do cliente.');
-    const escopos = this.validarEscopos(dados.escopos ?? []);
+    const consultas = await this.validarConsultas(dados.consultas ?? []);
 
     const { prefixo, segredo, chave } = this.gerarChave();
     const cliente = await this.repo.criar({
       nome,
       prefixo,
       chaveHash: await hash(segredo, ROUNDS_BCRYPT),
-      escopos,
+      consultas,
       ativo: true,
       observacao: (dados.observacao || '').trim(),
       ultimoUsoEm: null,
@@ -116,7 +124,7 @@ export class ClienteApiService {
 
   /** Gera uma chave nova para um cliente existente (perda/vazamento). A anterior para de
    * valer no mesmo instante — é a razão de rotacionar ser um caminho próprio, e não
-   * "apague e crie de novo": o id, os escopos e o histórico de uso ficam. */
+   * "apague e crie de novo": o id, as consultas autorizadas e o histórico de uso ficam. */
   async rotacionar(id: number): Promise<ClienteApiCriado> {
     const cliente = await this.exigir(id);
     const { prefixo, segredo, chave } = this.gerarChave();
@@ -129,12 +137,12 @@ export class ClienteApiService {
 
   async atualizar(
     id: number,
-    dados: { nome?: string; escopos?: string[]; observacao?: string },
+    dados: { nome?: string; consultas?: string[]; observacao?: string },
   ): Promise<ClienteApiPublico> {
     const cliente = await this.exigir(id);
     if (dados.nome !== undefined) cliente.nome = dados.nome.trim();
-    if (dados.escopos !== undefined) {
-      cliente.escopos = this.validarEscopos(dados.escopos);
+    if (dados.consultas !== undefined) {
+      cliente.consultas = await this.validarConsultas(dados.consultas);
     }
     if (dados.observacao !== undefined) {
       cliente.observacao = dados.observacao.trim();
@@ -194,7 +202,7 @@ export class ClienteApiService {
     return cliente;
   }
 
-  escoposDoCliente(cliente: ClienteApi): string[] {
-    return this.lista(cliente.escopos);
+  consultasDoCliente(cliente: ClienteApi): string[] {
+    return this.lista(cliente.consultas);
   }
 }

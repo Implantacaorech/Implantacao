@@ -8,7 +8,6 @@ const consulta = (
   titulo: 'Teste',
   descricao: 'Consulta de teste do validador de parâmetros.',
   conexao: 'sicla',
-  escopo: 'sicla:leitura',
   parametros,
   origem: { tipo: 'fixo', sql: 'SELECT 1' },
   limiteLinhas: 10,

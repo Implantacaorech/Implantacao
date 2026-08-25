@@ -10,7 +10,7 @@ Duas portas, e só duas:
 | Chamador | Cabeçalho | Gate |
 |---|---|---|
 | Pessoa (Painel) | `Authorization: Bearer <jwt>` | **Menu** — precisa de nível `consulta` em ao menos um dos menus da consulta |
-| Máquina (sistema, agente de IA, BI) | `X-API-Key: rd_<prefixo>_<segredo>` | **Escopo** — precisa do escopo que a consulta declara |
+| Máquina (sistema, agente de IA, BI) | `X-API-Key: rd_<prefixo>_<segredo>` | **Lista de consultas do token** — a autorização é por CONSULTA, nome a nome |
 
 A chave é verificada **primeiro**: um cliente de máquina não depende de saber montar um JWT
 de pessoa. Chave inválida, expirada ou de cliente revogado devolve sempre a mesma mensagem
@@ -20,8 +20,8 @@ transformaria o endpoint num oráculo de chaves válidas.
 ## Rotas
 
 ### `GET /api/dados/v1/consultas`
-Catálogo publicado — **sem o SQL**. Para cliente de máquina, já vem recortado pelos escopos
-dele.
+Catálogo publicado — **sem o SQL**. Para cliente de máquina, já vem recortado pelas consultas
+que o token autoriza.
 
 ```jsonc
 { "data": { "versao": "v1", "total": 19, "consultas": [
@@ -29,7 +29,6 @@ dele.
       "titulo": "RNS — assuntos por período de criação",
       "descricao": "Itens de pedido do SICLA (LISTA_ITEMPED) criados na janela informada…",
       "conexao": "sicla",
-      "escopo": "sicla:leitura",
       "parametros": [
         { "nome": "data_ini", "tipo": "data", "obrigatorio": true,
           "descricao": "Início do período (AAAA-MM-DD), inclusive." },
@@ -113,7 +112,7 @@ O contrato (nome, parâmetros, teto) é o mesmo nos três casos.
 |---|---|---|
 | `400` | Parâmetro faltando, fora do formato, acima do tamanho, ou não declarado | A mensagem lista **todos** os problemas de uma vez; nada foi enviado ao banco |
 | `401` | Sem credencial, JWT expirado ou chave inválida | Renove o token / confira a chave |
-| `403` | Sem o menu (pessoa) ou sem o escopo (máquina) | A mensagem diz qual menu/escopo falta |
+| `403` | Sem o menu (pessoa) ou consulta fora do token (máquina) | A mensagem diz qual menu falta, ou que o token não autoriza aquela consulta |
 | `404` | Consulta fora do catálogo | Liste `GET /consultas`; confira a grafia |
 | `429` | Rate limit global do Painel | Reduza a frequência |
 | `502` | O banco de ORIGEM falhou (ORA-…, erro MySQL) | Não é erro seu nem da API — a mensagem original vai junto |
@@ -129,14 +128,29 @@ Uma chave comprometida não pode emitir outra: as rotas abaixo exigem pessoa com
 | Rota | O que faz |
 |---|---|
 | `GET /api/dados/v1/admin/clientes` | Lista os clientes de máquina (nunca a chave) |
-| `GET /api/dados/v1/admin/clientes/escopos` | Escopos que o catálogo reconhece |
+| `GET /api/dados/v1/admin/clientes/consultas-disponiveis` | Universo de consultas que um token pode autorizar |
 | `POST /api/dados/v1/admin/clientes` | Cadastra e devolve a chave — **única exibição** |
-| `PATCH /api/dados/v1/admin/clientes/{id}` | Nome, escopos, observação |
+| `PATCH /api/dados/v1/admin/clientes/{id}` | Nome, consultas autorizadas, observação |
 | `PATCH /api/dados/v1/admin/clientes/{id}/ativo` | Revoga (`false`) / reativa (`true`) |
 | `POST /api/dados/v1/admin/clientes/{id}/rotacionar` | Chave nova; a anterior morre na hora |
 | `DELETE /api/dados/v1/admin/clientes/{id}` | Apaga o cadastro (prefira revogar) |
 | `GET /api/dados/v1/admin/metricas` | Uso por consulta desde o último boot |
 | `POST /api/dados/v1/admin/cache/limpar` | Descarta o cache (use após editar um SQL salvo) |
+
+### Consultas criadas pela TELA
+
+| Rota | O que faz |
+|---|---|
+| `GET /api/dados/v1/admin/consultas` | Consultas salvas, com os campos de publicação |
+| `GET /api/dados/v1/admin/consultas/{slug}` | Uma consulta, para edição |
+| `POST /api/dados/v1/admin/consultas/analisar` | **Testar**: roda com limite 1 e devolve `binds`, `colunas` e uma amostra |
+| `POST /api/dados/v1/admin/consultas` | Salva; se `publicada`, valida o contrato inteiro antes |
+| `DELETE /api/dados/v1/admin/consultas/{slug}` | Apaga a consulta |
+
+`analisar` e `salvar` são o único lugar da API onde SQL **entra** — e são rotas de ADM, pela
+mesma razão de sempre: quem escreve o SQL ali é o Administrador do Painel, não o consumidor.
+`POST /consultas` recusa qualquer coisa que não seja `SELECT`/`WITH … SELECT`, e a recusa vem
+como **lista** de problemas, para o operador corrigir todos de uma vez.
 
 ## Exemplo — consumidor externo
 

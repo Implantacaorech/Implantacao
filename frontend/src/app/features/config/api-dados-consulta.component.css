@@ -1,0 +1,27 @@
+/* Estilos globais em src/styles.css. Aqui só o específico desta tela. */
+
+/* O SELECT é o centro da tela: monoespaçado e alto o bastante para ler a consulta inteira
+   sem rolar dentro do campo. */
+textarea[formControlName='sql'] {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88rem;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.tag-param {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  padding: 1px 6px;
+  margin: 1px 3px 1px 0;
+  border-radius: 4px;
+  background: var(--fundo-alt, #f4f6f8);
+}
+
+.escopo-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 8px 0 16px;
+}

@@ -12,7 +12,7 @@ Consultor SIGER, permanente e justificada (ver `arquitetura.md`).
 ## RN-02 · O catálogo é a fonte da verdade
 
 Uma consulta existe se está em [`catalogo/catalogo.ts`](../catalogo/catalogo.ts). Cada
-entrada declara nome, conexão, escopo, menus, parâmetros, origem do SQL, teto de linhas e
+entrada declara nome, conexão, menus, parâmetros, origem do SQL, teto de linhas e
 cache. Consulta fora do catálogo → `404`, com a mensagem apontando `GET /consultas`.
 
 Nome de consulta é **endereço público**: `<origem>.<assunto>.<ação>`, estável. Renomear é
@@ -86,7 +86,9 @@ parâmetros. Buscas interativas (cliente, por exemplo) não cacheiam; painéis d
   baixo dela; sem isso a API viraria porta lateral em volta do painel de Permissões. Uma
   consulta pode declarar mais de um menu (o calendário de alocação serve à tela Agenda e aos
   Dashboards) e basta ter `consulta` em um deles.
-- **Máquina (`X-API-Key`)** → gate por **escopo** (`sicla:leitura`, `portal_rech:leitura`).
+- **Máquina (`X-API-Key`)** → gate pela **lista de consultas do token**. A autorização é por
+  CONSULTA, não por conexão (decisão do usuário, 2026-08-25): um token emitido para o painel
+  de RNS não alcança o extrato de horas, mesmo sendo da mesma conexão.
   Sem menu, sem perfil: pode exatamente o que foi cadastrado.
 
 ## RN-09 · Chave de máquina: exibida uma vez, guardada como hash
@@ -111,7 +113,7 @@ deixar `:tecnicos` cru faria o driver recusar a execução inteira.
 
 ## RN-10 · A API é somente leitura
 
-Todos os escopos são `:leitura` e os dois executores já recusam qualquer comando que não
+Todo acesso é de leitura e os dois executores já recusam qualquer comando que não
 seja `SELECT`/`WITH`. Escrita em banco de terceiro não é decisão de arquitetura — é decisão
 de negócio, e não foi tomada.
 

@@ -1,6 +1,8 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ClienteApi } from '../database/entities/cliente-api.entity';
 import { ClienteApiService } from './cliente-api.service';
+import { CatalogoService } from './catalogo/catalogo.service';
+import { nomesDisponiveis } from './catalogo/catalogo';
 import { ClienteApiRepository } from './repositories/cliente-api.repository';
 
 /** Repositório em memória — o alvo aqui é a REGRA (formato da chave, hash, escopo,
@@ -35,8 +37,15 @@ class RepoFalso {
 
 function montar(): { servico: ClienteApiService; repo: RepoFalso } {
   const repo = new RepoFalso();
+  // O catálogo efetivo, no teste, é só o de código — basta para validar autorização.
+  const catalogo = {
+    nomes: () => Promise.resolve(nomesDisponiveis()),
+  } as unknown as CatalogoService;
   return {
-    servico: new ClienteApiService(repo as unknown as ClienteApiRepository),
+    servico: new ClienteApiService(
+      repo as unknown as ClienteApiRepository,
+      catalogo,
+    ),
     repo,
   };
 }
@@ -46,7 +55,7 @@ describe('ClienteApiService', () => {
     const { servico, repo } = montar();
     const criado = await servico.criar({
       nome: 'Power BI',
-      escopos: ['sicla:leitura'],
+      consultas: ['sicla.rns.listar'],
     });
 
     expect(criado.chave).toMatch(/^rd_[0-9a-f]{12}_[0-9a-f]{48}$/);
@@ -59,30 +68,30 @@ describe('ClienteApiService', () => {
 
   it('a chave não volta em nenhuma listagem', async () => {
     const { servico } = montar();
-    await servico.criar({ nome: 'BI', escopos: ['sicla:leitura'] });
+    await servico.criar({ nome: 'BI', consultas: ['sicla.rns.listar'] });
     const lista = await servico.listar();
     expect(JSON.stringify(lista)).not.toContain('rd_');
     expect(Object.keys(lista[0])).not.toContain('chaveHash');
   });
 
-  it('recusa escopo que não existe no catálogo', async () => {
+  it('recusa consulta que não existe no catálogo', async () => {
     const { servico } = montar();
     await expect(
-      servico.criar({ nome: 'X', escopos: ['banco_inexistente:leitura'] }),
+      servico.criar({ nome: 'X', consultas: ['sicla.inventada.aqui'] }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('recusa cadastro sem escopo nenhum', async () => {
+  it('recusa cadastro sem consulta nenhuma', async () => {
     const { servico } = montar();
     await expect(
-      servico.criar({ nome: 'X', escopos: [] }),
+      servico.criar({ nome: 'X', consultas: [] }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('recusa cadastro sem nome', async () => {
     const { servico } = montar();
     await expect(
-      servico.criar({ nome: '   ', escopos: ['sicla:leitura'] }),
+      servico.criar({ nome: '   ', consultas: ['sicla.rns.listar'] }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -90,12 +99,12 @@ describe('ClienteApiService', () => {
     const { servico, repo } = montar();
     const { chave } = await servico.criar({
       nome: 'Agente IA',
-      escopos: ['sicla:leitura'],
+      consultas: ['sicla.rns.listar'],
     });
     const cliente = await servico.autenticar(chave);
     expect(cliente?.nome).toBe('Agente IA');
-    expect(servico.escoposDoCliente(cliente as ClienteApi)).toEqual([
-      'sicla:leitura',
+    expect(servico.consultasDoCliente(cliente as ClienteApi)).toEqual([
+      'sicla.rns.listar',
     ]);
     // `marcarUso` é disparado sem await pelo service — dá um tick ao event loop.
     await Promise.resolve();
@@ -106,7 +115,7 @@ describe('ClienteApiService', () => {
     const { servico } = montar();
     const { chave, id } = await servico.criar({
       nome: 'X',
-      escopos: ['sicla:leitura'],
+      consultas: ['sicla.rns.listar'],
     });
 
     expect(await servico.autenticar('lixo')).toBeNull();
@@ -121,12 +130,12 @@ describe('ClienteApiService', () => {
     const { servico } = montar();
     const antigo = await servico.criar({
       nome: 'Integração',
-      escopos: ['sicla:leitura'],
+      consultas: ['sicla.rns.listar'],
     });
     const novo = await servico.rotacionar(antigo.id);
 
     expect(novo.id).toBe(antigo.id);
-    expect(novo.escopos).toEqual(['sicla:leitura']);
+    expect(novo.consultas).toEqual(['sicla.rns.listar']);
     expect(novo.chave).not.toBe(antigo.chave);
     expect(await servico.autenticar(antigo.chave)).toBeNull();
     expect((await servico.autenticar(novo.chave))?.id).toBe(antigo.id);
@@ -139,16 +148,19 @@ describe('ClienteApiService', () => {
     );
   });
 
-  it('atualizar valida os escopos novos', async () => {
+  it('atualizar valida as consultas novas', async () => {
     const { servico } = montar();
-    const c = await servico.criar({ nome: 'X', escopos: ['sicla:leitura'] });
+    const c = await servico.criar({
+      nome: 'X',
+      consultas: ['sicla.rns.listar'],
+    });
     await expect(
-      servico.atualizar(c.id, { escopos: ['inventado:leitura'] }),
+      servico.atualizar(c.id, { consultas: ['nao.existe.aqui'] }),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     const ok = await servico.atualizar(c.id, {
-      escopos: ['sicla:leitura', 'portal_rech:leitura'],
+      consultas: ['sicla.rns.listar', 'portal.visitas.listar'],
     });
-    expect(ok.escopos).toEqual(['sicla:leitura', 'portal_rech:leitura']);
+    expect(ok.consultas).toEqual(['sicla.rns.listar', 'portal.visitas.listar']);
   });
 });

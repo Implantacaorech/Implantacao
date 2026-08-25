@@ -15,8 +15,9 @@ import {
  * - `prefixo` viaja em claro e é o índice de busca (achar o cliente sem varrer hashes);
  * - `segredo` é guardado só como hash bcrypt — vazamento do banco não devolve a chave.
  *
- * `escopos` é a lista fechada de `<conexao>:leitura` que este cliente pode chamar; um
- * escopo que não exista no catálogo é recusado no cadastro. */
+ * `consultas` é a lista fechada de NOMES de consulta que este cliente pode chamar — a
+ * autorização é POR CONSULTA, não por conexão: um token destinado a `sicla.rns.listar` não
+ * abre o resto do SICLA. Nome que não exista no catálogo é recusado no cadastro. */
 @Entity({ name: 'api_clientes' })
 export class ClienteApi {
   @PrimaryGeneratedColumn()
@@ -32,10 +33,10 @@ export class ClienteApi {
   @Column({ name: 'chave_hash', length: 120, default: '' })
   chaveHash: string;
 
-  /** Escopos separados por vírgula (ex.: `sicla:leitura,portal_rech:leitura`). Lista curta
-   * e fechada — coluna de texto em vez de tabela filha é proporcional ao problema. */
+  /** Nomes de consulta separados por vírgula (ex.: `sicla.rns.listar,sicla.rns.detalhar`).
+   * Lista curta e fechada — coluna de texto em vez de tabela filha é proporcional. */
   @Column({ type: 'text' })
-  escopos: string;
+  consultas: string;
 
   @Column({ default: true })
   ativo: boolean;

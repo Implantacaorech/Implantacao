@@ -11,7 +11,7 @@ import {
   UsuarioPermissao,
 } from '../../permissoes/permissoes.service';
 import { ClienteApiService } from '../cliente-api.service';
-import { consultaPorNome } from '../catalogo/catalogo';
+import { CatalogoService } from '../catalogo/catalogo.service';
 import { IdentidadeChamador } from '../dados.service';
 
 /** O request enriquecido pelo guard. `identidadeDados` é o que o service audita. */
@@ -20,9 +20,9 @@ export interface RequisicaoDados {
   params?: Record<string, string>;
   user?: UsuarioPermissao & { nome?: string; email?: string };
   identidadeDados?: IdentidadeChamador;
-  /** Escopos do chamador — usado para recortar a listagem do catálogo. `undefined` para
-   * usuário do Painel, que não é gateado por escopo e sim por menu. */
-  escoposDados?: string[];
+  /** Consultas que o token do chamador autoriza — usado para recortar a listagem do
+   * catálogo. `undefined` para usuário do Painel, que é gateado por menu, não por token. */
+  consultasDados?: string[];
 }
 
 const CABECALHO_CHAVE = 'x-api-key';
@@ -32,8 +32,9 @@ const CABECALHO_CHAVE = 'x-api-key';
  * - **Usuário do Painel** (JWT no `Authorization`) — gateado pelos MENUS que a consulta
  *   declara. Quem não enxerga a tela não consulta o dado por baixo dela: sem isso, a API
  *   viraria uma porta lateral em volta do painel de Permissões.
- * - **Cliente de máquina** (`X-API-Key`) — gateado por ESCOPO. Não tem menu nem perfil; o
- *   que ele pode é exatamente o que foi cadastrado.
+ * - **Cliente de máquina** (`X-API-Key`) — gateado pela LISTA DE CONSULTAS do token. Não tem
+ *   menu nem perfil: pode exatamente as consultas que foram marcadas no cadastro. Um token
+ *   emitido para o painel de RNS não serve para o extrato de horas.
  *
  * A ordem importa: a chave é verificada primeiro. Um cliente de máquina não deve depender
  * de ter (nem de saber montar) um JWT de pessoa. */
@@ -42,6 +43,7 @@ export class AcessoDadosGuard extends AuthGuard('jwt') {
   constructor(
     private readonly clientes: ClienteApiService,
     private readonly permissoes: PermissoesService,
+    private readonly catalogo: CatalogoService,
   ) {
     super();
   }
@@ -68,8 +70,8 @@ export class AcessoDadosGuard extends AuthGuard('jwt') {
     const cliente = await this.clientes.autenticar(chave);
     if (!cliente) throw new UnauthorizedException('Chave de API inválida.');
 
-    const escopos = this.clientes.escoposDoCliente(cliente);
-    req.escoposDados = escopos;
+    const consultas = this.clientes.consultasDoCliente(cliente);
+    req.consultasDados = consultas;
     req.identidadeDados = {
       tipo: 'cliente_api',
       id: String(cliente.id),
@@ -78,13 +80,13 @@ export class AcessoDadosGuard extends AuthGuard('jwt') {
 
     const nome = this.nomeDaConsulta(req);
     if (nome) {
-      const consulta = consultaPorNome(nome);
       // Consulta inexistente NÃO é 403 aqui: quem responde "não existe" é o service, com a
       // mensagem que aponta o catálogo. Barrar no guard esconderia erro de digitação atrás
       // de "sem permissão".
-      if (consulta && !escopos.includes(consulta.escopo)) {
+      const consulta = await this.catalogo.porNome(nome);
+      if (consulta && !consultas.includes(consulta.nome)) {
         throw new ForbiddenException(
-          `Este cliente não tem o escopo "${consulta.escopo}", exigido por ${consulta.nome}.`,
+          `Este token não autoriza a consulta "${consulta.nome}".`,
         );
       }
     }
@@ -109,7 +111,7 @@ export class AcessoDadosGuard extends AuthGuard('jwt') {
 
     const nome = this.nomeDaConsulta(req);
     if (!nome) return true;
-    const consulta = consultaPorNome(nome);
+    const consulta = await this.catalogo.porNome(nome);
     if (!consulta?.menus?.length) return true;
 
     const enxerga = consulta.menus.some((menu) =>

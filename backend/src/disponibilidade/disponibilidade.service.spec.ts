@@ -8,6 +8,7 @@ import { DadosService } from '../dados/dados.service';
 import { ConexoesService } from '../dados/conexoes/conexoes.service';
 import { ConexaoSiclaService } from '../dados/conexoes/conexao-sicla.service';
 import { ConexaoPortalService } from '../dados/conexoes/conexao-portal.service';
+import { CatalogoService } from '../dados/catalogo/catalogo.service';
 
 jest.mock('oracledb', () => ({
   __esModule: true,
@@ -46,6 +47,9 @@ describe('DisponibilidadeService', () => {
       providers: [
         DisponibilidadeService,
         DadosService,
+        // O catálogo efetivo entra inteiro: é ele que resolve `sicla.disponibilidade.*`,
+        // cujo SQL vem da CONFIGURAÇÃO da conexão.
+        CatalogoService,
         ConexoesService,
         ConexaoSiclaService,
         ConexaoPortalService,
@@ -53,7 +57,11 @@ describe('DisponibilidadeService', () => {
         // Consultas BD — este dublê existe só para satisfazer a injeção.
         {
           provide: ConsultaBdService,
-          useValue: { porSlug: jest.fn().mockResolvedValue(null) },
+          useValue: {
+            porSlug: jest.fn().mockResolvedValue(null),
+            // O CatalogoService lê as consultas publicadas pela tela; aqui não há nenhuma.
+            listar: jest.fn().mockResolvedValue([]),
+          },
         },
       ],
     }).compile();

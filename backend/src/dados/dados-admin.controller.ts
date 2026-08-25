@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Patch,
@@ -18,7 +19,12 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { ClienteApiService } from './cliente-api.service';
+import { ConsultasPublicadasService } from './consultas-publicadas.service';
 import { DadosService } from './dados.service';
+import {
+  AnalisarConsultaDto,
+  SalvarConsultaPublicadaDto,
+} from './dto/consulta-publicada.dto';
 import {
   AtualizarClienteApiDto,
   CriarClienteApiDto,
@@ -39,7 +45,58 @@ export class DadosAdminController {
   constructor(
     private readonly clientes: ClienteApiService,
     private readonly dados: DadosService,
+    private readonly publicadas: ConsultasPublicadasService,
   ) {}
+
+  // ── Consultas criadas pela TELA ────────────────────────────────────────────────────
+
+  @Get('consultas')
+  @ApiOperation({ summary: 'Consultas salvas, com os campos de publicação' })
+  async listarConsultas() {
+    return new ApiEnvelope(await this.publicadas.listar());
+  }
+
+  @Get('consultas/:slug')
+  @ApiOperation({ summary: 'Uma consulta salva, para edição' })
+  async obterConsulta(@Param('slug') slug: string) {
+    const c = await this.publicadas.porSlug(slug);
+    if (!c) throw new NotFoundException('Consulta não encontrada.');
+    return new ApiEnvelope(c);
+  }
+
+  @Post('consultas/analisar')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Testa o SELECT com limite 1 e devolve os binds e as colunas — é daqui que sai o contrato',
+  })
+  async analisar(@Body() dto: AnalisarConsultaDto) {
+    return new ApiEnvelope(
+      await this.publicadas.analisar(dto.conexao, dto.sql, dto.exemplos ?? {}),
+    );
+  }
+
+  @Post('consultas')
+  @ApiOperation({
+    summary: 'Cria ou atualiza uma consulta da tela (e a publica, se pedido)',
+  })
+  async salvarConsulta(@Body() dto: SalvarConsultaPublicadaDto) {
+    const slug = await this.publicadas.salvar(dto);
+    return new ApiEnvelope(
+      { slug },
+      dto.publicada
+        ? 'Consulta salva e publicada no catálogo da API.'
+        : 'Consulta salva (não publicada).',
+    );
+  }
+
+  @Delete('consultas/:slug')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remove uma consulta criada pela tela' })
+  async excluirConsulta(@Param('slug') slug: string) {
+    const ok = await this.publicadas.excluir(slug);
+    if (!ok) throw new NotFoundException('Consulta não encontrada.');
+  }
 
   @Get('clientes')
   @ApiOperation({ summary: 'Clientes de máquina cadastrados' })
@@ -47,10 +104,12 @@ export class DadosAdminController {
     return new ApiEnvelope(await this.clientes.listar());
   }
 
-  @Get('clientes/escopos')
-  @ApiOperation({ summary: 'Escopos que o catálogo reconhece' })
-  escopos() {
-    return new ApiEnvelope(this.clientes.escopos());
+  @Get('clientes/consultas-disponiveis')
+  @ApiOperation({
+    summary: 'Nomes de consulta que um token pode autorizar (o catálogo)',
+  })
+  async consultasDisponiveis() {
+    return new ApiEnvelope(await this.clientes.consultasDisponiveis());
   }
 
   @Post('clientes')
@@ -66,7 +125,7 @@ export class DadosAdminController {
   }
 
   @Patch('clientes/:id')
-  @ApiOperation({ summary: 'Altera nome, escopos ou observação' })
+  @ApiOperation({ summary: 'Altera nome, consultas autorizadas ou observação' })
   async atualizar(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AtualizarClienteApiDto,

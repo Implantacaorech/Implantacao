@@ -158,6 +158,42 @@ declarada, com esse motivo, na própria guarda de CI.
 - Migration: `backend/src/database/migrations-mariadb/1787990000000-ApiClientes.ts`.
 - Tela: `frontend/src/app/features/config/api-dados.component.ts` (Sistema → API de Dados).
 - e2e: `e2e/testes/08-api-dados.spec.ts` (15 casos, contra instância real).
-- **19 consultas** no catálogo ao fim da fase 2.
-- Suítes verdes em 2026-08-25, ao fim das três fases: backend **136 suítes / 1420 testes**,
-  frontend **69 arquivos / 561 testes**, e2e **80 casos**.
+- **19 consultas de código** no catálogo (mais as publicadas pela tela).
+- Fase 3: `backend/src/dados/dados-app.module.ts`, `backend/src/main-dados.ts`,
+  `Iniciar_Portal_Conexoes.bat`, `frontend/.../api-dados-consulta.component.ts`, migrations
+  `1788000000000-TokenPorConsulta` e `1788010000000-ConsultaBdPublicada`.
+- Suítes verdes em 2026-08-25, ao fim das quatro fases: backend **140 suítes / 1461 testes**,
+  frontend **70 arquivos / 572 testes**, e2e **88 casos**.
+
+## Fase 3 — as duas instâncias (2026-08-25)
+
+A fase 3 não mudou a decisão deste ADR; ela deu a ela a **razão operacional** que faltava. O
+usuário quer publicar o Painel fora da rede da empresa:
+
+> *"Para que eu consiga liberar o painel para acesso externo da empresa, a conexão e leitura
+> deve ser totalmente API. Não poderei deixar no portal e em lugar nenhum os dados de conexão
+> com o banco."*
+
+Daí o desenho de **duas instâncias** (proposto pelo próprio usuário e aceito): a interna, que
+tem a credencial e expõe só esta API; e o Painel na nuvem, que consome por token. Documento:
+[docs/portal-conexoes.md](../../docs/portal-conexoes.md).
+
+Três decisões novas, todas do usuário:
+
+1. **Token autoriza por CONSULTA, não por conexão.** `api_clientes.escopos` virou `consultas`.
+   Um token do painel de RNS não alcança o extrato de horas, mesmo sendo da mesma conexão.
+   Escopo por conexão era um agregado que ninguém pediu — e que só existia porque era mais
+   simples de escrever.
+2. **Consulta pode nascer pela TELA**, com o contrato extraído do próprio banco pelo "Testar".
+   Contraria parcialmente a decisão original ("o catálogo é código, não tabela") e o custo foi
+   pago explicitamente: as checagens que o CI faz no catálogo rodam na hora de salvar, o
+   catálogo rotula a origem, e em conflito de nome **o código vence**.
+3. **Entrypoint próprio para a instância interna** (`main-dados.ts`), com a lista de módulos
+   fechada por teste. A alternativa — subir o Painel inteiro numa porta e publicar só
+   `/dados` — devolveria à máquina que tem a credencial toda a superfície do Painel.
+
+**O limite que fica registrado:** o código garante que só se executa `SELECT`; *qual tabela*
+esse SELECT lê é privilégio do usuário no banco. A credencial em uso (`powerbi`) alcança 4.980
+objetos em 39 schemas, e o catálogo precisa de 16. Enquanto o `painel_ro` de privilégio mínimo
+não existir, a criação de consulta pela tela herda esse alcance — está em
+[docs/pendencias.md](../../docs/pendencias.md) como pré-requisito duro, não como recomendação.

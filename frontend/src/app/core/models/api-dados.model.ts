@@ -16,7 +16,6 @@ export interface ConsultaPublicada {
   titulo: string;
   descricao: string;
   conexao: ChaveConexao;
-  escopo: string;
   parametros: ParametroConsulta[];
   limiteLinhas: number;
   cacheSegundos: number;
@@ -41,7 +40,8 @@ export interface ClienteApi {
   id: number;
   nome: string;
   prefixo: string;
-  escopos: string[];
+  /** Nomes das consultas que este token autoriza — a autorização é POR CONSULTA. */
+  consultas: string[];
   ativo: boolean;
   observacao: string;
   criadoEm: string;
@@ -61,4 +61,49 @@ export interface MetricaConsulta {
   msTotal: number;
   msMedio: number;
   ultimaEm: string | null;
+}
+
+// ── Consultas criadas pela TELA (Portal de Conexões) ────────────────────────────────
+
+export type TipoParametroApi =
+  | 'data'
+  | 'competencia'
+  | 'datahora_minuto'
+  | 'inteiro'
+  | 'texto'
+  | 'texto_busca'
+  | 'lista_texto';
+
+export const TIPOS_PARAMETRO: { valor: TipoParametroApi; rotulo: string }[] = [
+  { valor: 'data', rotulo: 'Data (AAAA-MM-DD)' },
+  { valor: 'competencia', rotulo: 'Competência (AAAA-MM)' },
+  { valor: 'datahora_minuto', rotulo: 'Data e hora (AAAA-MM-DD HH:MM)' },
+  { valor: 'inteiro', rotulo: 'Número inteiro' },
+  { valor: 'texto', rotulo: 'Texto' },
+  { valor: 'texto_busca', rotulo: 'Texto de busca (aplica % automaticamente)' },
+  { valor: 'lista_texto', rotulo: 'Lista de textos (para IN)' },
+];
+
+/** Uma consulta salva no Portal de Conexões, com os campos de publicação. */
+export interface ConsultaPublicadaResumo {
+  slug: string;
+  nome: string;
+  conexao: ChaveConexao;
+  sql: string;
+  nomeApi: string;
+  publicada: boolean;
+  parametros: ParametroConsulta[];
+  colunas: string[];
+  limiteLinhas: number;
+  cacheSegundos: number;
+}
+
+/** Resposta do "Testar": é daqui que sai o contrato, sem digitação. */
+export interface AnaliseConsulta {
+  ok: boolean;
+  mensagem: string;
+  binds: string[];
+  colunas: string[];
+  amostra: Record<string, unknown> | null;
+  ms: number;
 }

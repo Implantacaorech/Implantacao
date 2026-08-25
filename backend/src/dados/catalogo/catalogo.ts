@@ -111,7 +111,6 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao:
       'Clientes do SICLA por código, nome ou fantasia — entrada do passo 1 do processo de implantação.',
     conexao: 'sicla',
-    escopo: 'sicla:leitura',
     menus: ['novo_cliente'],
     parametros: [
       {
@@ -140,7 +139,6 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao:
       'Módulos e adicionais do SIGER (SICLA.LISTA_SISTEMAS) por código, descrição ou sigla.',
     conexao: 'sicla',
-    escopo: 'sicla:leitura',
     menus: ['novo_cliente'],
     parametros: [
       {
@@ -171,7 +169,6 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao:
       'Técnicos que alimentam o cadastro de Usuários do Painel. Sem parâmetro — o filtro por termo é aplicado em memória pelo consumidor, para que um SQL editado sem :termo nunca quebre.',
     conexao: 'sicla',
-    escopo: 'sicla:leitura',
     menus: ['usuarios'],
     parametros: [],
     origem: {
@@ -191,7 +188,6 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao:
       'Funções que alimentam a Matriz por Menu (Funções SICLA). Sem parâmetro.',
     conexao: 'sicla',
-    escopo: 'sicla:leitura',
     menus: ['matriz_funcoes'],
     parametros: [],
     origem: {
@@ -216,7 +212,6 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao:
       'Itens de pedido do SICLA (LISTA_ITEMPED) criados na janela informada — origem da tela Execução → RNS.',
     conexao: 'sicla',
-    escopo: 'sicla:leitura',
     menus: ['rns'],
     parametros: [obrigatorio(P.dataIni), obrigatorio(P.dataFim)],
     origem: {
@@ -239,7 +234,6 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao:
       'Todos os itens de UMA RNS. É a `sicla.rns.listar` recortada por pedido, para herdar qualquer correção de schema feita no SQL base.',
     conexao: 'sicla',
-    escopo: 'sicla:leitura',
     menus: ['rns'],
     parametros: [
       {
@@ -275,7 +269,6 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao:
       'Compromissos do SICLA na janela informada — origem da tela Execução → Agenda e do BI de Alocação.',
     conexao: 'sicla',
-    escopo: 'sicla:leitura',
     menus: ['agenda', 'dashboards'],
     parametros: [P.mesIni, P.mesFim],
     origem: { tipo: 'fixo', sql: SQL_CALENDARIO_ALOCACAO },
@@ -290,7 +283,6 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao:
       'Horas efetivamente aplicadas na janela — complemento do BI de Alocação de Agendas.',
     conexao: 'sicla',
-    escopo: 'sicla:leitura',
     menus: ['dashboards'],
     parametros: [P.dataIni, P.dataFim],
     origem: { tipo: 'fixo', sql: SQL_HORAS_APLICADAS },
@@ -304,7 +296,6 @@ export const CATALOGO: ConsultaCatalogo[] = [
     titulo: 'Agendas do BI de Implantação',
     descricao: 'Agendas do SICLA na janela mensal — painel de agendas do BI.',
     conexao: 'sicla',
-    escopo: 'sicla:leitura',
     menus: ['bi_implantacao'],
     parametros: [P.mesIni, P.mesFim],
     origem: { tipo: 'fixo', sql: SQL_AGENDAS },
@@ -321,7 +312,6 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao:
       'RNS de implantação por data de contratação — painel principal do BI de Implantação.',
     conexao: 'sicla',
-    escopo: 'sicla:leitura',
     menus: ['bi_implantacao'],
     parametros: [P.dataIni, P.dataFim],
     origem: { tipo: 'fixo', sql: SQL_RESUMO_IMPLANTACAO },
@@ -335,7 +325,6 @@ export const CATALOGO: ConsultaCatalogo[] = [
     titulo: 'Extrato de horas',
     descricao: 'Lançamentos de hora do SICLA na janela informada.',
     conexao: 'sicla',
-    escopo: 'sicla:leitura',
     menus: ['bi_implantacao'],
     parametros: [P.dataIni, P.dataFim],
     origem: { tipo: 'fixo', sql: SQL_EXTRATO_HORAS },
@@ -350,7 +339,6 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao:
       'Texto completo de UM lançamento, identificado por protocolo + data/hora ao minuto.',
     conexao: 'sicla',
-    escopo: 'sicla:leitura',
     menus: ['bi_implantacao'],
     parametros: [
       {
@@ -380,7 +368,6 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao:
       'RNS filhas (conversão, desenvolvimento, BI) criadas na janela informada.',
     conexao: 'sicla',
-    escopo: 'sicla:leitura',
     menus: ['bi_implantacao'],
     parametros: [P.dataIni, P.dataFim],
     origem: { tipo: 'fixo', sql: SQL_RNS_VINCULADAS },
@@ -395,7 +382,6 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao:
       'Indicadores mensais do SICLA. A view guarda a competência como AAAA/MM — a conversão a partir de AAAA-MM é do executor.',
     conexao: 'sicla',
-    escopo: 'sicla:leitura',
     menus: ['dashboards'],
     parametros: [
       {
@@ -423,7 +409,6 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao:
       'Movimentos já AGREGADOS no Oracle (técnico × tipo de movimento × cobrança). O filtro fino é em memória, de propósito — é o que evita o problema de escala que esta consulta existe para não repetir.',
     conexao: 'sicla',
-    escopo: 'sicla:leitura',
     menus: ['dashboards'],
     parametros: [
       obrigatorio(P.dataIni),
@@ -449,7 +434,6 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao:
       'Clientes com previsão de início oficial no período — a consulta semeada dos Dashboards.',
     conexao: 'sicla',
-    escopo: 'sicla:leitura',
     menus: ['dashboards'],
     parametros: [obrigatorio(P.dataIni), obrigatorio(P.dataFim)],
     // O texto é conferido/ajustado pelo Administrador contra a view real do SICLA — o
@@ -484,7 +468,6 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao:
       'Compromissos do SICLA por técnico, data e turno na janela informada — base do Agendador de Visitas, da distribuição do cronograma e da capacidade do Centro Operacional.',
     conexao: 'sicla',
-    escopo: 'sicla:leitura',
     menus: ['coordenacao', 'centro_operacional'],
     parametros: [
       obrigatorio(P.dataIni),
@@ -516,7 +499,6 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao:
       'Mapa de código para nome canônico do técnico — usado para traduzir o código do cadastro antes de consultar a ocupação, que casa por nome.',
     conexao: 'sicla',
-    escopo: 'sicla:leitura',
     menus: ['coordenacao', 'centro_operacional'],
     parametros: [],
     origem: {
@@ -537,7 +519,6 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao:
       'Visitas com número de protocolo e aprovação — dado que só existe no banco do Portal (o SICLA não o espelha, e a API do Portal é escopada por usuário).',
     conexao: 'portal_rech',
-    escopo: 'portal_rech:leitura',
     menus: ['bi_implantacao'],
     parametros: [P.dataIni, P.dataFim],
     origem: {
@@ -563,8 +544,10 @@ export function consultaPorNome(nome: string): ConsultaCatalogo | undefined {
   return POR_NOME.get((nome || '').trim());
 }
 
-/** Escopos existentes no catálogo — é a lista FECHADA que um cliente de máquina pode
- * receber. Derivada do catálogo, nunca digitada à mão em dois lugares. */
-export function escoposDisponiveis(): string[] {
-  return [...new Set(CATALOGO.map((c) => c.escopo))].sort();
+/** Nomes de TODAS as consultas do catálogo em código — a lista fechada que um token pode
+ * autorizar. Desde 2026-08-25 a autorização é POR CONSULTA, não por conexão: um token que
+ * serve para `sicla.rns.listar` não abre o resto do SICLA. Derivada do catálogo, nunca
+ * digitada à mão em dois lugares. */
+export function nomesDisponiveis(): string[] {
+  return CATALOGO.map((c) => c.nome).sort();
 }

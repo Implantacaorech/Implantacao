@@ -8,7 +8,7 @@ import {
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { VERSAO_CONTRATO } from './catalogo/catalogo';
 import { ConexoesService } from './conexoes/conexoes.service';
-import { Chamador, EscoposChamador } from './decorators/chamador.decorator';
+import { Chamador, ConsultasDoChamador } from './decorators/chamador.decorator';
 import { DadosService } from './dados.service';
 // `import type` obrigatório: o tipo aparece na assinatura de um método DECORADO e o
 // emitDecoratorMetadata + isolatedModules exigem que ele não vire import de valor.
@@ -25,7 +25,7 @@ import { AcessoDadosGuard } from './guards/acesso-dados.guard';
  * restrita ao Administrador.
  *
  * Autenticação: JWT do Painel (pessoa, gateada por menu) ou `X-API-Key` (cliente de
- * máquina, gateado por escopo). Ver `src/dados/docs/api.md`. */
+ * máquina, gateado pela lista de consultas do token). Ver `src/dados/docs/api.md`. */
 @ApiTags('dados')
 @ApiBearerAuth()
 @ApiSecurity('api-key')
@@ -41,8 +41,8 @@ export class DadosController {
   @ApiOperation({
     summary: 'Catálogo de consultas disponíveis (sem o SQL)',
   })
-  listar(@EscoposChamador() escopos?: string[]) {
-    const consultas = this.dados.listar(escopos);
+  async listar(@ConsultasDoChamador() autorizadas?: string[]) {
+    const consultas = await this.dados.listar(autorizadas);
     return new ApiEnvelope(
       { versao: VERSAO_CONTRATO, total: consultas.length, consultas },
       `${consultas.length} consulta(s) no catálogo ${VERSAO_CONTRATO}.`,
@@ -59,8 +59,8 @@ export class DadosController {
 
   @Get('consultas/:nome')
   @ApiOperation({ summary: 'Contrato de uma consulta (parâmetros, tetos)' })
-  descrever(@Param('nome') nome: string) {
-    return new ApiEnvelope(this.dados.descrever(nome));
+  async descrever(@Param('nome') nome: string) {
+    return new ApiEnvelope(await this.dados.descrever(nome));
   }
 
   @Post('consultas/:nome/executar')

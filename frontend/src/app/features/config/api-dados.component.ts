@@ -7,6 +7,7 @@ import {
   CatalogoDados,
   ClienteApi,
   ConsultaPublicada,
+  ConsultaPublicadaResumo,
   EstadoConexao,
   MetricaConsulta,
 } from '../../core/models/api-dados.model';
@@ -15,6 +16,9 @@ import {
  *
  * Mostra o CATÁLOGO (o que existe para ser consultado, sem o SQL), o estado das CONEXÕES, os
  * CLIENTES DE MÁQUINA (outro sistema da Rech, agente de IA, BI) e o USO por consulta.
+ *
+ * A autorização de um token é POR CONSULTA: no cadastro marcam-se exatamente os nomes que
+ * aquele token poderá chamar — não a conexão inteira.
  *
  * A chave de um cliente aparece UMA vez — na criação e na rotação. Não há como recuperá-la
  * depois: o banco guarda só o hash. */
@@ -39,8 +43,12 @@ export class ApiDadosComponent {
   readonly catalogo = signal<CatalogoDados | null>(null);
   readonly conexoes = signal<EstadoConexao[]>([]);
   readonly clientes = signal<ClienteApi[]>([]);
-  readonly escopos = signal<string[]>([]);
+  /** Universo de consultas que um token pode autorizar (o catálogo). */
+  readonly consultasDisponiveis = signal<string[]>([]);
   readonly metricas = signal<MetricaConsulta[]>([]);
+  /** Consultas criadas PELA TELA — publicadas ou ainda rascunho. Ficam à parte do catálogo
+   * porque só elas são editáveis aqui; as de código exigem release. */
+  readonly consultasDeTela = signal<ConsultaPublicadaResumo[]>([]);
 
   /** Chave recém-gerada, em claro. Fica na tela até o Administrador fechar o aviso —
    * é a única oportunidade de copiá-la. */
@@ -48,7 +56,7 @@ export class ApiDadosComponent {
 
   readonly form = this.fb.nonNullable.group({
     nome: ['', Validators.required],
-    escopos: [[] as string[], Validators.required],
+    consultas: [[] as string[], Validators.required],
     observacao: [''],
   });
 
@@ -97,36 +105,64 @@ export class ApiDadosComponent {
     // tela junto: o Administrador precisa justamente desta tela para ver o catálogo e
     // diagnosticar. Degrada com aviso, não com página em branco.
     try {
-      const [clientes, escopos, metricas] = await Promise.all([
+      const [clientes, disponiveis, metricas, deTela] = await Promise.all([
         this.service.clientes(),
-        this.service.escopos(),
+        this.service.consultasDisponiveis(),
         this.service.metricas(),
+        this.service.listarConsultas(),
       ]);
       this.clientes.set(clientes);
-      this.escopos.set(escopos);
+      this.consultasDisponiveis.set(disponiveis);
       this.metricas.set(metricas);
+      this.consultasDeTela.set(deTela);
     } catch {
       this.avisoClientes.set(
-        'Não foi possível carregar os clientes de máquina. Se a API de Dados acabou de entrar, rode a migration `ApiClientes` (cd backend && npm run migration:run).',
+        'Não foi possível carregar os clientes de máquina e as consultas da tela. Se a API de Dados acabou de entrar, rode as migrations (cd backend && npm run migration:run).',
       );
     } finally {
       this.carregando.set(false);
     }
   }
 
-  alternarEscopo(escopo: string, marcado: boolean): void {
-    const atuais = this.form.controls.escopos.value;
-    const novos = marcado ? [...new Set([...atuais, escopo])] : atuais.filter((e) => e !== escopo);
-    this.form.controls.escopos.setValue(novos);
+  alternarConsulta(nome: string, marcada: boolean): void {
+    const atuais = this.form.controls.consultas.value;
+    const novas = marcada
+      ? [...new Set([...atuais, nome])]
+      : atuais.filter((c) => c !== nome);
+    this.form.controls.consultas.setValue(novas);
   }
 
-  escopoMarcado(escopo: string): boolean {
-    return this.form.controls.escopos.value.includes(escopo);
+  consultaMarcada(nome: string): boolean {
+    return this.form.controls.consultas.value.includes(nome);
+  }
+
+  /** Marca/desmarca de uma vez todas as consultas de uma conexão — atalho para quem vai
+   * liberar um bloco inteiro, sem obrigar 18 cliques. */
+  alternarGrupo(chave: string, marcar: boolean): void {
+    const nomes = this.consultasDoGrupo(chave);
+    const atuais = this.form.controls.consultas.value;
+    const novas = marcar
+      ? [...new Set([...atuais, ...nomes])]
+      : atuais.filter((c) => !nomes.includes(c));
+    this.form.controls.consultas.setValue(novas);
+  }
+
+  /** Nomes disponíveis de uma conexão, na ordem do catálogo. */
+  consultasDoGrupo(chave: string): string[] {
+    const disponiveis = this.consultasDisponiveis();
+    return (this.catalogo()?.consultas ?? [])
+      .filter((c) => c.conexao === chave && disponiveis.includes(c.nome))
+      .map((c) => c.nome);
+  }
+
+  grupoInteiroMarcado(chave: string): boolean {
+    const nomes = this.consultasDoGrupo(chave);
+    return nomes.length > 0 && nomes.every((n) => this.consultaMarcada(n));
   }
 
   async criar(): Promise<void> {
-    if (this.form.invalid || this.form.controls.escopos.value.length === 0) {
-      this.erro.set('Informe o nome e ao menos um escopo.');
+    if (this.form.invalid || this.form.controls.consultas.value.length === 0) {
+      this.erro.set('Informe o nome e ao menos uma consulta que o token poderá chamar.');
       return;
     }
     this.salvando.set(true);
@@ -134,7 +170,7 @@ export class ApiDadosComponent {
     try {
       const criado = await this.service.criarCliente(this.form.getRawValue());
       this.chaveNova.set({ nome: criado.nome, chave: criado.chave });
-      this.form.reset({ nome: '', escopos: [], observacao: '' });
+      this.form.reset({ nome: '', consultas: [], observacao: '' });
       await this.recarregarClientes();
     } catch {
       this.erro.set('Não foi possível criar o cliente.');

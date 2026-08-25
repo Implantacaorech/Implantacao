@@ -37,22 +37,23 @@ também para o dado por baixo dela, sem código novo.
 
 **Ator:** aplicação interna que hoje abriria uma conexão própria ao SICLA.
 
-1. O Administrador cadastra o cliente em `POST /api/dados/v1/admin/clientes`, com os escopos
-   mínimos, e entrega a chave (exibida uma vez).
+1. O Administrador cadastra o cliente em `POST /api/dados/v1/admin/clientes`, marcando
+   **exatamente as consultas** que aquele token poderá chamar, e entrega a chave (exibida uma
+   vez).
 2. O sistema chama a API com `X-API-Key`, lendo o catálogo por `GET /consultas` para saber o
    que pode pedir.
 3. Se a integração for desligada, o Administrador **revoga** — e o `ultimoUsoEm` prova que
    ninguém mais dependia dela.
 
 **O ganho real:** a credencial do Oracle deixa de circular. Antes, cada sistema que quisesse
-o dado do SICLA precisava da senha do banco; agora precisa de uma chave escopada, revogável
-isoladamente e rastreável no log.
+o dado do SICLA precisava da senha do banco; agora precisa de uma chave que autoriza uma
+lista fechada de consultas, revogável isoladamente e rastreável no log.
 
 ## CU-04 · Agente de IA / automação consulta
 
 **Ator:** skill ou agente que precisa de dado do SICLA (ex.: montar o dossiê de um cliente).
 
-Mesma porta do CU-03, com escopo próprio — o que permite revogar **só** o agente sem afetar
+Mesma porta do CU-03, com token próprio — o que permite revogar **só** o agente sem afetar
 o BI, e ver no log quantas consultas ele fez.
 
 Ponto de atenção: o catálogo é o teto do que um agente consegue perguntar ao banco. Ampliar
@@ -95,3 +96,34 @@ que se cadastra, revoga e rotaciona chave — e o botão de limpar cache mora al
    (mensagem original vai junto); `400` é a requisição.
 3. `GET /api/dados/v1/admin/metricas` — a consulta está sendo chamada? está errando? quanto
    tempo leva?
+
+## CU-08 · Administrador publica uma consulta nova, sem release
+
+**Ator:** Administrador do Painel, em **Sistema → API de Dados → Nova consulta**.
+
+1. Escolhe a conexão e cola o SELECT.
+2. **Testar** — a consulta roda com limite 1; o sistema devolve os `:binds` que o texto cita e
+   as colunas que o banco respondeu. O operador **não digita** a lista de campos.
+3. Escolhe o tipo de cada parâmetro (é ele que valida a entrada antes do banco) e o teto de
+   linhas.
+4. Marca **Publicar** e salva. Se algo do contrato não fecha, a recusa vem como lista — todos
+   os problemas de uma vez.
+5. A consulta aparece em `GET /consultas` e já pode ser marcada num token.
+
+**Por que existe:** publicar consulta não podia depender de deploy — é o que torna as duas
+instâncias operáveis (`docs/portal-conexoes.md`). **O que custa:** o contrato não passa por
+PR, então a validação que o CI faz no catálogo de código roda na hora de salvar, e o catálogo
+rotula a origem — "revisada ou de tela?" é a primeira pergunta quando algo dá errado.
+
+**Limite honesto:** o código garante que só se executa `SELECT`. *Qual tabela* esse SELECT lê
+é privilégio do usuário no banco — por isso o usuário Oracle de leitura mínima (`painel_ro`) é
+pré-requisito deste caminho, não recomendação.
+
+## CU-09 · Painel na nuvem consulta pela instância interna
+
+**Ator:** o Painel publicado fora da rede da Rech (instância 2).
+
+Ele não tem — nem pode ter — credencial de banco. Chama a instância interna (Portal de
+Conexões, porta 5110, pelo túnel) com `X-API-Key`, pedindo a consulta pelo nome. O que um
+comprometimento da nuvem alcança é essa lista fechada de consultas, com teto de linhas: não um
+banco. Desenho completo em [`docs/portal-conexoes.md`](../../../../docs/portal-conexoes.md).

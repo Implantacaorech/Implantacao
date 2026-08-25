@@ -5,6 +5,8 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConsultaBdService } from './consulta-bd.service';
+import { CATALOGO } from './catalogo/catalogo';
+import { CatalogoService } from './catalogo/catalogo.service';
 import { ConexoesService, ResultadoBruto } from './conexoes/conexoes.service';
 import { DadosService, IdentidadeChamador } from './dados.service';
 
@@ -48,9 +50,16 @@ function montar(overrides: Partial<ResultadoBruto> = {}): Dublês {
     motivoIndisponivel: () => 'Conexão não configurada.',
   } as unknown as ConexoesService;
   const consultas = { porSlug } as unknown as ConsultaBdService;
+  // Catálogo efetivo = só o de código neste teste; as consultas de tela têm spec própria.
+  const catalogo = {
+    listar: () => Promise.resolve(CATALOGO),
+    porNome: (nome: string) =>
+      Promise.resolve(CATALOGO.find((c) => c.nome === nome)),
+    nomes: () => Promise.resolve(CATALOGO.map((c) => c.nome).sort()),
+  } as unknown as CatalogoService;
 
   return {
-    servico: new DadosService(conexoes, consultas),
+    servico: new DadosService(conexoes, consultas, catalogo),
     executar,
     configurada,
     porSlug,
@@ -63,9 +72,9 @@ function montar(overrides: Partial<ResultadoBruto> = {}): Dublês {
 describe('DadosService', () => {
   beforeEach(() => jest.restoreAllMocks());
 
-  it('lista o catálogo sem expor o SQL', () => {
+  it('lista o catálogo sem expor o SQL', async () => {
     const { servico } = montar();
-    const lista = servico.listar();
+    const lista = await servico.listar();
     expect(lista.length).toBeGreaterThan(10);
     for (const c of lista) {
       expect(Object.keys(c)).not.toContain('origem');
@@ -76,11 +85,11 @@ describe('DadosService', () => {
     }
   });
 
-  it('recorta a listagem pelos escopos do cliente de máquina', () => {
+  it('recorta a listagem pelas consultas que o token autoriza', async () => {
+    // Um consumidor externo só enxerga a documentação do que ele mesmo pode consumir.
     const { servico } = montar();
-    const so = servico.listar(['portal_rech:leitura']);
-    expect(so.length).toBeGreaterThan(0);
-    expect(so.every((c) => c.conexao === 'portal_rech')).toBe(true);
+    const so = await servico.listar(['portal.visitas.listar']);
+    expect(so.map((c) => c.nome)).toEqual(['portal.visitas.listar']);
   });
 
   it('404 em consulta que não existe no catálogo', async () => {
@@ -331,10 +340,10 @@ describe('DadosService', () => {
     });
   });
 
-  it('descrever devolve o contrato da consulta', () => {
+  it('descrever devolve o contrato da consulta', async () => {
     const { servico } = montar();
-    const c = servico.descrever('sicla.bi.indicadores');
+    const c = await servico.descrever('sicla.bi.indicadores');
     expect(c.parametros.map((p) => p.nome)).toEqual(['comp_ini', 'comp_fim']);
-    expect(c.escopo).toBe('sicla:leitura');
+    expect(c.conexao).toBe('sicla');
   });
 });

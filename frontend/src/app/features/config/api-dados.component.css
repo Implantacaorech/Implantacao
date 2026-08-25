@@ -44,10 +44,20 @@
 }
 
 .escopo-item {
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  align-items: baseline;
   gap: 6px;
-  margin-right: 16px;
+  padding: 1px 0 1px 18px;
+}
+
+/* O cabeçalho do grupo (a conexão) não recua: é ele que ancora a lista da conexão. */
+.escopo-item.cabecalho {
+  padding-left: 0;
+  margin-top: 8px;
+}
+
+.grupo-escopo + .grupo-escopo {
+  margin-top: 4px;
 }
 
 .num {

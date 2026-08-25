@@ -9,12 +9,11 @@ import {
 } from '@nestjs/common';
 import { ConsultaBdService } from './consulta-bd.service';
 import {
-  CATALOGO,
-  consultaPorNome,
   TAMANHO_PAGINA_MAX,
   TAMANHO_PAGINA_PADRAO,
   VERSAO_CONTRATO,
 } from './catalogo/catalogo';
+import { CatalogoService } from './catalogo/catalogo.service';
 import { ChaveConexao, ConsultaCatalogo } from './catalogo/catalogo.types';
 import { validarParametros } from './catalogo/parametros.util';
 import { ConexoesService, ResultadoBruto } from './conexoes/conexoes.service';
@@ -65,7 +64,6 @@ export interface ConsultaPublicada {
   titulo: string;
   descricao: string;
   conexao: ChaveConexao;
-  escopo: string;
   parametros: ConsultaCatalogo['parametros'];
   limiteLinhas: number;
   cacheSegundos: number;
@@ -106,17 +104,22 @@ export class DadosService {
   constructor(
     private readonly conexoes: ConexoesService,
     private readonly consultasSalvas: ConsultaBdService,
+    private readonly catalogo: CatalogoService,
   ) {}
 
-  /** Catálogo publicado, opcionalmente recortado pelos escopos do chamador. */
-  listar(escoposDoChamador?: string[]): ConsultaPublicada[] {
+  /** Catálogo publicado, opcionalmente recortado pelas consultas que o token autoriza.
+   * É assíncrono porque o catálogo EFETIVO mistura as consultas de código com as publicadas
+   * pela tela (ver CatalogoService). */
+  async listar(consultasDoChamador?: string[]): Promise<ConsultaPublicada[]> {
     const permitido = (c: ConsultaCatalogo): boolean =>
-      !escoposDoChamador || escoposDoChamador.includes(c.escopo);
-    return CATALOGO.filter(permitido).map((c) => this.publicar(c));
+      !consultasDoChamador || consultasDoChamador.includes(c.nome);
+    return (await this.catalogo.listar())
+      .filter(permitido)
+      .map((c) => this.publicar(c));
   }
 
-  descrever(nome: string): ConsultaPublicada {
-    return this.publicar(this.exigirConsulta(nome));
+  async descrever(nome: string): Promise<ConsultaPublicada> {
+    return this.publicar(await this.exigirConsulta(nome));
   }
 
   /** A conexão externa está cadastrada e ativa? Pergunta legítima de quem decide se vale a
@@ -126,9 +129,12 @@ export class DadosService {
     return this.conexoes.configurada(chave);
   }
 
-  /** A consulta existe no catálogo? (usado pelo guard, antes de resolver escopo). */
-  buscar(nome: string): ConsultaCatalogo | undefined {
-    return consultaPorNome(nome);
+  /** A consulta existe no catálogo EFETIVO? Usado pelo guard, antes de decidir autorização.
+   * Devolve `undefined` em vez de lançar: quem responde "não existe" é o executor, com a
+   * mensagem que aponta o catálogo — barrar no guard esconderia erro de digitação atrás de
+   * "sem permissão". */
+  async buscar(nome: string): Promise<ConsultaCatalogo | undefined> {
+    return this.catalogo.porNome(nome);
   }
 
   private publicar(c: ConsultaCatalogo): ConsultaPublicada {
@@ -137,7 +143,6 @@ export class DadosService {
       titulo: c.titulo,
       descricao: c.descricao,
       conexao: c.conexao,
-      escopo: c.escopo,
       parametros: c.parametros,
       limiteLinhas: c.limiteLinhas,
       cacheSegundos: c.cacheSegundos,
@@ -145,8 +150,8 @@ export class DadosService {
     };
   }
 
-  private exigirConsulta(nome: string): ConsultaCatalogo {
-    const c = consultaPorNome(nome);
+  private async exigirConsulta(nome: string): Promise<ConsultaCatalogo> {
+    const c = await this.catalogo.porNome(nome);
     if (!c) {
       throw new NotFoundException(
         `Consulta "${nome}" não existe no catálogo ${VERSAO_CONTRATO}. Veja GET /api/dados/${VERSAO_CONTRATO}/consultas.`,
@@ -160,6 +165,19 @@ export class DadosService {
    * (antes do seed). Sem nenhum dos dois, falha com uma mensagem que diz onde resolver. */
   private async sqlVigente(c: ConsultaCatalogo): Promise<string> {
     if (c.origem.tipo === 'fixo') return c.origem.sql;
+
+    if (c.origem.tipo === 'tela') {
+      // Sem fallback de propósito: não existe versão "de código" de uma consulta de tela.
+      // Se a linha sumiu de Consultas BD, a consulta deixou de existir.
+      const salva = await this.consultasSalvas.porSlug(c.origem.slug);
+      const texto = (salva?.sql ?? '').trim();
+      if (!texto) {
+        throw new ServiceUnavailableException(
+          `A consulta "${c.nome}" foi criada em Sistema → Consultas BD (slug "${c.origem.slug}") e não foi encontrada lá.`,
+        );
+      }
+      return texto;
+    }
 
     if (c.origem.tipo === 'config_conexao') {
       const texto =
@@ -309,7 +327,7 @@ export class DadosService {
     ms: number;
     cache: boolean;
   }> {
-    const consulta = this.exigirConsulta(nome);
+    const consulta = await this.exigirConsulta(nome);
     const base = await this.sqlVigente(consulta);
     const envelopado = consulta.envelopar ? consulta.envelopar(base) : base;
 

@@ -544,9 +544,14 @@ feita; o que ela revelou em volta, não.
 > [ADR-0003](<../vault/17 - ADR/ADR-0003 - API de Dados como fronteira unica de banco.md>);
 > contrato e uso em [`backend/src/dados/docs/`](../backend/src/dados/docs/README.md).
 > Aplicação **faseada**, com catraca no CI (`backend/src/common/conformidade-api-dados.spec.ts`):
-> os números de exceção só podem CAIR. **As três fases foram concluídas em 2026-08-25.**
-> Estado final: 19 consultas no catálogo, dívida de `executarSql` zerada, 1 exceção de driver
-> (permanente e justificada). Suítes verdes: backend 136/1420, frontend 69/561, e2e 80.
+> os números de exceção só podem CAIR. **As quatro fases foram concluídas em 2026-08-25.**
+> Estado: 19 consultas de código no catálogo (mais as publicadas pela tela), dívida de
+> `executarSql` zerada, 1 exceção de driver (permanente e justificada), e a instância interna
+> (Portal de Conexões) com entrypoint próprio. Suítes verdes: backend 140/1461, frontend
+> 70/572, e2e 88.
+>
+> As **duas instâncias** (interna com a credencial × Painel na nuvem consumindo por token)
+> estão descritas em [docs/portal-conexoes.md](portal-conexoes.md).
 
 ### Fase 0 — fronteira, catálogo e contrato *(concluída em 2026-08-25)*
 - [x] **Módulo `backend/src/dados/`** — catálogo de consultas nomeadas, executor, roteador de
@@ -609,10 +614,51 @@ feita; o que ela revelou em volta, não.
 > com aridade variável; forçá-las num catálogo de consultas *nomeadas* distorceria os dois
 > lados sem fechar risco nenhum. Está declarada, com o motivo, dentro da guarda de CI.
 
+### Fase 3 — as DUAS INSTÂNCIAS (Portal de Conexões) *(concluída em 2026-08-25)*
+> **Por que existe:** o usuário quer publicar o Painel fora da rede da empresa —
+> *"não poderei deixar no portal e em lugar nenhum os dados de conexão com o banco"*. A
+> resposta não é guardar melhor o segredo, é **não tê-lo lá**. Desenho completo em
+> [docs/portal-conexoes.md](portal-conexoes.md).
+
+- [x] **Token por CONSULTA** (decisão do usuário) — `api_clientes.escopos` virou `consultas`:
+  um token autoriza exatamente os nomes marcados, não a conexão inteira. Migration
+  `1788000000000-TokenPorConsulta`. Caso e2e prova que outra consulta **da mesma conexão** dá
+  403.
+- [x] **Consulta criada pela TELA, sem release** (decisão do usuário) — `consultas_bd` ganhou
+  `nome_api`, `publicada`, `parametros`, `colunas`, `limite_linhas`, `cache_segundos`
+  (migration `1788010000000-ConsultaBdPublicada`, aditiva: `publicada` nasce `false`, então
+  nada muda para as 8 consultas que já existiam).
+- [x] **"Testar" tira o contrato do próprio banco**: roda com limite 1 e devolve os `:binds`
+  que o SQL cita (`catalogo/binds.util.ts`) e as colunas que voltaram. Ninguém digita a lista
+  de campos; ao operador resta escolher o tipo de cada parâmetro e o teto.
+- [x] **Publicar valida como o CI valida** (`ConsultasPublicadasService`): só leitura, nome no
+  padrão `<origem>.<assunto>.<ação>`, sem colidir com o catálogo de código (**o código
+  vence**), bind × parâmetro casando nos dois sentidos, teto presente e ≤ 5.000. Não passou,
+  não salva — e a recusa chega ao operador como LISTA, não um erro por vez.
+- [x] **`CatalogoService`** — catálogo EFETIVO = código + publicadas pela tela, com cache de
+  30 s. Banco fora do ar não derruba o catálogo; linha malformada é ignorada, não quebra.
+- [x] **Tela `/config/api-dados/consulta`** (só ADM) — criar/editar/apagar, com Testar.
+- [x] **Instância 1 — Portal de Conexões**: `src/dados/dados-app.module.ts` +
+  `src/main-dados.ts` + `Iniciar_Portal_Conexoes.bat`, porta **5110**. Mesmo binário, outra
+  raiz de módulos: só API de Dados, autenticação, permissões e health.
+- [x] **Catraca da superfície** (`dados/dados-app.module.spec.ts`): a lista de módulos da
+  instância 1 é fechada e não cresce em silêncio — cada módulo a mais é rota exposta na
+  máquina que tem a senha do banco.
+
 ### Ainda aberto — por decisão, não por falta
-- [ ] **Rodar a migration `1787990000000-ApiClientes` em produção**
-  (`cd backend && npm run migration:run`). Até lá, a tela Sistema → API de Dados mostra o
-  catálogo e as conexões normalmente e avisa que a parte de clientes de máquina depende dela.
+- [ ] **Usuário Oracle de leitura mínima (`painel_ro`)** — pedido ao TI. A credencial em uso
+  (`powerbi`) tem `SELECT ANY TABLE`, `SELECT ANY DICTIONARY`, `DROP ANY VIEW` e
+  `CREATE PROCEDURE/TRIGGER/TABLE`, alcançando **4.980 objetos em 39 schemas**; o catálogo
+  precisa de **16**. É **pré-requisito duro** da criação de consulta pela tela: o nosso código
+  garante que só se executa SELECT, mas *qual tabela* o SELECT lê é privilégio do banco.
+- [ ] **`DadosRemotoService` no Painel** — com `MIGRACAO_DADOS_URL` definida, pedir a consulta
+  por HTTP à instância 1 em vez de executar localmente. É o que separa de fato as duas
+  instâncias; hoje o código das duas existe, mas ambas rodam na mesma máquina.
+- [ ] **Túnel + TLS** entre nuvem e rede interna (decisão do TI). A 5110 nunca fica exposta.
+- [ ] **Inversão de confiança** — hoje a instância interna lê chaves *e SQL editável* do mesmo
+  `painel_novo`. Se a nuvem compartilhar esse banco, um comprometimento lá poderia reescrever
+  `consultas_bd` e a instância interna executaria. Ou o `painel_novo` fica na rede interna, ou
+  a instância 1 ganha banco próprio para catálogo e tokens.
 - [ ] **Auditoria em tabela, com retenção** — hoje é log estruturado (com correlation-id). O
   volume é de BI e cresceria sem teto no `painel_novo`; entra quando houver política de
   retenção definida.

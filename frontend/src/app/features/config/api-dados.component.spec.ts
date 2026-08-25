@@ -5,6 +5,7 @@ import { ApiDadosService } from '../../core/services/api-dados.service';
 import {
   CatalogoDados,
   ClienteApi,
+  ConsultaPublicadaResumo,
   EstadoConexao,
 } from '../../core/models/api-dados.model';
 
@@ -17,7 +18,6 @@ const CATALOGO: CatalogoDados = {
       titulo: 'RNS — assuntos',
       descricao: 'itens de pedido',
       conexao: 'sicla',
-      escopo: 'sicla:leitura',
       parametros: [
         { nome: 'data_ini', tipo: 'data', obrigatorio: true, descricao: 'início' },
       ],
@@ -30,7 +30,6 @@ const CATALOGO: CatalogoDados = {
       titulo: 'Visitas do Portal',
       descricao: 'protocolo e aprovação',
       conexao: 'portal_rech',
-      escopo: 'portal_rech:leitura',
       parametros: [],
       limiteLinhas: 20000,
       cacheSegundos: 300,
@@ -60,11 +59,24 @@ const CLIENTE: ClienteApi = {
   id: 7,
   nome: 'Power BI',
   prefixo: 'ab12cd34ef56',
-  escopos: ['sicla:leitura'],
+  consultas: ['sicla.rns.listar'],
   ativo: true,
   observacao: 'Diretoria',
   criadoEm: '2026-08-25T12:00:00.000Z',
   ultimoUsoEm: null,
+};
+
+const DE_TELA: ConsultaPublicadaResumo = {
+  slug: 'minha_consulta',
+  nome: 'Minha consulta',
+  conexao: 'sicla',
+  sql: 'SELECT 1 FROM DUAL',
+  nomeApi: 'sicla.minha.consulta',
+  publicada: true,
+  parametros: [],
+  colunas: ['UM'],
+  limiteLinhas: 500,
+  cacheSegundos: 60,
 };
 
 function servicoPadrao(over: Partial<ApiDadosService> = {}): Partial<ApiDadosService> {
@@ -72,8 +84,10 @@ function servicoPadrao(over: Partial<ApiDadosService> = {}): Partial<ApiDadosSer
     catalogo: () => Promise.resolve(CATALOGO),
     conexoes: () => Promise.resolve(CONEXOES),
     clientes: () => Promise.resolve([CLIENTE]),
-    escopos: () => Promise.resolve(['portal_rech:leitura', 'sicla:leitura']),
+    consultasDisponiveis: () =>
+      Promise.resolve(['portal.visitas.listar', 'sicla.rns.listar']),
     metricas: () => Promise.resolve([]),
+    listarConsultas: () => Promise.resolve([DE_TELA]),
     ...over,
   };
 }
@@ -103,7 +117,7 @@ describe('ApiDadosComponent', () => {
     expect(comp.catalogo()?.total).toBe(2);
     expect(comp.conexoes()).toHaveLength(2);
     expect(comp.clientes()[0].nome).toBe('Power BI');
-    expect(comp.escopos()).toContain('sicla:leitura');
+    expect(comp.consultasDisponiveis()).toContain('sicla.rns.listar');
   });
 
   it('agrupa o catálogo por conexão, com o rótulo legível', async () => {
@@ -113,20 +127,28 @@ describe('ApiDadosComponent', () => {
     expect(comp.rotuloConexao('sicla')).toBe('SICLA (Oracle)');
   });
 
-  it('a tela nunca mostra SQL — o catálogo publicado não o traz', async () => {
+  it('a tela nunca mostra SQL — nem do catálogo, nem das consultas de tela', async () => {
+    // A palavra "SELECT" aparece na instrução ("cole o SELECT"); o que não pode aparecer é
+    // uma CONSULTA — daí exigir o par SELECT … FROM, que é o que revelaria o schema.
     const fixture = await pronto();
     const html: string = fixture.nativeElement.textContent;
-    expect(html).not.toContain('SELECT');
+    expect(html).not.toMatch(/\bSELECT\b[\s\S]*\bFROM\b/i);
   });
 
-  it('não cria cliente sem escopo marcado', async () => {
+  it('lista as consultas criadas pela tela, com a situação de publicação', async () => {
+    const comp = (await pronto()).componentInstance;
+    expect(comp.consultasDeTela()).toHaveLength(1);
+    expect(comp.consultasDeTela()[0].publicada).toBe(true);
+  });
+
+  it('não cria token sem consulta marcada', async () => {
     const criarCliente = vi.fn();
     const fixture = await pronto(servicoPadrao({ criarCliente }));
     const comp = fixture.componentInstance;
     comp.form.controls.nome.setValue('Novo');
     await comp.criar();
     expect(criarCliente).not.toHaveBeenCalled();
-    expect(comp.erro()).toContain('escopo');
+    expect(comp.erro()).toContain('consulta');
   });
 
   it('criar mostra a chave UMA vez e limpa o formulário', async () => {
@@ -137,12 +159,12 @@ describe('ApiDadosComponent', () => {
     const comp = fixture.componentInstance;
 
     comp.form.controls.nome.setValue('Novo');
-    comp.alternarEscopo('sicla:leitura', true);
+    comp.alternarConsulta('sicla.rns.listar', true);
     await comp.criar();
 
     expect(criarCliente).toHaveBeenCalledWith({
       nome: 'Novo',
-      escopos: ['sicla:leitura'],
+      consultas: ['sicla.rns.listar'],
       observacao: '',
     });
     expect(comp.chaveNova()).toEqual({ nome: 'Novo', chave: 'rd_abc_def' });
@@ -153,15 +175,30 @@ describe('ApiDadosComponent', () => {
     expect(comp.chaveNova()).toBeNull();
   });
 
-  it('alternarEscopo marca e desmarca sem duplicar', async () => {
+  it('alternarConsulta marca e desmarca sem duplicar', async () => {
     const comp = (await pronto()).componentInstance;
-    comp.alternarEscopo('sicla:leitura', true);
-    comp.alternarEscopo('sicla:leitura', true);
-    expect(comp.form.controls.escopos.value).toEqual(['sicla:leitura']);
-    expect(comp.escopoMarcado('sicla:leitura')).toBe(true);
+    comp.alternarConsulta('sicla.rns.listar', true);
+    comp.alternarConsulta('sicla.rns.listar', true);
+    expect(comp.form.controls.consultas.value).toEqual(['sicla.rns.listar']);
+    expect(comp.consultaMarcada('sicla.rns.listar')).toBe(true);
 
-    comp.alternarEscopo('sicla:leitura', false);
-    expect(comp.form.controls.escopos.value).toEqual([]);
+    comp.alternarConsulta('sicla.rns.listar', false);
+    expect(comp.form.controls.consultas.value).toEqual([]);
+  });
+
+  it('alternarGrupo marca todas as consultas daquela conexão de uma vez', async () => {
+    // Atalho de usabilidade: liberar um bloco inteiro sem obrigar um clique por consulta.
+    const comp = (await pronto()).componentInstance;
+    expect(comp.grupoInteiroMarcado('sicla')).toBe(false);
+
+    comp.alternarGrupo('sicla', true);
+    expect(comp.form.controls.consultas.value).toEqual(['sicla.rns.listar']);
+    expect(comp.grupoInteiroMarcado('sicla')).toBe(true);
+    // Não contamina a outra conexão.
+    expect(comp.grupoInteiroMarcado('portal_rech')).toBe(false);
+
+    comp.alternarGrupo('sicla', false);
+    expect(comp.form.controls.consultas.value).toEqual([]);
   });
 
   it('revogar pede confirmação e recarrega a lista', async () => {

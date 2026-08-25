@@ -71,6 +71,15 @@ export interface ParametroConsulta {
 export type OrigemSql =
   | { tipo: 'fixo'; sql: string }
   | {
+      /** Consulta CRIADA PELA TELA (Sistema → Consultas BD), publicada no catálogo pelo
+       * Administrador. O SQL vive só em `consultas_bd` — não há texto embutido nem semente,
+       * porque não existe versão "de código" dela. É o caminho que dá autonomia para
+       * publicar consulta sem release; em troca, o contrato não passa por revisão de PR e
+       * as checagens (bind × parâmetro, teto, nome) rodam na HORA DE SALVAR. */
+      tipo: 'tela';
+      slug: string;
+    }
+  | {
       /** SQL guardado na CONFIGURAÇÃO da conexão (tela Sistema → Ferramentas →
        * Disponibilidade), não em código nem em Consultas BD. É a terceira — e última —
        * origem de SQL do sistema: existe porque o SELECT de ocupação varia por instalação
@@ -115,14 +124,12 @@ export interface ConsultaCatalogo {
   titulo: string;
   descricao: string;
   conexao: ChaveConexao;
-  /** Escopo exigido do chamador (`<conexao>:leitura` hoje; a API é somente leitura). */
-  escopo: string;
   /** Gate de MENU aplicado quando o chamador é um usuário do Painel (JWT): basta ter
    * `consulta` em UM dos menus da lista. É lista, e não menu único, porque a mesma consulta
    * costuma alimentar telas diferentes (o calendário de alocação serve a Execução → Agenda
    * e aos Dashboards) — exigir um menu só barraria metade de quem já a enxerga hoje.
    * Ausente = basta estar autenticado. Não se aplica a cliente de máquina, que é gateado
-   * por escopo. */
+   * pelas consultas que o token dele autoriza. */
   menus?: string[];
   parametros: ParametroConsulta[];
   origem: OrigemSql;

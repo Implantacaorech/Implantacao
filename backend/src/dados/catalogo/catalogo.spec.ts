@@ -2,7 +2,7 @@ import { MENUS } from '../../common/constants/menus';
 import {
   CATALOGO,
   consultaPorNome,
-  escoposDisponiveis,
+  nomesDisponiveis,
   TAMANHO_PAGINA_MAX,
 } from './catalogo';
 import { CONEXOES, ChaveConexao } from './catalogo.types';
@@ -35,11 +35,13 @@ describe('Catálogo da API de Dados', () => {
     expect(fora).toEqual([]);
   });
 
-  it('o escopo declarado combina com a conexão', () => {
-    const fora = CATALOGO.filter(
-      (c) => c.escopo !== `${c.conexao}:leitura`,
-    ).map((c) => `${c.nome} → ${c.escopo}`);
-    expect(fora).toEqual([]);
+  it('nomesDisponiveis lista TODAS as consultas, para o cadastro de token', () => {
+    // A autorização de um token é por CONSULTA: esta lista é o universo de opções da tela.
+    // Se ela deixasse de acompanhar o catálogo, uma consulta nova nasceria inautorizável.
+    const nomes = nomesDisponiveis();
+    expect(nomes).toHaveLength(CATALOGO.length);
+    expect(nomes).toEqual([...nomes].sort());
+    expect(nomes).toContain('sicla.rns.listar');
   });
 
   it('todo menu declarado existe no painel de Permissões', () => {
@@ -57,7 +59,14 @@ describe('Catálogo da API de Dados', () => {
   it('todo parâmetro OBRIGATÓRIO é referenciado pelo SQL', () => {
     const problemas: string[] = [];
     for (const c of CATALOGO) {
-      const base = c.origem.tipo === 'fixo' ? c.origem.sql : c.origem.sqlPadrao;
+      // `tela` não aparece no catálogo de CÓDIGO (é montada em runtime a partir de
+      // consultas_bd), mas o narrow precisa cobri-la — daí o `in`.
+      const base =
+        c.origem.tipo === 'fixo'
+          ? c.origem.sql
+          : 'sqlPadrao' in c.origem
+            ? c.origem.sqlPadrao
+            : '';
       // A consulta cujo texto vive só em Consultas BD (sqlPadrao vazio) não tem como ser
       // conferida aqui — quem confere é o Administrador, na tela.
       if (!base.trim()) continue;
@@ -75,7 +84,14 @@ describe('Catálogo da API de Dados', () => {
   it('todo bind do SQL está declarado como parâmetro', () => {
     const problemas: string[] = [];
     for (const c of CATALOGO) {
-      const base = c.origem.tipo === 'fixo' ? c.origem.sql : c.origem.sqlPadrao;
+      // `tela` não aparece no catálogo de CÓDIGO (é montada em runtime a partir de
+      // consultas_bd), mas o narrow precisa cobri-la — daí o `in`.
+      const base =
+        c.origem.tipo === 'fixo'
+          ? c.origem.sql
+          : 'sqlPadrao' in c.origem
+            ? c.origem.sqlPadrao
+            : '';
       if (!base.trim()) continue;
       const sql = c.envelopar ? c.envelopar(base) : base;
       const declarados = new Set(c.parametros.map((p) => p.nome));
@@ -116,13 +132,6 @@ describe('Catálogo da API de Dados', () => {
       (c) => c.titulo.trim().length < 5 || c.descricao.trim().length < 30,
     ).map((c) => c.nome);
     expect(pobres).toEqual([]);
-  });
-
-  it('escoposDisponiveis deriva do catálogo, sem repetir', () => {
-    expect(escoposDisponiveis()).toEqual([
-      'portal_rech:leitura',
-      'sicla:leitura',
-    ]);
   });
 
   it('consultaPorNome encontra e apara espaço', () => {

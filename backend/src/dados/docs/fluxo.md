@@ -12,7 +12,7 @@ AcessoDadosGuard
    ├─ tem X-API-Key?
    │    ├─ SIM → ClienteApiService.autenticar   → 401 se inválida/revogada
    │    │        grava ultimoUsoEm (sem segurar a requisição)
-   │    │        escopo da consulta ∈ escopos?  → 403 se não
+   │    │        nome da consulta ∈ consultas do token?  → 403 se não
    │    └─ NÃO → passport-jwt                   → 401 se ausente/expirado
    │             PermissoesService.nivelEfetivo → 403 se nenhum menu atende
    │  (em ambos: grava `identidadeDados` no request)
@@ -61,7 +61,7 @@ ResponseInterceptor → { success, data, message, pagination, timestamp }
 | Passo | Falha | Código | Quem resolve |
 |---|---|---|---|
 | Guard | sem credencial / chave inválida | `401` | Consumidor |
-| Guard | sem menu / sem escopo | `403` | ADM (Permissões ou cadastro do cliente) |
+| Guard | sem menu / consulta fora do token | `403` | ADM (Permissões ou cadastro do cliente) |
 | 1 | nome fora do catálogo | `404` | Consumidor |
 | 2 | consulta salva ausente, ou SELECT de ocupação em branco | `503` | ADM (Consultas BD / Disponibilidade) |
 | 3 | parâmetro inválido | `400` | Consumidor |

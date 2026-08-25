@@ -40,10 +40,18 @@ aberto em readonly, sem credencial e sem outro consumidor — o módulo já é a
 | [casos-de-uso.md](casos-de-uso.md) | Painel, outro sistema, agente de IA, BI/planilha |
 | [fluxo.md](fluxo.md) | Sequência de uma execução, ponta a ponta |
 
+O desenho das **duas instâncias** (a interna que tem a credencial × o Painel na nuvem que
+consome por token) está em
+[`docs/portal-conexoes.md`](../../../../docs/portal-conexoes.md).
+
 ## Como acrescentar uma consulta
 
+Dois caminhos, e a diferença entre eles é **quem revisa o contrato**.
+
+### a) Pelo código — contrato revisado, exige release
+
 1. Escreva o SQL em [`catalogo/sql/`](../catalogo/sql/) e declare a entrada em
-   [`catalogo/catalogo.ts`](../catalogo/catalogo.ts) — nome, conexão, escopo, menus,
+   [`catalogo/catalogo.ts`](../catalogo/catalogo.ts) — nome, conexão, menus,
    parâmetros, origem do SQL, teto e cache.
 2. `npm test` — [`catalogo.spec.ts`](../catalogo/catalogo.spec.ts) confere nome único,
    menu existente, bind declarado × bind usado, tetos.
@@ -53,17 +61,39 @@ Não há passo de controller, rota ou DTO — é de propósito. Consulta nova é
 código novo. Se a origem for `consulta_salva`, ela ainda aparece sozinha em Sistema →
 Consultas BD: a semeadura é derivada do catálogo ([`catalogo-seed.service.ts`](../catalogo-seed.service.ts)).
 
+### b) Pela TELA — autonomia, sem release
+
+**Sistema → API de Dados → Nova consulta**: cola o SELECT, clica em **Testar** (o sistema
+descobre os `:binds` e as colunas rodando com limite 1), escolhe o tipo de cada parâmetro e o
+teto, e marca **Publicar**.
+
+O preço da autonomia é que o contrato não passa por PR nem por teste — então as MESMAS
+checagens que o CI faz no catálogo de código rodam na hora de salvar
+([`consultas-publicadas.service.ts`](../consultas-publicadas.service.ts)): só leitura, nome no
+padrão, sem colidir com o código (**o código vence**), bind × parâmetro casando, teto presente
+e ≤ 5.000. Enquanto não publicada, a consulta é rascunho — serve aos Dashboards e não entra no
+catálogo.
+
+> ⚠️ O que este caminho **não** garante é *qual tabela* o SELECT lê — isso é privilégio do
+> usuário no banco. Por isso o usuário Oracle de privilégio mínimo (`painel_ro`) é
+> **pré-requisito** dele, não recomendação.
+
 ## Estado da migração — **concluída** (2026-08-25)
 
 - **Fase 0.** Módulo, catálogo, executor, autenticação de máquina, guarda de CI.
 - **Fase 1.** Os 10 módulos passaram a pedir a consulta pelo nome; o SQL saiu dos
   `*.constants.ts` deles e veio para [`catalogo/sql/`](../catalogo/sql/); a semeadura das
   consultas editáveis virou derivada do catálogo. A dívida de `executarSql` **zerou**.
+- **Fase 3.** Token passou a autorizar **por consulta** (não por conexão); consulta pode
+  nascer pela TELA, com contrato extraído do próprio banco; e a **instância 1** ganhou
+  entrypoint próprio ([`dados-app.module.ts`](../dados-app.module.ts) +
+  [`main-dados.ts`](../../main-dados.ts)) — o processo que segura a credencial expõe só esta
+  API, autenticação, permissões e health.
 - **Fase 2.** `oracledb` e `mysql2` mudaram para [`conexoes/`](../conexoes/); a
   Disponibilidade virou domínio puro (ocupação e mapa de técnicos, pelo catálogo);
   `ConsultaBdService` veio para cá; as duas consultas que rodavam por fora — a ocupação e o
   mapa de técnicos, cujo SQL vem da CONFIGURAÇÃO da conexão — entraram no catálogo.
 
-**19 consultas** no catálogo, **1** exceção de driver (o Consultor SIGER, permanente e
+**19 consultas de código** no catálogo (mais as publicadas pela tela), **1** exceção de driver (o Consultor SIGER, permanente e
 justificada). O que ficou em aberto — por decisão, não por falta — está em
 [`docs/pendencias.md`](../../../../docs/pendencias.md).

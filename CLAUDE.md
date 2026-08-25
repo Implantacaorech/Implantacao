@@ -102,6 +102,10 @@ Na prática: escreva o SQL em `backend/src/dados/catalogo/sql/`, declare a consu
 `oracledb`/`mysql2` nem chame `executarSql` em lugar nenhum fora de `src/dados/` — o teste
 `backend/src/common/conformidade-api-dados.spec.ts` falha o CI. Contrato e uso em
 [backend/src/dados/docs/](backend/src/dados/docs/README.md); tela em Sistema → API de Dados.
+Consulta nova pode nascer **pela tela** (Sistema → API de Dados → Nova consulta), com o
+contrato extraído do banco pelo "Testar" — o SQL continua nunca vindo de quem consome.
+A instância INTERNA que segura a credencial (Portal de Conexões, porta 5110,
+`Iniciar_Portal_Conexoes.bat`) está em [docs/portal-conexoes.md](docs/portal-conexoes.md).
 
 O escopo é o dado de **terceiro**: Oracle do SICLA e MySQL do Portal Rech. Fora dele, por
 decisão: o `painel_novo` (camada Repository/TypeORM, ADR-0002) e a base do Consultor SIGER

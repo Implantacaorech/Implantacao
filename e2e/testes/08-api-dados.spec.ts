@@ -10,7 +10,8 @@ import { token, USUARIOS } from '../apoio/painel';
  * - entrar sem credencial, ou com chave inválida/revogada;
  * - pedir uma consulta cujo menu a pessoa não enxerga (a API não pode ser porta lateral em
  *   volta do painel de Permissões);
- * - pedir uma consulta fora do escopo cadastrado da chave;
+ * - pedir uma consulta que o token NÃO autoriza (a autorização é por consulta, não por
+ *   conexão: um token do painel de RNS não serve para o extrato de horas);
  * - administrar a API sem ser ADM — inclusive **com uma chave de máquina**, que é o caminho
  *   pelo qual uma credencial vazada tentaria emitir outra;
  * - mandar SQL/limite/conexão no corpo, que é como a regra viraria fachada.
@@ -33,12 +34,12 @@ const PARAMS_OK = { data_ini: '2026-08-01', data_fim: '2026-08-31' };
 async function criarCliente(
   request: APIRequestContext,
   nome: string,
-  escopos: string[],
+  consultas: string[],
 ): Promise<{ id: number; chave: string }> {
   const adm = await token(request, USUARIOS.adm);
   const r = await request.post(`${ADMIN}/clientes`, {
     headers: cab(adm),
-    data: { nome, escopos, observacao: 'e2e' },
+    data: { nome, consultas, observacao: 'e2e' },
   });
   expect(r.status(), await r.text()).toBe(201);
   const c = dados(await r.json());
@@ -166,7 +167,7 @@ test.describe('API de Dados — clientes de máquina', () => {
   test('uma chave de máquina NÃO administra a API (não emite outra chave)', async ({
     request,
   }) => {
-    const { chave } = await criarCliente(request, 'e2e escalonamento', ['sicla:leitura']);
+    const { chave } = await criarCliente(request, 'e2e escalonamento', [CONSULTA]);
 
     // A rota /admin exige pessoa (JwtAuthGuard): a chave não é aceita como credencial ali.
     const lista = await request.get(`${ADMIN}/clientes`, {
@@ -177,14 +178,14 @@ test.describe('API de Dados — clientes de máquina', () => {
 
     const nova = await request.post(`${ADMIN}/clientes`, {
       headers: chaveCab(chave),
-      data: { nome: 'forjado', escopos: ['sicla:leitura'] },
+      data: { nome: 'forjado', consultas: [CONSULTA] },
       failOnStatusCode: false,
     });
     expect(nova.status()).toBe(401);
   });
 
   test('a chave é exibida uma vez e nunca volta na listagem', async ({ request }) => {
-    const { chave } = await criarCliente(request, 'e2e chave única', ['sicla:leitura']);
+    const { chave } = await criarCliente(request, 'e2e chave única', [CONSULTA]);
     expect(chave).toMatch(/^rd_[0-9a-f]+_[0-9a-f]+$/);
 
     const adm = await token(request, USUARIOS.adm);
@@ -194,7 +195,7 @@ test.describe('API de Dados — clientes de máquina', () => {
   });
 
   test('chave válida entra; chave inventada, alterada ou revogada não', async ({ request }) => {
-    const { id, chave } = await criarCliente(request, 'e2e ciclo de vida', ['sicla:leitura']);
+    const { id, chave } = await criarCliente(request, 'e2e ciclo de vida', [CONSULTA]);
 
     const ok = await request.get(`${BASE}/consultas`, { headers: chaveCab(chave) });
     expect(ok.status()).toBe(200);
@@ -221,7 +222,7 @@ test.describe('API de Dados — clientes de máquina', () => {
   });
 
   test('rotacionar mata a chave anterior imediatamente', async ({ request }) => {
-    const { id, chave: antiga } = await criarCliente(request, 'e2e rotação', ['sicla:leitura']);
+    const { id, chave: antiga } = await criarCliente(request, 'e2e rotação', [CONSULTA]);
     const adm = await token(request, USUARIOS.adm);
 
     const r = await request.post(`${ADMIN}/clientes/${id}/rotacionar`, { headers: cab(adm) });
@@ -238,16 +239,23 @@ test.describe('API de Dados — clientes de máquina', () => {
     expect(atual.status()).toBe(200);
   });
 
-  test('o escopo é um teto: fora dele, 403 — e o catálogo já vem recortado', async ({
+  test('o token é um teto POR CONSULTA: fora da lista, 403 — e o catálogo vem recortado', async ({
     request,
   }) => {
-    const { chave } = await criarCliente(request, 'e2e só portal', ['portal_rech:leitura']);
+    // Autoriza UMA consulta só. É a diferença que o desenho das duas instâncias exige: um
+    // token destinado a um painel não pode arrastar a conexão inteira junto.
+    const { chave } = await criarCliente(request, 'e2e só visitas', [
+      'portal.visitas.listar',
+    ]);
 
-    const cat = dados(await (await request.get(`${BASE}/consultas`, {
-      headers: chaveCab(chave),
-    })).json());
-    expect(cat.consultas.length).toBeGreaterThan(0);
-    expect(cat.consultas.every((c: any) => c.conexao === 'portal_rech')).toBe(true);
+    const cat = dados(
+      await (
+        await request.get(`${BASE}/consultas`, { headers: chaveCab(chave) })
+      ).json(),
+    );
+    expect(cat.consultas.map((c: any) => c.nome)).toEqual([
+      'portal.visitas.listar',
+    ]);
 
     const fora = await request.post(`${BASE}/consultas/${CONSULTA}/executar`, {
       headers: chaveCab(chave),
@@ -257,15 +265,167 @@ test.describe('API de Dados — clientes de máquina', () => {
     expect(fora.status()).toBe(403);
   });
 
-  test('escopo inexistente não é cadastrável', async ({ request }) => {
+  test('uma consulta da MESMA conexão, não autorizada, também dá 403', async ({
+    request,
+  }) => {
+    // O caso que a autorização por conexão deixava passar: mesmo banco, consulta diferente.
+    const { chave } = await criarCliente(request, 'e2e só rns', ['sicla.rns.listar']);
+
+    const permitida = await request.post(`${BASE}/consultas/sicla.rns.listar/executar`, {
+      headers: chaveCab(chave),
+      data: { parametros: PARAMS_OK },
+      failOnStatusCode: false,
+    });
+    expect(permitida.status(), 'a autorizada chega até a conexão').toBe(503);
+
+    const vizinha = await request.post(
+      `${BASE}/consultas/sicla.bi.extrato-horas/executar`,
+      { headers: chaveCab(chave), data: { parametros: {} }, failOnStatusCode: false },
+    );
+    expect(vizinha.status()).toBe(403);
+  });
+
+  test('consulta inexistente não é cadastrável num token', async ({ request }) => {
     const adm = await token(request, USUARIOS.adm);
     const r = await request.post(`${ADMIN}/clientes`, {
       headers: cab(adm),
-      data: { nome: 'e2e escopo inventado', escopos: ['banco_secreto:escrita'] },
+      data: { nome: 'e2e consulta inventada', consultas: ['nao.existe.aqui'] },
       failOnStatusCode: false,
     });
-    // Cadastrar um escopo que não existe criaria um cliente que autentica e nunca consegue
+    // Autorizar uma consulta que não existe criaria um token que autentica e nunca consegue
     // chamar nada — 403 sem explicação, do outro lado.
     expect(r.status()).toBe(400);
+  });
+});
+
+/** Consulta criada pela TELA (fase 3). A autonomia de publicar sem release só é aceitável
+ * porque a publicação valida o contrato inteiro na hora de salvar — é isso que se ataca aqui.
+ * Nenhum destes casos precisa de banco externo: a recusa acontece antes de qualquer conexão. */
+test.describe('API de Dados — publicar consulta pela tela', () => {
+  const NOVA = `${ADMIN}/consultas`;
+
+  const consulta = (over: Record<string, unknown> = {}) => ({
+    slug: 'e2e_consulta',
+    nome: 'Consulta e2e',
+    conexao: 'sicla',
+    sql: 'SELECT 1 AS UM FROM DUAL',
+    nomeApi: 'sicla.e2e.consulta',
+    parametros: [],
+    colunas: ['UM'],
+    limiteLinhas: 100,
+    cacheSegundos: 0,
+    publicada: false,
+    ...over,
+  });
+
+  test('só ADM administra consultas — nem usuário comum, nem chave de máquina', async ({
+    request,
+  }) => {
+    const comum = await token(request, USUARIOS.consultor);
+    const r = await request.get(NOVA, { headers: cab(comum), failOnStatusCode: false });
+    expect(r.status()).toBe(403);
+
+    // O caminho pelo qual uma chave vazada tentaria criar a própria consulta.
+    const { chave } = await criarCliente(request, 'e2e sem admin', [CONSULTA]);
+    const comChave = await request.get(NOVA, {
+      headers: chaveCab(chave),
+      failOnStatusCode: false,
+    });
+    expect(comChave.status()).toBe(401);
+  });
+
+  test('não publica nada que não seja SELECT', async ({ request }) => {
+    const adm = await token(request, USUARIOS.adm);
+    const r = await request.post(NOVA, {
+      headers: cab(adm),
+      data: consulta({ sql: 'DELETE FROM SICLA.LISTA_ITEMPED' }),
+      failOnStatusCode: false,
+    });
+    expect(r.status()).toBe(400);
+    expect(await r.text()).toContain('SELECT');
+  });
+
+  test('publicar sem teto de linhas é recusado', async ({ request }) => {
+    const adm = await token(request, USUARIOS.adm);
+    const r = await request.post(NOVA, {
+      headers: cab(adm),
+      data: consulta({ publicada: true, limiteLinhas: 0 }),
+      failOnStatusCode: false,
+    });
+    expect(r.status()).toBe(400);
+  });
+
+  test('bind sem parâmetro declarado é recusado na publicação', async ({ request }) => {
+    // Deixar passar geraria uma consulta que autentica, entra no catálogo e sempre falha no
+    // banco (ORA-01008) — erro que só aparece para quem consome.
+    const adm = await token(request, USUARIOS.adm);
+    const r = await request.post(NOVA, {
+      headers: cab(adm),
+      data: consulta({
+        publicada: true,
+        sql: 'SELECT 1 FROM DUAL WHERE X = :cliente',
+        parametros: [],
+      }),
+      failOnStatusCode: false,
+    });
+    expect(r.status()).toBe(400);
+    expect(await r.text()).toContain('cliente');
+  });
+
+  test('a tela não sequestra um nome do catálogo de código', async ({ request }) => {
+    const adm = await token(request, USUARIOS.adm);
+    const r = await request.post(NOVA, {
+      headers: cab(adm),
+      data: consulta({ publicada: true, nomeApi: CONSULTA }),
+      failOnStatusCode: false,
+    });
+    expect(r.status()).toBe(400);
+  });
+
+  test('rascunho salva, entra na lista e NÃO aparece no catálogo', async ({ request }) => {
+    const adm = await token(request, USUARIOS.adm);
+    const salvo = await request.post(NOVA, { headers: cab(adm), data: consulta() });
+    expect(salvo.status(), await salvo.text()).toBe(201);
+
+    const lista = dados(await (await request.get(NOVA, { headers: cab(adm) })).json());
+    expect(lista.some((c: any) => c.slug === 'e2e_consulta')).toBe(true);
+
+    const catalogo = dados(
+      await (await request.get(`${BASE}/consultas`, { headers: cab(adm) })).json(),
+    );
+    expect(catalogo.consultas.some((c: any) => c.nome === 'sicla.e2e.consulta')).toBe(false);
+
+    await request.delete(`${NOVA}/e2e_consulta`, { headers: cab(adm) });
+  });
+
+  test('publicada entra no catálogo e pode ser autorizada num token', async ({ request }) => {
+    const adm = await token(request, USUARIOS.adm);
+    const salvo = await request.post(NOVA, {
+      headers: cab(adm),
+      data: consulta({ slug: 'e2e_publicada', nomeApi: 'sicla.e2e.publicada', publicada: true }),
+    });
+    expect(salvo.status(), await salvo.text()).toBe(201);
+
+    const catalogo = dados(
+      await (await request.get(`${BASE}/consultas`, { headers: cab(adm) })).json(),
+    );
+    const nova = catalogo.consultas.find((c: any) => c.nome === 'sicla.e2e.publicada');
+    expect(nova, 'a publicada aparece no catálogo').toBeTruthy();
+    // O SQL continua fora do catálogo, mesmo para uma consulta criada na tela.
+    expect(JSON.stringify(nova)).not.toContain('DUAL');
+
+    const { chave } = await criarCliente(request, 'e2e token da tela', [
+      'sicla.e2e.publicada',
+    ]);
+    const exec = await request.post(`${BASE}/consultas/sicla.e2e.publicada/executar`, {
+      headers: chaveCab(chave),
+      data: { parametros: {} },
+      failOnStatusCode: false,
+    });
+    // 503 = chegou até a conexão (não cadastrada na instância isolada). Prova o caminho
+    // inteiro: catálogo de tela → autorização por consulta → executor.
+    expect(exec.status(), await exec.text()).toBe(503);
+
+    await request.delete(`${NOVA}/e2e_publicada`, { headers: cab(adm) });
   });
 });

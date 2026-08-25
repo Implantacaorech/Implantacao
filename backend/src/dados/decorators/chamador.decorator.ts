@@ -18,10 +18,10 @@ export const Chamador = createParamDecorator(
   },
 );
 
-/** Escopos do chamador quando ele é cliente de máquina; `undefined` para usuário do
- * Painel (que é gateado por menu, não por escopo). Usado para recortar a listagem do
- * catálogo ao que aquele cliente pode de fato chamar. */
-export const EscoposChamador = createParamDecorator(
+/** Consultas que o token do chamador autoriza; `undefined` para usuário do Painel (gateado
+ * por menu). Usado para recortar a listagem do catálogo ao que aquele token pode chamar —
+ * um consumidor externo só enxerga a documentação do que ele mesmo pode consumir. */
+export const ConsultasDoChamador = createParamDecorator(
   (_dado: unknown, ctx: ExecutionContext): string[] | undefined =>
-    ctx.switchToHttp().getRequest<RequisicaoDados>().escoposDados,
+    ctx.switchToHttp().getRequest<RequisicaoDados>().consultasDados,
 );

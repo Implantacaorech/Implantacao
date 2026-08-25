@@ -4,9 +4,11 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiEnvelope } from '../models/api-envelope.model';
 import {
+  AnaliseConsulta,
   CatalogoDados,
   ClienteApi,
   ClienteApiCriado,
+  ConsultaPublicadaResumo,
   EstadoConexao,
   MetricaConsulta,
 } from '../models/api-dados.model';
@@ -40,16 +42,19 @@ export class ApiDadosService {
     return res.data;
   }
 
-  async escopos(): Promise<string[]> {
+  /** Universo de consultas que um token pode autorizar (o catálogo). */
+  async consultasDisponiveis(): Promise<string[]> {
     const res = await firstValueFrom(
-      this.http.get<ApiEnvelope<string[]>>(`${this.admin}/clientes/escopos`),
+      this.http.get<ApiEnvelope<string[]>>(
+        `${this.admin}/clientes/consultas-disponiveis`,
+      ),
     );
     return res.data;
   }
 
   async criarCliente(dto: {
     nome: string;
-    escopos: string[];
+    consultas: string[];
     observacao?: string;
   }): Promise<ClienteApiCriado> {
     const res = await firstValueFrom(
@@ -74,6 +79,54 @@ export class ApiDadosService {
 
   async excluir(id: number): Promise<void> {
     await firstValueFrom(this.http.delete<void>(`${this.admin}/clientes/${id}`));
+  }
+
+  // ── Consultas criadas pela tela ────────────────────────────────────────────────
+
+  async listarConsultas(): Promise<ConsultaPublicadaResumo[]> {
+    const res = await firstValueFrom(
+      this.http.get<ApiEnvelope<ConsultaPublicadaResumo[]>>(
+        `${this.admin}/consultas`,
+      ),
+    );
+    return res.data;
+  }
+
+  async obterConsulta(slug: string): Promise<ConsultaPublicadaResumo> {
+    const res = await firstValueFrom(
+      this.http.get<ApiEnvelope<ConsultaPublicadaResumo>>(
+        `${this.admin}/consultas/${slug}`,
+      ),
+    );
+    return res.data;
+  }
+
+  /** "Testar": roda o SELECT com limite 1 e devolve binds, colunas e uma amostra. */
+  async analisarConsulta(dto: {
+    conexao: string;
+    sql: string;
+    exemplos?: Record<string, unknown>;
+  }): Promise<AnaliseConsulta> {
+    const res = await firstValueFrom(
+      this.http.post<ApiEnvelope<AnaliseConsulta>>(
+        `${this.admin}/consultas/analisar`,
+        dto,
+      ),
+    );
+    return res.data;
+  }
+
+  async salvarConsulta(dto: ConsultaPublicadaResumo): Promise<string> {
+    const res = await firstValueFrom(
+      this.http.post<ApiEnvelope<{ slug: string }>>(`${this.admin}/consultas`, dto),
+    );
+    return res.data.slug;
+  }
+
+  async excluirConsulta(slug: string): Promise<void> {
+    await firstValueFrom(
+      this.http.delete<void>(`${this.admin}/consultas/${slug}`),
+    );
   }
 
   async metricas(): Promise<MetricaConsulta[]> {

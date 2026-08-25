@@ -44,6 +44,13 @@ export class ConsultaBdService {
       colunaSituacao?: string;
       mostrarGrafico?: boolean;
       conexao?: string;
+      // ── Publicação na API de Dados (ADR-0003) ──────────────────────────────────
+      nomeApi?: string;
+      publicada?: boolean;
+      parametros?: string;
+      colunas?: string;
+      limiteLinhas?: number;
+      cacheSegundos?: number;
     } = {},
   ): Promise<ConsultaBD | null> {
     const slug = this.normalizarSlug(slugBruto);
@@ -58,6 +65,12 @@ export class ConsultaBdService {
         colunaSituacao: dados.colunaSituacao ?? '',
         mostrarGrafico: dados.mostrarGrafico ?? false,
         conexao: dados.conexao ?? 'sicla',
+        nomeApi: dados.nomeApi ?? '',
+        publicada: dados.publicada ?? false,
+        parametros: dados.parametros ?? null,
+        colunas: dados.colunas ?? null,
+        limiteLinhas: dados.limiteLinhas ?? 0,
+        cacheSegundos: dados.cacheSegundos ?? 0,
       });
     } else {
       if (dados.nome !== undefined) c.nome = dados.nome;
@@ -68,6 +81,14 @@ export class ConsultaBdService {
       if (dados.mostrarGrafico !== undefined)
         c.mostrarGrafico = dados.mostrarGrafico;
       if (dados.conexao !== undefined) c.conexao = dados.conexao;
+      if (dados.nomeApi !== undefined) c.nomeApi = dados.nomeApi;
+      if (dados.publicada !== undefined) c.publicada = dados.publicada;
+      if (dados.parametros !== undefined) c.parametros = dados.parametros;
+      if (dados.colunas !== undefined) c.colunas = dados.colunas;
+      if (dados.limiteLinhas !== undefined) c.limiteLinhas = dados.limiteLinhas;
+      if (dados.cacheSegundos !== undefined) {
+        c.cacheSegundos = dados.cacheSegundos;
+      }
     }
     if (dados.ordem !== undefined) c.ordem = dados.ordem;
     return this.repo.save(c);

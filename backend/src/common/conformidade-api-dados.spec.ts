@@ -187,20 +187,39 @@ describe('Conformidade com a API de Dados (ADR-0003)', () => {
   });
 
   describe('O contrato não vaza SQL para quem chama', () => {
-    it('nenhum DTO da API de Dados aceita sql, conexão ou limite do consumidor', () => {
+    it('o DTO de EXECUÇÃO não aceita sql, conexão nem limite', () => {
       // É a diferença entre "toda consulta tem uma API" e "trocamos o transporte do mesmo
-      // SQL solto". Se um destes campos aparecer num DTO, a regra virou fachada.
+      // SQL solto". Este é o DTO que o CONSUMIDOR preenche: se um destes campos aparecer
+      // aqui, a regra virou fachada.
+      const proibidos = /\b(sql|conexao|limite|limiteLinhas)\s*[?]?\s*:/;
+      const dto = join(RAIZ_DADOS, 'dto', 'executar-consulta.dto.ts');
+      const infratores = proibidos.test(ler(dto)) ? [rel(dto)] : [];
+      exigirVazio(
+        infratores,
+        'O DTO de execução não aceita SQL/conexão/limite — esses são do servidor:',
+      );
+    });
+
+    it('só os DTOs de ADMINISTRAÇÃO podem falar de SQL', () => {
+      // DEFINIR uma consulta (o Administrador, em Sistema → Consultas BD) é o oposto de
+      // EXECUTÁ-LA (o consumidor). O primeiro obviamente recebe SQL; o segundo nunca pode.
+      // Esta lista é o teto: um DTO novo que fale de SQL precisa ser justificado aqui, e
+      // a rota dele tem de estar sob `@Roles(PERFIS_SISTEMA)`.
+      const PODEM_FALAR_DE_SQL = ['dados/dto/consulta-publicada.dto.ts'];
       const proibidos = /\b(sql|conexao|limite|limiteLinhas)\s*[?]?\s*:/;
       const infratores = arquivosTs(join(RAIZ_DADOS, 'dto'))
         .filter((a) => proibidos.test(ler(a)))
-        .map(rel);
+        .map(rel)
+        .filter((r) => !PODEM_FALAR_DE_SQL.includes(r));
       exigirVazio(
         infratores,
-        'DTO da API de Dados não aceita SQL/conexão/limite — esses são do servidor:',
+        'DTO que aceita SQL/conexão/limite sem ser de administração:',
       );
     });
 
     it('o catálogo é a única fonte de SQL dentro de src/dados/', () => {
+      // Vale para SQL ESCRITO no código. O texto que o Administrador cadastra pela tela
+      // vive no banco, não aqui — e por isso não aparece nesta varredura.
       const foraDoCatalogo = arquivosTs(RAIZ_DADOS)
         .filter((a) => /\bSELECT\b[\s\S]{0,400}\bFROM\b/i.test(ler(a)))
         .map(rel)
