@@ -26,6 +26,7 @@
     "migration:run": "npm run typeorm -- migration:run",
     "migration:revert": "npm run typeorm -- migration:revert",
     "seed:admin": "ts-node -r tsconfig-paths/register src/database/seeds/seed-admin.ts",
+    "modelo:publicar": "ts-node -r tsconfig-paths/register src/database/seeds/publicar-modelo.ts",
     "ingerir:dicionario": "ts-node -r tsconfig-paths/register scripts/ingerir-dicionario-siger.ts"
   },
   "dependencies": {
