@@ -277,6 +277,76 @@ def test_cronograma_macro_do_projeto_sai_em_dd_mm_aaaa():
     assert "2026-08-10" not in "\n".join(por_etapa.values())
 
 
+def _realces(doc):
+    """Quantos realces (caneta-marcador do Word) restam no documento."""
+    from docx.oxml.ns import qn
+    return sum(1 for _ in doc.element.body.iter(qn("w:highlight")))
+
+
+def _sombreamentos(doc):
+    """Sombreamentos com cor de verdade (a identidade visual da Rech vive aqui)."""
+    from docx.oxml.ns import qn
+    achados = []
+    for shd in doc.element.body.iter(qn("w:shd")):
+        fill = (shd.get(qn("w:fill")) or "").upper()
+        if fill and fill not in ("AUTO", "FFFFFF"):
+            achados.append(fill)
+    return achados
+
+
+def test_documento_gerado_nao_leva_realce_do_layout():
+    """Os layouts marcam em verde/amarelo os pontos a preencher. O texto escrito pela geração
+    HERDA esse realce, e o documento que vai ao cliente saía riscado — na tela e na impressão
+    (pedido do usuário em 2026-08-25). O realce sai; o sombreamento fica."""
+    base = Document(_LAYOUTS / "projeto.docx")
+    assert _realces(base) > 0, "o layout de teste precisa ter realce para o caso provar algo"
+
+    payload = {
+        "slug": "projeto",
+        "modo": "auto",
+        "modeloBase64": _template_base64("projeto.docx"),
+        "projeto": {"id": 1, "cliente": "Cliente Sem Realce", "modulos": "FAT"},
+        "docConteudo": {"objetivos": "Texto que cai em cima de um marcador realcado."},
+        "indiceModulos": [{"sigla": "FAT", "nome": "Faturamento"}],
+        "indiceTopicos": [],
+        "levantamentoRespostas": [],
+        "cronogramaItens": [],
+    }
+    r = client.post("/gerar/documento-fiel", json=payload)
+    assert r.status_code == 200
+
+    gerado = Document(io.BytesIO(r.content))
+    assert _realces(gerado) == 0
+    assert "Texto que cai em cima de um marcador realcado." in _texto_completo(gerado)
+
+
+def test_a_limpeza_de_realce_nao_leva_junto_a_identidade_visual():
+    """O Levantamento usa sombreamento como IDENTIDADE: a faixa azul 0047BA do titulo e as
+    tarjas CCDBF2 dos cabecalhos de tabela. Realce e anotacao e sai; sombreamento e layout e
+    fica — apagar os dois deixaria o documento sem a marca da Rech."""
+    base = Document(_LAYOUTS / "levantamento.docx")
+    cores_base = set(_sombreamentos(base))
+    assert cores_base, "o Levantamento precisa ter sombreamento colorido para o caso valer"
+
+    payload = {
+        "slug": "levantamento",
+        "modo": "auto",
+        "modeloBase64": _template_base64("levantamento.docx"),
+        "projeto": {"id": 1, "cliente": "Cliente Identidade", "modulos": "FAT"},
+        "docConteudo": {},
+        "indiceModulos": [{"sigla": "FAT", "nome": "Faturamento"}],
+        "indiceTopicos": [],
+        "levantamentoRespostas": [],
+        "cronogramaItens": [],
+    }
+    r = client.post("/gerar/documento-fiel", json=payload)
+    assert r.status_code == 200
+
+    gerado = Document(io.BytesIO(r.content))
+    assert _realces(gerado) == 0
+    assert cores_base.issubset(set(_sombreamentos(gerado)))
+
+
 def test_gera_cronograma_preenche_cliente_consultor_horas_e_linhas():
     payload = {
         "slug": "cronograma",

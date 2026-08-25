@@ -8,6 +8,10 @@ permanecem como estão, servindo de guia de preenchimento.
 """
 import re
 
+from docx.oxml.ns import qn
+
+_QN_HIGHLIGHT = qn('w:highlight')
+
 
 # ----------------------------- DOCX -----------------------------
 def _iter_paragraphs(doc):
@@ -29,6 +33,16 @@ def _iter_paragraphs(doc):
                 yield p
             for t in hf.tables:
                 yield from _tab(t)
+
+
+def _elementos_com_formatacao(doc):
+    """Raízes XML que carregam formatação: corpo, cada tabela e cada cabeçalho/rodapé.
+    Varrer por aqui alcança o que `_iter_paragraphs` não vê (propriedades de tabela, por
+    exemplo), sem precisar descer parágrafo a parágrafo."""
+    yield doc.element.body
+    for s in doc.sections:
+        for hf in (s.header, s.footer):
+            yield hf._element
 
 
 def _aplica_no_paragrafo(p, novo):
@@ -92,6 +106,29 @@ def remover_marcadores_docx(doc):
                 novo = ""
             if novo != full:
                 _aplica_no_paragrafo(p, novo)
+                n += 1
+    return n
+
+
+def remover_realces_docx(doc):
+    """Tira o REALCE (caneta-marcador do Word, `w:highlight`) de todo o documento — corpo,
+    tabelas e cabeçalhos/rodapés.
+
+    Os layouts oficiais marcam em verde (e o Levantamento também em amarelo) os pontos a
+    preencher. É um guia para quem edita no Word, mas o texto que a geração escreve HERDA o
+    realce do marcador, e o documento que vai ao cliente sai riscado de verde — visível na
+    tela e, pior, na impressão. Pedido do usuário em 2026-08-25.
+
+    Só o realce sai. O SOMBREAMENTO (`w:shd`) fica: no Levantamento ele é a identidade
+    visual da Rech — a faixa azul `0047BA` do título e as tarjas `CCDBF2` dos cabeçalhos de
+    tabela. Realce é anotação; sombreamento é layout, e apagar os dois deixaria o documento
+    sem a marca da empresa."""
+    n = 0
+    for el in _elementos_com_formatacao(doc):
+        for hl in list(el.iter(_QN_HIGHLIGHT)):
+            pai = hl.getparent()
+            if pai is not None:
+                pai.remove(hl)
                 n += 1
     return n
 

@@ -39,6 +39,10 @@ def gerar_docx(slug, projeto, base_bytes, modo="auto"):
     elif slug == "termo":        # preenche a grade Resumo Geral com os módulos contratados
         _preencher_termo_grade(doc, projeto.get("modulos", ""))
     PL.remover_marcadores_docx(doc)   # remove todos os marcadores <...> restantes
+    # Realce (caneta-marcador) dos pontos a preencher: guia para quem edita o layout no
+    # Word, mas o texto preenchido herda o verde e o documento sai riscado — na tela e na
+    # impressão. O sombreamento da identidade Rech fica; ver remover_realces_docx.
+    PL.remover_realces_docx(doc)
     out = BytesIO()
     doc.save(out)
     return out.getvalue()
