@@ -58,6 +58,15 @@ const ESCRITA_CONSULTA_PERMITIDA: {
       'tela RechEdu (consulta) precisa poder cadastrar o próprio login do portal de educação.',
   },
   {
+    arquivo: 'consultor-siger/consultor-siger.controller.ts',
+    rota: 'feedback',
+    motivo:
+      'Avaliar a resposta (👍/👎 + observação) é parte de USAR a tela de consulta — o registro ' +
+      'vai para um JSONL ao lado da base derivada, fora do banco do Painel e fora da fonte ' +
+      'F:\\SIGER. Exigir alteração deixaria só o ADM avaliar e mataria o propósito do feedback ' +
+      '(mesma família do POST perguntar do Dicionário: corpo grande, não escrita de sistema).',
+  },
+  {
     arquivo: 'protocolos/protocolos.controller.ts',
     rota: ':id/enviar-portal',
     motivo:

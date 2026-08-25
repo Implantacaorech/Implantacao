@@ -149,6 +149,12 @@
           <span class="side-tip">Consulta de assuntos (SICLA)</span>
         </a>
       }
+      @if (podeConsultorSiger()) {
+        <a class="side-link" routerLink="/consultor-siger" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-compass"/></svg>Consultor SIGER
+          <span class="side-tip">Base de conhecimento do SIGER</span>
+        </a>
+      }
       @if (temGestao()) {
         <div class="side-grp">Gestão</div>
         @if (podeCoordenacao()) {

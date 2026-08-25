@@ -21,9 +21,12 @@ export interface AppConfig {
    * descontrolado/abuso, não policiar o uso normal. */
   rateLimit: { ttlSegundos: number; limite: number };
   docserviceUrl: string;
+  /** Base DERIVADA do Consultor SIGER (SQLite gerado pelo indexador externo em
+   * F:\CONSULTOR-SIGER — a fonte F:\SIGER é somente leitura e o Painel nem a acessa).
+   * O service abre este arquivo em readonly; ausente, a tela degrada com aviso. */
+  consultorSiger: { dbPath: string };
   protocolosDir: string;
   protocolosPollMin: number;
-  gmailRedirectUri: string;
   imapPollMin: number;
   /** Liga o robô que LÊ a caixa e cria projetos a partir do e-mail de fechamento. Desligado
    * por padrão desde 2026-07-27: a entrada do processo virou a consulta ao SICLA + cadastro
@@ -38,9 +41,6 @@ export interface AppConfig {
   /** Pasta onde a Tarefa Agendada deixa os zips do dump e os logs de operação (backup e
    * Guardião). É de onde a vigilância de saúde lê — ver src/saude/. */
   backupDir: string;
-  /** Raiz do acervo documental dos chats do Wall-e (share de rede). SOMENTE LEITURA —
-   * regra inegociável: o Painel lê/indexa, nunca grava lá (ver src/walle/). */
-  walleAcervoDir: string;
   frontendDistPath: string;
   legadoPythonExe: string;
   legadoWebappDir: string;
@@ -158,19 +158,19 @@ export default (): AppConfig => {
     // roda no mesmo host (ver docservice/ e docs/migracao/02-decisao-arquitetura.md).
     docserviceUrl:
       process.env.MIGRACAO_DOCSERVICE_URL ?? 'http://127.0.0.1:8001',
+    // Consultor SIGER: caminho da base derivada (ver interface acima). O default aponta
+    // para onde o indexador do protótipo grava (F:\CONSULTOR-SIGER\data).
+    consultorSiger: {
+      dbPath:
+        process.env.MIGRACAO_CONSULTOR_SIGER_DB ??
+        'F:\\CONSULTOR-SIGER\\data\\consultor.db',
+    },
     // Protocolos de Treinamento: pasta raiz sincronizada pelo OneDrive (Videos Pendentes/
     // Processados/Com Erro) — mesmo padrão de webapp/protocolos.py (env PROTOCOLOS_DIR).
     protocolosDir:
       process.env.MIGRACAO_PROTOCOLOS_DIR ??
       'C:\\SEG-EVE\\OneDrive - rech.com.br\\PortalImplantacao\\Treinamentos',
     protocolosPollMin: Number(process.env.MIGRACAO_PROTOCOLOS_POLL_MIN ?? 10),
-    // Gmail API (bypass de SMTP bloqueado): fluxo OAuth "Web application" com callback
-    // real (decisão deliberada, diferente do "Desktop app" do Flask original — ver
-    // GmailService e docs/migracao/03-documento-conversao.md). Precisa bater com o
-    // redirect URI autorizado cadastrado no Google Cloud Console.
-    gmailRedirectUri:
-      process.env.MIGRACAO_GMAIL_REDIRECT_URI ??
-      `http://localhost:${Number(process.env.MIGRACAO_PORT ?? 3000)}/api/config/gmail/callback`,
     // Robô da caixa de entrada (fechamento automático via IMAP) — mesmo padrão do
     // PROTOCOLOS_POLL_MIN (piso real de 2 min), env IMAP_POLL_MIN no Flask original.
     imapPollMin: Number(process.env.MIGRACAO_IMAP_POLL_MIN ?? 10),
@@ -196,11 +196,6 @@ export default (): AppConfig => {
     // tools/Painel_Novo_Backup_MariaDB.ps1) e os logs do backup e do Guardião. O painel só
     // LÊ daqui — é o que permite responder "o backup de ontem saiu?" sem abrir o servidor.
     backupDir: process.env.MIGRACAO_BACKUP_DIR ?? 'C:\\PainelBackups',
-    // Acervo dos chats do Wall-e (espelho documental em share de rede). O Painel trata a
-    // pasta como fonte oficial SOMENTE LEITURA: indexa para o MariaDB e pesquisa por lá;
-    // nenhum processo grava, cria ou renomeia nada dentro dela — nem cache, nem log.
-    walleAcervoDir:
-      process.env.MIGRACAO_WALLE_ACERVO_DIR ?? 'R:\\GRM\\CHAT_WALLE',
     // Onde fica o build de produção do Angular (`ng build`, saída em
     // frontend/dist/frontend/browser) — o NestJS serve esses arquivos estáticos direto
     // (ver main.ts/ServeStaticModule), um único processo/porta em produção, mesmo padrão
