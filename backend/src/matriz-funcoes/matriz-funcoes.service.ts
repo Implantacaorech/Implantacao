@@ -79,42 +79,6 @@ export class MatrizFuncoesService {
     return { modulos, resumo };
   }
 
-  /** Média GERAL (todos os técnicos) por módulo: para cada técnico, a média dele no módulo;
-   * depois a média dessas médias — cada técnico pesa igual, independente de quantas funções
-   * avaliou. `tecnicos` = quantos contribuíram. */
-  async mediasGerais(): Promise<
-    {
-      sigla: string;
-      titulo: string;
-      media: number | null;
-      tecnicos: number;
-      total: number;
-    }[]
-  > {
-    const tax = await this.funcoes.taxonomia();
-    const todos = await this.tecnicos.find();
-    const notasPorTecnico = todos.map((t) => this.notasFuncao(t));
-    return tax.map((m) => {
-      const chaves = m.funcoes.map((f) => f.chave);
-      const mediasTecnico: number[] = [];
-      for (const notas of notasPorTecnico) {
-        const vals = chaves
-          .map((c) => (c in notas ? notas[c] : null))
-          .filter((n): n is number => n != null);
-        if (vals.length) {
-          mediasTecnico.push(vals.reduce((a, b) => a + b, 0) / vals.length);
-        }
-      }
-      return {
-        sigla: m.sigla,
-        titulo: m.titulo,
-        media: this.media(mediasTecnico),
-        tecnicos: mediasTecnico.length,
-        total: m.funcoes.length,
-      };
-    });
-  }
-
   /** Grava notas por função (0-10; vazio remove). Chaves são "SIGLA|codigo". */
   async salvar(
     id: number,

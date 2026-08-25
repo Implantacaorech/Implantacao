@@ -1,18 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
+import { DadosService } from '../dados/dados.service';
 import { hojeIso } from '../cronograma/datas.util';
 import { textoAparado } from '../common/utils/texto.util';
 import {
   COR_STATUS_ALOCACAO,
   CompromissoHoras,
   DiaAlocacao,
-  LIMITE_CALENDARIO,
-  LIMITE_HORAS_APLICADAS,
   LinhaAlocacao,
   LinhaHorasAplicadas,
   ResumoStatusAlocacao,
-  SQL_CALENDARIO_ALOCACAO,
-  SQL_HORAS_APLICADAS,
   TotaisHorasAplicadas,
   normalizarLinhaAlocacao,
 } from './bi-agenda-alocacao.constants';
@@ -78,7 +74,7 @@ const MESES_PADRAO_HORAS = 24;
  * por isso um serviço só, mas sem estado/helpers compartilhados entre as duas páginas. */
 @Injectable()
 export class BiAgendaAlocacaoService {
-  constructor(private readonly disponibilidade: DisponibilidadeService) {}
+  constructor(private readonly dados: DadosService) {}
 
   private numero(v: unknown): number {
     const n = Number(v);
@@ -161,19 +157,12 @@ export class BiAgendaAlocacaoService {
     query: QueryCalendarioAlocacao,
   ): Promise<ResultadoCalendarioAlocacao> {
     const { mes, ini, fim } = this.mesReferencia(query.mes);
-    if (!this.disponibilidade.configurado()) {
-      return this.vazioCalendario(
-        mes,
-        'Conexão com o SICLA não configurada ou inativa (Ferramentas → Disponibilidade).',
-      );
-    }
-
-    const r = await this.disponibilidade.executarSql(
-      SQL_CALENDARIO_ALOCACAO,
-      { mes_ini: ini, mes_fim: fim },
-      undefined,
-      LIMITE_CALENDARIO,
-    );
+    // Sem checagem prévia de conexão: `consultar` já devolve {ok:false} com a mensagem que
+    // diz onde configurar — uma fonte só para o mesmo aviso.
+    const r = await this.dados.consultar('sicla.agenda.calendario', {
+      mes_ini: ini,
+      mes_fim: fim,
+    });
     if (!r.ok) return this.vazioCalendario(mes, r.mensagem);
 
     const todas = r.linhas.map((l) => normalizarLinhaAlocacao(l));
@@ -376,23 +365,11 @@ export class BiAgendaAlocacaoService {
     query: QueryHorasAplicadas,
   ): Promise<ResultadoHorasAplicadas> {
     const competencias = this.periodo(query);
-    if (!this.disponibilidade.configurado()) {
-      return this.vazioHoras(
-        competencias,
-        'Conexão com o SICLA não configurada ou inativa (Ferramentas → Disponibilidade).',
-      );
-    }
-
-    const r = await this.disponibilidade.executarSql(
-      SQL_HORAS_APLICADAS,
-      {
-        data_ini: `${competencias.inicio}-01`,
-        // Exclusivo — primeiro dia do mês SEGUINTE ao fim.
-        data_fim: this.somaMeses(competencias.fim, 1) + '-01',
-      },
-      undefined,
-      LIMITE_HORAS_APLICADAS,
-    );
+    const r = await this.dados.consultar('sicla.agenda.horas-aplicadas', {
+      data_ini: `${competencias.inicio}-01`,
+      // Exclusivo — primeiro dia do mês SEGUINTE ao fim.
+      data_fim: this.somaMeses(competencias.fim, 1) + '-01',
+    });
     if (!r.ok) return this.vazioHoras(competencias, r.mensagem);
 
     const todos = r.linhas.map((l) => this.normalizarCompromissoHoras(l));

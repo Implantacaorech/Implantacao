@@ -1,7 +1,7 @@
 import { rmSync } from 'fs';
 import { join } from 'path';
 import { createConnection as createConnectionReal } from 'mysql2/promise';
-import { PortalDbService } from './portal-db.service';
+import { ConexaoPortalService } from './conexao-portal.service';
 
 // mysql2 é mockado por completo: os testes cobrem config, guarda de SELECT e o roteamento
 // de binds/opções — a conexão real só existe em produção, com o banco do Portal cadastrado.
@@ -11,8 +11,8 @@ jest.mock('mysql2/promise', () => ({ createConnection: jest.fn() }));
 
 const createConnection = createConnectionReal as unknown as jest.Mock;
 
-describe('PortalDbService', () => {
-  let svc: PortalDbService;
+describe('ConexaoPortalService', () => {
+  let svc: ConexaoPortalService;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -24,7 +24,7 @@ describe('PortalDbService', () => {
       ),
       { recursive: true, force: true },
     );
-    svc = new PortalDbService();
+    svc = new ConexaoPortalService();
   });
 
   describe('config (dados/portal_db.json)', () => {

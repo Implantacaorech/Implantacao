@@ -1,9 +1,6 @@
 import * as bcrypt from 'bcrypt';
 import { TecnicosSiclaService } from './tecnicos-sicla.service';
-import {
-  SENHA_PADRAO_TECNICO,
-  SQL_LISTA_TECNICOS_PADRAO,
-} from './tecnicos-sicla.constants';
+import { SENHA_PADRAO_TECNICO } from './tecnicos-sicla.constants';
 import type { Usuario } from '../database/entities/usuario.entity';
 
 const LINHA = {
@@ -25,13 +22,12 @@ describe('TecnicosSiclaService', () => {
       existentes?: Partial<Usuario>[];
     } = {},
   ) {
-    const executarSql = jest.fn().mockResolvedValue({
+    const consultar = jest.fn().mockResolvedValue({
       ok: over.okConsulta ?? true,
       mensagem: over.okConsulta === false ? 'ORA-00942' : 'ok',
       colunas: [],
       linhas: over.linhas ?? [LINHA],
     });
-    const porSlug = jest.fn().mockResolvedValue(null);
     const banco = (over.existentes ?? []) as Usuario[];
     const repo = {
       find: jest.fn().mockImplementation(() => Promise.resolve([...banco])),
@@ -40,34 +36,21 @@ describe('TecnicosSiclaService', () => {
     };
     const service = new TecnicosSiclaService(
       repo as never,
-      { executarSql } as never,
-      { porSlug } as never,
+      {
+        consultar,
+      } as never,
     );
-    return { service, executarSql, porSlug, repo };
+    return { service, consultar, repo };
   }
 
-  it('usa o SQL padrão, sem bind de filtro', async () => {
-    const { service, executarSql } = montar();
+  it('pede a consulta pelo NOME, sem parâmetro (o filtro é em memória)', async () => {
+    const { service, consultar } = montar();
     await service.listar();
-    expect(executarSql).toHaveBeenCalledWith(
-      SQL_LISTA_TECNICOS_PADRAO,
-      {},
-      undefined,
-      1000,
-    );
+    expect(consultar).toHaveBeenCalledWith('sicla.tecnicos.listar');
   });
 
-  it('usa o SQL editado no lugar do padrão quando existe', async () => {
-    const { service, executarSql, porSlug } = montar();
-    porSlug.mockResolvedValue({ sql: 'SELECT 1 FROM DUAL' });
-    await service.listar();
-    expect(executarSql).toHaveBeenCalledWith(
-      'SELECT 1 FROM DUAL',
-      {},
-      undefined,
-      1000,
-    );
-  });
+  // "SQL padrão vs editado" saiu daqui: escolher o texto vigente é do catálogo, coberto em
+  // dados.service.spec.ts. Este módulo não conhece mais SQL nem teto de linhas.
 
   it('mapeia as colunas do de/para (código, nome, módulos, e-mail, setor)', async () => {
     const { service } = montar();
@@ -83,18 +66,13 @@ describe('TecnicosSiclaService', () => {
   });
 
   it('filtra em memória por nome, código, e-mail, setor ou módulo', async () => {
-    const { service, executarSql } = montar({
+    const { service, consultar } = montar({
       linhas: [LINHA, { ...LINHA, CODIGO: 43, NOME: 'Beltrano' }],
     });
     const r = await service.listar('beltr');
     expect(r.tecnicos.map((t) => t.nome)).toEqual(['Beltrano']);
-    // o filtro NÃO vira bind na consulta
-    expect(executarSql).toHaveBeenCalledWith(
-      expect.any(String),
-      {},
-      undefined,
-      1000,
-    );
+    // o filtro NÃO vira parâmetro da consulta
+    expect(consultar).toHaveBeenCalledWith('sicla.tecnicos.listar');
   });
 
   it('somenteNovos devolve só quem ainda não tem cadastro no Painel', async () => {

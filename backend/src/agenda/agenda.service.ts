@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
+import { DadosService } from '../dados/dados.service';
 import { UsersService } from '../users/users.service';
 import {
   addDays,
@@ -11,10 +11,8 @@ import {
 import {
   COR_STATUS_ALOCACAO,
   DiaAlocacao,
-  LIMITE_CALENDARIO,
   LinhaAlocacao,
   ResumoStatusAlocacao,
-  SQL_CALENDARIO_ALOCACAO,
   normalizarLinhaAlocacao,
 } from '../bi-agenda-alocacao/bi-agenda-alocacao.constants';
 
@@ -51,7 +49,7 @@ export const MAX_DIAS_JANELA = 62;
 @Injectable()
 export class AgendaService {
   constructor(
-    private readonly disponibilidade: DisponibilidadeService,
+    private readonly dados: DadosService,
     private readonly users: UsersService,
   ) {}
 
@@ -104,21 +102,14 @@ export class AgendaService {
     query: QueryAgendaCalendario,
   ): Promise<ResultadoAgendaCalendario> {
     const { ini, fim } = this.periodo(query);
-    if (!this.disponibilidade.configurado()) {
-      return this.vazio(
-        ini,
-        fim,
-        'Conexão com o SICLA não configurada ou inativa (Ferramentas → Disponibilidade).',
-      );
-    }
+    // Sem checagem prévia de conexão: `consultar` já devolve {ok:false} com a
+    // mensagem que diz onde configurar — uma fonte só para o mesmo aviso.
 
-    const r = await this.disponibilidade.executarSql(
-      SQL_CALENDARIO_ALOCACAO,
+    const r = await this.dados.consultar('sicla.agenda.calendario', {
       // O SQL herdado do BI usa fim EXCLUSIVO (`< :mes_fim`); a janela da tela é inclusiva.
-      { mes_ini: ini, mes_fim: toIso(addDays(parseIso(fim), 1)) },
-      undefined,
-      LIMITE_CALENDARIO,
-    );
+      mes_ini: ini,
+      mes_fim: toIso(addDays(parseIso(fim), 1)),
+    });
     if (!r.ok) return this.vazio(ini, fim, r.mensagem);
 
     const linhas = r.linhas.map((l) => normalizarLinhaAlocacao(l));

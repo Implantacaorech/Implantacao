@@ -1,6 +1,6 @@
 # Fluxo — módulo `rns`
 
-```
+```text
 Tela Execução → RNS (Angular)
   │  abre / muda "Criadas de/até"
   ▼
@@ -27,6 +27,27 @@ normalizarLinhaRns() por linha ──► { itens, total, limite, truncado, erro:
   ▼
 Tela: busca por assunto + filtros de status/tipo EM MEMÓRIA (sem nova ida ao SICLA),
 linha clicada expande o detalhe com todos os campos.
+```
+
+## Resumo completo (clique no calendário da Agenda)
+
+```text
+Tela Execução → Agenda (Angular) — clique num compromisso COM rns
+  │
+  ▼
+GET /rns/detalhe?numero ──► JwtAuthGuard ──► PermissaoGuard (menu `rns`, nível consulta)
+  │
+  ▼
+RnsController.detalhar(dto) ──► RnsService.detalhar(numero)
+  │  número inválido / sem conexão ──► { itens: [], erro: amigável }
+  ▼
+SELECT * FROM ( SQL vigente ) WHERE PEDIDO = :pedido ORDER BY ITEM
+  │  (binds de data, se referenciados, recebem o intervalo total — sem janela)
+  ▼
+normalizarLinhaRns() ──► { numero, itens, total, erro }
+  │
+  ▼
+Modal da Agenda: a ficha `app-rns-detalhe` (a mesma da tela RNS), um bloco por item.
 ```
 
 Pontos de atenção:

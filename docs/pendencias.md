@@ -535,6 +535,93 @@ feita; o que ela revelou em volta, não.
 - [ ] Frontend: 440 testes em 58 arquivos, **sem gate de cobertura ainda** — o builder
   `@angular/build:unit-test` precisa de configuração própria; avaliar junto da fase 2.
 
+## 🔌 API de Dados — fronteira única de banco externo (ADR-0003 — 2026-08-25)
+> **A regra, definida pelo usuário:** *"Toda e qualquer consulta realizada em banco de dados
+> terá uma API para comunicação."* Escopo acertado: os bancos **externos** (Oracle do SICLA,
+> MySQL do Portal Rech, SQLite do Consultor SIGER). O `painel_novo` continua pela camada
+> Repository/TypeORM do ADR-0002.
+> Decisão e alternativas descartadas no
+> [ADR-0003](<../vault/17 - ADR/ADR-0003 - API de Dados como fronteira unica de banco.md>);
+> contrato e uso em [`backend/src/dados/docs/`](../backend/src/dados/docs/README.md).
+> Aplicação **faseada**, com catraca no CI (`backend/src/common/conformidade-api-dados.spec.ts`):
+> os números de exceção só podem CAIR. **As três fases foram concluídas em 2026-08-25.**
+> Estado final: 19 consultas no catálogo, dívida de `executarSql` zerada, 1 exceção de driver
+> (permanente e justificada). Suítes verdes: backend 136/1420, frontend 69/561, e2e 80.
+
+### Fase 0 — fronteira, catálogo e contrato *(concluída em 2026-08-25)*
+- [x] **Módulo `backend/src/dados/`** — catálogo de consultas nomeadas, executor, roteador de
+  conexões, os 6 documentos do Guia Mestre.
+- [x] **Catálogo com as 17 consultas que o Painel já rodava** (`catalogo/catalogo.ts`), com
+  os MESMOS textos de SQL, binds e tetos dos módulos donos — fase 0 não muda comportamento em
+  produção, de propósito. (Viraram 19 na fase 2, com as duas da Disponibilidade.)
+- [x] **Contrato `/api/dados/v1`** — `GET /consultas`, `GET /consultas/{nome}`,
+  `POST /consultas/{nome}/executar`, `GET /conexoes`. Nenhum endpoint aceita SQL, conexão ou
+  limite do consumidor.
+- [x] **Duas autenticações**: JWT de pessoa (gate por **menu** do painel de Permissões) e
+  `X-API-Key` de máquina (gate por **escopo**), com `api_clientes` (chave em bcrypt,
+  revogável, rotacionável) e administração só por ADM.
+- [x] **Guarda no CI** — proíbe import de driver fora de `src/dados/` e `executarSql` fora
+  dele; 10 casos, verificados contra uma violação real.
+- [x] **Tela Sistema → API de Dados** (só ADM): catálogo, conexões, clientes de máquina
+  (criar/revogar/rotacionar, chave exibida uma vez) e uso por consulta.
+- [x] **e2e `08-api-dados.spec.ts`** — 15 casos contra instância real, atacando o contorno da
+  fronteira (401/403/404/400, catálogo sem SQL, ciclo de vida da chave).
+
+### Fase 1 — virar a chave nos 10 módulos *(concluída em 2026-08-25)*
+- [x] Os **10 módulos** passaram a `dados.consultar('nome', parametros)`: `modulos-sicla`,
+  `clientes-sicla`, `tecnicos-sicla`, `matriz-funcoes`, `agenda`, `bi-indicadores`,
+  `bi-movimentos`, `rns`, `bi-agenda-alocacao`, `bi-implantacao`. Nenhum conhece mais SQL,
+  bind, teto de linhas ou tratamento de erro de conexão.
+- [x] **O SQL mudou de casa**: saiu dos `*.constants.ts` dos módulos para
+  `backend/src/dados/catalogo/sql/` — o catálogo passou a ser o dono, e a seta invertida
+  (`dados/` importando dos módulos) sumiu.
+- [x] **Semeadura centralizada**: `CatalogoSeedService` cria em Consultas BD as consultas
+  editáveis, derivando-as do catálogo. Antes eram 5 cópias do mesmo `onModuleInit`, e a
+  lista que o Administrador via dependia de quais módulos tinham subido.
+- [x] `DadosService.consultar` (não-lançante) para módulo × `executar` (lança HTTP) para o
+  controller — é o que preserva a tela degradando com aviso em vez de estourar.
+- [x] `DIVIDA_EXECUTAR_SQL` **zerou** na guarda de CI.
+
+### Fase 2 — mudar os drivers de casa *(concluída em 2026-08-25)*
+- [x] `oracledb` → `dados/conexoes/conexao-sicla.service.ts`; `mysql2` →
+  `dados/conexoes/conexao-portal.service.ts`. `PortalDbService` deixou de existir.
+- [x] `ConsultaBdService` veio para `dados/` — sem isso, `dados/` e `disponibilidade/`
+  ficariam em dependência circular.
+- [x] **`DisponibilidadeService` virou domínio puro** (ocupação por slot, mapa de técnicos,
+  caches). Não fala Oracle: pede as consultas ao catálogo.
+- [x] **Achado da migração:** a Disponibilidade tinha uma SEGUNDA porta ao Oracle
+  (`consultar`/`mapaTecnicos`/`ocupacaoPorSlot`), usada por `cronograma`,
+  `painel/capacidade` e `plano-cronograma`, que o levantamento inicial não pegou — ele
+  contou só quem chamava `executarSql`. Era a última consulta a banco externo fora da
+  fronteira; entrou no catálogo.
+- [x] Duas extensões do catálogo para acomodá-la: origem **`config_conexao`** (SQL guardado
+  na configuração da conexão) e tipo de parâmetro **`lista_texto`** (expande `:tecnicos`
+  numa lista de binds).
+- [x] **Escape hatch explícito**: `DadosService.executarSqlDeAdministrador`, para as duas
+  telas em que o ADM é o autor do SQL (Testar de Consultas BD e motor de Dashboards).
+  Restrito a `PERFIS_SISTEMA` e auditado.
+- [x] `PODEM_IMPORTAR_DRIVER` caiu de **3 para 1**.
+
+> ⚠️ **A exceção que ficou é decisão, não dívida.** `consultor-siger` continua abrindo o
+> SQLite dele: a base não é um banco vinculado, é um artefato DERIVADO (gerado por indexador
+> externo a partir do código-fonte), arquivo local em readonly, sem credencial, sem rede e
+> sem outro consumidor — e o módulo já é a API dele. Suas 7 consultas são busca full-text
+> com aridade variável; forçá-las num catálogo de consultas *nomeadas* distorceria os dois
+> lados sem fechar risco nenhum. Está declarada, com o motivo, dentro da guarda de CI.
+
+### Ainda aberto — por decisão, não por falta
+- [ ] **Rodar a migration `1787990000000-ApiClientes` em produção**
+  (`cd backend && npm run migration:run`). Até lá, a tela Sistema → API de Dados mostra o
+  catálogo e as conexões normalmente e avisa que a parte de clientes de máquina depende dela.
+- [ ] **Auditoria em tabela, com retenção** — hoje é log estruturado (com correlation-id). O
+  volume é de BI e cresceria sem teto no `painel_novo`; entra quando houver política de
+  retenção definida.
+- [ ] **Rate limit e cota por cliente de máquina** — hoje vale só o rate limit global.
+- [ ] **Paginação no banco** (`OFFSET/FETCH`) para as 4 consultas cujo teto passa de uma
+  página. Só entra se `truncadoNoLimite` começar a aparecer de verdade.
+- [ ] **Exposição fora da rede interna** — se algum consumidor for externo à rede, a decisão
+  de HTTPS/publicação vem antes (ver §Migração para servidor dedicado).
+
 ## 🔁 Processo de 18 passos (revisão de 2026-07-22)
 - [x] Mapa dos 18 passos, vínculo pessoa×papel (vários levantadores/consultores), RNS de
   quantidade livre, gates por responsável, paralelismo (10 não espera o 8), conferência

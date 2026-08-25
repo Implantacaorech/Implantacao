@@ -40,6 +40,7 @@ const ROTAS_ESTATICAS = [
   '/config/modelos-email',
   '/config/destinatarios-passo',
   '/config/consultas-bd',
+  '/config/api-dados',
   '/bi/implantacao',
   '/bi/implantacao/contratacao',
   '/bi/implantacao/conclusao',

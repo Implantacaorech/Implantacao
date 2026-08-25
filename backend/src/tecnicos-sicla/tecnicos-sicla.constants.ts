@@ -24,32 +24,6 @@ export const NOME_LISTA_TECNICOS = 'Lista de Técnicos (SICLA) — Usuários';
  * importação atualiza só os dados vindos do SICLA. */
 export const SENHA_PADRAO_TECNICO = 'Rech@2026';
 
-/** SQL padrão. Base: o `SELECT * FROM LISTA_TECNICOS lt` informado pelo usuário, com as
- * colunas explicitadas e o schema `SICLA.` na frente — validado contra o SICLA em
- * 2026-07-29: **o prefixo é obrigatório**, `FROM LISTA_TECNICOS` puro devolve ORA-00942
- * nesta conexão (usuário `powerbi`).
- *
- * `WHERE lt.ATIVO = 1` é deliberado: a tabela tem 618 linhas — a empresa inteira, das
- * quais 368 são gente desligada (e-mails do tipo `fulano_inativo@rech.com.br`). Sobram
- * 250 ativos, todos com e-mail único, então não há colisão no login. Escopo confirmado
- * com o usuário em 2026-07-29.
- *
- * Contrato de apelidos (case-insensitive): CODIGO, NOME, MODULOCAPACITADO, EMAIL, SETORDES.
- * Sem bind de filtro de propósito — a lista é pequena, vem inteira e o filtro da tela é
- * aplicado em memória; assim um SQL editado sem `:termo` nunca quebra. */
-export const SQL_LISTA_TECNICOS_PADRAO = `-- Técnicos do SICLA que alimentam o cadastro de Usuários do Painel.
--- Origem informada pelo usuário: SELECT * FROM LISTA_TECNICOS lt
--- ATIVO = 1 exclui os 368 desligados (a tabela cobre a empresa toda, 618 linhas).
-SELECT
-  lt.CODIGO           AS CODIGO,
-  lt.NOME             AS NOME,
-  lt.MODULOCAPACITADO AS MODULOCAPACITADO,
-  lt.EMAIL            AS EMAIL,
-  lt.SETORDES         AS SETORDES
-FROM SICLA.LISTA_TECNICOS lt
-WHERE lt.ATIVO = 1
-ORDER BY lt.NOME`;
-
 /** Um técnico do SICLA já normalizado para virar usuário. `bruto` traz a linha original
  * (todas as colunas), para a tela mostrar o que quiser sem depender do mapeamento. */
 export interface TecnicoSicla {

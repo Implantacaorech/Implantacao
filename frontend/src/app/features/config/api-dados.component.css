@@ -1,0 +1,66 @@
+/* Estilos globais em src/styles.css. Aqui só o que é específico desta tela. */
+
+/* A chave em claro aparece uma vez só — precisa saltar aos olhos e ser selecionável
+   inteira, sem quebra que atrapalhe o copiar/colar. */
+.chave-nova {
+  border-left: 4px solid var(--ok, #2e7d32);
+}
+
+.chave-valor {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.95rem;
+  padding: 12px;
+  border-radius: 6px;
+  background: var(--fundo-alt, #f4f6f8);
+  overflow-x: auto;
+  user-select: all;
+}
+
+.tag-param {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  padding: 1px 6px;
+  margin: 1px 3px 1px 0;
+  border-radius: 4px;
+  background: var(--fundo-alt, #f4f6f8);
+}
+
+/* Obrigatório em negrito, não em cor: a distinção precisa sobreviver a daltonismo e a
+   impressão em preto e branco. */
+.tag-param.obrigatorio {
+  font-weight: 700;
+}
+
+.tag-param .tipo {
+  opacity: 0.6;
+}
+
+.escopos {
+  border: 1px solid var(--borda, #d9dee3);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.escopo-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 16px;
+}
+
+.num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.col-origem {
+  max-width: 42ch;
+}
+
+/* Cliente revogado continua na lista (o registro é a prova de quem teve acesso), mas
+   recuado visualmente para não competir com os ativos. */
+tr.inativo {
+  opacity: 0.55;
+}

@@ -1,15 +1,8 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  OnModuleInit,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
-import { ConsultaBdService } from '../disponibilidade/consulta-bd.service';
-import { PortalDbService } from '../disponibilidade/portal-db.service';
+import { DadosService } from '../dados/dados.service';
 import { MailerService } from '../email/mailer.service';
 import { ModeloEmailService } from '../email/modelo-email.service';
 import { MODELOS_EMAIL_PADRAO } from '../email/modelo-email.constants';
@@ -19,7 +12,6 @@ import { EnviarVisitasEmailDto } from './dto/enviar-visitas-email.dto';
 import { gerarPdfVisitasPortal } from './visitas-portal-pdf';
 import {
   AgrupamentoResumo,
-  CONEXAO_CONSULTA_VISITAS_PORTAL,
   COR_STATUS_AGENDA,
   DiaAgenda,
   LinhaAgenda,
@@ -27,24 +19,17 @@ import {
   LinhaResumo,
   LinhaRns,
   LinhaVisitaPortal,
-  LIMITE_LINHAS,
   LIMITE_LINHAS_EXTRATO,
   LIMITE_VISITAS_PORTAL,
   MESES_PADRAO,
-  NOME_CONSULTA_VISITAS_PORTAL,
   ResumoStatusAgenda,
-  SLUG_CONSULTA_VISITAS_PORTAL,
-  SQL_AGENDAS,
-  SQL_EXTRATO_DESCRICAO,
-  SQL_EXTRATO_HORAS,
-  SQL_RESUMO_IMPLANTACAO,
-  SQL_RNS_VINCULADAS,
-  SQL_VISITAS_PORTAL_PADRAO,
   TotaisExtrato,
   TotaisResumo,
   TotaisRns,
-  TRECHO_DESCRICAO,
 } from './bi-implantacao.constants';
+// O teto do trecho mora junto do SQL que TRUNCA (catálogo da API de Dados): é ele quem
+// corta em 300 caracteres, e a tela só sinaliza que cortou.
+import { TRECHO_DESCRICAO } from '../dados/catalogo/sql/sicla-bi.sql';
 
 export interface QueryResumo {
   dataIni?: string;
@@ -243,40 +228,14 @@ export interface ResultadoVisitasPortal {
  * memória, de propósito: assim as listas de opções saem do próprio conjunto do período, sem
  * uma segunda ida ao banco — mesmo desenho já usado em `DashboardsService`. */
 @Injectable()
-export class BiImplantacaoService implements OnModuleInit {
+export class BiImplantacaoService {
   private readonly logger = new Logger('BiImplantacaoService');
 
   constructor(
-    private readonly disponibilidade: DisponibilidadeService,
-    private readonly consultas: ConsultaBdService,
-    private readonly portalDb: PortalDbService,
+    private readonly dados: DadosService,
     private readonly mailer: MailerService,
     private readonly modelosEmail: ModeloEmailService,
   ) {}
-
-  /** Semeia a consulta do painel "Visitas do Portal Rech" (idempotente) para o
-   * Administrador editar na tela de Consultas BD — com `conexao = 'portal'`, ela roda no
-   * banco do Portal Rech cadastrado na mesma tela. Não sobrescreve se já existir. */
-  async onModuleInit(): Promise<void> {
-    if (process.env.NODE_ENV === 'test') return;
-    try {
-      const existe = await this.consultas.porSlug(SLUG_CONSULTA_VISITAS_PORTAL);
-      if (!existe) {
-        await this.consultas.salvar(SLUG_CONSULTA_VISITAS_PORTAL, {
-          nome: NOME_CONSULTA_VISITAS_PORTAL,
-          sql: SQL_VISITAS_PORTAL_PADRAO,
-          ordem: 96,
-          mostrarGrafico: false,
-          conexao: CONEXAO_CONSULTA_VISITAS_PORTAL,
-        });
-      }
-    } catch (e) {
-      this.logger.error(
-        'Falha ao semear a consulta de visitas do Portal no Consultas BD',
-        e instanceof Error ? e.stack : String(e),
-      );
-    }
-  }
 
   private somaMeses(iso: string, n: number): string {
     const [ano, mes, dia] = iso.split('-').map(Number);
@@ -490,19 +449,13 @@ export class BiImplantacaoService implements OnModuleInit {
 
   async resumo(query: QueryResumo): Promise<ResultadoResumo> {
     const periodo = this.periodo(query);
-    if (!this.disponibilidade.configurado()) {
-      return this.vazio(
-        periodo,
-        'Conexão com o SICLA não configurada ou inativa (Ferramentas → Disponibilidade).',
-      );
-    }
+    // Sem checagem prévia de conexão: `consultar` já devolve {ok:false} com a
+    // mensagem que diz onde configurar — uma fonte só para o mesmo aviso.
 
-    const r = await this.disponibilidade.executarSql(
-      SQL_RESUMO_IMPLANTACAO,
-      { data_ini: periodo.inicio, data_fim: periodo.fim },
-      undefined,
-      LIMITE_LINHAS,
-    );
+    const r = await this.dados.consultar('sicla.bi.resumo-implantacao', {
+      data_ini: periodo.inicio,
+      data_fim: periodo.fim,
+    });
     if (!r.ok) return this.vazio(periodo, r.mensagem);
 
     const todas = r.linhas.map((l) => this.normalizar(l));
@@ -622,27 +575,13 @@ export class BiImplantacaoService implements OnModuleInit {
     query: QueryVisitasPortal,
   ): Promise<ResultadoVisitasPortal> {
     const periodo = this.periodo(query);
-    if (!this.portalDb.configurado()) {
-      return this.vazioVisitas(
-        periodo,
-        'Conexão com o banco do Portal Rech não configurada — cadastre em Sistema → Consulta BD.',
-      );
-    }
-
-    const c = await this.consultas.porSlug(SLUG_CONSULTA_VISITAS_PORTAL);
-    const sql = (c?.sql ?? '').trim() || SQL_VISITAS_PORTAL_PADRAO;
-
-    // Só passa os binds que o SQL vigente referencia (o Administrador pode editá-lo sem
-    // :data_ini/:data_fim — o painel só perde o recorte de período).
-    const binds: Record<string, string> = {};
-    if (/:data_ini\b/.test(sql)) binds.data_ini = periodo.inicio;
-    if (/:data_fim\b/.test(sql)) binds.data_fim = periodo.fim;
-
-    const r = await this.portalDb.executarSql(
-      sql,
-      binds,
-      LIMITE_VISITAS_PORTAL,
-    );
+    // Única consulta do Painel que roda no banco do PORTAL — o roteamento por conexão é do
+    // catálogo. Descartar o bind que o SQL vigente não cita (o Administrador pode editá-lo
+    // sem :data_ini/:data_fim) também: aqui só se informa o período.
+    const r = await this.dados.consultar('portal.visitas.listar', {
+      data_ini: periodo.inicio,
+      data_fim: periodo.fim,
+    });
     if (!r.ok) return this.vazioVisitas(periodo, r.mensagem);
 
     const linhas = r.linhas.map((l) => this.normalizarVisita(l));
@@ -853,19 +792,13 @@ export class BiImplantacaoService implements OnModuleInit {
 
   async extrato(query: QueryExtrato): Promise<ResultadoExtrato> {
     const periodo = this.periodo(query);
-    if (!this.disponibilidade.configurado()) {
-      return this.vazioExtrato(
-        periodo,
-        'Conexão com o SICLA não configurada ou inativa (Ferramentas → Disponibilidade).',
-      );
-    }
+    // Sem checagem prévia de conexão: `consultar` já devolve {ok:false} com a
+    // mensagem que diz onde configurar — uma fonte só para o mesmo aviso.
 
-    const r = await this.disponibilidade.executarSql(
-      SQL_EXTRATO_HORAS,
-      { data_ini: periodo.inicio, data_fim: periodo.fim },
-      undefined,
-      LIMITE_LINHAS_EXTRATO,
-    );
+    const r = await this.dados.consultar('sicla.bi.extrato-horas', {
+      data_ini: periodo.inicio,
+      data_fim: periodo.fim,
+    });
     if (!r.ok) return this.vazioExtrato(periodo, r.mensagem);
 
     const todas = r.linhas.map((l) => this.normalizarExtrato(l));
@@ -1022,19 +955,13 @@ export class BiImplantacaoService implements OnModuleInit {
 
   async rnsVinculadas(query: QueryRns): Promise<ResultadoRns> {
     const periodo = this.periodo(query);
-    if (!this.disponibilidade.configurado()) {
-      return this.vazioRns(
-        periodo,
-        'Conexão com o SICLA não configurada ou inativa (Ferramentas → Disponibilidade).',
-      );
-    }
+    // Sem checagem prévia de conexão: `consultar` já devolve {ok:false} com a
+    // mensagem que diz onde configurar — uma fonte só para o mesmo aviso.
 
-    const r = await this.disponibilidade.executarSql(
-      SQL_RNS_VINCULADAS,
-      { data_ini: periodo.inicio, data_fim: periodo.fim },
-      undefined,
-      LIMITE_LINHAS,
-    );
+    const r = await this.dados.consultar('sicla.bi.rns-vinculadas', {
+      data_ini: periodo.inicio,
+      data_fim: periodo.fim,
+    });
     if (!r.ok) return this.vazioRns(periodo, r.mensagem);
 
     const todas = r.linhas.map((l) => this.normalizarRns(l));
@@ -1244,19 +1171,13 @@ export class BiImplantacaoService implements OnModuleInit {
 
   async agendas(query: QueryAgendas): Promise<ResultadoAgendas> {
     const { mes, ini, fim } = this.mesReferencia(query.mes);
-    if (!this.disponibilidade.configurado()) {
-      return this.vazioAgendas(
-        mes,
-        'Conexão com o SICLA não configurada ou inativa (Ferramentas → Disponibilidade).',
-      );
-    }
+    // Sem checagem prévia de conexão: `consultar` já devolve {ok:false} com a
+    // mensagem que diz onde configurar — uma fonte só para o mesmo aviso.
 
-    const r = await this.disponibilidade.executarSql(
-      SQL_AGENDAS,
-      { mes_ini: ini, mes_fim: fim },
-      undefined,
-      LIMITE_LINHAS,
-    );
+    const r = await this.dados.consultar('sicla.agendas.listar', {
+      mes_ini: ini,
+      mes_fim: fim,
+    });
     if (!r.ok) return this.vazioAgendas(mes, r.mensagem);
 
     const todas = r.linhas.map((l) => this.normalizarAgenda(l));
@@ -1379,19 +1300,10 @@ export class BiImplantacaoService implements OnModuleInit {
     protocolo: number,
     datahora: string,
   ): Promise<{ descricao: string; tamanho: number; erro: string | null }> {
-    if (!this.disponibilidade.configurado()) {
-      return {
-        descricao: '',
-        tamanho: 0,
-        erro: 'Conexão com o SICLA não configurada.',
-      };
-    }
-    const r = await this.disponibilidade.executarSql(
-      SQL_EXTRATO_DESCRICAO,
-      { protocolo, datahora },
-      undefined,
-      1,
-    );
+    const r = await this.dados.consultar('sicla.bi.extrato-descricao', {
+      protocolo,
+      datahora,
+    });
     if (!r.ok) return { descricao: '', tamanho: 0, erro: r.mensagem };
     if (r.linhas.length === 0) {
       return { descricao: '', tamanho: 0, erro: 'Lançamento não encontrado.' };

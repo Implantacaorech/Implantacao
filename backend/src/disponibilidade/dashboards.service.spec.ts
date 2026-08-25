@@ -1,14 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DashboardsService } from './dashboards.service';
-import { ConsultaBdService } from './consulta-bd.service';
-import { DisponibilidadeService } from './disponibilidade.service';
-import { PortalDbService } from './portal-db.service';
+import { ConsultaBdService } from '../dados/consulta-bd.service';
+import { DadosService } from '../dados/dados.service';
 
 describe('DashboardsService', () => {
   let service: DashboardsService;
   const consultas = { listar: jest.fn(), porSlug: jest.fn() };
-  const disponibilidade = { configurado: jest.fn(), executarSql: jest.fn() };
-  const portalDb = { configurado: jest.fn(), executarSql: jest.fn() };
+  // O motor de dashboards roda SQL do ADMINISTRADOR (Consultas BD), não do catálogo — daí
+  // o escape hatch, que também é quem checa a conexão e audita.
+  const dados = { executarSqlDeAdministrador: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -16,8 +16,7 @@ describe('DashboardsService', () => {
       providers: [
         DashboardsService,
         { provide: ConsultaBdService, useValue: consultas },
-        { provide: DisponibilidadeService, useValue: disponibilidade },
-        { provide: PortalDbService, useValue: portalDb },
+        { provide: DadosService, useValue: dados },
       ],
     }).compile();
     service = module.get(DashboardsService);
@@ -95,20 +94,25 @@ describe('DashboardsService', () => {
       consultas.porSlug.mockResolvedValue(null);
       const r = await service.rodar('nao-existe', {});
       expect(r.erro).toContain('não configurada');
-      expect(disponibilidade.configurado).not.toHaveBeenCalled();
+      expect(dados.executarSqlDeAdministrador).not.toHaveBeenCalled();
     });
 
-    it('disponibilidade não configurada devolve erro específico', async () => {
+    it('conexão externa inativa devolve o erro que a API de Dados formulou', async () => {
       consultas.porSlug.mockResolvedValue(CONSULTA);
-      disponibilidade.configurado.mockReturnValue(false);
+      dados.executarSqlDeAdministrador.mockResolvedValue({
+        ok: false,
+        mensagem:
+          'Conexão com o SICLA não configurada ou inativa (Sistema → Ferramentas → Disponibilidade).',
+        colunas: [],
+        linhas: [],
+      });
       const r = await service.rodar('previsao_inicio_oficial', {});
-      expect(r.erro).toContain('Conexão externa');
+      expect(r.erro).toContain('não configurada');
     });
 
     it('filtra por período, agrupa por mês, monta o gráfico e a lista de situações', async () => {
       consultas.porSlug.mockResolvedValue(CONSULTA);
-      disponibilidade.configurado.mockReturnValue(true);
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.executarSqlDeAdministrador.mockResolvedValue({
         ok: true,
         mensagem: '2 linha(s).',
         colunas: [],
@@ -145,7 +149,9 @@ describe('DashboardsService', () => {
       });
       expect(r.totalPeriodo).toBe(2);
 
-      const [, bindsChamados] = disponibilidade.executarSql.mock.calls[0];
+      const [conexaoUsada, , bindsChamados] =
+        dados.executarSqlDeAdministrador.mock.calls[0];
+      expect(conexaoUsada).toBe('sicla');
       expect(bindsChamados).toEqual({
         data_ini: '2026-01-01',
         data_fim: '2026-03-31',
@@ -154,8 +160,7 @@ describe('DashboardsService', () => {
 
     it('filtro de situação na URL restringe a tabela e o total, mas não o gráfico geral', async () => {
       consultas.porSlug.mockResolvedValue(CONSULTA);
-      disponibilidade.configurado.mockReturnValue(true);
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.executarSqlDeAdministrador.mockResolvedValue({
         ok: true,
         mensagem: '',
         colunas: [],
@@ -175,8 +180,7 @@ describe('DashboardsService', () => {
 
     it('mesSel/anoSel restringem só a tabela (o total de contagem por mês já foi calculado antes)', async () => {
       consultas.porSlug.mockResolvedValue(CONSULTA);
-      disponibilidade.configurado.mockReturnValue(true);
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.executarSqlDeAdministrador.mockResolvedValue({
         ok: true,
         mensagem: '',
         colunas: [],
@@ -204,8 +208,7 @@ describe('DashboardsService', () => {
       };
       consultas.listar.mockResolvedValue([consultaSemData]);
       consultas.porSlug.mockResolvedValue(consultaSemData);
-      disponibilidade.configurado.mockReturnValue(true);
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.executarSqlDeAdministrador.mockResolvedValue({
         ok: true,
         mensagem: '',
         colunas: [],
@@ -222,8 +225,7 @@ describe('DashboardsService', () => {
 
     it('erro na execução do SQL é repassado como erro do dashboard', async () => {
       consultas.porSlug.mockResolvedValue(CONSULTA);
-      disponibilidade.configurado.mockReturnValue(true);
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.executarSqlDeAdministrador.mockResolvedValue({
         ok: false,
         mensagem: 'ORA-00904: identificador inválido',
         colunas: [],

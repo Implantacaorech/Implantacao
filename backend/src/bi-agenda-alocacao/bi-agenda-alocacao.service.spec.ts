@@ -1,10 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BiAgendaAlocacaoService } from './bi-agenda-alocacao.service';
-import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
+import { DadosService } from '../dados/dados.service';
+import {} from './bi-agenda-alocacao.constants';
 import {
   SQL_CALENDARIO_ALOCACAO,
   SQL_HORAS_APLICADAS,
-} from './bi-agenda-alocacao.constants';
+} from '../dados/catalogo/sql/sicla-agenda.sql';
 
 /** Linha CRUA de `POWERBI_IMP_LISTACOMPROMISSOS_2` — um compromisso, uma linha POR técnico. */
 function compromisso(over: Record<string, unknown> = {}) {
@@ -51,23 +52,22 @@ function agendaHoras(over: Record<string, unknown> = {}) {
 
 describe('BiAgendaAlocacaoService', () => {
   let service: BiAgendaAlocacaoService;
-  const disponibilidade = { configurado: jest.fn(), executarSql: jest.fn() };
+  const dados = { consultar: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BiAgendaAlocacaoService,
-        { provide: DisponibilidadeService, useValue: disponibilidade },
+        { provide: DadosService, useValue: dados },
       ],
     }).compile();
     service = module.get(BiAgendaAlocacaoService);
-    disponibilidade.configurado.mockReturnValue(true);
   });
 
   describe('Calendário', () => {
     beforeEach(() => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '1',
         colunas: [],
@@ -92,7 +92,7 @@ describe('BiAgendaAlocacaoService', () => {
     });
 
     it('liga PEDIDOIMP à RNS, mas não exige — compromisso sem RNS continua na grade', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '1',
         colunas: [],
@@ -107,7 +107,7 @@ describe('BiAgendaAlocacaoService', () => {
     });
 
     it('conta compromissos DISTINTOS por código — um mesmo CODIGO com 2 técnicos não dobra o total', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '2',
         colunas: [],
@@ -121,7 +121,7 @@ describe('BiAgendaAlocacaoService', () => {
     });
 
     it('filtra por técnico (dimensão "responsavel") em cascata', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '2',
         colunas: [],
@@ -140,7 +140,7 @@ describe('BiAgendaAlocacaoService', () => {
     });
 
     it('monta a grade com todos os dias do mês, mesmo sem compromisso', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '0',
         colunas: [],
@@ -157,7 +157,12 @@ describe('BiAgendaAlocacaoService', () => {
     });
 
     it('avisa quando o SICLA não está configurado', async () => {
-      disponibilidade.configurado.mockReturnValue(false);
+      dados.consultar.mockResolvedValue({
+        ok: false,
+        mensagem: 'Conexão com o SICLA não configurada ou inativa.',
+        colunas: [],
+        linhas: [],
+      });
       const r = await service.calendario({ mes: '2026-07' });
       expect(r.erro).toContain('não configurada');
       expect(r.dias).toEqual([]);
@@ -166,7 +171,7 @@ describe('BiAgendaAlocacaoService', () => {
 
   describe('Horas Aplicadas', () => {
     beforeEach(() => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '1',
         colunas: [],
@@ -188,7 +193,7 @@ describe('BiAgendaAlocacaoService', () => {
     });
 
     it('soma por status (flag 0/1) em vez de contar compromissos', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '2',
         colunas: [],
@@ -214,7 +219,7 @@ describe('BiAgendaAlocacaoService', () => {
     });
 
     it('agrupa por RNS — duas linhas da mesma RNS viram UMA linha na tabela', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '2',
         colunas: [],
@@ -234,7 +239,7 @@ describe('BiAgendaAlocacaoService', () => {
     });
 
     it('compromisso sem RNS não entra na tabela por projeto', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '1',
         colunas: [],
@@ -245,7 +250,7 @@ describe('BiAgendaAlocacaoService', () => {
     });
 
     it('data invertida ou zerada não gera hora negativa', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '1',
         colunas: [],
@@ -261,7 +266,7 @@ describe('BiAgendaAlocacaoService', () => {
     });
 
     it('filtra por grupo econômico em cascata', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '2',
         colunas: [],
@@ -276,14 +281,19 @@ describe('BiAgendaAlocacaoService', () => {
     });
 
     it('avisa quando o SICLA não está configurado', async () => {
-      disponibilidade.configurado.mockReturnValue(false);
+      dados.consultar.mockResolvedValue({
+        ok: false,
+        mensagem: 'Conexão com o SICLA não configurada ou inativa.',
+        colunas: [],
+        linhas: [],
+      });
       const r = await service.horasAplicadas({});
       expect(r.erro).toContain('não configurada');
       expect(r.linhas).toEqual([]);
     });
 
     it('propaga erro do banco', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: false,
         mensagem: 'ORA-00942',
         colunas: [],

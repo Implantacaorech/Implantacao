@@ -382,6 +382,15 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/config/consultas-bd.component').then((m) => m.ConsultasBdComponent),
       },
+      // API de Dados (ADR-0003): catálogo, conexões, clientes de máquina e uso. Fica ao lado
+      // de Consultas BD de propósito — é lá que se edita o TEXTO de uma consulta catalogada.
+      {
+        path: 'config/api-dados',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'API de Dados' },
+        loadComponent: () =>
+          import('./features/config/api-dados.component').then((m) => m.ApiDadosComponent),
+      },
       // ── Área BI ─────────────────────────────────────────────────────────────────
       // Uma entrada só no menu ("BI"), com duas abas de 1º nível — cada uma um BI — e
       // subabas dentro delas. O RBAC continua separado: `dashboards` libera o BI

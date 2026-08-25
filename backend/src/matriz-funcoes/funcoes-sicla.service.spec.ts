@@ -1,9 +1,5 @@
 import { FuncoesSiclaService } from './funcoes-sicla.service';
-import {
-  GRUPO_SEM_MODULO,
-  siglaDoToken,
-  SQL_LISTA_FUNCOES_PADRAO,
-} from './funcoes-sicla.constants';
+import { GRUPO_SEM_MODULO, siglaDoToken } from './funcoes-sicla.constants';
 
 /** Taxonomia das funções do SICLA. Foco na REGRA de agrupamento por STRMENUS — é o que
  * define a matriz inteira. */
@@ -42,29 +38,20 @@ describe('FuncoesSiclaService', () => {
   };
 
   function montar(linhas: Record<string, unknown>[], ok = true) {
-    const executarSql = jest.fn().mockResolvedValue({
+    const consultar = jest.fn().mockResolvedValue({
       ok,
       mensagem: ok ? 'ok' : 'ORA-12541',
       colunas: [],
       linhas,
     });
-    const porSlug = jest.fn().mockResolvedValue(null);
-    const service = new FuncoesSiclaService(
-      { executarSql } as never,
-      { porSlug } as never,
-    );
-    return { service, executarSql, porSlug };
+    const service = new FuncoesSiclaService({ consultar } as never);
+    return { service, consultar };
   }
 
-  it('usa o SQL padrão, sem bind', async () => {
-    const { service, executarSql } = montar([]);
+  it('pede a consulta pelo NOME, sem parâmetro', async () => {
+    const { service, consultar } = montar([]);
     await service.taxonomia();
-    expect(executarSql).toHaveBeenCalledWith(
-      SQL_LISTA_FUNCOES_PADRAO,
-      {},
-      undefined,
-      5000,
-    );
+    expect(consultar).toHaveBeenCalledWith('sicla.funcoes.listar');
   });
 
   it('o exemplo do usuário cai nos 9 módulos do STRMENUS', async () => {
@@ -131,19 +118,19 @@ describe('FuncoesSiclaService', () => {
   });
 
   it('cacheia: a segunda chamada não vai ao banco; limparCache força releitura', async () => {
-    const { service, executarSql } = montar([LINHA_EXEMPLO]);
+    const { service, consultar } = montar([LINHA_EXEMPLO]);
     await service.taxonomia();
     await service.taxonomia();
-    expect(executarSql).toHaveBeenCalledTimes(1);
+    expect(consultar).toHaveBeenCalledTimes(1);
     service.limparCache();
     await service.taxonomia();
-    expect(executarSql).toHaveBeenCalledTimes(2);
+    expect(consultar).toHaveBeenCalledTimes(2);
   });
 
   it('falha de consulta estoura e NÃO vira cache', async () => {
-    const { service, executarSql } = montar([], false);
+    const { service, consultar } = montar([], false);
     await expect(service.taxonomia()).rejects.toThrow('ORA-12541');
     await expect(service.taxonomia()).rejects.toThrow('ORA-12541');
-    expect(executarSql).toHaveBeenCalledTimes(2); // tentou de novo
+    expect(consultar).toHaveBeenCalledTimes(2); // tentou de novo
   });
 });

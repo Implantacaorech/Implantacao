@@ -26,30 +26,10 @@ describe('ConsultaBdService', () => {
     service = module.get(ConsultaBdService);
   });
 
-  describe('seedPadrao', () => {
-    it('semeia quando não existe', async () => {
-      repo.findOne.mockResolvedValue(null);
-      const criou = await service.seedPadrao();
-      expect(criou).toBe(true);
-      expect(repo.save).toHaveBeenCalledWith(
-        expect.objectContaining({
-          slug: 'previsao_inicio_oficial',
-          mostrarGrafico: true,
-        }),
-      );
-    });
-
-    it('é idempotente — não sobrescreve se já existe (mesmo editado pelo ADM)', async () => {
-      repo.findOne.mockResolvedValue({
-        id: 1,
-        slug: 'previsao_inicio_oficial',
-        nome: 'Editado pelo ADM',
-      });
-      const criou = await service.seedPadrao();
-      expect(criou).toBe(false);
-      expect(repo.save).not.toHaveBeenCalled();
-    });
-  });
+  // O bloco 'seedPadrao' saiu daqui: semear virou responsabilidade do catálogo da API de
+  // Dados (`dados/catalogo-seed.service.ts`), que deriva as consultas padrão das entradas
+  // com origem `consulta_salva` — inclusive a `previsao_inicio_oficial`, cujo texto morava
+  // dentro deste service.
 
   describe('salvar', () => {
     it('normaliza o slug (minúsculo, espaços -> underscore)', async () => {

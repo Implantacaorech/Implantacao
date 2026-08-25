@@ -108,6 +108,7 @@ o `e2e/playwright.config.ts` é detectado — dá para rodar e depurar caso a ca
 | `testes/03-comercial-passo-5.spec.ts` | o Comercial conclui o passo 5 (dele) e **não** ganha ação num passo alheio |
 | `testes/04-permissoes-fluxo.spec.ts` | RN-10 pelos caminhos que **não** passam pelo `PassosController` (anexo, geração de documento, `PUT /projetos/:id`, `POST /fluxo/criar`), destinatários de e-mail, RN-4, homônimo e tamanho de corpo |
 | `testes/07-projeto-heranca-etapa-10.spec.ts` | etapa 10 herdando a etapa 3: a tela abre preenchida, o GCI edita, gerar conclui o passo 10 e libera o 11; Cronograma Macro como campo de data; alinhamento dos campos; passo 11 sem "Abrir" |
+| `testes/08-api-dados.spec.ts` | **API de Dados** (ADR-0003): 401 sem credencial, 404 fora do catálogo, 400 de parâmetro, 403 por menu e por escopo, o catálogo sem SQL, e o ciclo de vida da chave de máquina (exibida uma vez, revogada, rotacionada) — inclusive que uma chave **não** administra a API |
 
 ## De onde vieram estes testes
 

@@ -13,7 +13,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { PERFIS_SISTEMA } from '../common/constants/perfis';
 import { ApiEnvelope } from '../common/dto/api-envelope';
-import { PortalDbService } from './portal-db.service';
+import { ConexaoPortalService } from '../dados/conexoes/conexao-portal.service';
 import { SalvarPortalDbDto } from './dto/salvar-portal-db.dto';
 
 /** Conexão com o BANCO DO PORTAL RECH (MySQL) — cadastrada pelo Administrador na tela
@@ -25,7 +25,7 @@ import { SalvarPortalDbDto } from './dto/salvar-portal-db.dto';
 @Roles(...PERFIS_SISTEMA)
 @Controller('config/portal-db')
 export class ConfigPortalDbController {
-  constructor(private readonly portalDb: PortalDbService) {}
+  constructor(private readonly portalDb: ConexaoPortalService) {}
 
   private semSenha() {
     const { senha, ...resto } = this.portalDb.carregarConfig();

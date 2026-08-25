@@ -18,8 +18,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ENTITIES } from '../src/database/entities';
 import { Usuario } from '../src/database/entities/usuario.entity';
 import { ConsultaBD } from '../src/database/entities/consulta-bd.entity';
-import { DisponibilidadeService } from '../src/disponibilidade/disponibilidade.service';
-import { ConsultaBdService } from '../src/disponibilidade/consulta-bd.service';
+import { ConsultaBdService } from '../src/dados/consulta-bd.service';
+import { DadosService } from '../src/dados/dados.service';
+import { ConexoesService } from '../src/dados/conexoes/conexoes.service';
+import { ConexaoSiclaService } from '../src/dados/conexoes/conexao-sicla.service';
+import { ConexaoPortalService } from '../src/dados/conexoes/conexao-portal.service';
 import { TecnicosSiclaService } from '../src/tecnicos-sicla/tecnicos-sicla.service';
 
 const url = process.env.MIGRACAO_DB_URL;
@@ -28,9 +31,10 @@ if (!url) {
   process.exit(1);
 }
 
-// Providers avulsos em vez de importar TecnicosSiclaModule/DisponibilidadeModule: os
-// módulos trazem junto os CONTROLLERS, cujos guards puxam PermissoesService e o resto da
-// árvore da aplicação. Aqui só interessa o serviço.
+// Providers avulsos em vez de importar TecnicosSiclaModule/DadosModule: os módulos trazem
+// junto os CONTROLLERS, cujos guards puxam PermissoesService e o resto da árvore da
+// aplicação. Aqui só interessa o serviço — e, desde a fase 2 do ADR-0003, a pilha da API de
+// Dados que ele usa para chegar ao SICLA (catálogo → conexões → driver Oracle).
 @Module({
   imports: [
     TypeOrmModule.forRoot({
@@ -42,7 +46,14 @@ if (!url) {
     }),
     TypeOrmModule.forFeature([Usuario, ConsultaBD]),
   ],
-  providers: [TecnicosSiclaService, DisponibilidadeService, ConsultaBdService],
+  providers: [
+    TecnicosSiclaService,
+    DadosService,
+    ConexoesService,
+    ConexaoSiclaService,
+    ConexaoPortalService,
+    ConsultaBdService,
+  ],
 })
 class ScriptModule {}
 

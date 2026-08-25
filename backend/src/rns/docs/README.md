@@ -15,15 +15,21 @@ boot e editável pelo Administrador sem deploy (ver `regras-negocio.md`).
 
 | Arquivo                        | Papel                                                     |
 | ------------------------------ | --------------------------------------------------------- |
-| `rns.controller.ts`            | `GET /rns` — valida a query e delega                      |
+| `rns.controller.ts`            | `GET /rns` e `GET /rns/detalhe` — valida a query e delega |
 | `rns.service.ts`               | Janela saneada + leitura do SICLA + contrato da tela      |
 | `rns.constants.ts`             | SQL default, slug do Consultas BD, teto e normalização    |
 | `dto/query-consulta-rns.dto.ts`| Janela `ini`/`fim` (opcionais)                            |
+| `dto/query-detalhe-rns.dto.ts` | `numero` da RNS (o `PEDIDO`) para o resumo completo       |
 | `rns.module.ts`                | Amarra tudo; importa `DisponibilidadeModule`              |
 
 Não há camada Repository nem entity própria: o módulo **não persiste nada** — só lê a view
 do SICLA. A busca por assunto acontece **na tela** (em memória), sobre o período que o
 backend entregou — mesma decisão da Agenda e dos BIs.
+
+Além da consulta por período, `GET /rns/detalhe?numero=` devolve o **resumo completo de
+uma RNS** (todos os itens do pedido) — é o que o **calendário da Agenda** abre num modal
+ao clicar num compromisso com RNS vinculada. A ficha exibida é o componente compartilhado
+`app-rns-detalhe` (frontend `features/rns/`), o mesmo do detalhe expandido da tela RNS.
 
 Documentos irmãos: [arquitetura.md](arquitetura.md) · [api.md](api.md) ·
 [regras-negocio.md](regras-negocio.md) · [casos-de-uso.md](casos-de-uso.md) ·

@@ -12,7 +12,7 @@ import { AppModule } from '../src/app.module';
 import { Usuario } from '../src/database/entities/usuario.entity';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
-import { ConsultaBdService } from '../src/disponibilidade/consulta-bd.service';
+import { CatalogoSeedService } from '../src/dados/catalogo-seed.service';
 
 // A conexão Oracle real não está disponível neste ambiente — mocka só a fronteira de rede
 // (oracledb.getConnection), mesma técnica de disponibilidade.service.spec.ts. O resto do
@@ -116,10 +116,9 @@ describe('Disponibilidade / Consultas BD / Dashboards (e2e)', () => {
         .send({ login: 'gci1', senha: 'senha-gci-123' })
     ).body.data.accessToken;
 
-    // Auto-seed pulado em teste (NODE_ENV=test) — semeia manualmente, mesmo padrão já
-    // usado para os outros catálogos.
-    const consultaBdService = moduleFixture.get(ConsultaBdService);
-    await consultaBdService.seedPadrao();
+    // Auto-seed pulado em teste (NODE_ENV=test) — semeia manualmente. Desde a fase 1 do
+    // ADR-0003 quem semeia é o catálogo da API de Dados, não mais o ConsultaBdService.
+    await moduleFixture.get(CatalogoSeedService).semear();
   });
 
   afterAll(async () => {

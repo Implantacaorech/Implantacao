@@ -1,5 +1,4 @@
 import { ClientesSiclaService } from './clientes-sicla.service';
-import { SQL_BUSCA_CLIENTE_PADRAO } from './clientes-sicla.constants';
 
 /** O serviço do passo 1: consulta ao SICLA e cadastro da ficha. Testado com dublês — o foco
  * é a REGRA (validação do termo, mapeamento das colunas, anti-duplicação e conclusão do
@@ -7,22 +6,20 @@ import { SQL_BUSCA_CLIENTE_PADRAO } from './clientes-sicla.constants';
 describe('ClientesSiclaService', () => {
   function montar(
     over: {
-      executarSql?: jest.Mock;
-      porSlug?: jest.Mock;
+      consultar?: jest.Mock;
       projetoFindOne?: jest.Mock;
       projetoSave?: jest.Mock;
       concluir?: jest.Mock;
     } = {},
   ) {
-    const executarSql =
-      over.executarSql ??
+    const consultar =
+      over.consultar ??
       jest.fn().mockResolvedValue({
         ok: true,
         mensagem: 'ok',
         colunas: [],
         linhas: [],
       });
-    const porSlug = over.porSlug ?? jest.fn().mockResolvedValue(null);
     const projetoFindOne =
       over.projetoFindOne ?? jest.fn().mockResolvedValue(null);
     const projetoSave =
@@ -39,20 +36,17 @@ describe('ClientesSiclaService', () => {
       save: projetoSave,
       create: (p: unknown) => p,
     };
-    const disponibilidade = { executarSql };
-    const consultas = { porSlug };
+    const dados = { consultar };
     const passos = { concluir };
 
     const service = new ClientesSiclaService(
       projetos as never,
-      disponibilidade as never,
-      consultas as never,
+      dados as never,
       passos as never,
     );
     return {
       service,
-      executarSql,
-      porSlug,
+      consultar,
       projetoFindOne,
       projetoSave,
       concluir,
@@ -60,40 +54,26 @@ describe('ClientesSiclaService', () => {
   }
 
   it('recusa termo curto sem consultar o SICLA', async () => {
-    const { service, executarSql } = montar();
+    const { service, consultar } = montar();
     const r = await service.buscar('a');
     expect(r.ok).toBe(false);
-    expect(executarSql).not.toHaveBeenCalled();
+    expect(consultar).not.toHaveBeenCalled();
   });
 
-  it('usa o SQL padrão quando não há consulta editada e passa o termo com curinga', async () => {
-    const { service, executarSql, porSlug } = montar();
-    await service.buscar('acme');
-    expect(porSlug).toHaveBeenCalled();
-    expect(executarSql).toHaveBeenCalledWith(
-      SQL_BUSCA_CLIENTE_PADRAO,
-      { termo: '%acme%' },
-      undefined,
-      50,
-    );
+  it('pede a consulta pelo NOME, com o termo CRU (o curinga é do catálogo)', async () => {
+    const { service, consultar } = montar();
+    await service.buscar('  acme  ');
+    expect(consultar).toHaveBeenCalledWith('sicla.clientes.buscar', {
+      termo: 'acme',
+    });
   });
 
-  it('prefere o SQL editado pelo Administrador quando existe', async () => {
-    const sqlEditado =
-      'SELECT CODIGO, CLIENTE FROM MINHA.TABELA WHERE CLIENTE LIKE :termo';
-    const porSlug = jest.fn().mockResolvedValue({ sql: sqlEditado });
-    const { service, executarSql } = montar({ porSlug });
-    await service.buscar('acme');
-    expect(executarSql).toHaveBeenCalledWith(
-      sqlEditado,
-      { termo: '%acme%' },
-      undefined,
-      50,
-    );
-  });
+  // "SQL padrão vs SQL editado pelo Administrador" saiu daqui: a escolha do texto vigente
+  // é do catálogo, e está coberta em dados.service.spec.ts ("usa o SQL salvo em Consultas
+  // BD, não o embutido no código"). Este módulo não conhece mais SQL.
 
   it('mapeia colunas do SICLA para a ficha, aceitando variações de nome', async () => {
-    const executarSql = jest.fn().mockResolvedValue({
+    const consultar = jest.fn().mockResolvedValue({
       ok: true,
       mensagem: '1 linha(s).',
       colunas: ['CODIGO', 'RAZAO', 'FANTASIA', 'CNPJ'],
@@ -106,7 +86,7 @@ describe('ClientesSiclaService', () => {
         },
       ],
     });
-    const { service } = montar({ executarSql });
+    const { service } = montar({ consultar });
     const r = await service.buscar('acme');
     expect(r.ok).toBe(true);
     expect(r.clientes[0]).toMatchObject({
@@ -120,13 +100,13 @@ describe('ClientesSiclaService', () => {
   });
 
   it('propaga a falha da consulta sem estourar', async () => {
-    const executarSql = jest.fn().mockResolvedValue({
+    const consultar = jest.fn().mockResolvedValue({
       ok: false,
       mensagem: 'ORA-00942',
       colunas: [],
       linhas: [],
     });
-    const { service } = montar({ executarSql });
+    const { service } = montar({ consultar });
     const r = await service.buscar('acme');
     expect(r.ok).toBe(false);
     expect(r.mensagem).toContain('ORA-00942');

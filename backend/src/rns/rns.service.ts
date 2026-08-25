@@ -1,6 +1,5 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
-import { ConsultaBdService } from '../disponibilidade/consulta-bd.service';
+import { Injectable } from '@nestjs/common';
+import { DadosService } from '../dados/dados.service';
 import {
   addDays,
   ehDataIso,
@@ -11,9 +10,6 @@ import {
 import {
   LIMITE_CONSULTA_RNS,
   LinhaRns,
-  NOME_CONSULTA_RNS,
-  SLUG_CONSULTA_RNS,
-  SQL_CONSULTA_RNS_PADRAO,
   normalizarLinhaRns,
 } from './rns.constants';
 
@@ -61,46 +57,12 @@ const JANELA_TOTAL = { ini: '1900-01-01', fim: '2999-12-31' };
  * (janela de `DATACRI`); a busca por assunto e os filtros são aplicados NA TELA, em memória
  * — mesmo idioma da Agenda e dos BIs, para cada tecla digitada não custar uma ida ao SICLA.
  *
- * O SQL vive no **Consultas BD** (Sistema → Consulta BD, slug `rns_lista_itemped`):
- * semeado no boot com o default embutido e editável pelo Administrador sem deploy — mesmo
- * desenho da `lista_tecnicos_sicla` do cadastro de Usuários. */
+ * Pede `sicla.rns.listar` e `sicla.rns.detalhar` à API de Dados (ADR-0003). O SQL continua
+ * editável pelo Administrador em Consultas BD (slug `rns_lista_itemped`) — mas quem resolve
+ * o texto vigente, os binds e o teto é o catálogo, não este módulo. */
 @Injectable()
-export class RnsService implements OnModuleInit {
-  private readonly logger = new Logger('RnsService');
-
-  constructor(
-    private readonly disponibilidade: DisponibilidadeService,
-    private readonly consultas: ConsultaBdService,
-  ) {}
-
-  /** Semeia o SQL (idempotente) para o Administrador editar na tela de Consultas BD.
-   * Não sobrescreve se já existir — respeita edição manual. */
-  async onModuleInit(): Promise<void> {
-    if (process.env.NODE_ENV === 'test') return;
-    try {
-      const existe = await this.consultas.porSlug(SLUG_CONSULTA_RNS);
-      if (!existe) {
-        await this.consultas.salvar(SLUG_CONSULTA_RNS, {
-          nome: NOME_CONSULTA_RNS,
-          sql: SQL_CONSULTA_RNS_PADRAO,
-          ordem: 95,
-          mostrarGrafico: false,
-        });
-      }
-    } catch (e) {
-      this.logger.error(
-        'Falha ao semear a consulta de RNS (LISTA_ITEMPED) no Consultas BD',
-        e instanceof Error ? e.stack : String(e),
-      );
-    }
-  }
-
-  /** SQL vigente: a versão editada pelo Administrador no Consultas BD, ou o default. */
-  private async sqlConsulta(): Promise<string> {
-    const c = await this.consultas.porSlug(SLUG_CONSULTA_RNS);
-    const sql = (c?.sql ?? '').trim();
-    return sql || SQL_CONSULTA_RNS_PADRAO;
-  }
+export class RnsService {
+  constructor(private readonly dados: DadosService) {}
 
   /** Janela [ini, fim] saneada. Default = do 1º dia do mês ANTERIOR ao último dia do mês
    * SEGUINTE (a janela da consulta original: em agosto, 01/07 → 30/09 — pega o backlog
@@ -144,28 +106,13 @@ export class RnsService implements OnModuleInit {
 
   async consultar(query: QueryConsultaRns): Promise<ResultadoConsultaRns> {
     const { ini, fim } = this.periodo(query);
-    if (!this.disponibilidade.configurado()) {
-      return this.vazio(
-        ini,
-        fim,
-        'Conexão com o SICLA não configurada ou inativa (Ferramentas → Disponibilidade).',
-      );
-    }
-
-    // Só passa os binds que o SQL vigente referencia: o Administrador pode ter colado uma
-    // versão com datas fixas (sem :data_ini/:data_fim) e bind sobrando derruba o Oracle
-    // com ORA-01036 — a tela apenas perde o filtro de período, o que é o esperado.
-    const sql = await this.sqlConsulta();
-    const binds: Record<string, string> = {};
-    if (/:data_ini\b/.test(sql)) binds.data_ini = ini;
-    if (/:data_fim\b/.test(sql)) binds.data_fim = fim;
-
-    const r = await this.disponibilidade.executarSql(
-      sql,
-      binds,
-      undefined,
-      LIMITE_CONSULTA_RNS,
-    );
+    // Descartar o bind que o SQL vigente não cita (o Administrador pode ter colado uma
+    // versão com datas fixas, e bind sobrando derruba o Oracle com ORA-01036) virou
+    // responsabilidade do catálogo. Aqui só se informa a janela pedida.
+    const r = await this.dados.consultar('sicla.rns.listar', {
+      data_ini: ini,
+      data_fim: fim,
+    });
     if (!r.ok) return this.vazio(ini, fim, r.mensagem);
 
     const itens = r.linhas.map((l) => normalizarLinhaRns(l));
@@ -181,9 +128,11 @@ export class RnsService implements OnModuleInit {
   }
 
   /** Resumo completo de UMA RNS (todos os itens do pedido) — aberto pelo clique num
-   * compromisso do calendário da Agenda. Embrulha o SQL vigente do Consultas BD numa
-   * inline view filtrada por `PEDIDO`: o contrato de colunas (e qualquer correção de
-   * schema feita pelo Administrador) vale aqui também, sem duplicar a consulta. */
+   * compromisso do calendário da Agenda.
+   *
+   * O recorte por `PEDIDO` (a inline view com `ORDER BY ITEM`) mora no catálogo, no
+   * `envelopar` da consulta `sicla.rns.detalhar`: assim a ficha herda o contrato de colunas
+   * e qualquer correção de schema feita no SQL base, sem duplicar a consulta. */
   async detalhar(numero: number): Promise<ResultadoDetalheRns> {
     const vazio = (erro: string | null): ResultadoDetalheRns => ({
       numero,
@@ -194,26 +143,12 @@ export class RnsService implements OnModuleInit {
     if (!Number.isInteger(numero) || numero <= 0) {
       return vazio('Número de RNS inválido.');
     }
-    if (!this.disponibilidade.configurado()) {
-      return vazio(
-        'Conexão com o SICLA não configurada ou inativa (Ferramentas → Disponibilidade).',
-      );
-    }
 
-    const base = await this.sqlConsulta();
-    // ORDER BY externo por ITEM: a ordem de backlog do SQL interno não faz sentido dentro
-    // de um único pedido — a ficha lista item 1, 2, 3…
-    const sql = `SELECT * FROM (\n${base}\n) WHERE PEDIDO = :pedido ORDER BY ITEM`;
-    const binds: Record<string, string | number> = { pedido: numero };
-    if (/:data_ini\b/.test(base)) binds.data_ini = JANELA_TOTAL.ini;
-    if (/:data_fim\b/.test(base)) binds.data_fim = JANELA_TOTAL.fim;
-
-    const r = await this.disponibilidade.executarSql(
-      sql,
-      binds,
-      undefined,
-      LIMITE_DETALHE_RNS,
-    );
+    const r = await this.dados.consultar('sicla.rns.detalhar', {
+      pedido: numero,
+      data_ini: JANELA_TOTAL.ini,
+      data_fim: JANELA_TOTAL.fim,
+    });
     if (!r.ok) return vazio(r.mensagem);
 
     const itens = r.linhas.map((l) => normalizarLinhaRns(l));

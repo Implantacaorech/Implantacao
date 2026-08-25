@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
-import { DisponibilidadeModule } from '../disponibilidade/disponibilidade.module';
+import { DadosModule } from '../dados/dados.module';
 import { ModulosSiclaController } from './modulos-sicla.controller';
 import { ModulosSiclaService } from './modulos-sicla.service';
 
-/** Passo 1: consulta de módulos/adicionais no SICLA (reusa o motor Oracle da
- * Disponibilidade) para marcar os módulos contratados. */
+/** Passo 1: consulta de módulos/adicionais no SICLA, pela API de Dados (ADR-0003), para
+ * marcar os módulos contratados. */
 @Module({
-  imports: [DisponibilidadeModule],
+  imports: [DadosModule],
   controllers: [ModulosSiclaController],
   providers: [ModulosSiclaService],
 })

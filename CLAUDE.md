@@ -89,6 +89,27 @@ administrativo legado (roles/cliente/criar-templates/verbal/saúde). **`tools/` 
 vivo por completo** — é dependência real dessa ponte e do `docservice/`. Nada em `webapp/`
 ou `tools/` que sobrou é código morto; não mover/apagar sem checar `import` primeiro.
 
+## Consulta a banco EXTERNO — só pela API de Dados
+
+Regra do usuário (2026-08-25, [ADR-0003](<vault/17 - ADR/ADR-0003 - API de Dados como fronteira unica de banco.md>)):
+**toda e qualquer consulta a banco de dados externo passa por uma API.** Migração
+**concluída** nas 3 fases: 19 consultas no catálogo, nenhum módulo fala com driver.
+
+Na prática: escreva o SQL em `backend/src/dados/catalogo/sql/`, declare a consulta em
+`catalogo/catalogo.ts` (nome estável, parâmetros tipados, teto de linhas) e chame
+`DadosService.consultar(nome, parametros)` — que **não lança**: devolve
+`{ok, mensagem, colunas, linhas}` e a tela degrada com aviso. **Não** importe
+`oracledb`/`mysql2` nem chame `executarSql` em lugar nenhum fora de `src/dados/` — o teste
+`backend/src/common/conformidade-api-dados.spec.ts` falha o CI. Contrato e uso em
+[backend/src/dados/docs/](backend/src/dados/docs/README.md); tela em Sistema → API de Dados.
+
+O escopo é o dado de **terceiro**: Oracle do SICLA e MySQL do Portal Rech. Fora dele, por
+decisão: o `painel_novo` (camada Repository/TypeORM, ADR-0002) e a base do Consultor SIGER
+(artefato derivado, local, readonly — o módulo já é a API dela).
+
+⚠️ **Pendente em produção:** rodar `cd backend && npm run migration:run` (tabela
+`api_clientes`). Até lá a tela abre, mas sem a parte de clientes de máquina.
+
 ## Papéis (agentes) — detalhe no guia operacional
 `coordenador-implantacao` · `setor-adm` · `consultor-implantacao` (GCI) · `gerente-projeto` ·
 `equipe-conversao` · `gestao-mudanca`. Definições em `.claude/agents/`.

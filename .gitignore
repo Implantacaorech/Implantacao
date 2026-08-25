@@ -89,7 +89,13 @@ BI/
 tools/data/_preview/
 
 # Vault Obsidian e banco locais da máquina do desenvolvedor (dados/painel.db já cai no *.db)
+# Padrão SEM barra inicial: casa QUALQUER pasta chamada `dados` em qualquer profundidade —
+# é o que se quer para `./dados/` e `backend/dados/` (segredos: portal_db.json, graph.json,
+# imap.json, anthropic_key.txt), mas pega junto código-fonte cujo módulo se chame `dados`.
 dados/
+# Exceção: o módulo da API de Dados (ADR-0003) é CÓDIGO. Sem esta linha ele some do commit
+# em silêncio — o `git status` nem o lista como novo (descoberto em 2026-08-25, ao criá-lo).
+!backend/src/dados/
 
 # Certificado HTTPS do painel — chave PRIVADA, nunca versionar (o .pfx do
 # Gerar_Certificado_Painel.ps1 abre o TLS do servidor para quem tiver o arquivo).

@@ -2,13 +2,20 @@ import { Injectable } from '@nestjs/common';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { createConnection } from 'mysql2/promise';
-import type { ResultadoExecucao } from './disponibilidade.service';
+import type { ResultadoExecucao } from './conexao-sicla.service';
 
-/** Conexão com o BANCO DO PORTAL RECH (MySQL/MariaDB), cadastrada pelo Administrador em
- * Sistema → Consulta BD. É a segunda conexão externa do Painel (a primeira é o Oracle do
- * SICLA, na Disponibilidade) — nasceu para o painel "Visitas do Portal Rech" do BI: o dado
- * de protocolo/aprovação só existe no banco do Portal (o SICLA não o espelha e a API do
- * Portal é escopada por usuário — o painel precisa de TODOS os protocolos do cliente). */
+/** ================================================================================
+ *  CONEXÃO PORTAL RECH (MySQL/MariaDB) — o driver `mysql2` mora AQUI, e só aqui (fase 2 do
+ *  ADR-0003), ao lado do Oracle do SICLA.
+ *
+ *  Cadastrada pelo Administrador em Sistema → Consultas BD. Nasceu para o painel "Visitas
+ *  do Portal Rech" do BI: o dado de protocolo/aprovação só existe no banco do Portal (o
+ *  SICLA não o espelha, e a API do Portal é escopada por usuário — o painel precisa de
+ *  TODOS os protocolos do cliente).
+ *
+ *  Nenhum módulo do Painel a injeta: quem quer o dado pede `portal.visitas.listar` ao
+ *  `DadosService`. Era `disponibilidade/portal-db.service.ts` (PortalDbService).
+ *  ================================================================================ */
 export interface ConfigPortalDb {
   host: string;
   porta: string;
@@ -36,7 +43,7 @@ const TIMEOUT_MS = 15_000;
  * e `portal_credenciais.json` (rede interna, arquivo fora do git, senha nunca volta ao
  * navegador; senha em branco na edição MANTÉM a atual). */
 @Injectable()
-export class PortalDbService {
+export class ConexaoPortalService {
   private dir(): string {
     const base =
       process.env.NODE_ENV === 'test'

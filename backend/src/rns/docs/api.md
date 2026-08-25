@@ -42,9 +42,9 @@ Resumo completo de **UMA** RNS: todos os itens do pedido, em ordem de item. É o
 **calendário da Agenda** abre num modal ao clicar num compromisso com RNS vinculada (a
 ficha é a mesma da tela Execução → RNS — componente `app-rns-detalhe`).
 
-| Query    | Tipo     | Obrigatório | Descrição                          |
-| -------- | -------- | ----------- | ---------------------------------- |
-| `numero` | inteiro ≥ 1 | sim      | Número da RNS (`PEDIDO` no SICLA)  |
+| Query    | Tipo        | Obrigatório | Descrição                         |
+| -------- | ----------- | ----------- | --------------------------------- |
+| `numero` | inteiro ≥ 1 | sim         | Número da RNS (`PEDIDO` no SICLA) |
 
 O serviço **embrulha o SQL vigente** do Consultas BD numa inline view
 (`SELECT * FROM (…) WHERE PEDIDO = :pedido ORDER BY ITEM`) — o contrato de colunas e

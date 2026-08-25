@@ -158,6 +158,9 @@ async function bootstrap(): Promise<void> {
       )
       .setVersion('1.0')
       .addBearerAuth()
+      // Cliente de MÁQUINA da API de Dados (ADR-0003) — outro sistema da Rech, agente de
+      // IA ou ferramenta de BI autentica por chave, não por JWT de pessoa.
+      .addApiKey({ type: 'apiKey', name: 'X-API-Key', in: 'header' }, 'api-key')
       .build();
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     SwaggerModule.setup('api/docs', app, document);

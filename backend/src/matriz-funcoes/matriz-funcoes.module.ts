@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MatrizTecnico } from '../database/entities/matriz-tecnico.entity';
 import { MatrizModule } from '../matriz/matriz.module';
-import { DisponibilidadeModule } from '../disponibilidade/disponibilidade.module';
+import { DadosModule } from '../dados/dados.module';
 import { FuncoesSiclaService } from './funcoes-sicla.service';
 import { MatrizFuncoesService } from './matriz-funcoes.service';
 import { MatrizFuncoesController } from './matriz-funcoes.controller';
@@ -14,7 +14,7 @@ import { MatrizFuncoesController } from './matriz-funcoes.controller';
   imports: [
     TypeOrmModule.forFeature([MatrizTecnico]),
     MatrizModule,
-    DisponibilidadeModule,
+    DadosModule,
   ],
   controllers: [MatrizFuncoesController],
   providers: [FuncoesSiclaService, MatrizFuncoesService],

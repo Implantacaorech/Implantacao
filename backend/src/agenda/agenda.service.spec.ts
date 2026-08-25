@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
+import { DadosService } from '../dados/dados.service';
 import { UsersService } from '../users/users.service';
 import { hojeIso } from '../cronograma/datas.util';
 import { AgendaService, MAX_DIAS_JANELA } from './agenda.service';
@@ -29,7 +29,7 @@ function compromisso(over: Record<string, unknown> = {}) {
 
 describe('AgendaService (tela Execução → Agenda)', () => {
   let service: AgendaService;
-  const disponibilidade = { configurado: jest.fn(), executarSql: jest.fn() };
+  const dados = { consultar: jest.fn() };
   const users = { listar: jest.fn() };
 
   beforeEach(async () => {
@@ -38,13 +38,12 @@ describe('AgendaService (tela Execução → Agenda)', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AgendaService,
-        { provide: DisponibilidadeService, useValue: disponibilidade },
+        { provide: DadosService, useValue: dados },
         { provide: UsersService, useValue: users },
       ],
     }).compile();
     service = module.get(AgendaService);
-    disponibilidade.configurado.mockReturnValue(true);
-    disponibilidade.executarSql.mockResolvedValue({
+    dados.consultar.mockResolvedValue({
       ok: true,
       mensagem: '',
       colunas: [],
@@ -114,16 +113,14 @@ describe('AgendaService (tela Execução → Agenda)', () => {
   describe('calendario', () => {
     it('consulta o SICLA com fim EXCLUSIVO (dia seguinte ao fim da janela)', async () => {
       await service.calendario({ ini: '2026-08-09', fim: '2026-08-15' });
-      expect(disponibilidade.executarSql).toHaveBeenCalledWith(
-        expect.stringContaining('POWERBI_IMP_LISTACOMPROMISSOS_2'),
-        { mes_ini: '2026-08-09', mes_fim: '2026-08-16' },
-        undefined,
-        expect.any(Number),
-      );
+      expect(dados.consultar).toHaveBeenCalledWith('sicla.agenda.calendario', {
+        mes_ini: '2026-08-09',
+        mes_fim: '2026-08-16',
+      });
     });
 
     it('devolve um item POR DIA da janela, mesmo os vazios, com os compromissos por hora', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '',
         colunas: [],
@@ -147,7 +144,7 @@ describe('AgendaService (tela Execução → Agenda)', () => {
     });
 
     it('a OBSERVAÇÃO da agenda (JOIN com SICLA.COMPROMISSOS) chega no compromisso', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '',
         colunas: [],
@@ -168,7 +165,7 @@ describe('AgendaService (tela Execução → Agenda)', () => {
     });
 
     it('conta compromissos DISTINTOS por código — 2 técnicos no mesmo não dobram', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '',
         colunas: [],
@@ -186,7 +183,7 @@ describe('AgendaService (tela Execução → Agenda)', () => {
     });
 
     it('resume por status com cor e percentual', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '',
         colunas: [],
@@ -217,7 +214,15 @@ describe('AgendaService (tela Execução → Agenda)', () => {
     });
 
     it('sem conexão configurada devolve o erro amigável e a janela pedida', async () => {
-      disponibilidade.configurado.mockReturnValue(false);
+      // A mensagem passou a vir da API de Dados (ConexoesService.motivoIndisponivel) — a
+      // tela continua degradando com aviso e a janela pedida, sem exceção.
+      dados.consultar.mockResolvedValue({
+        ok: false,
+        mensagem:
+          'Conexão com o SICLA não configurada ou inativa (Sistema → Ferramentas → Disponibilidade).',
+        colunas: [],
+        linhas: [],
+      });
       const r = await service.calendario({
         ini: '2026-08-09',
         fim: '2026-08-15',
@@ -225,11 +230,10 @@ describe('AgendaService (tela Execução → Agenda)', () => {
       expect(r.erro).toContain('Ferramentas → Disponibilidade');
       expect(r).toMatchObject({ ini: '2026-08-09', fim: '2026-08-15' });
       expect(r.dias).toEqual([]);
-      expect(disponibilidade.executarSql).not.toHaveBeenCalled();
     });
 
     it('falha do SQL vira `erro` no resultado, não exceção', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: false,
         mensagem: 'ORA-00942',
         colunas: [],

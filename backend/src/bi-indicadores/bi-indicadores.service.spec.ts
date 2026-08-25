@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BiIndicadoresService } from './bi-indicadores.service';
-import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
-import { SQL_INDICADORES } from './bi-indicadores.constants';
+import { DadosService } from '../dados/dados.service';
+import { SQL_INDICADORES } from '../dados/catalogo/sql/sicla-bi.sql';
 
 /** Linha CRUA da view `POWERBI_IMP_RNIMPLANTACAO_2`: datas em TEXTO `DD/MM/YYYY`,
  * competências em `AAAA/MM` e horas em MINUTOS. */
@@ -39,19 +39,18 @@ function linha(over: Record<string, unknown> = {}) {
 
 describe('BiIndicadoresService', () => {
   let service: BiIndicadoresService;
-  const disponibilidade = { configurado: jest.fn(), executarSql: jest.fn() };
+  const dados = { consultar: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BiIndicadoresService,
-        { provide: DisponibilidadeService, useValue: disponibilidade },
+        { provide: DadosService, useValue: dados },
       ],
     }).compile();
     service = module.get(BiIndicadoresService);
-    disponibilidade.configurado.mockReturnValue(true);
-    disponibilidade.executarSql.mockResolvedValue({
+    dados.consultar.mockResolvedValue({
       ok: true,
       mensagem: '1',
       colunas: [],
@@ -86,10 +85,14 @@ describe('BiIndicadoresService', () => {
       ).toBe('2024-07');
     });
 
-    it('manda a competência ao SQL no formato AAAA/MM da view', async () => {
+    it('pede a consulta pelo NOME, com a competência em AAAA-MM', async () => {
       await service.indicadores({ compIni: '2026-01', compFim: '2026-07' });
-      const [, binds] = disponibilidade.executarSql.mock.calls[0];
-      expect(binds).toEqual({ comp_ini: '2026/01', comp_fim: '2026/07' });
+      // A conversão para o AAAA/MM que a view guarda é do catálogo (tipo `competencia`) —
+      // este módulo não conhece mais o formato interno da view.
+      expect(dados.consultar).toHaveBeenCalledWith('sicla.bi.indicadores', {
+        comp_ini: '2026-01',
+        comp_fim: '2026-07',
+      });
     });
   });
 
@@ -107,7 +110,7 @@ describe('BiIndicadoresService', () => {
     });
 
     it('data fora do padrão não derruba a linha', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '1',
         colunas: [],
@@ -138,7 +141,7 @@ describe('BiIndicadoresService', () => {
     });
 
     it('percentual é null sem horas contratadas', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '1',
         colunas: [],
@@ -153,7 +156,7 @@ describe('BiIndicadoresService', () => {
     // "Concluída" é a POSIÇÃO, não a existência de data de encerramento: há RNS com
     // encerramento PREVISTO preenchido que ainda não concluíram.
     it('considera concluída pela POSIÇÃO, não pela data de encerramento', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '2',
         colunas: [],
@@ -181,7 +184,7 @@ describe('BiIndicadoresService', () => {
     });
 
     it('lead-time médio é null quando ninguém encerrou', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '1',
         colunas: [],
@@ -194,7 +197,7 @@ describe('BiIndicadoresService', () => {
 
   describe('séries e totais', () => {
     it('agrupa por competência de contratação, em ordem cronológica', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '3',
         colunas: [],
@@ -213,7 +216,7 @@ describe('BiIndicadoresService', () => {
     });
 
     it('linha sem competência não vira barra fantasma no gráfico', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '2',
         colunas: [],
@@ -228,7 +231,7 @@ describe('BiIndicadoresService', () => {
     });
 
     it('totaliza horas, clientes distintos e % de utilização', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '2',
         colunas: [],
@@ -258,7 +261,7 @@ describe('BiIndicadoresService', () => {
 
   describe('filtros', () => {
     it('aplica seleção e mantém a própria dimensão completa (cascata)', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '2',
         colunas: [],
@@ -285,8 +288,10 @@ describe('BiIndicadoresService', () => {
     });
   });
 
-  it('propaga erro do banco e avisa se o SICLA não está configurado', async () => {
-    disponibilidade.executarSql.mockResolvedValue({
+  it('propaga o erro que a API de Dados devolve — banco fora ou conexão inativa', async () => {
+    // Depois da migração há UM caminho de falha: `consultar` devolve {ok:false} tanto para
+    // erro do Oracle quanto para conexão não cadastrada, com a mensagem que diz o que fazer.
+    dados.consultar.mockResolvedValue({
       ok: false,
       mensagem: 'ORA-00942',
       colunas: [],
@@ -294,7 +299,12 @@ describe('BiIndicadoresService', () => {
     });
     expect((await service.indicadores({})).erro).toContain('ORA-00942');
 
-    disponibilidade.configurado.mockReturnValue(false);
+    dados.consultar.mockResolvedValue({
+      ok: false,
+      mensagem: 'Conexão com o SICLA não configurada ou inativa.',
+      colunas: [],
+      linhas: [],
+    });
     const r = await service.indicadores({});
     expect(r.erro).toContain('não configurada');
     expect(r.linhas).toEqual([]);

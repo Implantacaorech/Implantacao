@@ -36,6 +36,7 @@ import { PreferenciaUsuario } from './preferencia-usuario.entity';
 import { DestinatarioPassoConfig } from './destinatario-passo.entity';
 import { EmailPasso } from './email-passo.entity';
 import { ExecucaoIa } from './execucao-ia.entity';
+import { ClienteApi } from './cliente-api.entity';
 
 export * from './usuario.entity';
 export * from './projeto.entity';
@@ -117,4 +118,5 @@ export const ENTITIES = [
   DestinatarioPassoConfig,
   EmailPasso,
   ExecucaoIa,
+  ClienteApi,
 ];

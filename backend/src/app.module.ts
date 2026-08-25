@@ -47,6 +47,7 @@ import { SaudeModule } from './saude/saude.module';
 import { ProntidaoModule } from './prontidao/prontidao.module';
 import { IaTelemetriaModule } from './ia-telemetria/ia-telemetria.module';
 import { AutomacaoModule } from './automacao/automacao.module';
+import { DadosModule } from './dados/dados.module';
 
 @Module({
   imports: [
@@ -102,6 +103,8 @@ import { AutomacaoModule } from './automacao/automacao.module';
     EmailModule,
     FluxoModule,
     DisponibilidadeModule,
+    // API de Dados (ADR-0003): fronteira única entre o Painel e os bancos EXTERNOS.
+    DadosModule,
     MatrizModule,
     PainelModule,
     CadastroModule,

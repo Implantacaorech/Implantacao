@@ -103,18 +103,6 @@ export class MatrizFuncoesController {
     });
   }
 
-  @Get('medias-gerais')
-  @ApiOperation({
-    summary: 'Média GERAL (todos os técnicos) por módulo — alimenta o gráfico',
-  })
-  async mediasGerais() {
-    try {
-      return new ApiEnvelope({ modulos: await this.service.mediasGerais() });
-    } catch (e) {
-      this.indisponivel(e);
-    }
-  }
-
   @Post('recarregar')
   @Permissao('matriz_funcoes', 'alteracao')
   @HttpCode(HttpStatus.OK)

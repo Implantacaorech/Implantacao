@@ -26,6 +26,7 @@ relacionados:
 | --- | --- | --- |
 | [[ADR-0001 - Adocao do ecossistema Vault + IA]] | Adoção do ecossistema Vault Obsidian + IA como camada de documentação | Aceito |
 | [[ADR-0002 - Adocao do Guia Mestre de Arquitetura]] | Adoção do Guia Mestre de Arquitetura (Controller → Service → Repository), com adequação faseada e guarda no CI | Aceito |
+| [[ADR-0003 - API de Dados como fronteira unica de banco]] | API de Dados como fronteira única de banco EXTERNO: catálogo de consultas nomeadas, contrato `/api/dados/v1`, chave de máquina e guarda no CI | Aceito |
 
 ## Relacionados no Vault
 
@@ -42,4 +43,6 @@ commits `feat(migracao): ...` já existentes no histórico do Git como evidênci
 Esqueleto criado em 2026-07-19 — primeiro ADR real registrado ([[ADR-0001 - Adocao do ecossistema Vault + IA]]).
 Em 2026-07-31 entrou o [[ADR-0002 - Adocao do Guia Mestre de Arquitetura]], cujas decisões
 são verificadas por teste no CI (ver [[Guia Mestre de Arquitetura de Desenvolvimento]]).
-Ver [[00 - Dashboard]].
+Em 2026-08-25 entrou o [[ADR-0003 - API de Dados como fronteira unica de banco]], que
+estende a mesma disciplina ao banco de terceiro (SICLA, Portal Rech) e também é verificado
+por teste no CI. Ver [[00 - Dashboard]].
