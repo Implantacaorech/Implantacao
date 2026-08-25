@@ -1,7 +1,9 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { ApiDadosComponent } from './api-dados.component';
 import { ApiDadosService } from '../../core/services/api-dados.service';
+import { InstanciaService } from '../../core/services/instancia.service';
 import {
   CatalogoDados,
   ClienteApi,
@@ -247,5 +249,108 @@ describe('ApiDadosComponent', () => {
     expect(comp.avisoClientes()).toContain('migration');
     expect(comp.catalogo()?.total).toBe(2);
     expect(comp.conexoes()).toHaveLength(2);
+  });
+});
+
+
+/** No **Portal API** esta tela vira a tela inteira do produto: é ali que a credencial de
+ * banco é cadastrada. O que os testes travam é o que não pode escapar dela — a senha. */
+describe('ApiDadosComponent — conexões no Portal API', () => {
+  const CONFIG = {
+    chave: 'sicla' as const,
+    rotulo: 'SICLA (Oracle)',
+    dialeto: 'oracle',
+    origem: 'CRM interno',
+    configurada: true,
+    campos: { host: 'srv', porta: '1521', usuario: 'painel_ro', ativo: true },
+    temSenha: true,
+  };
+
+  function montarPortalApi(over: Partial<ApiDadosService> = {}) {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [ApiDadosComponent],
+      providers: [
+        provideRouter([]),
+        {
+          provide: ApiDadosService,
+          useValue: {
+            ...servicoPadrao(),
+            configuracoesConexao: () => Promise.resolve([CONFIG]),
+            salvarConexao: vi.fn().mockResolvedValue(CONFIG),
+            testarConexao: vi
+              .fn()
+              .mockResolvedValue({ ok: true, mensagem: 'Conexão respondeu em 12 ms.', ms: 12 }),
+            ...over,
+          },
+        },
+        {
+          provide: InstanciaService,
+          useValue: {
+            garantirCarregado: vi.fn(),
+            atual: signal({
+              perfil: 'portal-api',
+              nome: 'Portal API',
+              descricao: '',
+              rotaInicial: '/config/api-dados',
+            }),
+            portalApi: signal(true),
+          },
+        },
+      ],
+    });
+    return TestBed.createComponent(ApiDadosComponent);
+  }
+
+  async function pronto(over: Partial<ApiDadosService> = {}) {
+    const fixture = montarPortalApi(over);
+    fixture.detectChanges();
+    await fixture.componentInstance.carregar();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('carrega a configuração editável das conexões', async () => {
+    const comp = (await pronto()).componentInstance;
+    expect(comp.portalApi()).toBe(true);
+    expect(comp.configuracoes()).toHaveLength(1);
+  });
+
+  it('o campo de senha abre VAZIO, mesmo havendo senha gravada', async () => {
+    // A senha nunca vem do servidor; preencher o campo com qualquer coisa daria a impressão
+    // de que ela está ali.
+    const comp = (await pronto()).componentInstance;
+    comp.abrirConexao(CONFIG);
+    expect(comp.valorDe('senha')).toBe('');
+    expect(comp.valorDe('usuario')).toBe('painel_ro');
+  });
+
+  it('senha em branco NÃO vai no corpo — gravar sem digitá-la mantém a atual', async () => {
+    const salvarConexao = vi.fn().mockResolvedValue(CONFIG);
+    const comp = (await pronto({ salvarConexao })).componentInstance;
+    comp.abrirConexao(CONFIG);
+    comp.definirCampo('host', 'outro-servidor');
+    await comp.salvarConexao(CONFIG);
+
+    const [chave, corpo] = salvarConexao.mock.calls[0] as [string, Record<string, unknown>];
+    expect(chave).toBe('sicla');
+    expect(corpo['host']).toBe('outro-servidor');
+    expect(corpo).not.toHaveProperty('senha');
+  });
+
+  it('senha digitada vai no corpo', async () => {
+    const salvarConexao = vi.fn().mockResolvedValue(CONFIG);
+    const comp = (await pronto({ salvarConexao })).componentInstance;
+    comp.abrirConexao(CONFIG);
+    comp.definirCampo('senha', 'nova-senha');
+    await comp.salvarConexao(CONFIG);
+    expect(salvarConexao.mock.calls[0][1]['senha']).toBe('nova-senha');
+  });
+
+  it('testar mostra o resultado ao lado daquela conexão', async () => {
+    const comp = (await pronto()).componentInstance;
+    await comp.testarConexao(CONFIG);
+    expect(comp.testeDe('sicla')?.ok).toBe(true);
+    expect(comp.testeDe('portal_rech')).toBeNull();
   });
 });

@@ -2,9 +2,11 @@ import {
   BadGatewayException,
   BadRequestException,
   HttpException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConsultaBdService } from './consulta-bd.service';
@@ -14,6 +16,10 @@ import {
   VERSAO_CONTRATO,
 } from './catalogo/catalogo';
 import { CatalogoService } from './catalogo/catalogo.service';
+import { DELEGADO_REMOTO } from './consumo/delegado-remoto';
+// `import type` obrigatório: o tipo aparece na assinatura de um construtor DECORADO, e o
+// emitDecoratorMetadata + isolatedModules exigem que ele não vire import de valor.
+import type { DelegadoRemoto } from './consumo/delegado-remoto';
 import { ChaveConexao, ConsultaCatalogo } from './catalogo/catalogo.types';
 import { validarParametros } from './catalogo/parametros.util';
 import { ConexoesService, ResultadoBruto } from './conexoes/conexoes.service';
@@ -105,7 +111,29 @@ export class DadosService {
     private readonly conexoes: ConexoesService,
     private readonly consultasSalvas: ConsultaBdService,
     private readonly catalogo: CatalogoService,
+    // OPCIONAL de propósito: só o Portal Implantação monta o módulo de consumo. No Portal
+    // API (a instância que TEM a credencial) este delegado não existe, e a execução é
+    // sempre local — é ele quem executa de verdade.
+    @Optional()
+    @Inject(DELEGADO_REMOTO)
+    private readonly remoto?: DelegadoRemoto,
   ) {}
+
+  /** Esta consulta deve ir para o Portal API em vez do banco local?
+   *
+   * Só quando há delegado, ele tem token ativo E o token cobre esta consulta. As três
+   * condições juntas é o que torna a virada gradual e sem janela: cadastrar o primeiro
+   * token muda o caminho **só** das consultas que ele autoriza; o resto continua local até
+   * ser coberto. Falha ao decidir cai no caminho local — o que degrada é o novo, nunca o
+   * que já funcionava. */
+  private async vaiPeloPortalApi(nome: string): Promise<boolean> {
+    if (!this.remoto) return false;
+    try {
+      return (await this.remoto.ativo()) && (await this.remoto.cobre(nome));
+    } catch {
+      return false;
+    }
+  }
 
   /** Catálogo publicado, opcionalmente recortado pelas consultas que o token autoriza.
    * É assíncrono porque o catálogo EFETIVO mistura as consultas de código com as publicadas
@@ -340,7 +368,10 @@ export class DadosService {
     );
     if (!ok) throw new BadRequestException(erros);
 
-    if (!this.conexoes.configurada(consulta.conexao)) {
+    // No caminho remoto a conexão local não está (nem deve estar) cadastrada — é o ponto
+    // inteiro do desenho de duas instâncias. Quem checa a conexão é o Portal API.
+    const remoto = await this.vaiPeloPortalApi(consulta.nome);
+    if (!remoto && !this.conexoes.configurada(consulta.conexao)) {
       throw new ServiceUnavailableException(
         this.conexoes.motivoIndisponivel(consulta.conexao),
       );
@@ -355,12 +386,20 @@ export class DadosService {
     }
 
     const inicio = Date.now();
-    const bruto = await this.conexoes.executar(
-      consulta.conexao,
-      sql,
-      binds,
-      consulta.limiteLinhas,
-    );
+    // Ao Portal API vão os PARÂMETROS originais, não os binds já expandidos: quem valida,
+    // expande `lista_texto` e monta o SQL é ele — mandar o texto reescrito daqui seria
+    // fazer o trabalho duas vezes e abrir a porta de os dois lados discordarem.
+    const bruto = remoto
+      ? await (this.remoto as DelegadoRemoto).consultar(
+          consulta.nome,
+          parametros ?? {},
+        )
+      : await this.conexoes.executar(
+          consulta.conexao,
+          sql,
+          binds,
+          consulta.limiteLinhas,
+        );
     const ms = Date.now() - inicio;
 
     if (!bruto.ok) {
@@ -370,7 +409,9 @@ export class DadosService {
       // um 500 aqui faria o consumidor culpar a API de Dados e o monitoramento apontar
       // para o lugar errado.
       throw new BadGatewayException(
-        `Falha ao consultar ${consulta.conexao}: ${bruto.mensagem}`,
+        remoto
+          ? `Falha ao consultar ${consulta.nome} pelo Portal API: ${bruto.mensagem}`
+          : `Falha ao consultar ${consulta.conexao}: ${bruto.mensagem}`,
       );
     }
 

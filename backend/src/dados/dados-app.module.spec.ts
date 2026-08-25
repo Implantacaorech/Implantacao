@@ -61,6 +61,14 @@ describe('Portal de Conexões — superfície da instância 1', () => {
     expect(main).toContain('DadosAppModule');
   });
 
+  it('não monta o módulo de CONSUMO — esta ponta executa, não consome', () => {
+    // `DadosConsumoModule` traz a tela de tokens do Portal Implantação. Aqui ela seria
+    // superfície a mais na máquina que tem a credencial, e sem uso: quem consome é o
+    // Painel. O usuário foi explícito — "é apenas isso que deve ter dentro do painel".
+    expect(fonte).not.toContain('DadosConsumoModule');
+    expect(importados(fonte)).not.toContain('DadosConsumoModule');
+  });
+
   it('usa porta própria — nunca a 5100 do Painel', () => {
     // Compartilhar a porta significaria compartilhar o processo, que é justamente o que a
     // separação evita.

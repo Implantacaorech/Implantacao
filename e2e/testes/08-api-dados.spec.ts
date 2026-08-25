@@ -429,3 +429,109 @@ test.describe('API de Dados — publicar consulta pela tela', () => {
     await request.delete(`${NOVA}/e2e_publicada`, { headers: cab(adm) });
   });
 });
+
+/** Conexões e TOKENS — as duas pontas do desenho de duas instâncias.
+ *
+ * A conexão é o que só o **Portal API** tem; o token é o que só o **Portal Implantação**
+ * guarda. O que se ataca aqui é o que não pode escapar de cada ponta: a senha do banco de um
+ * lado, o token do outro. */
+test.describe('API de Dados — conexões e tokens', () => {
+  test('a configuração das conexões NUNCA devolve a senha', async ({ request }) => {
+    const adm = await token(request, USUARIOS.adm);
+    const r = await request.get(`${ADMIN}/conexoes`, { headers: cab(adm) });
+    expect(r.status()).toBe(200);
+
+    const corpo = await r.text();
+    const conexoes = dados(JSON.parse(corpo));
+    expect(conexoes.length).toBe(2);
+    // `temSenha` responde "existe uma?" sem devolvê-la — é o contrato da tela.
+    for (const c of conexoes) {
+      expect(c).toHaveProperty('temSenha');
+      expect(c.campos).not.toHaveProperty('senha');
+    }
+    expect(corpo).not.toContain('"senha"');
+  });
+
+  test('conexão inexistente é 404, não 500', async ({ request }) => {
+    const adm = await token(request, USUARIOS.adm);
+    const r = await request.post(`${ADMIN}/conexoes/oracle-do-vizinho`, {
+      headers: cab(adm),
+      data: { host: 'x' },
+      failOnStatusCode: false,
+    });
+    expect(r.status()).toBe(404);
+  });
+
+  test('só ADM administra conexão — nem usuário comum, nem chave de máquina', async ({
+    request,
+  }) => {
+    const comum = await token(request, USUARIOS.consultor);
+    const r = await request.get(`${ADMIN}/conexoes`, {
+      headers: cab(comum),
+      failOnStatusCode: false,
+    });
+    expect(r.status()).toBe(403);
+
+    // O caminho pelo qual uma chave vazada tentaria ler a credencial do banco.
+    const { chave } = await criarCliente(request, 'e2e sem conexoes', [CONSULTA]);
+    const comChave = await request.get(`${ADMIN}/conexoes`, {
+      headers: chaveCab(chave),
+      failOnStatusCode: false,
+    });
+    expect(comChave.status()).toBe(401);
+  });
+
+  test('o token do lado consumidor não volta na listagem — só o prefixo', async ({
+    request,
+  }) => {
+    const adm = await token(request, USUARIOS.adm);
+    const criado = await request.post(`${BASE}/tokens`, {
+      headers: cab(adm),
+      data: {
+        nome: 'e2e portal api',
+        // Endereço inalcançável DE PROPÓSITO: o cadastro não pode depender de a outra
+        // instância estar no ar, e nenhuma consulta real usa este nome.
+        url: 'http://127.0.0.1:59999',
+        chave: 'rd_e2eprefixo01_segredo-que-nao-pode-voltar',
+        consultas: ['nao.existe.aqui'],
+      },
+    });
+    expect(criado.status(), await criado.text()).toBe(201);
+
+    const lista = await request.get(`${BASE}/tokens`, { headers: cab(adm) });
+    const corpo = await lista.text();
+    expect(corpo).not.toContain('segredo-que-nao-pode-voltar');
+    expect(corpo).toContain('e2eprefixo01');
+
+    const painel = dados(JSON.parse(corpo));
+    expect(painel.consumoRemotoAtivo).toBe(true);
+    // "O que ainda não tem token" precisa listar o catálogo inteiro aqui.
+    expect(painel.descobertas).toContain(CONSULTA);
+
+    const id = painel.itens.find((t: any) => t.nome === 'e2e portal api').id;
+    await request.delete(`${BASE}/tokens/${id}`, { headers: cab(adm) });
+  });
+
+  test('sondar um Portal API inalcançável responde com o endereço, não com stack', async ({
+    request,
+  }) => {
+    const adm = await token(request, USUARIOS.adm);
+    const r = await request.post(`${BASE}/tokens/sondar`, {
+      headers: cab(adm),
+      data: { url: 'http://127.0.0.1:59999', chave: 'rd_a_b' },
+    });
+    expect(r.status()).toBe(200);
+    const s = dados(await r.json());
+    expect(s.ok).toBe(false);
+    expect(s.mensagem).toContain('127.0.0.1:59999');
+  });
+
+  test('só ADM mexe nos tokens do Painel', async ({ request }) => {
+    const comum = await token(request, USUARIOS.consultor);
+    const r = await request.get(`${BASE}/tokens`, {
+      headers: cab(comum),
+      failOnStatusCode: false,
+    });
+    expect(r.status()).toBe(403);
+  });
+});

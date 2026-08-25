@@ -347,3 +347,137 @@ describe('DadosService', () => {
     expect(c.conexao).toBe('sicla');
   });
 });
+
+/** DELEGAÇÃO AO PORTAL API — o desenho de duas instâncias visto de dentro do executor.
+ *
+ * O que estes testes travam é a promessa de que a virada é gradual e não abre janela: sem
+ * token, nada muda; com token, muda **só** o que ele cobre; e o caminho remoto não exige a
+ * conexão local configurada — que é o ponto inteiro de separar as instâncias. */
+describe('DadosService — consumo pelo Portal API', () => {
+  const CONSULTA = 'sicla.clientes.buscar';
+  const PARAMS = { termo: 'ACME' };
+
+  function comDelegado(
+    delegado: Partial<{
+      ativo: () => Promise<boolean>;
+      cobre: (n: string) => Promise<boolean>;
+      consultar: (
+        n: string,
+        p: Record<string, unknown>,
+      ) => Promise<ResultadoBruto>;
+    }>,
+    conexaoConfigurada = false,
+  ) {
+    const executar = jest
+      .fn<Promise<ResultadoBruto>, unknown[]>()
+      .mockResolvedValue(ok(3));
+    const conexoes = {
+      executar,
+      configurada: () => conexaoConfigurada,
+      motivoIndisponivel: () => 'Conexão não configurada.',
+    } as unknown as ConexoesService;
+    const consultas = {
+      porSlug: jest.fn().mockResolvedValue(null),
+    } as unknown as ConsultaBdService;
+    const catalogo = {
+      listar: () => Promise.resolve(CATALOGO),
+      porNome: (nome: string) =>
+        Promise.resolve(CATALOGO.find((c) => c.nome === nome)),
+      nomes: () => Promise.resolve(CATALOGO.map((c) => c.nome).sort()),
+    } as unknown as CatalogoService;
+
+    const remoto = {
+      ativo: delegado.ativo ?? (() => Promise.resolve(true)),
+      cobre: delegado.cobre ?? (() => Promise.resolve(true)),
+      consultar:
+        delegado.consultar ??
+        (() =>
+          Promise.resolve({
+            ok: true,
+            mensagem: 'ok',
+            colunas: ['A'],
+            linhas: [{ A: 1 }],
+          })),
+    };
+    return {
+      servico: new DadosService(conexoes, consultas, catalogo, remoto),
+      executar,
+      remoto,
+    };
+  }
+
+  it('com token que cobre a consulta, NÃO abre conexão local', async () => {
+    const { servico, executar } = comDelegado({});
+    const r = await servico.consultar(CONSULTA, PARAMS);
+    expect(r.ok).toBe(true);
+    expect(r.linhas).toEqual([{ A: 1 }]);
+    expect(executar).not.toHaveBeenCalled();
+  });
+
+  it('o caminho remoto dispensa a conexão local configurada', async () => {
+    // É o estado da instância publicada: sem credencial de banco nenhuma. Se este teste
+    // falhar, o Painel na nuvem responde 503 mesmo com token válido.
+    const { servico } = comDelegado({}, false);
+    await expect(
+      servico.executar(CONSULTA, PARAMS, {}, QUEM),
+    ).resolves.toBeTruthy();
+  });
+
+  it('manda os PARÂMETROS ao Portal API, não os binds já expandidos', async () => {
+    const consultar = jest.fn().mockResolvedValue({
+      ok: true,
+      mensagem: 'ok',
+      colunas: [],
+      linhas: [],
+    });
+    const { servico } = comDelegado({ consultar });
+    await servico.consultar(CONSULTA, PARAMS);
+    expect(consultar).toHaveBeenCalledWith(CONSULTA, PARAMS);
+  });
+
+  it('consulta que o token NÃO cobre continua indo pelo caminho local', async () => {
+    const { servico, executar } = comDelegado(
+      { cobre: () => Promise.resolve(false) },
+      true,
+    );
+    const r = await servico.consultar(CONSULTA, PARAMS);
+    expect(r.ok).toBe(true);
+    expect(executar).toHaveBeenCalled();
+  });
+
+  it('sem token ativo, nada muda — o Painel consulta o banco como sempre', async () => {
+    const { servico, executar } = comDelegado(
+      { ativo: () => Promise.resolve(false) },
+      true,
+    );
+    await servico.consultar(CONSULTA, PARAMS);
+    expect(executar).toHaveBeenCalled();
+  });
+
+  it('falha ao DECIDIR cai no caminho local — degrada o novo, nunca o que funcionava', async () => {
+    const { servico, executar } = comDelegado(
+      {
+        ativo: () => Promise.reject(new Error('banco de tokens fora')),
+      },
+      true,
+    );
+    const r = await servico.consultar(CONSULTA, PARAMS);
+    expect(r.ok).toBe(true);
+    expect(executar).toHaveBeenCalled();
+  });
+
+  it('falha REMOTA vira 502 dizendo que foi pelo Portal API', async () => {
+    const { servico } = comDelegado({
+      consultar: () =>
+        Promise.resolve({
+          ok: false,
+          mensagem: 'token revogado',
+          colunas: [],
+          linhas: [],
+        }),
+    });
+    await expect(servico.executar(CONSULTA, PARAMS, {}, QUEM)).rejects.toThrow(
+      /Portal API/,
+    );
+  });
+});

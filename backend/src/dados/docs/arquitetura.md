@@ -32,7 +32,10 @@ nenhum controller toca banco, nenhum repository lança exceção HTTP.
 | Arquivo | Papel |
 |---|---|
 | `dados.module.ts` | Monta o módulo; exporta `DadosService` — a porta de todo mundo |
-| `dados-app.module.ts` | **Raiz da instância 1** (Portal de Conexões): só este módulo, auth, permissões e health |
+| `dados-app.module.ts` | **Raiz do Portal API**: só este módulo, auth, permissões e health |
+| `consumo/dados-remoto.service.ts` | O Painel PEDINDO a consulta ao Portal API (paginando até o fim) |
+| `consumo/token-api-dados.service.ts` | Cadastro dos tokens que o Painel usa |
+| `consumo/delegado-remoto.ts` | O contrato que o `DadosService` injeta de forma OPCIONAL |
 | `dados.controller.ts` | `/api/dados/v1` — catálogo, conexões, execução |
 | `dados-admin.controller.ts` | `/api/dados/v1/admin` — consultas da tela, clientes de máquina, métricas, cache (ADM) |
 | `dados.service.ts` | Executor: resolve, valida, executa, pagina, cacheia, audita |
@@ -53,7 +56,7 @@ nenhum controller toca banco, nenhum repository lança exceção HTTP.
 | `guards/acesso-dados.guard.ts` | As duas portas de autenticação |
 | `decorators/chamador.decorator.ts` | Identidade e consultas autorizadas do chamador |
 
-## A fronteira, em quatro fases — todas concluídas em 2026-08-25
+## A fronteira, em cinco fases — todas concluídas em 2026-08-25
 
 As fases foram separadas de propósito: criar o contrato (reversível, testável) e mover o
 driver de conexão a sistema de terceiro em produção (arriscado) não deviam viajar no mesmo
@@ -65,6 +68,7 @@ passo. Cada uma terminou com a suíte verde antes de a seguinte começar.
 | **1** | Os 10 módulos passam a `DadosService.consultar(nome, params)`; o SQL sai dos `*.constants.ts` e vem para `catalogo/sql/`; a semeadura vira derivada do catálogo | `DIVIDA_EXECUTAR_SQL` **zerou** |
 | **2** | `oracledb`/`mysql2` mudam para `conexoes/`; `DisponibilidadeService` vira domínio puro; a ocupação e o mapa de técnicos entram no catálogo | `PODEM_IMPORTAR_DRIVER` caiu de 3 para **1** |
 | **3** | Token autoriza **por consulta**; consulta pode nascer pela TELA (contrato extraído do banco); a **instância 1** ganha entrypoint próprio | `dados-app.module.spec.ts` fecha a lista de módulos da instância |
+| **4** | Menu por instância (`GET /api/instancia`); conexão cadastrável no Portal API; **consumo remoto** (`consumo/`) com tela de tokens no Painel | `dados-remoto.service.spec.ts` + a delegação em `dados.service.spec.ts` |
 
 A guarda de CI é a catraca: os dois números só podem **cair**. Um módulo novo que importe
 driver ou chame `executarSql` quebra o build.
@@ -130,6 +134,9 @@ empurraria para fora da fronteira, que é exatamente o que se fechou.
 - `PermissoesModule` — `@Global`, dá o `PermissoesService` ao guard.
 - `TypeOrmModule.forFeature([ClienteApi, ConsultaBD])` — tabelas `api_clientes`
   (migration `1787990000000-ApiClientes`) e `consultas_bd`.
+
+`DELEGADO_REMOTO` — **opcional**. Só o Painel monta `DadosConsumoModule`; no Portal API o
+delegado não existe e a execução é sempre local, que é o que aquela ponta existe para fazer.
 
 E só. **Nenhum módulo de negócio** — a seta aponta sempre para cá. É essa pobreza de
 dependências que torna possível a **instância 1**: subir este módulo (mais auth, permissões e

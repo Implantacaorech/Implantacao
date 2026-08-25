@@ -104,8 +104,12 @@ Na prática: escreva o SQL em `backend/src/dados/catalogo/sql/`, declare a consu
 [backend/src/dados/docs/](backend/src/dados/docs/README.md); tela em Sistema → API de Dados.
 Consulta nova pode nascer **pela tela** (Sistema → API de Dados → Nova consulta), com o
 contrato extraído do banco pelo "Testar" — o SQL continua nunca vindo de quem consome.
-A instância INTERNA que segura a credencial (Portal de Conexões, porta 5110,
-`Iniciar_Portal_Conexoes.bat`) está em [docs/portal-conexoes.md](docs/portal-conexoes.md).
+A instância INTERNA que segura a credencial (**Portal API**, porta 5110,
+`Iniciar_Portal_Conexoes.bat`) está em [docs/portal-conexoes.md](docs/portal-conexoes.md). Ela
+serve o mesmo build do Angular, com **menu reduzido a 4 itens** (conexões, consultas, nova
+consulta, tokens) — quem decide isso é `GET /api/instancia`. Do lado do Painel, os tokens
+gerados lá são colados em **Sistema → Tokens da API de Dados**; com token ativo, a execução
+das consultas que ele cobre passa a ir para o Portal API (`src/dados/consumo/`).
 
 O escopo é o dado de **terceiro**: Oracle do SICLA e MySQL do Portal Rech. Fora dele, por
 decisão: o `painel_novo` (camada Repository/TypeORM, ADR-0002) e a base do Consultor SIGER

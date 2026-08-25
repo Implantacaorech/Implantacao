@@ -402,6 +402,18 @@ export const routes: Routes = [
             (m) => m.ApiDadosConsultaComponent,
           ),
       },
+      // Lado CONSUMIDOR: os tokens com que ESTE Painel consulta o Portal API. É a tela
+      // que o usuário pediu em 2026-08-25 ("preciso que tenha a tela onde eu insira os
+      // TOKENS gerados").
+      {
+        path: 'config/tokens-api',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Tokens da API de Dados' },
+        loadComponent: () =>
+          import('./features/config/tokens-api.component').then(
+            (m) => m.TokensApiComponent,
+          ),
+      },
       {
         path: 'config/api-dados/consulta/:slug',
         canActivate: [perfilGuard('ADM')],

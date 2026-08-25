@@ -48,6 +48,7 @@ import { ProntidaoModule } from './prontidao/prontidao.module';
 import { IaTelemetriaModule } from './ia-telemetria/ia-telemetria.module';
 import { AutomacaoModule } from './automacao/automacao.module';
 import { DadosModule } from './dados/dados.module';
+import { DadosConsumoModule } from './dados/consumo/dados-consumo.module';
 
 @Module({
   imports: [
@@ -105,6 +106,9 @@ import { DadosModule } from './dados/dados.module';
     DisponibilidadeModule,
     // API de Dados (ADR-0003): fronteira única entre o Painel e os bancos EXTERNOS.
     DadosModule,
+    // Lado CONSUMIDOR: os tokens com que este Painel consulta o Portal API (instância
+    // interna). Só o Painel monta isto — o Portal API é a ponta que executa.
+    DadosConsumoModule,
     MatrizModule,
     PainelModule,
     CadastroModule,

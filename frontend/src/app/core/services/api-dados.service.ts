@@ -6,6 +6,11 @@ import { ApiEnvelope } from '../models/api-envelope.model';
 import {
   AnaliseConsulta,
   CatalogoDados,
+  ConfiguracaoConexao,
+  PainelTokens,
+  SondagemToken,
+  TesteConexao,
+  TokenApiDados,
   ClienteApi,
   ClienteApiCriado,
   ConsultaPublicadaResumo,
@@ -127,6 +132,93 @@ export class ApiDadosService {
     await firstValueFrom(
       this.http.delete<void>(`${this.admin}/consultas/${slug}`),
     );
+  }
+
+  // ── Conexões (Portal API) ──────────────────────────────────────────────────────
+
+  async configuracoesConexao(): Promise<ConfiguracaoConexao[]> {
+    const res = await firstValueFrom(
+      this.http.get<ApiEnvelope<ConfiguracaoConexao[]>>(`${this.admin}/conexoes`),
+    );
+    return res.data;
+  }
+
+  async salvarConexao(
+    chave: string,
+    campos: Record<string, unknown>,
+  ): Promise<ConfiguracaoConexao> {
+    const res = await firstValueFrom(
+      this.http.post<ApiEnvelope<ConfiguracaoConexao>>(
+        `${this.admin}/conexoes/${chave}`,
+        campos,
+      ),
+    );
+    return res.data;
+  }
+
+  async testarConexao(chave: string): Promise<TesteConexao> {
+    const res = await firstValueFrom(
+      this.http.post<ApiEnvelope<TesteConexao>>(
+        `${this.admin}/conexoes/${chave}/testar`,
+        {},
+      ),
+    );
+    return res.data;
+  }
+
+  // ── Tokens do lado CONSUMIDOR (Portal Implantação) ─────────────────────────────
+
+  async tokens(): Promise<PainelTokens> {
+    const res = await firstValueFrom(
+      this.http.get<ApiEnvelope<PainelTokens>>(`${this.base}/tokens`),
+    );
+    return res.data;
+  }
+
+  async sondarToken(url: string, chave: string): Promise<SondagemToken> {
+    const res = await firstValueFrom(
+      this.http.post<ApiEnvelope<SondagemToken>>(`${this.base}/tokens/sondar`, {
+        url,
+        chave,
+      }),
+    );
+    return res.data;
+  }
+
+  async salvarToken(
+    id: number | null,
+    dto: {
+      nome: string;
+      url: string;
+      chave?: string;
+      consultas: string[];
+      observacao?: string;
+      ativo?: boolean;
+    },
+  ): Promise<TokenApiDados> {
+    const res = await firstValueFrom(
+      id === null
+        ? this.http.post<ApiEnvelope<TokenApiDados>>(`${this.base}/tokens`, dto)
+        : this.http.put<ApiEnvelope<TokenApiDados>>(
+            `${this.base}/tokens/${id}`,
+            dto,
+          ),
+    );
+    return res.data;
+  }
+
+  async definirTokenAtivo(id: number, ativo: boolean): Promise<TokenApiDados> {
+    const res = await firstValueFrom(
+      this.http.patch<ApiEnvelope<TokenApiDados>>(
+        `${this.base}/tokens/${id}/ativo`,
+        { ativo },
+      ),
+    );
+    return res.data;
+  }
+
+  async excluirToken(id: number): Promise<void> {
+    await firstValueFrom(this.http.delete<void>(`${this.base}/tokens/${id}`));
   }
 
   async metricas(): Promise<MetricaConsulta[]> {

@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ChaveConexao, CONEXOES } from '../catalogo/catalogo.types';
+// O texto do SQL mora no catálogo, nunca aqui — ver `catalogo/sql/vida.sql.ts`.
+import { SELECT_DE_VIDA } from '../catalogo/sql/vida.sql';
 import { ValorBind } from '../catalogo/parametros.util';
 import { ConexaoPortalService } from './conexao-portal.service';
 import { ConexaoSiclaService } from './conexao-sicla.service';
@@ -24,6 +26,13 @@ export interface EstadoConexao {
 
 /** Campos da CONFIGURAÇÃO da conexão que guardam SQL (tela Disponibilidade). */
 export type CampoSqlConexao = 'select' | 'selectTecnicos';
+
+/** A configuração de uma conexão como a TELA a vê: **sem a senha**, e com o sinal de que
+ * existe uma gravada. É o formato que o Portal API edita. */
+export interface ConfiguracaoConexao extends EstadoConexao {
+  campos: Record<string, string | boolean>;
+  temSenha: boolean;
+}
 
 /** ROTEADOR das conexões externas: dado o nome da conexão declarado no catálogo, executa o
  * SQL no driver certo.
@@ -67,6 +76,58 @@ export class ConexoesService {
    * dois SELECTs da tela Disponibilidade (ocupação e mapa de técnicos). */
   sqlDeConfiguracao(chave: ChaveConexao, campo: CampoSqlConexao): string {
     return chave === 'sicla' ? this.sicla.sqlDeConfiguracao(campo) : '';
+  }
+
+  /** As duas configurações, sem senha — o que a tela do Portal API lista. */
+  configuracoes(): ConfiguracaoConexao[] {
+    return (Object.keys(CONEXOES) as ChaveConexao[]).map((chave) =>
+      this.configuracao(chave),
+    );
+  }
+
+  configuracao(chave: ChaveConexao): ConfiguracaoConexao {
+    const bruto =
+      chave === 'sicla'
+        ? this.sicla.carregarConfig()
+        : this.portal.carregarConfig();
+    const { senha, ...campos } = bruto;
+    return {
+      chave,
+      ...CONEXOES[chave],
+      configurada: this.configurada(chave),
+      campos,
+      temSenha: Boolean(senha),
+    };
+  }
+
+  /** Grava. Senha em branco MANTÉM a atual — é o que permite reeditar host/porta sem
+   * redigitar o segredo, e é o mesmo contrato das telas antigas. */
+  salvarConfiguracao(
+    chave: ChaveConexao,
+    dados: Record<string, unknown>,
+  ): ConfiguracaoConexao {
+    if (chave === 'sicla') this.sicla.salvarConfig(dados);
+    else this.portal.salvarConfig(dados);
+    return this.configuracao(chave);
+  }
+
+  /** Abre a conexão e roda o SELECT de vida. Responde "a credencial vale?", que é a
+   * pergunta de quem acabou de cadastrar — e NÃO lança: um erro de credencial é resposta
+   * legítima desta rota, não falha do servidor. */
+  async testarConexao(
+    chave: ChaveConexao,
+  ): Promise<{ ok: boolean; mensagem: string; ms: number }> {
+    if (!this.configurada(chave)) {
+      return { ok: false, mensagem: this.motivoIndisponivel(chave), ms: 0 };
+    }
+    const inicio = Date.now();
+    const r = await this.executar(chave, SELECT_DE_VIDA[chave], {}, 1);
+    const ms = Date.now() - inicio;
+    return {
+      ok: r.ok,
+      mensagem: r.ok ? `Conexão respondeu em ${ms} ms.` : r.mensagem,
+      ms,
+    };
   }
 
   async executar(

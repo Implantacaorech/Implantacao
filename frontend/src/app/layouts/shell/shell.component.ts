@@ -6,6 +6,7 @@ import { filter, map, startWith } from 'rxjs';
 import { BarraGravacaoComponent } from '../../features/protocolos/barra-gravacao.component';
 import { AuthService } from '../../core/services/auth.service';
 import { PermissoesService } from '../../core/services/permissoes.service';
+import { InstanciaService } from '../../core/services/instancia.service';
 
 @Component({
   selector: 'app-shell',
@@ -17,13 +18,24 @@ import { PermissoesService } from '../../core/services/permissoes.service';
 export class ShellComponent {
   readonly auth = inject(AuthService);
   private readonly perm = inject(PermissoesService);
+  private readonly instancia = inject(InstanciaService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
   constructor() {
     // Carrega o mapa de permissões do usuário logado (menu só existe autenticado).
     void this.perm.garantirCarregado();
+    void this.instancia.garantirCarregado();
   }
+
+  /** Este front-end está sendo servido pelo **Portal API** (instância interna)?
+   *
+   * Lá o menu é OUTRO — só conexão de banco, criação de consulta e geração de token, que é
+   * tudo o que aquela instância monta (decisão do usuário em 2026-08-25). Oferecer os
+   * demais itens seria oferecer porta que não abre. */
+  readonly portalApi = computed(() => this.instancia.portalApi());
+  readonly nomeInstancia = computed(() => this.instancia.atual().nome);
+  readonly rotaInicial = computed(() => this.instancia.atual().rotaInicial);
 
   readonly busca = signal('');
   readonly sideAberta = signal(false);

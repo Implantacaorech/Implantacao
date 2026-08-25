@@ -162,8 +162,10 @@ declarada, com esse motivo, na própria guarda de CI.
 - Fase 3: `backend/src/dados/dados-app.module.ts`, `backend/src/main-dados.ts`,
   `Iniciar_Portal_Conexoes.bat`, `frontend/.../api-dados-consulta.component.ts`, migrations
   `1788000000000-TokenPorConsulta` e `1788010000000-ConsultaBdPublicada`.
-- Suítes verdes em 2026-08-25, ao fim das quatro fases: backend **140 suítes / 1461 testes**,
-  frontend **70 arquivos / 572 testes**, e2e **88 casos**.
+- Fase 4: `common/instancia.ts`, `dados/consumo/`, `frontend/.../tokens-api.component.ts`,
+  migration `1788020000000-TokensApiDados`.
+- Suítes verdes em 2026-08-25, ao fim das cinco fases: backend **144 suítes / 1497 testes**,
+  frontend **71 arquivos / 590 testes**, e2e **94 casos**.
 
 ## Fase 3 — as duas instâncias (2026-08-25)
 
@@ -191,6 +193,28 @@ Três decisões novas, todas do usuário:
 3. **Entrypoint próprio para a instância interna** (`main-dados.ts`), com a lista de módulos
    fechada por teste. A alternativa — subir o Painel inteiro numa porta e publicar só
    `/dados` — devolveria à máquina que tem a credencial toda a superfície do Painel.
+
+## Fase 4 — cada instância com o seu menu (2026-08-25)
+
+Ajuste do usuário depois de ver a fase 3 no ar: o **Portal API** deve conter *"apenas"*
+conexão de banco, criação da API e geração de token; e o **Portal Implantação** precisa da
+tela onde se **insere** o token gerado.
+
+Duas consequências de projeto:
+
+1. **O menu passou a ser decidido pelo backend** (`GET /api/instancia`). Alternativa
+   descartada: um segundo build do Angular só para o Portal API — dois artefatos para manter,
+   e a divergência entre eles só apareceria em produção.
+2. **O consumo remoto virou código, não plano.** Com token ativo, `DadosService` delega a
+   execução ao Portal API. A delegação é **por consulta** e o delegado é `@Optional()`: o
+   Portal API não monta o módulo de consumo, porque aquela ponta executa e não consome. Sem
+   token, nada muda — é o que torna a virada gradual e sem janela de indisponibilidade.
+
+O token do lado consumidor é guardado **em claro**, ao contrário da chave em `api_clientes`
+(hash). Não há alternativa: este lado precisa *enviar* o segredo, e um segredo que se
+apresenta não pode ser de mão única. A consequência está assumida e é o ponto do desenho —
+o que vaza numa invasão à instância publicada é um token que vale exatamente as consultas
+listadas, não a credencial do banco.
 
 **O limite que fica registrado:** o código garante que só se executa `SELECT`; *qual tabela*
 esse SELECT lê é privilégio do usuário no banco. A credencial em uso (`powerbi`) alcança 4.980

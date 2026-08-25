@@ -19,6 +19,9 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { ClienteApiService } from './cliente-api.service';
+import { ConexoesService } from './conexoes/conexoes.service';
+import { ChaveConexao, CONEXOES } from './catalogo/catalogo.types';
+import { ConfiguracaoConexaoDto } from './dto/configuracao-conexao.dto';
 import { ConsultasPublicadasService } from './consultas-publicadas.service';
 import { DadosService } from './dados.service';
 import {
@@ -46,7 +49,58 @@ export class DadosAdminController {
     private readonly clientes: ClienteApiService,
     private readonly dados: DadosService,
     private readonly publicadas: ConsultasPublicadasService,
+    private readonly conexoes: ConexoesService,
   ) {}
+
+  // ── Conexões (dados de acesso ao banco) ───────────────────────────────────────────
+  //
+  // É a razão de o **Portal API** existir: a credencial mora na instância interna, e ela
+  // precisa de uma tela própria para cadastrá-la — sem depender de nenhum módulo de
+  // negócio do Painel. As telas antigas (Sistema → Disponibilidade / Consultas BD)
+  // continuam existindo no Painel e escrevem a MESMA configuração; quando o Painel for
+  // para a nuvem, são elas que desaparecem, não estas.
+
+  @Get('conexoes')
+  @ApiOperation({
+    summary: 'Configuração das conexões externas (nunca a senha)',
+  })
+  listarConexoes() {
+    return new ApiEnvelope(this.conexoes.configuracoes());
+  }
+
+  @Post('conexoes/:chave')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Grava a configuração (senha em branco mantém a atual)',
+  })
+  salvarConexao(
+    @Param('chave') chave: string,
+    @Body() dto: ConfiguracaoConexaoDto,
+  ) {
+    return new ApiEnvelope(
+      this.conexoes.salvarConfiguracao(this.exigirChave(chave), { ...dto }),
+    );
+  }
+
+  @Post('conexoes/:chave/testar')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Abre a conexão e roda um SELECT de vida' })
+  async testarConexao(@Param('chave') chave: string) {
+    return new ApiEnvelope(
+      await this.conexoes.testarConexao(this.exigirChave(chave)),
+    );
+  }
+
+  /** Conexão desconhecida é 404, não 500: o conjunto é fechado e conhecido. */
+  private exigirChave(chave: string): ChaveConexao {
+    const alvo = (chave || '').trim() as ChaveConexao;
+    if (!(alvo in CONEXOES)) {
+      throw new NotFoundException(
+        `Conexão "${chave}" não existe. Disponíveis: ${Object.keys(CONEXOES).join(', ')}.`,
+      );
+    }
+    return alvo;
+  }
 
   // ── Consultas criadas pela TELA ────────────────────────────────────────────────────
 

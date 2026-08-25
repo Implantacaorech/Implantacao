@@ -1,4 +1,7 @@
-# Portal de Conexões — as duas instâncias
+# Portal API — as duas instâncias
+
+> O usuário chama a instância interna de **Portal API**. O arquivo continua com o nome
+> antigo (`portal-conexoes.md`) para não quebrar os links já espalhados pelo repositório.
 
 > Desenho definido pelo usuário em **2026-08-25**, para permitir publicar o Painel fora da
 > rede da empresa sem levar junto nenhum dado de conexão com banco.
@@ -22,7 +25,7 @@ A resposta não é criptografar melhor o segredo — é **não ter o segredo lá
 
 Duas instâncias, cada uma com uma função:
 
-| | **Instância 1 — Portal de Conexões** | **Instância 2 — o Painel** |
+| | **Instância 1 — Portal API** | **Instância 2 — Portal Implantação** |
 |---|---|---|
 | Onde roda | rede **interna** da Rech | servidor em **nuvem** |
 | Tem credencial de banco externo? | **sim**, é a única | **não**, nenhuma |
@@ -30,6 +33,7 @@ Duas instâncias, cada uma com uma função:
 | Como fala com a outra | — | **token** (`X-API-Key`), pelo túnel |
 | Porta padrão | **5110** (nunca publicada) | 5100 |
 | Entrypoint | `dist/main-dados.js` (`Iniciar_Portal_Conexoes.bat`) | `dist/main.js` (`Iniciar_Painel_Novo.bat`) |
+| Menu | 4 itens: Conexões · Consultas da API · Nova consulta · Tokens | o sistema inteiro |
 
 O ganho não é de código — é de **superfície**. O processo que segura a senha do Oracle expõe
 só a API de Dados, autenticação, permissões e health. Se a instância da nuvem for
@@ -40,6 +44,54 @@ Por isso a raiz de módulos da instância 1
 ([`backend/src/dados/dados-app.module.ts`](../backend/src/dados/dados-app.module.ts)) é curta
 **de propósito**, e o teste `dados-app.module.spec.ts` recusa qualquer módulo novo ali: cada
 módulo acrescentado é rota exposta na máquina que tem a senha do banco.
+
+## O menu de cada uma
+
+Decisão do usuário em 2026-08-25: *"Quando falamos em Portal API, para conexão banco,
+criação da API e geração do TOKEN, é apenas isso que deve ter dentro do painel. Nada mais é
+preciso."*
+
+O mesmo build do Angular serve as duas, e quem decide o menu é o **backend**: `GET
+/api/instancia` responde `painel` ou `portal-api`, e o `main-dados.ts` se declara como o
+segundo. No Portal API o menu tem quatro entradas — Conexões, Consultas da API, Nova consulta
+e Tokens — e a barra superior perde a busca de cliente e o sino de alertas, que não existem
+lá. Mostrar mais seria oferecer porta que não abre: os módulos por trás delas não estão
+montados naquele processo, e `dados-app.module.spec.ts` recusa que passem a estar.
+
+No Portal Implantação nada some, e entra uma tela nova: **Sistema → Tokens da API de Dados**
+— *"preciso que tenha a tela onde eu insira os TOKENS gerados"*.
+
+## Cadastrar a conexão (só no Portal API)
+
+**Conexões**, na própria tela da API de Dados. A senha **nunca volta** para o navegador: o que
+se vê é `temSenha`, e deixá-la em branco ao gravar mantém a atual. O **Testar** roda um
+`SELECT 1` — prova a credencial, não o privilégio de leitura nas views; separar as duas coisas
+é o que faz a mensagem de erro dizer a verdade.
+
+As telas antigas do Painel (Sistema → Disponibilidade e Consultas BD) continuam existindo e
+escrevem a **mesma** configuração. Quando o Painel for para a nuvem, são elas que somem — não
+esta.
+
+## Colar o token (só no Portal Implantação)
+
+**Sistema → Tokens da API de Dados**:
+
+1. cole o endereço do Portal API e o token gerado lá;
+2. **Testar** — o Painel pergunta ao Portal API o catálogo que *aquele token* enxerga, e ele
+   já vem recortado. É daí que sai a lista de consultas; ninguém digita nome de consulta;
+3. salve. A partir daí, as consultas que **esse token autoriza** deixam de abrir conexão com o
+   banco e passam a ser pedidas ao Portal API, pelo nome.
+
+A virada é **por consulta**, e é isso que a torna gradual e sem janela: o que o token não
+cobre continua indo pelo caminho local. A própria tela mostra o que ainda falta cobrir — em
+"Consultas sem token". Enquanto essa lista não zerar, este Painel ainda precisa de credencial
+de banco e **não pode** ser publicado fora da rede.
+
+O token fica gravado **inteiro** (não em hash), porque este lado precisa enviá-lo a cada
+consulta — um segredo que se apresenta não pode ser de mão única. A consequência está
+assumida e é o ponto do desenho: o que vaza numa invasão à instância publicada é o token, que
+vale exatamente as consultas listadas. Não a credencial do Oracle. Revogar é um clique no
+Portal API.
 
 ## O que a instância 2 nunca vê
 
@@ -133,14 +185,11 @@ publicada.
 
 ## O que ainda falta para as duas instâncias existirem de fato
 
-Hoje o código das duas está pronto e o processo da instância 1 sobe — mas **as duas ainda
-rodam na mesma máquina**, e o Painel continua consultando o banco pelo próprio processo (o
-`DadosService` local). Falta:
+O código das duas está pronto, o processo da instância 1 sobe e o consumo remoto funciona —
+mas **as duas ainda rodam na mesma máquina**, e nenhum token está cadastrado, então o Painel
+continua consultando o banco pelo próprio processo. Falta:
 
 - [ ] **`painel_ro`** no Oracle (pedido ao TI) — pré-requisito do resto;
-- [ ] **`DadosRemotoService`** no Painel: quando `MIGRACAO_DADOS_URL` estiver definida, pedir a
-  consulta por HTTP à instância 1 em vez de executar localmente. Mesma interface do
-  `DadosService`, para nenhum módulo de negócio perceber a troca;
 - [ ] **túnel** entre nuvem e rede interna (decisão do TI: VPN site-to-site, Cloudflare Tunnel
   ou equivalente) — a 5110 nunca fica exposta diretamente;
 - [ ] **TLS** nas duas pontas (hoje o tráfego interno é HTTP puro);
@@ -159,4 +208,6 @@ rodam na mesma máquina**, e o Painel continua consultando o banco pelo próprio
 | Regras (tipos, tetos, autorização) | [`backend/src/dados/docs/regras-negocio.md`](../backend/src/dados/docs/regras-negocio.md) |
 | Raiz da instância 1 | [`backend/src/dados/dados-app.module.ts`](../backend/src/dados/dados-app.module.ts) |
 | Entrypoint | [`backend/src/main-dados.ts`](../backend/src/main-dados.ts) |
+| Consumo remoto (lado Painel) | [`backend/src/dados/consumo/`](../backend/src/dados/consumo/dados-remoto.service.ts) |
+| Perfil da instância | [`backend/src/common/instancia.ts`](../backend/src/common/instancia.ts) |
 | Backlog | [`docs/pendencias.md`](pendencias.md) §API de Dados |

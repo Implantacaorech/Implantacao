@@ -544,11 +544,11 @@ feita; o que ela revelou em volta, não.
 > [ADR-0003](<../vault/17 - ADR/ADR-0003 - API de Dados como fronteira unica de banco.md>);
 > contrato e uso em [`backend/src/dados/docs/`](../backend/src/dados/docs/README.md).
 > Aplicação **faseada**, com catraca no CI (`backend/src/common/conformidade-api-dados.spec.ts`):
-> os números de exceção só podem CAIR. **As quatro fases foram concluídas em 2026-08-25.**
+> os números de exceção só podem CAIR. **As cinco fases foram concluídas em 2026-08-25.**
 > Estado: 19 consultas de código no catálogo (mais as publicadas pela tela), dívida de
 > `executarSql` zerada, 1 exceção de driver (permanente e justificada), e a instância interna
-> (Portal de Conexões) com entrypoint próprio. Suítes verdes: backend 140/1461, frontend
-> 70/572, e2e 88.
+> (Portal API) com entrypoint, menu e tela de tokens próprios. Suítes verdes: backend
+> 144/1497, frontend 71/590, e2e 94.
 >
 > As **duas instâncias** (interna com a credencial × Painel na nuvem consumindo por token)
 > estão descritas em [docs/portal-conexoes.md](portal-conexoes.md).
@@ -645,15 +645,42 @@ feita; o que ela revelou em volta, não.
   instância 1 é fechada e não cresce em silêncio — cada módulo a mais é rota exposta na
   máquina que tem a senha do banco.
 
+### Fase 4 — o menu de cada instância e a tela de tokens *(concluída em 2026-08-25)*
+> **Ajuste pedido pelo usuário:** *"Quando falamos em Portal API, para conexão banco, criação
+> da API e geração do TOKEN, é apenas isso que deve ter dentro do painel. Nada mais é
+> preciso."* e *"Quando falamos no Portal Implantação, preciso que tenha a tela onde eu insira
+> os TOKENS gerados."*
+
+- [x] **Perfil da instância** (`common/instancia.ts` + `GET /api/instancia`, público): o mesmo
+  build do Angular monta um menu no Painel e outro no **Portal API**. Perfil desconhecido cai
+  no Painel — esconder o menu de todos é bem pior que o contrário.
+- [x] **Menu do Portal API reduzido a 4 itens** — Conexões · Consultas da API · Nova consulta ·
+  Tokens. A barra superior perde busca de cliente e sino de alertas, que não existem lá.
+- [x] **Conexão de banco cadastrável no Portal API** (`/dados/v1/admin/conexoes`): a senha
+  nunca volta (`temSenha`), em branco mantém a atual, e o "Testar" roda um `SELECT 1` — prova
+  a CREDENCIAL, não o privilégio nas views.
+- [x] **Tela Sistema → Tokens da API de Dados** no Portal Implantação: cola-se o token gerado
+  no Portal API; o **Testar** pergunta lá o catálogo QUE AQUELE TOKEN ENXERGA (já recortado) e
+  é dele que sai a lista de consultas — ninguém digita nome de consulta. A tela também mostra
+  **o que ainda não tem token**, que é o que falta para o Painel poder sair da rede.
+- [x] **Consumo remoto de verdade** (`dados/consumo/`): com token ativo, `DadosService`
+  delega a execução ao Portal API — paginando até o fim, para não truncar em silêncio as
+  consultas de teto maior que 5.000. Migration `1788020000000-TokensApiDados`.
+- [x] **A virada é por CONSULTA e sem janela**: sem token, nada muda; com token, muda só o que
+  ele cobre; falha ao decidir cai no caminho local. Degrada o novo, nunca o que já funcionava.
+- [x] **Catraca ampliada**: `dados-app.module.spec.ts` recusa também o módulo de consumo no
+  Portal API — aquela ponta executa, não consome.
+
 ### Ainda aberto — por decisão, não por falta
 - [ ] **Usuário Oracle de leitura mínima (`painel_ro`)** — pedido ao TI. A credencial em uso
   (`powerbi`) tem `SELECT ANY TABLE`, `SELECT ANY DICTIONARY`, `DROP ANY VIEW` e
   `CREATE PROCEDURE/TRIGGER/TABLE`, alcançando **4.980 objetos em 39 schemas**; o catálogo
   precisa de **16**. É **pré-requisito duro** da criação de consulta pela tela: o nosso código
   garante que só se executa SELECT, mas *qual tabela* o SELECT lê é privilégio do banco.
-- [ ] **`DadosRemotoService` no Painel** — com `MIGRACAO_DADOS_URL` definida, pedir a consulta
-  por HTTP à instância 1 em vez de executar localmente. É o que separa de fato as duas
-  instâncias; hoje o código das duas existe, mas ambas rodam na mesma máquina.
+- [ ] **Cadastrar o primeiro token** em Sistema → Tokens da API de Dados e cobrir as 19
+  consultas. Enquanto "Consultas sem token" não zerar, o Painel ainda precisa de credencial de
+  banco e não pode ser publicado fora da rede. O código está pronto e testado; o que falta é a
+  operação (e o `painel_ro` antes dela).
 - [ ] **Túnel + TLS** entre nuvem e rede interna (decisão do TI). A 5110 nunca fica exposta.
 - [ ] **Inversão de confiança** — hoje a instância interna lê chaves *e SQL editável* do mesmo
   `painel_novo`. Se a nuvem compartilhar esse banco, um comprometimento lá poderia reescrever

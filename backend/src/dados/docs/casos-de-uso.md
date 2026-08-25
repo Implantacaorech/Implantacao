@@ -123,7 +123,17 @@ pré-requisito deste caminho, não recomendação.
 
 **Ator:** o Painel publicado fora da rede da Rech (instância 2).
 
-Ele não tem — nem pode ter — credencial de banco. Chama a instância interna (Portal de
-Conexões, porta 5110, pelo túnel) com `X-API-Key`, pedindo a consulta pelo nome. O que um
-comprometimento da nuvem alcança é essa lista fechada de consultas, com teto de linhas: não um
-banco. Desenho completo em [`docs/portal-conexoes.md`](../../../../docs/portal-conexoes.md).
+Ele não tem — nem pode ter — credencial de banco. Chama o **Portal API** (porta 5110, pelo
+túnel) com `X-API-Key`, pedindo a consulta pelo nome. O que um comprometimento da nuvem
+alcança é essa lista fechada de consultas, com teto de linhas: não um banco.
+
+**Como se liga:** em Sistema → Tokens da API de Dados, cola-se o endereço e o token; o
+**Testar** traz do Portal API o catálogo que aquele token enxerga (já recortado), e é dele que
+sai a lista de consultas. A partir daí `DadosService` delega a execução das consultas cobertas
+— nenhum módulo de negócio percebe a troca, porque todos continuam chamando
+`consultar(nome, parametros)`.
+
+**A virada é por consulta**: o que o token não cobre continua indo pelo banco local, e a tela
+mostra o que ainda falta. Enquanto essa lista não zerar, o Painel ainda precisa de credencial
+de banco e não pode ser publicado fora da rede. Desenho completo em
+[`docs/portal-conexoes.md`](../../../../docs/portal-conexoes.md).

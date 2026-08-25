@@ -40,9 +40,16 @@ aberto em readonly, sem credencial e sem outro consumidor — o módulo já é a
 | [casos-de-uso.md](casos-de-uso.md) | Painel, outro sistema, agente de IA, BI/planilha |
 | [fluxo.md](fluxo.md) | Sequência de uma execução, ponta a ponta |
 
-O desenho das **duas instâncias** (a interna que tem a credencial × o Painel na nuvem que
-consome por token) está em
+O desenho das **duas instâncias** (o **Portal API**, interno, que tem a credencial × o
+**Portal Implantação**, que consome por token) está em
 [`docs/portal-conexoes.md`](../../../../docs/portal-conexoes.md).
+
+Este módulo tem **dois lados**, e eles não sobem juntos:
+
+| Pasta | Lado | Em qual instância |
+|---|---|---|
+| tudo o mais | **executa** a consulta no banco | Portal API **e** Painel |
+| [`consumo/`](../consumo/dados-remoto.service.ts) | **pede** a consulta ao Portal API | só o Painel |
 
 ## Como acrescentar uma consulta
 
@@ -84,6 +91,10 @@ catálogo.
 - **Fase 1.** Os 10 módulos passaram a pedir a consulta pelo nome; o SQL saiu dos
   `*.constants.ts` deles e veio para [`catalogo/sql/`](../catalogo/sql/); a semeadura das
   consultas editáveis virou derivada do catálogo. A dívida de `executarSql` **zerou**.
+- **Fase 4.** Cada instância com o seu menu (`common/instancia.ts` + `GET /api/instancia`), a
+  conexão de banco cadastrável pelo Portal API, e o **consumo remoto** de verdade
+  ([`consumo/`](../consumo/dados-remoto.service.ts)): com token ativo, o Painel delega a
+  execução em vez de abrir conexão.
 - **Fase 3.** Token passou a autorizar **por consulta** (não por conexão); consulta pode
   nascer pela TELA, com contrato extraído do próprio banco; e a **instância 1** ganhou
   entrypoint próprio ([`dados-app.module.ts`](../dados-app.module.ts) +

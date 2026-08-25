@@ -6,11 +6,14 @@ import { ApiDadosService } from '../../core/services/api-dados.service';
 import {
   CatalogoDados,
   ClienteApi,
+  ConfiguracaoConexao,
   ConsultaPublicada,
   ConsultaPublicadaResumo,
   EstadoConexao,
   MetricaConsulta,
+  TesteConexao,
 } from '../../core/models/api-dados.model';
+import { InstanciaService } from '../../core/services/instancia.service';
 
 /** Sistema → API de Dados: administra a fronteira única de banco EXTERNO (ADR-0003).
  *
@@ -32,6 +35,13 @@ import {
 export class ApiDadosComponent {
   private readonly fb = inject(FormBuilder);
   private readonly service = inject(ApiDadosService);
+  private readonly instancia = inject(InstanciaService);
+
+  /** No **Portal API** esta tela é a tela inteira do produto: é aqui que se cadastra a
+   * conexão com o banco. No Painel ela continua só MOSTRANDO o estado das conexões — quem
+   * as edita lá são as telas de sempre (Disponibilidade e Consultas BD), e duplicar o
+   * formulário criaria dois lugares para a mesma verdade. */
+  readonly portalApi = computed(() => this.instancia.portalApi());
 
   readonly carregando = signal(true);
   readonly erro = signal<string | null>(null);
@@ -49,6 +59,11 @@ export class ApiDadosComponent {
   /** Consultas criadas PELA TELA — publicadas ou ainda rascunho. Ficam à parte do catálogo
    * porque só elas são editáveis aqui; as de código exigem release. */
   readonly consultasDeTela = signal<ConsultaPublicadaResumo[]>([]);
+  /** Configuração editável das conexões — carregada só no Portal API. */
+  readonly configuracoes = signal<ConfiguracaoConexao[]>([]);
+  readonly conexaoAberta = signal<string | null>(null);
+  readonly rascunho = signal<Record<string, string | boolean>>({});
+  readonly teste = signal<{ chave: string; r: TesteConexao } | null>(null);
 
   /** Chave recém-gerada, em claro. Fica na tela até o Administrador fechar o aviso —
    * é a única oportunidade de copiá-la. */
@@ -105,6 +120,10 @@ export class ApiDadosComponent {
     // tela junto: o Administrador precisa justamente desta tela para ver o catálogo e
     // diagnosticar. Degrada com aviso, não com página em branco.
     try {
+      // Só o Portal API edita conexão; no Painel a chamada nem sai.
+      if (this.portalApi()) {
+        this.configuracoes.set(await this.service.configuracoesConexao());
+      }
       const [clientes, disponiveis, metricas, deTela] = await Promise.all([
         this.service.clientes(),
         this.service.consultasDisponiveis(),
@@ -240,5 +259,75 @@ export class ApiDadosComponent {
 
   private async recarregarClientes(): Promise<void> {
     this.clientes.set(await this.service.clientes());
+  }
+
+  // ── Conexões (só Portal API) ───────────────────────────────────────────────────
+
+  /** Campos que cada dialeto mostra. A senha fica fora da lista de propósito: ela tem
+   * tratamento próprio (em branco mantém a atual) e não pode ser preenchida com o valor
+   * vigente — ele nunca chega aqui. */
+  camposDe(chave: string): string[] {
+    return chave === 'sicla'
+      ? ['host', 'porta', 'banco', 'usuario', 'url', 'oracleLibDir']
+      : ['host', 'porta', 'banco', 'usuario', 'url'];
+  }
+
+  abrirConexao(c: ConfiguracaoConexao): void {
+    if (this.conexaoAberta() === c.chave) {
+      this.conexaoAberta.set(null);
+      return;
+    }
+    this.conexaoAberta.set(c.chave);
+    this.teste.set(null);
+    this.rascunho.set({ ...c.campos, senha: '' });
+  }
+
+  valorDe(campo: string): string {
+    const v = this.rascunho()[campo];
+    return typeof v === 'string' ? v : '';
+  }
+
+  ligadaNoRascunho(): boolean {
+    return this.rascunho()['ativo'] === true;
+  }
+
+  definirCampo(campo: string, valor: string | boolean): void {
+    this.rascunho.set({ ...this.rascunho(), [campo]: valor });
+  }
+
+  async salvarConexao(c: ConfiguracaoConexao): Promise<void> {
+    this.erro.set(null);
+    try {
+      const dados = { ...this.rascunho() };
+      // Senha em branco não vai no corpo: mandar '' APAGARIA a senha gravada, que é o
+      // oposto do contrato ("em branco mantém a atual").
+      if (!String(dados['senha'] ?? '').trim()) delete dados['senha'];
+      const salva = await this.service.salvarConexao(c.chave, dados);
+      this.configuracoes.set(
+        this.configuracoes().map((x) => (x.chave === c.chave ? salva : x)),
+      );
+      this.conexoes.set(
+        this.conexoes().map((x) =>
+          x.chave === c.chave ? { ...x, configurada: salva.configurada } : x,
+        ),
+      );
+      this.aviso.set(`Conexão "${c.rotulo}" gravada.`);
+    } catch {
+      this.erro.set('Não foi possível gravar a conexão.');
+    }
+  }
+
+  async testarConexao(c: ConfiguracaoConexao): Promise<void> {
+    this.teste.set(null);
+    try {
+      this.teste.set({ chave: c.chave, r: await this.service.testarConexao(c.chave) });
+    } catch {
+      this.erro.set('Não foi possível testar a conexão.');
+    }
+  }
+
+  testeDe(chave: string): TesteConexao | null {
+    const t = this.teste();
+    return t && t.chave === chave ? t.r : null;
   }
 }

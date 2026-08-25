@@ -152,6 +152,36 @@ mesma razão de sempre: quem escreve o SQL ali é o Administrador do Painel, nã
 `POST /consultas` recusa qualquer coisa que não seja `SELECT`/`WITH … SELECT`, e a recusa vem
 como **lista** de problemas, para o operador corrigir todos de uma vez.
 
+### Conexões (Portal API)
+
+| Rota | O que faz |
+|---|---|
+| `GET /api/dados/v1/admin/conexoes` | Configuração das duas conexões — **nunca a senha**, só `temSenha` |
+| `POST /api/dados/v1/admin/conexoes/{chave}` | Grava (senha em branco **mantém** a atual) |
+| `POST /api/dados/v1/admin/conexoes/{chave}/testar` | Abre a conexão e roda `SELECT 1` |
+
+O `testar` prova a **credencial**, não o privilégio de leitura nas views: são problemas
+diferentes, e misturá-los mandaria o Administrador procurar no lugar errado. Conexão fora do
+conjunto conhecido é `404`, não `500`.
+
+## Lado CONSUMIDOR — `/api/dados/v1/tokens` (só no Painel)
+
+Estas rotas **não existem no Portal API**: ele é a ponta que executa. São a tela Sistema →
+Tokens da API de Dados, onde se cola o token gerado do outro lado.
+
+| Rota | O que faz |
+|---|---|
+| `GET /api/dados/v1/tokens` | Tokens cadastrados (**só o prefixo**), o que ainda não tem token, e se o consumo remoto está ativo |
+| `POST /api/dados/v1/tokens/sondar` | Pergunta ao Portal API o catálogo que AQUELE token enxerga |
+| `POST /api/dados/v1/tokens` | Cadastra |
+| `PUT /api/dados/v1/tokens/{id}` | Atualiza (chave em branco mantém a atual) |
+| `PATCH /api/dados/v1/tokens/{id}/ativo` | Liga/desliga sem apagar |
+| `DELETE /api/dados/v1/tokens/{id}` | Apaga |
+
+Com um token ativo, as consultas que **ele autoriza** deixam de abrir conexão local e passam a
+ser pedidas ao Portal API pelo nome. O que ele não cobre continua local — a virada é por
+consulta.
+
 ## Exemplo — consumidor externo
 
 ```bash

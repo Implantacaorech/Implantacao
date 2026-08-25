@@ -107,3 +107,48 @@ export interface AnaliseConsulta {
   amostra: Record<string, unknown> | null;
   ms: number;
 }
+
+// ── Conexões (editáveis no Portal API) ─────────────────────────────────────────────
+
+/** A configuração de uma conexão como a tela a recebe: **sem a senha**, com o sinal de que
+ * existe uma gravada. */
+export interface ConfiguracaoConexao extends EstadoConexao {
+  campos: Record<string, string | boolean>;
+  temSenha: boolean;
+}
+
+export interface TesteConexao {
+  ok: boolean;
+  mensagem: string;
+  ms: number;
+}
+
+// ── Tokens que o Painel usa para consultar o Portal API ────────────────────────────
+
+export interface TokenApiDados {
+  id: number;
+  nome: string;
+  url: string;
+  /** O token nunca volta do servidor — só o prefixo, que basta para reconhecê-lo. */
+  prefixo: string;
+  consultas: string[];
+  ativo: boolean;
+  observacao: string;
+  criadoEm: string;
+  ultimoUsoEm: string | null;
+  ultimoErro: string | null;
+}
+
+export interface PainelTokens {
+  itens: TokenApiDados[];
+  /** Consultas do catálogo que token ativo nenhum cobre — o que ainda vai pelo banco. */
+  descobertas: string[];
+  consumoRemotoAtivo: boolean;
+}
+
+/** Resposta do "Testar" de um token: o catálogo que ELE enxerga no Portal API. */
+export interface SondagemToken {
+  ok: boolean;
+  mensagem: string;
+  consultas: string[];
+}

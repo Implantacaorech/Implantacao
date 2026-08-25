@@ -42,6 +42,7 @@ const ROTAS_ESTATICAS = [
   '/config/consultas-bd',
   '/config/api-dados',
   '/config/api-dados/consulta',
+  '/config/tokens-api',
   '/bi/implantacao',
   '/bi/implantacao/contratacao',
   '/bi/implantacao/conclusao',

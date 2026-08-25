@@ -1,0 +1,29 @@
+/* Estilos globais em src/styles.css. Aqui só o específico desta tela. */
+
+.tag-param {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  padding: 1px 6px;
+  margin: 1px 3px 1px 0;
+  border-radius: 4px;
+  background: var(--fundo-alt, #f4f6f8);
+}
+
+.escopo-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 8px 0 16px;
+}
+
+/* A última falha do token, na própria linha: é ela que responde "por que a tela ficou
+   vazia?" sem obrigar ninguém a abrir log. */
+.erro-inline {
+  font-size: 0.78rem;
+  color: var(--erro, #b3261e);
+}
+
+tr.inativo {
+  opacity: 0.6;
+}

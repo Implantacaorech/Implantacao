@@ -12,16 +12,17 @@ import { MetricasInterceptor } from './common/interceptors/metricas.interceptor'
 import { correlacaoMiddleware } from './common/observabilidade/correlacao';
 import { avisarSeDadosExpostos } from './common/seguranca/checar-acl-dados';
 import { AppConfig, ehProducao } from './config/configuration';
+import { VAR_PERFIL } from './common/instancia';
 import { DadosAppModule } from './dados/dados-app.module';
 
-/** Porta padrão do Portal de Conexões. Diferente da 5100 (o Painel) de propósito: as duas
+/** Porta padrão do Portal API. Diferente da 5100 (o Painel) de propósito: as duas
  * podem conviver na mesma máquina durante a transição, e o firewall trata cada uma à sua
  * maneira — a 5100 é o que vai para a nuvem, a 5110 nunca sai da rede interna. */
 const PORTA_PADRAO = 5110;
 
 const LIMITE_CORPO = '100kb';
 
-/** **PORTAL DE CONEXÕES — instância 1** (ver `src/dados/dados-app.module.ts`).
+/** **PORTAL API — instância 1** (ver `src/dados/dados-app.module.ts`).
  *
  * Mesmo binário, outra raiz de módulos: sobe só a API de Dados, autenticação, permissões e
  * health. É o processo que fica na rede interna com a credencial do Oracle/MySQL; o Painel
@@ -29,6 +30,11 @@ const LIMITE_CORPO = '100kb';
  *
  * Sobe com `node dist/main-dados.js` (ou `Iniciar_Portal_Conexoes.bat`). */
 async function bootstrap(): Promise<void> {
+  // PRIMEIRA linha, antes de o Nest subir: este processo É o Portal API, e o front-end
+  // monta o menu a partir disso (`GET /api/instancia`). Identidade do processo, não
+  // configuração de operação — por isso é escrita aqui e não vem de fora.
+  process.env[VAR_PERFIL] = 'portal-api';
+
   const app = await NestFactory.create(DadosAppModule, { bodyParser: false });
   const config = app.get(ConfigService<AppConfig, true>);
 
@@ -107,7 +113,7 @@ async function bootstrap(): Promise<void> {
   const porta = Number(process.env.MIGRACAO_DADOS_PORT ?? PORTA_PADRAO);
   await app.listen(porta);
   console.log(
-    `Portal de Conexões rodando em http://localhost:${porta}/api/dados/v1` +
+    `Portal API rodando em http://localhost:${porta}/api/dados/v1` +
       (emProducao ? '' : ' — docs em /api/docs') +
       `\nTela de administração: http://localhost:${porta}/config/api-dados`,
   );

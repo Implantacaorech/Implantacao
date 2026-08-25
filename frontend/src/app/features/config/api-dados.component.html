@@ -4,12 +4,22 @@
   <h1 class="pagina-titulo">
     <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-table"/></svg> API de Dados
   </h1>
-  <p class="dica">
-    Fronteira única entre o Painel e os bancos <strong>externos</strong> (SICLA, Portal Rech).
-    Toda consulta a esses bancos passa por aqui, pelo <strong>nome</strong> — nenhum consumidor
-    envia SQL. O texto de uma consulta editável continua em
-    <a routerLink="/config/consultas-bd">Consultas BD</a>.
-  </p>
+  @if (portalApi()) {
+    <p class="dica">
+      Esta é a instância <strong>interna</strong> — a única que guarda credencial de banco.
+      Aqui se faz o que ela existe para fazer: cadastrar a <strong>conexão</strong>, criar a
+      <strong>consulta</strong> que vira API e gerar o <strong>token</strong> de quem vai
+      consumi-la. O Portal Implantação não guarda nenhum dado de conexão: ele cola o token.
+    </p>
+  } @else {
+    <p class="dica">
+      Fronteira única entre o Painel e os bancos <strong>externos</strong> (SICLA, Portal Rech).
+      Toda consulta a esses bancos passa por aqui, pelo <strong>nome</strong> — nenhum consumidor
+      envia SQL. O texto de uma consulta editável continua em
+      <a routerLink="/config/consultas-bd">Consultas BD</a>, e os tokens com que este Painel
+      consulta o Portal API ficam em <a routerLink="/config/tokens-api">Tokens da API de Dados</a>.
+    </p>
+  }
 
   @if (aviso()) {
     <div class="resultado ok linha">
@@ -35,8 +45,15 @@
   }
 
   <!-- ── Conexões ─────────────────────────────────────────────────────────────── -->
-  <section class="painel">
+  <section class="painel" id="conexoes">
     <h2>Conexões</h2>
+    @if (portalApi()) {
+      <p class="dica">
+        A senha nunca volta para esta tela: o que se vê é se existe uma gravada. Deixá-la em
+        branco ao salvar <strong>mantém</strong> a atual. O <strong>Testar</strong> roda um
+        <code>SELECT 1</code> — prova a credencial, não o privilégio de leitura nas views.
+      </p>
+    }
     <div class="tabela-wrap">
       <table class="tabela">
         <thead>
@@ -60,10 +77,55 @@
         </tbody>
       </table>
     </div>
+
+    @if (portalApi()) {
+      @for (cfg of configuracoes(); track cfg.chave) {
+        <div class="conexao-edit">
+          <div class="acoes">
+            <button class="btn" type="button" (click)="abrirConexao(cfg)">
+              <svg class="svgi" aria-hidden="true"><use href="#ic-settings"/></svg>
+              {{ conexaoAberta() === cfg.chave ? 'Fechar' : 'Editar' }} {{ cfg.rotulo }}
+            </button>
+            <span class="dica">
+              {{ cfg.temSenha ? 'Senha gravada.' : 'Sem senha gravada.' }}
+            </span>
+          </div>
+
+          @if (conexaoAberta() === cfg.chave) {
+            <div class="grade2">
+              @for (campo of camposDe(cfg.chave); track campo) {
+                <label class="campo"><span>{{ campo }}</span>
+                  <input [value]="valorDe(campo)"
+                    (input)="definirCampo(campo, $any($event.target).value)" />
+                </label>
+              }
+              <label class="campo"><span>senha</span>
+                <input type="password" autocomplete="new-password"
+                  [value]="valorDe('senha')"
+                  (input)="definirCampo('senha', $any($event.target).value)"
+                  [placeholder]="cfg.temSenha ? 'em branco mantém a atual' : ''" />
+              </label>
+            </div>
+            <label class="escopo-item">
+              <input type="checkbox" [checked]="ligadaNoRascunho()"
+                (change)="definirCampo('ativo', $any($event.target).checked)" />
+              <span>Conexão ativa — desmarcar desliga sem apagar a credencial.</span>
+            </label>
+            <div class="acoes">
+              <button class="btn primario" type="button" (click)="salvarConexao(cfg)">Gravar</button>
+              <button class="btn" type="button" (click)="testarConexao(cfg)">Testar</button>
+            </div>
+            @if (testeDe(cfg.chave); as t) {
+              <div class="resultado" [class.ok]="t.ok" [class.erro]="!t.ok">{{ t.mensagem }}</div>
+            }
+          }
+        </div>
+      }
+    }
   </section>
 
   <!-- ── Catálogo ─────────────────────────────────────────────────────────────── -->
-  <section class="painel">
+  <section class="painel" id="consultas">
     <h2>Catálogo — {{ catalogo()?.total }} consulta(s), contrato {{ catalogo()?.versao }}</h2>
     <p class="dica">
       O SQL não aparece aqui de propósito: é detalhe de implementação e revela o schema de um
@@ -150,8 +212,8 @@
   </section>
 
   <!-- ── Clientes de máquina ──────────────────────────────────────────────────── -->
-  <section class="painel">
-    <h2>Clientes de máquina</h2>
+  <section class="painel" id="tokens">
+    <h2>Clientes de máquina — geração de token</h2>
     @if (avisoClientes()) {
       <div class="resultado erro">{{ avisoClientes() }}</div>
     }
@@ -283,5 +345,7 @@
     </div>
   </section>
 
-  <a class="btn btn-voltar" routerLink="/home">← Voltar ao Fluxo</a>
+  @if (!portalApi()) {
+    <a class="btn btn-voltar" routerLink="/home">← Voltar ao Fluxo</a>
+  }
 }
