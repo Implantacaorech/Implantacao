@@ -722,6 +722,13 @@ feita; o que ela revelou em volta, não.
   5198 (Portal API) e consome contra a 5199 (Painel). Sem a 5198 no ar, os casos de
   administração PULAM com o motivo no relatório (`apoio/portal-api.ts`); o workflow
   `e2e.yml` sobe as duas.
+- [x] **Tabela de permissões acertada**: `consulta_bd` deixou de ser tela do Painel — a chave
+  FICA (é o portão de quem chama, por JWT, uma consulta publicada pela tela; apagá-la
+  desligaria liberações já gravadas em `permissoes_menu`), mas o rótulo passou a dizer o que
+  ela controla. Entrou `tokens_api`, a tela nova do lado consumidor.
+- [x] **`menus.spec.ts`** passou a comparar o catálogo com o MENU DE VERDADE (o shell), nos
+  dois grupos dirigidos por `podeVer` e no grupo Sistema, que é fixo. Foi essa correspondência
+  que faltou desta vez: a tabela ficou oferecendo uma tela que saiu e sem a que entrou.
 - [x] Ratchets atualizados (`app.routes.spec.ts`, `shell.component.spec.ts`,
   `conformidade-api-dados.spec.ts`) e varredura e2e ajustada.
 

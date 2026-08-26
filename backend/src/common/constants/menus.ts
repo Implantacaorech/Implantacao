@@ -115,9 +115,23 @@ export const MENUS: DefinicaoMenu[] = [
     grupo: 'Sistema',
     fixaAdm: true,
   },
+  // `consulta_bd` DEIXOU de ser uma tela deste Painel em 2026-08-26 — Consultas BD mudou
+  // para o Portal API. A CHAVE fica, e continua valendo, porque o que ela gateia não é a
+  // tela: é quem, entrando por JWT, pode CHAMAR uma consulta publicada pela tela (ver
+  // `MENU_CONSULTA_DE_TELA` em dados/catalogo/catalogo.service.ts). Renomear a chave
+  // quebraria as liberações já gravadas em `permissoes_menu`, então só o rótulo mudou,
+  // para dizer o que ela de fato controla.
   {
     chave: 'consulta_bd',
-    rotulo: 'Consulta BD',
+    rotulo: 'Consultas publicadas pela tela (API de Dados)',
+    grupo: 'Sistema',
+    fixaAdm: true,
+  },
+  // Tela do lado CONSUMIDOR: onde se cola o token gerado no Portal API. Entrou no Painel em
+  // 2026-08-26, no lugar das telas de administração da API que saíram daqui.
+  {
+    chave: 'tokens_api',
+    rotulo: 'Tokens da API de Dados',
     grupo: 'Sistema',
     fixaAdm: true,
   },
@@ -301,6 +315,7 @@ export const PADRAO_PERMISSOES: Record<
   indice_topicos: { ADM: 'alteracao' },
   modelos_docs: { ADM: 'alteracao' },
   consulta_bd: { ADM: 'alteracao' },
+  tokens_api: { ADM: 'alteracao' },
   assistente_legado: { ADM: 'alteracao' },
   prontidao: { ADM: 'alteracao' },
 };
