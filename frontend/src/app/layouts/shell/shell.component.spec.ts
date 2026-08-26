@@ -143,6 +143,7 @@ describe('ShellComponent — menu por instância', () => {
       'Conexões Dados de acesso aos bancos',
       'Consultas da API O que a API entrega, e com quais parâmetros',
       'Nova consulta',
+      'Consultas BD Texto do SQL e apresentação nos Dashboards',
       'Tokens Gerar e revogar o acesso de cada consumidor',
     ]);
   });
@@ -175,5 +176,8 @@ describe('ShellComponent — menu por instância', () => {
     expect(texto).toContain('Usuários');
     // E ganhou a entrada nova, do lado consumidor.
     expect(texto).toContain('Tokens da API de Dados');
+    // Administrar a API saiu daqui em 2026-08-26 — é exclusivo do Portal API.
+    expect(texto).not.toContain('Consultas BD');
+    expect(texto).not.toContain('API de Dados Catálogo');
   });
 });

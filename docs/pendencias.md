@@ -544,8 +544,8 @@ feita; o que ela revelou em volta, não.
 > [ADR-0003](<../vault/17 - ADR/ADR-0003 - API de Dados como fronteira unica de banco.md>);
 > contrato e uso em [`backend/src/dados/docs/`](../backend/src/dados/docs/README.md).
 > Aplicação **faseada**, com catraca no CI (`backend/src/common/conformidade-api-dados.spec.ts`):
-> os números de exceção só podem CAIR. **As seis fases foram concluídas (as cinco primeiras em
-> 2026-08-25; a sexta em 2026-08-26).**
+> os números de exceção só podem CAIR. **As sete fases foram concluídas (as cinco primeiras em
+> 2026-08-25; as duas últimas em 2026-08-26).**
 > Estado: 19 consultas de código no catálogo (mais as publicadas pela tela), dívida de
 > `executarSql` zerada, 1 exceção de driver (permanente e justificada), e a instância interna
 > (Portal API) com entrypoint, ROTAS e tela de tokens próprios. Suítes verdes: backend
@@ -698,6 +698,25 @@ feita; o que ela revelou em volta, não.
 - [x] Verificado em navegador real, nas duas instâncias: o Portal API entra em
   `/config/api-dados`, mostra 4 itens de menu, e `/projetos`, `/usuarios`, `/bi` e
   `/config/consultas-bd` todos caem de volta na tela da API.
+
+### Fase 6 — administrar a API é exclusivo do Portal API *(concluída em 2026-08-26)*
+> *"Preciso que no Portal Implantação sejam desativadas as Consultas BD e retirados os módulos
+> Consultas BD e também API de Dados deste portal. O uso será único e exclusivo no Portal API."*
+
+- [x] **Painel perdeu** `config/consultas-bd[/:slug]` e `config/api-dados[/consulta]` — rotas e
+  itens de menu. Ficou só `config/tokens-api`, o lado consumidor.
+- [x] **Portal API ganhou** `config/consultas-bd[/:slug]`, com item de menu próprio. Para isso,
+  `ConfigConsultasBdController` mudou de `disponibilidade/` para `dados/`: é o `DadosModule`
+  que a instância interna monta.
+- [x] **As abas de conexão de Consultas BD foram REMOVIDAS** (não escondidas) — a tela
+  Conexões já cobre os dois bancos e os dois SELECTs. Junto saíram
+  `ConfigDisponibilidadeController`, `ConfigPortalDbController`, os DTOs deles e o
+  `ConfigDisponibilidadeService` do frontend: dois lugares para a mesma verdade, um deles
+  já sem tela.
+- [x] **Os Dashboards continuam no Painel** e continuam funcionando — mudou onde a consulta é
+  *editada*, não onde é *usada*.
+- [x] Ratchets atualizados (`app.routes.spec.ts`, `shell.component.spec.ts`,
+  `conformidade-api-dados.spec.ts`) e varredura e2e ajustada.
 
 ### Ainda aberto — por decisão, não por falta
 - [ ] **Usuário Oracle de leitura mínima (`painel_ro`)** — pedido ao TI. A credencial em uso

@@ -96,6 +96,10 @@
         <a class="side-link" routerLink="/config/api-dados/consulta" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg>Nova consulta
         </a>
+        <a class="side-link" routerLink="/config/consultas-bd" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg>Consultas BD
+          <span class="side-tip">Texto do SQL e apresentação nos Dashboards</span>
+        </a>
         <a class="side-link" routerLink="/config/tokens" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg>Tokens
           <span class="side-tip">Gerar e revogar o acesso de cada consumidor</span>
@@ -226,13 +230,8 @@
         <a class="side-link" [routerLink]="['/cadastros', 'modelos']" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>Modelos de Docs
         </a>
-        <a class="side-link" routerLink="/config/consultas-bd" routerLinkActive="on">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg>Consultas BD
-        </a>
-        <a class="side-link" routerLink="/config/api-dados" routerLinkActive="on">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg>API de Dados
-          <span class="side-tip">Catálogo, conexões e chaves de integração</span>
-        </a>
+        <!-- Consultas BD e API de Dados saíram daqui em 2026-08-26: administrar a API é
+             exclusivo do Portal API. O que resta neste portal é COLAR o token gerado lá. -->
         <a class="side-link" routerLink="/config/tokens-api" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-lock"/></svg>Tokens da API de Dados
           <span class="side-tip">Tokens do Portal API que este Painel usa</span>

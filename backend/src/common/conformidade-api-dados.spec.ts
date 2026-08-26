@@ -205,7 +205,14 @@ describe('Conformidade com a API de Dados (ADR-0003)', () => {
       // EXECUTÁ-LA (o consumidor). O primeiro obviamente recebe SQL; o segundo nunca pode.
       // Esta lista é o teto: um DTO novo que fale de SQL precisa ser justificado aqui, e
       // a rota dele tem de estar sob `@Roles(PERFIS_SISTEMA)`.
-      const PODEM_FALAR_DE_SQL = ['dados/dto/consulta-publicada.dto.ts'];
+      const PODEM_FALAR_DE_SQL = [
+        'dados/dto/consulta-publicada.dto.ts',
+        // Veio de `disponibilidade/dto/` em 2026-08-26, junto com a tela Consultas BD, que
+        // passou a ser exclusiva do Portal API. É o mesmo caso do de cima: quem preenche é
+        // o ADMINISTRADOR, definindo a consulta — não o consumidor, executando-a. A rota
+        // está sob `@Roles(PERFIS_SISTEMA)`.
+        'dados/dto/salvar-consulta-bd.dto.ts',
+      ];
       const proibidos = /\b(sql|conexao|limite|limiteLinhas)\s*[?]?\s*:/;
       const infratores = arquivosTs(join(RAIZ_DADOS, 'dto'))
         .filter((a) => proibidos.test(ler(a)))

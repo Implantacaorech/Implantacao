@@ -68,16 +68,27 @@ tenha dentro do portal"*.
 
 | | Portal API | Portal Implantação |
 |---|---|---|
-| Rotas | login, `/config/conexoes`, `/config/api-dados`, `/config/tokens`, `/config/api-dados/consulta[/:slug]`, `/perfil` | todas |
-| Menu | Conexões · Consultas da API · Nova consulta · Tokens — **cada um a sua TELA** | completo |
+| Rotas | login, `/config/conexoes`, `/config/api-dados`, `/config/tokens`, `/config/api-dados/consulta[/:slug]`, `/config/consultas-bd[/:slug]`, `/perfil` | todas, **menos** as de administração da API |
+| Menu | Conexões · Consultas da API · Nova consulta · Consultas BD · Tokens — **cada um a sua TELA** | completo, menos Consultas BD e API de Dados |
 | Barra superior | sem busca de cliente, sem alertas | completa |
 | Conexão com banco | **é aqui** | não existe |
 | Vinculação de token | não existe | **é aqui** (Sistema → Tokens da API de Dados) |
 
-No Portal Implantação nada mais some — só a **conexão com o banco**, que deu lugar à
-vinculação dos tokens: a rota `/config/disponibilidade` foi removida e as abas de conexão de
-Consultas BD (Disponibilidade e Banco do Portal Rech) só aparecem no Portal API. As consultas
-em si continuam no Painel, porque alimentam os Dashboards.
+No Portal Implantação sobrou **uma** tela de API de Dados: `Sistema → Tokens da API de
+Dados`, onde se cola o token. Toda a administração saiu de lá em 2026-08-26 — *"o uso será
+único e exclusivo no Portal API"*:
+
+| Saiu do Painel | Onde está agora |
+|---|---|
+| `config/disponibilidade` (conexão Oracle) | **Conexões**, no Portal API |
+| abas de conexão de Consultas BD | **Conexões**, no Portal API |
+| `config/consultas-bd` | **Consultas BD**, no Portal API |
+| `config/api-dados` (catálogo, clientes, uso) | **Consultas da API** e **Tokens**, no Portal API |
+
+Os **Dashboards continuam no Painel** e continuam funcionando: o que mudou foi onde as
+consultas são *editadas*, não onde são *usadas*. O controller `config/consultas-bd` mudou de
+`disponibilidade/` para `dados/` justamente por isso — é o `DadosModule` que a instância
+interna monta, e ficando onde estava a tela existiria no portal errado e faltaria no certo.
 
 ## Cadastrar a conexão (só no Portal API)
 

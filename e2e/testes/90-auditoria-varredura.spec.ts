@@ -38,9 +38,8 @@ const ROTAS_ESTATICAS = [
   '/cadastros',
   '/config/modelos-email',
   '/config/destinatarios-passo',
-  '/config/consultas-bd',
-  '/config/api-dados',
-  '/config/api-dados/consulta',
+  // Consultas BD e API de Dados saíram do Painel em 2026-08-26 — são exclusivas do Portal
+  // API, que tem tabela de rotas própria. Aqui resta o lado consumidor.
   '/config/tokens-api',
   '/bi/implantacao',
   '/bi/implantacao/contratacao',

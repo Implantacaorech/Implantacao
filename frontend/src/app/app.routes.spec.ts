@@ -19,7 +19,7 @@ function caminhos(tabela: Routes): string[] {
 }
 
 describe('tabela de rotas por instância', () => {
-  it('o Portal API tem SÓ login, as três telas e o perfil', () => {
+  it('o Portal API tem SÓ as telas de conexão, API e token (mais login e perfil)', () => {
     expect(caminhos(ROTAS_PORTAL_API).sort()).toEqual(
       [
         '',
@@ -30,6 +30,8 @@ describe('tabela de rotas por instância', () => {
         'config/tokens',
         'config/api-dados/consulta',
         'config/api-dados/consulta/:slug',
+        'config/consultas-bd',
+        'config/consultas-bd/:slug',
         'esqueci-senha',
         'login',
         'perfil',
@@ -48,18 +50,29 @@ describe('tabela de rotas por instância', () => {
       'usuarios',
       'permissoes',
       'consultor-siger',
-      'config/consultas-bd',
+      // O lado CONSUMIDOR é do Painel: o Portal API não consome, ele executa.
       'config/tokens-api',
     ]) {
       expect(p).not.toContain(ausente);
     }
   });
 
-  it('a tela de CONEXÃO com banco não existe mais no Painel', () => {
-    // Decisão do usuário em 2026-08-26: dado de conexão vive no Portal API; aqui entra, no
-    // lugar dele, a vinculação dos tokens.
+  it('administrar a API não existe mais no Painel — só colar o token', () => {
+    // Decisão do usuário em 2026-08-26: "o uso será único e exclusivo no Portal API".
+    // O Painel perdeu a conexão com banco, o Consultas BD e a API de Dados; ficou com a
+    // tela onde se cola o token gerado lá.
     const p = caminhos(routes);
-    expect(p).not.toContain('config/disponibilidade');
+    for (const ausente of [
+      'config/disponibilidade',
+      'config/consultas-bd',
+      'config/consultas-bd/:slug',
+      'config/api-dados',
+      'config/api-dados/consulta',
+      'config/conexoes',
+      'config/tokens',
+    ]) {
+      expect(p).not.toContain(ausente);
+    }
     expect(p).toContain('config/tokens-api');
   });
 

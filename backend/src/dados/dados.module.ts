@@ -11,6 +11,7 @@ import { ClienteApiService } from './cliente-api.service';
 import { CatalogoService } from './catalogo/catalogo.service';
 import { ConexoesService } from './conexoes/conexoes.service';
 import { DadosAdminController } from './dados-admin.controller';
+import { ConfigConsultasBdController } from './config-consultas-bd.controller';
 import { DadosController } from './dados.controller';
 import { DadosService } from './dados.service';
 import { AcessoDadosGuard } from './guards/acesso-dados.guard';
@@ -28,7 +29,13 @@ import { ClienteApiRepository } from './repositories/cliente-api.repository';
  * resto. */
 @Module({
   imports: [TypeOrmModule.forFeature([ClienteApi, ConsultaBD])],
-  controllers: [DadosController, DadosAdminController],
+  controllers: [
+    DadosController,
+    DadosAdminController,
+    // Consultas BD veio de `disponibilidade/` em 2026-08-26: a tela passou a ser exclusiva
+    // do Portal API, e é este módulo que a instância interna monta.
+    ConfigConsultasBdController,
+  ],
   providers: [
     DadosService,
     CatalogoService,

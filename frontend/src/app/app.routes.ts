@@ -364,43 +364,13 @@ export const routes: Routes = [
             (m) => m.DestinatariosPassoComponent,
           ),
       },
-      {
-        path: 'config/consultas-bd',
-        canActivate: [perfilGuard('ADM')],
-        data: { titulo: 'Consultas BD' },
-        loadComponent: () =>
-          import('./features/config/consultas-bd.component').then((m) => m.ConsultasBdComponent),
-      },
-      {
-        path: 'config/consultas-bd/:slug',
-        canActivate: [perfilGuard('ADM')],
-        data: { titulo: 'Consultas BD' },
-        loadComponent: () =>
-          import('./features/config/consultas-bd.component').then((m) => m.ConsultasBdComponent),
-      },
-      // API de Dados (ADR-0003): catálogo, conexões, clientes de máquina e uso. Fica ao lado
-      // de Consultas BD de propósito — é lá que se edita o TEXTO de uma consulta catalogada.
-      {
-        path: 'config/api-dados',
-        canActivate: [perfilGuard('ADM')],
-        data: { titulo: 'API de Dados' },
-        loadComponent: () =>
-          import('./features/config/api-dados.component').then((m) => m.ApiDadosComponent),
-      },
-      // Criar/editar uma consulta da API pela TELA. Sem `:slug` é consulta nova; com `:slug`
-      // abre a existente. As duas usam o mesmo componente — o formulário é o mesmo.
-      {
-        path: 'config/api-dados/consulta',
-        canActivate: [perfilGuard('ADM')],
-        data: { titulo: 'Nova consulta da API' },
-        loadComponent: () =>
-          import('./features/config/api-dados-consulta.component').then(
-            (m) => m.ApiDadosConsultaComponent,
-          ),
-      },
-      // Lado CONSUMIDOR: os tokens com que ESTE Painel consulta o Portal API. É a tela
-      // que o usuário pediu em 2026-08-25 ("preciso que tenha a tela onde eu insira os
-      // TOKENS gerados").
+      // `config/consultas-bd` e `config/api-dados` saíram do Painel em 2026-08-26, a pedido
+      // do usuário: "o uso será único e exclusivo no Portal API". Estão em
+      // `ROTAS_PORTAL_API`, no fim deste arquivo. O que fica aqui é o lado CONSUMIDOR —
+      // `config/tokens-api`, onde se cola o token gerado lá.
+      // Lado CONSUMIDOR: os tokens com que ESTE Painel consulta o Portal API. É a única
+      // tela de API de Dados que resta aqui — a administração (catálogo, conexões,
+      // consultas, geração de token) é exclusiva do Portal API.
       {
         path: 'config/tokens-api',
         canActivate: [perfilGuard('ADM')],
@@ -408,15 +378,6 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/config/tokens-api.component').then(
             (m) => m.TokensApiComponent,
-          ),
-      },
-      {
-        path: 'config/api-dados/consulta/:slug',
-        canActivate: [perfilGuard('ADM')],
-        data: { titulo: 'Consulta da API' },
-        loadComponent: () =>
-          import('./features/config/api-dados-consulta.component').then(
-            (m) => m.ApiDadosConsultaComponent,
           ),
       },
       // ── Área BI ─────────────────────────────────────────────────────────────────
@@ -726,6 +687,27 @@ export const ROTAS_PORTAL_API: Routes = [
         loadComponent: () =>
           import('./features/config/api-dados-consulta.component').then(
             (m) => m.ApiDadosConsultaComponent,
+          ),
+      },
+      // Consultas BD veio do Painel em 2026-08-26 — "o uso será único e exclusivo no Portal
+      // API". É a mesma tabela que a tela acima edita, por outro ângulo: aqui ficam o texto
+      // do SQL e os campos de apresentação nos Dashboards.
+      {
+        path: 'config/consultas-bd',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Consultas BD' },
+        loadComponent: () =>
+          import('./features/config/consultas-bd.component').then(
+            (m) => m.ConsultasBdComponent,
+          ),
+      },
+      {
+        path: 'config/consultas-bd/:slug',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Consultas BD' },
+        loadComponent: () =>
+          import('./features/config/consultas-bd.component').then(
+            (m) => m.ConsultasBdComponent,
           ),
       },
       {
