@@ -102,6 +102,12 @@ eles vivem na configuração da conexão, e vieram junto quando a tela de conex�
 3. salve. A partir daí, as consultas que **esse token autoriza** deixam de abrir conexão com o
    banco e passam a ser pedidas ao Portal API, pelo nome.
 
+O formato do token (`rd_<12 hex>_<48 hex>`) é conferido **antes** de a rede ser tocada: um
+token incompleto ou com o rótulo colado junto é apontado como tal, com os tamanhos. E um `401`
+que chegue do outro lado **não afirma mais** que o token foi revogado — daqui não dá para
+distinguir isso de uma cópia pela metade ou de um endereço apontando para outra instância, e
+as três possibilidades vão declaradas na mensagem.
+
 A virada é **por consulta**, e é isso que a torna gradual e sem janela: o que o token não
 cobre continua indo pelo caminho local. A própria tela mostra o que ainda falta cobrir — em
 "Consultas sem token". Enquanto essa lista não zerar, este Painel ainda precisa de credencial
@@ -130,9 +136,13 @@ Cadastro em **Sistema → API de Dados → Clientes de máquina**. A chave apare
 criação e na rotação: o banco guarda só o hash (bcrypt). Revogar preserva o histórico de uso;
 apagar não.
 
-O painel da chave nova mostra **o endereço desta instância junto do token** — são exatamente
-os dois campos pedidos do outro lado, e sem o endereço ali quem acabou de gerar precisa sair
-da tela para descobrir de onde ele veio. Na tabela, o **prefixo fica mascarado** (`ab12••••`)
+O painel da chave nova mostra **o endereço desta instância junto do token**, cada um com um
+botão **Copiar** — são exatamente os dois campos pedidos do outro lado. O botão não é conforto:
+selecionar o token com o mouse é o jeito fácil de levar metade dele, e meio token volta do
+outro lado como `401`, indistinguível de "token revogado" (foi o que aconteceu em
+2026-08-26). Como as instâncias rodam em HTTP na rede interna, `navigator.clipboard` não
+existe ali — o botão cai no `execCommand`, e avisa se nenhum dos dois valer, em vez de fingir
+que copiou. Na tabela, o **prefixo fica mascarado** (`ab12••••`)
 com um "mostrar" ao lado: ele não é segredo — viaja em claro dentro da chave e serve de índice
 de busca —, mas material de credencial na tela é material de credencial na foto que alguém
 tira da tela.

@@ -291,6 +291,54 @@ export class ApiDadosComponent {
 
   fecharChave(): void {
     this.chaveNova.set(null);
+    this.copiado.set(null);
+  }
+
+  /** Qual campo acabou de ser copiado — vira o "copiado!" ao lado do botão. */
+  readonly copiado = signal<string | null>(null);
+
+  /** Copia sem seleção manual.
+   *
+   * Existe por causa de um caso real (2026-08-26): o token foi copiado pela METADE numa
+   * seleção com o mouse, e o outro lado devolveu 401 — indistinguível de "token revogado".
+   *
+   * `navigator.clipboard` só existe em contexto seguro, e estas instâncias rodam em HTTP na
+   * rede interna: por isso o caminho antigo (`execCommand`) fica como alternativa em vez de
+   * o botão simplesmente não funcionar. Se nenhum dos dois valer, avisa — em vez de fingir
+   * que copiou. */
+  async copiar(texto: string, rotulo: string): Promise<void> {
+    const ok = await this.paraAreaDeTransferencia(texto);
+    this.copiado.set(ok ? rotulo : null);
+    if (!ok) {
+      this.erro.set(
+        'O navegador não deixou copiar automaticamente. Clique sobre o valor (ele seleciona inteiro) e use Ctrl+C.',
+      );
+    }
+  }
+
+  private async paraAreaDeTransferencia(texto: string): Promise<boolean> {
+    try {
+      if (window.isSecureContext && navigator.clipboard) {
+        await navigator.clipboard.writeText(texto);
+        return true;
+      }
+    } catch {
+      // cai no caminho de baixo
+    }
+    try {
+      const area = document.createElement('textarea');
+      area.value = texto;
+      area.setAttribute('readonly', '');
+      area.style.position = 'fixed';
+      area.style.opacity = '0';
+      document.body.appendChild(area);
+      area.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(area);
+      return ok;
+    } catch {
+      return false;
+    }
   }
 
   private async recarregarClientes(): Promise<void> {

@@ -29,6 +29,9 @@ const BASE = '/api/dados/v1';
 const ADMIN = `${BASE}/admin`;
 const CONSULTA = 'sicla.rns.listar';
 const PARAMS_OK = { data_ini: '2026-08-01', data_fim: '2026-08-31' };
+/** Formato que o Portal API emite: `rd_<12 hex>_<48 hex>`. Não é uma chave válida — serve
+ * para exercitar o que vem DEPOIS da checagem de formato. */
+const TOKEN_FORMATO_OK = `rd_${'a'.repeat(12)}_${'b'.repeat(48)}`;
 
 /** Cria um cliente de máquina e devolve a chave em claro (a única exibição). */
 async function criarCliente(
@@ -518,12 +521,31 @@ test.describe('API de Dados — conexões e tokens', () => {
     const adm = await token(request, USUARIOS.adm);
     const r = await request.post(`${BASE}/tokens/sondar`, {
       headers: cab(adm),
-      data: { url: 'http://127.0.0.1:59999', chave: 'rd_a_b' },
+      // Token BEM FORMADO de propósito: o que se testa aqui é o endereço fora do ar, e um
+      // token malformado seria barrado antes de a rede ser tocada (caso seguinte).
+      data: { url: 'http://127.0.0.1:59999', chave: TOKEN_FORMATO_OK },
     });
     expect(r.status()).toBe(200);
     const s = dados(await r.json());
     expect(s.ok).toBe(false);
     expect(s.mensagem).toContain('127.0.0.1:59999');
+  });
+
+  test('token colado pela METADE é diagnosticado, não chamado de revogado', async ({
+    request,
+  }) => {
+    // Caso real de 2026-08-26: a cópia com o mouse levou meio token, o Portal API devolveu
+    // 401 e a mensagem AFIRMAVA "foi revogado ou rotacionado" — mandando procurar no lugar
+    // errado. Agora o formato é conferido antes de gastar uma ida à rede.
+    const adm = await token(request, USUARIOS.adm);
+    const r = await request.post(`${BASE}/tokens/sondar`, {
+      headers: cab(adm),
+      data: { url: 'http://127.0.0.1:59999', chave: TOKEN_FORMATO_OK.slice(0, 40) },
+    });
+    const s = dados(await r.json());
+    expect(s.ok).toBe(false);
+    expect(s.mensagem).toContain('INCOMPLETO');
+    expect(s.mensagem).not.toContain('revogado');
   });
 
   test('só ADM mexe nos tokens do Painel', async ({ request }) => {

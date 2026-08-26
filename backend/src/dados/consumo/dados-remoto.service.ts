@@ -19,6 +19,39 @@ const TIMEOUT_MS = 30_000;
  * valer quase de imediato, e a leitura é uma tabela minúscula. */
 const TTL_TOKENS_MS = 15_000;
 
+/** O formato que o Portal API emite: `rd_<12 hex>_<48 hex>`. Conferir ANTES de enviar é o
+ * que separa "token errado" de "token incompleto" — os dois voltariam 401 do outro lado, com
+ * a mesma cara, e foi assim que uma cópia truncada virou "seu token foi revogado" (achado
+ * real em 2026-08-26). */
+const RE_TOKEN = /^rd_[0-9a-f]{12}_[0-9a-f]{48}$/;
+
+/** Diz o que está errado no texto colado, ou `null` se ele tem a cara de um token. */
+export function problemaNoToken(bruto: string): string | null {
+  const chave = (bruto || '').trim();
+  if (!chave) return 'Cole o token gerado no Portal API.';
+  if (RE_TOKEN.test(chave)) return null;
+
+  if (/\s/.test(chave)) {
+    return 'O token colado tem espaço ou quebra de linha. Ele é uma linha só — copie apenas o valor do campo Token.';
+  }
+  if (!chave.startsWith('rd_')) {
+    return 'O token do Portal API começa com "rd_". O que foi colado não parece ser o token.';
+  }
+  const partes = chave.split('_');
+  if (partes.length !== 3) {
+    return 'O token tem três partes separadas por "_" (rd_prefixo_segredo). O que foi colado não tem.';
+  }
+  const [, prefixo, segredo] = partes;
+  if (prefixo.length !== 12 || segredo.length !== 48) {
+    return (
+      `O token parece INCOMPLETO: o prefixo tem ${prefixo.length} caracteres (esperado 12) e o ` +
+      `segredo, ${segredo.length} (esperado 48). Copie-o inteiro — no Portal API há um botão ` +
+      '"Copiar", que evita seleção parcial.'
+    );
+  }
+  return 'O token tem caracteres fora do esperado (só 0-9 e a-f depois de "rd_").';
+}
+
 interface RespostaExecutar {
   data?: {
     colunas?: string[];
@@ -166,7 +199,15 @@ export class DadosRemotoService implements DelegadoRemoto {
     const texto = Array.isArray(detalhe) ? detalhe.join(' | ') : detalhe;
 
     if (status === 401) {
-      return `O Portal API recusou o token "${token.nome}" (401) — ele foi revogado ou rotacionado. Gere outro e atualize o cadastro.`;
+      // NÃO afirmar a causa: daqui não dá para distinguir "revogado" de "copiado pela
+      // metade" — os dois chegam como 401. Dizer "foi revogado" mandou o usuário procurar
+      // no lugar errado (2026-08-26). O formato já foi conferido antes de enviar, então o
+      // que sobra são estas três possibilidades, e elas vão declaradas.
+      return (
+        `O Portal API recusou o token "${token.nome}" (401). Nesta ordem de probabilidade: ` +
+        'o token foi copiado incompleto; ele foi revogado ou rotacionado lá; ou o endereço ' +
+        'aponta para outra instância, que não conhece este token.'
+      );
     }
     if (status === 403) {
       return `O token "${token.nome}" não autoriza esta consulta (403). Marque-a no cadastro do token, no Portal API.`;
@@ -189,14 +230,24 @@ export class DadosRemotoService implements DelegadoRemoto {
     url: string,
     chave: string,
   ): Promise<{ ok: boolean; mensagem: string; consultas: string[] }> {
-    const base = (url || '').trim().replace(/\/+$/, '');
-    if (!base || !chave.trim()) {
+    // Sem o `/api` e sem o `/config/...` do fim: colar a URL da barra de endereços do
+    // navegador é o erro mais provável, e viraria um 404 incompreensível.
+    const base = (url || '')
+      .trim()
+      .replace(/\/+$/, '')
+      .replace(/\/api(\/.*)?$/i, '')
+      .replace(/\/config(\/.*)?$/i, '');
+    if (!base) {
       return {
         ok: false,
-        mensagem: 'Informe o endereço do Portal API e o token.',
+        mensagem: 'Informe o endereço do Portal API.',
         consultas: [],
       };
     }
+    // Formato conferido AQUI, antes de gastar uma ida à rede: um token truncado voltaria
+    // 401 e pareceria revogado.
+    const problema = problemaNoToken(chave);
+    if (problema) return { ok: false, mensagem: problema, consultas: [] };
     try {
       const res = await firstValueFrom(
         this.http.get<{ data?: { consultas?: { nome: string }[] } }>(

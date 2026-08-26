@@ -132,3 +132,21 @@ tr.inativo {
   text-decoration: underline;
   cursor: pointer;
 }
+
+.btn-copiar {
+  margin-left: 10px;
+  padding: 2px 10px;
+  border: 1px solid var(--line, #dfe4ea);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  color: var(--brand, #2b5cab);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.btn-copiar:hover {
+  border-color: var(--brand, #2b5cab);
+}

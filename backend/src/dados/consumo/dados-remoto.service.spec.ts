@@ -1,7 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { of, throwError } from 'rxjs';
 import { TokenApiDados } from '../../database/entities/token-api-dados.entity';
-import { DadosRemotoService } from './dados-remoto.service';
+import { DadosRemotoService, problemaNoToken } from './dados-remoto.service';
 import { TokenApiDadosService } from './token-api-dados.service';
 
 function token(over: Partial<TokenApiDados> = {}): TokenApiDados {
@@ -19,6 +19,11 @@ function token(over: Partial<TokenApiDados> = {}): TokenApiDados {
     ...over,
   };
 }
+
+/** Token bem formado, como o Portal API o emite. Vários testes de `sondar` usavam um
+ * `rd_a_b` de fantasia; desde que o formato é conferido antes da rede, ele é recusado ali —
+ * corretamente. */
+const TOKEN_OK = `rd_${'a'.repeat(12)}_${'b'.repeat(48)}`;
 
 function resposta(
   linhas: Record<string, unknown>[],
@@ -145,7 +150,7 @@ describe('DadosRemotoService', () => {
       }),
     );
 
-    const r = await servico.sondar('http://interno:5110/', 'rd_a_b');
+    const r = await servico.sondar('http://interno:5110/', TOKEN_OK);
     expect(r.ok).toBe(true);
     expect(r.consultas).toEqual(['sicla.rns.listar', 'x.y.z']);
     const [url] = get.mock.calls[0] as [string];
@@ -155,16 +160,42 @@ describe('DadosRemotoService', () => {
   it('sondar avisa quando o token é válido mas não autoriza nada', async () => {
     const { servico, get } = montar([]);
     get.mockReturnValue(of({ data: { data: { consultas: [] } } }));
-    const r = await servico.sondar('http://interno:5110', 'rd_a_b');
+    const r = await servico.sondar('http://interno:5110', TOKEN_OK);
     expect(r.ok).toBe(true);
     expect(r.mensagem).toContain('não autoriza');
   });
 
   it('sondar sem URL ou sem chave nem chama o Portal API', async () => {
     const { servico, get } = montar([]);
-    const r = await servico.sondar('', 'rd_a_b');
+    const r = await servico.sondar('', TOKEN_OK);
     expect(r.ok).toBe(false);
     expect(get).not.toHaveBeenCalled();
+  });
+
+  it('sondar recusa token MALFORMADO antes de ir à rede', async () => {
+    const { servico, get } = montar([]);
+    const r = await servico.sondar('http://interno:5110', 'rd_abc_def');
+    expect(r.ok).toBe(false);
+    expect(r.mensagem).toContain('INCOMPLETO');
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it('sondar apara a URL colada da barra do navegador', async () => {
+    const { servico, get } = montar([]);
+    get.mockReturnValue(of({ data: { data: { consultas: [] } } }));
+    await servico.sondar('http://interno:5110/config/api-dados', TOKEN_OK);
+    expect((get.mock.calls[0] as [string])[0]).toBe(
+      'http://interno:5110/api/dados/v1/consultas',
+    );
+  });
+
+  it('401 NÃO afirma que o token foi revogado — lista as possibilidades', async () => {
+    const { servico, post } = montar([token()]);
+    post.mockReturnValue(throwError(() => ({ response: { status: 401 } })));
+    const r = await servico.consultar('sicla.rns.listar', {});
+    expect(r.mensagem).toContain('copiado incompleto');
+    expect(r.mensagem).toContain('revogado');
+    expect(r.mensagem).toContain('outra instância');
   });
 
   it('banco fora do ar não derruba o Painel — só desliga o consumo remoto', async () => {
@@ -179,5 +210,40 @@ describe('DadosRemotoService', () => {
     } as unknown as HttpService);
 
     expect(await servico.ativo()).toBe(false);
+  });
+});
+
+/** Diagnóstico do texto colado. Nasceu de um caso real (2026-08-26): o token foi copiado
+ * pela metade, o Portal API devolveu 401 e a mensagem AFIRMAVA "foi revogado ou rotacionado"
+ * — mandando procurar no lugar errado. Conferir o formato antes de enviar é o que permite
+ * dizer a verdade. */
+describe('problemaNoToken', () => {
+  const VALIDO = TOKEN_OK;
+
+  it('aceita o formato que o Portal API emite', () => {
+    expect(problemaNoToken(VALIDO)).toBeNull();
+    // Espaço em volta é da colagem, não do token.
+    expect(
+      problemaNoToken(`  ${VALIDO}
+`),
+    ).toBeNull();
+  });
+
+  it('token cortado ao meio diz que está INCOMPLETO, com os tamanhos', () => {
+    const m = problemaNoToken(VALIDO.slice(0, 40));
+    expect(m).toContain('INCOMPLETO');
+    expect(m).toContain('esperado 48');
+  });
+
+  it('texto com espaço no meio (colou o rótulo junto) é apontado', () => {
+    expect(problemaNoToken(`TOKEN ${VALIDO}`)).toContain('espaço');
+  });
+
+  it('outra coisa qualquer não vira "revogado"', () => {
+    expect(problemaNoToken('minha-senha')).toContain('rd_');
+  });
+
+  it('vazio pede o token', () => {
+    expect(problemaNoToken('   ')).toContain('Cole o token');
   });
 });

@@ -44,11 +44,26 @@
 
       <!-- Endereço junto da chave: sem ele, quem acabou de gerar o token precisa sair da
            tela para descobrir de onde ele veio — e é o primeiro campo pedido do outro lado. -->
-      <label class="chave-rotulo">{{ portalApi() ? 'Endereço do Portal API' : 'Endereço desta API' }}</label>
+      <label class="chave-rotulo">
+        {{ portalApi() ? 'Endereço do Portal API' : 'Endereço desta API' }}
+        <button class="btn-copiar" type="button" (click)="copiar(enderecoDaApi(), 'endereco')">
+          {{ copiado() === 'endereco' ? 'copiado!' : 'copiar' }}
+        </button>
+      </label>
       <pre class="chave-valor">{{ enderecoDaApi() }}</pre>
 
-      <label class="chave-rotulo">Token</label>
+      <label class="chave-rotulo">
+        Token
+        <button class="btn-copiar" type="button" (click)="copiar(nova.chave, 'token')">
+          {{ copiado() === 'token' ? 'copiado!' : 'copiar' }}
+        </button>
+      </label>
       <pre class="chave-valor chave-token">{{ nova.chave }}</pre>
+      <p class="dica">
+        <strong>Copie pelo botão.</strong> Selecionar com o mouse é o jeito fácil de levar
+        metade do token — e o outro lado devolve "recusado", sem dizer que ele veio pela
+        metade.
+      </p>
 
       <div class="acoes">
         <button class="btn" type="button" (click)="fecharChave()">Já copiei, fechar</button>
