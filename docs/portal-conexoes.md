@@ -45,6 +45,71 @@ Por isso a raiz de módulos da instância 1
 **de propósito**, e o teste `dados-app.module.spec.ts` recusa qualquer módulo novo ali: cada
 módulo acrescentado é rota exposta na máquina que tem a senha do banco.
 
+## O fluxo, de ponta a ponta
+
+```mermaid
+flowchart LR
+  subgraph INTERNA["Rede interna da Rech"]
+    PA["Portal API<br/>porta 5110"]
+    OR[("Oracle SICLA")]
+    MY[("MySQL Portal Rech")]
+    PA --- OR
+    PA --- MY
+  end
+  subgraph NUVEM["Servidor publicado"]
+    PI["Portal Implantação<br/>porta 5100"]
+  end
+  PI -- "X-API-Key + nome da consulta" --> PA
+  PA -- "colunas e linhas" --> PI
+```
+
+**Operação** — sete passos, uma vez por consulta. A ordem importa: sem consulta publicada não
+há o que autorizar num token.
+
+| # | Onde | O quê |
+|---|---|---|
+| 1 | Portal API · Conexões | Cadastra host/porta/banco/usuário/senha. A senha nunca volta à tela; em branco, mantém a atual. **Testar** roda `SELECT 1` — prova a credencial, não o privilégio nas views. |
+| 2 | Portal API · Nova consulta | Cola o SELECT e clica em **Testar**: o sistema descobre os `:binds` e as colunas rodando com limite 1. Resta escolher o tipo de cada parâmetro e o teto. |
+| 3 | Portal API · Nova consulta | **Publicar**. Só então a consulta entra no catálogo e pode ser autorizada. As validações estão logo abaixo. |
+| 4 | Portal API · Tokens | Marca **exatamente as consultas** que o token pode chamar. A chave sai uma única vez, junto do endereço do portal. |
+| 5 | Portal Implantação · Tokens da API de Dados | Cola endereço e token. O formato é conferido antes de qualquer ida à rede. |
+| 6 | Portal Implantação · Testar | O Painel pergunta ao Portal API o catálogo **que aquele token enxerga** — já recortado. É dele que sai a lista de consultas. |
+| 7 | Portal Implantação · Salvar | A chave vira **por consulta**: o que o token cobre passa a ir pelo Portal API; o resto continua local. |
+
+**Execução** — nenhum módulo de negócio sabe se o dado veio de perto ou de longe.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant T as Tela do Painel
+  participant D as DadosService
+  participant R as Consumo remoto
+  participant G as Guard do Portal API
+  participant C as Catálogo
+  participant B as Oracle / MySQL
+
+  T->>D: consultar("sicla.rns.listar", params)
+  D->>D: há token ativo que cubra esta consulta?
+  alt Sim — vai pelo Portal API
+    D->>R: nome + parâmetros (nunca SQL)
+    R->>G: POST /consultas/{nome}/executar + X-API-Key
+    G->>G: chave válida? o token autoriza este nome?
+    G->>C: nome → SQL, binds, teto
+    C->>B: SELECT com parâmetros validados
+    B-->>R: colunas e linhas (paginando até o fim)
+    R-->>D: resultado inteiro
+  else Não — caminho local
+    D->>C: nome → SQL, binds, teto
+    C->>B: SELECT com parâmetros validados
+    B-->>D: colunas e linhas
+  end
+  D-->>T: {ok, mensagem, colunas, linhas}
+```
+
+Três garantias que valem mais que os desenhos: o **SQL nunca vem de quem chama**; o resultado
+volta **inteiro**, paginado por baixo, para não truncar em silêncio uma consulta de teto alto;
+e uma falha ao *decidir* o caminho cai no local — degrada o novo, nunca o que já funcionava.
+
 ## O menu de cada uma
 
 Decisão do usuário em 2026-08-25: *"Quando falamos em Portal API, para conexão banco,
