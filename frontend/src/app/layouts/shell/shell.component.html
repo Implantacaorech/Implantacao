@@ -66,7 +66,7 @@
         <svg class="svgi" aria-hidden="true"><use href="#ic-bell"/></svg>
       </a>
     }
-    <a class="topbar-perfil" routerLink="/perfil">
+    <a class="topbar-perfil" [class.empurra]="portalApi()" routerLink="/perfil">
       <span class="avatar">{{ iniciais() }}</span>
       @if (auth.usuario(); as u) {
         <span class="topbar-perfil-txt">{{ u.nome }}<small>{{ u.login }}</small></span>

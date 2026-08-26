@@ -5,6 +5,10 @@ import { LoginComponent } from './login.component';
 import { AuthService } from '../../core/services/auth.service';
 import { AuthUser } from '../../core/models/auth-user.model';
 import { CHAVE_LOGIN_LEMBRADO } from '../../core/constants/sessao';
+import {
+  InstanciaService,
+  PerfilInstancia,
+} from '../../core/services/instancia.service';
 
 function usuario(perfis: string[]): AuthUser {
   return {
@@ -18,7 +22,21 @@ function usuario(perfis: string[]): AuthUser {
 }
 
 describe('LoginComponent', () => {
-  function montar(authService: Partial<AuthService> = {}) {
+  function instancia(perfil: PerfilInstancia): InstanciaService {
+    const i = new InstanciaService();
+    i.definir({
+      perfil,
+      nome: perfil === 'portal-api' ? 'Portal API' : 'Painel de Implantação',
+      descricao: '',
+      rotaInicial: perfil === 'portal-api' ? '/config/api-dados' : '/home',
+    });
+    return i;
+  }
+
+  function montar(
+    authService: Partial<AuthService> = {},
+    perfil: PerfilInstancia = 'painel',
+  ) {
     TestBed.configureTestingModule({
       imports: [LoginComponent],
       providers: [
@@ -31,6 +49,7 @@ describe('LoginComponent', () => {
             ...authService,
           },
         },
+        { provide: InstanciaService, useFactory: () => instancia(perfil) },
       ],
     });
     return TestBed.createComponent(LoginComponent);
@@ -39,6 +58,16 @@ describe('LoginComponent', () => {
   beforeEach(() => {
     localStorage.removeItem(CHAVE_LOGIN_LEMBRADO);
     TestBed.resetTestingModule();
+  });
+
+  it('no Portal API o cartão de acesso se identifica como Portal API', () => {
+    // São portais diferentes, com finalidades diferentes: quem chega precisa saber em qual
+    // está ANTES de digitar a senha.
+    const fixture = montar({}, 'portal-api');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.acesso-sub').textContent.trim()).toBe(
+      'Portal API',
+    );
   });
 
   it('traz o logo Portal Rech e "Implantação SIGER®" abaixo', () => {

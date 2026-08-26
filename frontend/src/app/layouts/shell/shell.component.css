@@ -238,3 +238,10 @@
     padding: 5px;
   }
 }
+
+/* Quem empurra o cartão do usuário e o Sair para a direita é o `margin-left:auto` da BUSCA
+   (styles.css). No Portal API a busca não existe — não há cliente para buscar —, e sem ela
+   os dois ficavam colados no nome da tela. Aqui o próprio cartão assume o empurrão. */
+.topbar-perfil.empurra {
+  margin-left: auto;
+}
