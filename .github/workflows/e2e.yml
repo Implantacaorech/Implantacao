@@ -80,6 +80,29 @@ jobs:
           done
           echo "A instância não subiu a tempo. Log:"; cat "$GITHUB_WORKSPACE/painel-e2e.log" || true; exit 1
 
+      # A ADMINISTRAÇÃO da API de Dados existe só no Portal API (desde 2026-08-26). Sem esta
+      # instância, os casos de `08-api-dados.spec.ts` que administram PULAM — e um skip
+      # silencioso no CI vale menos que o teste. Mesmo banco descartável da 5199.
+      - name: Subir o Portal API (5198) em segundo plano
+        working-directory: backend
+        env:
+          MIGRACAO_DADOS_PORT: "5198"
+        run: |
+          node dist/main-dados.js > "$GITHUB_WORKSPACE/portal-api-e2e.log" 2>&1 &
+          echo "started"
+
+      - name: Esperar o Portal API — e PROVAR que é ele
+        run: |
+          for i in $(seq 1 60); do
+            perfil=$(curl -sf http://localhost:5198/api/instancia | jq -r '.data.perfil' 2>/dev/null || true)
+            if [ "$perfil" = "portal-api" ]; then echo "Portal API no ar."; exit 0; fi
+            if [ -n "$perfil" ] && [ "$perfil" != "null" ]; then
+              echo "ERRO: /api/instancia respondeu perfil='$perfil' — não é o Portal API. Abortando."; exit 1
+            fi
+            sleep 2
+          done
+          echo "O Portal API não subiu a tempo. Log:"; cat "$GITHUB_WORKSPACE/portal-api-e2e.log" || true; exit 1
+
       - name: Semear os usuários do e2e (via API)
         run: node e2e/apoio/semear-usuarios.mjs
 

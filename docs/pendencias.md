@@ -715,6 +715,13 @@ feita; o que ela revelou em volta, não.
   já sem tela.
 - [x] **Os Dashboards continuam no Painel** e continuam funcionando — mudou onde a consulta é
   *editada*, não onde é *usada*.
+- [x] **Os ENDPOINTS também saíram**, não só as telas: `DadosAdminController` e
+  `ConfigConsultasBdController` são declarados no `DadosAppModule`. No Painel respondem 404 —
+  antes ficavam alcançáveis por qualquer ADM com um JWT, sem tela mas vivos.
+- [x] **O e2e passou a exigir DUAS instâncias**: `08-api-dados.spec.ts` administra contra a
+  5198 (Portal API) e consome contra a 5199 (Painel). Sem a 5198 no ar, os casos de
+  administração PULAM com o motivo no relatório (`apoio/portal-api.ts`); o workflow
+  `e2e.yml` sobe as duas.
 - [x] Ratchets atualizados (`app.routes.spec.ts`, `shell.component.spec.ts`,
   `conformidade-api-dados.spec.ts`) e varredura e2e ajustada.
 

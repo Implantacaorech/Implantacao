@@ -10,8 +10,6 @@ import { ConexaoSiclaService } from './conexoes/conexao-sicla.service';
 import { ClienteApiService } from './cliente-api.service';
 import { CatalogoService } from './catalogo/catalogo.service';
 import { ConexoesService } from './conexoes/conexoes.service';
-import { DadosAdminController } from './dados-admin.controller';
-import { ConfigConsultasBdController } from './config-consultas-bd.controller';
 import { DadosController } from './dados.controller';
 import { DadosService } from './dados.service';
 import { AcessoDadosGuard } from './guards/acesso-dados.guard';
@@ -29,13 +27,11 @@ import { ClienteApiRepository } from './repositories/cliente-api.repository';
  * resto. */
 @Module({
   imports: [TypeOrmModule.forFeature([ClienteApi, ConsultaBD])],
-  controllers: [
-    DadosController,
-    DadosAdminController,
-    // Consultas BD veio de `disponibilidade/` em 2026-08-26: a tela passou a ser exclusiva
-    // do Portal API, e é este módulo que a instância interna monta.
-    ConfigConsultasBdController,
-  ],
+  // Só o endpoint de EXECUÇÃO (`/api/dados/v1`) mora aqui, porque as duas instâncias o
+  // servem. Os controllers de ADMINISTRAÇÃO (`/admin/*` e `config/consultas-bd`) são
+  // declarados no `DadosAppModule` — administrar a API é exclusivo do Portal API desde
+  // 2026-08-26, e deixá-los aqui os manteria expostos no Painel, sem tela mas alcançáveis.
+  controllers: [DadosController],
   providers: [
     DadosService,
     CatalogoService,
@@ -49,8 +45,11 @@ import { ClienteApiRepository } from './repositories/cliente-api.repository';
     ClienteApiRepository,
     AcessoDadosGuard,
   ],
-  // ConsultaBdService e as conexões saem para as TELAS de configuração (Sistema →
-  // Consultas BD / Disponibilidade), que editam o que este módulo executa.
+  // Exporta o que os controllers de ADMINISTRAÇÃO precisam — eles são declarados no
+  // `DadosAppModule` (só o Portal API os serve), e um controller só resolve dependências
+  // que o módulo dele enxerga. Sem `ClienteApiService` e `ConsultasPublicadasService` aqui,
+  // o Portal API nem sobe: `UnknownDependenciesException` no boot, que é onde este tipo de
+  // erro aparece — nenhum teste de unidade monta a raiz.
   exports: [
     DadosService,
     CatalogoService,
@@ -58,6 +57,8 @@ import { ClienteApiRepository } from './repositories/cliente-api.repository';
     ConsultaBdService,
     ConexaoSiclaService,
     ConexaoPortalService,
+    ClienteApiService,
+    ConsultasPublicadasService,
   ],
 })
 export class DadosModule {}

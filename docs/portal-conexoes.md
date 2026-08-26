@@ -69,6 +69,7 @@ tenha dentro do portal"*.
 | | Portal API | Portal Implantação |
 |---|---|---|
 | Rotas | login, `/config/conexoes`, `/config/api-dados`, `/config/tokens`, `/config/api-dados/consulta[/:slug]`, `/config/consultas-bd[/:slug]`, `/perfil` | todas, **menos** as de administração da API |
+| Endpoints de administração | `/api/dados/v1/admin/*` e `/api/config/consultas-bd` | **não existem** (404) |
 | Menu | Conexões · Consultas da API · Nova consulta · Consultas BD · Tokens — **cada um a sua TELA** | completo, menos Consultas BD e API de Dados |
 | Barra superior | sem busca de cliente, sem alertas | completa |
 | Conexão com banco | **é aqui** | não existe |
@@ -86,9 +87,17 @@ Dados`, onde se cola o token. Toda a administração saiu de lá em 2026-08-26 �
 | `config/api-dados` (catálogo, clientes, uso) | **Consultas da API** e **Tokens**, no Portal API |
 
 Os **Dashboards continuam no Painel** e continuam funcionando: o que mudou foi onde as
-consultas são *editadas*, não onde são *usadas*. O controller `config/consultas-bd` mudou de
-`disponibilidade/` para `dados/` justamente por isso — é o `DadosModule` que a instância
-interna monta, e ficando onde estava a tela existiria no portal errado e faltaria no certo.
+consultas são *editadas*, não onde são *usadas*.
+
+Não é só a tela que sai: os **endpoints** de administração (`/api/dados/v1/admin/*` e
+`/api/config/consultas-bd`) são declarados no `DadosAppModule`, e não no `DadosModule`. O
+Painel monta o `DadosModule` — precisa do executor —, então deixá-los lá os manteria
+alcançáveis por qualquer ADM com um JWT, sem tela mas vivos. No Painel eles respondem **404**.
+
+> Isso obrigou o `DadosModule` a exportar `ClienteApiService` e `ConsultasPublicadasService`:
+> um controller só resolve as dependências que o módulo dele enxerga. Sem isso o Portal API
+> nem sobe — `UnknownDependenciesException` no boot, que é onde este tipo de erro aparece,
+> porque nenhum teste de unidade monta a raiz da aplicação.
 
 ## Cadastrar a conexão (só no Portal API)
 

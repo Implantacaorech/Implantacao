@@ -79,6 +79,29 @@ novo.
 > variável está no ambiente do Windows apontando para o **MariaDB de produção** — rode-os no
 > mesmo shell em que você a removeu, ou prefixe com `env -u MIGRACAO_DB_URL`.
 
+### 1b. Suba também o Portal API (porta 5198)
+
+Desde 2026-08-26 a **administração** da API de Dados (catálogo, conexões, consultas e tokens)
+existe **só** no Portal API — o Painel monta o `DadosModule` para executar, mas não os
+controllers de `/admin`. Os casos de `08-api-dados.spec.ts` que administram apontam para a
+5198; sem ela no ar eles **pulam** (com o motivo no relatório), em vez de falhar.
+
+⚠️ **Nunca aponte para a 5110** — é o Portal API de produção, com a credencial real do
+Oracle. O `apoio/portal-api.ts` recusa essa porta.
+
+Noutra janela, com as MESMAS variáveis do passo 1 (o banco é o mesmo SQLite descartável):
+
+```powershell
+$env:MIGRACAO_DADOS_PORT = "5198"
+node "$Raiz\backend\dist\main-dados.js"
+```
+
+Confirme que subiu como Portal API:
+
+```powershell
+(Invoke-RestMethod http://localhost:5198/api/instancia).data.perfil   # portal-api
+```
+
 ### 2. Crie os usuários de teste
 
 Um login por papel do processo, todos com a senha `Teste@123`:

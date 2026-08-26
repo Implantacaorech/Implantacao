@@ -10,6 +10,8 @@ import { UsersModule } from '../users/users.module';
 import { PermissoesModule } from '../permissoes/permissoes.module';
 import { HealthModule } from '../health/health.module';
 import { DadosModule } from './dados.module';
+import { DadosAdminController } from './dados-admin.controller';
+import { ConfigConsultasBdController } from './config-consultas-bd.controller';
 
 /** **PORTAL DE CONEXÕES** — a raiz da *instância 1* do desenho de duas instâncias
  * (decidido com o usuário em 2026-08-25, ver `docs/portal-conexoes.md`).
@@ -64,6 +66,11 @@ import { DadosModule } from './dados.module';
     HealthModule,
     DadosModule,
   ],
+  // ADMINISTRAÇÃO da API — catálogo, conexões, consultas e tokens. Declarada AQUI, e não
+  // no `DadosModule`, porque só esta instância a serve: o Painel monta o `DadosModule`
+  // (precisa do executor), e os controllers de administração ficariam expostos lá, sem
+  // tela mas alcançáveis por qualquer ADM com um JWT.
+  controllers: [DadosAdminController, ConfigConsultasBdController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class DadosAppModule {}
