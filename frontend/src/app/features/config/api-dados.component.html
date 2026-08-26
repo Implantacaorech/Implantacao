@@ -36,8 +36,20 @@
       <p class="dica">
         <strong>Copie agora.</strong> Esta é a única exibição — o banco guarda só o hash. Se
         perder, gere outra em "Rotacionar" (a atual deixa de valer).
+        @if (portalApi()) {
+          Os dois campos abaixo são exatamente o que se cola no Portal Implantação, em
+          <strong>Sistema → Tokens da API de Dados</strong>.
+        }
       </p>
-      <pre class="chave-valor">{{ nova.chave }}</pre>
+
+      <!-- Endereço junto da chave: sem ele, quem acabou de gerar o token precisa sair da
+           tela para descobrir de onde ele veio — e é o primeiro campo pedido do outro lado. -->
+      <label class="chave-rotulo">{{ portalApi() ? 'Endereço do Portal API' : 'Endereço desta API' }}</label>
+      <pre class="chave-valor">{{ enderecoDaApi() }}</pre>
+
+      <label class="chave-rotulo">Token</label>
+      <pre class="chave-valor chave-token">{{ nova.chave }}</pre>
+
       <div class="acoes">
         <button class="btn" type="button" (click)="fecharChave()">Já copiei, fechar</button>
       </div>
@@ -45,6 +57,7 @@
   }
 
   <!-- ── Conexões ─────────────────────────────────────────────────────────────── -->
+  @if (mostra('conexoes')) {
   <section class="painel" id="conexoes">
     <h2>Conexões</h2>
     @if (portalApi()) {
@@ -131,7 +144,10 @@
     }
   </section>
 
+  }
+
   <!-- ── Catálogo ─────────────────────────────────────────────────────────────── -->
+  @if (mostra('consultas')) {
   <section class="painel" id="consultas">
     <h2>Catálogo — {{ catalogo()?.total }} consulta(s), contrato {{ catalogo()?.versao }}</h2>
     <p class="dica">
@@ -218,7 +234,10 @@
     </div>
   </section>
 
+  }
+
   <!-- ── Clientes de máquina ──────────────────────────────────────────────────── -->
+  @if (mostra('tokens')) {
   <section class="painel" id="tokens">
     <h2>Clientes de máquina — geração de token</h2>
     @if (avisoClientes()) {
@@ -289,7 +308,13 @@
           @for (c of clientes(); track c.id) {
             <tr [class.inativo]="!c.ativo">
               <td>{{ c.nome }}<br /><span class="dica">{{ c.observacao }}</span></td>
-              <td><code>{{ c.prefixo }}</code></td>
+              <td class="col-prefixo">
+                <code>{{ prefixoAberto() === c.id ? c.prefixo : prefixoMascarado(c.prefixo) }}</code>
+                <button class="btn-olho" type="button" (click)="alternarPrefixo(c.id)"
+                  [attr.aria-label]="prefixoAberto() === c.id ? 'Ocultar prefixo' : 'Mostrar prefixo'">
+                  {{ prefixoAberto() === c.id ? 'ocultar' : 'mostrar' }}
+                </button>
+              </td>
               <td>
                 @for (nome of c.consultas; track nome) {
                   <span class="tag-param">{{ nome }}</span>
@@ -351,6 +376,8 @@
       </table>
     </div>
   </section>
+
+  }
 
   @if (!portalApi()) {
     <a class="btn btn-voltar" routerLink="/home">← Voltar ao Fluxo</a>

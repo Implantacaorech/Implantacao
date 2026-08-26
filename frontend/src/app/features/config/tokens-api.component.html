@@ -108,7 +108,13 @@
             <tr [class.inativo]="!t.ativo">
               <td>{{ t.nome }}<br /><span class="dica">{{ t.observacao }}</span></td>
               <td class="col-origem">{{ t.url }}</td>
-              <td><code>{{ t.prefixo }}</code></td>
+              <td class="col-prefixo">
+                <code>{{ prefixoAberto() === t.id ? t.prefixo : prefixoMascarado(t.prefixo) }}</code>
+                <button class="btn-olho" type="button" (click)="alternarPrefixo(t.id)"
+                  [attr.aria-label]="prefixoAberto() === t.id ? 'Ocultar prefixo' : 'Mostrar prefixo'">
+                  {{ prefixoAberto() === t.id ? 'ocultar' : 'mostrar' }}
+                </button>
+              </td>
               <td>
                 @for (c of t.consultas; track c) {
                   <span class="tag-param">{{ c }}</span>

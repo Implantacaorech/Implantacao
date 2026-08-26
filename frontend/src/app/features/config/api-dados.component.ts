@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiDadosService } from '../../core/services/api-dados.service';
 import {
   CatalogoDados,
@@ -36,6 +36,17 @@ export class ApiDadosComponent {
   private readonly fb = inject(FormBuilder);
   private readonly service = inject(ApiDadosService);
   private readonly instancia = inject(InstanciaService);
+  private readonly rota = inject(ActivatedRoute);
+
+  /** Qual PARTE da tela mostrar. No Painel é uma página só (`tudo`); no **Portal API** cada
+   * item do menu é uma rota própria, com o seu pedaço — os três apontavam para a mesma
+   * página com âncora, e o resultado era "clico em qualquer um e vejo a mesma coisa"
+   * (relatado pelo usuário em 2026-08-26). Âncora não é navegação. */
+  readonly secao = (this.rota.snapshot.data['secao'] as string) || 'tudo';
+
+  mostra(parte: 'conexoes' | 'consultas' | 'tokens'): boolean {
+    return this.secao === 'tudo' || this.secao === parte;
+  }
 
   /** No **Portal API** esta tela é a tela inteira do produto: é aqui que se cadastra a
    * conexão com o banco. No Painel ela continua só MOSTRANDO o estado das conexões — quem
@@ -69,6 +80,24 @@ export class ApiDadosComponent {
    * é a única oportunidade de copiá-la. */
   readonly chaveNova = signal<{ nome: string; chave: string } | null>(null);
 
+  /** Qual prefixo está revelado na tabela (um por vez).
+   *
+   * O prefixo **não é segredo** — ele viaja em claro dentro da chave e serve de índice de
+   * busca; o que protege o token é o segredo, guardado só como hash. Ainda assim ele deixa
+   * de ficar exposto o tempo todo (pedido do usuário em 2026-08-26): material de credencial
+   * na tela é material de credencial na foto que alguém tira da tela. Continua alcançável
+   * num clique, porque é por ele que se sabe qual token é qual. */
+  readonly prefixoAberto = signal<number | null>(null);
+
+  alternarPrefixo(id: number): void {
+    this.prefixoAberto.set(this.prefixoAberto() === id ? null : id);
+  }
+
+  /** Mostra o começo e esconde o resto — o bastante para distinguir um token do outro. */
+  prefixoMascarado(prefixo: string): string {
+    return prefixo ? `${prefixo.slice(0, 4)}${'•'.repeat(Math.max(0, prefixo.length - 4))}` : '—';
+  }
+
   readonly form = this.fb.nonNullable.group({
     nome: ['', Validators.required],
     consultas: [[] as string[], Validators.required],
@@ -90,6 +119,13 @@ export class ApiDadosComponent {
 
   constructor() {
     void this.carregar();
+  }
+
+  /** O endereço desta instância, como o navegador a alcança — é o que o outro lado precisa
+   * junto do token. Vem de `location.origin` e não de configuração: assim ele está certo por
+   * construção, inclusive quando se acessa por IP em vez de nome de máquina. */
+  enderecoDaApi(): string {
+    return window.location.origin;
   }
 
   rotuloConexao(chave: string): string {

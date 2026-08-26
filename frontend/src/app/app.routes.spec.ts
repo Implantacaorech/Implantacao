@@ -25,7 +25,9 @@ describe('tabela de rotas por instância', () => {
         '',
         // duas vezes: a raiz do shell e o redirect que ela faz para a tela da API.
         '',
+        'config/conexoes',
         'config/api-dados',
+        'config/tokens',
         'config/api-dados/consulta',
         'config/api-dados/consulta/:slug',
         'esqueci-senha',
@@ -59,6 +61,19 @@ describe('tabela de rotas por instância', () => {
     const p = caminhos(routes);
     expect(p).not.toContain('config/disponibilidade');
     expect(p).toContain('config/tokens-api');
+  });
+
+  it('cada item do menu do Portal API é uma TELA, não uma âncora', () => {
+    // Com âncora, clicar em Conexões, Consultas ou Tokens mostrava exatamente o mesmo
+    // conteúdo — foi o que o usuário reportou. Cada rota carrega a sua seção.
+    const secoes = ROTAS_PORTAL_API.flatMap((r) => r.children ?? [])
+      .filter((r) => r.data?.['secao'])
+      .map((r) => [r.path, r.data?.['secao']]);
+    expect(secoes).toEqual([
+      ['config/conexoes', 'conexoes'],
+      ['config/api-dados', 'consultas'],
+      ['config/tokens', 'tokens'],
+    ]);
   });
 
   it('rotasDe escolhe a tabela pelo perfil', () => {

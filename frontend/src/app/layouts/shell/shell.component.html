@@ -84,18 +84,19 @@
              conexão com o banco, criação da consulta que vira API e geração do token. Tudo
              o mais do Painel não está montado neste processo. -->
         <div class="side-grp">Portal API</div>
-        <a class="side-link" [routerLink]="['/config/api-dados']" fragment="conexoes">
+        <a class="side-link" routerLink="/config/conexoes" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-link"/></svg>Conexões
           <span class="side-tip">Dados de acesso aos bancos</span>
         </a>
-        <a class="side-link" [routerLink]="['/config/api-dados']" fragment="consultas">
+        <a class="side-link" routerLink="/config/api-dados" routerLinkActive="on"
+          [routerLinkActiveOptions]="{ exact: true }">
           <svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg>Consultas da API
           <span class="side-tip">O que a API entrega, e com quais parâmetros</span>
         </a>
         <a class="side-link" routerLink="/config/api-dados/consulta" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg>Nova consulta
         </a>
-        <a class="side-link" [routerLink]="['/config/api-dados']" fragment="tokens">
+        <a class="side-link" routerLink="/config/tokens" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg>Tokens
           <span class="side-tip">Gerar e revogar o acesso de cada consumidor</span>
         </a>

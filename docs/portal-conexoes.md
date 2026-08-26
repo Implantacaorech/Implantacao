@@ -55,6 +55,11 @@ O mesmo build do Angular serve as duas, e quem decide é o **backend**: `GET /ap
 responde `painel` ou `portal-api`, o `main-dados.ts` se declara como o segundo, e o
 `src/main.ts` do Angular **pergunta antes de a aplicação subir**.
 
+Cada item do menu do Portal API é uma **rota própria** — o mesmo componente, com `secao` no
+`data` dizendo qual parte renderizar. A primeira versão usava âncoras (`#conexoes`) na mesma
+página, e o efeito era clicar em qualquer item e ver exatamente o mesmo conteúdo: âncora não é
+navegação.
+
 Não é o menu que é filtrado: é a **tabela de rotas** que é outra (`ROTAS_PORTAL_API` em
 `app.routes.ts`). O que não está lá **não existe** naquele portal — não abre digitando o
 endereço (cai em `/config/api-dados`) e o chunk nem é baixado. Esconder o item de menu foi a
@@ -63,8 +68,8 @@ tenha dentro do portal"*.
 
 | | Portal API | Portal Implantação |
 |---|---|---|
-| Rotas | login, `/config/api-dados`, `/config/api-dados/consulta[/:slug]`, `/perfil` | todas |
-| Menu | Conexões · Consultas da API · Nova consulta · Tokens | completo |
+| Rotas | login, `/config/conexoes`, `/config/api-dados`, `/config/tokens`, `/config/api-dados/consulta[/:slug]`, `/perfil` | todas |
+| Menu | Conexões · Consultas da API · Nova consulta · Tokens — **cada um a sua TELA** | completo |
 | Barra superior | sem busca de cliente, sem alertas | completa |
 | Conexão com banco | **é aqui** | não existe |
 | Vinculação de token | não existe | **é aqui** (Sistema → Tokens da API de Dados) |
@@ -124,6 +129,13 @@ há caso de teste e2e provando justamente isso.
 Cadastro em **Sistema → API de Dados → Clientes de máquina**. A chave aparece **uma vez**, na
 criação e na rotação: o banco guarda só o hash (bcrypt). Revogar preserva o histórico de uso;
 apagar não.
+
+O painel da chave nova mostra **o endereço desta instância junto do token** — são exatamente
+os dois campos pedidos do outro lado, e sem o endereço ali quem acabou de gerar precisa sair
+da tela para descobrir de onde ele veio. Na tabela, o **prefixo fica mascarado** (`ab12••••`)
+com um "mostrar" ao lado: ele não é segredo — viaja em claro dentro da chave e serve de índice
+de busca —, mas material de credencial na tela é material de credencial na foto que alguém
+tira da tela.
 
 ## Criar consulta pela TELA (sem release)
 

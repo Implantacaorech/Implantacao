@@ -695,10 +695,27 @@ export const ROTAS_PORTAL_API: Routes = [
     canActivate: [authGuard],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'config/api-dados' },
+      // Três telas, não três âncoras na mesma página: com âncora, clicar em qualquer item do
+      // menu mostrava exatamente o mesmo conteúdo (relatado pelo usuário em 2026-08-26).
+      // O componente é o mesmo; `secao` diz qual parte ele renderiza.
+      {
+        path: 'config/conexoes',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Conexões com os bancos', secao: 'conexoes' },
+        loadComponent: () =>
+          import('./features/config/api-dados.component').then((m) => m.ApiDadosComponent),
+      },
       {
         path: 'config/api-dados',
         canActivate: [perfilGuard('ADM')],
-        data: { titulo: 'Conexões, consultas e tokens' },
+        data: { titulo: 'Consultas da API', secao: 'consultas' },
+        loadComponent: () =>
+          import('./features/config/api-dados.component').then((m) => m.ApiDadosComponent),
+      },
+      {
+        path: 'config/tokens',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Tokens de acesso', secao: 'tokens' },
         loadComponent: () =>
           import('./features/config/api-dados.component').then((m) => m.ApiDadosComponent),
       },

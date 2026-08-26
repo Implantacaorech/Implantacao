@@ -6,14 +6,39 @@
   border-left: 4px solid var(--ok, #2e7d32);
 }
 
+/* Endereço e token: é texto para LER e COPIAR à mão, uma vez só — daí o corpo grande e a
+   quebra de linha em vez de rolagem horizontal, que escondia metade da chave. `user-select:
+   all` faz um clique selecionar tudo. */
+.chave-rotulo {
+  display: block;
+  margin: 12px 0 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted, #667);
+}
+
 .chave-valor {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.95rem;
-  padding: 12px;
+  font-size: 1.15rem;
+  line-height: 1.5;
+  padding: 14px 16px;
+  margin: 0;
   border-radius: 6px;
+  border: 1px solid var(--line, #dfe4ea);
   background: var(--fundo-alt, #f4f6f8);
-  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   user-select: all;
+}
+
+/* O token é o que mais dói errar ao transcrever: mais corpo e letras espaçadas, para
+   distinguir 0/O e 1/l de relance. */
+.chave-token {
+  font-size: 1.3rem;
+  letter-spacing: 0.04em;
+  font-weight: 600;
 }
 
 .tag-param {
@@ -88,4 +113,22 @@ tr.inativo {
   font-size: 0.84rem;
   white-space: pre;
   overflow-x: auto;
+}
+
+/* O prefixo do token não é segredo — é índice de busca, e viaja em claro dentro da chave.
+   Ainda assim não fica exposto o tempo todo: material de credencial na tela é material de
+   credencial na foto que alguém tira da tela. Um clique revela. */
+.col-prefixo {
+  white-space: nowrap;
+}
+
+.btn-olho {
+  margin-left: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--brand, #2b5cab);
+  font-size: 0.74rem;
+  text-decoration: underline;
+  cursor: pointer;
 }

@@ -47,6 +47,18 @@ export class TokensApiComponent {
   /** Id em edição; `null` = token novo. */
   readonly editando = signal<number | null>(null);
 
+  /** Qual prefixo está revelado (um por vez) — ver `api-dados.component.ts`: o prefixo não é
+   * segredo, mas deixa de ficar exposto o tempo todo. */
+  readonly prefixoAberto = signal<number | null>(null);
+
+  alternarPrefixo(id: number): void {
+    this.prefixoAberto.set(this.prefixoAberto() === id ? null : id);
+  }
+
+  prefixoMascarado(prefixo: string): string {
+    return prefixo ? `${prefixo.slice(0, 4)}${'•'.repeat(Math.max(0, prefixo.length - 4))}` : '—';
+  }
+
   readonly form = this.fb.nonNullable.group({
     nome: ['', Validators.required],
     url: ['', Validators.required],

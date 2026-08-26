@@ -152,6 +152,26 @@ describe('ApiDadosComponent', () => {
     expect(comp.erro()).toContain('consulta');
   });
 
+  it('a chave nova vem acompanhada do ENDEREÇO desta API', async () => {
+    // Quem acabou de gerar o token precisa dos DOIS campos para colar do outro lado; sem o
+    // endereço aqui, tem de sair da tela para descobrir de onde o token veio.
+    const criarCliente = vi
+      .fn()
+      .mockResolvedValue({ ...CLIENTE, nome: 'Novo', chave: 'rd_abc_def' });
+    const fixture = await pronto(servicoPadrao({ criarCliente }));
+    const comp = fixture.componentInstance;
+
+    comp.form.controls.nome.setValue('Novo');
+    comp.alternarConsulta('sicla.rns.listar', true);
+    await comp.criar();
+    fixture.detectChanges();
+
+    expect(comp.enderecoDaApi()).toBe(window.location.origin);
+    const painel: HTMLElement = fixture.nativeElement.querySelector('.chave-nova');
+    expect(painel.textContent).toContain('rd_abc_def');
+    expect(painel.textContent).toContain(window.location.origin);
+  });
+
   it('criar mostra a chave UMA vez e limpa o formulário', async () => {
     const criarCliente = vi
       .fn()
