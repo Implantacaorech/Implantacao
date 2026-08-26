@@ -670,6 +670,9 @@ feita; o que ela revelou em volta, não.
   ele cobre; falha ao decidir cai no caminho local. Degrada o novo, nunca o que já funcionava.
 - [x] **Catraca ampliada**: `dados-app.module.spec.ts` recusa também o módulo de consumo no
   Portal API — aquela ponta executa, não consome.
+- [x] **Guardião passou a vigiar a 5110** *(2026-08-26)* — a instância caiu na primeira noite
+  e ninguém a reergueu, porque o `Guardiao_Painel_Novo.vbs` só conhecia o Painel e o
+  docservice. Mesma falha do docservice em 2026-08-04. `instancia.spec.ts` trava isso.
 
 ### Ainda aberto — por decisão, não por falta
 - [ ] **Usuário Oracle de leitura mínima (`painel_ro`)** — pedido ao TI. A credencial em uso

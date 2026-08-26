@@ -175,6 +175,15 @@ Variáveis (de **usuário** do Windows, nunca no `.bat`):
 Administração no navegador, **só pela rede interna**:
 `http://I7M1700-01-EVE:5110/config/api-dados`.
 
+O **guardião** (`Guardiao_Painel_Novo.vbs`, Tarefa Agendada a cada 5 min) vigia a 5110 junto
+com o Painel e o docservice, e a reergue se ela cair. Ele só o faz depois de o Portal API ter
+subido ao menos uma vez nesta máquina (existir `portal_conexoes_stdout.log` na pasta de
+backup) — numa máquina que não quer o Portal API, ele não fica tentando subi-lo para sempre.
+
+> Isso entrou em 2026-08-26, um dia depois de a instância subir: ela caiu durante a noite e
+> ninguém a reergueu, porque o guardião só conhecia as outras duas. Mesma falha do docservice
+> em 2026-08-04. Serviço novo sem vigilância é serviço que some no primeiro reboot.
+
 > Ela serve o **mesmo build** do Angular do Painel, mas só as telas da área Sistema → API de
 > Dados funcionam ali — o resto do menu chama endpoints que este processo não expõe. É
 > intencional: entre um menu completo e uma superfície pequena na máquina que tem a senha do

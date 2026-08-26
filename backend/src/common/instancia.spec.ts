@@ -35,4 +35,17 @@ describe('perfil da instância', () => {
     const fonte = readFileSync(join(__dirname, '..', 'main-dados.ts'), 'utf8');
     expect(fonte).toContain("process.env[VAR_PERFIL] = 'portal-api'");
   });
+
+  it('o Portal API é VIGIADO pelo guardião', () => {
+    // Achado real: a instância subiu em 25/08 e caiu durante a noite; ninguém a reergueu,
+    // porque o guardião só conhecia o Painel e o docservice. É a MESMA falha de 2026-08-04
+    // com o docservice — serviço novo sem vigilância é serviço que some no primeiro
+    // reboot, e o sintoma chega como "tela sem dado", sem relação aparente com a causa.
+    const vbs = readFileSync(
+      join(__dirname, '..', '..', '..', 'Guardiao_Painel_Novo.vbs'),
+      'utf8',
+    );
+    expect(vbs).toContain('MIGRACAO_DADOS_PORT');
+    expect(vbs).toContain('Iniciar_Portal_Conexoes.bat');
+  });
 });
