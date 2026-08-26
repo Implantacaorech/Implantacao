@@ -106,6 +106,13 @@
                   [placeholder]="cfg.temSenha ? 'em branco mantém a atual' : ''" />
               </label>
             </div>
+            @for (sel of selectsDe(cfg.chave); track sel.campo) {
+              <label class="campo"><span>{{ sel.rotulo }}</span>
+                <textarea rows="4" spellcheck="false" class="sql-conexao"
+                  [value]="valorDe(sel.campo)"
+                  (input)="definirCampo(sel.campo, $any($event.target).value)"></textarea>
+              </label>
+            }
             <label class="escopo-item">
               <input type="checkbox" [checked]="ligadaNoRascunho()"
                 (change)="definirCampo('ativo', $any($event.target).checked)" />

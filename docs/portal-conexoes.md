@@ -51,15 +51,28 @@ Decisão do usuário em 2026-08-25: *"Quando falamos em Portal API, para conexã
 criação da API e geração do TOKEN, é apenas isso que deve ter dentro do painel. Nada mais é
 preciso."*
 
-O mesmo build do Angular serve as duas, e quem decide o menu é o **backend**: `GET
-/api/instancia` responde `painel` ou `portal-api`, e o `main-dados.ts` se declara como o
-segundo. No Portal API o menu tem quatro entradas — Conexões, Consultas da API, Nova consulta
-e Tokens — e a barra superior perde a busca de cliente e o sino de alertas, que não existem
-lá. Mostrar mais seria oferecer porta que não abre: os módulos por trás delas não estão
-montados naquele processo, e `dados-app.module.spec.ts` recusa que passem a estar.
+O mesmo build do Angular serve as duas, e quem decide é o **backend**: `GET /api/instancia`
+responde `painel` ou `portal-api`, o `main-dados.ts` se declara como o segundo, e o
+`src/main.ts` do Angular **pergunta antes de a aplicação subir**.
 
-No Portal Implantação nada some, e entra uma tela nova: **Sistema → Tokens da API de Dados**
-— *"preciso que tenha a tela onde eu insira os TOKENS gerados"*.
+Não é o menu que é filtrado: é a **tabela de rotas** que é outra (`ROTAS_PORTAL_API` em
+`app.routes.ts`). O que não está lá **não existe** naquele portal — não abre digitando o
+endereço (cai em `/config/api-dados`) e o chunk nem é baixado. Esconder o item de menu foi a
+primeira tentativa e não atendia ao pedido: *"os demais módulos não importa e não queremos que
+tenha dentro do portal"*.
+
+| | Portal API | Portal Implantação |
+|---|---|---|
+| Rotas | login, `/config/api-dados`, `/config/api-dados/consulta[/:slug]`, `/perfil` | todas |
+| Menu | Conexões · Consultas da API · Nova consulta · Tokens | completo |
+| Barra superior | sem busca de cliente, sem alertas | completa |
+| Conexão com banco | **é aqui** | não existe |
+| Vinculação de token | não existe | **é aqui** (Sistema → Tokens da API de Dados) |
+
+No Portal Implantação nada mais some — só a **conexão com o banco**, que deu lugar à
+vinculação dos tokens: a rota `/config/disponibilidade` foi removida e as abas de conexão de
+Consultas BD (Disponibilidade e Banco do Portal Rech) só aparecem no Portal API. As consultas
+em si continuam no Painel, porque alimentam os Dashboards.
 
 ## Cadastrar a conexão (só no Portal API)
 
@@ -68,9 +81,11 @@ se vê é `temSenha`, e deixá-la em branco ao gravar mantém a atual. O **Testa
 `SELECT 1` — prova a credencial, não o privilégio de leitura nas views; separar as duas coisas
 é o que faz a mensagem de erro dizer a verdade.
 
-As telas antigas do Painel (Sistema → Disponibilidade e Consultas BD) continuam existindo e
-escrevem a **mesma** configuração. Quando o Painel for para a nuvem, são elas que somem — não
-esta.
+Os dois **SELECTs da Disponibilidade** (ocupação e mapa de técnicos) também são editados aqui:
+eles vivem na configuração da conexão, e vieram junto quando a tela de conexão saiu do Painel.
+
+É o **único** lugar onde se cadastra conexão. As telas antigas do Painel foram removidas em
+2026-08-26 — não há mais dois lugares para a mesma verdade.
 
 ## Colar o token (só no Portal Implantação)
 

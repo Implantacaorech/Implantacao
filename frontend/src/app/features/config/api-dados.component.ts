@@ -272,6 +272,19 @@ export class ApiDadosComponent {
       : ['host', 'porta', 'banco', 'usuario', 'url'];
   }
 
+  /** SELECTs guardados na CONFIGURAÇÃO da conexão — a terceira origem de SQL do sistema.
+   * Só o SICLA tem: são a ocupação e o mapa de técnicos, que variam por instalação. Vieram
+   * para cá em 2026-08-26, quando a tela de conexão saiu do Painel: sem isto eles ficariam
+   * sem lugar nenhum para serem editados. */
+  selectsDe(chave: string): { campo: string; rotulo: string }[] {
+    return chave === 'sicla'
+      ? [
+          { campo: 'select', rotulo: 'SELECT de ocupação (agenda dos consultores)' },
+          { campo: 'selectTecnicos', rotulo: 'SELECT do mapa de técnicos' },
+        ]
+      : [];
+  }
+
   abrirConexao(c: ConfiguracaoConexao): void {
     if (this.conexaoAberta() === c.chave) {
       this.conexaoAberta.set(null);

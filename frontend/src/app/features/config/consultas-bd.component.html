@@ -5,13 +5,24 @@
     <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-table"/></svg>
     Consultas BD (Administrador)
   </h1>
-  <p class="dica">Duas conexões externas — <strong>Disponibilidade</strong> (Oracle/SICLA, alimenta o agendador) e
-    <strong>Banco do Portal Rech</strong> (MySQL, alimenta o painel de protocolos do BI) — e várias consultas SQL
-    nomeadas por assunto, cada uma rodando na conexão escolhida. Tela exclusiva do perfil Administrador.</p>
+  @if (portalApi()) {
+    <p class="dica">Duas conexões externas — <strong>Disponibilidade</strong> (Oracle/SICLA, alimenta o agendador) e
+      <strong>Banco do Portal Rech</strong> (MySQL, alimenta o painel de protocolos do BI) — e várias consultas SQL
+      nomeadas por assunto, cada uma rodando na conexão escolhida. Tela exclusiva do perfil Administrador.</p>
+  } @else {
+    <p class="dica">
+      Consultas SQL nomeadas por assunto, cada uma rodando na conexão escolhida. Tela
+      exclusiva do perfil Administrador. Os <strong>dados de conexão</strong> não ficam mais
+      aqui: eles vivem no <strong>Portal API</strong> (instância interna), e este Painel os
+      alcança pelos tokens de <a routerLink="/config/tokens-api">Tokens da API de Dados</a>.
+    </p>
+  }
 
   <div class="cbd-abas">
-    <button type="button" class="cbd-aba" [class.on]="aba() === 'disponibilidade'" (click)="trocarAba('disponibilidade')">Disponibilidade</button>
-    <button type="button" class="cbd-aba" [class.on]="aba() === 'portal-db'" (click)="trocarAba('portal-db')">Banco do Portal Rech</button>
+    @if (portalApi()) {
+      <button type="button" class="cbd-aba" [class.on]="aba() === 'disponibilidade'" (click)="trocarAba('disponibilidade')">Disponibilidade</button>
+      <button type="button" class="cbd-aba" [class.on]="aba() === 'portal-db'" (click)="trocarAba('portal-db')">Banco do Portal Rech</button>
+    }
     @for (c of consultas(); track c.slug) {
       <button type="button" class="cbd-aba" [class.on]="aba() === c.slug" (click)="trocarAba(c.slug)">{{ c.nome }}</button>
     }
@@ -169,7 +180,7 @@
         <label class="campo">
           <span>Conexão onde a consulta roda</span>
           <select formControlName="conexao">
-            <option value="sicla">SICLA (Oracle — a da aba Disponibilidade)</option>
+            <option value="sicla">SICLA (Oracle)</option>
             <option value="portal">Banco do Portal Rech (MySQL)</option>
           </select>
         </label>

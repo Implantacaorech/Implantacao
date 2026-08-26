@@ -1,4 +1,3 @@
-import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { ApiDadosComponent } from './api-dados.component';
@@ -285,16 +284,17 @@ describe('ApiDadosComponent — conexões no Portal API', () => {
           },
         },
         {
+          // Serviço REAL, semeado como o boot o semeia (ver instancia.service.spec.ts).
           provide: InstanciaService,
-          useValue: {
-            garantirCarregado: vi.fn(),
-            atual: signal({
+          useFactory: () => {
+            const i = new InstanciaService();
+            i.definir({
               perfil: 'portal-api',
               nome: 'Portal API',
               descricao: '',
               rotaInicial: '/config/api-dados',
-            }),
-            portalApi: signal(true),
+            });
+            return i;
           },
         },
       ],

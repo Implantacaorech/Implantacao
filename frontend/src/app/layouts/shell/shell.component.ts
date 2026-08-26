@@ -25,14 +25,16 @@ export class ShellComponent {
   constructor() {
     // Carrega o mapa de permissões do usuário logado (menu só existe autenticado).
     void this.perm.garantirCarregado();
-    void this.instancia.garantirCarregado();
   }
 
   /** Este front-end está sendo servido pelo **Portal API** (instância interna)?
    *
    * Lá o menu é OUTRO — só conexão de banco, criação de consulta e geração de token, que é
-   * tudo o que aquela instância monta (decisão do usuário em 2026-08-25). Oferecer os
-   * demais itens seria oferecer porta que não abre. */
+   * tudo o que aquela instância monta. E não é só o menu: a TABELA DE ROTAS daquele portal
+   * também é outra (ver `app.routes.ts`), então o que não aparece aqui também não existe lá.
+   *
+   * O valor já vem resolvido do boot (`main.ts` pergunta antes de a aplicação subir), então
+   * não há espera nem estado intermediário. */
   readonly portalApi = computed(() => this.instancia.portalApi());
   readonly nomeInstancia = computed(() => this.instancia.atual().nome);
   readonly rotaInicial = computed(() => this.instancia.atual().rotaInicial);

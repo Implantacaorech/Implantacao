@@ -81,3 +81,11 @@ tr.inativo {
   margin-top: 12px;
   padding-top: 12px;
 }
+
+/* SELECTs guardados na configuração da conexão (só SICLA) — texto de SQL, monoespaçado. */
+.sql-conexao {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.84rem;
+  white-space: pre;
+  overflow-x: auto;
+}

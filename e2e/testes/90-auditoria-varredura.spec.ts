@@ -31,7 +31,6 @@ const ROTAS_ESTATICAS = [
   '/matriz',
   '/matriz-detalhada',
   '/matriz-funcoes',
-  '/config/disponibilidade',
   '/config/email',
   '/config/imap',
   '/config/gmail',

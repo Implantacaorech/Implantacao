@@ -35,6 +35,12 @@ const INSTANCIAS: Record<PerfilInstancia, Instancia> = {
   },
 };
 
+function instanciaSemeada(perfil: PerfilInstancia): InstanciaService {
+  const s = new InstanciaService();
+  s.definir(INSTANCIAS[perfil]);
+  return s;
+}
+
 describe('ShellComponent — barra superior', () => {
   function montar(perfil: PerfilInstancia = 'painel') {
     TestBed.resetTestingModule();
@@ -50,14 +56,10 @@ describe('ShellComponent — barra superior', () => {
           provide: PermissoesService,
           useValue: { garantirCarregado: vi.fn(), podeVer: () => true },
         },
-        {
-          provide: InstanciaService,
-          useValue: {
-            garantirCarregado: vi.fn(),
-            atual: signal(INSTANCIAS[perfil]),
-            portalApi: signal(perfil === 'portal-api'),
-          },
-        },
+        // O serviço REAL, semeado como o boot o semeia. Mockar a classe inteira foi o que
+        // escondeu o defeito de 2026-08-26 (o Portal API servindo o menu do Painel): o
+        // teste afirmava o template e nunca a fiação.
+        { provide: InstanciaService, useFactory: () => instanciaSemeada(perfil) },
       ],
     });
     const fixture = TestBed.createComponent(ShellComponent);
@@ -118,14 +120,10 @@ describe('ShellComponent — menu por instância', () => {
           provide: PermissoesService,
           useValue: { garantirCarregado: vi.fn(), podeVer: () => true },
         },
-        {
-          provide: InstanciaService,
-          useValue: {
-            garantirCarregado: vi.fn(),
-            atual: signal(INSTANCIAS[perfil]),
-            portalApi: signal(perfil === 'portal-api'),
-          },
-        },
+        // O serviço REAL, semeado como o boot o semeia. Mockar a classe inteira foi o que
+        // escondeu o defeito de 2026-08-26 (o Portal API servindo o menu do Painel): o
+        // teste afirmava o template e nunca a fiação.
+        { provide: InstanciaService, useFactory: () => instanciaSemeada(perfil) },
       ],
     });
     const fixture = TestBed.createComponent(ShellComponent);

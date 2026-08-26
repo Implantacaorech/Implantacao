@@ -544,11 +544,12 @@ feita; o que ela revelou em volta, não.
 > [ADR-0003](<../vault/17 - ADR/ADR-0003 - API de Dados como fronteira unica de banco.md>);
 > contrato e uso em [`backend/src/dados/docs/`](../backend/src/dados/docs/README.md).
 > Aplicação **faseada**, com catraca no CI (`backend/src/common/conformidade-api-dados.spec.ts`):
-> os números de exceção só podem CAIR. **As cinco fases foram concluídas em 2026-08-25.**
+> os números de exceção só podem CAIR. **As seis fases foram concluídas (as cinco primeiras em
+> 2026-08-25; a sexta em 2026-08-26).**
 > Estado: 19 consultas de código no catálogo (mais as publicadas pela tela), dívida de
 > `executarSql` zerada, 1 exceção de driver (permanente e justificada), e a instância interna
-> (Portal API) com entrypoint, menu e tela de tokens próprios. Suítes verdes: backend
-> 144/1497, frontend 71/590, e2e 94.
+> (Portal API) com entrypoint, ROTAS e tela de tokens próprios. Suítes verdes: backend
+> 144/1498, frontend 72/598, e2e 94.
 >
 > As **duas instâncias** (interna com a credencial × Painel na nuvem consumindo por token)
 > estão descritas em [docs/portal-conexoes.md](portal-conexoes.md).
@@ -673,6 +674,30 @@ feita; o que ela revelou em volta, não.
 - [x] **Guardião passou a vigiar a 5110** *(2026-08-26)* — a instância caiu na primeira noite
   e ninguém a reergueu, porque o `Guardiao_Painel_Novo.vbs` só conhecia o Painel e o
   docservice. Mesma falha do docservice em 2026-08-04. `instancia.spec.ts` trava isso.
+
+### Fase 5 — o Portal API não CONTÉM o resto *(concluída em 2026-08-26)*
+> **Ajuste do usuário:** *"Que tenha apenas a parte conexão, API e TOKEN dentro dele. Os
+> demais módulos não importa e não queremos que tenha dentro do portal."* e *"o lado usuário
+> ... ao invés de conexão com o banco que tenha o módulo de vinculação dos tokens"*.
+
+- [x] **Defeito corrigido:** a fase 4 escondia o menu, mas **não escondia coisa nenhuma na
+  prática** — `InstanciaService` lia `perfil` da RAIZ da resposta, e o backend embrulha tudo
+  no envelope `{success, data, …}`. Vinha `undefined`, caía no padrão, e o Portal API servia o
+  menu inteiro. O teste que existia mockava o próprio serviço: afirmava o template, nunca a
+  fiação. Agora há `instancia.service.spec.ts` sobre o serviço REAL.
+- [x] **A instância é resolvida ANTES do Angular subir** (`src/main.ts`), e escolhe a
+  **tabela de rotas** (`ROTAS_PORTAL_API`). O que não está nela não existe no Portal API: não
+  abre digitando o endereço (cai em `/config/api-dados`) e o chunk nem é baixado.
+- [x] **Painel sem conexão de banco**: a rota `/config/disponibilidade` e o componente dela
+  foram removidos, e as abas de conexão de Consultas BD (Disponibilidade e Banco do Portal
+  Rech) só aparecem no Portal API. No lugar delas, **Sistema → Tokens da API de Dados**.
+- [x] **Os dois SELECTs da Disponibilidade** (ocupação e mapa de técnicos) passaram a ser
+  editáveis no formulário de conexão do Portal API — senão ficariam sem lugar nenhum.
+- [x] **`app.routes.spec.ts`** trava as duas tabelas: nenhum módulo de negócio no Portal API,
+  nenhuma tela de conexão no Painel.
+- [x] Verificado em navegador real, nas duas instâncias: o Portal API entra em
+  `/config/api-dados`, mostra 4 itens de menu, e `/projetos`, `/usuarios`, `/bi` e
+  `/config/consultas-bd` todos caem de volta na tela da API.
 
 ### Ainda aberto — por decisão, não por falta
 - [ ] **Usuário Oracle de leitura mínima (`painel_ro`)** — pedido ao TI. A credencial em uso

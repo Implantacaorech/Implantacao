@@ -1,18 +1,19 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ConfigDisponibilidadeService } from '../../core/services/config-disponibilidade.service';
 import { LinhaOcupacao } from '../../core/models/config-disponibilidade.model';
 import { ConsultaBdService } from '../../core/services/consulta-bd.service';
 import { ConsultaBD, ResultadoExecucaoSql } from '../../core/models/consulta-bd.model';
+import { InstanciaService } from '../../core/services/instancia.service';
 
 type Aba = 'disponibilidade' | 'portal-db' | 'nova' | string;
 
 @Component({
   selector: 'app-consultas-bd',
   standalone: true,
-  imports: [ReactiveFormsModule, FormsModule],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink],
   templateUrl: './consultas-bd.component.html',
   styleUrl: './consultas-bd.component.css',
 })
@@ -22,6 +23,13 @@ export class ConsultasBdComponent {
   private readonly service = inject(ConsultaBdService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly instancia = inject(InstanciaService);
+
+  /** As abas de CONEXÃO (Disponibilidade/Oracle e Portal Rech/MySQL) só existem no **Portal
+   * API**. No Painel elas saíram em 2026-08-26, a pedido do usuário: dado de conexão com
+   * banco não fica no portal do usuário — aqui ele consulta por TOKEN. O que sobra nesta
+   * tela são as consultas em si, que alimentam os Dashboards. */
+  readonly portalApi = computed(() => this.instancia.portalApi());
 
   readonly dialetos = ['mysql', 'oracle', 'postgresql', 'sqlserver'];
 
@@ -36,7 +44,11 @@ export class ConsultasBdComponent {
   readonly resultadoTeste = signal<ResultadoExecucaoSql | null>(null);
 
   readonly consultas = signal<ConsultaBD[]>([]);
-  readonly aba = signal<Aba>('disponibilidade');
+  // Sem as abas de conexão, a primeira aba útil do Painel é a de consultas — abrir numa aba
+  // que não existe deixaria a tela em branco.
+  readonly aba = signal<Aba>(
+    this.instancia.portalApi() ? 'disponibilidade' : 'nova',
+  );
 
   readonly consultaAtual = computed(() => this.consultas().find((c) => c.slug === this.aba()) ?? null);
 
@@ -93,10 +105,17 @@ export class ConsultasBdComponent {
     try {
       this.consultas.set(await this.service.listar());
       const slugs = new Set(this.consultas().map((c) => c.slug));
+      // No Painel as abas de conexão não existem: cair nelas deixaria a tela em branco.
+      // A aba de partida passa a ser a primeira consulta — ou "nova", se não houver
+      // nenhuma.
+      const conexao = aba === 'disponibilidade' || aba === 'portal-db';
+      const padrao = this.portalApi()
+        ? 'disponibilidade'
+        : (this.consultas()[0]?.slug ?? 'nova');
       this.aba.set(
-        aba === 'disponibilidade' || aba === 'portal-db' || aba === 'nova' || slugs.has(aba)
-          ? aba
-          : 'disponibilidade',
+        (conexao && !this.portalApi()) || !(conexao || aba === 'nova' || slugs.has(aba))
+          ? padrao
+          : aba,
       );
       await this.carregarAbaAtual();
     } catch {

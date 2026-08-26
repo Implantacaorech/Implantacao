@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { PerfilInstancia } from './core/services/instancia.service';
 import { authGuard } from './core/guards/auth.guard';
 import { perfilGuard } from './core/guards/perfil.guard';
 import { permissaoGuard } from './core/guards/permissao.guard';
@@ -296,15 +297,10 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/matriz/matriz-funcoes.component').then((m) => m.MatrizFuncoesComponent),
       },
-      {
-        path: 'config/disponibilidade',
-        canActivate: [perfilGuard('ADM')],
-        data: { titulo: 'Disponibilidade dos Consultores' },
-        loadComponent: () =>
-          import('./features/config/config-disponibilidade.component').then(
-            (m) => m.ConfigDisponibilidadeComponent,
-          ),
-      },
+      // `config/disponibilidade` (a tela de CONEXÃO com o Oracle) saiu do Painel em
+      // 2026-08-26, a pedido do usuário: dado de conexão com banco vive no Portal API, e
+      // aqui entra, no lugar dele, a vinculação dos tokens (`config/tokens-api`). O
+      // componente foi removido junto — estava órfão no menu e só era alcançável por URL.
       {
         path: 'config/email',
         canActivate: [perfilGuard('ADM')],
@@ -668,3 +664,76 @@ export const routes: Routes = [
   },
   { path: '**', redirectTo: '' },
 ];
+
+/** ROTAS DO **PORTAL API** — a instância interna (porta 5110).
+ *
+ * Decisão do usuário em 2026-08-26: *"Que tenha apenas a parte conexão, API e TOKEN dentro
+ * dele. Os demais módulos não importa e não queremos que tenha dentro do portal."*
+ *
+ * Por isso esta é uma tabela SEPARADA, e não a de cima filtrada: o que não está aqui **não
+ * existe** naquele portal — não abre digitando o endereço, e o chunk nem é baixado. Esconder
+ * o item de menu (a primeira tentativa) não atendia ao pedido.
+ *
+ * As três telas correspondem, na ordem, ao que o usuário listou:
+ * - **conexão** e **TOKEN** vivem na mesma tela (`/config/api-dados`, com âncoras);
+ * - **criação da API** é `/config/api-dados/consulta`.
+ *
+ * `perfil` fica porque é da PESSOA logada, não um módulo: sem ela o cartão do usuário na
+ * barra levaria a lugar nenhum. */
+export const ROTAS_PORTAL_API: Routes = [
+  { path: 'login', component: LoginComponent },
+  {
+    path: 'esqueci-senha',
+    loadComponent: () =>
+      import('./features/esqueci-senha/esqueci-senha.component').then(
+        (m) => m.EsqueciSenhaComponent,
+      ),
+  },
+  {
+    path: '',
+    component: ShellComponent,
+    canActivate: [authGuard],
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'config/api-dados' },
+      {
+        path: 'config/api-dados',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Conexões, consultas e tokens' },
+        loadComponent: () =>
+          import('./features/config/api-dados.component').then((m) => m.ApiDadosComponent),
+      },
+      {
+        path: 'config/api-dados/consulta',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Nova consulta da API' },
+        loadComponent: () =>
+          import('./features/config/api-dados-consulta.component').then(
+            (m) => m.ApiDadosConsultaComponent,
+          ),
+      },
+      {
+        path: 'config/api-dados/consulta/:slug',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Consulta da API' },
+        loadComponent: () =>
+          import('./features/config/api-dados-consulta.component').then(
+            (m) => m.ApiDadosConsultaComponent,
+          ),
+      },
+      {
+        path: 'perfil',
+        data: { titulo: 'Meu perfil' },
+        loadComponent: () =>
+          import('./features/perfil/perfil.component').then((m) => m.PerfilComponent),
+      },
+    ],
+  },
+  // Qualquer outro endereço cai na tela da API de Dados — inclusive os do Painel, que aqui
+  // não existem.
+  { path: '**', redirectTo: '' },
+];
+
+/** A tabela que vale para ESTA instância. Escolhida uma vez, no boot (`app.config.ts`). */
+export function rotasDe(perfil: PerfilInstancia): Routes {
+  return perfil === 'portal-api' ? ROTAS_PORTAL_API : routes;
+}
