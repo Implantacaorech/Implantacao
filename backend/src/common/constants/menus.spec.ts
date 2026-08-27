@@ -107,6 +107,19 @@ describe('catálogo de menus (tabela de permissões)', () => {
     expect(inventadas).toEqual([]);
   });
 
+  it('o portão das consultas publicadas pela tela é LIBERÁVEL, não fixo em ADM', () => {
+    // Enquanto era `fixaAdm`, só o Administrador conseguia chamar por login uma consulta
+    // publicada pela tela — e isso esvaziava o caminho inteiro: publica-se uma consulta para
+    // o time usar, e o time não alcança.
+    const def = MENUS.find((m) => m.chave === 'consulta_bd');
+    expect(def?.fixaAdm).toBeFalsy();
+  });
+
+  it('mas o PADRÃO continua só ADM — abrir é decisão de quem administra', () => {
+    // Liberar por default abriria acesso a dado de terceiro sem ninguém ter decidido.
+    expect(Object.keys(PADRAO_PERMISSOES.consulta_bd)).toEqual(['ADM']);
+  });
+
   it('cada menu de Sistema é uma tela do shell — ou está declarado como portão', () => {
     const doCatalogo = MENUS.filter((m) => m.grupo === 'Sistema')
       .map((m) => m.chave)

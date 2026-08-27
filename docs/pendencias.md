@@ -729,6 +729,11 @@ feita; o que ela revelou em volta, não.
 - [x] **`menus.spec.ts`** passou a comparar o catálogo com o MENU DE VERDADE (o shell), nos
   dois grupos dirigidos por `podeVer` e no grupo Sistema, que é fixo. Foi essa correspondência
   que faltou desta vez: a tabela ficou oferecendo uma tela que saiu e sem a que entrou.
+- [x] **`consulta_bd` deixou de ser `fixaAdm`** *(2026-08-27)* — enquanto era fixa, só o
+  Administrador conseguia CHAMAR por login uma consulta publicada pela tela, o que esvaziava o
+  caminho: publica-se para o time usar e o time não alcança. O padrão continua só ADM; quem
+  abre é o Administrador, no painel. ⚠️ A liberação é por MENU, não por consulta — quem recebe
+  alcança todas as publicadas pela tela.
 - [x] Ratchets atualizados (`app.routes.spec.ts`, `shell.component.spec.ts`,
   `conformidade-api-dados.spec.ts`) e varredura e2e ajustada.
 
@@ -755,6 +760,22 @@ feita; o que ela revelou em volta, não.
   página. Só entra se `truncadoNoLimite` começar a aparecer de verdade.
 - [ ] **Exposição fora da rede interna** — se algum consumidor for externo à rede, a decisão
   de HTTPS/publicação vem antes (ver §Migração para servidor dedicado).
+- [ ] **O caminho remoto nunca devolveu dado REAL** — o e2e prova a fiação até a conexão
+  (503 na instância isolada, que não tem banco cadastrado) e os testes de unidade provam a
+  paginação e as mensagens de falha. O que ainda não aconteceu foi uma consulta de verdade
+  saindo do Painel, passando pelo Portal API e voltando com linha do Oracle. Depende de
+  cadastrar o primeiro token — é o mesmo item acima, visto do lado do risco.
+- [ ] **Duas telas editam a mesma tabela** — `consultas_bd` é escrita pela *Nova consulta*
+  (contrato de API: nome público, parâmetros, colunas, teto) e pelo *Consultas BD* (texto do
+  SQL e apresentação nos Dashboards). Nenhuma mostra os campos da outra. Não é defeito — cada
+  uma nasceu para um público —, mas é confusão esperando acontecer. Unificar é decisão de UX,
+  não urgência.
+- [ ] **Consulta em linguagem natural** *(ideia, 2026-08-26)* — o catálogo já é, na prática,
+  um esquema de ferramentas para um modelo: a IA escolheria a consulta e preencheria os
+  parâmetros, sem nunca escrever SQL. Precisa de descrições em linguagem de negócio, um
+  endpoint que interpreta sem executar, uma finalidade nova no `IaModule` e a tela. A decisão
+  que vem antes: se a IA só monta a consulta, nenhum dado sai da rede e vale provedor externo;
+  se ela também comenta o resultado, cai em `FINALIDADES_SO_LOCAL` e vira pedido de hardware.
 
 ## 🔁 Processo de 18 passos (revisão de 2026-07-22)
 - [x] Mapa dos 18 passos, vínculo pessoa×papel (vários levantadores/consultores), RNS de

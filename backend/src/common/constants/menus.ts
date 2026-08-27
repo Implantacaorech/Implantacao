@@ -119,13 +119,21 @@ export const MENUS: DefinicaoMenu[] = [
   // para o Portal API. A CHAVE fica, e continua valendo, porque o que ela gateia não é a
   // tela: é quem, entrando por JWT, pode CHAMAR uma consulta publicada pela tela (ver
   // `MENU_CONSULTA_DE_TELA` em dados/catalogo/catalogo.service.ts). Renomear a chave
-  // quebraria as liberações já gravadas em `permissoes_menu`, então só o rótulo mudou,
-  // para dizer o que ela de fato controla.
+  // quebraria as liberações já gravadas em `permissoes_menu`, então só o rótulo mudou.
+  //
+  // **Deixou de ser `fixaAdm` em 2026-08-27**, a pedido do usuário. Enquanto era fixa, só o
+  // Administrador conseguia chamar por login uma consulta publicada pela tela — e isso
+  // esvaziava o caminho: publica-se uma consulta para o time usar, e o time não alcança.
+  // Agora é liberável como qualquer outro menu. O PADRÃO continua só ADM: quem abre para os
+  // demais é o Administrador, no painel, de propósito.
+  //
+  // ⚠️ A liberação é POR MENU, não por consulta: quem recebe `consulta_bd` alcança TODAS as
+  // consultas publicadas pela tela. Granularidade por consulta existe só para token de
+  // máquina. Se um dia for preciso para pessoa, é mudança de desenho, não de configuração.
   {
     chave: 'consulta_bd',
     rotulo: 'Consultas publicadas pela tela (API de Dados)',
     grupo: 'Sistema',
-    fixaAdm: true,
   },
   // Tela do lado CONSUMIDOR: onde se cola o token gerado no Portal API. Entrou no Painel em
   // 2026-08-26, no lugar das telas de administração da API que saíram daqui.
