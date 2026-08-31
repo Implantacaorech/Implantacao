@@ -288,6 +288,22 @@ export class BiImplantacaoService {
    *
    * Para papel interno é identidade: mesma lista, sem cópia lógica nenhuma.
    * Ver docs/acesso-cliente-bi.md §6. */
+  /** Valor do bind `:cliente` das consultas do SICLA (docs/acesso-cliente-bi.md §7).
+   *
+   * `null` quando o recorte NÃO pode ser expresso num bind escalar: usuário interno (vê
+   * tudo), escopo com mais de um código, ou código não numérico. Nesses casos a consulta
+   * volta a trazer o período inteiro e quem recorta é o `recortar()` acima — a garantia
+   * nunca dependeu deste bind, que existe para o dado alheio não sair do Oracle.
+   *
+   * Um `IN` com N códigos exigiria reescrever o SQL do catálogo em tempo de execução, que é
+   * exatamente o que o catálogo existe para impedir. Enquanto o cadastro gravar um código
+   * por usuário, o caminho de um bind cobre o caso real. */
+  private bindCliente(escopo: EscopoCliente): number | null {
+    if (escopo.interno || escopo.codigos.length !== 1) return null;
+    const n = Number(escopo.codigos[0]);
+    return Number.isInteger(n) ? n : null;
+  }
+
   private recortar<T extends { cliente: number | null }>(
     linhas: T[],
     escopo: EscopoCliente,
@@ -488,6 +504,7 @@ export class BiImplantacaoService {
     const r = await this.dados.consultar('sicla.bi.resumo-implantacao', {
       data_ini: periodo.inicio,
       data_fim: periodo.fim,
+      cliente: this.bindCliente(escopo),
     });
     if (!r.ok) return this.vazio(periodo, r.mensagem);
 
@@ -866,6 +883,7 @@ export class BiImplantacaoService {
     const r = await this.dados.consultar('sicla.bi.extrato-horas', {
       data_ini: periodo.inicio,
       data_fim: periodo.fim,
+      cliente: this.bindCliente(escopo),
     });
     if (!r.ok) return this.vazioExtrato(periodo, r.mensagem);
 
@@ -1035,6 +1053,7 @@ export class BiImplantacaoService {
     const r = await this.dados.consultar('sicla.bi.rns-vinculadas', {
       data_ini: periodo.inicio,
       data_fim: periodo.fim,
+      cliente: this.bindCliente(escopo),
     });
     if (!r.ok) return this.vazioRns(periodo, r.mensagem);
 
@@ -1257,6 +1276,7 @@ export class BiImplantacaoService {
     const r = await this.dados.consultar('sicla.agendas.listar', {
       mes_ini: ini,
       mes_fim: fim,
+      cliente: this.bindCliente(escopo),
     });
     if (!r.ok) return this.vazioAgendas(mes, r.mensagem);
 

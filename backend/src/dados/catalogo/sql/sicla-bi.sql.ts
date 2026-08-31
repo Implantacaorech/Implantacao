@@ -53,6 +53,11 @@ FROM POWERBI.POWERBI_IMPLANTACAO_RESUMO r
 LEFT JOIN SICLA.LISTA_CLIENTES c ON c.CODIGO = r.CLIENTE
 WHERE (:data_ini IS NULL OR r.DATACONTRATACAO >= TO_DATE(:data_ini, 'YYYY-MM-DD'))
   AND (:data_fim IS NULL OR r.DATACONTRATACAO <  TO_DATE(:data_fim, 'YYYY-MM-DD') + 1)
+-- Recorte por CLIENTE (docs/acesso-cliente-bi.md §7). Quem manda o bind é o Painel, a partir
+-- do vínculo do usuário logado — nunca o navegador. É defesa em PROFUNDIDADE: a garantia
+-- continua sendo o filtro do serviço, que roda sobre o resultado; este bind existe para o
+-- dado alheio não sair do Oracle. Nulo = sem recorte (todo usuário interno).
+  AND (:cliente IS NULL OR r.CLIENTE = :cliente)
 ORDER BY r.DATACONTRATACAO DESC NULLS LAST, r.CODIGO DESC`;
 
 /** Extrato de horas por lançamento (protocolo). Espelha a origem da medida
@@ -84,6 +89,11 @@ LEFT JOIN SICLA.LISTA_CLIENTES c ON c.CODIGO = e.IMP_CLIENTE
 LEFT JOIN POWERBI.POWERBI_IMPLANTACAO_RESUMO r ON r.CODIGO = e.IMP_COD
 WHERE (:data_ini IS NULL OR e.DATAHORA >= TO_DATE(:data_ini, 'YYYY-MM-DD'))
   AND (:data_fim IS NULL OR e.DATAHORA <  TO_DATE(:data_fim, 'YYYY-MM-DD') + 1)
+-- Recorte por CLIENTE (docs/acesso-cliente-bi.md §7). Quem manda o bind é o Painel, a partir
+-- do vínculo do usuário logado — nunca o navegador. É defesa em PROFUNDIDADE: a garantia
+-- continua sendo o filtro do serviço, que roda sobre o resultado; este bind existe para o
+-- dado alheio não sair do Oracle. Nulo = sem recorte (todo usuário interno).
+  AND (:cliente IS NULL OR e.IMP_CLIENTE = :cliente)
 ORDER BY e.DATAHORA DESC`;
 
 /** Texto completo de UM lançamento — buscado só quando o usuário abre a descrição.
@@ -138,6 +148,11 @@ LEFT JOIN SICLA.LISTA_CLIENTES c ON c.CODIGO = v.CLIENTE
 WHERE v.IMP_COD IS NOT NULL
   AND (:data_ini IS NULL OR v.DATACRI >= TO_DATE(:data_ini, 'YYYY-MM-DD'))
   AND (:data_fim IS NULL OR v.DATACRI <  TO_DATE(:data_fim, 'YYYY-MM-DD') + 1)
+-- Recorte por CLIENTE (docs/acesso-cliente-bi.md §7). Quem manda o bind é o Painel, a partir
+-- do vínculo do usuário logado — nunca o navegador. É defesa em PROFUNDIDADE: a garantia
+-- continua sendo o filtro do serviço, que roda sobre o resultado; este bind existe para o
+-- dado alheio não sair do Oracle. Nulo = sem recorte (todo usuário interno).
+  AND (:cliente IS NULL OR v.CLIENTE = :cliente)
 ORDER BY v.DATACRI DESC, v.PEDIDO DESC`;
 
 /** Indicadores de Implantação — porte das páginas do BI `BI_Interno.pbix` que ficam na aba

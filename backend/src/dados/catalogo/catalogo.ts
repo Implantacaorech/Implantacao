@@ -71,6 +71,16 @@ const P: Record<string, ParametroConsulta> = {
     obrigatorio: false,
     descricao: 'Fim do período (AAAA-MM-DD).',
   },
+  /** Recorte por CLIENTE do BI (docs/acesso-cliente-bi.md §7). Quem informa é o Painel, a
+   * partir do vínculo do usuário logado — NUNCA o navegador. Nulo em todo usuário interno.
+   * É defesa em profundidade: a garantia do recorte continua no serviço; este bind evita
+   * que o dado alheio saia do Oracle. */
+  cliente: {
+    nome: 'cliente',
+    tipo: 'inteiro',
+    obrigatorio: false,
+    descricao: 'Código do cliente no SICLA (LISTA_CLIENTES.CODIGO).',
+  },
   mesIni: {
     nome: 'mes_ini',
     tipo: 'data',
@@ -297,7 +307,7 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao: 'Agendas do SICLA na janela mensal — painel de agendas do BI.',
     conexao: 'sicla',
     menus: ['bi_implantacao'],
-    parametros: [P.mesIni, P.mesFim],
+    parametros: [P.mesIni, P.mesFim, P.cliente],
     origem: { tipo: 'fixo', sql: SQL_AGENDAS },
     limiteLinhas: LIMITE.biLinhas,
     cacheSegundos: 300,
@@ -313,7 +323,7 @@ export const CATALOGO: ConsultaCatalogo[] = [
       'RNS de implantação por data de contratação — painel principal do BI de Implantação.',
     conexao: 'sicla',
     menus: ['bi_implantacao'],
-    parametros: [P.dataIni, P.dataFim],
+    parametros: [P.dataIni, P.dataFim, P.cliente],
     origem: { tipo: 'fixo', sql: SQL_RESUMO_IMPLANTACAO },
     limiteLinhas: LIMITE.biLinhas,
     cacheSegundos: 300,
@@ -326,7 +336,7 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao: 'Lançamentos de hora do SICLA na janela informada.',
     conexao: 'sicla',
     menus: ['bi_implantacao'],
-    parametros: [P.dataIni, P.dataFim],
+    parametros: [P.dataIni, P.dataFim, P.cliente],
     origem: { tipo: 'fixo', sql: SQL_EXTRATO_HORAS },
     limiteLinhas: LIMITE.biExtrato,
     cacheSegundos: 300,
@@ -369,7 +379,7 @@ export const CATALOGO: ConsultaCatalogo[] = [
       'RNS filhas (conversão, desenvolvimento, BI) criadas na janela informada.',
     conexao: 'sicla',
     menus: ['bi_implantacao'],
-    parametros: [P.dataIni, P.dataFim],
+    parametros: [P.dataIni, P.dataFim, P.cliente],
     origem: { tipo: 'fixo', sql: SQL_RNS_VINCULADAS },
     limiteLinhas: LIMITE.biLinhas,
     cacheSegundos: 300,

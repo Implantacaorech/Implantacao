@@ -438,6 +438,59 @@ describe('conformidade — recorte por cliente no BI Implantação Clientes SIGE
     });
   });
 
+  /** O bind `:cliente` é a SEGUNDA barreira (docs/acesso-cliente-bi.md §7): reduz o que sai
+   * do Oracle, mas a garantia continua sendo o recorte em memória — e é isso que os testes
+   * acima provam, já que o mock devolve linhas de todos os clientes ignorando o bind. */
+  describe('bind :cliente enviado à API de Dados', () => {
+    const bindDe = (nome: string) =>
+      dados.consultar.mock.calls.find((c) => c[0] === nome)?.[1]?.cliente;
+
+    it('vai com o código do cliente quando o escopo tem um só', async () => {
+      await service.resumo(periodo, CLIENTE);
+      expect(bindDe('sicla.bi.resumo-implantacao')).toBe(NOSSO);
+    });
+
+    it('vai em todas as consultas do SICLA', async () => {
+      await service.extrato(periodo, CLIENTE);
+      await service.rnsVinculadas(periodo, CLIENTE);
+      await service.agendas({ mes: '2026-07' }, CLIENTE);
+      expect(bindDe('sicla.bi.extrato-horas')).toBe(NOSSO);
+      expect(bindDe('sicla.bi.rns-vinculadas')).toBe(NOSSO);
+      expect(bindDe('sicla.agendas.listar')).toBe(NOSSO);
+    });
+
+    it('vai NULO para usuário interno — que continua vendo tudo', async () => {
+      await service.resumo(periodo, { interno: true });
+      expect(bindDe('sicla.bi.resumo-implantacao')).toBeNull();
+    });
+
+    // Um bind escalar não expressa N códigos, e reescrever o SQL em tempo de execução é o
+    // que o catálogo existe para impedir. Cai para o recorte em memória, que cobre.
+    it('vai NULO quando o escopo tem mais de um código', async () => {
+      const dois = {
+        interno: false as const,
+        codigos: [String(NOSSO), String(TERCEIRO)],
+      };
+      await service.resumo(periodo, dois);
+      expect(bindDe('sicla.bi.resumo-implantacao')).toBeNull();
+    });
+
+    it('vai NULO quando o código não é numérico', async () => {
+      const estranho = { interno: false as const, codigos: ['ACME-01'] };
+      await service.resumo(periodo, estranho);
+      expect(bindDe('sicla.bi.resumo-implantacao')).toBeNull();
+    });
+
+    // A prova de que o bind é REFORÇO: o mock ignora o bind e devolve todos os clientes, e
+    // mesmo assim a resposta sai limpa. Se um dia o SQL perder o `AND (:cliente ...)`, nada
+    // vaza — só volta a trafegar mais linha do que o necessário.
+    it('o recorte não DEPENDE do bind: mock ignora o bind e a resposta sai limpa', async () => {
+      const r = await service.resumo(periodo, CLIENTE);
+      expect(r.linhas.map((l) => l.cliente)).toEqual([NOSSO]);
+      expect(vestigiosEm(r)).toEqual([]);
+    });
+  });
+
   /** Guarda estrutural: todo handler do controller precisa RESOLVER o escopo e repassá-lo.
    *
    * Os testes acima provam que o recorte funciona quando o escopo chega ao serviço. Este

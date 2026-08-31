@@ -368,6 +368,9 @@ describe('BiImplantacaoService', () => {
         {
           data_ini: '2026-01-01',
           data_fim: '2026-12-31',
+          // Usuário interno não tem recorte por cliente — o bind vai nulo, e o SQL do
+          // catálogo o ignora (docs/acesso-cliente-bi.md §7).
+          cliente: null,
         },
       );
     });
@@ -831,13 +834,21 @@ describe('BiImplantacaoService', () => {
       const r = await service.agendas({ mes: '2026-02' }, ESCOPO_INTERNO);
       expect(r.dias).toHaveLength(28);
       const [, binds] = consultaSicla.mock.calls[0];
-      expect(binds).toEqual({ mes_ini: '2026-02-01', mes_fim: '2026-03-01' });
+      expect(binds).toEqual({
+        mes_ini: '2026-02-01',
+        mes_fim: '2026-03-01',
+        cliente: null,
+      });
     });
 
     it('dezembro vira para janeiro do ano seguinte', async () => {
       await service.agendas({ mes: '2026-12' }, ESCOPO_INTERNO);
       const [, binds] = consultaSicla.mock.calls[0];
-      expect(binds).toEqual({ mes_ini: '2026-12-01', mes_fim: '2027-01-01' });
+      expect(binds).toEqual({
+        mes_ini: '2026-12-01',
+        mes_fim: '2027-01-01',
+        cliente: null,
+      });
     });
 
     it('mês inválido cai no mês atual', async () => {
