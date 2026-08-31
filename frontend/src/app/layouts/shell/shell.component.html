@@ -71,6 +71,13 @@
       @if (auth.usuario(); as u) {
         <span class="topbar-perfil-txt">{{ u.nome }}<small>{{ u.login }}</small></span>
       }
+      <!-- De que LADO do Painel a pessoa está. O cliente da Rech entra pelo mesmo endereço
+           que o consultor, com o BI recortado nele; a faixa deixa isso explícito para os
+           dois lados — o consultor sabe em que modo abriu, e o cliente entende que está no
+           portal da Rech. -->
+      <span class="topbar-lado" [class.cliente]="ehCliente()">
+        {{ ehCliente() ? 'Cliente' : 'Consultor' }}
+      </span>
     </a>
     <button class="topbar-sair" type="button" (click)="sair()" title="Sair" aria-label="Sair">
       <svg class="svgi" aria-hidden="true"><use href="#ic-logout"/></svg>

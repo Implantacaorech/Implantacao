@@ -3,12 +3,15 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   CriarUsuarioPayload,
+  PAPEL_CLIENTE,
   PERFIS,
   ROTULO_PERFIL,
   TecnicoSicla,
   Usuario,
 } from '../../core/models/usuario.model';
 import { UsuariosService } from '../../core/services/usuarios.service';
+import { AuthService } from '../../core/services/auth.service';
+import { temPapel } from '../../core/constants/perfis';
 import {
   FiltrosSalvos,
   deSignal,
@@ -25,9 +28,20 @@ import {
 export class UsuariosComponent {
   private readonly fb = inject(FormBuilder);
   private readonly service = inject(UsuariosService);
+  private readonly auth = inject(AuthService);
 
   readonly perfis = PERFIS;
   readonly rotuloPerfil = ROTULO_PERFIL;
+
+  /** Exclusão é só do Administrador. A tela inteira já é do menu Sistema (fixo-ADM), mas a
+   * regra fica explícita aqui para o botão não vazar se a tela um dia abrir para mais
+   * papéis — e o backend revalida de qualquer forma (rota @Roles ADM). */
+  readonly podeExcluir = computed(() => temPapel(this.auth.usuario(), 'ADM'));
+
+  /** Linha do próprio logado não ganha o botão: autoexclusão é recusada pelo backend. */
+  readonly idLogado = computed(() => this.auth.usuario()?.sub ?? null);
+
+  readonly excluindoId = signal<number | null>(null);
 
   /** Papéis marcados do usuário em edição. A pessoa acumula cargos — é comum ser GCI e
    * Levantador ao mesmo tempo —, então isto é uma LISTA, não um select. */
@@ -38,11 +52,32 @@ export class UsuariosComponent {
   }
 
   alternarPapel(papel: string, marcado: boolean): void {
-    this.papeisMarcados.update((atual) =>
-      marcado
-        ? [...new Set([...atual, papel])]
-        : atual.filter((p) => p !== papel),
-    );
+    this.papeisMarcados.update((atual) => {
+      if (!marcado) return atual.filter((p) => p !== papel);
+      // `Cliente` é EXCLUSIVO: marcar o cliente desmarca todo o resto, e marcar qualquer
+      // papel interno tira o cliente. Espelha a regra que o backend impõe na gravação —
+      // aqui é só para a tela não deixar montar a combinação que ele vai recusar.
+      if (papel === PAPEL_CLIENTE) return [PAPEL_CLIENTE];
+      return [...new Set([...atual.filter((p) => p !== PAPEL_CLIENTE), papel])];
+    });
+    this.ajustarObrigatorios();
+  }
+
+  /** É um cadastro de cliente (externo)? Muda quais campos são obrigatórios. */
+  readonly ehCliente = computed(() =>
+    this.papeisMarcados().includes(PAPEL_CLIENTE),
+  );
+
+  /** O código obrigatório é o do TÉCNICO no cadastro interno e o do CLIENTE no externo —
+   * um cliente não tem código de técnico, e um técnico não tem cliente vinculado. */
+  private ajustarObrigatorios(): void {
+    const cliente = this.papeisMarcados().includes(PAPEL_CLIENTE);
+    const sicla = this.form.controls.codigoSicla;
+    const doCliente = this.form.controls.codigoClienteSicla;
+    sicla.setValidators(cliente ? [] : [Validators.required]);
+    doCliente.setValidators(cliente ? [Validators.required] : []);
+    sicla.updateValueAndValidity();
+    doCliente.updateValueAndValidity();
   }
   readonly carregando = signal(true);
   readonly salvando = signal(false);
@@ -132,6 +167,7 @@ export class UsuariosComponent {
     email: ['', [Validators.required, Validators.email]],
     login: [''],
     codigoSicla: ['', Validators.required],
+    codigoClienteSicla: [''],
     modulosCapacitados: [''],
     setorAtuacao: [''],
     perfil: ['Consultor' as Usuario['perfil']],
@@ -276,6 +312,7 @@ export class UsuariosComponent {
         .filter(Boolean),
     );
     this.form.patchValue({ ...u, senha: '' });
+    this.ajustarObrigatorios();
     this.erro.set(null);
     this.formAberto.set(true);
     this.focarFormulario();
@@ -315,12 +352,48 @@ export class UsuariosComponent {
       email: '',
       login: '',
       codigoSicla: '',
+      codigoClienteSicla: '',
       modulosCapacitados: '',
       setorAtuacao: '',
       perfil: 'Consultor',
       senha: '',
       ativo: true,
     });
+    this.ajustarObrigatorios();
+  }
+
+  /** Exclusão definitiva, com confirmação. Erro do backend (autoexclusão, designação em
+   * projeto) aparece com a mensagem dele, que orienta a desativar em vez de excluir. */
+  async excluir(u: Usuario): Promise<void> {
+    if (this.excluindoId() !== null) return;
+    const nome = u.nome || u.login;
+    if (
+      !confirm(
+        `Excluir DEFINITIVAMENTE o usuário "${nome}"? Esta ação não tem volta — ` +
+          'para afastar alguém mantendo o histórico, desmarque o campo Ativo.',
+      )
+    ) {
+      return;
+    }
+    this.excluindoId.set(u.id);
+    this.erro.set(null);
+    this.aviso.set(null);
+    try {
+      await this.service.excluir(u.id);
+      // Se o excluído estava aberto no formulário, fecha para não salvar em cima de um
+      // registro que não existe mais.
+      if (this.usuarioId() === u.id) this.fechar();
+      this.aviso.set(`Usuário "${nome}" excluído.`);
+      await this.carregar();
+    } catch (e) {
+      this.erro.set(
+        e instanceof HttpErrorResponse && typeof e.error?.message === 'string'
+          ? e.error.message
+          : 'Não foi possível excluir o usuário.',
+      );
+    } finally {
+      this.excluindoId.set(null);
+    }
   }
 
   async salvar(): Promise<void> {

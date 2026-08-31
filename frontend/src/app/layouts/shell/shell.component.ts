@@ -7,6 +7,7 @@ import { BarraGravacaoComponent } from '../../features/protocolos/barra-gravacao
 import { AuthService } from '../../core/services/auth.service';
 import { PermissoesService } from '../../core/services/permissoes.service';
 import { InstanciaService } from '../../core/services/instancia.service';
+import { temPapel } from '../../core/constants/perfis';
 
 @Component({
   selector: 'app-shell',
@@ -96,6 +97,11 @@ export class ShellComponent {
   );
 
   readonly iniciais = computed(() => (this.auth.usuario()?.nome ?? 'P').slice(0, 2).toUpperCase());
+
+  /** O usuário logado é um CLIENTE da Rech (papel externo), e não gente de casa? Só muda a
+   * faixa do cabeçalho: o que ele PODE ver já é decidido pelas permissões (menu) e pelo
+   * recorte por cliente (backend). */
+  readonly ehCliente = computed(() => temPapel(this.auth.usuario(), 'Cliente'));
 
   async buscar(): Promise<void> {
     const q = this.busca().trim();

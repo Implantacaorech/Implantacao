@@ -8,7 +8,13 @@ export const PERFIS: Perfil[] = [
   'GCI',
   'Consultor',
   'Comercial',
+  'Cliente',
 ];
+
+/** O papel do CLIENTE da Rech — externo e EXCLUSIVO: quem o tem não acumula nenhum outro,
+ * e enxerga apenas o BI "Implantação Clientes SIGER", recortado no próprio cliente
+ * (docs/acesso-cliente-bi.md). O backend recusa a gravação de qualquer combinação. */
+export const PAPEL_CLIENTE = 'Cliente';
 
 /** Rótulo de cada papel na tela — 'ADM' é como o valor é gravado desde o Flask. */
 export const ROTULO_PERFIL: Record<string, string> = {
@@ -19,6 +25,7 @@ export const ROTULO_PERFIL: Record<string, string> = {
   GCI: 'GCI',
   Consultor: 'Consultor',
   Comercial: 'Comercial',
+  Cliente: 'Cliente (externo)',
 };
 
 export interface Usuario {
@@ -31,6 +38,8 @@ export interface Usuario {
   /** Todos os papéis, separados por vírgula. Uma pessoa acumula cargos. */
   perfis?: string;
   codigoSicla: string;
+  /** Código do CLIENTE no SICLA — o recorte de dados de quem tem o papel `Cliente`. */
+  codigoClienteSicla: string;
   /** SICLA.LISTA_TECNICOS.MODULOCAPACITADO */
   modulosCapacitados: string;
   /** SICLA.LISTA_TECNICOS.SETORDES */
@@ -46,7 +55,8 @@ export interface CriarUsuarioPayload {
   senha: string;
   perfil?: Perfil;
   perfis?: Perfil[];
-  codigoSicla: string;
+  codigoSicla?: string;
+  codigoClienteSicla?: string;
   modulosCapacitados?: string;
   setorAtuacao?: string;
   ativo?: boolean;

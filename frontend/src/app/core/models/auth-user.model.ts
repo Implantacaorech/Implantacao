@@ -1,4 +1,5 @@
-/** Papéis do processo. 'ADM' é o Administrador. Uma pessoa pode acumular vários. */
+/** Papéis do processo. 'ADM' é o Administrador. Uma pessoa pode acumular vários —
+ * exceto 'Cliente', que é EXCLUSIVO (ver `ehPapelCliente`). */
 export type Perfil =
   | 'ADM'
   | 'Coordenador'
@@ -6,7 +7,8 @@ export type Perfil =
   | 'Levantador'
   | 'GCI'
   | 'Consultor'
-  | 'Comercial';
+  | 'Comercial'
+  | 'Cliente';
 
 export interface AuthUser {
   sub: number;

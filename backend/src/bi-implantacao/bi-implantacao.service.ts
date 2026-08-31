@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -19,6 +24,7 @@ import {
   LinhaResumo,
   LinhaRns,
   LinhaVisitaPortal,
+  situacaoVisita,
   LIMITE_LINHAS_EXTRATO,
   LIMITE_VISITAS_PORTAL,
   MESES_PADRAO,
@@ -30,6 +36,10 @@ import {
 // O teto do trecho mora junto do SQL que TRUNCA (catálogo da API de Dados): é ele quem
 // corta em 300 caracteres, e a tela só sinaliza que cortou.
 import { TRECHO_DESCRICAO } from '../dados/catalogo/sql/sicla-bi.sql';
+import {
+  EscopoCliente,
+  linhaVisivel,
+} from '../permissoes/escopo-cliente.service';
 
 export interface QueryResumo {
   dataIni?: string;
@@ -266,6 +276,26 @@ export class BiImplantacaoService {
     return inicio <= fim ? { inicio, fim } : { inicio: fim, fim: inicio };
   }
 
+  /** Aplica o recorte por CLIENTE ao conjunto que acabou de vir do banco.
+   *
+   * **Onde este corte entra é a parte que importa.** Ele vem logo depois da normalização e
+   * ANTES de tudo o que deriva do conjunto — os predicados em cascata, as listas de opções
+   * de filtro, os totais, os agrupamentos e os gráficos. Se fosse só mais um predicado na
+   * lista `preds`, as linhas ficariam certas e o resto continuaria errado: as opções de
+   * filtro são montadas sobre o conjunto COMPLETO (é o que faz a cascata funcionar), e
+   * `opcoesRns` ainda rotula cada RNS com o nome do cliente — um usuário-cliente veria a
+   * carteira inteira da Rech no dropdown, com a tabela corretamente filtrada logo abaixo.
+   *
+   * Para papel interno é identidade: mesma lista, sem cópia lógica nenhuma.
+   * Ver docs/acesso-cliente-bi.md §6. */
+  private recortar<T extends { cliente: number | null }>(
+    linhas: T[],
+    escopo: EscopoCliente,
+  ): T[] {
+    if (escopo.interno) return linhas;
+    return linhas.filter((l) => linhaVisivel(escopo, l.cliente));
+  }
+
   private numero(v: unknown): number {
     const n = Number(v);
     return Number.isFinite(n) ? n : 0;
@@ -447,7 +477,10 @@ export class BiImplantacaoService {
     };
   }
 
-  async resumo(query: QueryResumo): Promise<ResultadoResumo> {
+  async resumo(
+    query: QueryResumo,
+    escopo: EscopoCliente,
+  ): Promise<ResultadoResumo> {
     const periodo = this.periodo(query);
     // Sem checagem prévia de conexão: `consultar` já devolve {ok:false} com a
     // mensagem que diz onde configurar — uma fonte só para o mesmo aviso.
@@ -458,7 +491,10 @@ export class BiImplantacaoService {
     });
     if (!r.ok) return this.vazio(periodo, r.mensagem);
 
-    const todas = r.linhas.map((l) => this.normalizar(l));
+    const todas = this.recortar(
+      r.linhas.map((l) => this.normalizar(l)),
+      escopo,
+    );
 
     // Filtros em CASCATA: cada lista de opções considera os DEMAIS filtros já marcados.
     const preds = [
@@ -573,6 +609,7 @@ export class BiImplantacaoService {
    * protocolos do cliente filtrado. */
   async visitasPortal(
     query: QueryVisitasPortal,
+    escopo: EscopoCliente,
   ): Promise<ResultadoVisitasPortal> {
     const periodo = this.periodo(query);
     // Única consulta do Painel que roda no banco do PORTAL — o roteamento por conexão é do
@@ -584,7 +621,10 @@ export class BiImplantacaoService {
     });
     if (!r.ok) return this.vazioVisitas(periodo, r.mensagem);
 
-    const linhas = r.linhas.map((l) => this.normalizarVisita(l));
+    const linhas = this.recortar(
+      r.linhas.map((l) => this.normalizarVisita(l)),
+      escopo,
+    );
     return {
       periodo,
       linhas,
@@ -601,7 +641,15 @@ export class BiImplantacaoService {
 
   /** Assunto + corpo padrão da caixa de envio (a versão editada no Modelos de E-mail
    * prevalece sobre o constante embutido). */
-  async modeloEmailVisitas(): Promise<{ assunto: string; corpo: string }> {
+  async modeloEmailVisitas(
+    escopo: EscopoCliente,
+  ): Promise<{ assunto: string; corpo: string }> {
+    // Texto interno da Rech, e par do envio acima — some junto para o usuário-cliente.
+    if (!escopo.interno) {
+      throw new ForbiddenException(
+        'O envio por e-mail é uma ferramenta interna da Rech.',
+      );
+    }
     const slug = BiImplantacaoService.SLUG_MODELO_EMAIL_VISITAS;
     const salvo = await this.modelosEmail.porSlug(slug);
     if (salvo) return { assunto: salvo.assunto, corpo: salvo.corpo };
@@ -629,7 +677,7 @@ export class BiImplantacaoService {
       data: this.texto(bruta.data).slice(0, 10),
       horario: this.texto(bruta.horario).slice(0, 8),
       turno: this.texto(bruta.turno).slice(0, 20),
-      aprovado: this.texto(bruta.aprovado).slice(0, 10),
+      aprovado: this.texto(bruta.aprovado).slice(0, 20),
     };
   }
 
@@ -656,7 +704,18 @@ export class BiImplantacaoService {
    * Painel (Microsoft 365/SMTP) — o botão "Enviar por e-mail" do painel de visitas. */
   async enviarVisitasPorEmail(
     dto: EnviarVisitasEmailDto,
+    escopo: EscopoCliente,
   ): Promise<{ ok: boolean; erro: string | null }> {
+    // Envio é ferramenta INTERNA, e fica assim mesmo com o cliente tendo acesso ao painel.
+    // Não é questão de recorte: as linhas do PDF vêm do corpo do pedido (é a tela que manda
+    // o que está vendo), e o destinatário é livre — para um usuário externo isso seria um
+    // relay de e-mail saindo do domínio da Rech com conteúdo que ele escolhe. O BI do
+    // cliente é leitura; exportar por e-mail não faz parte do que ele recebeu.
+    if (!escopo.interno) {
+      throw new ForbiddenException(
+        'O envio por e-mail é uma ferramenta interna da Rech.',
+      );
+    }
     const destinos = (dto.para || '')
       .split(/[;,]/)
       .map((d) => d.trim())
@@ -669,8 +728,13 @@ export class BiImplantacaoService {
     }
 
     const linhas = (dto.linhas ?? []).map((l) => this.linhaVisitaDaTela(l));
+    // Mesma leitura da tela (`situacaoVisita`): o que não é 'Sim' nem 'Com ressalva' —
+    // inclusive a visita que o cliente ainda não respondeu — conta como não aprovada.
     const aprovados = linhas.filter(
-      (l) => l.aprovado.trim().toLowerCase() === 'sim',
+      (l) => situacaoVisita(l.aprovado) === 'sim',
+    ).length;
+    const comRessalva = linhas.filter(
+      (l) => situacaoVisita(l.aprovado) === 'ressalva',
     ).length;
     const agora = new Date();
     const p = (n: number) => String(n).padStart(2, '0');
@@ -682,7 +746,8 @@ export class BiImplantacaoService {
       totais: {
         total: linhas.length,
         aprovados,
-        naoAprovados: linhas.length - aprovados,
+        comRessalva,
+        naoAprovados: linhas.length - aprovados - comRessalva,
       },
       graficoPng: this.pngDe(dto.graficoPng),
       linhas,
@@ -790,7 +855,10 @@ export class BiImplantacaoService {
     };
   }
 
-  async extrato(query: QueryExtrato): Promise<ResultadoExtrato> {
+  async extrato(
+    query: QueryExtrato,
+    escopo: EscopoCliente,
+  ): Promise<ResultadoExtrato> {
     const periodo = this.periodo(query);
     // Sem checagem prévia de conexão: `consultar` já devolve {ok:false} com a
     // mensagem que diz onde configurar — uma fonte só para o mesmo aviso.
@@ -801,7 +869,10 @@ export class BiImplantacaoService {
     });
     if (!r.ok) return this.vazioExtrato(periodo, r.mensagem);
 
-    const todas = r.linhas.map((l) => this.normalizarExtrato(l));
+    const todas = this.recortar(
+      r.linhas.map((l) => this.normalizarExtrato(l)),
+      escopo,
+    );
 
     const preds = [
       {
@@ -953,7 +1024,10 @@ export class BiImplantacaoService {
       );
   }
 
-  async rnsVinculadas(query: QueryRns): Promise<ResultadoRns> {
+  async rnsVinculadas(
+    query: QueryRns,
+    escopo: EscopoCliente,
+  ): Promise<ResultadoRns> {
     const periodo = this.periodo(query);
     // Sem checagem prévia de conexão: `consultar` já devolve {ok:false} com a
     // mensagem que diz onde configurar — uma fonte só para o mesmo aviso.
@@ -964,7 +1038,10 @@ export class BiImplantacaoService {
     });
     if (!r.ok) return this.vazioRns(periodo, r.mensagem);
 
-    const todas = r.linhas.map((l) => this.normalizarRns(l));
+    const todas = this.recortar(
+      r.linhas.map((l) => this.normalizarRns(l)),
+      escopo,
+    );
 
     // "Validação Cliente" é tri-estado: sem seleção = todas.
     const validada = (query.validada ?? '').trim();
@@ -1169,7 +1246,10 @@ export class BiImplantacaoService {
     };
   }
 
-  async agendas(query: QueryAgendas): Promise<ResultadoAgendas> {
+  async agendas(
+    query: QueryAgendas,
+    escopo: EscopoCliente,
+  ): Promise<ResultadoAgendas> {
     const { mes, ini, fim } = this.mesReferencia(query.mes);
     // Sem checagem prévia de conexão: `consultar` já devolve {ok:false} com a
     // mensagem que diz onde configurar — uma fonte só para o mesmo aviso.
@@ -1180,7 +1260,10 @@ export class BiImplantacaoService {
     });
     if (!r.ok) return this.vazioAgendas(mes, r.mensagem);
 
-    const todas = r.linhas.map((l) => this.normalizarAgenda(l));
+    const todas = this.recortar(
+      r.linhas.map((l) => this.normalizarAgenda(l)),
+      escopo,
+    );
 
     const preds = [
       {
@@ -1299,6 +1382,7 @@ export class BiImplantacaoService {
   async descricaoCompleta(
     protocolo: number,
     datahora: string,
+    escopo: EscopoCliente,
   ): Promise<{ descricao: string; tamanho: number; erro: string | null }> {
     const r = await this.dados.consultar('sicla.bi.extrato-descricao', {
       protocolo,
@@ -1311,6 +1395,23 @@ export class BiImplantacaoService {
     const l: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(r.linhas[0]))
       l[(k || '').toUpperCase()] = v;
+    // Posse do lançamento. A chave (protocolo + data/hora) é adivinhável, e a descrição é
+    // texto livre escrito pelo consultor — sem esta conferência, variar o número entregava
+    // a visita de qualquer cliente a qualquer usuário-cliente.
+    //
+    // A recusa usa a MESMA mensagem do lançamento inexistente, de propósito: distinguir
+    // "não existe" de "não é seu" transformaria o endpoint num detector de protocolos
+    // válidos.
+    if (
+      !linhaVisivel(
+        escopo,
+        l.IMP_CLIENTE === null || l.IMP_CLIENTE === undefined
+          ? null
+          : this.numero(l.IMP_CLIENTE),
+      )
+    ) {
+      return { descricao: '', tamanho: 0, erro: 'Lançamento não encontrado.' };
+    }
     return {
       descricao: this.texto(l.DESCRICAO),
       tamanho: this.numero(l.DESCRICAO_TAMANHO),

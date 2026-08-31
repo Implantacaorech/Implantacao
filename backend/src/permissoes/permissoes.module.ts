@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { PermissaoPapel } from '../database/entities/permissao-papel.entity';
 import { PermissaoUsuario } from '../database/entities/permissao-usuario.entity';
 import { PermissoesService } from './permissoes.service';
+import { EscopoClienteService } from './escopo-cliente.service';
 import { PermissaoGuard } from './permissao.guard';
 import { PermissoesController } from './permissoes.controller';
 import { UsersModule } from '../users/users.module';
@@ -16,7 +17,7 @@ import { UsersModule } from '../users/users.module';
     UsersModule,
   ],
   controllers: [PermissoesController],
-  providers: [PermissoesService, PermissaoGuard],
-  exports: [PermissoesService, PermissaoGuard],
+  providers: [PermissoesService, PermissaoGuard, EscopoClienteService],
+  exports: [PermissoesService, PermissaoGuard, EscopoClienteService],
 })
 export class PermissoesModule {}

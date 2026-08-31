@@ -5,6 +5,10 @@ import { BiImplantacaoController } from './bi-implantacao.controller';
 import { BiImplantacaoService } from './bi-implantacao.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissaoGuard } from '../permissoes/permissao.guard';
+import {
+  ESCOPO_INTERNO,
+  EscopoClienteService,
+} from '../permissoes/escopo-cliente.service';
 
 /** Estes testes existem porque os specs de serviço NÃO passam pelo pipeline HTTP: o
  * ValidationPipe global roda com `forbidNonWhitelisted` (parâmetro fora do DTO => 400) e
@@ -19,12 +23,20 @@ describe('BiImplantacaoController (HTTP)', () => {
     modeloEmailVisitas: jest.fn(),
     enviarVisitasPorEmail: jest.fn(),
     descricaoCompleta: jest.fn(),
+    rnsVinculadas: jest.fn(),
+    agendas: jest.fn(),
   };
+  // O controller resolve o escopo do usuário logado antes de chamar o serviço; aqui o
+  // usuário é sempre interno — o recorte por cliente é exercitado nos specs de serviço.
+  const escopos = { escopoDe: jest.fn().mockResolvedValue(ESCOPO_INTERNO) };
 
   beforeAll(async () => {
     const modulo = await Test.createTestingModule({
       controllers: [BiImplantacaoController],
-      providers: [{ provide: BiImplantacaoService, useValue: bi }],
+      providers: [
+        { provide: BiImplantacaoService, useValue: bi },
+        { provide: EscopoClienteService, useValue: escopos },
+      ],
     })
       .overrideGuard(JwtAuthGuard)
       // Injeta o req.user que o JwtAuthGuard real colocaria — o @CurrentUser da rota de
@@ -128,6 +140,7 @@ describe('BiImplantacaoController (HTTP)', () => {
       expect(bi.descricaoCompleta).toHaveBeenCalledWith(
         1435877,
         '2026-07-29 10:35',
+        ESCOPO_INTERNO,
       );
       expect(bi.extrato).not.toHaveBeenCalled();
     });
@@ -213,6 +226,7 @@ describe('BiImplantacaoController (HTTP)', () => {
         .expect(200);
       expect(bi.enviarVisitasPorEmail).toHaveBeenCalledWith(
         expect.objectContaining({ para: 'coord@rech.com.br' }),
+        ESCOPO_INTERNO,
       );
     });
 

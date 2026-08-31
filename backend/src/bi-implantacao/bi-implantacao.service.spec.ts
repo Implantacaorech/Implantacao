@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { BiImplantacaoService } from './bi-implantacao.service';
+import { ESCOPO_INTERNO } from '../permissoes/escopo-cliente.service';
 import { DadosService } from '../dados/dados.service';
 import { MailerService } from '../email/mailer.service';
 import { ModeloEmailService } from '../email/modelo-email.service';
@@ -167,7 +168,7 @@ describe('BiImplantacaoService', () => {
         colunas: [],
         linhas: [],
       });
-      const r = await service.resumo({});
+      const r = await service.resumo({}, ESCOPO_INTERNO);
       expect(r.erro).toContain('não configurada');
       expect(r.linhas).toEqual([]);
       expect(r.totais.quantidade).toBe(0);
@@ -180,13 +181,13 @@ describe('BiImplantacaoService', () => {
         colunas: [],
         linhas: [],
       });
-      const r = await service.resumo({});
+      const r = await service.resumo({}, ESCOPO_INTERNO);
       expect(r.erro).toContain('ORA-00942');
       expect(r.linhas).toEqual([]);
     });
 
     it('normaliza as colunas do Oracle para o formato do frontend', async () => {
-      const r = await service.resumo({});
+      const r = await service.resumo({}, ESCOPO_INTERNO);
       expect(r.linhas).toHaveLength(3);
       expect(r.linhas[0]).toMatchObject({
         codigo: 138935,
@@ -202,7 +203,7 @@ describe('BiImplantacaoService', () => {
     });
 
     it('totaliza as horas e calcula o % de utilização', async () => {
-      const r = await service.resumo({});
+      const r = await service.resumo({}, ESCOPO_INTERNO);
       expect(r.totais.quantidade).toBe(3);
       expect(r.totais.horasPrevistas).toBe(40);
       expect(r.totais.horasRealizadas).toBe(34);
@@ -212,7 +213,7 @@ describe('BiImplantacaoService', () => {
 
     // Regra vinda da medida Grafico_Horas_HTML do Power BI.
     it('soma as horas ADICIONAIS às cobradas e bonificadas, como o relatório original', async () => {
-      const r = await service.resumo({});
+      const r = await service.resumo({}, ESCOPO_INTERNO);
       expect(r.linhas[0].horasCobradas).toBe(2); // 0 + 2 adicionais
       expect(r.linhas[0].horasBonificadas).toBe(13); // 10 + 3 adicionais
       expect(r.totais.horasCobradas).toBe(32); // (0+2) + (30+0) + 0
@@ -234,7 +235,7 @@ describe('BiImplantacaoService', () => {
           },
         ],
       });
-      const r = await service.resumo({});
+      const r = await service.resumo({}, ESCOPO_INTERNO);
       expect(r.totais.horasSaldo).toBe(99); // coluna do SICLA
       expect(r.totais.horasSaldoCalculado).toBe(6); // o que o BI mostra no card SALDO
     });
@@ -248,7 +249,7 @@ describe('BiImplantacaoService', () => {
           { ...LINHAS_ORACLE[0], HORASPREVISTAS: 10, HORASREALIZADAS: 25 },
         ],
       });
-      const r = await service.resumo({});
+      const r = await service.resumo({}, ESCOPO_INTERNO);
       expect(r.totais.horasSaldoCalculado).toBe(-15);
       expect(r.totais.percentualUtilizacao).toBe(250);
     });
@@ -260,12 +261,12 @@ describe('BiImplantacaoService', () => {
         colunas: [],
         linhas: [LINHAS_ORACLE[2]],
       });
-      const r = await service.resumo({});
+      const r = await service.resumo({}, ESCOPO_INTERNO);
       expect(r.totais.percentualUtilizacao).toBeNull();
     });
 
     it('lista as opções de filtro em ordem, a partir do período inteiro', async () => {
-      const r = await service.resumo({});
+      const r = await service.resumo({}, ESCOPO_INTERNO);
       expect(r.filtros.status).toEqual(['1-Não inciado', '6-Concluída']);
       expect(r.filtros.tecnicos).toEqual(['Jolemar', 'Kailan']);
       expect(r.filtros.ativos).toEqual(['Não', 'Sim']);
@@ -273,7 +274,10 @@ describe('BiImplantacaoService', () => {
     });
 
     it('filtra por status sem encolher a lista de opções disponíveis', async () => {
-      const r = await service.resumo({ status: ['6-Concluída'] });
+      const r = await service.resumo(
+        { status: ['6-Concluída'] },
+        ESCOPO_INTERNO,
+      );
       expect(r.linhas.map((l) => l.codigo)).toEqual([138937, 138900]);
       // as opções continuam completas — senão o usuário fica preso na seleção
       expect(r.filtros.status).toEqual(['1-Não inciado', '6-Concluída']);
@@ -281,20 +285,29 @@ describe('BiImplantacaoService', () => {
     });
 
     it('combina filtros (E lógico entre dimensões)', async () => {
-      const r = await service.resumo({
-        status: ['6-Concluída'],
-        tecnico: ['Jolemar'],
-      });
+      const r = await service.resumo(
+        {
+          status: ['6-Concluída'],
+          tecnico: ['Jolemar'],
+        },
+        ESCOPO_INTERNO,
+      );
       expect(r.linhas.map((l) => l.codigo)).toEqual([138900]);
     });
 
     it('filtro vazio significa "todos"', async () => {
-      const r = await service.resumo({ status: [], tecnico: [''] });
+      const r = await service.resumo(
+        { status: [], tecnico: [''] },
+        ESCOPO_INTERNO,
+      );
       expect(r.linhas).toHaveLength(3);
     });
 
     it('cascata: grupo econômico restringe as opções de RNS, status e consultor', async () => {
-      const r = await service.resumo({ grupo: ['MANTAS BRASIL'] });
+      const r = await service.resumo(
+        { grupo: ['MANTAS BRASIL'] },
+        ESCOPO_INTERNO,
+      );
       expect(r.linhas.map((l) => l.codigo)).toEqual([138937]);
       expect(r.filtros.rns.map((o) => o.codigo)).toEqual(['138937']);
       expect(r.filtros.status).toEqual(['6-Concluída']);
@@ -308,7 +321,7 @@ describe('BiImplantacaoService', () => {
     });
 
     it('filtra por RNS de implantação e rotula a opção com o cliente', async () => {
-      const r = await service.resumo({ rns: ['138937'] });
+      const r = await service.resumo({ rns: ['138937'] }, ESCOPO_INTERNO);
       expect(r.linhas.map((l) => l.codigo)).toEqual([138937]);
       expect(r.filtros.rns[0]).toEqual({
         codigo: '138937',
@@ -318,7 +331,7 @@ describe('BiImplantacaoService', () => {
     });
 
     it('agrupa por status em ordem alfabética, somando as horas', async () => {
-      const r = await service.resumo({});
+      const r = await service.resumo({}, ESCOPO_INTERNO);
       expect(r.porStatus).toEqual([
         {
           chave: '1-Não inciado',
@@ -338,13 +351,16 @@ describe('BiImplantacaoService', () => {
     });
 
     it('agrupa por técnico ordenando por horas realizadas (desc)', async () => {
-      const r = await service.resumo({});
+      const r = await service.resumo({}, ESCOPO_INTERNO);
       expect(r.porTecnico.map((a) => a.chave)).toEqual(['Kailan', 'Jolemar']);
       expect(r.porTecnico[0].horasRealizadas).toBe(30);
     });
 
     it('pede a consulta pelo NOME, com o período', async () => {
-      await service.resumo({ dataIni: '2026-01-01', dataFim: '2026-12-31' });
+      await service.resumo(
+        { dataIni: '2026-01-01', dataFim: '2026-12-31' },
+        ESCOPO_INTERNO,
+      );
       // O teto de linhas saiu daqui: é do catálogo (`sicla.bi.resumo-implantacao`), onde
       // um teste de contrato o trava.
       expect(dados.consultar).toHaveBeenCalledWith(
@@ -411,33 +427,39 @@ describe('BiImplantacaoService', () => {
 
     // Decisão do usuário em 2026-07-29: TODA página do BI abre com os últimos 12 meses.
     it('usa a mesma janela padrão do resumo: últimos 12 meses', async () => {
-      const r = await service.extrato({ dataFim: '2026-07-29' });
+      const r = await service.extrato(
+        { dataFim: '2026-07-29' },
+        ESCOPO_INTERNO,
+      );
       expect(r.periodo.inicio).toBe('2025-07-29');
       expect(r.periodo.fim).toBe('2026-07-29');
     });
 
     it('janela padrão do extrato e do resumo são iguais', async () => {
-      const e = await service.extrato({ dataFim: '2026-07-29' });
-      const s = await service.resumo({ dataFim: '2026-07-29' });
+      const e = await service.extrato(
+        { dataFim: '2026-07-29' },
+        ESCOPO_INTERNO,
+      );
+      const s = await service.resumo({ dataFim: '2026-07-29' }, ESCOPO_INTERNO);
       expect(e.periodo).toEqual(s.periodo);
     });
 
     it('mostra as horas em valor ABSOLUTO (a view grava consumo negativo)', async () => {
-      const r = await service.extrato({});
+      const r = await service.extrato({}, ESCOPO_INTERNO);
       expect(r.linhas[0].horasUtilizadas).toBe(0.55);
       expect(r.linhas[1].horasUtilizadas).toBe(0.75);
       expect(r.totais.horasUtilizadas).toBe(1.3);
     });
 
     it('marca a descrição como truncada quando o texto real passa do trecho trazido', async () => {
-      const r = await service.extrato({});
+      const r = await service.extrato({}, ESCOPO_INTERNO);
       expect(r.linhas[0].descricaoTruncada).toBe(true);
       expect(r.linhas[0].descricaoTamanho).toBe(1250);
       expect(r.linhas[1].descricaoTruncada).toBe(false);
     });
 
     it('saldo atual é o do lançamento mais recente (as linhas vêm em ordem decrescente)', async () => {
-      const r = await service.extrato({});
+      const r = await service.extrato({}, ESCOPO_INTERNO);
       expect(r.totais.saldoAtual).toBe(1.45);
       expect(r.totais.lancamentos).toBe(2);
     });
@@ -449,12 +471,12 @@ describe('BiImplantacaoService', () => {
         colunas: [],
         linhas: [],
       });
-      const r = await service.extrato({});
+      const r = await service.extrato({}, ESCOPO_INTERNO);
       expect(r.totais.saldoAtual).toBeNull();
     });
 
     it('lista os filtros e aplica a seleção', async () => {
-      const r = await service.extrato({});
+      const r = await service.extrato({}, ESCOPO_INTERNO);
       expect(r.filtros.siglas).toEqual(['FAT', 'FIN']);
       expect(r.filtros.tecnicos).toEqual(['Liliana', 'Ramon']);
       expect(r.linhas).toHaveLength(2);
@@ -464,7 +486,7 @@ describe('BiImplantacaoService', () => {
     // demais (cascata), mas NUNCA as da própria dimensão — senão não dá para trocar a
     // escolha nem marcar um segundo valor.
     it('filtrar por sigla restringe as opções das OUTRAS dimensões', async () => {
-      const r = await service.extrato({ sigla: ['FAT'] });
+      const r = await service.extrato({ sigla: ['FAT'] }, ESCOPO_INTERNO);
       expect(r.linhas.map((l) => l.protocolo)).toEqual([1435877]);
       expect(r.filtros.tecnicos).toEqual(['Ramon']); // Liliana só aparece em FIN
       expect(r.filtros.clientes).toEqual(['DEG / DALCERO']);
@@ -472,13 +494,16 @@ describe('BiImplantacaoService', () => {
     });
 
     it('a própria dimensão mantém todas as opções', async () => {
-      const r = await service.extrato({ sigla: ['FAT'] });
+      const r = await service.extrato({ sigla: ['FAT'] }, ESCOPO_INTERNO);
       expect(r.filtros.siglas).toEqual(['FAT', 'FIN']);
       expect(r.selecionados.siglas).toEqual(['FAT']);
     });
 
     it('filtrar por grupo econômico restringe RNS, status, consultor, cliente e módulo', async () => {
-      const r = await service.extrato({ grupo: ['COCOLANDIA / DRM'] });
+      const r = await service.extrato(
+        { grupo: ['COCOLANDIA / DRM'] },
+        ESCOPO_INTERNO,
+      );
       expect(r.filtros.rns.map((o) => o.codigo)).toEqual(['138900']);
       expect(r.filtros.status).toEqual(['6-Concluída']);
       expect(r.filtros.tecnicos).toEqual(['Liliana']);
@@ -490,23 +515,26 @@ describe('BiImplantacaoService', () => {
 
     // Os 4 filtros padrão das telas do BI: grupo econômico, RNS, status da RNS e técnico.
     it('traz o status da RNS pelo join com o RESUMO', async () => {
-      const r = await service.extrato({});
+      const r = await service.extrato({}, ESCOPO_INTERNO);
       expect(r.linhas[0].statusRns).toBe('1-Não inciado');
       expect(r.filtros.status).toEqual(['1-Não inciado', '6-Concluída']);
     });
 
     it('filtra por status da RNS de implantação', async () => {
-      const r = await service.extrato({ status: ['6-Concluída'] });
+      const r = await service.extrato(
+        { status: ['6-Concluída'] },
+        ESCOPO_INTERNO,
+      );
       expect(r.linhas.map((l) => l.rns)).toEqual([138900]);
     });
 
     it('filtra por RNS de implantação', async () => {
-      const r = await service.extrato({ rns: ['138935'] });
+      const r = await service.extrato({ rns: ['138935'] }, ESCOPO_INTERNO);
       expect(r.linhas.map((l) => l.rns)).toEqual([138935]);
     });
 
     it('rotula a RNS com o cliente e ordena da mais recente para a mais antiga', async () => {
-      const r = await service.extrato({});
+      const r = await service.extrato({}, ESCOPO_INTERNO);
       expect(r.filtros.rns).toEqual([
         { codigo: '138935', rotulo: '138935 — DEG / DALCERO' },
         { codigo: '138900', rotulo: '138900 — COCOLANDIA / DRM' },
@@ -515,14 +543,14 @@ describe('BiImplantacaoService', () => {
 
     it('filtra por grupo econômico e por técnico', async () => {
       expect(
-        (await service.extrato({ grupo: ['COCOLANDIA / DRM'] })).linhas.map(
-          (l) => l.rns,
-        ),
+        (
+          await service.extrato({ grupo: ['COCOLANDIA / DRM'] }, ESCOPO_INTERNO)
+        ).linhas.map((l) => l.rns),
       ).toEqual([138900]);
       expect(
-        (await service.extrato({ tecnico: ['Ramon'] })).linhas.map(
-          (l) => l.rns,
-        ),
+        (
+          await service.extrato({ tecnico: ['Ramon'] }, ESCOPO_INTERNO)
+        ).linhas.map((l) => l.rns),
       ).toEqual([138935]);
     });
 
@@ -533,7 +561,7 @@ describe('BiImplantacaoService', () => {
         colunas: [],
         linhas: Array.from({ length: 10000 }, () => LINHAS_EXTRATO[0]),
       });
-      const r = await service.extrato({});
+      const r = await service.extrato({}, ESCOPO_INTERNO);
       expect(r.truncado).toBe(true);
     });
 
@@ -544,7 +572,7 @@ describe('BiImplantacaoService', () => {
         colunas: [],
         linhas: [],
       });
-      const r = await service.extrato({});
+      const r = await service.extrato({}, ESCOPO_INTERNO);
       expect(r.erro).toContain('ORA-01652');
       expect(r.linhas).toEqual([]);
     });
@@ -609,13 +637,13 @@ describe('BiImplantacaoService', () => {
     });
 
     it('monta o número da RNS no formato PEDIDO-ITEM do SICLA', async () => {
-      const r = await service.rnsVinculadas({});
+      const r = await service.rnsVinculadas({}, ESCOPO_INTERNO);
       expect(r.linhas[0].rns).toBe('564610-1');
       expect(r.linhas[1].rns).toBe('564600-2');
     });
 
     it('converte VALIDADOCLI (0/1) em booleano e totaliza', async () => {
-      const r = await service.rnsVinculadas({});
+      const r = await service.rnsVinculadas({}, ESCOPO_INTERNO);
       expect(r.linhas[0].validadaCliente).toBe(false);
       expect(r.linhas[1].validadaCliente).toBe(true);
       expect(r.totais).toEqual({
@@ -628,59 +656,71 @@ describe('BiImplantacaoService', () => {
 
     it('filtra por validação do cliente (tri-estado)', async () => {
       expect(
-        (await service.rnsVinculadas({ validada: 'sim' })).linhas.map(
-          (l) => l.rns,
-        ),
+        (
+          await service.rnsVinculadas({ validada: 'sim' }, ESCOPO_INTERNO)
+        ).linhas.map((l) => l.rns),
       ).toEqual(['564600-2']);
       expect(
-        (await service.rnsVinculadas({ validada: 'nao' })).linhas.map(
-          (l) => l.rns,
-        ),
+        (
+          await service.rnsVinculadas({ validada: 'nao' }, ESCOPO_INTERNO)
+        ).linhas.map((l) => l.rns),
       ).toEqual(['564610-1']);
       // vazio = todas
       expect(
-        (await service.rnsVinculadas({ validada: '' })).linhas,
+        (await service.rnsVinculadas({ validada: '' }, ESCOPO_INTERNO)).linhas,
       ).toHaveLength(2);
-      expect((await service.rnsVinculadas({})).linhas).toHaveLength(2);
+      expect(
+        (await service.rnsVinculadas({}, ESCOPO_INTERNO)).linhas,
+      ).toHaveLength(2);
     });
 
     it('aplica os filtros padrão (grupo, RNS de implantação, status e consultor)', async () => {
       expect(
-        (await service.rnsVinculadas({ rns: ['138937'] })).linhas.map(
-          (l) => l.rns,
-        ),
+        (
+          await service.rnsVinculadas({ rns: ['138937'] }, ESCOPO_INTERNO)
+        ).linhas.map((l) => l.rns),
       ).toEqual(['564610-1']);
       expect(
-        (await service.rnsVinculadas({ tecnico: ['Jolemar'] })).linhas.map(
-          (l) => l.rns,
-        ),
-      ).toEqual(['564600-2']);
-      expect(
-        (await service.rnsVinculadas({ grupo: ['JES-MAHI'] })).linhas.map(
-          (l) => l.rns,
-        ),
+        (
+          await service.rnsVinculadas({ tecnico: ['Jolemar'] }, ESCOPO_INTERNO)
+        ).linhas.map((l) => l.rns),
       ).toEqual(['564600-2']);
       expect(
         (
-          await service.rnsVinculadas({ statusImplantacao: ['6-Concluída'] })
+          await service.rnsVinculadas({ grupo: ['JES-MAHI'] }, ESCOPO_INTERNO)
+        ).linhas.map((l) => l.rns),
+      ).toEqual(['564600-2']);
+      expect(
+        (
+          await service.rnsVinculadas(
+            { statusImplantacao: ['6-Concluída'] },
+            ESCOPO_INTERNO,
+          )
         ).linhas.map((l) => l.rns),
       ).toEqual(['564600-2']);
     });
 
     it('filtra por status da RNS, sigla e tipo', async () => {
       expect(
-        (await service.rnsVinculadas({ status: ['1-Redigida'] })).linhas,
+        (
+          await service.rnsVinculadas(
+            { status: ['1-Redigida'] },
+            ESCOPO_INTERNO,
+          )
+        ).linhas,
       ).toHaveLength(1);
       expect(
-        (await service.rnsVinculadas({ sigla: ['FAT'] })).linhas,
+        (await service.rnsVinculadas({ sigla: ['FAT'] }, ESCOPO_INTERNO))
+          .linhas,
       ).toHaveLength(1);
       expect(
-        (await service.rnsVinculadas({ tipo: ['6-Conversão'] })).linhas,
+        (await service.rnsVinculadas({ tipo: ['6-Conversão'] }, ESCOPO_INTERNO))
+          .linhas,
       ).toHaveLength(1);
     });
 
     it('conta por status e por sigla, do maior para o menor', async () => {
-      const r = await service.rnsVinculadas({});
+      const r = await service.rnsVinculadas({}, ESCOPO_INTERNO);
       expect(r.porStatus).toEqual([
         { chave: '1-Redigida', quantidade: 1 },
         { chave: '10-Entregue', quantidade: 1 },
@@ -689,7 +729,7 @@ describe('BiImplantacaoService', () => {
     });
 
     it('rotula a RNS de implantação com o cliente', async () => {
-      const r = await service.rnsVinculadas({});
+      const r = await service.rnsVinculadas({}, ESCOPO_INTERNO);
       expect(r.filtros.rns).toContainEqual({
         codigo: '138937',
         rotulo: '138937 — PLAQUES RS',
@@ -697,7 +737,10 @@ describe('BiImplantacaoService', () => {
     });
 
     it('usa a janela padrão de 12 meses', async () => {
-      const r = await service.rnsVinculadas({ dataFim: '2026-07-29' });
+      const r = await service.rnsVinculadas(
+        { dataFim: '2026-07-29' },
+        ESCOPO_INTERNO,
+      );
       expect(r.periodo.inicio).toBe('2025-07-29');
     });
 
@@ -708,7 +751,7 @@ describe('BiImplantacaoService', () => {
         colunas: [],
         linhas: [],
       });
-      const r = await service.rnsVinculadas({});
+      const r = await service.rnsVinculadas({}, ESCOPO_INTERNO);
       expect(r.erro).toContain('ORA-00942');
       expect(r.linhas).toEqual([]);
       expect(r.totais.quantidade).toBe(0);
@@ -721,7 +764,7 @@ describe('BiImplantacaoService', () => {
         colunas: [],
         linhas: [],
       });
-      const r = await service.rnsVinculadas({});
+      const r = await service.rnsVinculadas({}, ESCOPO_INTERNO);
       expect(r.erro).toContain('não configurada');
     });
   });
@@ -776,7 +819,7 @@ describe('BiImplantacaoService', () => {
     });
 
     it('usa o mês corrente quando não informado e monta todos os dias', async () => {
-      const r = await service.agendas({ mes: '2026-07' });
+      const r = await service.agendas({ mes: '2026-07' }, ESCOPO_INTERNO);
       expect(r.mes).toBe('2026-07');
       expect(r.dias).toHaveLength(31);
       expect(r.dias[0].dia).toBe('2026-07-01');
@@ -785,20 +828,20 @@ describe('BiImplantacaoService', () => {
     });
 
     it('fevereiro tem 28 dias (e o SQL recebe o mês seguinte como fronteira)', async () => {
-      const r = await service.agendas({ mes: '2026-02' });
+      const r = await service.agendas({ mes: '2026-02' }, ESCOPO_INTERNO);
       expect(r.dias).toHaveLength(28);
       const [, binds] = consultaSicla.mock.calls[0];
       expect(binds).toEqual({ mes_ini: '2026-02-01', mes_fim: '2026-03-01' });
     });
 
     it('dezembro vira para janeiro do ano seguinte', async () => {
-      await service.agendas({ mes: '2026-12' });
+      await service.agendas({ mes: '2026-12' }, ESCOPO_INTERNO);
       const [, binds] = consultaSicla.mock.calls[0];
       expect(binds).toEqual({ mes_ini: '2026-12-01', mes_fim: '2027-01-01' });
     });
 
     it('mês inválido cai no mês atual', async () => {
-      const r = await service.agendas({ mes: 'julho' });
+      const r = await service.agendas({ mes: 'julho' }, ESCOPO_INTERNO);
       expect(r.mes).toMatch(/^\d{4}-\d{2}$/);
     });
 
@@ -810,19 +853,19 @@ describe('BiImplantacaoService', () => {
         colunas: [],
         linhas: [agenda({ STATUSDES: '8-Postergada', VISITA: 987 })],
       });
-      const r = await service.agendas({ mes: '2026-07' });
+      const r = await service.agendas({ mes: '2026-07' }, ESCOPO_INTERNO);
       const a = r.dias.flatMap((d) => d.agendas)[0];
       expect(a.status).toBe('6-Realizada');
       expect(a.statusOriginal).toBe('8-Postergada'); // o original fica visível
     });
 
     it('sem visita, o status original é preservado', async () => {
-      const r = await service.agendas({ mes: '2026-07' });
+      const r = await service.agendas({ mes: '2026-07' }, ESCOPO_INTERNO);
       expect(r.dias.flatMap((d) => d.agendas)[0].status).toBe('3-Agendada');
     });
 
     it('divide PARTICIPANTES por vírgula (a view guarda todos numa coluna só)', async () => {
-      const r = await service.agendas({ mes: '2026-07' });
+      const r = await service.agendas({ mes: '2026-07' }, ESCOPO_INTERNO);
       expect(r.dias.flatMap((d) => d.agendas)[0].participantes).toEqual([
         'Liliana',
         'Medeiros',
@@ -840,7 +883,7 @@ describe('BiImplantacaoService', () => {
           agenda({ CODIGO: 3, HORAINI: '19:00:00' }),
         ],
       });
-      const r = await service.agendas({ mes: '2026-07' });
+      const r = await service.agendas({ mes: '2026-07' }, ESCOPO_INTERNO);
       expect(r.dias.flatMap((d) => d.agendas).map((a) => a.turno)).toEqual([
         'Manhã',
         'Tarde',
@@ -860,7 +903,7 @@ describe('BiImplantacaoService', () => {
             agenda({ CODIGO: 3, STATUSDES: '8-Postergada' }),
           ],
         });
-        const r = await service.agendas({ mes: '2026-07' });
+        const r = await service.agendas({ mes: '2026-07' }, ESCOPO_INTERNO);
         const dia = r.dias.find((d) => d.dia === '2026-07-06')!;
         expect(dia.agendas.map((a) => a.codigo)).toEqual([1]);
         // o dia guarda quantas foram escondidas, para a tela poder avisar
@@ -878,7 +921,7 @@ describe('BiImplantacaoService', () => {
             agenda({ CODIGO: 3, STATUSDES: '8-Postergada' }),
           ],
         });
-        const r = await service.agendas({ mes: '2026-07' });
+        const r = await service.agendas({ mes: '2026-07' }, ESCOPO_INTERNO);
         const dia = r.dias.find((d) => d.dia === '2026-07-06')!;
         expect(dia.agendas.map((a) => a.codigo).sort()).toEqual([1, 3]);
       });
@@ -893,7 +936,7 @@ describe('BiImplantacaoService', () => {
             agenda({ CODIGO: 2, STATUSDES: '6-Realizada' }),
           ],
         });
-        const r = await service.agendas({ mes: '2026-07' });
+        const r = await service.agendas({ mes: '2026-07' }, ESCOPO_INTERNO);
         const dia = r.dias.find((d) => d.dia === '2026-07-06')!;
         expect(dia.agendas).toHaveLength(2);
       });
@@ -910,26 +953,32 @@ describe('BiImplantacaoService', () => {
           agenda({ CODIGO: 3, HORAINI: '08:00:00', STATUSDES: '6-Realizada' }),
         ],
       });
-      const r = await service.agendas({ mes: '2026-07' });
+      const r = await service.agendas({ mes: '2026-07' }, ESCOPO_INTERNO);
       const dia = r.dias.find((d) => d.dia === '2026-07-06')!;
       expect(dia.agendas.map((a) => a.codigo)).toEqual([3, 2, 1]);
     });
 
     it('filtra por participante quando UM dos nomes casa', async () => {
-      const r = await service.agendas({
-        mes: '2026-07',
-        tecnico: ['Medeiros'],
-      });
+      const r = await service.agendas(
+        {
+          mes: '2026-07',
+          tecnico: ['Medeiros'],
+        },
+        ESCOPO_INTERNO,
+      );
       expect(r.dias.flatMap((d) => d.agendas)).toHaveLength(1);
-      const vazio = await service.agendas({
-        mes: '2026-07',
-        tecnico: ['Ninguém'],
-      });
+      const vazio = await service.agendas(
+        {
+          mes: '2026-07',
+          tecnico: ['Ninguém'],
+        },
+        ESCOPO_INTERNO,
+      );
       expect(vazio.dias.flatMap((d) => d.agendas)).toHaveLength(0);
     });
 
     it('lista os participantes individualmente no filtro', async () => {
-      const r = await service.agendas({ mes: '2026-07' });
+      const r = await service.agendas({ mes: '2026-07' }, ESCOPO_INTERNO);
       expect(r.filtros.tecnicos).toEqual(['Liliana', 'Medeiros']);
     });
 
@@ -945,7 +994,7 @@ describe('BiImplantacaoService', () => {
           agenda({ CODIGO: 4, DIA: '2026-07-09', STATUSDES: '9-Cancelada' }),
         ],
       });
-      const r = await service.agendas({ mes: '2026-07' });
+      const r = await service.agendas({ mes: '2026-07' }, ESCOPO_INTERNO);
       expect(r.totalAgendas).toBe(4);
       expect(r.resumo).toEqual([
         {
@@ -973,7 +1022,7 @@ describe('BiImplantacaoService', () => {
           agenda({ CODIGO: 2, STATUSDES: '9-Cancelada' }), // escondida pela prioridade
         ],
       });
-      const r = await service.agendas({ mes: '2026-07' });
+      const r = await service.agendas({ mes: '2026-07' }, ESCOPO_INTERNO);
       expect(r.totalAgendas).toBe(1);
       expect(r.resumo.map((x) => x.status)).toEqual(['3-Agendada']);
     });
@@ -985,9 +1034,9 @@ describe('BiImplantacaoService', () => {
         colunas: [],
         linhas: [],
       });
-      expect((await service.agendas({ mes: '2026-07' })).erro).toContain(
-        'ORA-00942',
-      );
+      expect(
+        (await service.agendas({ mes: '2026-07' }, ESCOPO_INTERNO)).erro,
+      ).toContain('ORA-00942');
 
       consultaSicla.mockResolvedValue({
         ok: false,
@@ -995,7 +1044,7 @@ describe('BiImplantacaoService', () => {
         colunas: [],
         linhas: [],
       });
-      const r = await service.agendas({ mes: '2026-07' });
+      const r = await service.agendas({ mes: '2026-07' }, ESCOPO_INTERNO);
       expect(r.erro).toContain('não configurada');
       expect(r.dias).toEqual([]);
     });
@@ -1009,7 +1058,11 @@ describe('BiImplantacaoService', () => {
         colunas: [],
         linhas: [{ DESCRICAO: 'texto completo', DESCRICAO_TAMANHO: 14 }],
       });
-      const r = await service.descricaoCompleta(1435877, '2026-07-29 10:35');
+      const r = await service.descricaoCompleta(
+        1435877,
+        '2026-07-29 10:35',
+        ESCOPO_INTERNO,
+      );
       expect(r.descricao).toBe('texto completo');
       expect(r.erro).toBeNull();
       const [, binds] = consultaSicla.mock.calls[0];
@@ -1026,7 +1079,11 @@ describe('BiImplantacaoService', () => {
         colunas: [],
         linhas: [],
       });
-      const r = await service.descricaoCompleta(1, '2026-01-01 00:00');
+      const r = await service.descricaoCompleta(
+        1,
+        '2026-01-01 00:00',
+        ESCOPO_INTERNO,
+      );
       expect(r.erro).toContain('não encontrado');
     });
 
@@ -1037,7 +1094,11 @@ describe('BiImplantacaoService', () => {
         colunas: [],
         linhas: [],
       });
-      const r = await service.descricaoCompleta(1, '2026-01-01 00:00');
+      const r = await service.descricaoCompleta(
+        1,
+        '2026-01-01 00:00',
+        ESCOPO_INTERNO,
+      );
       expect(r.erro).toContain('não configurada');
     });
   });
@@ -1065,10 +1126,13 @@ describe('BiImplantacaoService', () => {
     });
 
     it('pede a consulta do PORTAL, não a do SICLA', async () => {
-      const r = await service.visitasPortal({
-        dataIni: '2026-08-01',
-        dataFim: '2026-08-31',
-      });
+      const r = await service.visitasPortal(
+        {
+          dataIni: '2026-08-01',
+          dataFim: '2026-08-31',
+        },
+        ESCOPO_INTERNO,
+      );
       expect(r.erro).toBeNull();
       expect(dados.consultar).toHaveBeenCalledWith('portal.visitas.listar', {
         data_ini: '2026-08-01',
@@ -1082,7 +1146,7 @@ describe('BiImplantacaoService', () => {
     // dados.service.spec.ts — escolher o texto vigente e filtrar bind é do catálogo.
 
     it('normaliza os aliases da consulta para o formato do frontend', async () => {
-      const r = await service.visitasPortal({});
+      const r = await service.visitasPortal({}, ESCOPO_INTERNO);
       expect(r.total).toBe(1);
       expect(r.linhas[0]).toEqual({
         empresa: 'MELBROS CALCADOS',
@@ -1116,7 +1180,7 @@ describe('BiImplantacaoService', () => {
           },
         ],
       });
-      const r = await service.visitasPortal({});
+      const r = await service.visitasPortal({}, ESCOPO_INTERNO);
       expect(r.linhas[0]).toEqual({
         empresa: '',
         cliente: null,
@@ -1130,6 +1194,20 @@ describe('BiImplantacaoService', () => {
       });
     });
 
+    // O Portal grava TRÊS situações em `visita_aprovacao.APROVADO`: 1 = aprovada,
+    // 0 = aprovada COM RESSALVA (lá a justificativa é obrigatória) e NULL = o cliente
+    // ainda não respondeu. O SQL as devolve como 'Sim' / 'Com ressalva' / 'Não'.
+    it('preserva o rótulo "Com ressalva" (não é nem aprovada nem reprovada)', async () => {
+      consultaPortal.mockResolvedValue({
+        ok: true,
+        mensagem: '1 linha(s).',
+        colunas: [],
+        linhas: [{ ...VISITA_MYSQL, APROVADO: 'Com ressalva' }],
+      });
+      const r = await service.visitasPortal({}, ESCOPO_INTERNO);
+      expect(r.linhas[0].aprovado).toBe('Com ressalva');
+    });
+
     it('sem a conexão do banco do Portal cadastrada, avisa onde cadastrar', async () => {
       consultaPortal.mockResolvedValue({
         ok: false,
@@ -1138,7 +1216,7 @@ describe('BiImplantacaoService', () => {
         colunas: [],
         linhas: [],
       });
-      const r = await service.visitasPortal({});
+      const r = await service.visitasPortal({}, ESCOPO_INTERNO);
       expect(r.erro).toContain('Consultas BD');
       expect(r.linhas).toEqual([]);
     });
@@ -1150,7 +1228,7 @@ describe('BiImplantacaoService', () => {
         colunas: [],
         linhas: [],
       });
-      const r = await service.visitasPortal({});
+      const r = await service.visitasPortal({}, ESCOPO_INTERNO);
       expect(r.erro).toContain('Access denied');
       expect(r.linhas).toEqual([]);
     });
@@ -1179,38 +1257,47 @@ describe('BiImplantacaoService', () => {
         assunto: 'ASSUNTO EDITADO',
         corpo: 'CORPO EDITADO',
       });
-      expect(await service.modeloEmailVisitas()).toEqual({
+      expect(await service.modeloEmailVisitas(ESCOPO_INTERNO)).toEqual({
         assunto: 'ASSUNTO EDITADO',
         corpo: 'CORPO EDITADO',
       });
 
       modelosEmail.porSlug.mockResolvedValue(null);
-      const padrao = await service.modeloEmailVisitas();
+      const padrao = await service.modeloEmailVisitas(ESCOPO_INTERNO);
       expect(padrao.assunto).toContain('Portal Rech');
       expect(padrao.corpo).toContain('anexo');
     });
 
     it('recusa destinatário inválido com aviso claro (400)', async () => {
       await expect(
-        service.enviarVisitasPorEmail({
-          para: 'nao-e-email',
-          assunto: 'x',
-          corpo: 'y',
-          recorte: [],
-          linhas: [],
-        }),
+        service.enviarVisitasPorEmail(
+          {
+            para: 'nao-e-email',
+            assunto: 'x',
+            corpo: 'y',
+            recorte: [],
+            linhas: [],
+          },
+          ESCOPO_INTERNO,
+        ),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(mailer.enviar).not.toHaveBeenCalled();
     });
 
     it('gera o PDF e envia para os destinatários (separados por ;) com o anexo', async () => {
-      const r = await service.enviarVisitasPorEmail({
-        para: 'coord@rech.com.br; gci@rech.com.br',
-        assunto: 'Protocolos',
-        corpo: 'Segue anexo.',
-        recorte: ['Período: 01/08 a 17/08'],
-        linhas: [LINHA_TELA, { ...LINHA_TELA, protocolo: 1, aprovado: 'Não' }],
-      });
+      const r = await service.enviarVisitasPorEmail(
+        {
+          para: 'coord@rech.com.br; gci@rech.com.br',
+          assunto: 'Protocolos',
+          corpo: 'Segue anexo.',
+          recorte: ['Período: 01/08 a 17/08'],
+          linhas: [
+            LINHA_TELA,
+            { ...LINHA_TELA, protocolo: 1, aprovado: 'Não' },
+          ],
+        },
+        ESCOPO_INTERNO,
+      );
       expect(r.ok).toBe(true);
       const [destinos, assunto, corpo, anexos] = mailer.enviar.mock.calls[0];
       expect(destinos).toEqual(['coord@rech.com.br', 'gci@rech.com.br']);
@@ -1223,15 +1310,28 @@ describe('BiImplantacaoService', () => {
       expect(existsSync(anexos[0].caminho)).toBe(false);
     });
 
-    it('gráfico com data URL inválida é ignorado (envia sem imagem, não quebra)', async () => {
-      const r = await service.enviarVisitasPorEmail({
-        para: 'a@rech.com.br',
-        assunto: 'x',
-        corpo: 'y',
-        graficoPng: 'data:image/png;base64,%%%não-é-base64-de-png%%%',
-        recorte: [],
-        linhas: [LINHA_TELA],
+    // Regressão: o saneamento da linha vinda do navegador cortava em 10 caracteres —
+    // 'Com ressalva' tem 12 e chegava ao PDF como 'Com ressal', que nenhuma cor reconhece.
+    it('a linha vinda da tela preserva "Com ressalva" inteiro', () => {
+      const l = service['linhaVisitaDaTela']({
+        ...LINHA_TELA,
+        aprovado: 'Com ressalva',
       });
+      expect(l.aprovado).toBe('Com ressalva');
+    });
+
+    it('gráfico com data URL inválida é ignorado (envia sem imagem, não quebra)', async () => {
+      const r = await service.enviarVisitasPorEmail(
+        {
+          para: 'a@rech.com.br',
+          assunto: 'x',
+          corpo: 'y',
+          graficoPng: 'data:image/png;base64,%%%não-é-base64-de-png%%%',
+          recorte: [],
+          linhas: [LINHA_TELA],
+        },
+        ESCOPO_INTERNO,
+      );
       expect(r.ok).toBe(true);
       expect(mailer.enviar).toHaveBeenCalled();
     });
@@ -1241,13 +1341,16 @@ describe('BiImplantacaoService', () => {
         ok: false,
         erro: 'Nenhum meio de envio configurado',
       });
-      const r = await service.enviarVisitasPorEmail({
-        para: 'a@rech.com.br',
-        assunto: 'x',
-        corpo: 'y',
-        recorte: [],
-        linhas: [],
-      });
+      const r = await service.enviarVisitasPorEmail(
+        {
+          para: 'a@rech.com.br',
+          assunto: 'x',
+          corpo: 'y',
+          recorte: [],
+          linhas: [],
+        },
+        ESCOPO_INTERNO,
+      );
       expect(r.ok).toBe(false);
       expect(r.erro).toContain('meio de envio');
     });

@@ -1,7 +1,21 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { UsuariosComponent } from './usuarios.component';
 import { UsuariosService } from '../../core/services/usuarios.service';
+import { AuthService } from '../../core/services/auth.service';
+import { AuthUser } from '../../core/models/auth-user.model';
 import { TecnicoSicla, Usuario } from '../../core/models/usuario.model';
+
+/** Logado padrão dos testes: ADM com id 99, para não colidir com o id 1 do helper
+ * `usuario()` — a linha do próprio logado não ganha o botão Excluir. */
+const LOGADO: AuthUser = {
+  sub: 99,
+  login: 'admin',
+  nome: 'Administrador',
+  perfil: 'ADM',
+  codigoSicla: '',
+};
 
 function usuario(over: Partial<Usuario> = {}): Usuario {
   return {
@@ -11,6 +25,7 @@ function usuario(over: Partial<Usuario> = {}): Usuario {
     email: 'ana@teste.com',
     perfil: 'Consultor',
     codigoSicla: '007',
+    codigoClienteSicla: '',
     modulosCapacitados: '',
     setorAtuacao: '',
     ativo: true,
@@ -33,10 +48,13 @@ function tecnico(over: Partial<TecnicoSicla> = {}): TecnicoSicla {
 }
 
 describe('UsuariosComponent', () => {
-  function montar(service: Partial<UsuariosService>) {
+  function montar(service: Partial<UsuariosService>, logado: AuthUser = LOGADO) {
     TestBed.configureTestingModule({
       imports: [UsuariosComponent],
-      providers: [{ provide: UsuariosService, useValue: service }],
+      providers: [
+        { provide: UsuariosService, useValue: service },
+        { provide: AuthService, useValue: { usuario: signal<AuthUser | null>(logado) } },
+      ],
     });
     return TestBed.createComponent(UsuariosComponent);
   }
@@ -512,6 +530,95 @@ describe('UsuariosComponent', () => {
     expect(comp.selecionados()).toEqual([]);
   });
 
+  // ===== Exclusão de usuário (só ADM) =====
+
+  it('ADM vê o botão Excluir em toda linha, MENOS na do próprio logado', async () => {
+    const fixture = montar({
+      listar: () =>
+        Promise.resolve([
+          usuario({ id: 99, nome: 'Eu Mesmo' }), // id do LOGADO
+          usuario({ id: 2, nome: 'Outro' }),
+        ]),
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const botoes = Array.from(
+      fixture.nativeElement.querySelectorAll('button.perigo') as NodeListOf<HTMLElement>,
+    );
+    expect(botoes).toHaveLength(1);
+    expect(botoes[0].closest('tr')?.textContent).toContain('Outro');
+  });
+
+  it('quem não é ADM não vê o botão Excluir (a regra é do Administrador)', async () => {
+    const fixture = montar(
+      { listar: () => Promise.resolve([usuario({ id: 2, nome: 'Outro' })]) },
+      { ...LOGADO, perfil: 'Coordenador', perfis: ['Coordenador'] },
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('button.perigo')).toHaveLength(0);
+  });
+
+  it('excluir pede confirmação, chama o service e recarrega a lista', async () => {
+    const spy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const excluir = vi.fn().mockResolvedValue(undefined);
+    const listar = vi.fn().mockResolvedValue([usuario({ id: 2, nome: 'Outro' })]);
+    const fixture = montar({ listar, excluir });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const comp = fixture.componentInstance;
+    await comp.excluir(usuario({ id: 2, nome: 'Outro' }));
+    expect(excluir).toHaveBeenCalledWith(2);
+    expect(listar).toHaveBeenCalledTimes(2);
+    expect(comp.aviso()).toContain('excluído');
+    spy.mockRestore();
+  });
+
+  it('cancelar a confirmação não exclui nada', async () => {
+    const spy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const excluir = vi.fn();
+    const fixture = montar({ listar: () => Promise.resolve([usuario({ id: 2 })]), excluir });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await fixture.componentInstance.excluir(usuario({ id: 2 }));
+    expect(excluir).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('mostra a mensagem do backend quando a exclusão é recusada (ex.: designação em projeto)', async () => {
+    const spy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const excluir = vi.fn().mockRejectedValue(
+      new HttpErrorResponse({
+        status: 409,
+        error: { message: '"Outro" tem 3 designação(ões) em projetos e não pode ser excluído.' },
+      }),
+    );
+    const fixture = montar({ listar: () => Promise.resolve([usuario({ id: 2, nome: 'Outro' })]), excluir });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const comp = fixture.componentInstance;
+    await comp.excluir(usuario({ id: 2, nome: 'Outro' }));
+    expect(comp.erro()).toContain('designação');
+    spy.mockRestore();
+  });
+
+  it('excluir quem estava aberto no formulário fecha o formulário', async () => {
+    const spy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const excluir = vi.fn().mockResolvedValue(undefined);
+    const fixture = montar({ listar: () => Promise.resolve([usuario({ id: 2, nome: 'Outro' })]), excluir });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const comp = fixture.componentInstance;
+    comp.editar(usuario({ id: 2, nome: 'Outro' }));
+    expect(comp.formAberto()).toBe(true);
+    await comp.excluir(usuario({ id: 2, nome: 'Outro' }));
+    expect(comp.formAberto()).toBe(false);
+    expect(comp.usuarioId()).toBeNull();
+    spy.mockRestore();
+  });
+
   it('avisa quais técnicos ficaram de fora por não ter e-mail', async () => {
     const importarTecnicos = vi.fn().mockResolvedValue({
       ok: true,
@@ -533,5 +640,54 @@ describe('UsuariosComponent', () => {
     await comp.carregarTecnicos();
     await comp.importar();
     expect(comp.aviso()).toContain('Fulano');
+  });
+
+  // ---- Papel Cliente (externo) ----------------------------------------------------
+  // O acúmulo de papéis existe para quem é GCI e Levantador ao mesmo tempo. O `Cliente`
+  // fica de fora disso: acumulado com um papel interno, ele cairia no ramo "interno vê
+  // tudo" do recorte por cliente no backend (docs/acesso-cliente-bi.md §3).
+  describe('papel Cliente', () => {
+    async function abrir() {
+      const fixture = montar({ listar: () => Promise.resolve([]) });
+      fixture.detectChanges();
+      await fixture.whenStable();
+      return fixture.componentInstance;
+    }
+
+    it('marcar Cliente desmarca todos os papéis internos', async () => {
+      const comp = await abrir();
+      comp.alternarPapel('GCI', true);
+      comp.alternarPapel('Levantador', true);
+      comp.alternarPapel('Cliente', true);
+      expect(comp.papeisMarcados()).toEqual(['Cliente']);
+      expect(comp.ehCliente()).toBe(true);
+    });
+
+    it('marcar um papel interno tira o Cliente', async () => {
+      const comp = await abrir();
+      comp.alternarPapel('Cliente', true);
+      comp.alternarPapel('Consultor', true);
+      expect(comp.papeisMarcados()).not.toContain('Cliente');
+      expect(comp.ehCliente()).toBe(false);
+    });
+
+    // Um cliente não tem código de técnico, e um técnico não tem cliente vinculado: o
+    // campo obrigatório troca de lado junto com o papel.
+    it('troca qual código é obrigatório', async () => {
+      const comp = await abrir();
+      expect(comp.form.controls.codigoSicla.hasError('required')).toBe(true);
+
+      comp.alternarPapel('Cliente', true);
+      expect(comp.form.controls.codigoSicla.hasError('required')).toBe(false);
+      expect(comp.form.controls.codigoClienteSicla.hasError('required')).toBe(
+        true,
+      );
+
+      comp.alternarPapel('Consultor', true);
+      expect(comp.form.controls.codigoSicla.hasError('required')).toBe(true);
+      expect(comp.form.controls.codigoClienteSicla.hasError('required')).toBe(
+        false,
+      );
+    });
   });
 });

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -14,6 +15,10 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import {
+  CurrentUser,
+  type AuthUser,
+} from '../common/decorators/current-user.decorator';
 import { PERFIS_SISTEMA } from '../common/constants/perfis';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { UsersService } from './users.service';
@@ -29,8 +34,10 @@ function semSenha(u: Usuario): Omit<Usuario, 'senhaHash'> {
 
 /** CRUD de Usuários (`/usuarios`) — exclusivo do Administrador. Espelha
  * webapp/app.py:usuarios, adaptado para REST (POST cria, PUT atualiza — o Flask original
- * usa um único formulário combinado create/edit; não há rota de exclusão lá nem aqui,
- * desativação é feita pelo campo `ativo`). */
+ * usa um único formulário combinado create/edit e não tinha exclusão). O DELETE entrou em
+ * 2026-08-17, a pedido do usuário, com guardas no service: não exclui a si mesmo nem quem
+ * tem designação em projeto — nesses casos a desativação (campo `ativo`) segue sendo o
+ * caminho. */
 @ApiTags('usuarios')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -64,6 +71,7 @@ export class UsersController {
       perfil: dto.perfil ?? 'Consultor',
       perfis: dto.perfis,
       codigoSicla: dto.codigoSicla,
+      codigoClienteSicla: dto.codigoClienteSicla,
       modulosCapacitados: dto.modulosCapacitados,
       setorAtuacao: dto.setorAtuacao,
     });
@@ -78,5 +86,19 @@ export class UsersController {
     @Body() dto: UpdateUsuarioDto,
   ) {
     return new ApiEnvelope(semSenha(await this.service.atualizar(id, dto)));
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Exclui um usuário definitivamente (só ADM; com designações em projeto, desative em vez de excluir)',
+  })
+  async excluir(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser,
+  ) {
+    await this.service.excluir(id, user.sub);
+    return new ApiEnvelope(null, 'Usuário excluído.');
   }
 }

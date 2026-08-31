@@ -87,10 +87,16 @@ WHERE (:data_ini IS NULL OR e.DATAHORA >= TO_DATE(:data_ini, 'YYYY-MM-DD'))
 ORDER BY e.DATAHORA DESC`;
 
 /** Texto completo de UM lançamento — buscado só quando o usuário abre a descrição.
- * A chave é composta (protocolo + data/hora) porque o protocolo sozinho pode repetir. */
+ * A chave é composta (protocolo + data/hora) porque o protocolo sozinho pode repetir.
+ *
+ * `IMP_CLIENTE` não é exibido: ele existe para o serviço poder conferir DE QUEM é o
+ * lançamento antes de devolver o texto. Sem essa coluna, o endpoint aceitava qualquer par
+ * protocolo+data/hora e entregava a descrição da visita — que é texto escrito pelo
+ * consultor — a quem pedisse, bastando variar o número (docs/acesso-cliente-bi.md §5). */
 export const SQL_EXTRATO_DESCRICAO = `SELECT
   DBMS_LOB.SUBSTR(e.DESC_VISITA, 8000, 1) AS DESCRICAO,
-  DBMS_LOB.GETLENGTH(e.DESC_VISITA)       AS DESCRICAO_TAMANHO
+  DBMS_LOB.GETLENGTH(e.DESC_VISITA)       AS DESCRICAO_TAMANHO,
+  e.IMP_CLIENTE
 FROM POWERBI.POWERBI_IMPLANTACAO_EXTRATO_HORAS e
 WHERE e.PROTOCOLO = :protocolo
   AND TO_CHAR(e.DATAHORA, 'YYYY-MM-DD HH24:MI') = :datahora

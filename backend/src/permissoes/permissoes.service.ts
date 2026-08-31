@@ -49,16 +49,30 @@ export class PermissoesService implements OnModuleInit {
     await this.recarregar();
   }
 
-  /** Semeia os padrões dos menus que ainda NÃO têm nenhuma linha — idempotente. Semeia a
-   * tabela vazia na 1ª vez e, em deploys seguintes, apenas os menus novos (ex.: visao_geral),
-   * sem sobrescrever o que o admin já configurou nos menus existentes. */
+  /** Semeia os padrões que ainda NÃO têm linha — idempotente. Semeia a tabela vazia na 1ª
+   * vez e, em deploys seguintes, apenas o que é novo, sem sobrescrever o que o admin já
+   * configurou.
+   *
+   * O critério é o PAR (papel, menu), não o menu inteiro. Até 2026-08-31 bastava o menu
+   * nunca ter sido visto, e isso escondia um buraco: um PAPEL novo declarado em
+   * `PADRAO_PERMISSOES` para um menu que JÁ existia (o caso do `Cliente` em
+   * `bi_implantacao`) nunca era semeado — nascia sem linha nenhuma, ou seja, sem acesso a
+   * nada, mesmo com o padrão declarado no código. Em dev isso passava despercebido porque
+   * o banco é descartável e a tabela nascia vazia; em produção o papel novo simplesmente
+   * não funcionaria.
+   *
+   * Semear por par continua não sobrescrevendo decisão de admin: tirar um acesso pela tela
+   * grava o nível `nada` (`salvarPapel` faz upsert), então "sem linha" significa "nunca
+   * configurado", nunca "removido de propósito". */
   private async seedFaltantes(): Promise<void> {
     const existentes = await this.papelRepo.find();
-    const menusComRegra = new Set(existentes.map((r) => r.menu));
+    const paresComRegra = new Set(
+      existentes.map((r) => `${r.papel}|${r.menu}`),
+    );
     const novas: PermissaoPapel[] = [];
     for (const [menu, mapa] of Object.entries(PADRAO_PERMISSOES)) {
-      if (menusComRegra.has(menu)) continue;
       for (const [papel, nivel] of Object.entries(mapa)) {
+        if (paresComRegra.has(`${papel}|${menu}`)) continue;
         novas.push(
           this.papelRepo.create({ papel: papel as Perfil, menu, nivel }),
         );
@@ -100,10 +114,6 @@ export class PermissoesService implements OnModuleInit {
       n = nivelMaior(n, this.nivelDePapel(p, menu));
     }
     return n;
-  }
-
-  podeVer(user: UsuarioPermissao, menu: string): boolean {
-    return this.nivelEfetivo(user, menu) !== 'nada';
   }
 
   podeAlterar(user: UsuarioPermissao, menu: string): boolean {

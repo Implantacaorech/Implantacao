@@ -308,6 +308,11 @@ export const PADRAO_PERMISSOES: Record<
   },
   // BI de Implantação: leitura de dado do SICLA (horas, status, grupo econômico). Mesma
   // liberação dos Dashboards, mas sem o Comercial — a tela expõe saldo de horas por cliente.
+  // O `Cliente` (papel externo) entra aqui, e SÓ aqui: esta é a única tela do Painel que ele
+  // enxerga, e em 'consulta' — o BI é leitura. O que ele vê dentro dela é recortado no
+  // próprio cliente pelo EscopoClienteService (docs/acesso-cliente-bi.md); esta linha é a
+  // permissão de TELA, não a de linha. Note que `dashboards` (o BI Interno, logo acima)
+  // deliberadamente NÃO o inclui.
   bi_implantacao: {
     ADM: 'alteracao',
     Coordenador: 'alteracao',
@@ -315,6 +320,7 @@ export const PADRAO_PERMISSOES: Record<
     GCI: 'alteracao',
     Consultor: 'consulta',
     Levantador: 'consulta',
+    Cliente: 'consulta',
   },
   permissoes: { ADM: 'alteracao' },
   ferramentas: { ADM: 'alteracao' },
