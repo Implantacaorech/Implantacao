@@ -115,8 +115,9 @@ O escopo é o dado de **terceiro**: Oracle do SICLA e MySQL do Portal Rech. Fora
 decisão: o `painel_novo` (camada Repository/TypeORM, ADR-0002) e a base do Consultor SIGER
 (artefato derivado, local, readonly — o módulo já é a API dela).
 
-⚠️ **Pendente em produção:** rodar `cd backend && npm run migration:run` (tabela
-`api_clientes`). Até lá a tela abre, mas sem a parte de clientes de máquina.
+A migration `api_clientes` **já rodou em produção** (verificado em 2026-08-31: a última
+executada era `TokensApiDados1788020000000`, posterior a ela) — a nota de pendência que
+existia aqui estava vencida.
 
 ## Papéis (agentes) — detalhe no guia operacional
 `coordenador-implantacao` · `setor-adm` · `consultor-implantacao` (GCI) · `gerente-projeto` ·
