@@ -3,9 +3,10 @@
 > Escrito em 2026-08-31, a partir das decisões do usuário na abertura da frente. Descreve o
 > que precisa existir para um cliente da Rech abrir o Painel e ver **o BI dele, e só o dele**.
 >
-> **Estado (2026-08-31): F1–F4 implementadas e cobertas por teste** (§13). O que falta é
-> infraestrutura e borda externa — não código de recorte. O acesso do cliente **ainda não
-> está no ar**, porque depende de §11.
+> **Estado (2026-08-31): F1–F5 implementadas e cobertas por teste** (§13), incluindo o
+> cadastro de acesso por CONTATO do cliente (§10). O que falta é infraestrutura e borda
+> externa — não código de recorte. O acesso do cliente **ainda não está no ar**, porque
+> depende de §11.
 
 ## 1. As quatro decisões que abrem a frente (2026-08-31)
 
@@ -174,33 +175,54 @@ muda a categoria do sistema, não só a lista de telas:
   precisam estar claras antes de o primeiro cliente entrar.
 - **Sessão** — access token de vida curta faz mais diferença aqui do que na rede interna.
 
-## 10. Ciclo de vida do acesso — quem cria, quem revoga
+## 10. Ciclo de vida do acesso — quem entra, quem libera, quem revoga
 
-> **Decisão do usuário (2026-08-31): o cadastro de usuário continua EXCLUSIVO do
-> Administrador.** A primeira resposta havia sido "o próprio consultor, por ora"; ao ver que
-> isso exigiria abrir o cadastro de usuários, o usuário decidiu **não mexer** — fica como
-> está. Registrado como ponto de revisão futura, não como limitação descoberta tarde.
+> **Revisado em 2026-08-31, no mesmo dia.** A primeira versão desta seção dizia que o ADM
+> digitava o vínculo à mão. O usuário então trouxe a regra que faltava: **quem entra são os
+> CONTATOS do cliente**, e quem diz quais contatos podem entrar é o **SICLA**.
 
-Na prática, o acesso do cliente nasce e morre na tela que já existe: **Sistema → Usuários**,
-`@Roles(...PERFIS_SISTEMA)` no [users.controller.ts](../backend/src/users/users.controller.ts),
-menu `usuarios` com `fixaAdm: true`. O ADM cria o usuário com papel `Cliente` e o código do
-cliente no SICLA; para revogar, desmarca `Ativo` (ou apaga o vínculo). **A revogação vale na
-hora**, sem esperar o refresh do token — é a consequência de o escopo ser resolvido do banco
-a cada requisição (§4).
+**A autorização não nasce no Painel.** `SICLA.LISTA_CONTATOS` tem a coluna
+`PORTAL_RECH_CLIENTES`; valendo `1`, aquele contato pode acessar o portal. A consulta
+`sicla.contatos.listar` traz **só** esses — a marcação está no `WHERE`, e não num filtro de
+tela, porque uma lista que mostrasse contato não liberado convidaria a liberar quem o SICLA
+não liberou.
 
-**Por que NÃO delegar isso ao consultor sem um caminho próprio.** Liberar o menu `usuarios`
-para o consultor lhe daria o poder de criar usuários **internos** — inclusive `ADM`. Se um dia
-a delegação voltar à mesa, o caminho não é afrouxar essa tela, e sim um endpoint estreito de
-"convidar cliente", alcançado da ficha do projeto, com o papel **fixo** em `Cliente` (nunca
-vindo do pedido) e o vínculo obrigatório na criação. Duas sub-decisões ficam abertas para esse
-dia: se o consultor pode convidar para qualquer cliente ou só para os projetos em que está
-designado (recomendo o segundo — `PERFIS_VEEM_TODOS_PROJETOS` já faz esse recorte), e se o
-vínculo ganha prazo de validade.
+**Sistema → Acesso de Clientes** (menu `acesso_clientes`, fixo em ADM como Usuários) é onde
+o ADM informa o código do cliente, vê os contatos liberados no SICLA — com nome, cargo,
+e-mail, situação e status — e concede a **conta**. A mecânica é a mesma de Usuários →
+Técnicos do SICLA, a pedido do usuário: "Buscar no SICLA", "Buscar novos", seleção por linha.
 
-**O que o fluxo manual custa, dito com todas as letras:** o acesso do cliente **sobrevive ao
-projeto** por padrão. Não é hipótese — é o comportamento esperado de um passo que ninguém
-dispara. As duas mitigações naturais, quando isto for revisto, são um item explícito no
-checklist de encerramento da implantação e/ou validade com prazo no vínculo, renovável.
+**O login é o e-mail, e a senha ninguém escolhe.** `LISTA_CONTATOS` não expõe código de
+contato: a identidade é o e-mail. Ao liberar, o usuário nasce com papel `Cliente`, o
+`codigo_cliente_sicla` vindo da coluna `CLIENTE` e uma senha **aleatória que nunca é
+exibida** — o contato define a dele pelo "Esqueci minha senha" que o Painel já tem. Nenhum
+mecanismo novo, e a senha não trafega por WhatsApp nem telefone. Contato sem e-mail no SICLA
+não vira acesso: entra na lista de ignorados, com o motivo.
+
+**A revogação deixou de depender de alguém lembrar.** O login do usuário-cliente revalida
+contra o SICLA a cada entrada: perdeu `PORTAL_RECH_CLIENTES = 1`, não entra mais. É o que
+fecha o furo que esta mesma seção registrava antes — o acesso sobrevivendo ao fim do
+projeto. O ADM ainda pode revogar pela tela (desativa, não apaga; o histórico fica e dá para
+reativar), mas isso passou a ser o caminho de exceção, não a única barreira.
+
+**Três respostas na revalidação, e a diferença entre as duas últimas é deliberada:**
+
+| Situação | O que significa | Login |
+|---|---|---|
+| `liberado` / `nao-liberado` | O SICLA respondeu | entra / não entra |
+| `indisponivel` | A conexão EXISTE e falhou (Oracle fora) | **não entra** |
+| `sem-integracao` | Não há conexão SICLA cadastrada nesta instância | **entra** |
+
+`indisponivel` é fail-closed porque deixar entrar sem conseguir conferir seria abrir a porta
+justamente quando não se sabe quem está do outro lado — e não tira nada de ninguém, já que o
+BI lê o SICLA e viria vazio. `sem-integracao` é aberto porque instância sem SICLA é dev ou
+teste, não produção: ali não há dado de cliente para proteger, e recusar tornaria o acesso do
+cliente impossível de exercitar fora de produção (é o que permite os 21 casos de e2e).
+
+**O que continua fora desta tela:** criar usuário INTERNO segue exclusivo da tela de
+Usuários. O endpoint de liberação tem papel fixo em `Cliente` e vínculo vindo do SICLA — não
+há campo de entrada por onde alguém crie um usuário interno ou aponte para outro cliente. Um
+e-mail que já pertença a alguém da casa é recusado, com o motivo.
 
 ## 11. Pré-requisito de infraestrutura (bloqueio real)
 
@@ -239,12 +261,12 @@ estão escritos e verdes (§13); o terceiro é o que falta.
 | **F2** | `EscopoClienteService` + recorte nas 5 leituras do BI, aplicado **antes** dos filtros derivados. | **feito** |
 | **F3** | Portas laterais: posse no `extrato/descricao`, e-mail negado ao cliente. | **feito** |
 | **F4** | Marcação Consultor/Cliente no cabeçalho e rota inicial do cliente no BI. | **feito** |
-| **F5** | Binds `:cliente` no catálogo (§7) — menos dado sensível saindo do Oracle e resposta mais rápida. | pendente |
-| **F6** | Borda externa (§9) e publicação (§11) — junto da migração de servidor. | pendente |
+| **F5** | Binds `:cliente` no catálogo; e2e do papel Cliente (21 casos). | **feito** |
+| **F6** | **Acesso de Clientes** (§10): consulta `sicla.contatos.listar`, módulo `contatos-sicla`, tela do ADM e revalidação no login. | **feito** |
+| **F7** | Borda externa (§9) e publicação (§11) — junto da migração de servidor. | pendente |
 
-**F5 é otimização e segunda barreira, não correção**: o recorte já é garantido no serviço.
-**F6 não é código** — é a conversa de DNS/HTTPS/publicação com a TI, e é o que separa "pronto"
-de "no ar".
+**F7 não é código** — é a conversa de DNS/HTTPS/publicação com a TI, e é o que separa
+"pronto" de "no ar".
 
 ### O que sustenta as fases feitas
 
@@ -252,9 +274,21 @@ de "no ar".
   banco, usuário desativado).
 - `conformidade-escopo-cliente.spec.ts` — para cada endpoint, procura vestígio de outro
   cliente na resposta **inteira**, não só em `linhas`; mais uma guarda estrutural que lê o
-  código do controller e falha se algum handler deixar de resolver o escopo.
+  código do controller e falha se algum handler deixar de resolver o escopo; e o bind
+  `:cliente` conferido em todas as consultas do SICLA.
+- `contatos-sicla.service.spec.ts` — o mapeamento das colunas do SICLA, a senha aleatória
+  que não vaza, a reativação sem trocar senha, a recusa de e-mail de usuário interno e as
+  quatro respostas da revalidação.
 - `perfis.spec.ts` — `Cliente` fora de todas as constantes de papel interno.
 - `rota-inicial.guard.spec.ts` — inclusive o caso que evita o laço `/home` ↔ BI.
-- Verificação por mutação (feita à mão em 2026-08-31): desligar o recorte derruba 10 testes;
-  movê-lo para depois dos filtros derrubaria os testes das listas de filtro. O spec tem poder
-  de detecção real, não só cobertura.
+- `e2e/testes/09-acesso-cliente-bi.spec.ts` — 21 casos: sessão, menu, rotas, portas da API,
+  regras de cadastro e a tela do ADM.
+- Verificação por mutação (2026-08-31): desligar o recorte derruba 10 testes; movê-lo para
+  depois dos filtros derruba os das listas de filtro; liberar `carteira` ao papel `Cliente`
+  derruba o caso de menu do e2e. Os specs têm poder de detecção real, não só cobertura.
+
+### Pendente de configuração em produção
+
+O SQL de `sicla.contatos.listar` é `consulta_salva`: o texto vigente é o de **Sistema →
+Consultas BD**. As colunas foram confirmadas com o usuário, mas **a consulta ainda não foi
+executada contra o Oracle** — se algum nome divergir, o ajuste é na tela, sem deploy.

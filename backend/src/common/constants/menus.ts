@@ -97,6 +97,15 @@ export const MENUS: DefinicaoMenu[] = [
     fixaAdm: true,
   },
   { chave: 'usuarios', rotulo: 'Usuários', grupo: 'Sistema', fixaAdm: true },
+  // Acesso de Clientes: quem, do lado do CLIENTE, entra no Painel. Irmã da tela de Usuários
+  // e fixa em ADM pelo mesmo motivo — conceder acesso EXTERNO é decisão de sistema. Quem
+  // autoriza continua sendo o SICLA (`PORTAL_RECH_CLIENTES = 1`); aqui se dá a conta.
+  {
+    chave: 'acesso_clientes',
+    rotulo: 'Acesso de Clientes',
+    grupo: 'Sistema',
+    fixaAdm: true,
+  },
   {
     chave: 'checklist',
     rotulo: 'Cad. Checklist',
@@ -325,6 +334,7 @@ export const PADRAO_PERMISSOES: Record<
   permissoes: { ADM: 'alteracao' },
   ferramentas: { ADM: 'alteracao' },
   usuarios: { ADM: 'alteracao' },
+  acesso_clientes: { ADM: 'alteracao' },
   checklist: { ADM: 'alteracao' },
   indice_topicos: { ADM: 'alteracao' },
   modelos_docs: { ADM: 'alteracao' },

@@ -219,3 +219,55 @@ test.describe('Acesso do cliente — o interno não é afetado', () => {
     }
   });
 });
+
+/** A tela por onde o ADM concede o acesso: Sistema → Acesso de Clientes. A lista de quem
+ * PODE receber acesso vem do SICLA (`LISTA_CONTATOS`, `PORTAL_RECH_CLIENTES = 1`) — nesta
+ * instância não há Oracle, então o que se prova aqui é o gate e a moldura, não a listagem. */
+test.describe('Acesso de Clientes — a tela do ADM', () => {
+  test('abre para o ADM, com a origem declarada na própria tela', async ({ page }) => {
+    await entrarComSucesso(page, USUARIOS.adm);
+    await page.goto('/acesso-clientes');
+    await expect(page).toHaveURL(/acesso-clientes/);
+    await expect(page.getByRole('heading', { name: /Acesso de Clientes/i })).toBeVisible();
+    // Quem autoriza é o SICLA — a tela precisa dizer isso a quem opera, senão parece que a
+    // liberação nasce aqui.
+    await expect(page.locator('body')).toContainText('PORTAL_RECH_CLIENTES');
+  });
+
+  test('o menu do ADM oferece a tela', async ({ page }) => {
+    await entrarComSucesso(page, USUARIOS.adm);
+    await expect(
+      page.locator('.side-nav').locator('a[href="/acesso-clientes"]'),
+    ).toBeVisible();
+  });
+
+  test('não abre para quem não é ADM — nem pela URL, nem no menu', async ({ page }) => {
+    await entrarComSucesso(page, USUARIOS.coordenador);
+    await expect(
+      page.locator('.side-nav').locator('a[href="/acesso-clientes"]'),
+    ).toHaveCount(0);
+    await page.goto('/acesso-clientes');
+    await expect(page).not.toHaveURL(/acesso-clientes/, { timeout: 10_000 });
+  });
+
+  test('e a API recusa quem não é ADM', async ({ request }) => {
+    for (const login of [USUARIOS.coordenador, CLIENTE]) {
+      const tk = await token(request, login);
+      const r = await request.get('/api/contatos-sicla?cliente=3180', {
+        headers: cab(tk), failOnStatusCode: false,
+      });
+      expect(r.status(), `${login} não podia listar contatos`).toBeGreaterThanOrEqual(400);
+    }
+  });
+
+  // Sem Oracle a listagem não vem; o que não pode é a tela fingir "nenhum contato liberado",
+  // que leria como decisão do SICLA em vez de falha de conexão.
+  test('sem SICLA, o ADM recebe a mensagem da conexão — não uma lista vazia', async ({ request }) => {
+    const tk = await token(request, USUARIOS.adm);
+    const r = await request.get('/api/contatos-sicla?cliente=3180', { headers: cab(tk) });
+    expect(r.status()).toBe(200);
+    const corpo = dados(await r.json());
+    expect(corpo.ok).toBe(false);
+    expect(corpo.mensagem).toBeTruthy();
+  });
+});

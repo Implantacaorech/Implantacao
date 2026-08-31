@@ -9,11 +9,14 @@ import { JwtStrategy } from './jwt.strategy';
 import { RefreshToken } from '../database/entities/refresh-token.entity';
 import { RecuperacaoSenha } from '../database/entities/recuperacao-senha.entity';
 import { UsersModule } from '../users/users.module';
+import { ContatosSiclaModule } from '../contatos-sicla/contatos-sicla.module';
 import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
     UsersModule,
+    // O login do usuário-cliente revalida a liberação no SICLA a cada entrada.
+    ContatosSiclaModule,
     // O "Esqueci minha senha" manda o código pelo MailerService (Microsoft 365/SMTP) —
     // mesma infraestrutura de e-mail do auto-cadastro.
     EmailModule,

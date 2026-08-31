@@ -3,6 +3,7 @@ import {
   SQL_BUSCA_MODULO_PADRAO,
   SQL_LISTA_TECNICOS_PADRAO,
   SQL_LISTA_FUNCOES_PADRAO,
+  SQL_LISTA_CONTATOS_PADRAO,
 } from './sql/sicla-cadastros.sql';
 import { SQL_CONSULTA_RNS_PADRAO } from './sql/sicla-rns.sql';
 import {
@@ -20,6 +21,10 @@ import {
   SQL_PREVISAO_INICIO_OFICIAL,
 } from './sql/sicla-bi.sql';
 import { SQL_VISITAS_PORTAL_PADRAO } from './sql/portal-rech.sql';
+import {
+  NOME_LISTA_CONTATOS,
+  SLUG_LISTA_CONTATOS,
+} from '../../contatos-sicla/contatos-sicla.constants';
 import { SELECT_TECNICOS_PADRAO } from './sql/sicla-disponibilidade.sql';
 import { ConsultaCatalogo, ParametroConsulta } from './catalogo.types';
 
@@ -49,6 +54,11 @@ const LIMITE = {
   visitasPortal: 20000,
   ocupacao: 20000,
   tecnicosSicla: 5000,
+  // Contatos liberados no portal. Cabe no teto de uma página (TAMANHO_PAGINA_MAX) de
+  // propósito: o recorte é `PORTAL_RECH_CLIENTES = 1`, ou seja, só quem a Rech já autorizou
+  // a entrar no portal — não a agenda de contatos inteira. Se um dia estourar, o caminho é
+  // paginar, não subir o teto em silêncio.
+  contatosSicla: 5000,
 } as const;
 
 /** Teto absoluto de linhas por página, independente do que a consulta declare — protege o
@@ -519,6 +529,33 @@ export const CATALOGO: ConsultaCatalogo[] = [
     limiteLinhas: LIMITE.tecnicosSicla,
     cacheSegundos: 600,
     donoAtual: 'disponibilidade',
+    desde: 'v1',
+  },
+
+  {
+    nome: 'sicla.contatos.listar',
+    titulo: 'Contatos de cliente liberados no Portal Rech',
+    descricao:
+      'Contatos com PORTAL_RECH_CLIENTES = 1 — quem o SICLA autoriza a acessar o portal. Fonte do acesso externo ao Painel.',
+    conexao: 'sicla',
+    // Duas telas: o cadastro de acesso (onde o ADM libera) e o BI, porque o login do
+    // usuário-cliente revalida contra esta consulta a cada entrada.
+    menus: ['acesso_clientes', 'bi_implantacao'],
+    parametros: [P.cliente],
+    origem: {
+      tipo: 'consulta_salva',
+      slug: SLUG_LISTA_CONTATOS,
+      sqlPadrao: SQL_LISTA_CONTATOS_PADRAO,
+      semente: {
+        nome: NOME_LISTA_CONTATOS,
+        ordem: 95,
+      },
+    },
+    limiteLinhas: LIMITE.contatosSicla,
+    // Cache curto: é autorização, não relatório. Revogar no SICLA precisa valer rápido, e o
+    // login do cliente passa por aqui.
+    cacheSegundos: 60,
+    donoAtual: 'contatos-sicla',
     desde: 'v1',
   },
 

@@ -35,6 +35,7 @@ import { PassosModule } from './passos/passos.module';
 import { ClientesSiclaModule } from './clientes-sicla/clientes-sicla.module';
 import { ModulosSiclaModule } from './modulos-sicla/modulos-sicla.module';
 import { TecnicosSiclaModule } from './tecnicos-sicla/tecnicos-sicla.module';
+import { ContatosSiclaModule } from './contatos-sicla/contatos-sicla.module';
 import { PermissoesModule } from './permissoes/permissoes.module';
 import { PreferenciasModule } from './preferencias/preferencias.module';
 import { MatrizDetalhadaModule } from './matriz-detalhada/matriz-detalhada.module';
@@ -122,6 +123,7 @@ import { DadosConsumoModule } from './dados/consumo/dados-consumo.module';
     ClientesSiclaModule,
     ModulosSiclaModule,
     TecnicosSiclaModule,
+    ContatosSiclaModule,
     PermissoesModule,
     PreferenciasModule,
     MatrizDetalhadaModule,

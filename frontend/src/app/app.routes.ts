@@ -620,6 +620,16 @@ export const routes: Routes = [
         loadComponent: () => import('./features/legado/gerar.component').then((m) => m.GerarComponent),
       },
       {
+        // Acesso de Clientes: quem, do lado do cliente, entra no Painel. Só ADM, como Usuários.
+        path: 'acesso-clientes',
+        canActivate: [permissaoGuard('acesso_clientes')],
+        data: { titulo: 'Acesso de Clientes' },
+        loadComponent: () =>
+          import('./features/acesso-clientes/acesso-clientes.component').then(
+            (m) => m.AcessoClientesComponent,
+          ),
+      },
+      {
         path: 'usuarios',
         canActivate: [perfilGuard('ADM')],
         data: { titulo: 'Usuários' },

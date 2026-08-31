@@ -1,0 +1,158 @@
+<h1 class="pagina-titulo">
+  <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-users"/></svg>
+  Acesso de Clientes
+</h1>
+<p class="dica">Quem, do lado do <strong>cliente</strong>, entra no Painel. A lista vem do SICLA
+  (<code>LISTA_CONTATOS</code>) e traz <strong>apenas os contatos que a Rech já liberou para o
+  Portal</strong> — quem autoriza é o SICLA, pelo campo <code>PORTAL_RECH_CLIENTES</code>; esta
+  tela concede a <strong>conta</strong> a quem já está autorizado lá. Cada contato liberado enxerga
+  <strong>somente</strong> o BI “Implantação Clientes SIGER” do próprio cliente.</p>
+
+@if (aviso()) {
+  <div class="resultado ok"><svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}</div>
+}
+@if (erro()) {
+  <div class="resultado erro">⚠️ {{ erro() }}</div>
+}
+
+<div class="painel">
+  <h3>
+    <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>
+    Contatos liberados no Portal
+    <small style="color:var(--muted);font-weight:400">— tabela <code>LISTA_CONTATOS</code></small>
+  </h3>
+  <p class="dica">Informe o <strong>código do cliente</strong> no SICLA para ver os contatos dele.
+    Ao liberar, o contato recebe um usuário cujo <strong>login é o e-mail</strong>, com senha
+    aleatória que <strong>ninguém vê</strong>: ele define a dele pelo
+    <em>“Esqueci minha senha”</em> da tela de login. Contato sem e-mail no SICLA não pode ser
+    liberado. O SQL da consulta é editável em <em>Sistema → Consultas BD</em>.</p>
+
+  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
+    <input
+      style="width:170px"
+      placeholder="código do cliente"
+      [value]="cliente()"
+      (input)="cliente.set($any($event.target).value)"
+      (keyup.enter)="buscar()"
+    />
+    <input
+      style="flex:1;min-width:200px"
+      placeholder="filtrar por nome, e-mail ou cargo…"
+      [value]="filtro()"
+      (input)="filtro.set($any($event.target).value)"
+      (keyup.enter)="buscar()"
+    />
+    <button class="btn" type="button" [disabled]="carregando()" (click)="buscar()">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>
+      {{ carregando() ? 'Buscando…' : 'Buscar no SICLA' }}
+    </button>
+    <button class="btn" type="button" [disabled]="carregando()" (click)="buscarNovos()"
+            title="Traz só os contatos que ainda não têm acesso ao Painel">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg> Buscar novos
+    </button>
+  </div>
+
+  <label style="display:flex;align-items:center;gap:6px;margin-bottom:10px;cursor:pointer;font-weight:500">
+    <input
+      type="checkbox"
+      style="width:auto"
+      [checked]="soNaoLiberados()"
+      [disabled]="carregando()"
+      (change)="alternarSoNaoLiberados($any($event.target).checked)"
+    />
+    Só os que <strong>ainda não têm acesso</strong> ao Painel
+  </label>
+
+  @if (contatos().length > 0) {
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
+      <button class="btn primario" type="button" [disabled]="agindo()" (click)="liberar()">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+        {{ agindo()
+            ? 'Processando…'
+            : (selecionados().length > 0
+                ? 'Liberar ' + selecionados().length + ' selecionado(s)'
+                : 'Liberar todos os que ainda não têm acesso') }}
+      </button>
+      @if (selecionados().length > 0) {
+        <button class="btn perigo" type="button" [disabled]="agindo()" (click)="revogar()"
+                title="Desativa o acesso; o histórico permanece e dá para reativar depois">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-logout"/></svg>
+          Revogar {{ selecionados().length }} selecionado(s)
+        </button>
+      }
+      <span class="dica" style="margin:0">
+        {{ contatos().length }} contato(s) · {{ liberadosNaLista() }} com acesso
+      </span>
+    </div>
+
+    <div class="tabela-wrap">
+      <table class="form-tab">
+        <thead>
+          <tr>
+            <th style="width:34px">
+              <input
+                type="checkbox"
+                style="width:auto"
+                [checked]="selecionados().length === contatos().length"
+                (change)="marcarTodos($any($event.target).checked)"
+                title="marcar/desmarcar todos"
+              />
+            </th>
+            <th>Nome</th><th>Cargo</th><th>E-mail (login)</th>
+            <th>Cliente</th><th>Ativo</th><th>Status</th><th>Portal</th><th>Acesso</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of contatos(); track c.email) {
+            <tr>
+              <td>
+                <input
+                  type="checkbox"
+                  style="width:auto"
+                  [disabled]="!c.email"
+                  [checked]="marcado(c.email)"
+                  (change)="alternar(c.email, $any($event.target).checked)"
+                />
+              </td>
+              <td>{{ c.nome }}</td>
+              <td>{{ c.cargo }}</td>
+              <td>
+                {{ c.email || '—' }}
+                @if (!c.email) {
+                  <small style="color:var(--muted)"> (sem e-mail no SICLA)</small>
+                }
+              </td>
+              <td>{{ c.cliente }}</td>
+              <td>{{ c.ativo }}</td>
+              <td>{{ c.status }}</td>
+              <td>{{ c.liberacaoPortal }}</td>
+              <td style="white-space:nowrap">
+                @if (c.jaLiberado) {
+                  <span class="marca liberado">tem acesso</span>
+                } @else if (c.desativado) {
+                  <span class="marca revogado">revogado</span>
+                } @else {
+                  <span class="marca sem">sem acesso</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else if (buscou() && !erro()) {
+    <p class="dica">Nenhum contato liberado no Portal para esse filtro. A liberação é feita no
+      <strong>SICLA</strong>, no cadastro do contato (<code>PORTAL_RECH_CLIENTES</code>).</p>
+  }
+
+  @if (ignorados().length > 0) {
+    <div class="resultado erro" style="margin-top:10px">
+      <strong>{{ ignorados().length }} contato(s) não receberam acesso:</strong>
+      <ul style="margin:6px 0 0 18px">
+        @for (i of ignorados(); track i.email + i.nome) {
+          <li>{{ i.nome || i.email }} — {{ i.motivo }}</li>
+        }
+      </ul>
+    </div>
+  }
+</div>
