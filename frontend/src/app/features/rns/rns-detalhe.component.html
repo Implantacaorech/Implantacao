@@ -1,0 +1,27 @@
+@if (linha().visaoGeral) {
+  <div class="rns-det-vg">{{ linha().visaoGeral }}</div>
+}
+<div class="rns-det-grps">
+  @for (g of grupos(); track g.titulo) {
+    <section class="rns-det-grp">
+      <h4 class="rns-det-tit">{{ g.titulo }}</h4>
+      <dl class="rns-det-cps">
+        @for (c of g.campos; track c.rotulo) {
+          <div class="rns-det-cp">
+            <dt>{{ c.rotulo }}</dt>
+            <dd [class.vazio]="c.vazio">{{ c.valor }}</dd>
+          </div>
+        }
+      </dl>
+    </section>
+  }
+</div>
+@if (linha().detalhamento) {
+  <div class="rns-det-txt"><div class="rns-det-tit">Detalhamento</div>{{ linha().detalhamento }}</div>
+}
+@if (linha().motivo) {
+  <div class="rns-det-txt"><div class="rns-det-tit">Motivo</div>{{ linha().motivo }}</div>
+}
+@if (linha().parecerEng) {
+  <div class="rns-det-txt"><div class="rns-det-tit">Parecer da engenharia</div>{{ linha().parecerEng }}</div>
+}

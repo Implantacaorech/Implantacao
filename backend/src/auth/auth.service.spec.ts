@@ -110,4 +110,47 @@ describe('AuthService.refresh — papéis vêm do cadastro, não do token antigo
       'Usuário inativo ou removido.',
     );
   });
+
+  // M11 — detecção de reuso de refresh token.
+  it('na rotação normal, marca o token antigo com motivo "rotacao"', async () => {
+    await service.refresh(await refreshDefasado());
+    const salvo = refreshRepo.save.mock.calls[0][0] as {
+      revogado: boolean;
+      motivoRevogacao: string;
+    };
+    expect(salvo.revogado).toBe(true);
+    expect(salvo.motivoRevogacao).toBe('rotacao');
+  });
+
+  it('reuso de um token JÁ ROTACIONADO revoga a família e recusa', async () => {
+    refreshRepo.findOne.mockResolvedValue({
+      id: 1,
+      usuarioId: 9,
+      revogado: true,
+      motivoRevogacao: 'rotacao',
+      expiraEm: new Date(Date.now() + 86400000),
+    });
+    await expect(service.refresh(await refreshDefasado())).rejects.toThrow(
+      /token reutilizado/,
+    );
+    // Revoga TODA a família ativa do usuário.
+    expect(refreshRepo.update).toHaveBeenCalledWith(
+      { usuarioId: 9, revogado: false },
+      { revogado: true, motivoRevogacao: 'replay' },
+    );
+  });
+
+  it('reapresentar um token de LOGOUT recusa, mas NÃO derruba a família', async () => {
+    refreshRepo.findOne.mockResolvedValue({
+      id: 1,
+      usuarioId: 9,
+      revogado: true,
+      motivoRevogacao: 'logout',
+      expiraEm: new Date(Date.now() + 86400000),
+    });
+    await expect(service.refresh(await refreshDefasado())).rejects.toThrow(
+      /token reutilizado/,
+    );
+    expect(refreshRepo.update).not.toHaveBeenCalled();
+  });
 });

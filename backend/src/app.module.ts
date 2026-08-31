@@ -15,6 +15,10 @@ import { CronogramaModule } from './cronograma/cronograma.module';
 import { LevantamentoModule } from './levantamento/levantamento.module';
 import { IaModule } from './ia/ia.module';
 import { ProtocolosModule } from './protocolos/protocolos.module';
+import { RecheduModule } from './rechedu/rechedu.module';
+import { AgendaModule } from './agenda/agenda.module';
+import { RnsModule } from './rns/rns.module';
+import { ConsultorSigerModule } from './consultor-siger/consultor-siger.module';
 import { EmailModule } from './email/email.module';
 import { FluxoModule } from './fluxo/fluxo.module';
 import { DisponibilidadeModule } from './disponibilidade/disponibilidade.module';
@@ -40,6 +44,11 @@ import { BiIndicadoresModule } from './bi-indicadores/bi-indicadores.module';
 import { BiAgendaAlocacaoModule } from './bi-agenda-alocacao/bi-agenda-alocacao.module';
 import { BiMovimentosModule } from './bi-movimentos/bi-movimentos.module';
 import { SaudeModule } from './saude/saude.module';
+import { ProntidaoModule } from './prontidao/prontidao.module';
+import { IaTelemetriaModule } from './ia-telemetria/ia-telemetria.module';
+import { AutomacaoModule } from './automacao/automacao.module';
+import { DadosModule } from './dados/dados.module';
+import { DadosConsumoModule } from './dados/consumo/dados-consumo.module';
 
 @Module({
   imports: [
@@ -80,14 +89,26 @@ import { SaudeModule } from './saude/saude.module';
     // HealthModule, com outro público: `/api/health` responde ao Guardião em uma linha;
     // `/api/saude` é o relatório para gente ler — e vai junto no digest diário.
     SaudeModule,
+    ProntidaoModule,
     CatalogosModule,
     CronogramaModule,
     LevantamentoModule,
     IaModule,
+    IaTelemetriaModule,
+    AutomacaoModule,
     ProtocolosModule,
+    RecheduModule,
+    AgendaModule,
+    RnsModule,
+    ConsultorSigerModule,
     EmailModule,
     FluxoModule,
     DisponibilidadeModule,
+    // API de Dados (ADR-0003): fronteira única entre o Painel e os bancos EXTERNOS.
+    DadosModule,
+    // Lado CONSUMIDOR: os tokens com que este Painel consulta o Portal API (instância
+    // interna). Só o Painel monta isto — o Portal API é a ponta que executa.
+    DadosConsumoModule,
     MatrizModule,
     PainelModule,
     CadastroModule,

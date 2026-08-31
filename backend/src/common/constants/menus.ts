@@ -57,6 +57,23 @@ export const MENUS: DefinicaoMenu[] = [
     grupo: 'Execução',
   },
   { chave: 'dicionario', rotulo: 'Dicionário Inteligente', grupo: 'Execução' },
+  // Protocolo: moldura do Portal Rech (portalrech.com.br) dentro do Painel. A chave é o
+  // singular porque 'protocolos' (plural) já pertence à Transcrição Áudio/Vídeo.
+  { chave: 'protocolo', rotulo: 'Protocolo', grupo: 'Execução' },
+  // RechEdu: moldura do portal de educação (www.rechedu.com.br), irmã da tela Protocolo —
+  // mesmo desenho (iframe + credencial própria do consultor guardada no backend).
+  { chave: 'rechedu', rotulo: 'RechEdu', grupo: 'Execução' },
+  // Agenda: calendário de compromissos dos técnicos (mesma origem SICLA do BI "Alocação de
+  // Agendas"), aberto já filtrado no usuário logado, em visão semanal por padrão.
+  { chave: 'agenda', rotulo: 'Agenda', grupo: 'Execução' },
+  // RNS: consulta de assuntos nas RNS do SICLA (LISTA_ITEMPED) — o consultor pesquisa um
+  // assunto e vê as RNS relacionadas (Pedido + Item), no molde do Dicionário Inteligente.
+  { chave: 'rns', rotulo: 'RNS', grupo: 'Execução' },
+  // Consultor SIGER: base inteligente de conhecimento do CÓDIGO-FONTE do SIGER (F:\SIGER,
+  // fonte SOMENTE LEITURA que o Painel nem acessa — consome a base derivada gerada pelo
+  // indexador externo). O consultor pergunta em linguagem natural e vê telas, parâmetros,
+  // cadastros, validações e menus com arquivo:linha citados.
+  { chave: 'consultor_siger', rotulo: 'Consultor SIGER', grupo: 'Execução' },
   { chave: 'coordenacao', rotulo: 'Coordenação', grupo: 'Gestão' },
   {
     chave: 'centro_operacional',
@@ -98,15 +115,45 @@ export const MENUS: DefinicaoMenu[] = [
     grupo: 'Sistema',
     fixaAdm: true,
   },
+  // `consulta_bd` DEIXOU de ser uma tela deste Painel em 2026-08-26 — Consultas BD mudou
+  // para o Portal API. A CHAVE fica, e continua valendo, porque o que ela gateia não é a
+  // tela: é quem, entrando por JWT, pode CHAMAR uma consulta publicada pela tela (ver
+  // `MENU_CONSULTA_DE_TELA` em dados/catalogo/catalogo.service.ts). Renomear a chave
+  // quebraria as liberações já gravadas em `permissoes_menu`, então só o rótulo mudou.
+  //
+  // **Deixou de ser `fixaAdm` em 2026-08-27**, a pedido do usuário. Enquanto era fixa, só o
+  // Administrador conseguia chamar por login uma consulta publicada pela tela — e isso
+  // esvaziava o caminho: publica-se uma consulta para o time usar, e o time não alcança.
+  // Agora é liberável como qualquer outro menu. O PADRÃO continua só ADM: quem abre para os
+  // demais é o Administrador, no painel, de propósito.
+  //
+  // ⚠️ A liberação é POR MENU, não por consulta: quem recebe `consulta_bd` alcança TODAS as
+  // consultas publicadas pela tela. Granularidade por consulta existe só para token de
+  // máquina. Se um dia for preciso para pessoa, é mudança de desenho, não de configuração.
   {
     chave: 'consulta_bd',
-    rotulo: 'Consulta BD',
+    rotulo: 'Consultas publicadas pela tela (API de Dados)',
+    grupo: 'Sistema',
+  },
+  // Tela do lado CONSUMIDOR: onde se cola o token gerado no Portal API. Entrou no Painel em
+  // 2026-08-26, no lugar das telas de administração da API que saíram daqui.
+  {
+    chave: 'tokens_api',
+    rotulo: 'Tokens da API de Dados',
     grupo: 'Sistema',
     fixaAdm: true,
   },
   {
     chave: 'assistente_legado',
     rotulo: 'Assistente Legado',
+    grupo: 'Sistema',
+    fixaAdm: true,
+  },
+  // Prontidão do Sistema — visão da Auditoria de Prontidão dos 9 eixos (2026-08-12). fixaAdm:
+  // é uma tela de Sistema (só ADM), e o ADM sempre a enxerga pela trava de segurança.
+  {
+    chave: 'prontidao',
+    rotulo: 'Prontidão do Sistema',
     grupo: 'Sistema',
     fixaAdm: true,
   },
@@ -191,6 +238,58 @@ export const PADRAO_PERMISSOES: Record<
     Levantador: 'alteracao',
   },
   dicionario: { ADM: 'alteracao' },
+  // Protocolo (Portal Rech): mesma liberação da Transcrição Áudio/Vídeo — todo o time
+  // interno; o Comercial fica de fora por padrão (ajustável em Gestão → Permissões).
+  protocolo: {
+    ADM: 'alteracao',
+    Coordenador: 'alteracao',
+    Administrativo: 'alteracao',
+    GCI: 'alteracao',
+    Consultor: 'alteracao',
+    Levantador: 'alteracao',
+  },
+  // RechEdu: mesma liberação da tela Protocolo — todo o time interno; o Comercial fica de
+  // fora por padrão (ajustável em Gestão → Permissões).
+  rechedu: {
+    ADM: 'alteracao',
+    Coordenador: 'alteracao',
+    Administrativo: 'alteracao',
+    GCI: 'alteracao',
+    Consultor: 'alteracao',
+    Levantador: 'alteracao',
+  },
+  // Agenda: consulta de compromissos — todo o time interno, como a Transcrição e o
+  // Protocolo; o Comercial fica de fora por padrão (ajustável em Gestão → Permissões).
+  // `consulta` basta: a tela só lê o SICLA, não há ação de escrita.
+  agenda: {
+    ADM: 'alteracao',
+    Coordenador: 'consulta',
+    Administrativo: 'consulta',
+    GCI: 'consulta',
+    Consultor: 'consulta',
+    Levantador: 'consulta',
+  },
+  // RNS: consulta de assuntos — só leitura do SICLA, mesma liberação da Agenda; o
+  // Comercial fica de fora por padrão (ajustável em Gestão → Permissões).
+  rns: {
+    ADM: 'alteracao',
+    Coordenador: 'consulta',
+    Administrativo: 'consulta',
+    GCI: 'consulta',
+    Consultor: 'consulta',
+    Levantador: 'consulta',
+  },
+  // Consultor SIGER: consulta à base de conhecimento do código-fonte — só leitura (a tela
+  // toda é pesquisa; o feedback 👍/👎 conta como uso). O Comercial fica de fora por padrão,
+  // ajustável em Gestão → Permissões.
+  consultor_siger: {
+    ADM: 'alteracao',
+    Coordenador: 'consulta',
+    Administrativo: 'consulta',
+    GCI: 'consulta',
+    Consultor: 'consulta',
+    Levantador: 'consulta',
+  },
   coordenacao: { ADM: 'alteracao', Coordenador: 'alteracao', GCI: 'alteracao' },
   centro_operacional: {
     ADM: 'alteracao',
@@ -224,7 +323,9 @@ export const PADRAO_PERMISSOES: Record<
   indice_topicos: { ADM: 'alteracao' },
   modelos_docs: { ADM: 'alteracao' },
   consulta_bd: { ADM: 'alteracao' },
+  tokens_api: { ADM: 'alteracao' },
   assistente_legado: { ADM: 'alteracao' },
+  prontidao: { ADM: 'alteracao' },
 };
 
 export const PAPEIS_PERMISSAO: Perfil[] = [...PERFIS];

@@ -14,15 +14,6 @@ export interface ArquivoBaixado {
 
 export type PreviewDocumento = { tipo: 'pdf'; blob: Blob } | { tipo: 'html'; html: string };
 
-export interface LevantamentoImportado {
-  arquivo: string;
-  criadoEm: string;
-}
-
-export interface ArquivoGeradoComRespostas extends ArquivoBaixado {
-  respostasImportadas: number;
-}
-
 function nomeArquivo(contentDisposition: string | null, fallback: string): string {
   const m = /filename="?([^";]+)"?/.exec(contentDisposition ?? '');
   return m?.[1] ?? fallback;
@@ -97,40 +88,6 @@ export class DocumentosService {
     const texto = await blob.text();
     const dados = JSON.parse(texto) as { tipo: 'html'; html: string };
     return { tipo: 'html', html: dados.html };
-  }
-
-  /** Há um Levantamento (.docx) importado neste projeto? — equivalente a
-   * webapp/db.py:levantamento_importado, exposto pra tela "Projeto origem" decidir se
-   * mostra a opção "Usar o Levantamento importado". */
-  async origemProjeto(projetoId: number): Promise<{ importado: LevantamentoImportado | null }> {
-    const res = await firstValueFrom(
-      this.http.get<ApiEnvelope<{ importado: LevantamentoImportado | null }>>(
-        `${this.base}/projetos/${projetoId}/projeto/origem`,
-      ),
-    );
-    return res.data;
-  }
-
-  /** Importa as respostas de um Levantamento (.docx enviado agora, ou `null` para reusar o
-   * último já importado) e gera o Projeto — equivalente a
-   * webapp/routes_geracao.py:projeto_origem (fontes "importar"/"importado"). */
-  async importarLevantamentoEGerarProjeto(
-    projetoId: number,
-    arquivo: File | null,
-  ): Promise<ArquivoGeradoComRespostas> {
-    const form = new FormData();
-    if (arquivo) form.append('arquivo', arquivo);
-    const res = await firstValueFrom(
-      this.http.post(`${this.base}/projetos/${projetoId}/projeto/importar-levantamento`, form, {
-        responseType: 'blob',
-        observe: 'response',
-      }),
-    );
-    return {
-      blob: res.body as Blob,
-      filename: nomeArquivo(res.headers.get('content-disposition'), 'projeto'),
-      respostasImportadas: Number(res.headers.get('x-respostas-importadas') ?? 0),
-    };
   }
 
   async cabecalho(projetoId: number): Promise<Cabecalho> {

@@ -46,8 +46,14 @@ if (-not $ultimoBackup) {
 # 3) Suite de testes do backend (jest) ----------------------------------------------
 Push-Location "$PSScriptRoot\..\backend"
 try {
-  npm test 2>&1 | Out-File -Append -FilePath $logFile
-  if ($LASTEXITCODE -eq 0) {
+  # M7 (auditoria 2026-08-12): `Out-File -Append` sem -Encoding gravava a saida do npm em
+  # UTF-16, enquanto o Log() grava UTF-8 sem BOM - o arquivo virava uma mistura e toda linha
+  # FALHA futura sairia ilegivel (mesmo defeito que escondeu as falhas de backup). Capturamos
+  # a saida e a anexamos pelo MESMO caminho UTF-8 sem BOM.
+  $saidaTeste = (npm test 2>&1 | Out-String)
+  $exitTeste = $LASTEXITCODE
+  [System.IO.File]::AppendAllText($logFile, $saidaTeste, $script:Utf8SemBom)
+  if ($exitTeste -eq 0) {
     Log "OK -> suite de testes do backend passou"
   } else {
     $falhas += "suite de testes do backend falhou (ver log acima)"

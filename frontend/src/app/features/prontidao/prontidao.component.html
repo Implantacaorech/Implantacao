@@ -1,0 +1,184 @@
+<h1 class="pagina-titulo">Prontidão do Sistema</h1>
+<p class="dica">
+  Auditoria de Prontidão dos 9 eixos — segurança, governança, resiliência, agentes autônomos,
+  detecção antes do usuário, alucinações, custo por token, fallback e observabilidade.
+  @if (dados()) {
+    <span> · retrato de {{ dados()!.dataAuditoria }}</span>
+  }
+</p>
+
+@if (carregando()) {
+  <div class="painel">Carregando a prontidão…</div>
+} @else if (erro()) {
+  <div class="painel prt-erro">{{ erro() }}</div>
+} @else if (dados(); as d) {
+  <!-- Alerta AO VIVO: dado de cliente saindo da rede AGORA (achado A1) -->
+  @if (d.privacidadeAoVivo.length) {
+    <div class="painel prt-alerta-vivo">
+      <strong>⚠ Privacidade (ao vivo):</strong>
+      dado de cliente está saindo da rede neste momento —
+      @for (p of d.privacidadeAoVivo; track p.finalidade) {
+        <span class="prt-chip-vivo"
+          >{{ p.finalidade }} → {{ p.provider }}{{ p.viaEnv ? ' (variável de ambiente)' : '' }}</span
+        >
+      }
+      <div class="dica">
+        Reconfigure a finalidade para um provedor <strong>local</strong> em Config → IA.
+      </div>
+    </div>
+  }
+
+  <!-- Kill switch de runtime (eixo 4): freio de emergência da automação e da IA -->
+  @if (d.automacao; as auto) {
+    <div class="painel prt-automacao" [class.pausada]="auto.pausado">
+      <div class="prt-auto-linha">
+        <strong>Automação e IA:</strong>
+        @if (auto.pausado) {
+          <span class="prt-badge st-aberto">PAUSADA</span>
+          <span class="dica"
+            >{{ auto.motivo }}{{ auto.por ? ' — por ' + auto.por : '' }}</span
+          >
+          <button
+            type="button"
+            class="btn"
+            [disabled]="alterandoAutomacao()"
+            (click)="retomarAutomacao()"
+          >
+            Retomar
+          </button>
+        } @else {
+          <span class="prt-badge st-corrigido">Ativa</span>
+          <input
+            #motivoInput
+            type="text"
+            class="prt-auto-motivo"
+            placeholder="Motivo (opcional)"
+            [disabled]="alterandoAutomacao()"
+          />
+          <button
+            type="button"
+            class="btn prt-btn-perigo"
+            [disabled]="alterandoAutomacao()"
+            (click)="pausarAutomacao(motivoInput.value); motivoInput.value = ''"
+          >
+            Pausar tudo
+          </button>
+        }
+      </div>
+      <div class="dica">
+        Freio de emergência: pausa os robôs de fundo e recusa toda chamada de IA. A pausa
+        sobrevive a um restart até alguém retomar.
+      </div>
+    </div>
+  }
+
+  <!-- Cartões de topo -->
+  <div class="prt-kpis">
+    <div class="prt-kpi">
+      <div class="prt-kpi-num">{{ d.totais.maturidadeMedia }}<span>/5</span></div>
+      <div class="prt-kpi-rot">Maturidade média</div>
+    </div>
+    @for (s of ordemSeveridade; track s) {
+      <button
+        type="button"
+        class="prt-kpi prt-kpi-btn"
+        [class.sel]="filtroSeveridade() === s"
+        [class]="'sev-' + s"
+        (click)="alternarSeveridade(s)"
+      >
+        <div class="prt-kpi-num">{{ d.totais.porSeveridade[s] }}</div>
+        <div class="prt-kpi-rot">{{ rotuloSeveridade[s] }}</div>
+      </button>
+    }
+    @for (s of ordemStatus; track s) {
+      <button
+        type="button"
+        class="prt-kpi prt-kpi-btn"
+        [class.sel]="filtroStatus() === s"
+        [class]="'st-' + s"
+        (click)="alternarStatus(s)"
+      >
+        <div class="prt-kpi-num">{{ d.totais.porStatus[s] }}</div>
+        <div class="prt-kpi-rot">{{ rotuloStatus[s] }}</div>
+      </button>
+    }
+  </div>
+
+  <!-- Veredito por eixo -->
+  <section class="painel">
+    <h2 class="prt-h2">Veredito por eixo</h2>
+    <div class="prt-eixos">
+      @for (e of d.eixos; track e.numero) {
+        <div class="prt-eixo">
+          <div class="prt-eixo-cab">
+            <span class="prt-eixo-nome">{{ e.numero }}. {{ e.nome }}</span>
+            <span class="prt-eixo-nota" [class]="'mat-' + e.maturidade">{{ e.maturidade }}/5</span>
+          </div>
+          <div class="prt-barra" [attr.aria-label]="'maturidade ' + e.maturidade + ' de 5'">
+            @for (n of escala; track n) {
+              <span class="prt-seg" [class.on]="n <= e.maturidade" [class]="n <= e.maturidade ? 'mat-' + e.maturidade : ''"></span>
+            }
+          </div>
+          <p class="prt-eixo-resumo">{{ e.resumo }}</p>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- Achados -->
+  <section class="painel">
+    <div class="prt-achados-cab">
+      <h2 class="prt-h2">Achados ({{ achadosFiltrados().length }})</h2>
+      @if (filtroSeveridade() || filtroStatus()) {
+        <button type="button" class="btn" (click)="limparFiltros()">Limpar filtros</button>
+      }
+    </div>
+    <div class="tabela-wrap">
+      <table class="tabela prt-tabela">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Achado</th>
+            <th>Eixo</th>
+            <th>Severidade</th>
+            <th>Status</th>
+            <th>Evidência</th>
+            <th>Correção</th>
+            <th>Dono</th>
+            <th>Prazo</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (a of achadosFiltrados(); track a.codigo) {
+            <tr>
+              <td class="prt-cod">{{ a.codigo }}</td>
+              <td>{{ a.titulo }}</td>
+              <td class="prt-eixo-td">{{ a.eixo }}. {{ nomeEixo(a.eixo) }}</td>
+              <td>
+                <span class="prt-badge" [class]="'sev-' + a.severidade">{{ rotuloSeveridade[a.severidade] }}</span>
+              </td>
+              <td>
+                <span class="prt-badge" [class]="'st-' + a.status">{{ rotuloStatus[a.status] }}</span>
+              </td>
+              <td><code class="prt-ev">{{ a.evidencia }}</code></td>
+              <td>{{ a.correcao }}</td>
+              <td>{{ a.dono }}</td>
+              <td>{{ a.prazo ?? '—' }}</td>
+            </tr>
+          }
+          @if (!achadosFiltrados().length) {
+            <tr>
+              <td colspan="9" class="tabela-vazia">Nenhum achado com esse filtro.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="dica">
+    Fonte: <code>docs/pendencias.md</code> §"Auditoria de prontidão dos 9 eixos" e a norma
+    §21-A do <code>PADRAO-DESENVOLVIMENTO-RECH.md</code>. O status de cada achado é atualizado à
+    mão, com o commit da correção; a privacidade ao vivo é lida a cada abertura da tela.
+  </p>
+}

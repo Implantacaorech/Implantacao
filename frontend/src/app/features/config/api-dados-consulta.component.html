@@ -1,0 +1,150 @@
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-table"/></svg>
+    {{ slugEditando() ? 'Editar consulta' : 'Nova consulta da API' }}
+  </h1>
+  <p class="dica">
+    Cole o SELECT e clique em <strong>Testar</strong>: o sistema descobre os parâmetros
+    (<code>:binds</code>) e as colunas de retorno. Você só escolhe o tipo de cada parâmetro e
+    o teto de linhas. <a routerLink="/config/api-dados">Voltar ao Portal de Conexões</a>
+  </p>
+
+  @if (aviso()) {
+    <div class="resultado ok linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+    </div>
+  }
+  @if (erro()) {
+    <div class="resultado erro">{{ erro() }}</div>
+  }
+  @if (erros().length) {
+    <div class="resultado erro">
+      <strong>Corrija antes de publicar:</strong>
+      <ul>
+        @for (e of erros(); track e) {
+          <li>{{ e }}</li>
+        }
+      </ul>
+    </div>
+  }
+
+  <form class="painel" [formGroup]="form" (ngSubmit)="salvar()">
+    <div class="grade2">
+      <label class="campo"><span>Identificador (slug)</span>
+        <input formControlName="slug" placeholder="rns_por_cliente" />
+      </label>
+      <label class="campo"><span>Nome legível</span>
+        <input formControlName="nome" placeholder="RNS por cliente" />
+      </label>
+      <label class="campo"><span>Conexão</span>
+        <select formControlName="conexao">
+          <option value="sicla">SICLA (Oracle)</option>
+          <option value="portal_rech">Portal Rech (MySQL)</option>
+        </select>
+      </label>
+      <label class="campo"><span>Nome público na API</span>
+        <input formControlName="nomeApi" placeholder="sicla.rns.por-cliente" />
+      </label>
+    </div>
+
+    <label class="campo"><span>SELECT</span>
+      <textarea formControlName="sql" rows="12" spellcheck="false"
+        placeholder="SELECT ... FROM ... WHERE data >= :data_ini"></textarea>
+    </label>
+
+    <div class="acoes">
+      <button class="btn" type="button" (click)="testar()" [disabled]="testando()">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg>
+        {{ testando() ? 'Testando…' : 'Testar' }}
+      </button>
+    </div>
+
+    @if (analise(); as a) {
+      <div class="resultado" [class.ok]="a.ok" [class.erro]="!a.ok">{{ a.mensagem }}</div>
+    }
+
+    @if (parametros().length) {
+      <h2>Parâmetros detectados no SELECT</h2>
+      <p class="dica">
+        Os nomes vêm do próprio SQL. Escolha o tipo — é ele que define a validação antes de
+        a consulta chegar ao banco. O valor de exemplo serve só para o Testar rodar.
+      </p>
+      <div class="tabela-wrap">
+        <table class="tabela">
+          <thead>
+            <tr><th>Parâmetro</th><th>Tipo</th><th>Obrigatório</th><th>Descrição</th><th>Exemplo</th></tr>
+          </thead>
+          <tbody>
+            @for (p of parametros(); track p.nome) {
+              <tr>
+                <td><code>:{{ p.nome }}</code></td>
+                <td>
+                  <select [value]="p.tipo" (change)="definirTipo(p.nome, $any($event.target).value)">
+                    @for (t of tipos; track t.valor) {
+                      <option [value]="t.valor">{{ t.rotulo }}</option>
+                    }
+                  </select>
+                </td>
+                <td>
+                  <input type="checkbox" [checked]="p.obrigatorio"
+                    (change)="definirObrigatorio(p.nome, $any($event.target).checked)" />
+                </td>
+                <td>
+                  <input [value]="p.descricao"
+                    (input)="definirDescricao(p.nome, $any($event.target).value)"
+                    placeholder="o que este parâmetro filtra" />
+                </td>
+                <td>
+                  <input [value]="exemploDe(p.nome)"
+                    (input)="definirExemplo(p.nome, $any($event.target).value)"
+                    placeholder="2026-08-01" />
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    @if (colunas().length) {
+      <h2>Colunas de retorno</h2>
+      <p class="dica">Descobertas pelo Testar — é o que documenta a saída para quem consome.</p>
+      <p>
+        @for (c of colunas(); track c) {
+          <span class="tag-param">{{ c }}</span>
+        }
+      </p>
+    }
+
+    <h2>Publicação</h2>
+    <div class="grade2">
+      <label class="campo"><span>Teto de linhas</span>
+        <input type="number" formControlName="limiteLinhas" min="1" max="5000" />
+      </label>
+      <label class="campo"><span>Cache (segundos, 0 = sem cache)</span>
+        <input type="number" formControlName="cacheSegundos" min="0" />
+      </label>
+    </div>
+    <label class="escopo-item">
+      <input type="checkbox" formControlName="publicada" />
+      <span>
+        <strong>Publicar no catálogo da API.</strong>
+        Só então ela aparece em <code>GET /consultas</code> e pode ser autorizada num token —
+        e só então o contrato (nome público, tipos, teto) é exigido.
+      </span>
+    </label>
+
+    <div class="acoes">
+      <button class="btn primario" type="submit" [disabled]="salvando()">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+        {{ salvando() ? 'Salvando…' : 'Salvar' }}
+      </button>
+      @if (slugEditando()) {
+        <button class="btn" type="button" (click)="excluir()">Apagar</button>
+      }
+      <a class="btn" routerLink="/config/api-dados">Voltar</a>
+    </div>
+  </form>
+}

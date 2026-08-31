@@ -1,0 +1,26 @@
+.proto-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.proto-acoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* O iframe ocupa o resto da janela abaixo do cabeçalho da tela; o mínimo garante uso
+ * decente em notebook com a janela baixa. */
+.proto-frame {
+  width: 100%;
+  height: calc(100vh - 240px);
+  min-height: 480px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}

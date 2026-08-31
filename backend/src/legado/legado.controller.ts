@@ -13,6 +13,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { LIMITE_UPLOAD_DOC } from '../common/upload.constants';
 import {
   ApiBearerAuth,
   ApiConsumes,
@@ -103,7 +104,9 @@ export class LegadoController {
 
   @Post('verbal/docx')
   @HttpCode(HttpStatus.OK)
-  @UseInterceptors(FileInterceptor('arquivo'))
+  @UseInterceptors(
+    FileInterceptor('arquivo', { limits: { fileSize: LIMITE_UPLOAD_DOC } }),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary:
@@ -140,7 +143,9 @@ export class LegadoController {
 
   @Post('importar')
   @HttpCode(HttpStatus.OK)
-  @UseInterceptors(FileInterceptor('arquivo'))
+  @UseInterceptors(
+    FileInterceptor('arquivo', { limits: { fileSize: LIMITE_UPLOAD_DOC } }),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary:
@@ -158,7 +163,9 @@ export class LegadoController {
 
   @Post('gerar')
   @HttpCode(HttpStatus.OK)
-  @UseInterceptors(FileInterceptor('yaml'))
+  @UseInterceptors(
+    FileInterceptor('yaml', { limits: { fileSize: LIMITE_UPLOAD_DOC } }),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary:

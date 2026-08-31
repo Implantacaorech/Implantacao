@@ -2,7 +2,12 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { BiImplantacaoComponent } from './bi-implantacao.component';
 import { BiImplantacaoService } from '../../core/services/bi-implantacao.service';
-import { LinhaResumoBi, ResultadoResumoBi } from '../../core/models/bi-implantacao.model';
+import {
+  LinhaResumoBi,
+  LinhaVisitaPortalBi,
+  ResultadoResumoBi,
+  ResultadoVisitasPortalBi,
+} from '../../core/models/bi-implantacao.model';
 
 function linha(over: Partial<LinhaResumoBi> = {}): LinhaResumoBi {
   return {
@@ -65,14 +70,50 @@ function resultado(over: Partial<ResultadoResumoBi> = {}): ResultadoResumoBi {
   };
 }
 
+function visita(over: Partial<LinhaVisitaPortalBi> = {}): LinhaVisitaPortalBi {
+  return {
+    empresa: 'ALFA',
+    cliente: 10,
+    contato: 'Iloni',
+    consultor: 'Remeling',
+    protocolo: 4821,
+    data: '2026-08-13',
+    horario: '08:30:00',
+    turno: 'MANHÃ',
+    aprovado: 'Sim',
+    ...over,
+  };
+}
+
+function resultadoVisitas(
+  over: Partial<ResultadoVisitasPortalBi> = {},
+): ResultadoVisitasPortalBi {
+  const linhas = over.linhas ?? [];
+  return {
+    periodo: { inicio: '2025-07-29', fim: '2026-07-29' },
+    linhas,
+    total: linhas.length,
+    limite: 5000,
+    truncado: false,
+    erro: null,
+    ...over,
+  };
+}
+
 describe('BiImplantacaoComponent', () => {
   function montar(service: Partial<BiImplantacaoService>) {
     // Alguns testes montam o componente mais de uma vez (varrendo faixas de percentual);
     // sem o reset, o TestBed recusa uma segunda configuração.
     TestBed.resetTestingModule();
+    // O componente sempre busca as visitas do Portal junto com o resumo — os testes que
+    // não são sobre o painel ganham um mock vazio para não estourar em `undefined`.
+    const completo: Partial<BiImplantacaoService> = {
+      visitasPortal: () => Promise.resolve(resultadoVisitas()),
+      ...service,
+    };
     TestBed.configureTestingModule({
       imports: [BiImplantacaoComponent],
-      providers: [provideRouter([]), { provide: BiImplantacaoService, useValue: service }],
+      providers: [provideRouter([]), { provide: BiImplantacaoService, useValue: completo }],
     });
     return TestBed.createComponent(BiImplantacaoComponent);
   }
@@ -311,5 +352,307 @@ describe('BiImplantacaoComponent', () => {
       resumo: () => Promise.resolve(resultado({ linhas: [], porStatus: [] })),
     });
     expect(comp.graficoStatus()).toBeNull();
+  });
+
+  // ── Painel "Visitas do Portal Rech" (abaixo do CONTROLE DE HORAS) ──────────────────
+  describe('visitas do Portal Rech', () => {
+    /** Duas implantações (clientes 10-ALFA e 20-BETA) e três visitas: uma de cada + uma
+     * de um cliente SEM implantação no período (99). */
+    async function comVisitas() {
+      const linhas = [
+        linha({ codigo: 1, cliente: 10, fantasia: 'ALFA', grupoEconomico: 'G1' }),
+        linha({ codigo: 2, cliente: 20, fantasia: 'BETA', grupoEconomico: 'G2' }),
+      ];
+      const visitas = [
+        visita({ cliente: 10, empresa: 'ALFA', protocolo: 1, aprovado: 'Sim' }),
+        visita({ cliente: 20, empresa: 'BETA', protocolo: 2, aprovado: 'Não' }),
+        visita({ cliente: 99, empresa: 'GAMA', protocolo: 3 }),
+      ];
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado({ linhas })),
+        visitasPortal: () => Promise.resolve(resultadoVisitas({ linhas: visitas })),
+      });
+      // a busca das visitas roda DEPOIS do resumo — flush dos microtasks pendentes
+      await Promise.resolve();
+      await Promise.resolve();
+      return comp;
+    }
+
+    it('mostra SÓ as visitas dos clientes visíveis na tabela (cliente filtrado sempre vale)', async () => {
+      const comp = await comVisitas();
+      // GAMA (cliente 99) não tem implantação no recorte → fica de fora
+      expect(comp.visitasVisiveis().map((v) => v.protocolo)).toEqual([1, 2]);
+      expect(comp.visitasAprovadas()).toBe(1);
+
+      // a busca local corta a tabela para ALFA → o painel acompanha
+      comp.busca.set('ALFA');
+      expect(comp.visitasVisiveis().map((v) => v.protocolo)).toEqual([1]);
+    });
+
+    it('exibe ordenado por empresa → contato → consultor → data/hora (o SQL manda as mais recentes primeiro)', async () => {
+      const linhas = [
+        linha({ codigo: 1, cliente: 10, fantasia: 'ALFA', grupoEconomico: 'G1' }),
+        linha({ codigo: 2, cliente: 20, fantasia: 'BETA', grupoEconomico: 'G2' }),
+      ];
+      // ordem de chegada = INICIO DESC (política de corte do teto), não a de exibição
+      const visitas = [
+        visita({ cliente: 20, empresa: 'BETA', protocolo: 3, data: '2026-08-15' }),
+        visita({ cliente: 10, empresa: 'ALFA', protocolo: 2, data: '2026-08-14', horario: '14:00:00' }),
+        visita({ cliente: 10, empresa: 'ALFA', protocolo: 1, data: '2026-08-14', horario: '08:00:00' }),
+      ];
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado({ linhas })),
+        visitasPortal: () => Promise.resolve(resultadoVisitas({ linhas: visitas })),
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(comp.visitasVisiveis().map((v) => v.protocolo)).toEqual([1, 2, 3]);
+    });
+
+    it('casa pelo nome fantasia quando a consulta editada não devolve o código', async () => {
+      const linhas = [linha({ codigo: 1, cliente: 10, fantasia: 'ALFA' })];
+      const visitas = [
+        visita({ cliente: null, empresa: 'alfa', protocolo: 7 }),
+        visita({ cliente: null, empresa: 'GAMA', protocolo: 8 }),
+      ];
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado({ linhas })),
+        visitasPortal: () => Promise.resolve(resultadoVisitas({ linhas: visitas })),
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(comp.visitasVisiveis().map((v) => v.protocolo)).toEqual([7]);
+    });
+
+    it('trocar um filtro local NÃO volta ao banco; o De/Até sim', async () => {
+      const visitasPortal = vi.fn().mockResolvedValue(resultadoVisitas());
+      const resumo = vi.fn().mockResolvedValue(resultado());
+      const comp = await pronto({ resumo, visitasPortal });
+      await Promise.resolve();
+      expect(visitasPortal).toHaveBeenCalledTimes(1);
+
+      // filtro local: mesmo período → nada de nova consulta
+      comp.alternar(comp.statusSel, '6-Concluída');
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(visitasPortal).toHaveBeenCalledTimes(1);
+
+      // período novo → reconsulta
+      resumo.mockResolvedValue(
+        resultado({ periodo: { inicio: '2026-01-01', fim: '2026-06-30' } }),
+      );
+      await comp.carregar();
+      expect(visitasPortal).toHaveBeenCalledTimes(2);
+      expect(visitasPortal).toHaveBeenLastCalledWith({
+        dataIni: '2026-01-01',
+        dataFim: '2026-06-30',
+      });
+    });
+
+    it('erro do painel não derruba a tela (fica só no card de visitas)', async () => {
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado()),
+        visitasPortal: () =>
+          Promise.resolve(resultadoVisitas({ erro: 'ORA-00942: tabela ou view inexistente' })),
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(comp.erroVisitas()).toContain('ORA-00942');
+      expect(comp.erro()).toBeNull();
+      expect(comp.linhas()).toHaveLength(1);
+    });
+
+    it('identifica aprovação sem depender de caixa', async () => {
+      const comp = await pronto({ resumo: () => Promise.resolve(resultado()) });
+      expect(comp.aprovadoSim('Sim')).toBe(true);
+      expect(comp.aprovadoSim('SIM')).toBe(true);
+      expect(comp.aprovadoSim('Não')).toBe(false);
+      expect(comp.aprovadoSim('')).toBe(false);
+    });
+
+    // ── Filtros locais, gráfico por contato e visões ─────────────────────────────────
+    async function comFiltraveis() {
+      const linhas = [linha({ codigo: 1, cliente: 10, fantasia: 'ALFA' })];
+      const visitas = [
+        visita({ cliente: 10, contato: 'Ana', consultor: 'Silva', protocolo: 1, aprovado: 'Sim' }),
+        visita({ cliente: 10, contato: 'Ana', consultor: 'Rocha', protocolo: 2, aprovado: 'Não' }),
+        visita({ cliente: 10, contato: 'Beto', consultor: 'Silva', protocolo: 3, aprovado: 'Sim' }),
+      ];
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado({ linhas })),
+        visitasPortal: () => Promise.resolve(resultadoVisitas({ linhas: visitas })),
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+      return comp;
+    }
+
+    it('filtros do painel recortam tabela e contadores; as opções cascateiam', async () => {
+      const comp = await comFiltraveis();
+
+      comp.vpContato.set('Ana');
+      // ordem de exibição: consultor Rocha < Silva dentro do mesmo contato
+      expect(comp.visitasFiltradas().map((v) => v.protocolo)).toEqual([2, 1]);
+      expect(comp.visitasAprovadas()).toBe(1);
+      // a PRÓPRIA dimensão não se restringe (senão não daria para trocar a escolha)…
+      expect(comp.opcoesVisitasContato()).toEqual(['Ana', 'Beto']);
+      // …mas as demais encolhem para o recorte
+      expect(comp.opcoesVisitasConsultor()).toEqual(['Rocha', 'Silva']);
+
+      comp.vpConsultor.set('Rocha');
+      expect(comp.visitasFiltradas().map((v) => v.protocolo)).toEqual([2]);
+      expect(comp.opcoesVisitasContato()).toEqual(['Ana']);
+
+      comp.limparFiltrosVisitas();
+      expect(comp.visitasFiltradas()).toHaveLength(3);
+    });
+
+    it('filtro por nº de protocolo (contém)', async () => {
+      const comp = await comFiltraveis();
+      comp.vpProtocolo.set('3');
+      expect(comp.visitasFiltradas().map((v) => v.protocolo)).toEqual([3]);
+    });
+
+    it('gráfico soma protocolos por contato (aprovados × não), mais volumosos primeiro', async () => {
+      const linhas = [linha({ codigo: 1, cliente: 10, fantasia: 'ALFA' })];
+      const visitas = [
+        visita({ cliente: 10, contato: 'Ana', aprovado: 'Sim' }),
+        visita({ cliente: 10, contato: 'Ana', aprovado: 'Não' }),
+        visita({ cliente: 10, contato: 'Ana', aprovado: 'Sim' }),
+        visita({ cliente: 10, contato: 'Beto', aprovado: 'Não' }),
+      ];
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado({ linhas })),
+        visitasPortal: () => Promise.resolve(resultadoVisitas({ linhas: visitas })),
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const cfg = comp.graficoVisitasContato();
+      expect(cfg?.data.labels).toEqual(['Ana', 'Beto']);
+      expect(cfg?.data.datasets[0].data).toEqual([2, 0]); // aprovados
+      expect(cfg?.data.datasets[1].data).toEqual([1, 1]); // não aprovados
+    });
+
+    it('visão mensal/semanal recorta o PAINEL INTEIRO (tabela, contadores e gráfico)', async () => {
+      const linhas = [linha({ codigo: 1, cliente: 10, fantasia: 'ALFA' })];
+      const visitas = [
+        visita({ cliente: 10, contato: 'Ana', data: '2026-08-17' }), // semana E mês
+        visita({ cliente: 10, contato: 'Ana', data: '2026-08-03' }), // só o mês
+        visita({ cliente: 10, contato: 'Ana', data: '2026-07-10' }), // fora dos dois
+      ];
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado({ linhas })),
+        visitasPortal: () => Promise.resolve(resultadoVisitas({ linhas: visitas })),
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+      vi.spyOn(comp as unknown as { hojeLocal: () => string }, 'hojeLocal')
+        .mockReturnValue('2026-08-17');
+
+      const totalGrafico = (): number => {
+        const cfg = comp.graficoVisitasContato();
+        return (cfg?.data.datasets ?? []).reduce(
+          (a, d) => a + (d.data as number[]).reduce((x, y) => x + y, 0),
+          0,
+        );
+      };
+      expect(comp.visitasFiltradas()).toHaveLength(3); // geral
+      expect(totalGrafico()).toBe(3);
+
+      comp.visaoVisitas.set('mensal');
+      expect(comp.visitasFiltradas()).toHaveLength(2); // a TABELA acompanha a visão
+      expect(comp.visitasAprovadas()).toBe(2); // contadores também (default aprovado=Sim)
+      expect(totalGrafico()).toBe(2);
+
+      comp.visaoVisitas.set('semanal'); // semana de segunda 17/08 a domingo 23/08
+      expect(comp.visitasFiltradas()).toHaveLength(1);
+      expect(totalGrafico()).toBe(1);
+    });
+
+    it('os gráficos carregam o plugin que escreve os valores nas barras', async () => {
+      const comp = await comVisitas();
+      expect(
+        comp.graficoVisitasContato()?.plugins?.some((p) => p.id === 'rotulosNasBarras'),
+      ).toBe(true);
+      expect(
+        comp.graficoStatus()?.plugins?.some((p) => p.id === 'rotulosNasBarras'),
+      ).toBe(true);
+    });
+
+    it('a caixa de e-mail abre pré-preenchida pelo modelo (sem apagar o que o usuário digitou)', async () => {
+      const modeloEmailVisitas = vi
+        .fn()
+        .mockResolvedValue({ assunto: 'Assunto padrão', corpo: 'Corpo padrão' });
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado()),
+        modeloEmailVisitas,
+      });
+      await comp.abrirEnvioEmail();
+      expect(comp.emailAberto()).toBe(true);
+      expect(comp.emailAssunto()).toBe('Assunto padrão');
+      expect(comp.emailCorpo()).toBe('Corpo padrão');
+
+      comp.emailCorpo.set('texto meu');
+      comp.fecharEnvioEmail();
+      await comp.abrirEnvioEmail();
+      expect(comp.emailCorpo()).toBe('texto meu'); // modelo não sobrescreve edição
+      expect(modeloEmailVisitas).toHaveBeenCalledTimes(1);
+    });
+
+    it('envia as linhas FILTRADAS com a descrição do recorte; sucesso fecha a caixa', async () => {
+      const enviarVisitasEmail = vi.fn().mockResolvedValue({ ok: true, erro: null });
+      const linhas = [linha({ codigo: 1, cliente: 10, fantasia: 'ALFA' })];
+      const visitas = [
+        visita({ cliente: 10, contato: 'Ana', protocolo: 1 }),
+        visita({ cliente: 10, contato: 'Beto', protocolo: 2 }),
+      ];
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado({ linhas })),
+        visitasPortal: () => Promise.resolve(resultadoVisitas({ linhas: visitas })),
+        modeloEmailVisitas: () => Promise.resolve({ assunto: 'A', corpo: 'C' }),
+        enviarVisitasEmail,
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      await comp.abrirEnvioEmail();
+      comp.emailPara.set('coord@rech.com.br');
+      comp.vpContato.set('Ana'); // o envio respeita o filtro em vigor
+      await comp.enviarEmailVisitas();
+
+      const envio = enviarVisitasEmail.mock.calls[0][0];
+      expect(envio.para).toBe('coord@rech.com.br');
+      expect(envio.linhas.map((l: { protocolo: number }) => l.protocolo)).toEqual([1]);
+      expect(envio.recorte.join('\n')).toContain('Contato: Ana');
+      expect(envio.recorte.join('\n')).toContain('Período:');
+      expect(comp.emailAberto()).toBe(false);
+      expect(comp.emailOk()).toContain('enviado');
+    });
+
+    it('falha do envio fica na caixa (não fecha, mostra o motivo)', async () => {
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado()),
+        modeloEmailVisitas: () => Promise.resolve({ assunto: 'A', corpo: 'C' }),
+        enviarVisitasEmail: () =>
+          Promise.resolve({ ok: false, erro: 'Nenhum meio de envio configurado' }),
+      });
+      await comp.abrirEnvioEmail();
+      comp.emailPara.set('a@rech.com.br');
+      await comp.enviarEmailVisitas();
+      expect(comp.emailAberto()).toBe(true);
+      expect(comp.emailErro()).toContain('meio de envio');
+    });
+
+    it('sem destinatário, avisa e não chama o backend', async () => {
+      const enviarVisitasEmail = vi.fn();
+      const comp = await pronto({
+        resumo: () => Promise.resolve(resultado()),
+        enviarVisitasEmail,
+      });
+      await comp.enviarEmailVisitas();
+      expect(comp.emailErro()).toContain('destino');
+      expect(enviarVisitasEmail).not.toHaveBeenCalled();
+    });
   });
 });

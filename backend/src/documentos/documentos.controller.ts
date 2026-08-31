@@ -19,6 +19,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { LIMITE_UPLOAD_DOC } from '../common/upload.constants';
 import {
   ApiBearerAuth,
   ApiConsumes,
@@ -42,8 +43,6 @@ import {
   SlugDocumentoFiel,
 } from './geracao-layout.service';
 import { GeracaoDocumentosService } from '../geracao/geracao-documentos.service';
-import { LegadoCliService } from '../legado/legado-cli.service';
-import { LevantamentoRespostaService } from '../levantamento/levantamento-resposta.service';
 import {
   NotificacaoService,
   EventoNotificacao,
@@ -100,8 +99,6 @@ export class DocumentosController {
     private readonly geracaoLayout: GeracaoLayoutService,
     private readonly notificacao: NotificacaoService,
     private readonly geracaoDocumentos: GeracaoDocumentosService,
-    private readonly legadoCli: LegadoCliService,
-    private readonly levantamentoResposta: LevantamentoRespostaService,
   ) {}
 
   @Get('projetos/:projetoId/documentos')
@@ -161,7 +158,9 @@ export class DocumentosController {
 
   @Post('projetos/:projetoId/anexar')
   @Permissao('carteira', 'alteracao')
-  @UseInterceptors(FileInterceptor('arquivo'))
+  @UseInterceptors(
+    FileInterceptor('arquivo', { limits: { fileSize: LIMITE_UPLOAD_DOC } }),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary: 'Anexa um documento manualmente à ficha do projeto',
@@ -233,118 +232,6 @@ export class DocumentosController {
     }
     res.set(cabecalhos);
     res.json({ tipo: 'html', html: resultado.html });
-  }
-
-  @Get('projetos/:projetoId/projeto/origem')
-  @ApiOperation({
-    summary:
-      'Estado da seleção de fonte do Projeto — há um Levantamento (.docx) importado neste projeto?',
-  })
-  async origemProjeto(@Param('projetoId', ParseIntPipe) projetoId: number) {
-    const doc = await this.documentos.ultimoLevantamentoImportado(projetoId);
-    return new ApiEnvelope({
-      importado: doc ? { arquivo: doc.arquivo, criadoEm: doc.criadoEm } : null,
-    });
-  }
-
-  @Post('projetos/:projetoId/projeto/importar-levantamento')
-  @HttpCode(HttpStatus.OK)
-  @UseInterceptors(FileInterceptor('arquivo'))
-  @ApiConsumes('multipart/form-data')
-  @ApiOperation({
-    summary:
-      'Importa as respostas de um Levantamento (.docx enviado agora, ou o último já importado) e gera o Projeto — ' +
-      'equivalente a webapp/routes_geracao.py:projeto_origem (fontes "importar"/"importado")',
-  })
-  async importarLevantamentoEGerarProjeto(
-    @Param('projetoId', ParseIntPipe) projetoId: number,
-    @UploadedFile() arquivo: Express.Multer.File | undefined,
-    @CurrentUser() user: AuthUser,
-    @Res() res: Response,
-  ) {
-    if (!temPapel(user, ..._PERFIS_GERA.projeto)) {
-      throw new ForbiddenException(
-        'Seu perfil não pode gerar o Projeto de Implantação.',
-      );
-    }
-    let caminhoDocx: string;
-    if (arquivo) {
-      if (!arquivo.originalname.toLowerCase().endsWith('.docx')) {
-        throw new UnprocessableEntityException(
-          'O Levantamento importado deve ser um arquivo .docx.',
-        );
-      }
-      const salvoDocx = this.documentos.salvarArquivoGerado(
-        projetoId,
-        arquivo.originalname,
-        arquivo.buffer,
-      );
-      await this.documentos.registrarDocumento(
-        projetoId,
-        'levantamento',
-        salvoDocx.arquivo,
-        salvoDocx.caminho,
-        'importado',
-        user.nome,
-        { usuario: user },
-      );
-      await this.documentos.registrarEvento(
-        projetoId,
-        'documento',
-        `Importou Levantamento ${salvoDocx.arquivo}`,
-        user.nome,
-      );
-      caminhoDocx = salvoDocx.caminho;
-    } else {
-      const anterior =
-        await this.documentos.ultimoLevantamentoImportado(projetoId);
-      if (!anterior || !existsSync(anterior.caminho)) {
-        throw new UnprocessableEntityException(
-          'Não há Levantamento importado neste projeto.',
-        );
-      }
-      caminhoDocx = anterior.caminho;
-    }
-
-    const { paragrafos } = await this.legadoCli.executar<{
-      paragrafos: string[];
-    }>('docx_paragrafos', {
-      caminho: caminhoDocx,
-    });
-    const respondidas = await this.levantamentoResposta.importarDeParagrafos(
-      projetoId,
-      paragrafos,
-    );
-
-    const gerado = await this.geracaoLayout.gerar(projetoId, 'projeto', 'auto');
-    const salvo = this.documentos.salvarArquivoGerado(
-      projetoId,
-      gerado.filename,
-      gerado.buffer,
-    );
-    await this.documentos.registrarDocumento(
-      projetoId,
-      'projeto',
-      salvo.arquivo,
-      salvo.caminho,
-      'gerado',
-      user.nome,
-      { usuario: user },
-    );
-    await this.documentos.registrarEvento(
-      projetoId,
-      'documento',
-      `Gerou ${salvo.arquivo} pelo layout oficial (projeto) — ${respondidas} resposta(s) importada(s) do Levantamento`,
-      user.nome,
-    );
-    await this.notificacao.notificarEvento(projetoId, _EVT_DOC.projeto);
-
-    res.set({
-      'Content-Type': gerado.contentType,
-      'Content-Disposition': `attachment; filename="${gerado.filename}"`,
-      'X-Respostas-Importadas': String(respondidas),
-    });
-    res.send(gerado.buffer);
   }
 
   @Post('projetos/:projetoId/gerar-layout/:slug')

@@ -56,6 +56,7 @@ export class ProjetosController {
 
   @Post()
   @Roles(...PERFIS_DESIGNA)
+  @Permissao('carteira', 'alteracao') // M2: escrita → nível de alteração
   @ApiOperation({ summary: 'Cria um projeto novo (Hub)' })
   criar(@Body() dto: CreateProjetoDto) {
     return this.service.criar(dto);
@@ -82,6 +83,7 @@ export class ProjetosController {
 
   @Delete(':id')
   @Roles(...PERFIS_DESIGNA)
+  @Permissao('carteira', 'alteracao') // M2: escrita → nível de alteração
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Exclui o projeto (e, na conversão completa, suas tabelas filhas)',

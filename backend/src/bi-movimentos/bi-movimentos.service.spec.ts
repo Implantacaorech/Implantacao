@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BiMovimentosService } from './bi-movimentos.service';
-import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
-import { SQL_MOVIMENTOS_AGRUPADOS } from './bi-movimentos.constants';
+import { DadosService } from '../dados/dados.service';
+import { SQL_MOVIMENTOS_AGRUPADOS } from '../dados/catalogo/sql/sicla-bi.sql';
 
 /** Linha CRUA já agregada pelo SQL (GROUP BY técnico/tipo de movimento/cobrança) — espelha o
  * que a consulta real devolveu numa janela de 30 dias (THOMAZ/VISITAS/Não, 22 movimentos,
@@ -20,19 +20,18 @@ function grupo(over: Record<string, unknown> = {}) {
 
 describe('BiMovimentosService', () => {
   let service: BiMovimentosService;
-  const disponibilidade = { configurado: jest.fn(), executarSql: jest.fn() };
+  const dados = { consultar: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BiMovimentosService,
-        { provide: DisponibilidadeService, useValue: disponibilidade },
+        { provide: DadosService, useValue: dados },
       ],
     }).compile();
     service = module.get(BiMovimentosService);
-    disponibilidade.configurado.mockReturnValue(true);
-    disponibilidade.executarSql.mockResolvedValue({
+    dados.consultar.mockResolvedValue({
       ok: true,
       mensagem: '1',
       colunas: [],
@@ -70,8 +69,10 @@ describe('BiMovimentosService', () => {
         dataIni: '2026-01-01',
         dataFim: '2026-01-31',
       });
-      const [, binds] = disponibilidade.executarSql.mock.calls[0];
-      expect(binds).toEqual({ data_ini: '2026-01-01', data_fim: '2026-02-01' });
+      expect(dados.consultar).toHaveBeenCalledWith('sicla.bi.movimentos', {
+        data_ini: '2026-01-01',
+        data_fim: '2026-02-01',
+      });
     });
   });
 
@@ -83,7 +84,7 @@ describe('BiMovimentosService', () => {
     });
 
     it('COBRA_HORA "Sim"/"Não" vira booleano — não confundir com o filtro de status de outra página', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '1',
         colunas: [],
@@ -94,7 +95,7 @@ describe('BiMovimentosService', () => {
     });
 
     it('horas não cobradas = total - cobradas quando MINCOBRADO diverge (ex.: PENDENCIA)', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '1',
         colunas: [],
@@ -109,7 +110,7 @@ describe('BiMovimentosService', () => {
     });
 
     it('agrupa por técnico e por tipo de movimento, somando quem repete', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '2',
         colunas: [],
@@ -142,7 +143,7 @@ describe('BiMovimentosService', () => {
     });
 
     it('conta técnicos distintos', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '2',
         colunas: [],
@@ -155,7 +156,7 @@ describe('BiMovimentosService', () => {
 
   describe('filtros', () => {
     it('filtra por técnico em cascata', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '2',
         colunas: [],
@@ -167,7 +168,7 @@ describe('BiMovimentosService', () => {
     });
 
     it('filtra por cobra_hora traduzindo o booleano de volta para Sim/Não', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      dados.consultar.mockResolvedValue({
         ok: true,
         mensagem: '2',
         colunas: [],
@@ -187,14 +188,19 @@ describe('BiMovimentosService', () => {
   });
 
   it('avisa quando o SICLA não está configurado', async () => {
-    disponibilidade.configurado.mockReturnValue(false);
+    dados.consultar.mockResolvedValue({
+      ok: false,
+      mensagem: 'Conexão com o SICLA não configurada ou inativa.',
+      colunas: [],
+      linhas: [],
+    });
     const r = await service.movimentos({});
     expect(r.erro).toContain('não configurada');
     expect(r.porTecnico).toEqual([]);
   });
 
   it('propaga erro do banco', async () => {
-    disponibilidade.executarSql.mockResolvedValue({
+    dados.consultar.mockResolvedValue({
       ok: false,
       mensagem: 'ORA-00942',
       colunas: [],

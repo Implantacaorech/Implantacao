@@ -280,6 +280,18 @@ export class QueryAgendasDto {
   rns?: string[];
 }
 
+export class QueryVisitasPortalDto {
+  @ApiPropertyOptional({ description: 'Início do período (AAAA-MM-DD)' })
+  @IsOptional()
+  @IsString()
+  dataIni?: string;
+
+  @ApiPropertyOptional({ description: 'Fim do período (AAAA-MM-DD)' })
+  @IsOptional()
+  @IsString()
+  dataFim?: string;
+}
+
 export class QueryDescricaoDto {
   @ApiPropertyOptional({ description: 'Protocolo do lançamento' })
   @IsOptional()

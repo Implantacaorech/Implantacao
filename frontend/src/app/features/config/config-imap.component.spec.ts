@@ -6,7 +6,7 @@ import { StatusConfigImap } from '../../core/models/config-imap.model';
 
 function status(over: Partial<StatusConfigImap> = {}): StatusConfigImap {
   return {
-    host: 'imap.gmail.com',
+    host: 'outlook.office365.com',
     port: '993',
     user: 'implantacao@rech.com.br',
     pasta: 'INBOX',
@@ -29,7 +29,7 @@ describe('ConfigImapComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const comp = fixture.componentInstance;
-    expect(comp.form.getRawValue().host).toBe('imap.gmail.com');
+    expect(comp.form.getRawValue().host).toBe('outlook.office365.com');
     expect(comp.form.getRawValue().senha).toBe('');
     expect(comp.configurado()).toBe(true);
   });

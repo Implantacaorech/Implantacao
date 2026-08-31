@@ -1,6 +1,6 @@
 # Padrão de Desenvolvimento — Rech Informática Ltda
 
-**Revisão:** `1.0.0` · **Data:** 03/08/2026 · **Status:** Vigente ·
+**Revisão:** `2.0.0` · **Data:** 12/08/2026 · **Status:** Vigente ·
 **Responsável:** Time DevTools (Parte I) · Arquiteto Principal (Parte II)
 
 > **Este é o documento único de padrão para qualquer desenvolvimento.** Vale para código novo,
@@ -1702,6 +1702,110 @@ Antes de dar uma entrega por concluída:
 - [ ] Logs implementados, sem vazar segredo nem dado pessoal (§19)
 - [ ] Segurança aplicada — JWT, RBAC, Helmet, CORS, rate limit, validação, sanitização (§19)
 - [ ] Guardas de conformidade passando no CI (§20)
+- [ ] **Prontidão de produção — os 9 eixos da §21-A verificados** (segurança, governança,
+  resiliência, agentes autônomos, detecção antes do usuário, alucinações, custo por token,
+  fallback, observabilidade)
+
+---
+
+## 21-A. Prontidão de produção — os 9 eixos obrigatórios
+
+> **Norma criada pela auditoria de prontidão de 2026-08-12.** Vale para todo desenvolvimento novo
+> e para toda alteração estrutural — por pessoa ou por agente de IA. Passar nos testes de unidade
+> não é entrega concluída: o software só está pronto quando também atende aos nove eixos abaixo.
+> Cada regra nasceu de um achado real desta base (Painel de Implantação) e a violação de qualquer
+> uma é **defeito**, não melhoria futura. Onde houver guarda automática (§20), ela prevalece;
+> onde ainda não houver, o revisor confere na entrega.
+
+**Regra de ouro dos nove eixos:** *"funciona na minha máquina" e "os testes passam" não bastam —
+o que decide é o comportamento em produção, sob falha, sem ninguém olhando.* Antes de dar por
+concluída qualquer entrega que toque autenticação, permissão, geração/upload de arquivo, IA,
+integração externa, robô/agente autônomo, e-mail ou boot, percorra os nove eixos.
+
+### 21-A.1 Segurança
+
+- Segredo **nunca** hardcoded nem em log; fallback fraco **falha o boot** quando o ambiente é real
+  (produção **ou** banco real configurado — não dependa só de `NODE_ENV`).
+- **Toda** rota de mutação (POST/PUT/PATCH/DELETE) tem guard de permissão/papel explícito. Rota
+  pública é decisão consciente e documentada, nunca esquecimento. Permissão de **escrita** exige
+  nível de escrita — nunca `consulta`.
+- Nome de arquivo vindo do usuário é **sanitizado** antes de virar caminho (sem `../`, sem
+  separador). Upload tem **limite de tamanho** e validação de tipo.
+- Token de escopo restrito (ticket de mídia etc.) **nunca** vale como sessão.
+- Chave/segredo de terceiro fica fora do banco em claro exposto por API; **não volta** em resposta
+  nem em log.
+
+### 21-A.2 Governança
+
+- Toda decisão de arquitetura relevante vira **ADR** com responsável **humano** nomeado.
+- Conformidade é **verificada por teste** (§20); a guarda deve travar a regra que promete travar —
+  não só declarar a intenção.
+- Ação de IA que vira dado de negócio tem **trilha de auditoria** (quem, quando, finalidade,
+  provedor, modelo, entrada, saída). Documento oficial gerado com apoio de IA passa por **aprovação
+  humana** antes de ir ao cliente, e a **procedência** (IA × humano) fica registrada no schema.
+- O que a suíte cobre roda no **CI**. "Guarda de contrato que não roda não é guarda."
+
+### 21-A.3 Resiliência
+
+- Toda integração externa (SMTP/IMAP, banco externo/Oracle, provedor de IA, docservice) tem
+  **timeout** e trata a falha com **erro claro** que deixa o fluxo do usuário seguir — nunca tela
+  quebrada nem processo pendurado.
+- Variável obrigatória ausente **para o boot** com mensagem clara; variável relevante que fica
+  em silêncio (default perigoso) é achado.
+- Operação repetível é **idempotente** (constraint no banco, não só checagem em memória). E-mail e
+  execução de IA **sobrevivem a restart** ou têm recuperação explícita.
+- Backup só conta se o **restore foi testado** e o procedimento aponta para a infraestrutura real.
+
+### 21-A.4 Agentes autônomos
+
+- Todo processo que roda sem humano no gatilho (robô, agendador, varredura de boot) tem **limites
+  de ação** claros, **aprovação humana** onde a ação é externa/irreversível e **kill switch**
+  individual (desligar UM sem derrubar o sistema).
+- Nenhum caminho de execução **escapa da telemetria**. Há trava contra **loop/reexecução** e teto
+  contra runaway de custo.
+- **Nada é gravado sozinho** em documento que o cliente assina: a IA propõe, o humano aceita, e a
+  autoria registrada é a de quem aceitou.
+
+### 21-A.5 Detecção antes do usuário
+
+- `/api/health` e `/api/saude` checam o que importa (banco, docservice, backup, filas) e o
+  resultado chega a **alguém** por **alerta ativo** — não só endpoint passivo.
+- Erro 5xx e falha de robô **notificam** (não só log). Há **detecção de ausência** (heartbeat:
+  "não rodou há X"), não só de erro. O canal de alerta é **comprovadamente** exercitado.
+
+### 21-A.6 Alucinações
+
+- Saída de IA que vira dado de negócio nasce de **dados reais injetados no prompt**, nunca de
+  "completar de cabeça". É **validada pós-geração** contra o dicionário/banco (código inexistente é
+  rejeitado), não só confiada.
+- O usuário **vê** o que é IA × dado. Parâmetros de amostragem (`temperature`) ajustados para tarefa
+  **factual**. Prompt crítico tem **teste de regressão** (entrada conhecida → saída esperada).
+
+### 21-A.7 Custo por token
+
+- A telemetria registra **tokens e custo** por execução. Há **teto** (dia/execução/agente) que
+  **interrompe** ao estourar. Contexto enviado é o **necessário** (truncagem/resumo), não documento
+  inteiro. Custo acumulado é **visível** no painel, com alerta de gasto anômalo.
+
+### 21-A.8 Fallback
+
+- Provedor de IA fora → **failover** ou degradação **utilizável** para caminho manual, nunca tela
+  travada. docservice fora → o usuário **segue** (anexo manual). SMTP fora → e-mail **enfileirado/
+  reenviável**, nunca passo "concluído" com notificação perdida em silêncio.
+
+### 21-A.9 Observabilidade
+
+- Log com **timestamp, nível, contexto**, que sobrevive a restart e tem **rotação**. **Correlation-id**
+  atravessa frontend → backend → docservice/IA. Métricas de latência/erro e execuções de IA
+  **visíveis** no Monitoramento. Prompt/resposta de IA persistidos para diagnóstico, **respeitando
+  LGPD** (dado de cliente não sai da rede sem decisão explícita).
+
+### 21-A.10 Privacidade / LGPD (transversal)
+
+- Dado pessoal ou de cliente **não sai da rede** para provedor externo sem base legal e decisão
+  registrada. Finalidade de IA que lê transcrição de reunião de cliente usa **provedor local**
+  (trava no código, não só comentário). Backup e persistência de conteúdo sensível consideram
+  **retenção e proteção**.
 
 ---
 
@@ -1715,6 +1819,7 @@ Antes de dar uma entrega por concluída:
 
 | Revisão | Data | Alterações |
 |---|---|---|
+| `2.0.0` | 12/08/2026 | Acrescenta a **§21-A — Prontidão de produção (os 9 eixos obrigatórios)**, norma criada pela auditoria de prontidão de 2026-08-12: segurança, governança, resiliência, agentes autônomos, detecção antes do usuário, alucinações, custo por token, fallback, observabilidade e privacidade/LGPD. Cada regra nasceu de um achado real do Painel de Implantação. Acrescenta o item correspondente ao checklist final de entrega (§21). **MAJOR:** cria obrigações verificáveis — todo desenvolvimento novo e toda alteração estrutural passam a ser avaliados também pelos nove eixos; o Painel mantém a visão viva em **Sistema → Prontidão do Sistema**. |
 | `1.0.0` | 03/08/2026 | Versão inicial do documento único. Consolida em um arquivo o **Padrão Rech rev. `2.0.0`** (Parte I, §3 a §10 — texto normativo preservado sem alteração de conteúdo) e o **Guia Mestre de Arquitetura de Desenvolvimento** de 31/07/2026 (Parte II, §13 a §21). Acrescenta: a §1.4 (ordem de aplicação e precedência entre as partes), o **Bloco B do checklist** (itens 17 a 27, §2), a §4.9 (ponte da stack para a arquitetura), a nota de persistência na §5, a nota de documentação por módulo na §6.1, o bloco de arquitetura no relatório de conformidade (§11) e os itens 12 a 18 do resumo executivo (§12). O "Controle de revisões", antes §13, passou a **§22**. Corrige um resíduo de digitação no modelo de relatório da §11 (`autorizado>rpr`). **MAJOR:** o Bloco B do checklist cria obrigações verificáveis — projetos já auditados só pela Parte I devem ser reavaliados. |
 
 ### 22.2 Da Parte I, antes da consolidação

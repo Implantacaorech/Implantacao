@@ -1,13 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
+import { DadosService } from '../dados/dados.service';
 import { hojeIso } from '../cronograma/datas.util';
 import { textoAparado } from '../common/utils/texto.util';
 import {
   ContagemIndicador,
   LinhaIndicador,
-  LIMITE_INDICADORES,
   SerieMensal,
-  SQL_INDICADORES,
   TotaisIndicadores,
 } from './bi-indicadores.constants';
 
@@ -57,7 +55,7 @@ const MESES_PADRAO = 24;
  * precisa do mesmo payload. */
 @Injectable()
 export class BiIndicadoresService {
-  constructor(private readonly disponibilidade: DisponibilidadeService) {}
+  constructor(private readonly dados: DadosService) {}
 
   private numero(v: unknown): number {
     const n = Number(v);
@@ -332,23 +330,15 @@ export class BiIndicadoresService {
 
   async indicadores(query: QueryIndicadores): Promise<ResultadoIndicadores> {
     const competencias = this.periodo(query);
-    if (!this.disponibilidade.configurado()) {
-      return this.vazio(
-        competencias,
-        'Conexão com o SICLA não configurada ou inativa (Ferramentas → Disponibilidade).',
-      );
-    }
+    // Sem checagem prévia de conexão: `consultar` já devolve {ok:false} com a
+    // mensagem que diz onde configurar — uma fonte só para o mesmo aviso.
 
-    const r = await this.disponibilidade.executarSql(
-      SQL_INDICADORES,
-      // A view guarda a competência como AAAA/MM; o filtro compara texto.
-      {
-        comp_ini: competencias.inicio.replace('-', '/'),
-        comp_fim: competencias.fim.replace('-', '/'),
-      },
-      undefined,
-      LIMITE_INDICADORES,
-    );
+    // Competência vai como AAAA-MM: a conversão para o AAAA/MM que a view guarda é do
+    // catálogo (parâmetro do tipo `competencia`), não mais deste módulo.
+    const r = await this.dados.consultar('sicla.bi.indicadores', {
+      comp_ini: competencias.inicio,
+      comp_fim: competencias.fim,
+    });
     if (!r.ok) return this.vazio(competencias, r.mensagem);
 
     const todas = r.linhas.map((l) => this.normalizar(l));

@@ -1,0 +1,66 @@
+<div class="redu-head">
+  <div>
+    <h1 class="pagina-titulo">RechEdu <small>Portal de educação</small></h1>
+    <p class="dica">Portal de educação da Rech — a página abre aqui dentro.</p>
+  </div>
+  <div class="redu-acoes">
+    @if (!pedindoCredencial() && !temCredencial()) {
+      <button class="btn primario" type="button" (click)="trocarCredencial()">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-lock"/></svg> Salvar credencial
+      </button>
+    }
+    <a class="btn" [href]="urlRechEdu" target="_blank" rel="noopener">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-link"/></svg> Abrir em nova guia
+    </a>
+  </div>
+</div>
+
+<!-- Credencial do RechEdu (solicitada no 1º uso) + captura — igual ao Portal Rech. -->
+@if (pedindoCredencial()) {
+  <div class="redu-cred">
+    <div class="grupo-titulo">Credencial do RechEdu</div>
+    <p class="dica">
+      Informe o <strong>login</strong> e a senha com que você acessa o RechEdu. Fica salvo
+      com segurança no Painel, só para o seu usuário — a senha nunca é exibida de volta.
+    </p>
+    @if (erroCred()) {
+      <p class="redu-erro">{{ erroCred() }}</p>
+    }
+    <div class="form-grid">
+      <label class="campo">
+        <span>Login do RechEdu</span>
+        <input type="text" autocomplete="off"
+               placeholder="seu login de acesso ao RechEdu"
+               [ngModel]="formLogin()" (ngModelChange)="formLogin.set($event)" />
+      </label>
+      <label class="campo">
+        <span>Senha do RechEdu</span>
+        <input type="password" autocomplete="off"
+               [ngModel]="formSenha()" (ngModelChange)="formSenha.set($event)" />
+      </label>
+    </div>
+    <div class="acoes">
+      <button class="btn primario" type="button"
+              [disabled]="salvandoCred()" (click)="salvarCredencial()">
+        {{ salvandoCred() ? 'Salvando…' : 'Salvar' }}
+      </button>
+      <button class="btn" type="button" (click)="pedindoCredencial.set(false)">
+        {{ temCredencial() ? 'Cancelar' : 'Deixar para depois' }}
+      </button>
+    </div>
+  </div>
+} @else if (temCredencial()) {
+  <p class="redu-cred-info">
+    <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+    RechEdu conectado como <strong>{{ credLogin() }}</strong>
+    <button class="redu-link" type="button" (click)="trocarCredencial()">trocar</button>
+    <button class="redu-link" type="button" (click)="removerCredencial()">remover</button>
+  </p>
+}
+
+<iframe
+  class="redu-frame"
+  src="https://www.rechedu.com.br"
+  title="RechEdu — Portal de educação"
+  referrerpolicy="no-referrer"
+></iframe>

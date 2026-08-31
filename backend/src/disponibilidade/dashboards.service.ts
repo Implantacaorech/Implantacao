@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { ConsultaBdService } from './consulta-bd.service';
-import { DisponibilidadeService } from './disponibilidade.service';
+import { ConsultaBdService } from '../dados/consulta-bd.service';
+import { DadosService } from '../dados/dados.service';
 import { hojeIso } from '../cronograma/datas.util';
 import { textoAparado } from '../common/utils/texto.util';
 
@@ -70,7 +70,7 @@ export interface ResultadoDashboard {
 export class DashboardsService {
   constructor(
     private readonly consultas: ConsultaBdService,
-    private readonly disponibilidade: DisponibilidadeService,
+    private readonly dados: DadosService,
   ) {}
 
   private addMonths(iso: string, n: number): string {
@@ -202,17 +202,19 @@ export class DashboardsService {
       };
     }
     base.nome = consulta.nome;
-    if (!this.disponibilidade.configurado()) {
-      return {
-        ...base,
-        erro: 'Conexão externa (Consultas BD → Disponibilidade) não configurada ou inativa.',
-      };
-    }
-
-    const r = await this.disponibilidade.executarSql(consulta.sql, {
-      data_ini: periodo.inicio,
-      data_fim: periodo.fim,
-    });
+    // Cada consulta roda na SUA conexão (campo `conexao`): 'portal' = banco do Portal
+    // Rech (MySQL); default = Oracle da Disponibilidade.
+    // Cada consulta roda na SUA conexão. `portal` é o vocabulário da TELA; o catálogo
+    // chama a mesma conexão de `portal_rech`.
+    const conexao = consulta.conexao === 'portal' ? 'portal_rech' : 'sicla';
+    const binds = { data_ini: periodo.inicio, data_fim: periodo.fim };
+    // Escape hatch do Administrador: o SQL é dele (Consultas BD), não do catálogo. A
+    // checagem de conexão e a auditoria ficam do lado de lá, uma fonte só.
+    const r = await this.dados.executarSqlDeAdministrador(
+      conexao,
+      consulta.sql,
+      binds,
+    );
     if (!r.ok) return { ...base, erro: r.mensagem };
 
     const colunaData = consulta.colunaData.toUpperCase();

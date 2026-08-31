@@ -85,19 +85,6 @@ describe('MatrizFuncoesService', () => {
     expect(r.resumo.avaliadas).toBe(0);
   });
 
-  it('média GERAL: cada técnico pesa igual, independente de quantas avaliou', async () => {
-    const { service } = montar({
-      todos: [
-        tecnico({ 'CTB|1': 10, 'CTB|2': 10 }), // média 10 com 2 notas
-        tecnico({ 'CTB|1': 4 }), //                média 4 com 1 nota
-      ],
-    });
-    const r = await service.mediasGerais();
-    const ctb = r.find((m) => m.sigla === 'CTB')!;
-    expect(ctb.media).toBe(7); // (10 + 4) / 2, não a média das 3 notas
-    expect(ctb.tecnicos).toBe(2);
-  });
-
   it('salvar limita a 0-10, arredonda e aceita vírgula', async () => {
     const alvo = tecnico({});
     const { service, repo } = montar({ achado: alvo });

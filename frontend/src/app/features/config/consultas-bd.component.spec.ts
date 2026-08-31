@@ -2,9 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { ConsultasBdComponent } from './consultas-bd.component';
 import { ConsultaBdService } from '../../core/services/consulta-bd.service';
-import { ConfigDisponibilidadeService } from '../../core/services/config-disponibilidade.service';
 import { ConsultaBD } from '../../core/models/consulta-bd.model';
-import { StatusConfigDisponibilidade } from '../../core/models/config-disponibilidade.model';
 
 async function assentar(fixture: ComponentFixture<unknown>): Promise<void> {
   for (let i = 0; i < 6; i++) await fixture.whenStable();
@@ -20,39 +18,18 @@ function consulta(over: Partial<ConsultaBD> = {}): ConsultaBD {
     colunaData: 'DATA',
     colunaSituacao: '',
     mostrarGrafico: true,
-    ...over,
-  };
-}
-
-function statusDisponibilidade(over: Partial<StatusConfigDisponibilidade> = {}): StatusConfigDisponibilidade {
-  return {
-    tipo: 'oracle',
-    host: '',
-    porta: '',
-    banco: '',
-    usuario: '',
-    url: '',
-    select: '',
-    selectTecnicos: '',
-    oracleLibDir: '',
-    ativo: false,
-    oracleThick: false,
-    configurado: false,
+    conexao: 'sicla',
     ...over,
   };
 }
 
 describe('ConsultasBdComponent', () => {
-  function montar(slug: string | null, servico: Partial<ConsultaBdService>, disponibilidade: Partial<ConfigDisponibilidadeService> = {}) {
+  function montar(slug: string | null, servico: Partial<ConsultaBdService>) {
     TestBed.configureTestingModule({
       imports: [ConsultasBdComponent],
       providers: [
         provideRouter([]),
         { provide: ConsultaBdService, useValue: { listar: () => Promise.resolve([]), ...servico } },
-        {
-          provide: ConfigDisponibilidadeService,
-          useValue: { status: () => Promise.resolve(statusDisponibilidade()), ...disponibilidade },
-        },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap(slug ? { slug } : {}) } } },
       ],
     });
@@ -67,13 +44,28 @@ describe('ConsultasBdComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Previsão Início Oficial');
   });
 
-  it('abre direto na aba disponibilidade por padrão e carrega o status', async () => {
-    const status = vi.fn().mockResolvedValue(statusDisponibilidade({ configurado: true }));
-    const fixture = montar(null, {}, { status });
+  it('não existem mais abas de CONEXÃO — só as consultas', async () => {
+    // Decisão do usuário em 2026-08-26: dado de conexão com banco vive na tela Conexões do
+    // Portal API. Manter as abas aqui seria manter dois lugares para a mesma verdade.
+    const fixture = montar(null, { listar: () => Promise.resolve([consulta()]) });
     fixture.detectChanges();
     await assentar(fixture);
-    expect(fixture.componentInstance.aba()).toBe('disponibilidade');
-    expect(fixture.componentInstance.configurado()).toBe(true);
+
+    // Abre na primeira consulta: cair numa aba que não existe deixaria a tela em branco.
+    expect(fixture.componentInstance.aba()).toBe('previsao-inicio');
+    const abas: string[] = [
+      ...fixture.nativeElement.querySelectorAll('.cbd-aba'),
+    ].map((b: HTMLElement) => (b.textContent ?? '').trim());
+    expect(abas).not.toContain('Disponibilidade');
+    expect(abas).not.toContain('Banco do Portal Rech');
+    expect(abas).toContain('Previsão Início Oficial');
+  });
+
+  it('sem consulta nenhuma, cai na aba de criar', async () => {
+    const fixture = montar(null, { listar: () => Promise.resolve([]) });
+    fixture.detectChanges();
+    await assentar(fixture);
+    expect(fixture.componentInstance.aba()).toBe('nova');
   });
 
   it('abre na aba da consulta quando o slug vem na rota e pré-preenche o formulário', async () => {
@@ -98,7 +90,7 @@ describe('ConsultasBdComponent', () => {
     expect(criar).toHaveBeenCalledWith(expect.objectContaining({ nome: 'Nova', slug: 'nova', sql: 'SELECT 1' }));
   });
 
-  it('excluir consulta chama o backend e volta para a aba disponibilidade', async () => {
+  it('excluir consulta chama o backend e volta para a primeira aba restante', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     const excluir = vi.fn().mockResolvedValue(undefined);
     const listar = vi.fn().mockResolvedValue([consulta()]);
@@ -107,7 +99,8 @@ describe('ConsultasBdComponent', () => {
     await assentar(fixture);
     await fixture.componentInstance.excluirConsulta();
     expect(excluir).toHaveBeenCalledWith('previsao-inicio');
-    expect(fixture.componentInstance.aba()).toBe('disponibilidade');
+    expect(fixture.componentInstance.aba()).toBe('previsao-inicio');
+
     confirmSpy.mockRestore();
   });
 

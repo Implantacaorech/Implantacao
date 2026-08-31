@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { rmSync } from 'fs';
 import { join } from 'path';
 import { MailerService } from './mailer.service';
-import { GmailService } from './gmail.service';
+import { GraphService } from './graph.service';
 
 // Grava em dados/email_test_<JEST_WORKER_ID>/smtp.json (isolado por worker) — mesmo
 // padrão de modelo-documento.service.ts:store() e ia.service.ts:arquivoChave(), para
@@ -10,7 +10,7 @@ import { GmailService } from './gmail.service';
 // EBUSY em docs/migracao/03-documento-conversao.md §6).
 describe('MailerService', () => {
   let service: MailerService;
-  const gmail = { configurado: jest.fn(), enviar: jest.fn() };
+  const graph = { configurado: jest.fn(), enviar: jest.fn() };
 
   const dirTeste = join(
     process.cwd(),
@@ -24,8 +24,11 @@ describe('MailerService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    // Padrão dos testes: Graph desligado — quem for testá-lo liga explicitamente. Sem isso
+    // o `mockReturnValue` de um teste vazaria para o seguinte.
+    graph.configurado.mockReturnValue(false);
     const module: TestingModule = await Test.createTestingModule({
-      providers: [MailerService, { provide: GmailService, useValue: gmail }],
+      providers: [MailerService, { provide: GraphService, useValue: graph }],
     }).compile();
     service = module.get(MailerService);
   });
@@ -56,32 +59,32 @@ describe('MailerService', () => {
   });
 
   describe('configurado', () => {
-    it('true se o Gmail API estiver configurado, mesmo sem SMTP', () => {
-      gmail.configurado.mockReturnValue(true);
+    it('true se o Microsoft Graph estiver configurado, mesmo sem SMTP', () => {
+      graph.configurado.mockReturnValue(true);
       service.salvarConfig({});
       expect(service.configurado()).toBe(true);
     });
 
     it('true se SMTP tiver host + remetente', () => {
-      gmail.configurado.mockReturnValue(false);
       service.salvarConfig({ host: 'smtp.exemplo.com', remetente: 'r@x.com' });
       expect(service.configurado()).toBe(true);
     });
 
-    it('false sem Gmail e sem host/remetente', () => {
-      gmail.configurado.mockReturnValue(false);
+    it('false sem Graph e sem host/remetente', () => {
       service.salvarConfig({});
       expect(service.configurado()).toBe(false);
     });
   });
 
   describe('enviar', () => {
-    it('usa o Gmail API quando configurado, sem tentar SMTP', async () => {
-      gmail.configurado.mockReturnValue(true);
-      gmail.enviar.mockResolvedValue({ ok: true, erro: null });
+    it('usa o Microsoft Graph quando configurado, sem tentar SMTP', async () => {
+      graph.configurado.mockReturnValue(true);
+      graph.enviar.mockResolvedValue({ ok: true, erro: null });
+      // SMTP também configurado: o Graph precisa ganhar mesmo assim.
+      service.salvarConfig({ host: 'smtp.exemplo.com', remetente: 'r@x.com' });
       const r = await service.enviar('dest@x.com', 'Assunto', 'Corpo');
       expect(r.ok).toBe(true);
-      expect(gmail.enviar).toHaveBeenCalledWith(
+      expect(graph.enviar).toHaveBeenCalledWith(
         'dest@x.com',
         'Assunto',
         'Corpo',
@@ -89,12 +92,11 @@ describe('MailerService', () => {
       );
     });
 
-    it('sem Gmail e sem SMTP configurado, devolve erro amigável', async () => {
-      gmail.configurado.mockReturnValue(false);
+    it('sem nenhum meio configurado, devolve erro amigável', async () => {
       service.salvarConfig({});
       const r = await service.enviar('dest@x.com', 'Assunto', 'Corpo');
       expect(r.ok).toBe(false);
-      expect(r.erro).toContain('SMTP não configurado');
+      expect(r.erro).toContain('Nenhum meio de envio configurado');
     });
   });
 });

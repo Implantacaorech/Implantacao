@@ -175,6 +175,53 @@ mantidos como estão para não divergir do SICLA.)*
 
 **As 4 páginas estão portadas.** O `.pbix` vira material de consulta; o que vale é o código.
 
+### Painel "Visitas do Portal Rech — aprovação" (Resumo, abaixo do CONTROLE DE HORAS)
+
+Adicionado em 2026-08-17 (pedido do usuário — não existia no `.pbix`): tabela com as visitas
+do **Portal Rech** (empresa, contato, consultor, protocolo, data, horário, turno e
+aprovação), na tela Resumo, logo abaixo do CONTROLE DE HORAS.
+
+- **Fonte: o BANCO DO PORTAL RECH (MySQL), conexão cadastrada pelo ADM** em Sistema →
+  Consulta BD → aba **"Banco do Portal Rech"** (`PortalDbService`, segredo em
+  `dados/portal_db.json`, mesmo padrão da Disponibilidade). A consulta do usuário (MySQL,
+  `visita`/`visita_aprovacao`/`empresa`/`contato`/`usuario`) **vive no Consultas BD**
+  (slug `bi_visitas_portal`, semeada no boot, editável sem deploy) com **`conexao =
+  'portal'`** — o campo `conexao` (sicla | portal) nasceu junto (migration
+  `ConsultaBdConexao`), e o Testar da tela e os Dashboards roteiam o executor por ele.
+  Assim o painel mostra **TODOS os protocolos** (de todos os consultores), sempre
+  respeitando o cliente filtrado.
+- **Por que nem o SICLA nem a API do Portal** (a lição do dia 2026-08-17): o SICLA não
+  espelha nem o protocolo nem a aprovação — `LISTA_VISITAS.PROTOCOLO` é o atendimento de
+  origem, `CODVISITA` é contador interno (~125–128 mil), `PROTOCOLOVIS` diverge ENTRE
+  tabela e view E do nº real do Portal (protocolos reais 135089/135096 provaram), e
+  `RECEBIDA` não é a aprovação (135089 APROVADO no Portal com RECEBIDA=0). Já a API do
+  Portal (`GET /api/v1/visita`, ver `PortalRechService.listarVisitas`) traz o dado certo
+  mas é **escopada por usuário** — não serve para ver todos os protocolos do cliente.
+- **O painel respeita SEMPRE o cliente filtrado**: só entram visitas dos clientes visíveis na
+  tabela de implantações (todos os filtros da tela + busca local valem nele). O casamento é
+  por `codigoCliente`, com fallback pelo nome fantasia (`visitasVisiveis` no componente).
+- Endpoint: `GET /bi-implantacao/visitas-portal` (`dataIni`/`dataFim`), mesmo gate
+  `bi_implantacao`. A tela só reconsulta o banco quando o De/Até muda; os binds
+  `:data_ini`/`:data_fim` só são passados se o SQL vigente os referenciar.
+- **Filtros locais, visão, gráfico e exportação** (2026-08-17): acima da tabela há filtros
+  em cascata por Empresa/Contato/Consultor/Turno/Aprovado + busca por nº de protocolo +
+  a visão **Geral / Mês atual / Semana atual** (semana de segunda a domingo — recorte puro
+  em `visitas-portal.util.ts`, testável com data fixa). Filtros E visão valem para o painel
+  **inteiro**: contadores do título, gráfico, tabela e "Exportar Excel" (CSV com BOM, o
+  mesmo formato do Resumo) enxergam o mesmo conjunto. O gráfico de barras empilhadas mostra
+  **protocolos por contato** (verde = aprovados, vermelho = não aprovados; top 15 por
+  volume) com os **valores escritos nas barras** e o total sobre cada pilha
+  (`chart-rotulos.util.ts`, plugin inline do Chart.js — também aplicado ao "Horas por
+  status").
+- **Enviar por e-mail** (2026-08-17): botão ao lado do Exportar abre a caixa de envio
+  (destinatários separados por `;`, assunto e texto pré-preenchidos pelo modelo
+  **`bi-visitas-portal`**, editável em Gestão → Modelos de E-mail). O backend gera um
+  **PDF** (pdfkit, A4 paisagem) com o recorte aplicado, o gráfico (PNG do próprio canvas
+  da tela) e a tabela filtrada, e envia pelo meio configurado do Painel (Microsoft
+  365/SMTP) — `POST /bi-implantacao/visitas-portal/enviar-email` (exceção catalogada em
+  `conformidade-permissoes-escrita.spec.ts`: envio EXTERNO do que o usuário de consulta já
+  vê; a rota tem limite de corpo próprio de 6 MB no `main.ts` por causa do PNG).
+
 ### Filtros padrão das telas
 
 Toda página do BI no Painel oferece o mesmo conjunto: **Grupo econômico · RNS de Implantação ·

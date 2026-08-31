@@ -15,6 +15,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { LIMITE_UPLOAD_DOC } from '../common/upload.constants';
 import {
   ApiBearerAuth,
   ApiConsumes,
@@ -154,7 +155,9 @@ export class CatalogosController {
   }
 
   @Post('modelos/:id/versao')
-  @UseInterceptors(FileInterceptor('arquivo'))
+  @UseInterceptors(
+    FileInterceptor('arquivo', { limits: { fileSize: LIMITE_UPLOAD_DOC } }),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary:

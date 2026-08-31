@@ -1,6 +1,7 @@
 import {
   Injectable,
   Logger,
+  Optional,
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
@@ -8,6 +9,12 @@ import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { AppConfig } from '../config/configuration';
 import { ProcessamentoProtocolosService } from './processamento-protocolos.service';
+import { AgentesService } from '../agentes/agentes.service';
+import { killSwitch } from '../common/automacao/kill-switch';
+import {
+  heartbeatRobos,
+  ROBO_PROTOCOLOS,
+} from '../common/observabilidade/heartbeat-robos';
 
 const NOME_INTERVALO = 'robo-protocolos';
 
@@ -26,6 +33,9 @@ export class RoboProtocolosService implements OnModuleInit, OnModuleDestroy {
     private readonly config: ConfigService<AppConfig, true>,
     private readonly processamento: ProcessamentoProtocolosService,
     private readonly scheduler: SchedulerRegistry,
+    // @Optional: em teste o robô é montado sem a telemetria de agentes; ali o registro
+    // simplesmente não acontece. Em produção o Nest injeta o AgentesService.
+    @Optional() private readonly agentes?: AgentesService,
   ) {}
 
   onModuleInit(): void {
@@ -35,6 +45,12 @@ export class RoboProtocolosService implements OnModuleInit, OnModuleDestroy {
     const intervalo = setInterval(() => {
       void this.tick();
     }, ms);
+    heartbeatRobos.registrar(
+      ROBO_PROTOCOLOS,
+      'Robô de protocolos (SharePoint/Vídeos Pendentes)',
+      true,
+      ms,
+    );
     this.scheduler.addInterval(NOME_INTERVALO, intervalo);
   }
 
@@ -45,13 +61,35 @@ export class RoboProtocolosService implements OnModuleInit, OnModuleDestroy {
   }
 
   async tick(): Promise<void> {
+    heartbeatRobos.bater(ROBO_PROTOCOLOS); // M6: o laço está vivo
+    // Eixo 4: com a automação pausada pelo ADM, o robô não processa nada (o laço segue vivo,
+    // só não age). A IA também recusaria, mas parar aqui evita começar a transcrever à toa.
+    if (killSwitch.pausado()) return;
     try {
       if (this.processamento.configurado()) {
         const n = await this.processamento.processarPendentes();
-        if (n)
+        if (n) {
           this.logger.log(`Robô de protocolos: ${n} vídeo(s) processado(s).`);
+          // Eixo 4: execução AUTÔNOMA REAL na telemetria de agentes — atribuída ao agente de
+          // software dono da geração/transcrição de documentos. Best-effort (não derruba o tick).
+          void this.agentes?.registrarCiclo(
+            'documentos-geracao',
+            `Robô de protocolos: ${n} vídeo(s) processado(s) automaticamente.`,
+            true,
+          );
+        }
       }
     } catch (e) {
+      heartbeatRobos.bater(
+        ROBO_PROTOCOLOS,
+        'erro',
+        e instanceof Error ? e.message : String(e),
+      );
+      void this.agentes?.registrarCiclo(
+        'documentos-geracao',
+        'Robô de protocolos falhou ao processar os vídeos pendentes.',
+        false,
+      );
       this.logger.error(
         'Robô de protocolos falhou',
         e instanceof Error ? e.stack : String(e),

@@ -118,6 +118,7 @@ export class SugestaoLevantamentoService {
   async sugerir(
     projetoId: number,
     protocoloId: number,
+    solicitante?: string,
   ): Promise<ResultadoSugestoes> {
     const gravacao = await this.exigirGravacaoDoProjeto(projetoId, protocoloId);
 
@@ -147,7 +148,12 @@ export class SugestaoLevantamentoService {
 
     const sugestoes: SugestaoLinha[] = [];
     for (const lote of lotes) {
-      sugestoes.push(...(await this.sugerirLote(lote, texto, gravacao)));
+      sugestoes.push(
+        ...(await this.sugerirLote(lote, texto, gravacao, {
+          solicitante,
+          contexto: `levantamento projeto ${projetoId}`,
+        })),
+      );
     }
 
     this.logger.log(
@@ -226,6 +232,7 @@ export class SugestaoLevantamentoService {
     lote: LevantamentoResposta[],
     transcricao: string,
     gravacao: Protocolo,
+    meta?: { solicitante?: string; contexto?: string },
   ): Promise<SugestaoLinha[]> {
     const lista = lote
       .map((l, i) => `${i + 1}. [${l.moduloSigla}] ${l.topico}`)
@@ -236,11 +243,15 @@ export class SugestaoLevantamentoService {
       `TÓPICOS DO QUESTIONÁRIO:\n${lista}\n\n` +
       `TRANSCRIÇÃO DA REUNIÃO (com marcas de tempo):\n${transcricao}`;
 
-    const bruto = await this.ia.completar('levantamento', {
-      system: SISTEMA,
-      messages: [{ role: 'user', content: user }],
-      maxTokens: 8000,
-    });
+    const bruto = await this.ia.completar(
+      'levantamento',
+      {
+        system: SISTEMA,
+        messages: [{ role: 'user', content: user }],
+        maxTokens: 8000,
+      },
+      meta,
+    );
 
     return this.lerRespostaDaIa(bruto, lote);
   }

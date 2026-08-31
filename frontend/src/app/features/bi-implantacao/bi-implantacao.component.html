@@ -194,6 +194,189 @@
     </section>
   }
 
+  <!-- VISITAS DO PORTAL RECH — consulta `bi_visitas_portal` do Consultas BD (Sistema →
+       Consulta BD). Respeita o De/Até da tela e SEMPRE o cliente filtrado: só entram
+       visitas dos clientes visíveis na tabela de implantações. -->
+  <div class="bi-card">
+    <div class="bi-card-tit">
+      Visitas do Portal Rech — aprovação
+      ({{ visitasFiltradas().length }} · {{ visitasAprovadas() }} aprovada(s))
+    </div>
+    @if (erroVisitas()) {
+      <p class="dica">{{ erroVisitas() }}</p>
+    } @else if (carregandoVisitas()) {
+      <p class="dica">Carregando…</p>
+    } @else {
+      <!-- Filtros locais do painel (em cascata) + exportação: valem para os contadores do
+           título, para o gráfico e para a tabela — tudo sobre as visitas já recortadas por
+           cliente/período. -->
+      <div class="vp-filtros">
+        <label>Empresa
+          <select [ngModel]="vpEmpresa()" (ngModelChange)="vpEmpresa.set($event)">
+            <option value="">(todas)</option>
+            @for (o of opcoesVisitasEmpresa(); track o) { <option [value]="o">{{ o }}</option> }
+          </select>
+        </label>
+        <label>Contato
+          <select [ngModel]="vpContato()" (ngModelChange)="vpContato.set($event)">
+            <option value="">(todos)</option>
+            @for (o of opcoesVisitasContato(); track o) { <option [value]="o">{{ o }}</option> }
+          </select>
+        </label>
+        <label>Consultor
+          <select [ngModel]="vpConsultor()" (ngModelChange)="vpConsultor.set($event)">
+            <option value="">(todos)</option>
+            @for (o of opcoesVisitasConsultor(); track o) { <option [value]="o">{{ o }}</option> }
+          </select>
+        </label>
+        <label>Turno
+          <select [ngModel]="vpTurno()" (ngModelChange)="vpTurno.set($event)">
+            <option value="">(todos)</option>
+            @for (o of opcoesVisitasTurno(); track o) { <option [value]="o">{{ o }}</option> }
+          </select>
+        </label>
+        <label>Aprovado
+          <select [ngModel]="vpAprovado()" (ngModelChange)="vpAprovado.set($event)">
+            <option value="">(todos)</option>
+            @for (o of opcoesVisitasAprovado(); track o) { <option [value]="o">{{ o }}</option> }
+          </select>
+        </label>
+        <label>Protocolo
+          <input type="search" placeholder="nº…"
+                 [ngModel]="vpProtocolo()" (ngModelChange)="vpProtocolo.set($event)" />
+        </label>
+        <!-- A visão recorta o PAINEL INTEIRO: contadores do título, gráfico, tabela e
+             exportação (pedido do usuário em 2026-08-17 — antes valia só no gráfico). -->
+        <div class="vp-filtro-visao">
+          <span class="vp-filtro-visao-tit">Visão</span>
+          <div class="vp-visao" role="group" aria-label="Visão do painel">
+            <button type="button" [class.on]="visaoVisitas() === 'geral'"
+                    (click)="visaoVisitas.set('geral')">Geral</button>
+            <button type="button" [class.on]="visaoVisitas() === 'mensal'"
+                    (click)="visaoVisitas.set('mensal')">Mês atual</button>
+            <button type="button" [class.on]="visaoVisitas() === 'semanal'"
+                    (click)="visaoVisitas.set('semanal')">Semana atual</button>
+          </div>
+        </div>
+        <button type="button" class="bi-btn" (click)="limparFiltrosVisitas()">Limpar</button>
+        <button type="button" class="bi-btn" (click)="exportarVisitasCsv()"
+                [disabled]="visitasFiltradas().length === 0">
+          Exportar Excel
+        </button>
+        <button type="button" class="bi-btn" (click)="abrirEnvioEmail()"
+                [disabled]="visitasFiltradas().length === 0">
+          Enviar por e-mail
+        </button>
+        @if (emailOk()) { <span class="vp-email-ok">{{ emailOk() }}</span> }
+      </div>
+
+      <!-- Protocolos por contato: aprovados × não aprovados (mesmo conjunto da tabela). -->
+      <div class="vp-grafico-cab">
+        <span class="vp-grafico-tit">Protocolos por contato — aprovados × não aprovados</span>
+      </div>
+      <div class="bi-canvas">
+        @if (graficoVisitasContato(); as cfg) {
+          <canvas #canvasVisitas [appChart]="cfg"></canvas>
+        } @else {
+          <p class="dica">— sem protocolos na visão escolhida —</p>
+        }
+      </div>
+      @if (contatosOcultosGrafico() > 0) {
+        <p class="dica">
+          Gráfico mostra os {{ topContatosGrafico }} contatos com mais protocolos —
+          +{{ contatosOcultosGrafico() }} fora dele (use os filtros acima para focar).
+        </p>
+      }
+
+      @if (visitasResultado()?.truncado) {
+        <p class="dica">
+          O período tem mais visitas que o teto de {{ visitasResultado()?.limite }} linhas —
+          vieram as mais recentes; estreite o De/Até para ver as antigas.
+        </p>
+      }
+      <div class="bi-tab-wrap">
+        <table class="bi-tab">
+          <thead>
+            <tr>
+              <th>Empresa</th>
+              <th>Contato</th>
+              <th>Consultor</th>
+              <th class="num">Protocolo</th>
+              <th>Data</th>
+              <th>Horário</th>
+              <th>Turno</th>
+              <th>Aprovado</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (v of visitasFiltradas(); track $index) {
+              <tr>
+                <td>{{ v.empresa || '—' }}</td>
+                <td>{{ v.contato || '—' }}</td>
+                <td>{{ v.consultor || '—' }}</td>
+                <td class="num">{{ v.protocolo ?? '—' }}</td>
+                <td>{{ dataBr(v.data) }}</td>
+                <td>{{ v.horario || '—' }}</td>
+                <td>{{ v.turno || '—' }}</td>
+                <td>
+                  <span class="bi-ponto"
+                        [style.background]="aprovadoSim(v.aprovado) ? '#10b981' : '#ef4444'"></span>{{ v.aprovado || '—' }}
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="8" class="dica">
+                  — nenhuma visita do Portal para os clientes/filtros atuais no período —
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Caixa "Enviar por e-mail": destino + texto (pré-preenchido pelo modelo
+           `bi-visitas-portal`, editável em Modelos de E-mail); o backend anexa o PDF com
+           o recorte, o gráfico e a tabela filtrada. -->
+      @if (emailAberto()) {
+        <div class="vp-modal-fundo" (click)="fecharEnvioEmail()">
+          <div class="vp-modal" (click)="$event.stopPropagation()">
+            <h3 class="vp-modal-tit">Enviar painel por e-mail</h3>
+            <label class="vp-modal-campo">
+              <span>Para (um ou mais e-mails, separados por ;)</span>
+              <input type="text" placeholder="nome@rech.com.br; outro@cliente.com.br"
+                     [ngModel]="emailPara()" (ngModelChange)="emailPara.set($event)" />
+            </label>
+            <label class="vp-modal-campo">
+              <span>Assunto</span>
+              <input type="text" [ngModel]="emailAssunto()"
+                     (ngModelChange)="emailAssunto.set($event)" />
+            </label>
+            <label class="vp-modal-campo">
+              <span>Texto (padrão do modelo "BI — Visitas do Portal Rech", editável em
+                Gestão → Modelos de E-mail)</span>
+              <textarea rows="8" [ngModel]="emailCorpo()"
+                        (ngModelChange)="emailCorpo.set($event)"></textarea>
+            </label>
+            <p class="dica" style="margin:6px 0 0">
+              Será anexado um PDF com o recorte aplicado, o gráfico e a tabela
+              ({{ visitasFiltradas().length }} protocolo(s) ·
+              {{ visitasAprovadas() }} aprovado(s)).
+            </p>
+            @if (emailErro()) { <div class="resultado erro">{{ emailErro() }}</div> }
+            <div class="vp-modal-acoes">
+              <button type="button" class="bi-btn" (click)="fecharEnvioEmail()"
+                      [disabled]="enviandoEmail()">Cancelar</button>
+              <button type="button" class="bi-btn vp-btn-enviar" (click)="enviarEmailVisitas()"
+                      [disabled]="enviandoEmail()">
+                {{ enviandoEmail() ? 'Enviando…' : 'Enviar' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    }
+  </div>
+
   <div class="bi-graficos">
     <div class="bi-card">
       <div class="bi-card-tit">Horas por status</div>

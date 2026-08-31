@@ -5,12 +5,14 @@
     <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-table"/></svg>
     Consultas BD (Administrador)
   </h1>
-  <p class="dica">Uma conexão externa (banco interno/SICLA) e várias consultas SQL nomeadas por assunto — a aba
-    <strong>Disponibilidade</strong> alimenta o agendador de visitas; as demais alimentam os <strong>Dashboards</strong>.
-    Tela exclusiva do perfil Administrador.</p>
+  <p class="dica">
+    Consultas SQL nomeadas por assunto, cada uma rodando na conexão escolhida — o texto do
+    SELECT e como ela aparece nos Dashboards. Os <strong>dados de conexão</strong> ficam em
+    <a routerLink="/config/conexoes">Conexões</a>, e o contrato de API de cada consulta
+    (parâmetros, colunas, teto) em <a routerLink="/config/api-dados">Consultas da API</a>.
+  </p>
 
   <div class="cbd-abas">
-    <button type="button" class="cbd-aba" [class.on]="aba() === 'disponibilidade'" (click)="trocarAba('disponibilidade')">Disponibilidade</button>
     @for (c of consultas(); track c.slug) {
       <button type="button" class="cbd-aba" [class.on]="aba() === c.slug" (click)="trocarAba(c.slug)">{{ c.nome }}</button>
     }
@@ -26,16 +28,6 @@
   }
   @if (erro()) {
     <div class="resultado erro">{{ erro() }}</div>
-  }
-  @if (amostra(); as a) {
-    @if (a.length > 0) {
-      <div style="margin:-4px 0 10px;font-size:.82rem">
-        Amostra:
-        @for (r of a; track $index; let last = $last) {
-          <code>{{ r.tecnico }} · {{ r.data }}@if (r.turno) { · {{ r.turno }} }</code>@if (!last) { · }
-        }
-      </div>
-    }
   }
   @if (resultadoTeste(); as r) {
     <div class="resultado {{ r.ok ? 'ok' : 'erro' }}">
@@ -55,66 +47,7 @@
     </div>
   }
 
-  @if (aba() === 'disponibilidade') {
-    <form class="painel" [formGroup]="formDisponibilidade" (ngSubmit)="salvarDisponibilidade(false)">
-      <label class="campo flex-linha">
-        <input type="checkbox" formControlName="ativo" style="width:auto" />
-        <span style="margin:0">Ativar consulta de disponibilidade</span>
-      </label>
-
-      <h3>Conexão</h3>
-      <p class="dica" style="margin:0 0 8px">Preencha os campos <strong>ou</strong> cole uma URL SQLAlchemy completa (a URL tem prioridade).
-        Essa conexão é compartilhada por todas as consultas desta tela.</p>
-      <div class="grade2">
-        <label class="campo">
-          <span>Tipo de banco</span>
-          <select formControlName="tipo">
-            <option value="">—</option>
-            @for (d of dialetos; track d) { <option [value]="d">{{ d }}</option> }
-          </select>
-        </label>
-        <label class="campo"><span>Host / Servidor</span><input formControlName="host" placeholder="ex.: 192.168.0.10" /></label>
-        <label class="campo"><span>Porta</span><input formControlName="porta" placeholder="ex.: 5432 / 1433 / 1521" /></label>
-        <label class="campo"><span>Banco / Service</span><input formControlName="banco" /></label>
-        <label class="campo"><span>Usuário (somente leitura)</span><input formControlName="usuario" /></label>
-        <label class="campo"><span>Senha</span><input type="password" formControlName="senha" placeholder="(em branco mantém a atual)" /></label>
-      </div>
-      <label class="campo">
-        <span>URL SQLAlchemy (opcional — substitui os campos acima)</span>
-        <input formControlName="url" placeholder="ex.: oracle+oracledb://user:senha@host:1521/service" />
-      </label>
-
-      <div class="grade2">
-        <label class="campo flex-linha">
-          <input type="checkbox" formControlName="oracleThick" style="width:auto" />
-          <span style="margin:0">Oracle — modo <strong>thick</strong> (Instant Client): use para senha com verificador antigo (DPY-3015)</span>
-        </label>
-        <label class="campo">
-          <span>Pasta do Oracle Instant Client (opcional, se não estiver no PATH)</span>
-          <input formControlName="oracleLibDir" placeholder="ex.: C:\oracle\instantclient_21" />
-        </label>
-      </div>
-
-      <h3>Consulta (SELECT) — Disponibilidade dos consultores</h3>
-      <p class="dica" style="margin:0 0 6px">Parâmetros disponíveis: <code>:data_ini</code>, <code>:data_fim</code>
-        e <code>:tecnicos</code> (lista de códigos dos consultores). Devolva as colunas <code>tecnico</code>,
-        <code>data</code> e (opcional) <code>turno</code>.</p>
-      <label class="campo">
-        <textarea formControlName="select" rows="6" class="txt-mono"
-          placeholder="SELECT cod AS tecnico, data_visita AS data, periodo AS turno&#10;FROM agenda_tecnicos&#10;WHERE data_visita BETWEEN :data_ini AND :data_fim AND cod IN :tecnicos"></textarea>
-      </label>
-
-      <div class="acoes" style="margin-top:var(--sp-3)">
-        <button class="btn primario" type="submit" [disabled]="salvando()">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ salvando() ? 'Salvando…' : 'Salvar' }}
-        </button>
-        <button class="btn" type="button" [disabled]="salvando()" (click)="salvarDisponibilidade(true)">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-bolt"/></svg> {{ testando() ? 'Testando…' : 'Salvar e testar' }}
-        </button>
-        <span class="dica" style="margin:0 0 0 auto;align-self:center">Status: <strong>{{ configurado() ? 'configurado' : 'pendente' }}</strong></span>
-      </div>
-    </form>
-  } @else if (aba() === 'nova') {
+  @if (aba() === 'nova') {
     <form class="painel" [formGroup]="formNova" (ngSubmit)="criarConsulta()">
       <label class="campo"><span>Nome da consulta (assunto)</span>
         <input formControlName="nome" placeholder="ex.: Previsão Início Oficial" /></label>
@@ -129,8 +62,17 @@
     </form>
   } @else if (consultaAtual()) {
     <form class="painel" [formGroup]="formConsulta" (ngSubmit)="salvarConsulta(false)">
-      <label class="campo"><span>Nome</span><input formControlName="nome" /></label>
-      <label class="campo"><span>SQL (SELECT) — mesma conexão da aba Disponibilidade</span>
+      <div class="grade2">
+        <label class="campo"><span>Nome</span><input formControlName="nome" /></label>
+        <label class="campo">
+          <span>Conexão onde a consulta roda</span>
+          <select formControlName="conexao">
+            <option value="sicla">SICLA (Oracle)</option>
+            <option value="portal">Banco do Portal Rech (MySQL)</option>
+          </select>
+        </label>
+      </div>
+      <label class="campo"><span>SQL (SELECT) — no dialeto da conexão escolhida</span>
         <textarea formControlName="sql" rows="12" class="txt-mono"></textarea></label>
 
       <h3>Dashboard (opcional)</h3>

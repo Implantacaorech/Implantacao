@@ -1,0 +1,153 @@
+<div class="cs-head">
+  <div>
+    <h1 class="pagina-titulo">Consultor SIGER <small>base de conhecimento</small></h1>
+    <p class="dica">
+      Pergunte em linguagem natural sobre qualquer assunto do SIGER — a resposta vem do
+      código-fonte, com a origem citada em cada item. Sem evidência, o consultor diz que
+      não confirmou (nunca inventa).
+    </p>
+  </div>
+  @if (resposta(); as r) {
+    <span class="cs-conf" [class]="'cs-conf-' + r.confianca">{{ rotuloConfianca(r.confianca) }}</span>
+  }
+</div>
+
+@if (erro()) {
+  <div class="resultado erro">{{ erro() }}</div>
+}
+
+<div class="barra-filtros">
+  <label class="campo largo">
+    <span>O que você deseja consultar?</span>
+    <input
+      type="search"
+      name="pergunta"
+      [ngModel]="pergunta()"
+      (ngModelChange)="pergunta.set($event)"
+      (keydown.enter)="pesquisar()"
+      placeholder="Ex.: Como configurar o faturamento de pedidos?"
+      autocomplete="off"
+    />
+  </label>
+  <label class="campo estreito">
+    <span>Visão</span>
+    <select name="visao" [ngModel]="visao()" (ngModelChange)="trocarVisao($event)">
+      <option value="funcional">Funcional</option>
+      <option value="tecnica">Técnica</option>
+    </select>
+  </label>
+  <div class="acoes">
+    <button class="btn" type="button" (click)="pesquisar()" [disabled]="carregando()">
+      {{ carregando() ? 'Pesquisando…' : 'Pesquisar' }}
+    </button>
+    @if (resposta(); as r) {
+      <button
+        class="btn ghost"
+        type="button"
+        (click)="alternarFavorito()"
+        [title]="ehFavorita(r.pergunta) ? 'Remover dos favoritos' : 'Marcar como favorita'"
+      >
+        {{ ehFavorita(r.pergunta) ? '★ Favorita' : '☆ Favoritar' }}
+      </button>
+    }
+  </div>
+</div>
+
+@if (!resposta() && !carregando()) {
+  <div class="cs-sugestoes">
+    @for (e of exemplos; track e) {
+      <button class="cs-chip" type="button" (click)="pesquisar(e)">{{ e }}</button>
+    }
+  </div>
+}
+
+<div class="cs-corpo">
+  <div class="cs-resposta">
+    @if (resposta(); as r) {
+      @if (r.aviso) {
+        <div class="cs-aviso" [class.cs-aviso-forte]="!r.disponivel || r.confianca === 'nao_confirmado'">
+          {{ r.aviso }}
+        </div>
+      }
+      @for (s of secoesOrdenadas(r); track s.titulo) {
+        <section class="cercado cs-secao">
+          <h2>{{ s.titulo }}</h2>
+          @for (item of s.itens; track item.fonte.arquivo + item.fonte.linha + item.texto) {
+            <div class="cs-item">
+              <p>{{ item.texto }}</p>
+              <span class="cs-fonte" [title]="item.fonte.arquivo">
+                {{ nomeArquivo(item.fonte.arquivo) }}@if (item.fonte.linha > 1) {:{{ item.fonte.linha }}}
+                · {{ item.fonte.versao }}
+              </span>
+            </div>
+          }
+        </section>
+      }
+      @if (r.assuntosRelacionados.length) {
+        <section class="cercado cs-secao">
+          <h2>Assuntos relacionados</h2>
+          <div class="cs-chips">
+            @for (a of r.assuntosRelacionados; track a.titulo) {
+              <button class="cs-chip" type="button" (click)="pesquisar(a.pesquisa)">→ {{ a.titulo }}</button>
+            }
+          </div>
+        </section>
+      }
+      @if (r.sugestoes.length) {
+        <section class="cercado cs-secao">
+          <h2>Continue sua pesquisa</h2>
+          <div class="cs-chips">
+            @for (s of r.sugestoes; track s) {
+              <button class="cs-chip" type="button" (click)="pesquisar(s)">💡 {{ s }}</button>
+            }
+          </div>
+        </section>
+      }
+      @if (r.fontes.length) {
+        <section class="cercado cs-secao">
+          <h2>
+            <button class="cs-toggle" type="button" (click)="fontesAbertas.set(!fontesAbertas())">
+              Fontes consultadas ({{ r.fontes.length }}) {{ fontesAbertas() ? '▾' : '▸' }}
+            </button>
+          </h2>
+          @if (fontesAbertas()) {
+            @for (f of r.fontes; track f.arquivo + f.linha) {
+              <div class="cs-fonte-linha" [title]="f.arquivo">
+                {{ f.arquivo }}@if (f.linha > 1) {:{{ f.linha }}} <em>({{ f.tipo }} · {{ f.versao }})</em>
+              </div>
+            }
+          }
+          <div class="cs-feedback">
+            @if (feedbackEnviado()) {
+              <span class="dica">Feedback registrado — obrigado!</span>
+            } @else {
+              <span class="dica">Esta resposta foi útil?</span>
+              <button class="btn ghost" type="button" (click)="avaliar(true)">👍 Sim</button>
+              <button class="btn ghost" type="button" (click)="avaliar(false)">👎 Não</button>
+            }
+          </div>
+        </section>
+      }
+    } @else if (!carregando()) {
+      <p class="dica cs-vazio">
+        A pesquisa cobre menus, telas, ajudas, tabelas, parâmetros, mensagens e código do
+        SIGER. Comece por um exemplo acima ou pelo histórico ao lado.
+      </p>
+    }
+  </div>
+
+  <aside class="cs-lado">
+    @if (favoritos().length) {
+      <h3>★ Favoritas</h3>
+      @for (f of favoritos(); track f) {
+        <button class="cs-lado-item" type="button" (click)="pesquisar(f)">{{ f }}</button>
+      }
+    }
+    @if (historico().length) {
+      <h3>Histórico</h3>
+      @for (h of historico().slice(0, 12); track h) {
+        <button class="cs-lado-item" type="button" (click)="pesquisar(h)">{{ h }}</button>
+      }
+    }
+  </aside>
+</div>

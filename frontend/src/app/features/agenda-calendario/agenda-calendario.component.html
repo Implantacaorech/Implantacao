@@ -1,0 +1,270 @@
+<h1 class="pagina-titulo">
+  <svg class="svgi" aria-hidden="true"><use href="#ic-calendar"/></svg>
+  Agenda <small>compromissos e agendas dos técnicos (SICLA)</small>
+</h1>
+
+<!-- Barra de comando: navegação do período · visão · escopo (minhas/todas) · filtros -->
+<div class="painel compacto ag-topo">
+  <div class="ag-nav" role="group" aria-label="Navegação do período">
+    <button class="btn pequeno" type="button" (click)="navegar(-1)" aria-label="Período anterior">‹</button>
+    <button class="btn pequeno" type="button" (click)="irHoje()">Hoje</button>
+    <button class="btn pequeno" type="button" (click)="navegar(1)" aria-label="Próximo período">›</button>
+    <strong class="ag-rotulo">{{ rotuloPeriodo() }}</strong>
+  </div>
+
+  <div class="ag-visoes" role="group" aria-label="Visão do calendário">
+    <button class="btn pequeno" type="button" [class.primario]="visao() === 'dia'" (click)="definirVisao('dia')">Dia</button>
+    <button class="btn pequeno" type="button" [class.primario]="visao() === 'semana'" (click)="definirVisao('semana')">Semana</button>
+    <button class="btn pequeno" type="button" [class.primario]="visao() === 'mes'" (click)="definirVisao('mes')">Mês</button>
+  </div>
+
+  <div class="ag-escopo" role="group" aria-label="De quem são as agendas">
+    <button class="btn pequeno" type="button" [class.primario]="minhasAgendas()" (click)="verMinhas()">Minhas agendas</button>
+    <button class="btn pequeno" type="button" [class.primario]="responsaveisSel().length === 0" (click)="verTodas()">Todas</button>
+    <button class="btn pequeno" type="button" (click)="filtrosAbertos.set(!filtrosAbertos())">
+      Filtros @if (qtdFiltrosAtivos() > 0) { ({{ qtdFiltrosAtivos() }}) }
+    </button>
+  </div>
+</div>
+
+@if (filtrosAbertos()) {
+  <div class="painel compacto ag-filtros">
+    <div class="ag-filtro-bloco">
+      <span class="ag-filtro-titulo">Busca</span>
+      <input type="text" placeholder="Cliente, assunto, técnico, RNS…" aria-label="Buscar compromisso"
+             [ngModel]="busca()" (ngModelChange)="busca.set($event)" />
+    </div>
+    <div class="ag-filtro-bloco">
+      <span class="ag-filtro-titulo">Técnicos (usuários do Painel)</span>
+      <input type="text" class="ag-busca-tecnico" placeholder="Filtrar a lista…" aria-label="Filtrar a lista de técnicos"
+             [ngModel]="buscaTecnico()" (ngModelChange)="buscaTecnico.set($event)" />
+      <div class="ag-opcoes">
+        @for (u of usuariosVisiveis(); track u.id) {
+          <label class="ag-opcao">
+            <input type="checkbox" [checked]="marcado(responsaveisSel, u.nome)" (change)="alternar(responsaveisSel, u.nome)" />
+            {{ u.nome }}
+          </label>
+        } @empty { <span class="ag-nada">Nenhum usuário encontrado.</span> }
+      </div>
+    </div>
+    <div class="ag-filtro-bloco">
+      <span class="ag-filtro-titulo">Status</span>
+      <div class="ag-opcoes">
+        @for (r of resultado()?.resumo ?? []; track r.status) {
+          <label class="ag-opcao">
+            <input type="checkbox" [checked]="marcado(statusSel, r.status)" (change)="alternar(statusSel, r.status)" />
+            <span class="ag-ponto" [style.background]="corBorda(r.status)"></span>{{ rotuloStatus(r.status) }}
+          </label>
+        } @empty { <span class="ag-nada">Sem status no período.</span> }
+      </div>
+    </div>
+    <div class="ag-filtro-bloco">
+      <span class="ag-filtro-titulo">Espécie</span>
+      <div class="ag-opcoes">
+        @for (e of especieOpcoes(); track e.valor) {
+          <label class="ag-opcao">
+            <input type="checkbox" [checked]="marcado(especiesSel, e.valor)" (change)="alternar(especiesSel, e.valor)" />
+            {{ e.rotulo }}
+          </label>
+        } @empty { <span class="ag-nada">Sem espécies no período.</span> }
+      </div>
+    </div>
+    <div class="acoes">
+      <button class="btn pequeno" type="button" (click)="limparFiltros()">Limpar filtros</button>
+    </div>
+  </div>
+}
+
+@if (erro()) {
+  <div class="painel compacto alerta">{{ erro() }}</div>
+}
+
+@if (carregando()) {
+  <div class="painel vazio">Carregando a agenda…</div>
+} @else {
+  <!-- Resumo do que está visível -->
+  <div class="painel compacto ag-resumo">
+    <span class="ag-kpi"><strong>{{ totalVisivel() }}</strong> compromisso(s)</span>
+    <span class="ag-kpi"><strong>{{ horasVisiveis() }}</strong> h</span>
+    @if (!minhasAgendas()) {
+      <span class="ag-kpi"><strong>{{ tecnicosVisiveis() }}</strong> técnico(s)</span>
+    }
+    <span class="ag-legenda">
+      @for (r of resumo(); track r.status) {
+        <span class="ag-legenda-item">
+          <span class="ag-ponto" [style.background]="r.cor" [style.border-color]="corBorda(r.status)"></span>
+          {{ rotuloStatus(r.status) }} ({{ r.quantidade }})
+        </span>
+      }
+    </span>
+  </div>
+
+  @switch (visao()) {
+    @case ('semana') {
+      <div class="painel sem-padding ag-rolagem">
+        <div class="ag-semana">
+          @for (d of diasVisiveis(); track d.dia) {
+            <div class="ag-col" [class.ag-hoje]="ehHoje(d.dia)" [class.ag-fds]="d.diaSemana === 0 || d.diaSemana === 6">
+              <button class="ag-col-cab" type="button" (click)="abrirDia(d)" [title]="'Abrir ' + dataBr(d.dia)">
+                <span class="ag-dia-nome">{{ rotuloDia(d.diaSemana) }}</span>
+                <span class="ag-dia-num">{{ d.numero }}</span>
+              </button>
+              <div class="ag-col-corpo">
+                @for (c of d.compromissos; track $index) {
+                  <div class="ag-card"
+                       [style.border-left-color]="corBorda(c.status)" [title]="dicaDe(c)"
+                       role="button" tabindex="0"
+                       (click)="abrirCompromisso(c)" (keydown.enter)="abrirCompromisso(c)">
+                    <span class="ag-hora">{{ c.horaIni }}–{{ c.horaFim }}</span>
+                    <span class="ag-cli">{{ c.fantasia || c.assunto || '(sem assunto)' }}</span>
+                    @if (!minhasAgendas()) { <span class="ag-tec">{{ c.tecnico }}</span> }
+                    @if (c.rns) { <span class="ag-rns-tag">RNS {{ c.rns }}</span> }
+                  </div>
+                } @empty {
+                  <div class="ag-livre">livre</div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+    @case ('mes') {
+      <div class="painel sem-padding ag-rolagem">
+        <div class="ag-mes">
+          <div class="ag-mes-cab">
+            @for (n of ['dom','seg','ter','qua','qui','sex','sáb']; track n) {
+              <span>{{ n }}</span>
+            }
+          </div>
+          @for (semana of semanasMes(); track $index) {
+            <div class="ag-mes-linha">
+              @for (d of semana; track $index) {
+                @if (d) {
+                  <button class="ag-mes-dia" type="button" [class.ag-hoje]="ehHoje(d.dia)"
+                          (click)="abrirDia(d)" [title]="'Abrir ' + dataBr(d.dia)">
+                    <span class="ag-dia-num">{{ d.numero }}</span>
+                    <span class="ag-mes-itens">
+                      @for (c of d.compromissos.slice(0, 3); track $index) {
+                        <span class="ag-mes-item" [style.border-left-color]="corBorda(c.status)">
+                          {{ c.horaIni }} {{ c.fantasia || c.assunto }}
+                        </span>
+                      }
+                      @if (d.compromissos.length > 3) {
+                        <span class="ag-mais">+{{ d.compromissos.length - 3 }}</span>
+                      }
+                    </span>
+                  </button>
+                } @else {
+                  <span class="ag-mes-dia ag-mes-vago"></span>
+                }
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+    @case ('dia') {
+      @if (diaDetalhe(); as d) {
+        @if (d.compromissos.length > 0) {
+          <div class="ag-dia-lista">
+            @for (c of d.compromissos; track $index) {
+              <div class="painel compacto ag-dia-card"
+                   [style.border-left-color]="corBorda(c.status)"
+                   title="Clique para ver os detalhes da agenda"
+                   role="button" tabindex="0"
+                   (click)="abrirCompromisso(c)" (keydown.enter)="abrirCompromisso(c)">
+                <div class="ag-dia-hora">
+                  <strong>{{ c.horaIni }}–{{ c.horaFim }}</strong>
+                  <small>{{ duracao(c.minutos) }}</small>
+                </div>
+                <div class="ag-dia-info">
+                  <strong>{{ c.fantasia || c.assunto || '(sem assunto)' }}</strong>
+                  @if (c.fantasia && c.assunto) { <span>{{ c.assunto }}</span> }
+                  <small>
+                    {{ c.tecnico }}
+                    @if (c.tipoSuporte) { · {{ c.tipoSuporte }} }
+                    @if (c.rns) { · RNS {{ c.rns }} }
+                    @if (c.grupoEconomico) { · {{ c.grupoEconomico }} }
+                  </small>
+                </div>
+                <span class="ag-status" [style.background]="corBorda(c.status)">{{ rotuloStatus(c.status) }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="painel vazio">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-calendar"/></svg>
+            Nenhum compromisso {{ minhasAgendas() ? 'seu' : '' }} em {{ dataBr(d.dia) }}.
+          </div>
+        }
+      } @else {
+        <div class="painel vazio">Dia fora do período carregado.</div>
+      }
+    }
+  }
+
+  @if (visao() !== 'dia' && compromissosVisiveis().length === 0 && !erro()) {
+    <div class="painel vazio">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-calendar"/></svg>
+      Nenhum compromisso {{ minhasAgendas() ? 'seu' : '' }} no período — ajuste o filtro ou navegue com ‹ ›.
+    </div>
+  }
+}
+
+<!-- Modal do compromisso: os dados da AGENDA no desenho do cartão "Agendas do Técnico"
+     do BI Alocação + a observação do SICLA. (O resumo completo da RNS saiu daqui em
+     2026-08-18 a pedido do usuário — a ficha continua na tela Execução → RNS.) -->
+@if (compromissoAberto(); as c) {
+  <div class="modal-fundo" (click)="fecharCompromisso()">
+    <div class="modal-cx largo" (click)="$event.stopPropagation()">
+      <div class="modal-cab">
+        <div>
+          <h3>{{ c.fantasia || c.assunto || 'Compromisso' }}</h3>
+          <p class="sub dica">{{ dataBr(c.dia) }} · {{ c.horaIni }}–{{ c.horaFim }} · {{ c.tecnico }}</p>
+        </div>
+        <button class="modal-fechar" type="button" (click)="fecharCompromisso()" aria-label="Fechar">
+          <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-x"/></svg>
+        </button>
+      </div>
+      <div class="modal-corpo ag-modal-corpo">
+        <article class="ag-det" [style.border-left-color]="corBorda(c.status)">
+          <header class="ag-det-topo">
+            <span class="ag-det-cli">{{ c.fantasia || c.assunto || '— sem cliente ligado —' }}</span>
+            @if (c.especie) { <span class="ag-det-chip" [title]="c.especieDes">ESPÉCIE {{ c.especie }}</span> }
+            <span class="ag-det-crit" [style.background]="corCriticidade(c.minutos)">
+              {{ criticidade(c.minutos) }}
+            </span>
+          </header>
+          @if (c.fantasia && c.assunto) { <div class="ag-det-as">{{ c.assunto }}</div> }
+          <div class="ag-det-linha">⏰ <span class="ag-det-rot">Horário:</span> {{ c.horaIni }} - {{ c.horaFim }}</div>
+          <div class="ag-det-linha">⏱ <span class="ag-det-rot">Duração:</span> {{ duracao(c.minutos) }}</div>
+          @if (c.especieDes) {
+            <div class="ag-det-linha">🏷 <span class="ag-det-rot">Espécie:</span> {{ c.especieDes }}</div>
+          }
+          @if (participantesAberto().length > 0) {
+            <div class="ag-det-linha">👥 <span class="ag-det-rot">Participantes:</span>
+              {{ participantesAberto().join(' · ') }}</div>
+          }
+          <div class="ag-det-pe">
+            <span class="ag-ponto" [style.background]="corBorda(c.status)"></span>
+            {{ rotuloStatus(c.status) }}
+            @if (c.tipoSuporte) { <span>· {{ c.tipoSuporte }}</span> }
+            @if (c.rns) { <span>· RNS {{ c.rns }}</span> }
+            @if (c.grupoEconomico) { <span>· {{ c.grupoEconomico }}</span> }
+            <span class="ag-det-data">{{ dataBr(c.dia) }}</span>
+          </div>
+        </article>
+        @if (c.observacao) {
+          <div class="ag-det-obs">
+            <div class="ag-det-obs-tit">📝 Observação da agenda</div>
+            <div class="ag-det-obs-txt">{{ c.observacao }}</div>
+          </div>
+        }
+      </div>
+      <div class="modal-rod">
+        <button type="button" class="btn" (click)="fecharCompromisso()">Fechar</button>
+      </div>
+    </div>
+  </div>
+}

@@ -5,14 +5,18 @@ import { environment } from '../../../environments/environment';
 import { ApiEnvelope } from '../models/api-envelope.model';
 import {
   DescricaoCompletaBi,
+  EnvioVisitasEmailBi,
   FiltroExtratoBi,
   FiltroResumoBi,
   FiltroRnsBi,
   FiltroAgendasBi,
+  FiltroVisitasPortalBi,
+  ModeloEmailVisitasBi,
   ResultadoExtratoBi,
   ResultadoResumoBi,
   ResultadoRnsBi,
   ResultadoAgendasBi,
+  ResultadoVisitasPortalBi,
 } from '../models/bi-implantacao.model';
 
 @Injectable({ providedIn: 'root' })
@@ -55,6 +59,48 @@ export class BiImplantacaoService {
       filtros: this.listas(d.filtros, chaves),
       selecionados: this.listas(d.selecionados, chaves),
     };
+  }
+
+  /** Painel "Visitas do Portal Rech" do Resumo — SQL editável no Consultas BD
+   * (slug `bi_visitas_portal`); o recorte de período é o mesmo De/Até da tela. */
+  async visitasPortal(
+    filtro: FiltroVisitasPortalBi = {},
+  ): Promise<ResultadoVisitasPortalBi> {
+    let params = new HttpParams();
+    if (filtro.dataIni) params = params.set('dataIni', filtro.dataIni);
+    if (filtro.dataFim) params = params.set('dataFim', filtro.dataFim);
+    const res = await firstValueFrom(
+      this.http.get<ApiEnvelope<ResultadoVisitasPortalBi>>(
+        `${this.base}/visitas-portal`,
+        { params },
+      ),
+    );
+    const d = res.data;
+    return { ...d, linhas: d.linhas ?? [] };
+  }
+
+  /** Assunto/corpo padrão da caixa "Enviar por e-mail" do painel de visitas. */
+  async modeloEmailVisitas(): Promise<ModeloEmailVisitasBi> {
+    const res = await firstValueFrom(
+      this.http.get<ApiEnvelope<ModeloEmailVisitasBi>>(
+        `${this.base}/visitas-portal/modelo-email`,
+      ),
+    );
+    return res.data;
+  }
+
+  /** Envia o painel de visitas por e-mail — o backend gera o PDF (recorte + gráfico +
+   * tabela) e anexa. */
+  async enviarVisitasEmail(
+    envio: EnvioVisitasEmailBi,
+  ): Promise<{ ok: boolean; erro: string | null }> {
+    const res = await firstValueFrom(
+      this.http.post<ApiEnvelope<{ ok: boolean; erro: string | null }>>(
+        `${this.base}/visitas-portal/enviar-email`,
+        envio,
+      ),
+    );
+    return res.data;
   }
 
   async extrato(filtro: FiltroExtratoBi = {}): Promise<ResultadoExtratoBi> {

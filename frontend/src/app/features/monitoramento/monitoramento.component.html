@@ -62,6 +62,82 @@
     }
   </section>
 
+  <!-- Custo de IA (A9): custo estimado, tokens e execuções por finalidade, com o status do
+       teto diário. Antes o gasto de IA era invisível e ilimitado. -->
+  <section class="painel ops-card">
+    <div class="ops-card-title">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-cpu"/></svg>
+      Custo de IA
+      <span style="flex:1"></span>
+      <button class="btn" type="button" (click)="carregarTelemetriaIa()">Atualizar</button>
+    </div>
+
+    @if (telemetriaIaIndisponivel()) {
+      <p class="dica" style="margin:0">Não foi possível carregar a telemetria de IA agora.</p>
+    } @else if (telemetriaIa(); as t) {
+      <div class="ia-kpis">
+        <div class="ia-kpi">
+          <div class="ia-kpi-num">US$ {{ t.custoHojeUsd | number: '1.2-4' }}</div>
+          <div class="ia-kpi-rot">Custo hoje (estimado)</div>
+        </div>
+        <div class="ia-kpi">
+          <div class="ia-kpi-num">US$ {{ t.custo7diasUsd | number: '1.2-4' }}</div>
+          <div class="ia-kpi-rot">Últimos 7 dias</div>
+        </div>
+        <div class="ia-kpi">
+          <div class="ia-kpi-num">{{ t.execucoesHoje }}</div>
+          <div class="ia-kpi-rot">Execuções hoje</div>
+        </div>
+        <div class="ia-kpi" [class.alerta]="t.errosHoje">
+          <div class="ia-kpi-num">{{ t.errosHoje }}</div>
+          <div class="ia-kpi-rot">Erros hoje</div>
+        </div>
+      </div>
+
+      @if (t.teto.diarioUsd > 0) {
+        <p class="dica" [class.ia-teto-atingido]="t.teto.atingido" style="margin:10px 0 0">
+          Teto diário: US$ {{ t.teto.diarioUsd | number: '1.2-2' }}
+          @if (t.teto.atingido) {
+            <strong> — ATINGIDO: novas chamadas externas suspensas até amanhã.</strong>
+          }
+        </p>
+      } @else {
+        <p class="dica" style="margin:10px 0 0">
+          Sem teto diário de gasto configurado (defina MIGRACAO_IA_TETO_DIARIO_USD para ligar).
+        </p>
+      }
+
+      @if (t.porFinalidade.length) {
+        <div style="margin-top:12px" class="tabela-wrap">
+          <table class="tabela">
+            <thead>
+              <tr>
+                <th>Finalidade</th>
+                <th>Execuções</th>
+                <th>Tokens (entrada / saída)</th>
+                <th>Custo (US$)</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (f of t.porFinalidade; track f.finalidade) {
+                <tr>
+                  <td>{{ f.finalidade }}</td>
+                  <td>{{ f.execucoes }}</td>
+                  <td>{{ f.tokensEntrada | number }} / {{ f.tokensSaida | number }}</td>
+                  <td>{{ f.custoUsd | number: '1.2-4' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <p class="dica" style="margin:10px 0 0">Nenhuma execução de IA nos últimos 7 dias.</p>
+      }
+    } @else {
+      <p class="dica" style="margin:0">Carregando…</p>
+    }
+  </section>
+
   <section class="ops-grid">
     <div class="painel ops-card ops-health">
       <div class="ops-card-title">

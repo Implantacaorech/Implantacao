@@ -1,0 +1,31 @@
+/* Tela Execução → RNS — consulta de assuntos nas RNS do SICLA. */
+
+.rns-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.rns-head .dica { margin-top: 4px; }
+.rns-stat { font-size: .9rem; color: var(--muted); white-space: nowrap; padding-top: 8px; }
+.rns-stat strong { color: var(--ink); font-size: 1.05rem; }
+
+.rns-aviso { margin: 0 0 8px; }
+
+/* Botão do gráfico com estado "ligado" visível (o painel pode estar fora da dobra). */
+.rns-btn-grafico.on { background: var(--accent-weak); border-color: var(--accent); color: var(--accent-700); }
+
+/* Painel do gráfico de pizza (RNS por tipo) — deriva das linhas visíveis, como a tabela. */
+.rns-grafico { margin: 0 0 12px; padding: 12px 16px; background: var(--surface); }
+.rns-grafico-cab { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.rns-grafico-tit { font-weight: 700; color: var(--navy); }
+/* Chart.js com `maintainAspectRatio: false` exige um contêiner com altura própria. */
+.rns-grafico-area { position: relative; height: 320px; max-width: 640px; margin: 0 auto; }
+
+/* Pedido/Item alinham como número — é a coluna que o consultor copia. */
+.rns-num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; font-weight: 600; }
+
+/* O assunto é a coluna que estica; o resto fica no conteúdo. */
+.rns-assunto { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.rns-linha { cursor: pointer; }
+.rns-linha.on td { background: var(--surface-2); }
+
+/* Detalhe expandido: a linha só dá o fundo recuado — a ficha em si (grupos, textos
+ * longos) é o componente compartilhado `app-rns-detalhe` (rns-detalhe.component.css). */
+.rns-det > td { background: var(--surface-2); padding: 16px 20px 18px; }

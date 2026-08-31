@@ -1,0 +1,400 @@
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-table"/></svg> API de Dados
+  </h1>
+  @if (portalApi()) {
+    <p class="dica">
+      Esta é a instância <strong>interna</strong> — a única que guarda credencial de banco.
+      Aqui se faz o que ela existe para fazer: cadastrar a <strong>conexão</strong>, criar a
+      <strong>consulta</strong> que vira API e gerar o <strong>token</strong> de quem vai
+      consumi-la. O Portal Implantação não guarda nenhum dado de conexão: ele cola o token.
+    </p>
+  } @else {
+    <p class="dica">
+      Fronteira única entre o Painel e os bancos <strong>externos</strong> (SICLA, Portal Rech).
+      Toda consulta a esses bancos passa por aqui, pelo <strong>nome</strong> — nenhum consumidor
+      envia SQL. O texto de uma consulta editável continua em
+      <a routerLink="/config/consultas-bd">Consultas BD</a>, e os tokens com que este Painel
+      consulta o Portal API ficam em <a routerLink="/config/tokens-api">Tokens da API de Dados</a>.
+    </p>
+  }
+
+  @if (aviso()) {
+    <div class="resultado ok linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+    </div>
+  }
+  @if (erro()) {
+    <div class="resultado erro">{{ erro() }}</div>
+  }
+
+  @if (chaveNova(); as nova) {
+    <div class="painel chave-nova">
+      <h2>Chave de "{{ nova.nome }}"</h2>
+      <p class="dica">
+        <strong>Copie agora.</strong> Esta é a única exibição — o banco guarda só o hash. Se
+        perder, gere outra em "Rotacionar" (a atual deixa de valer).
+        @if (portalApi()) {
+          Os dois campos abaixo são exatamente o que se cola no Portal Implantação, em
+          <strong>Sistema → Tokens da API de Dados</strong>.
+        }
+      </p>
+
+      <!-- Endereço junto da chave: sem ele, quem acabou de gerar o token precisa sair da
+           tela para descobrir de onde ele veio — e é o primeiro campo pedido do outro lado. -->
+      <label class="chave-rotulo">
+        {{ portalApi() ? 'Endereço do Portal API' : 'Endereço desta API' }}
+        <button class="btn-copiar" type="button" (click)="copiar(enderecoDaApi(), 'endereco')">
+          {{ copiado() === 'endereco' ? 'copiado!' : 'copiar' }}
+        </button>
+      </label>
+      <pre class="chave-valor">{{ enderecoDaApi() }}</pre>
+
+      <label class="chave-rotulo">
+        Token
+        <button class="btn-copiar" type="button" (click)="copiar(nova.chave, 'token')">
+          {{ copiado() === 'token' ? 'copiado!' : 'copiar' }}
+        </button>
+      </label>
+      <pre class="chave-valor chave-token">{{ nova.chave }}</pre>
+      <p class="dica">
+        <strong>Copie pelo botão.</strong> Selecionar com o mouse é o jeito fácil de levar
+        metade do token — e o outro lado devolve "recusado", sem dizer que ele veio pela
+        metade.
+      </p>
+
+      <div class="acoes">
+        <button class="btn" type="button" (click)="fecharChave()">Já copiei, fechar</button>
+      </div>
+    </div>
+  }
+
+  <!-- ── Conexões ─────────────────────────────────────────────────────────────── -->
+  @if (mostra('conexoes')) {
+  <section class="painel" id="conexoes">
+    <h2>Conexões</h2>
+    @if (portalApi()) {
+      <p class="dica">
+        A senha nunca volta para esta tela: o que se vê é se existe uma gravada. Deixá-la em
+        branco ao salvar <strong>mantém</strong> a atual. O <strong>Testar</strong> roda um
+        <code>SELECT 1</code> — prova a credencial, não o privilégio de leitura nas views.
+      </p>
+    }
+    <div class="tabela-wrap">
+      <table class="tabela">
+        <thead>
+          <tr><th>Banco</th><th>Dialeto</th><th>Situação</th><th>Origem</th></tr>
+        </thead>
+        <tbody>
+          @for (c of conexoes(); track c.chave) {
+            <tr>
+              <td>{{ c.rotulo }}</td>
+              <td>{{ c.dialeto }}</td>
+              <td>
+                @if (c.configurada) {
+                  <svg class="svgi svgi-xs ic-ok" aria-hidden="true"><use href="#ic-check-circle"/></svg> Ativa
+                } @else {
+                  <svg class="svgi svgi-xs ic-err" aria-hidden="true"><use href="#ic-bell"/></svg> Não configurada
+                }
+              </td>
+              <td class="col-origem">{{ c.origem }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (portalApi()) {
+      @for (cfg of configuracoes(); track cfg.chave) {
+        <div class="conexao-edit">
+          <div class="acoes">
+            <button class="btn" type="button" (click)="abrirConexao(cfg)">
+              <svg class="svgi" aria-hidden="true"><use href="#ic-settings"/></svg>
+              {{ conexaoAberta() === cfg.chave ? 'Fechar' : 'Editar' }} {{ cfg.rotulo }}
+            </button>
+            <span class="dica">
+              {{ cfg.temSenha ? 'Senha gravada.' : 'Sem senha gravada.' }}
+            </span>
+          </div>
+
+          @if (conexaoAberta() === cfg.chave) {
+            <div class="grade2">
+              @for (campo of camposDe(cfg.chave); track campo) {
+                <label class="campo"><span>{{ campo }}</span>
+                  <input [value]="valorDe(campo)"
+                    (input)="definirCampo(campo, $any($event.target).value)" />
+                </label>
+              }
+              <label class="campo"><span>senha</span>
+                <input type="password" autocomplete="new-password"
+                  [value]="valorDe('senha')"
+                  (input)="definirCampo('senha', $any($event.target).value)"
+                  [placeholder]="cfg.temSenha ? 'em branco mantém a atual' : ''" />
+              </label>
+            </div>
+            @for (sel of selectsDe(cfg.chave); track sel.campo) {
+              <label class="campo"><span>{{ sel.rotulo }}</span>
+                <textarea rows="4" spellcheck="false" class="sql-conexao"
+                  [value]="valorDe(sel.campo)"
+                  (input)="definirCampo(sel.campo, $any($event.target).value)"></textarea>
+              </label>
+            }
+            <label class="escopo-item">
+              <input type="checkbox" [checked]="ligadaNoRascunho()"
+                (change)="definirCampo('ativo', $any($event.target).checked)" />
+              <span>Conexão ativa — desmarcar desliga sem apagar a credencial.</span>
+            </label>
+            <div class="acoes">
+              <button class="btn primario" type="button" (click)="salvarConexao(cfg)">Gravar</button>
+              <button class="btn" type="button" (click)="testarConexao(cfg)">Testar</button>
+            </div>
+            @if (testeDe(cfg.chave); as t) {
+              <div class="resultado" [class.ok]="t.ok" [class.erro]="!t.ok">{{ t.mensagem }}</div>
+            }
+          }
+        </div>
+      }
+    }
+  </section>
+
+  }
+
+  <!-- ── Catálogo ─────────────────────────────────────────────────────────────── -->
+  @if (mostra('consultas')) {
+  <section class="painel" id="consultas">
+    <h2>Catálogo — {{ catalogo()?.total }} consulta(s), contrato {{ catalogo()?.versao }}</h2>
+    <p class="dica">
+      O SQL não aparece aqui de propósito: é detalhe de implementação e revela o schema de um
+      sistema de terceiro. Uma consulta chega ao catálogo por dois caminhos: entrada em
+      <code>backend/src/dados/catalogo/catalogo.ts</code> (contrato revisado, exige release) ou
+      <strong>criada nesta tela</strong>, no bloco abaixo.
+    </p>
+    @for (grupo of porConexao(); track grupo.chave) {
+      <h3>{{ rotuloConexao(grupo.chave) }}</h3>
+      <div class="tabela-wrap">
+        <table class="tabela">
+          <thead>
+            <tr><th>Nome</th><th>Título</th><th>Parâmetros</th><th>Teto</th><th>Cache</th></tr>
+          </thead>
+          <tbody>
+            @for (c of grupo.consultas; track c.nome) {
+              <tr>
+                <td><code>{{ c.nome }}</code></td>
+                <td>{{ c.titulo }}</td>
+                <td>
+                  @for (p of c.parametros; track p.nome) {
+                    <span class="tag-param" [class.obrigatorio]="p.obrigatorio">
+                      {{ p.nome }}<span class="tipo">:{{ p.tipo }}</span>
+                    </span>
+                  } @empty {
+                    <span class="dica">—</span>
+                  }
+                </td>
+                <td class="num">{{ c.limiteLinhas }}</td>
+                <td class="num">{{ c.cacheSegundos }}s</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  <!-- ── Consultas criadas pela tela ──────────────────────────────────────────── -->
+  <section class="painel">
+    <h2>Consultas criadas pela tela</h2>
+    <p class="dica">
+      Cole o SELECT, clique em <strong>Testar</strong> e o contrato sai do próprio banco:
+      parâmetros e colunas de retorno. Publicar é um passo à parte — enquanto não publicar, a
+      consulta serve só aos Dashboards e <strong>não</strong> pode ser autorizada num token.
+    </p>
+    <div class="acoes">
+      <a class="btn primario" routerLink="/config/api-dados/consulta">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg> Nova consulta
+      </a>
+    </div>
+    <div class="tabela-wrap">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Identificador</th><th>Nome</th><th>Conexão</th><th>Nome na API</th>
+            <th>Situação</th><th>Teto</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of consultasDeTela(); track c.slug) {
+            <tr>
+              <td>
+                <a [routerLink]="['/config/api-dados/consulta', c.slug]"><code>{{ c.slug }}</code></a>
+              </td>
+              <td>{{ c.nome }}</td>
+              <td>{{ rotuloConexao(c.conexao) }}</td>
+              <td>@if (c.nomeApi) { <code>{{ c.nomeApi }}</code> } @else { <span class="dica">—</span> }</td>
+              <td>
+                @if (c.publicada) {
+                  <svg class="svgi svgi-xs ic-ok" aria-hidden="true"><use href="#ic-check-circle"/></svg> No catálogo
+                } @else {
+                  <span class="dica">Rascunho</span>
+                }
+              </td>
+              <td class="num">{{ c.limiteLinhas || '—' }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="dica">Nenhuma consulta criada pela tela.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  }
+
+  <!-- ── Clientes de máquina ──────────────────────────────────────────────────── -->
+  @if (mostra('tokens')) {
+  <section class="painel" id="tokens">
+    <h2>Clientes de máquina — geração de token</h2>
+    @if (avisoClientes()) {
+      <div class="resultado erro">{{ avisoClientes() }}</div>
+    }
+    <p class="dica">
+      Outro sistema da Rech, agente de IA ou ferramenta de BI. Autenticam por
+      <code>X-API-Key</code> e podem chamar exatamente as consultas marcadas — não têm menu
+      nem perfil. Pessoa não precisa de token: usa o próprio login do Painel.
+    </p>
+
+    <form [formGroup]="form" (ngSubmit)="criar()">
+      <div class="grade2">
+        <label class="campo"><span>Nome</span>
+          <input formControlName="nome" placeholder="Power BI — Diretoria" />
+        </label>
+        <label class="campo"><span>Observação</span>
+          <input formControlName="observacao" placeholder="Para que serve / responsável" />
+        </label>
+      </div>
+      <fieldset class="escopos">
+        <legend>Consultas que este token poderá chamar</legend>
+        <p class="dica">
+          A autorização é <strong>por consulta</strong>: o token não alcança nada além do que
+          estiver marcado aqui. Marque o mínimo necessário.
+        </p>
+        @for (grupo of porConexao(); track grupo.chave) {
+          <div class="grupo-escopo">
+            <label class="escopo-item cabecalho">
+              <input
+                type="checkbox"
+                [checked]="grupoInteiroMarcado(grupo.chave)"
+                (change)="alternarGrupo(grupo.chave, $any($event.target).checked)"
+              />
+              <strong>{{ rotuloConexao(grupo.chave) }}</strong>
+            </label>
+            @for (c of grupo.consultas; track c.nome) {
+              <label class="escopo-item">
+                <input
+                  type="checkbox"
+                  [checked]="consultaMarcada(c.nome)"
+                  (change)="alternarConsulta(c.nome, $any($event.target).checked)"
+                />
+                <code>{{ c.nome }}</code>
+                <span class="dica">{{ c.titulo }}</span>
+              </label>
+            }
+          </div>
+        }
+      </fieldset>
+      <div class="acoes">
+        <button class="btn primario" type="submit" [disabled]="salvando()">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+          {{ salvando() ? 'Criando…' : 'Criar cliente' }}
+        </button>
+      </div>
+    </form>
+
+    <div class="tabela-wrap">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Nome</th><th>Prefixo</th><th>Consultas autorizadas</th><th>Situação</th>
+            <th>Último uso</th><th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of clientes(); track c.id) {
+            <tr [class.inativo]="!c.ativo">
+              <td>{{ c.nome }}<br /><span class="dica">{{ c.observacao }}</span></td>
+              <td class="col-prefixo">
+                <code>{{ prefixoAberto() === c.id ? c.prefixo : prefixoMascarado(c.prefixo) }}</code>
+                <button class="btn-olho" type="button" (click)="alternarPrefixo(c.id)"
+                  [attr.aria-label]="prefixoAberto() === c.id ? 'Ocultar prefixo' : 'Mostrar prefixo'">
+                  {{ prefixoAberto() === c.id ? 'ocultar' : 'mostrar' }}
+                </button>
+              </td>
+              <td>
+                @for (nome of c.consultas; track nome) {
+                  <span class="tag-param">{{ nome }}</span>
+                }
+              </td>
+              <td>{{ c.ativo ? 'Ativo' : 'Revogado' }}</td>
+              <td>{{ c.ultimoUsoEm ? (c.ultimoUsoEm | date: 'dd/MM/yyyy HH:mm') : 'nunca' }}</td>
+              <td>
+                <div class="acoes">
+                  @if (c.ativo) {
+                    <button class="btn" type="button" (click)="definirAtivo(c, false)">Revogar</button>
+                  } @else {
+                    <button class="btn" type="button" (click)="definirAtivo(c, true)">Reativar</button>
+                  }
+                  <button class="btn" type="button" (click)="rotacionar(c)">Rotacionar</button>
+                  <button class="btn" type="button" (click)="excluir(c)">Apagar</button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="dica">Nenhum cliente de máquina cadastrado.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── Uso ─────────────────────────────────────────────────────────────────── -->
+  <section class="painel">
+    <h2>Uso por consulta</h2>
+    <p class="dica">
+      Desde o último boot do Painel. Responde "quem consome o quê" antes de mexer numa entrada
+      do catálogo. Limpe o cache depois de editar o SQL de uma consulta em Consultas BD —
+      senão o resultado anterior sobrevive até o TTL.
+    </p>
+    <div class="acoes">
+      <button class="btn" type="button" (click)="limparCache()">Limpar cache de resultados</button>
+      <button class="btn" type="button" (click)="carregar()">Atualizar</button>
+    </div>
+    <div class="tabela-wrap">
+      <table class="tabela">
+        <thead>
+          <tr><th>Consulta</th><th>Execuções</th><th>Cache</th><th>Erros</th><th>Média</th><th>Última</th></tr>
+        </thead>
+        <tbody>
+          @for (m of metricas(); track m.consulta) {
+            <tr>
+              <td><code>{{ m.consulta }}</code></td>
+              <td class="num">{{ m.execucoes }}</td>
+              <td class="num">{{ m.acertosCache }}</td>
+              <td class="num">{{ m.erros }}</td>
+              <td class="num">{{ m.msMedio }} ms</td>
+              <td>{{ m.ultimaEm ? (m.ultimaEm | date: 'dd/MM HH:mm') : '—' }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="dica">Nenhuma consulta executada desde o último boot.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  }
+
+  @if (!portalApi()) {
+    <a class="btn btn-voltar" routerLink="/home">← Voltar ao Fluxo</a>
+  }
+}

@@ -16,10 +16,9 @@ import { ModeloEmailService } from '../src/email/modelo-email.service';
 import { MODELOS_EMAIL_PADRAO } from '../src/email/modelo-email.constants';
 import { EMAILS_POR_PASSO } from '../src/passos/passos-email.constants';
 
-// dados/email_test_<JEST_WORKER_ID>/ guarda smtp.json/imap.json/gmail_client.json/
-// gmail_token.json entre execuções — limpo no início E no fim para não vazar estado de
-// uma corrida anterior (mesma lição do EBUSY/store isolado por worker, ver
-// docs/migracao/03-documento-conversao.md §6).
+// dados/email_test_<JEST_WORKER_ID>/ guarda smtp.json/imap.json/graph.json entre execuções
+// — limpo no início E no fim para não vazar estado de uma corrida anterior (mesma lição do
+// EBUSY/store isolado por worker, ver docs/migracao/03-documento-conversao.md §6).
 const DIR_TESTE = join(
   process.cwd(),
   'dados',
@@ -106,7 +105,7 @@ describe('E-mail / Fluxo (e2e)', () => {
     return req.set('Authorization', `Bearer ${token}`);
   }
 
-  // Roda ANTES de qualquer teste que configure SMTP/Gmail (abaixo) — assim
+  // Roda ANTES de qualquer teste que configure um meio de envio (abaixo) — assim
   // mailer.configurado() é false e o caminho é o rápido ("e-mail não configurado"),
   // sem tentar uma conexão de rede real (que seria lenta/instável neste ambiente).
   describe('Notificação automática de encerramento', () => {
@@ -195,43 +194,44 @@ describe('E-mail / Fluxo (e2e)', () => {
     });
   });
 
-  describe('Config → Gmail API', () => {
-    it('status inicial: sem client, não autorizado', async () => {
-      const res = await auth(request(server()).get('/api/config/gmail'));
-      expect(res.body.data).toEqual({ temCliente: false, autorizado: false });
+  describe('Config → E-mail (Microsoft 365)', () => {
+    // Deixar o Graph configurado faria as notificações dos testes seguintes tentarem uma
+    // chamada REAL à Microsoft (lenta e dependente de rede) em vez do caminho rápido.
+    afterAll(() => {
+      rmSync(join(DIR_TESTE, 'graph.json'), { force: true });
     });
 
-    it('envia o client OAuth (JSON) e passa a "temCliente"', async () => {
-      const json = JSON.stringify({
-        web: {
-          client_id: 'id123',
-          client_secret: 'segredo',
-          redirect_uris: ['http://localhost:3000/api/config/gmail/callback'],
-        },
-      });
+    it('não-ADM não acessa', async () => {
       const res = await auth(
-        request(server())
-          .post('/api/config/gmail/client')
-          .attach('client', Buffer.from(json), 'gmail_client.json'),
+        request(server()).get('/api/config/graph'),
+        tokenConsultor,
       );
-      expect(res.status).toBe(200);
-      expect(res.body.data.temCliente).toBe(true);
+      expect(res.status).toBe(403);
     });
 
-    it('autorizar devolve a URL de consentimento do Google', async () => {
-      const res = await auth(
-        request(server()).get('/api/config/gmail/autorizar'),
-      );
-      expect(res.status).toBe(200);
-      expect(res.body.data.url).toContain('accounts.google.com');
+    it('status inicial: não configurado e sem segredo', async () => {
+      const res = await auth(request(server()).get('/api/config/graph'));
+      expect(res.body.data.configurado).toBe(false);
+      expect(res.body.data.temSegredo).toBe(false);
     });
 
-    it('callback é uma rota pública (sem token) e redireciona em caso de erro', async () => {
-      const res = await request(server())
-        .get('/api/config/gmail/callback')
-        .query({ error: 'access_denied' });
-      expect(res.status).toBe(302);
-      expect(res.headers.location).toContain('erro=access_denied');
+    it('salva e lê de volta, sem nunca devolver o segredo', async () => {
+      const salvar = await auth(
+        request(server()).post('/api/config/graph').send({
+          tenantId: 'tenant-uuid',
+          clientId: 'client-uuid',
+          clientSecret: 'segredo',
+          remetente: 'implantacao@rech.com.br',
+        }),
+      );
+      expect(salvar.status).toBe(200);
+      expect(salvar.body.data.clientSecret).toBeUndefined();
+      expect(salvar.body.data.temSegredo).toBe(true);
+      expect(salvar.body.data.configurado).toBe(true);
+
+      const status = await auth(request(server()).get('/api/config/graph'));
+      expect(status.body.data.tenantId).toBe('tenant-uuid');
+      expect(status.body.data.clientSecret).toBeUndefined();
     });
   });
 

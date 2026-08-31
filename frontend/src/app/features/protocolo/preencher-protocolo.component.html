@@ -1,0 +1,200 @@
+<div class="modal-fundo" (click)="fechar.emit()">
+  <div class="modal-cx largo" (click)="$event.stopPropagation()">
+    <div class="modal-cab">
+      <div>
+        <h2>Preencher protocolo</h2>
+        <p class="sub">
+          Monta os campos do Registro de Atendimento em Visita a partir de uma transcrição ou
+          gravação. Confira/ajuste aqui e leve para o Portal Rech.
+        </p>
+      </div>
+      <button class="modal-fechar" type="button" (click)="fechar.emit()" aria-label="Fechar">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-x"/></svg>
+      </button>
+    </div>
+
+    <div class="modal-corpo">
+      <div class="form-grid">
+        <label class="campo">
+          <span>1 · Cliente</span>
+          @if (carregandoClientes()) {
+            <select disabled><option>Carregando…</option></select>
+          } @else {
+            <select name="cliente" [ngModel]="clienteSel()" (ngModelChange)="onClienteAlterado($event)">
+              <option value="">Selecione o cliente…</option>
+              @for (c of clientes(); track c.cliente) {
+                <option [value]="c.cliente">
+                  {{ c.clienteCodigo ? c.clienteCodigo + ' - ' : '' }}{{ c.cliente }} ({{ c.total }})
+                </option>
+              }
+            </select>
+          }
+        </label>
+
+        <label class="campo">
+          <span>2 · Transcrição / gravação</span>
+          <select
+            name="protocolo"
+            [disabled]="!clienteSel() || carregandoProtocolos() || protocolos().length === 0"
+            [ngModel]="protocoloSel()"
+            (ngModelChange)="onProtocoloAlterado($event)"
+          >
+            <option [ngValue]="null">
+              {{ carregandoProtocolos() ? 'Carregando…' : 'Selecione a base…' }}
+            </option>
+            @for (p of protocolos(); track p.id) {
+              <option [ngValue]="p.id">{{ rotuloProtocolo(p) }}</option>
+            }
+          </select>
+        </label>
+      </div>
+
+      @if (erro()) {
+        <div class="resultado erro">{{ erro() }}</div>
+      }
+
+      @if (carregandoRascunho()) {
+        <p class="dica">Montando o rascunho…</p>
+      }
+
+      @if (rascunho()) {
+        <div class="grupo-campos">
+          <div class="grupo-titulo">3 · Dados do atendimento (edite se precisar)</div>
+
+          <div class="form-grid">
+            <label class="campo">
+              <span>Cliente / Empresa</span>
+              <input type="text" [value]="clienteInfo()" readonly />
+            </label>
+            <label class="campo">
+              <span>Código do cliente (SICLA)</span>
+              <input type="text" name="clienteCodigo" inputmode="numeric"
+                     placeholder="usado para achar a empresa no Portal"
+                     [ngModel]="clienteCodigo()" (ngModelChange)="clienteCodigo.set($event)" />
+            </label>
+            <label class="campo">
+              <span>Contato do atendimento</span>
+              <input type="text" name="contato" placeholder="Nome do contato"
+                     [ngModel]="contato()" (ngModelChange)="contato.set($event)" />
+            </label>
+            <label class="campo">
+              <span>Módulo</span>
+              <select name="modulo" [ngModel]="modulo()" (ngModelChange)="modulo.set($event)">
+                <option value="">Selecione…</option>
+                @for (m of modulos; track m) {
+                  <option [value]="m">{{ m }}</option>
+                }
+              </select>
+            </label>
+            <label class="campo">
+              <span>Início do deslocamento</span>
+              <input type="datetime-local" name="iniDesl"
+                     [ngModel]="inicioDeslocamento()" (ngModelChange)="inicioDeslocamento.set($event)" />
+            </label>
+            <label class="campo">
+              <span>Início da visita</span>
+              <input type="datetime-local" name="iniVis"
+                     [ngModel]="inicioVisita()" (ngModelChange)="inicioVisita.set($event)" />
+            </label>
+            <label class="campo">
+              <span>Fim da visita</span>
+              <input type="datetime-local" name="fimVis"
+                     [ngModel]="fimVisita()" (ngModelChange)="fimVisita.set($event)" />
+            </label>
+            <label class="campo">
+              <span>Fim do deslocamento</span>
+              <input type="datetime-local" name="fimDesl"
+                     [ngModel]="fimDeslocamento()" (ngModelChange)="fimDeslocamento.set($event)" />
+            </label>
+          </div>
+
+          <button class="pp-extras-toggle" type="button" (click)="mostrarExtras.set(!mostrarExtras())">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+            {{ mostrarExtras() ? 'Ocultar' : 'Mostrar' }} km e custos (opcional)
+          </button>
+          @if (mostrarExtras()) {
+            <div class="form-grid">
+              <label class="campo"><span>Km inicial</span>
+                <input type="number" name="kmi" [ngModel]="kmInicial()" (ngModelChange)="kmInicial.set($event)" /></label>
+              <label class="campo"><span>Km final</span>
+                <input type="number" name="kmf" [ngModel]="kmFinal()" (ngModelChange)="kmFinal.set($event)" /></label>
+              <label class="campo"><span>Pedágio</span>
+                <input type="number" name="cped" [ngModel]="custoPedagio()" (ngModelChange)="custoPedagio.set($event)" /></label>
+              <label class="campo"><span>Estadia</span>
+                <input type="number" name="cest" [ngModel]="custoEstadia()" (ngModelChange)="custoEstadia.set($event)" /></label>
+              <label class="campo"><span>Alimentação</span>
+                <input type="number" name="cali" [ngModel]="custoAlimentacao()" (ngModelChange)="custoAlimentacao.set($event)" /></label>
+              <label class="campo"><span>Estacionamento</span>
+                <input type="number" name="ceca" [ngModel]="custoEstacionamento()" (ngModelChange)="custoEstacionamento.set($event)" /></label>
+            </div>
+          }
+
+          <label class="campo largura-total">
+            <span>Descrição da atividade</span>
+            <textarea class="pp-desc" name="descricao" rows="14"
+                      [ngModel]="descricao()" (ngModelChange)="descricao.set($event)"></textarea>
+          </label>
+
+          <!-- Credencial do Portal (obrigatória no 1º uso) + captura. -->
+          @if (pedindoCredencial()) {
+            <div class="pp-cred">
+              <div class="grupo-titulo">Credencial do Portal Rech</div>
+              <p class="dica">
+                Informe o <strong>e-mail</strong> e a senha com que você acessa o Portal Rech. Fica
+                salvo com segurança e é usado só para lançar seus atendimentos — a visita nasce como sua.
+              </p>
+              <div class="form-grid">
+                <label class="campo">
+                  <span>E-mail do Portal</span>
+                  <input type="email" name="credLogin" autocomplete="off"
+                         placeholder="seu e-mail de acesso ao Portal"
+                         [ngModel]="formLogin()" (ngModelChange)="formLogin.set($event)" />
+                </label>
+                <label class="campo">
+                  <span>Senha do Portal</span>
+                  <input type="password" name="credSenha" autocomplete="off"
+                         [ngModel]="formSenha()" (ngModelChange)="formSenha.set($event)" />
+                </label>
+              </div>
+              <div class="acoes">
+                <button class="btn primario" type="button"
+                        [disabled]="salvandoCred()" (click)="salvarCredencialEContinuar()">
+                  {{ salvandoCred() ? 'Salvando…' : 'Salvar e continuar' }}
+                </button>
+                <button class="btn" type="button" (click)="pedindoCredencial.set(false)">Cancelar</button>
+              </div>
+            </div>
+          } @else if (temCredencial()) {
+            <p class="pp-cred-info">
+              <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+              Portal conectado como <strong>{{ credLogin() }}</strong>
+              <button class="pp-link" type="button" (click)="trocarCredencial()">trocar</button>
+            </p>
+          }
+
+          @if (visitaCriada(); as vid) {
+            <div class="resultado ok">
+              Visita criada no Portal como rascunho (#{{ vid }}). Confira na lista aberta e
+              clique em <strong>Enviar para o SICLA</strong>.
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="modal-rod">
+      @if (rascunho()) {
+        <button class="btn" type="button" (click)="copiarTudo()">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>
+          {{ copiado() === 'tudo' ? 'Copiado!' : 'Copiar tudo' }}
+        </button>
+        <button class="btn primario" type="button"
+                [disabled]="enviando() || salvandoCred()" (click)="iniciarPreenchimento()">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+          {{ enviando() ? 'Enviando ao Portal…' : 'Iniciar preenchimento' }}
+        </button>
+      }
+      <button class="btn" type="button" (click)="fechar.emit()">Fechar</button>
+    </div>
+  </div>
+</div>

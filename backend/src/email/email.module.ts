@@ -5,11 +5,11 @@ import { Projeto } from '../database/entities/projeto.entity';
 import { Evento } from '../database/entities/evento.entity';
 import { UsersModule } from '../users/users.module';
 import { MailerService } from './mailer.service';
-import { GmailService } from './gmail.service';
+import { GraphService } from './graph.service';
 import { ModeloEmailService } from './modelo-email.service';
 import { NotificacaoService } from './notificacao.service';
 import { ConfigEmailController } from './config-email.controller';
-import { ConfigGmailController } from './config-gmail.controller';
+import { ConfigGraphController } from './config-graph.controller';
 import { ModeloEmailController } from './modelo-email.controller';
 
 @Module({
@@ -19,18 +19,18 @@ import { ModeloEmailController } from './modelo-email.controller';
   ],
   controllers: [
     ConfigEmailController,
-    ConfigGmailController,
+    ConfigGraphController,
     ModeloEmailController,
   ],
   providers: [
     MailerService,
-    GmailService,
+    GraphService,
     ModeloEmailService,
     NotificacaoService,
   ],
   exports: [
     MailerService,
-    GmailService,
+    GraphService,
     ModeloEmailService,
     NotificacaoService,
   ],

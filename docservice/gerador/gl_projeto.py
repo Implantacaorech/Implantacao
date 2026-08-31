@@ -2,7 +2,8 @@
 """Geração fiel — parte do PROJETO de Implantação (detalhamento + tabelas + respostas)."""
 import db
 import preencher_layout as PL
-from gl_comum import (_conteudo, _num, _por_extenso, _hoje, _norm, _eh_marcador, _PROJ_GRUPOS)
+from gl_comum import (_conteudo, _num, _por_extenso, _hoje, _norm, _eh_marcador,
+                      _data_iso, _inserir_textos_depois, _PROJ_GRUPOS)
 
 
 def _repl_projeto(p):
@@ -24,6 +25,13 @@ def _repl_projeto(p):
         paras.append(("Redator do Projeto", "Redator do Projeto: %s" % val("redator")))
     if val("consultor", "consultor"):
         paras.append(("Consultor/Implantador", "Consultor/Implantador: %s" % val("consultor", "consultor")))
+    # Lado CLIENTE das Equipes de Trabalho — o layout traz a linha "Encarregado pelo Projeto:"
+    # em paralelo às três da Rech, mas ela nunca era preenchida: a tela de edição gravava
+    # `encarregado` em DocConteudo e a geração ignorava, então o campo saía em branco em todo
+    # Projeto (defeito herdado do webapp/gl_projeto.py do Flask).
+    if val("encarregado", "contato_nome"):
+        paras.append(("Encarregado pelo Projeto",
+                      "Encarregado pelo Projeto: %s" % val("encarregado", "contato_nome")))
     hb, hc = _num(p.get("horas_bonificadas")), _num(p.get("horas_cobradas"))
     if hb:
         repl.append(("<XX horas bonificadas>", "%s horas bonificadas" % hb))
@@ -31,6 +39,68 @@ def _repl_projeto(p):
         repl.append(("<XX horas cobradas>", "%s horas cobradas" % hc))
     paras.append(("Novo Hamburgo", "Novo Hamburgo, %s." % _por_extenso(_hoje())))
     return repl, paras
+
+
+def _linhas(texto):
+    """Quebra um textarea da tela de edição em linhas não vazias."""
+    return [l.strip() for l in (texto or "").splitlines() if l.strip()]
+
+
+def _marcador_apos(paras, i):
+    """Índice do 1º parágrafo-marcador ('<...>') logo depois de `i`, pulando os vazios.
+    Devolve None se o próximo parágrafo com texto não for um marcador — assim um rótulo cujo
+    campo seguinte é outra coisa (por exemplo o 'CNPJ:' abaixo das empresas) nunca é
+    sobrescrito por engano."""
+    for j in range(i + 1, min(i + 4, len(paras))):
+        t = (paras[j].text or "").strip()
+        if not t:
+            continue
+        return j if t.startswith("<") else None
+    return None
+
+
+def _preencher_escopo_projeto(doc, projeto):
+    """Escopo e Cadastros: escreve no layout os textos que a tela do Projeto grava em
+    DocConteudo (`empresas`, `conversoes`, `cad_clientes`, `cad_produtos`, `cad_outros`).
+
+    Todos existem na tela mas nenhum gerador os lia — o marcador '(preencher)' do layout
+    acabava apagado por `remover_marcadores_docx` e o texto digitado se perdia; o bloco
+    'Cadastros' saía vazio em todo Projeto entregue ao cliente.
+
+    Duas mecânicas, conforme o layout: onde o rótulo é seguido de um parágrafo-marcador
+    próprio (os Cadastros), o marcador é SUBSTITUÍDO — assim nem sobra o '.' solto que ele
+    deixava para trás. Onde o marcador está embutido no próprio rótulo ('Conversões') ou o
+    parágrafo seguinte é outro campo ('CNPJ:', abaixo das empresas), o texto entra como
+    parágrafo(s) logo abaixo, preservando o estilo do título."""
+    cont = db.doc_conteudo(projeto.get("id"), "projeto") if projeto.get("id") else {}
+    if not cont:
+        return 0
+    # (rótulo normalizado, campo, substitui_o_marcador_seguinte)
+    alvos = [
+        ("estão contempladas no referido projeto as seguintes empresas", "empresas", False),
+        ("conversões", "conversoes", False),
+        ("clientes e fornecedores", "cad_clientes", True),
+        ("produtos/serviços", "cad_produtos", True),
+        ("outros pontos gerais do projeto", "cad_outros", True),
+    ]
+    n = 0
+    for rotulo, campo, substitui in alvos:
+        itens = _linhas(cont.get(campo))
+        if not itens:
+            continue
+        paras = doc.paragraphs
+        for i, p in enumerate(paras):
+            if not _norm(p.text).startswith(rotulo):
+                continue
+            alvo = _marcador_apos(paras, i) if substitui else None
+            if alvo is not None:
+                PL._aplica_no_paragrafo(paras[alvo], itens[0])
+                _inserir_textos_depois(paras[alvo], itens[1:])
+            else:
+                _inserir_textos_depois(p, itens)
+            n += 1
+            break
+    return n
 
 
 def _emitir_lista_detalhamento(anchor_p, itens):
@@ -156,6 +226,17 @@ def _preencher_detalhamento_projeto(doc, projeto, guia=False):
     return n
 
 
+def _data_br(valor):
+    """Data do Cronograma Macro no formato do documento (dd/mm/aaaa).
+
+    A tela grava ISO (aaaa-mm-dd), que é o que o <input type="date"> produz desde que esses
+    campos deixaram de ser texto livre. `_data_iso` aceita os dois formatos, então valor
+    antigo, digitado à mão em dd/mm/aaaa, continua saindo certo; o que não for data
+    reconhecível vai para o documento como está, sem virar texto vazio."""
+    d = _data_iso(valor)
+    return d.strftime("%d/%m/%Y") if d else (valor or "").strip()
+
+
 def _preencher_projeto_tabelas(doc, projeto):
     """Preenche no Projeto a Tabela de Usuários e o Cronograma Macro a partir do DocConteudo."""
     cont = db.doc_conteudo(projeto.get("id"), "projeto") if projeto.get("id") else {}
@@ -178,12 +259,14 @@ def _preencher_projeto_tabelas(doc, projeto):
                 et = (row.cells[col_et].text or "").strip().lower()
                 key = next((k for (kw, k) in crono if kw in et), None)
                 if key and cont.get(key):
-                    row.cells[col_per].text = cont[key]
+                    row.cells[col_per].text = _data_br(cont[key])
         # Tabela de Usuários: Nome | E-mail | Área | Assina
         if hdr[0] == "nome" and any("assina" in h for h in hdr):
             base = t.rows[1:]
             usuarios = []
-            for i in range(4):
+            # 5 linhas: mesma quantidade dos Usuários-chave do Levantamento, de onde a
+            # etapa 10 herda a tabela. `t.add_row()` cobre o que passar do modelo.
+            for i in range(5):
                 nome = (cont.get("usu_%d_nome" % i) or "").strip()
                 if nome:
                     usuarios.append([nome, cont.get("usu_%d_email" % i, ""),

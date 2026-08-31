@@ -50,6 +50,34 @@ describe('AgentesService', () => {
     expect(r.id).toBe(1);
   });
 
+  it('registrarCiclo grava uma execução já CONCLUÍDA (eixo 4 — execução autônoma real)', async () => {
+    await service.registrarCiclo(
+      'documentos-geracao',
+      'Robô de protocolos: 2 vídeo(s) processado(s).',
+      true,
+    );
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agente: 'documentos-geracao',
+        status: 'concluido',
+        agentePaiId: null,
+      }),
+    );
+    expect(repo.save).toHaveBeenCalled();
+  });
+
+  it('registrarCiclo com ok=false marca falhou', async () => {
+    await service.registrarCiclo('documentos-geracao', 'falhou', false);
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'falhou' }),
+    );
+  });
+
+  it('registrarCiclo NUNCA lança, mesmo se o banco falhar (best-effort)', async () => {
+    repo.save.mockRejectedValueOnce(new Error('db down'));
+    await expect(service.registrarCiclo('x', 'y')).resolves.toBeUndefined();
+  });
+
   it('concluir lança NotFound se a execução não existe', async () => {
     repo.findOne.mockResolvedValue(null);
     await expect(

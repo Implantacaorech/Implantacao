@@ -114,13 +114,15 @@ export class LevantamentoController {
   async sugerir(
     @Param('projetoId', ParseIntPipe) projetoId: number,
     @Body() dto: SugerirLevantamentoDto,
+    @CurrentUser() user: AuthUser,
   ) {
     // Propositalmente sem gravar: a resposta volta para a tela como PROPOSTA, e quem
     // responde é o GCI, pelo mesmo PATCH por linha de sempre (com versão e autoria). Um
     // documento de Levantamento é assinado pelo cliente — "quem escreveu isto?" não pode
-    // ter como resposta "a IA, sozinha".
+    // ter como resposta "a IA, sozinha". O `user.nome` vai para a telemetria de IA (A10:
+    // antes esta rota nem recebia @CurrentUser).
     return new ApiEnvelope(
-      await this.sugestoes.sugerir(projetoId, dto.protocoloId),
+      await this.sugestoes.sugerir(projetoId, dto.protocoloId, user.nome),
     );
   }
 

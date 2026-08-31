@@ -1,0 +1,54 @@
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-send"/></svg> E-mail (Microsoft 365)
+  </h1>
+  <p class="dica">
+    Envio pela API do Microsoft Graph — é o caminho oficial da caixa da Rech desde que a
+    Microsoft encerrou o login por usuário e senha no SMTP. Os quatro valores abaixo vêm do
+    TI, do registro de aplicativo no Entra ID. O segredo fica salvo só nesta máquina (não é
+    versionado). Quando esta tela está configurada, ela tem prioridade sobre o SMTP.
+  </p>
+
+  @if (aviso()) {
+    <div class="resultado ok linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+    </div>
+  }
+  @if (erro()) {
+    <div class="resultado erro">{{ erro() }}</div>
+  }
+
+  <form class="painel" [formGroup]="form" (ngSubmit)="salvar()">
+    <div class="grade2">
+      <label class="campo"><span>Tenant ID</span><input formControlName="tenantId" placeholder="ID do diretório (tenant)" /></label>
+      <label class="campo"><span>Client ID</span><input formControlName="clientId" placeholder="ID do aplicativo (cliente)" /></label>
+      <label class="campo">
+        <span>Client Secret</span>
+        <input type="password" formControlName="clientSecret"
+               [placeholder]="temSegredo() ? '(em branco mantém o atual)' : 'valor do segredo do aplicativo'" />
+      </label>
+      <label class="campo"><span>Remetente (From)</span><input formControlName="remetente" placeholder="implantacao@rech.com.br" /></label>
+    </div>
+    <button class="btn primario" type="submit" [disabled]="salvando()">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ salvando() ? 'Salvando…' : 'Salvar' }}
+    </button>
+  </form>
+
+  <p class="dica flex-linha compacta">
+    @if (configurado()) {
+      <svg class="svgi svgi-xs ic-ok" aria-hidden="true"><use href="#ic-check-circle"/></svg> Configurado
+    } @else {
+      <svg class="svgi svgi-xs ic-err" aria-hidden="true"><use href="#ic-bell"/></svg> Incompleto (preencha os quatro campos)
+    }
+  </p>
+
+  <p class="dica">
+    O segredo do aplicativo tem validade e, quando expira, o envio para sem aviso. Se
+    aparecer erro de segredo expirado ao enviar, peça um novo ao TI e salve aqui — nada mais
+    precisa mudar.
+  </p>
+
+  <a class="btn btn-voltar" routerLink="/projetos">← Voltar</a>
+}

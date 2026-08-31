@@ -1,9 +1,24 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  OnModuleInit,
+  Optional,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import Anthropic from '@anthropic-ai/sdk';
 import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { IaTelemetriaService } from '../ia-telemetria/ia-telemetria.service';
+import { killSwitch } from '../common/automacao/kill-switch';
 import {
+  CABECALHO_REQUEST_ID,
+  requestIdAtual,
+} from '../common/observabilidade/correlacao';
+import {
+  exigeProvedorLocal,
   FINALIDADES_IA,
+  FINALIDADES_SO_LOCAL,
   FinalidadeIa,
   MODELO_ANTHROPIC_PADRAO,
   OPENROUTER_BASE_URL,
@@ -11,11 +26,83 @@ import {
   ProvedorIa,
 } from './ia.constants';
 
-/** Teto de espera do serviço local. Generoso porque um modelo grande em CPU lendo 13 mil
- * tokens de transcrição leva minutos — e apertar isso transformaria "lento" em "quebrado".
- * Existir, porém, é obrigatório: sem teto, um servidor engasgado penduraria o pipeline de
- * transcrição para sempre, que é exatamente o defeito corrigido em `aguardarTranscricao`. */
-const TIMEOUT_LOCAL_MS = 10 * 60 * 1000;
+/** Tokens consumidos numa chamada — `null` quando o provedor não devolveu `usage`. */
+interface UsoIa {
+  tokensEntrada: number | null;
+  tokensSaida: number | null;
+}
+
+/** Enriquecimento opcional para a telemetria (A10): quem disparou e um rótulo de contexto
+ * (NUNCA o conteúdo do prompt). Sem isto, a linha ainda registra finalidade/provedor/modelo/
+ * tokens/custo — só o "quem" fica como robô/sistema. */
+export interface MetaExecucaoIa {
+  solicitante?: string | null;
+  contexto?: string;
+}
+
+/** Janela máxima do serviço local SEM PRODUZIR TEXTO NOVO. A resposta do provedor local é
+ * lida em STREAMING e este relógio zera a cada pedaço de texto gerado — NÃO é teto total.
+ * A distinção importa porque, na máquina de produção (i7-1255U, CPU pura, qwen2.5:7b,
+ * medido 2026-08-14), o modelo lê ~22 tokens/s e gera ~4 tokens/s: um protocolo grande passa
+ * de 30 min TRABALHANDO, e era exatamente isso que o teto total de 30 min matava
+ * (erro de 2026-08-19 — "não terminou em 30 min" com o modelo gerando normalmente).
+ * A janela cobre a fase muda de leitura do prompt (32k de contexto a 22 tok/s ≈ 25 min);
+ * começada a geração, só dispara se o servidor ficar meia hora sem emitir NADA — travamento
+ * de verdade (defeito A14), não lentidão. */
+const INATIVIDADE_LOCAL_MS = 30 * 60 * 1000;
+
+/** Teto TOTAL de segurança do serviço local, bem acima de qualquer geração legítima medida
+ * (leitura ~25 min + 8 mil tokens de saída a 4 tok/s ≈ 33 min ⇒ ~1 h no pior caso real).
+ * Existe para um servidor que goteje um token por minuto não segurar o pipeline por um dia —
+ * a janela de inatividade sozinha não pega esse caso. */
+const TETO_TOTAL_LOCAL_MS = 3 * 60 * 60 * 1000;
+
+/** Teto de espera dos provedores REMOTOS (OpenRouter, Anthropic). Menor que o do local porque
+ * uma API na nuvem que não respondeu em 2 min está fora do ar, não "pensando devagar em CPU".
+ * Achado A14: sem teto, uma chamada pendurada deixava o protocolo preso em `Analisando` para
+ * sempre — exatamente o beco que `recuperarPresos`/`cancelar` existem para desfazer. */
+const TIMEOUT_REMOTO_MS = 2 * 60 * 1000;
+/** Teto curto para consultas auxiliares (catálogo de modelos): é conveniência de tela, não
+ * pode segurar a UI se a rede engasgar. */
+const TIMEOUT_CATALOGO_MS = 10 * 1000;
+
+/** O `fetch` do Node desiste se os CABEÇALHOS da resposta não chegarem em 5 min (padrão do
+ * undici embutido) — e um servidor local sem streaming (Ollama) só manda os cabeçalhos
+ * DEPOIS de gerar o corpo inteiro, então qualquer geração acima de 5 min morria como
+ * "fetch failed" ANTES de `TIMEOUT_LOCAL_MS` valer (protocolo 76, 2026-08-14: duas
+ * tentativas mortas aos 5min00s exatos, com o Ollama de pé). O Node não exporta o Agent
+ * embutido; a classe é alcançada pelo dispatcher global (symbol público que o undici
+ * registra em `globalThis`). Tetos zerados de propósito: o teto REAL de cada chamada é o
+ * `AbortSignal.timeout` que `despachar` sempre passa — dois relógios para a mesma espera só
+ * confundem. Se o symbol sumir numa versão futura do Node, devolve `undefined` e a chamada
+ * segue no fetch puro — volta o teto de 5 min, não nasce um erro novo. */
+// O symbol só nasce no PRIMEIRO fetch do processo — sem isto, a primeira chamada de IA após
+// o boot ainda sairia sem dispatcher (com o teto de 5 min). Um data-URL resolve na hora,
+// sem tocar a rede.
+void fetch('data:,').catch(() => undefined);
+let dispatcherIa: object | undefined;
+function dispatcherSemTetoDeCabecalhos(): object | undefined {
+  if (dispatcherIa) return dispatcherIa;
+  const global = globalThis as Record<symbol, unknown>;
+  const atual = global[Symbol.for('undici.globalDispatcher.1')];
+  const Agent = atual?.constructor as
+    (new (opts: object) => object) | undefined;
+  if (typeof Agent !== 'function') return undefined;
+  dispatcherIa = new Agent({ headersTimeout: 0, bodyTimeout: 0 });
+  return dispatcherIa;
+}
+
+/** Temperatura FIXA e baixa para todas as finalidades: são tarefas FACTUAIS (estruturar a
+ * transcrição, responder com base no documento, extrair as respostas do questionário), onde
+ * criatividade é defeito — quanto mais determinístico, menos alucinação. Eixo 6 da auditoria de
+ * 2026-08-12. O caller pode sobrepor via `opcoes.temperatura`, mas o default é factual de
+ * propósito. */
+const TEMPERATURA_FACTUAL = 0.2;
+
+/** Abaixo deste tamanho de entrada (system + mensagens, em caracteres) a tarefa é considerada
+ * SIMPLES e pode ir ao modelo econômico da finalidade, quando houver um configurado — modelo
+ * barato para trabalho barato (roteamento por custo, eixo 7). ~4 mil caracteres ≈ 1 mil tokens. */
+const LIMIAR_TAREFA_SIMPLES_CHARS = 4000;
 
 export interface ConfigFinalidade {
   provider: ProvedorIa;
@@ -24,6 +111,9 @@ export interface ConfigFinalidade {
   /** Só para `local`: URL base do endpoint compatível com a API da OpenAI, com o caminho da
    * versão incluído (ex.: `http://192.168.1.50:11434/v1`). */
   baseUrl?: string;
+  /** Modelo BARATO usado quando a tarefa é simples (eixo 7). Opcional — sem ele, a finalidade
+   * usa sempre `modelo`. Ex.: `claude-haiku-4-5` / `openai/gpt-4o-mini` / um modelo local menor. */
+  modeloEconomico?: string;
 }
 
 export interface StatusFinalidade {
@@ -37,6 +127,8 @@ export interface StatusFinalidade {
    * de rede interna; a CHAVE é que nunca sai daqui. */
   baseUrl: string;
   viaEnv: boolean;
+  /** Modelo econômico configurado para a finalidade (eixo 7), ou '' se não houver. */
+  modeloEconomico: string;
 }
 
 export interface MensagemIa {
@@ -48,6 +140,11 @@ export interface OpcoesCompletar {
   system: string;
   messages: MensagemIa[];
   maxTokens: number;
+  /** Temperatura da geração; default `TEMPERATURA_FACTUAL` (baixa) — ver eixo 6. */
+  temperatura?: number;
+  /** Dica de roteamento por custo (eixo 7): `true` força o modelo econômico; `false` força o
+   * modelo pleno; ausente = decide pelo tamanho da entrada. */
+  tarefaSimples?: boolean;
 }
 
 type ArquivoConfig = Partial<Record<FinalidadeIa, ConfigFinalidade>>;
@@ -61,7 +158,27 @@ type ArquivoConfig = Partial<Record<FinalidadeIa, ConfigFinalidade>>;
  * `dados/anthropic_key.txt`) continuam valendo como fallback Anthropic para qualquer
  * finalidade sem configuração própria — setups antigos seguem funcionando sem migração. */
 @Injectable()
-export class IaService {
+export class IaService implements OnModuleInit {
+  private readonly logger = new Logger(IaService.name);
+
+  // Telemetria é OPCIONAL de propósito: em teste o serviço é construído sem DI (construtor
+  // direto, sem argumentos), e ali não há telemetria — o registro simplesmente não acontece.
+  // Em produção o Nest injeta o IaTelemetriaService (IaModule importa o IaTelemetriaModule).
+  constructor(@Optional() private readonly telemetria?: IaTelemetriaService) {}
+
+  /** No boot, denuncia no log qualquer finalidade sensível que esteja saindo da rede (config
+   * legada anterior à trava, ou fallback global por variável de ambiente). Achado A1. */
+  onModuleInit(): void {
+    for (const v of this.avisosPrivacidade()) {
+      this.logger.warn(
+        `PRIVACIDADE/LGPD: a finalidade "${v.finalidade}" lê dado de cliente e está usando o ` +
+          `provedor "${v.provider}"${
+            v.viaEnv ? ' (fallback global por variável de ambiente)' : ''
+          } — o texto está SAINDO da rede. Reconfigure para um endpoint local em Config → IA.`,
+      );
+    }
+  }
+
   private arquivoConfig(): string {
     // Isolado por JEST_WORKER_ID em teste (mesmo motivo/corrida EBUSY de modelo-documento).
     if (process.env.NODE_ENV === 'test') {
@@ -171,6 +288,33 @@ export class IaService {
     return this.resolver(finalidade) !== null;
   }
 
+  /** Finalidades sensíveis (transcrição de cliente) que estão, na prática, saindo da rede —
+   * seja por config explícita externa (legada, anterior à trava do `salvar`) ou pelo fallback
+   * global Anthropic. Vazio = política de privacidade cumprida. Alimenta o aviso de boot e o
+   * módulo Prontidão do Sistema. Ver A1 da auditoria de 2026-08-12. */
+  avisosPrivacidade(): {
+    finalidade: FinalidadeIa;
+    provider: ProvedorIa;
+    viaEnv: boolean;
+  }[] {
+    const avisos: {
+      finalidade: FinalidadeIa;
+      provider: ProvedorIa;
+      viaEnv: boolean;
+    }[] = [];
+    for (const finalidade of FINALIDADES_SO_LOCAL) {
+      const r = this.resolver(finalidade);
+      if (r && r.config.provider !== 'local') {
+        avisos.push({
+          finalidade,
+          provider: r.config.provider,
+          viaEnv: r.viaEnv,
+        });
+      }
+    }
+    return avisos;
+  }
+
   status(finalidade: FinalidadeIa): StatusFinalidade {
     const def = FINALIDADES_IA.find((f) => f.id === finalidade)!;
     const resolvido = this.resolver(finalidade);
@@ -183,6 +327,7 @@ export class IaService {
       modelo: resolvido?.config.modelo ?? '',
       baseUrl: resolvido?.config.baseUrl ?? '',
       viaEnv: resolvido?.viaEnv ?? false,
+      modeloEconomico: resolvido?.config.modeloEconomico ?? '',
     };
   }
 
@@ -222,11 +367,24 @@ export class IaService {
   salvar(finalidade: FinalidadeIa, dados: Partial<ConfigFinalidade>): void {
     const config = this.lerArquivo();
     const apiKey = (dados.apiKey ?? '').trim();
+    // Eixo 7: modelo econômico opcional por finalidade. Guardado só quando informado.
+    const modeloEconomico = (dados.modeloEconomico ?? '').trim();
     const provider: ProvedorIa = PROVEDORES_IA.includes(
       dados.provider as ProvedorIa,
     )
       ? (dados.provider as ProvedorIa)
       : 'anthropic';
+
+    // Trava de privacidade (A1): finalidade que lê dado de cliente só aceita provedor local.
+    // Vale só quando se ESTÁ configurando algo (provider externo com chave); limpar a
+    // finalidade (chave/URL em branco) continua permitido e cai nos ramos abaixo.
+    if (exigeProvedorLocal(finalidade) && provider !== 'local' && apiKey) {
+      throw new BadRequestException(
+        `A finalidade "${finalidade}" lê transcrição de reunião de cliente e, por privacidade ` +
+          `(LGPD), só pode usar o provedor local — o texto não pode sair da rede. Configure um ` +
+          `endpoint local (Ollama/LM Studio) em Config → IA, ou deixe a finalidade em branco.`,
+      );
+    }
 
     if (provider === 'local') {
       const baseUrl = (dados.baseUrl ?? '').trim();
@@ -251,6 +409,7 @@ export class IaService {
         apiKey,
         modelo,
         baseUrl: this.normalizarBaseUrl(baseUrl),
+        ...(modeloEconomico ? { modeloEconomico } : {}),
       };
       this.gravarArquivo(config);
       return;
@@ -262,7 +421,12 @@ export class IaService {
       const modelo =
         (dados.modelo ?? '').trim() ||
         (provider === 'anthropic' ? MODELO_ANTHROPIC_PADRAO : '');
-      config[finalidade] = { provider, apiKey, modelo };
+      config[finalidade] = {
+        provider,
+        apiKey,
+        modelo,
+        ...(modeloEconomico ? { modeloEconomico } : {}),
+      };
     }
     this.gravarArquivo(config);
   }
@@ -271,7 +435,9 @@ export class IaService {
    * seleção de modelo na tela Modo IA. Falha graciosamente (lista vazia) se a rede cair. */
   async listarModelosOpenRouter(): Promise<{ id: string; nome: string }[]> {
     try {
-      const resp = await fetch(`${OPENROUTER_BASE_URL}/models`);
+      const resp = await fetch(`${OPENROUTER_BASE_URL}/models`, {
+        signal: AbortSignal.timeout(TIMEOUT_CATALOGO_MS),
+      });
       if (!resp.ok) return [];
       const dados = (await resp.json()) as {
         data?: { id: string; name?: string }[];
@@ -284,29 +450,175 @@ export class IaService {
     }
   }
 
-  /** Executa uma completude de chat para a finalidade, no provedor configurado. */
+  /** Executa uma completude de chat para a finalidade, no provedor configurado.
+   *
+   * A9/A10: mede o tempo, captura o `usage` do provedor e registra a chamada na telemetria
+   * (finalidade, provedor, modelo, tokens, custo estimado, quem/quando, status). O registro é
+   * best-effort — nunca derruba a chamada. O `meta` é opcional (quem disparou + rótulo de
+   * contexto). Se um teto diário de gasto estiver configurado e já tiver sido atingido, uma
+   * nova chamada a provedor EXTERNO é interrompida com erro claro. */
   async completar(
     finalidade: FinalidadeIa,
     opcoes: OpcoesCompletar,
+    meta?: MetaExecucaoIa,
   ): Promise<string> {
+    // Kill switch de runtime (eixo 4): pausada a automação, NENHUMA chamada de IA passa — nem
+    // local, nem externa. É o freio de emergência que o ADM aciona em Sistema → Automação.
+    const freio = killSwitch.estado();
+    if (freio.pausado) {
+      throw new ServiceUnavailableException(
+        `IA pausada pelo administrador${
+          freio.motivo ? ` — ${freio.motivo}` : ''
+        }. Retome em Sistema → Automação.`,
+      );
+    }
+
     const resolvido = this.resolver(finalidade);
     if (!resolvido) {
       throw new Error(
         `IA não configurada para a finalidade "${finalidade}" (Config → IA).`,
       );
     }
-    const { config } = resolvido;
+    const primaria = resolvido.config;
+    // Eixo 8: provedor de RESERVA para failover. NUNCA existe para finalidade sensível — ela não
+    // pode sair da rede, então prefere-se falhar a vazar (ver resolverAlternativa).
+    const alternativa = this.resolverAlternativa(finalidade, primaria);
+
+    try {
+      return await this.tentarCompletar(finalidade, primaria, opcoes, meta);
+    } catch (e) {
+      if (!alternativa) throw e;
+      this.logger.warn(
+        `IA: o provedor "${primaria.provider}" falhou para "${finalidade}" — tentando o ` +
+          `provedor de reserva "${alternativa.provider}". Causa: ${
+            e instanceof Error ? e.message : String(e)
+          }`,
+      );
+      return this.tentarCompletar(finalidade, alternativa, opcoes, meta);
+    }
+  }
+
+  /** Uma tentativa contra UM provedor: escolhe o modelo (roteamento por custo, eixo 7), respeita
+   * o teto de gasto (A9), mede o tempo e registra a telemetria (A9/A10). É o bloco que o failover
+   * (eixo 8) repete com o provedor de reserva quando o primeiro falha. */
+  private async tentarCompletar(
+    finalidade: FinalidadeIa,
+    config: ConfigFinalidade,
+    opcoes: OpcoesCompletar,
+    meta?: MetaExecucaoIa,
+  ): Promise<string> {
+    const modelo = this.escolherModelo(config, opcoes);
+
+    // Teto de gasto (A9): só barra provedor EXTERNO (o local não tem custo por token) e só
+    // quando o teto está configurado (>0). É a única parte da telemetria que PODE interromper.
+    if (
+      config.provider !== 'local' &&
+      (await this.telemetria?.tetoAtingido())
+    ) {
+      throw new ServiceUnavailableException(
+        'Teto diário de gasto de IA atingido — novas chamadas a provedor externo estão ' +
+          'suspensas até amanhã (ou aumente MIGRACAO_IA_TETO_DIARIO_USD).',
+      );
+    }
+
+    const inicio = Date.now();
+    try {
+      const { texto, uso } = await this.despachar(
+        { ...config, modelo },
+        opcoes,
+      );
+      await this.telemetria?.registrar({
+        finalidade,
+        provider: config.provider,
+        modelo,
+        solicitante: meta?.solicitante ?? null,
+        contexto: meta?.contexto,
+        tokensEntrada: uso.tokensEntrada,
+        tokensSaida: uso.tokensSaida,
+        duracaoMs: Date.now() - inicio,
+        status: 'ok',
+      });
+      return texto;
+    } catch (e) {
+      await this.telemetria?.registrar({
+        finalidade,
+        provider: config.provider,
+        modelo,
+        solicitante: meta?.solicitante ?? null,
+        contexto: meta?.contexto,
+        tokensEntrada: null,
+        tokensSaida: null,
+        duracaoMs: Date.now() - inicio,
+        status: 'erro',
+        erro: e instanceof Error ? e.message : String(e),
+      });
+      throw e;
+    }
+  }
+
+  /** Eixo 7 (roteamento por custo): para uma TAREFA SIMPLES usa o `modeloEconomico` da
+   * finalidade, quando configurado — modelo barato para trabalho barato. Sem modelo econômico,
+   * nada muda. */
+  private escolherModelo(
+    config: ConfigFinalidade,
+    opcoes: OpcoesCompletar,
+  ): string {
+    const padrao =
+      config.modelo ||
+      (config.provider === 'anthropic' ? MODELO_ANTHROPIC_PADRAO : '');
+    if (config.modeloEconomico && this.ehTarefaSimples(opcoes)) {
+      return config.modeloEconomico;
+    }
+    return padrao;
+  }
+
+  /** Marca explícita (`opcoes.tarefaSimples`) vence; na ausência, decide pelo TAMANHO da entrada. */
+  private ehTarefaSimples(opcoes: OpcoesCompletar): boolean {
+    if (typeof opcoes.tarefaSimples === 'boolean') return opcoes.tarefaSimples;
+    const tamanho =
+      (opcoes.system?.length ?? 0) +
+      opcoes.messages.reduce((s, m) => s + m.content.length, 0);
+    return tamanho < LIMIAR_TAREFA_SIMPLES_CHARS;
+  }
+
+  /** Eixo 8: reserva de failover. A regra de PRIVACIDADE manda — finalidade sensível NUNCA cai
+   * para um provedor externo (o texto não pode sair da rede), então não tem reserva. Para as
+   * demais, o fallback global Anthropic serve de reserva, desde que a primária não seja ele. */
+  private resolverAlternativa(
+    finalidade: FinalidadeIa,
+    primaria: ConfigFinalidade,
+  ): ConfigFinalidade | null {
+    if (exigeProvedorLocal(finalidade)) return null;
+    const fb = this.fallbackAnthropic();
+    if (!fb) return null;
+    if (primaria.provider === 'anthropic' && primaria.apiKey === fb.apiKey) {
+      return null;
+    }
+    return { provider: 'anthropic', apiKey: fb.apiKey, modelo: fb.modelo };
+  }
+
+  /** Despacha para o provedor certo e devolve o texto + os tokens consumidos. */
+  private despachar(
+    config: ConfigFinalidade,
+    opcoes: OpcoesCompletar,
+  ): Promise<{ texto: string; uso: UsoIa }> {
     if (config.provider === 'openrouter') {
-      return this.completarCompativel(config, OPENROUTER_BASE_URL, opcoes);
+      return this.completarCompativel(
+        config,
+        OPENROUTER_BASE_URL,
+        opcoes,
+        TIMEOUT_REMOTO_MS,
+      );
     }
     if (config.provider === 'local') {
       return this.completarCompativel(
         config,
         config.baseUrl ?? '',
         opcoes,
-        // Modelo local não tem catálogo remoto para consultar, e um servidor engasgado
-        // simplesmente não responde. Sem teto, o pipeline de transcrição ficaria pendurado.
-        TIMEOUT_LOCAL_MS,
+        // Janela de INATIVIDADE do streaming, não teto total — geração lenta mas viva
+        // termina; servidor que ficou meia hora sem emitir nada é travamento (A14) e cai.
+        INATIVIDADE_LOCAL_MS,
+        true,
       );
     }
     return this.completarAnthropic(config, opcoes);
@@ -315,30 +627,55 @@ export class IaService {
   private async completarAnthropic(
     config: ConfigFinalidade,
     opcoes: OpcoesCompletar,
-  ): Promise<string> {
-    const client = new Anthropic({ apiKey: config.apiKey });
+  ): Promise<{ texto: string; uso: UsoIa }> {
+    // timeout: sem ele o SDK espera indefinidamente (A14). maxRetries=2 é o default do SDK.
+    const client = new Anthropic({
+      apiKey: config.apiKey,
+      timeout: TIMEOUT_REMOTO_MS,
+    });
     const resp = await client.messages.create({
       model: config.modelo || MODELO_ANTHROPIC_PADRAO,
       max_tokens: opcoes.maxTokens,
+      // Eixo 6: temperatura baixa e fixa — tarefa factual, criatividade é defeito aqui.
+      temperature: opcoes.temperatura ?? TEMPERATURA_FACTUAL,
       system: opcoes.system,
       messages: opcoes.messages,
     });
-    return resp.content
+    const texto = resp.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
       .map((b) => b.text)
       .join('');
+    // A9: o `usage` do Anthropic era descartado — agora vira tokens de entrada/saída.
+    return {
+      texto,
+      uso: {
+        tokensEntrada: resp.usage?.input_tokens ?? null,
+        tokensSaida: resp.usage?.output_tokens ?? null,
+      },
+    };
   }
 
   /** Chat completions no dialeto da OpenAI — atende OpenRouter e qualquer serviço `local`
    * (Ollama, LM Studio, vLLM). A única diferença entre eles é a URL base e o fato de a chave
    * ser opcional no local; o corpo da requisição é idêntico, então o código é um só. O
-   * `system` vira a primeira mensagem com role `system`. */
+   * `system` vira a primeira mensagem com role `system`.
+   *
+   * Com `streaming` (provedor local), a resposta é pedida em SSE e o `timeoutMs` vira janela
+   * de INATIVIDADE: o relógio zera a cada pedaço de texto gerado. Um teto total fixo não
+   * distingue "gerando devagar" de "travado" — em CPU a 4 tokens/s, uma resposta longa passa
+   * de 30 min trabalhando, e era isso que matava a transcrição em 2026-08-19. Com a janela
+   * por atividade, geração viva termina (limitada por `maxTokens` e pelo teto-backstop
+   * `TETO_TOTAL_LOCAL_MS`) e servidor mudo continua caindo. */
   private async completarCompativel(
     config: ConfigFinalidade,
     baseUrl: string,
     opcoes: OpcoesCompletar,
-    timeoutMs?: number,
-  ): Promise<string> {
+    // Obrigatório: com o teto de cabeçalhos do undici zerado (ver
+    // `dispatcherSemTetoDeCabecalhos`), estes relógios são os ÚNICOS da chamada —
+    // sem eles, um servidor engasgado penduraria o pipeline para sempre (defeito A14).
+    timeoutMs: number,
+    streaming = false,
+  ): Promise<{ texto: string; uso: UsoIa }> {
     const onde = config.provider === 'local' ? 'O serviço local' : 'OpenRouter';
     if (!config.modelo) {
       throw new Error(
@@ -356,38 +693,199 @@ export class IaService {
     // Sem chave, sem cabeçalho: mandar `Bearer ` vazio faz alguns servidores recusarem com
     // 401 em vez de simplesmente ignorar a autenticação que não pediram.
     if (config.apiKey) headers.Authorization = `Bearer ${config.apiKey}`;
+    // M9: propaga o correlation-id da requisição, quando há uma (chamada por robô/boot não tem).
+    const requestId = requestIdAtual();
+    if (requestId) headers[CABECALHO_REQUEST_ID] = requestId;
 
-    let resp: Response;
-    try {
-      resp = await fetch(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          model: config.modelo,
-          max_tokens: opcoes.maxTokens,
-          messages: [
-            { role: 'system', content: opcoes.system },
-            ...opcoes.messages,
-          ],
-        }),
-        ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
-      });
-    } catch (e) {
+    const dispatcher = dispatcherSemTetoDeCabecalhos();
+
+    // Relógios do modo streaming. `motivoAborto` guarda POR QUE o abort disparou: o
+    // DOMException é idêntico nos dois casos, e a mensagem precisa distinguir "nunca começou"
+    // de "parou no meio" de "passou do teto total".
+    const controlador = new AbortController();
+    let motivoAborto: 'inatividade' | 'tetoTotal' | null = null;
+    let gerouTexto = false;
+    let timerInatividade: ReturnType<typeof setTimeout> | undefined;
+    let timerTetoTotal: ReturnType<typeof setTimeout> | undefined;
+    const rearmarInatividade = () => {
+      clearTimeout(timerInatividade);
+      timerInatividade = setTimeout(() => {
+        motivoAborto = 'inatividade';
+        controlador.abort();
+      }, timeoutMs);
+    };
+
+    // O abort/timeout é um caso NOSSO, com mensagem própria: dizer "não respondeu" para uma
+    // geração que estava andando, só que devagar, mandaria o operador caçar um servidor fora
+    // do ar que está de pé. Checa pelo `name` (não `instanceof`): o DOMException do abort
+    // nasce no realm do Node e não passa num `instanceof Error` de outro realm (Jest).
+    const traduzirErro = (e: unknown): Error => {
+      if (motivoAborto === 'tetoTotal') {
+        return new Error(
+          `${onde} não terminou em ${Math.round(TETO_TOTAL_LOCAL_MS / 3600000)} h no total ` +
+            `(${baseUrl}) — transcrição grande demais para o modelo nesta máquina.`,
+        );
+      }
+      const nome = (e as { name?: unknown } | null)?.name;
+      if (
+        motivoAborto === 'inatividade' ||
+        nome === 'TimeoutError' ||
+        nome === 'AbortError'
+      ) {
+        const min = Math.round(timeoutMs / 60000);
+        if (gerouTexto) {
+          return new Error(
+            `${onde} parou no meio da resposta (${min} min sem texto novo — ${baseUrl}) — ` +
+              'servidor engasgado; use Processar agora para tentar de novo.',
+          );
+        }
+        return new Error(
+          streaming
+            ? `${onde} não começou a responder em ${min} min (${baseUrl}) — ` +
+                'modelo lento demais para o tamanho desta transcrição, ou servidor engasgado.'
+            : `${onde} não terminou em ${min} min (${baseUrl}) — ` +
+                'modelo lento demais para o tamanho desta transcrição, ou servidor engasgado.',
+        );
+      }
       // Servidor local desligado/inalcançável é o caso comum, e o erro cru do fetch
       // ("fetch failed") não diz nada a quem vai consertar.
-      throw new Error(
+      return new Error(
         `${onde} não respondeu (${baseUrl}): ${e instanceof Error ? e.message : String(e)}`,
       );
-    }
-    if (!resp.ok) {
-      const detalhe = await resp.text().catch(() => '');
-      throw new Error(
-        `${onde} respondeu ${resp.status}: ${detalhe.slice(0, 300)}`,
-      );
-    }
-    const dados = (await resp.json()) as {
-      choices?: { message?: { content?: string } }[];
     };
-    return dados.choices?.[0]?.message?.content ?? '';
+
+    try {
+      if (streaming) {
+        rearmarInatividade();
+        timerTetoTotal = setTimeout(() => {
+          motivoAborto = 'tetoTotal';
+          controlador.abort();
+        }, TETO_TOTAL_LOCAL_MS);
+      }
+      let resp: Response;
+      try {
+        resp = await fetch(`${baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            model: config.modelo,
+            max_tokens: opcoes.maxTokens,
+            // Eixo 6: temperatura baixa e fixa (mesmo motivo do Anthropic).
+            temperature: opcoes.temperatura ?? TEMPERATURA_FACTUAL,
+            messages: [
+              { role: 'system', content: opcoes.system },
+              ...opcoes.messages,
+            ],
+            // `include_usage` traz os tokens no último evento — sem ele o streaming perderia
+            // a telemetria (A9) que a resposta de uma vez sempre teve.
+            ...(streaming
+              ? { stream: true, stream_options: { include_usage: true } }
+              : {}),
+          }),
+          signal: streaming
+            ? controlador.signal
+            : AbortSignal.timeout(timeoutMs),
+          ...(dispatcher ? { dispatcher } : {}),
+        });
+      } catch (e) {
+        throw traduzirErro(e);
+      }
+      if (!resp.ok) {
+        const detalhe = await resp.text().catch(() => '');
+        throw new Error(
+          `${onde} respondeu ${resp.status}: ${detalhe.slice(0, 300)}`,
+        );
+      }
+
+      const tipoResposta = resp.headers?.get?.('content-type') ?? '';
+      if (
+        !streaming ||
+        !tipoResposta.includes('text/event-stream') ||
+        !resp.body
+      ) {
+        // Resposta de uma vez: OpenRouter, ou um serviço local que ignorou o `stream`.
+        const dados = (await resp.json()) as {
+          choices?: { message?: { content?: string } }[];
+          usage?: { prompt_tokens?: number; completion_tokens?: number };
+        };
+        // A9: o `usage` no dialeto da OpenAI (prompt_tokens/completion_tokens) era descartado.
+        // Nem todo servidor local devolve — daí o `?? null`.
+        return {
+          texto: dados.choices?.[0]?.message?.content ?? '',
+          uso: {
+            tokensEntrada: dados.usage?.prompt_tokens ?? null,
+            tokensSaida: dados.usage?.completion_tokens ?? null,
+          },
+        };
+      }
+
+      try {
+        return await this.lerStreamCompativel(resp.body, onde, () => {
+          gerouTexto = true;
+          rearmarInatividade();
+        });
+      } catch (e) {
+        throw traduzirErro(e);
+      }
+    } finally {
+      clearTimeout(timerInatividade);
+      clearTimeout(timerTetoTotal);
+    }
+  }
+
+  /** Lê a resposta SSE do dialeto da OpenAI (`data: {...}` por linha, `data: [DONE]` no fim),
+   * avisando `aoGerarTexto` a cada delta com conteúdo — é esse aviso que zera o relógio de
+   * inatividade do chamador. Devolve o texto concatenado e o `usage` do último evento
+   * (presente quando o servidor honra `stream_options.include_usage`; senão, fica null). */
+  private async lerStreamCompativel(
+    corpo: ReadableStream<Uint8Array>,
+    onde: string,
+    aoGerarTexto: () => void,
+  ): Promise<{ texto: string; uso: UsoIa }> {
+    let texto = '';
+    const uso: UsoIa = { tokensEntrada: null, tokensSaida: null };
+    let pendente = '';
+    const decodificador = new TextDecoder();
+    for await (const pedaco of corpo as unknown as AsyncIterable<Uint8Array>) {
+      pendente += decodificador.decode(pedaco, { stream: true });
+      let quebra: number;
+      // Só linhas COMPLETAS são interpretadas — um evento partido na fronteira de dois
+      // chunks fica em `pendente` até a quebra de linha chegar.
+      while ((quebra = pendente.indexOf('\n')) >= 0) {
+        const linha = pendente.slice(0, quebra).trim();
+        pendente = pendente.slice(quebra + 1);
+        if (!linha.startsWith('data:')) continue;
+        const dado = linha.slice(5).trim();
+        if (!dado || dado === '[DONE]') continue;
+        let evento: {
+          choices?: { delta?: { content?: string } }[];
+          usage?: { prompt_tokens?: number; completion_tokens?: number } | null;
+          error?: unknown;
+        };
+        try {
+          evento = JSON.parse(dado) as typeof evento;
+        } catch {
+          continue; // lixo no meio do stream não derruba a geração inteira
+        }
+        // Erro no MEIO do stream (o status 200 já foi): sem isto ele passaria batido e a
+        // resposta voltaria truncada com cara de completa.
+        if (evento.error) {
+          throw new Error(
+            `${onde} devolveu erro no meio da resposta: ` +
+              JSON.stringify(evento.error).slice(0, 300),
+          );
+        }
+        const delta = evento.choices?.[0]?.delta?.content;
+        if (delta) {
+          texto += delta;
+          aoGerarTexto();
+        }
+        if (evento.usage) {
+          uso.tokensEntrada = evento.usage.prompt_tokens ?? null;
+          uso.tokensSaida = evento.usage.completion_tokens ?? null;
+        }
+      }
+    }
+    return { texto, uso };
   }
 }

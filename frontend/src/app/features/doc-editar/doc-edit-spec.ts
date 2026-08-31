@@ -1,7 +1,9 @@
 import { Projeto } from '../../core/models/projeto.model';
 
 export type DocumentoConteudo = 'levantamento' | 'projeto';
-export type TipoCampo = 'texto' | 'textarea' | 'ro';
+/** 'data' vira <input type="date"> e o valor trafega em ISO (aaaa-mm-dd), que é o formato
+ * do input nativo; a conversão para dd/mm/aaaa acontece na geração do .docx. */
+export type TipoCampo = 'texto' | 'textarea' | 'ro' | 'data';
 
 export interface CampoSpec {
   chave: string;
@@ -85,6 +87,18 @@ const SPEC: Record<DocumentoConteudo, { titulo: string; secoesBase: Secao[] }> =
         ],
       },
       {
+        // Bloco "Cadastros" do layout. NÃO herda a etapa 3: são definições alinhadas com o
+        // cliente dentro do projeto (compartilhamento, codificação, campos além do padrão),
+        // que não existem como pergunta no Levantamento. Sem estes campos o bloco saía vazio
+        // em todo Projeto — o layout tem o marcador, mas nada o preenchia.
+        titulo: 'Cadastros',
+        campos: [
+          { chave: 'cad_clientes', label: 'Clientes e Fornecedores', tipo: 'textarea', origem: '' },
+          { chave: 'cad_produtos', label: 'Produtos/Serviços', tipo: 'textarea', origem: '' },
+          { chave: 'cad_outros', label: 'Outros pontos gerais do projeto', tipo: 'textarea', origem: '' },
+        ],
+      },
+      {
         titulo: 'Equipes',
         campos: [
           { chave: 'gerente_contas', label: 'Gerente de Contas (GCI)', tipo: 'texto', origem: 'gci' },
@@ -94,10 +108,13 @@ const SPEC: Record<DocumentoConteudo, { titulo: string; secoesBase: Secao[] }> =
         ],
       },
       {
+        // 5 linhas, iguais às de Usuários-chave do Levantamento: a etapa 10 herda a etapa 3
+        // (ver HerancaProjetoService no backend) e, com 4, o 5º usuário levantado sumia sem
+        // aviso. O layout .docx cresce a tabela sozinho quando faltam linhas.
         titulo: 'Tabela de Usuários',
         tipo: 'tabela',
         prefixo: 'usu',
-        linhas: 4,
+        linhas: 5,
         colunas: [
           ['nome', 'Nome'],
           ['email', 'E-mail'],
@@ -106,15 +123,18 @@ const SPEC: Record<DocumentoConteudo, { titulo: string; secoesBase: Secao[] }> =
         ],
       },
       {
+        // Campos de DATA (decisão do usuário, 2026-08-20) — eram texto livre. O rótulo perdeu
+        // o sufixo "— período" junto: com um seletor de data, uma data é o que se preenche.
+        // A coluna do .docx continua se chamando "Período previsto", que é do layout oficial.
         titulo: 'Cronograma Macro',
         campos: [
-          { chave: 'crono_levantamento', label: 'Levantamento de requisitos — período', tipo: 'texto', origem: '' },
-          { chave: 'crono_cronograma', label: 'Elaboração do Cronograma — período', tipo: 'texto', origem: '' },
-          { chave: 'crono_parametrizacao', label: 'Parametrização — período', tipo: 'texto', origem: '' },
-          { chave: 'crono_treinamento', label: 'Treinamento — período', tipo: 'texto', origem: '' },
-          { chave: 'crono_simulacao', label: 'Simulação — período', tipo: 'texto', origem: '' },
-          { chave: 'crono_inicio', label: 'Início do Uso oficial — período', tipo: 'texto', origem: '' },
-          { chave: 'crono_finalizacao', label: 'Data estimada para Finalização — período', tipo: 'texto', origem: '' },
+          { chave: 'crono_levantamento', label: 'Levantamento de requisitos', tipo: 'data', origem: '' },
+          { chave: 'crono_cronograma', label: 'Elaboração do Cronograma', tipo: 'data', origem: '' },
+          { chave: 'crono_parametrizacao', label: 'Parametrização', tipo: 'data', origem: '' },
+          { chave: 'crono_treinamento', label: 'Treinamento', tipo: 'data', origem: '' },
+          { chave: 'crono_simulacao', label: 'Simulação', tipo: 'data', origem: '' },
+          { chave: 'crono_inicio', label: 'Início do Uso oficial', tipo: 'data', origem: '' },
+          { chave: 'crono_finalizacao', label: 'Data estimada para Finalização', tipo: 'data', origem: '' },
         ],
       },
       {
@@ -195,6 +215,16 @@ export function tabelaChaves(sec: SecaoTabela): string[] {
 }
 
 // Valor efetivo de cada campo: conteúdo salvo; senão o de origem do projeto.
+/** dd/mm/aaaa -> aaaa-mm-dd. Devolve '' para o que não for uma data reconhecível (por
+ * exemplo um intervalo digitado à mão), porque o input de data não tem como exibir isso. */
+function paraIso(valor: string): string {
+  const v = (valor || '').trim();
+  if (!v) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const br = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v);
+  return br ? `${br[3]}-${br[2]}-${br[1]}` : '';
+}
+
 export function valores(
   doc: DocumentoConteudo,
   projeto: Projeto,
@@ -205,10 +235,13 @@ export function valores(
     if (sec.tipo === 'tabela') {
       for (const chave of tabelaChaves(sec)) v[chave] = conteudo[chave] || '';
     } else {
-      for (const { chave, origem } of sec.campos) {
+      for (const { chave, origem, tipo } of sec.campos) {
         let val = conteudo[chave];
         if (!val && origem) val = String(projeto[origem] ?? '');
-        v[chave] = val || '';
+        // O <input type="date"> só exibe ISO. Projetos anteriores à mudança para campo de
+        // data gravaram dd/mm/aaaa à mão: sem converter, o valor sumia da tela e a primeira
+        // gravação o apagaria.
+        v[chave] = tipo === 'data' ? paraIso(val || '') : val || '';
       }
     }
   }

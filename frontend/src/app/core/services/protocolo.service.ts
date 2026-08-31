@@ -6,6 +6,8 @@ import { ApiEnvelope } from '../models/api-envelope.model';
 import {
   BuscaClientesProtocolo,
   CampoTextoProtocolo,
+  ClienteComProtocolo,
+  EnviarVisitaPortalPayload,
   EstadoGravacao,
   FichaProtocolo,
   FiltroProtocolos,
@@ -13,6 +15,9 @@ import {
   GravacaoIniciada,
   IniciarGravacaoPayload,
   ListaProtocolos,
+  RascunhoVisita,
+  ResultadoEnvioPortal,
+  StatusCredencialPortal,
   StatusProcessamento,
 } from '../models/protocolo.model';
 
@@ -30,6 +35,70 @@ export class ProtocoloService {
       if (valor) params = params.set(chave, valor);
     }
     const r = await firstValueFrom(this.http.get<ApiEnvelope<ListaProtocolos>>(this.base, { params }));
+    return r.data;
+  }
+
+  /** Clientes que já têm protocolo transcrito — seletor do "Preencher protocolo". */
+  async clientesComProtocolo(): Promise<ClienteComProtocolo[]> {
+    const r = await firstValueFrom(
+      this.http.get<ApiEnvelope<{ itens: ClienteComProtocolo[] }>>(
+        `${this.base}/clientes-com-protocolo`,
+      ),
+    );
+    return r.data.itens;
+  }
+
+  /** Rascunho do "Registro de Atendimento em Visita" do Portal Rech, montado deste
+   * protocolo — texto pronto para o consultor colar/conferir no Portal (Caminho A). */
+  async rascunhoVisita(id: number): Promise<RascunhoVisita> {
+    const r = await firstValueFrom(
+      this.http.get<ApiEnvelope<RascunhoVisita>>(
+        `${this.base}/${id}/rascunho-visita`,
+      ),
+    );
+    return r.data;
+  }
+
+  // ---------------------------------------------- integração Portal Rech (por usuário)
+
+  /** Status da credencial do Portal do usuário logado (tem? qual login?). */
+  async credencialPortal(): Promise<StatusCredencialPortal> {
+    const r = await firstValueFrom(
+      this.http.get<ApiEnvelope<StatusCredencialPortal>>(
+        `${this.base}/portal/credencial`,
+      ),
+    );
+    return r.data;
+  }
+
+  async salvarCredencialPortal(
+    login: string,
+    senha: string,
+  ): Promise<StatusCredencialPortal> {
+    const r = await firstValueFrom(
+      this.http.post<ApiEnvelope<StatusCredencialPortal>>(
+        `${this.base}/portal/credencial`,
+        { login, senha },
+      ),
+    );
+    return r.data;
+  }
+
+  async removerCredencialPortal(): Promise<void> {
+    await firstValueFrom(this.http.delete(`${this.base}/portal/credencial`));
+  }
+
+  /** Cria a visita (rascunho) no Portal a partir deste protocolo, com a credencial salva. */
+  async enviarPortal(
+    id: number,
+    payload: EnviarVisitaPortalPayload,
+  ): Promise<ResultadoEnvioPortal> {
+    const r = await firstValueFrom(
+      this.http.post<ApiEnvelope<ResultadoEnvioPortal>>(
+        `${this.base}/${id}/enviar-portal`,
+        payload,
+      ),
+    );
     return r.data;
   }
 

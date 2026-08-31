@@ -1,0 +1,65 @@
+.redu-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.redu-acoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Caixa da captura de credencial — mesmo desenho do .pp-cred da tela Protocolo. */
+.redu-cred {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  background: var(--surface-2);
+}
+
+.redu-erro {
+  color: var(--danger, #b3261e);
+  font-size: 0.88rem;
+  margin: 0 0 8px;
+}
+
+.redu-cred-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  color: var(--ok);
+  font-size: 0.88rem;
+}
+
+.redu-cred-info .svgi {
+  width: 15px;
+  height: 15px;
+}
+
+.redu-link {
+  background: none;
+  border: none;
+  color: var(--accent-700);
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0 2px;
+  font-size: 0.85rem;
+}
+
+/* O iframe ocupa o resto da janela abaixo do cabeçalho da tela; o mínimo garante uso
+ * decente em notebook com a janela baixa. */
+.redu-frame {
+  width: 100%;
+  height: calc(100vh - 240px);
+  min-height: 480px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}

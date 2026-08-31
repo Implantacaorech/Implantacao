@@ -43,7 +43,10 @@ export class DicionarioIaService {
     private readonly dicionario: DicionarioService,
   ) {}
 
-  async perguntar(pergunta: string): Promise<RespostaDicionario> {
+  async perguntar(
+    pergunta: string,
+    solicitante?: string,
+  ): Promise<RespostaDicionario> {
     const docs = await this.dicionario.recuperarParaPergunta(pergunta, 4);
     const fontes: FonteResposta[] = docs.map((d, i) => ({
       indice: i + 1,
@@ -84,18 +87,22 @@ export class DicionarioIaService {
       .join('\n\n---\n\n');
 
     const texto = (
-      await this.ia.completar('dicionario', {
-        system: SISTEMA,
-        messages: [
-          {
-            role: 'user',
-            content:
-              `PERGUNTA: ${pergunta}\n\n` +
-              `TRECHOS DE DOCUMENTAÇÃO (fontes numeradas):\n\n${contexto}`,
-          },
-        ],
-        maxTokens: 2000,
-      })
+      await this.ia.completar(
+        'dicionario',
+        {
+          system: SISTEMA,
+          messages: [
+            {
+              role: 'user',
+              content:
+                `PERGUNTA: ${pergunta}\n\n` +
+                `TRECHOS DE DOCUMENTAÇÃO (fontes numeradas):\n\n${contexto}`,
+            },
+          ],
+          maxTokens: 2000,
+        },
+        { solicitante, contexto: 'dicionário' },
+      )
     ).trim();
 
     const semFundamento = texto.startsWith(

@@ -21,9 +21,12 @@ export interface AppConfig {
    * descontrolado/abuso, não policiar o uso normal. */
   rateLimit: { ttlSegundos: number; limite: number };
   docserviceUrl: string;
+  /** Base DERIVADA do Consultor SIGER (SQLite gerado pelo indexador externo em
+   * F:\CONSULTOR-SIGER — a fonte F:\SIGER é somente leitura e o Painel nem a acessa).
+   * O service abre este arquivo em readonly; ausente, a tela degrada com aviso. */
+  consultorSiger: { dbPath: string };
   protocolosDir: string;
   protocolosPollMin: number;
-  gmailRedirectUri: string;
   imapPollMin: number;
   /** Liga o robô que LÊ a caixa e cria projetos a partir do e-mail de fechamento. Desligado
    * por padrão desde 2026-07-27: a entrada do processo virou a consulta ao SICLA + cadastro
@@ -31,6 +34,10 @@ export interface AppConfig {
   imapIntakeAtivo: boolean;
   digestHora: number;
   digestPara: string;
+  /** Teto de gasto DIÁRIO de IA em dólares (achado A9). Ao ser atingido, novas chamadas de IA
+   * para provedor EXTERNO são interrompidas com erro claro. `0` = sem teto (padrão) — o
+   * mecanismo existe e é opt-in por ambiente, como o destinatário do digest. */
+  iaTetoDiarioUsd: number;
   /** Pasta onde a Tarefa Agendada deixa os zips do dump e os logs de operação (backup e
    * Guardião). É de onde a vigilância de saúde lê — ver src/saude/. */
   backupDir: string;
@@ -51,17 +58,37 @@ export interface AppConfig {
 // do Postgres e fallback fraco de secret_key"). Fora de produção, mantém o fallback fixo
 // (conveniência de desenvolvimento/teste — refresh tokens emitidos localmente não
 // precisam sobreviver a um segredo trocado a cada boot).
+/** "Isto é uma instância de produção?" — a pergunta que decide se um segredo fraco pode
+ * valer. NÃO depende só de `NODE_ENV=production`: a auditoria de 2026-08-12 encontrou que
+ * `NODE_ENV` nunca era definido no boot (nenhum `.bat`/serviço o setava), então o guarda de
+ * segredo abaixo NUNCA disparava em produção e o backend podia subir assinando tokens com o
+ * fallback publicado no repositório — suficiente para forjar um JWT de perfil ADM.
+ *
+ * A correção é dupla: (1) `Iniciar_Painel_Novo.bat` passou a exportar `NODE_ENV=production`;
+ * e (2) esta função também trata como produção QUALQUER boot apontado para um banco MariaDB
+ * real (`mysql://`/`mariadb://`). Assim, mesmo subindo por `node dist/main.js`, `start:prod`
+ * ou um serviço que esqueça o `NODE_ENV`, um segredo ausente FALHA O BOOT em vez de cair no
+ * fallback — porque um MariaDB configurado só existe em ambiente real, nunca em dev/teste
+ * (que usam SQLite descartável). Dev/teste (sem `MIGRACAO_DB_URL`) seguem com o fallback fixo,
+ * por conveniência: refresh tokens locais não precisam sobreviver a um segredo trocado a cada
+ * boot. */
+export function ehProducao(env: string, dbUrl: string | undefined): boolean {
+  return env === 'production' || /^(mysql|mariadb):\/\//i.test(dbUrl ?? '');
+}
+
 function exigirEmProducao(
-  env: string,
+  producao: boolean,
   valor: string | undefined,
   nomeVar: string,
   fallback: string,
 ): string {
   if (valor) return valor;
-  if (env === 'production') {
+  if (producao) {
     throw new Error(
-      `${nomeVar} não está definida — obrigatória em produção (NODE_ENV=production). ` +
-        'Defina a variável de ambiente antes de subir o backend.',
+      `${nomeVar} não está definida — é obrigatória quando o backend aponta para um banco ` +
+        'real (MariaDB) ou roda com NODE_ENV=production. Sem ela, o backend usaria um ' +
+        'segredo publicado no repositório e QUALQUER pessoa poderia forjar um token de ' +
+        'perfil ADM. Defina a variável de ambiente antes de subir o backend.',
     );
   }
   return fallback;
@@ -86,18 +113,21 @@ function exigirMariaDb(dbUrl: string): 'mariadb' {
 export default (): AppConfig => {
   const env = process.env.NODE_ENV ?? 'development';
   const dbUrl = process.env.MIGRACAO_DB_URL;
+  // Produção = NODE_ENV=production OU banco real configurado (ver ehProducao). Um dos dois
+  // basta para exigir segredos fortes e recusar o fallback publicado.
+  const producao = ehProducao(env, dbUrl);
   return {
     env,
     port: Number(process.env.MIGRACAO_PORT ?? 3000),
     jwtSecret: exigirEmProducao(
-      env,
+      producao,
       process.env.MIGRACAO_JWT_SECRET,
       'MIGRACAO_JWT_SECRET',
       'dev-only-secret-troque-em-producao',
     ),
     jwtExpiresIn: process.env.MIGRACAO_JWT_EXPIRES_IN ?? '15m',
     jwtRefreshSecret: exigirEmProducao(
-      env,
+      producao,
       process.env.MIGRACAO_JWT_REFRESH_SECRET,
       'MIGRACAO_JWT_REFRESH_SECRET',
       'dev-only-refresh-secret-troque-em-producao',
@@ -128,19 +158,19 @@ export default (): AppConfig => {
     // roda no mesmo host (ver docservice/ e docs/migracao/02-decisao-arquitetura.md).
     docserviceUrl:
       process.env.MIGRACAO_DOCSERVICE_URL ?? 'http://127.0.0.1:8001',
+    // Consultor SIGER: caminho da base derivada (ver interface acima). O default aponta
+    // para onde o indexador do protótipo grava (F:\CONSULTOR-SIGER\data).
+    consultorSiger: {
+      dbPath:
+        process.env.MIGRACAO_CONSULTOR_SIGER_DB ??
+        'F:\\CONSULTOR-SIGER\\data\\consultor.db',
+    },
     // Protocolos de Treinamento: pasta raiz sincronizada pelo OneDrive (Videos Pendentes/
     // Processados/Com Erro) — mesmo padrão de webapp/protocolos.py (env PROTOCOLOS_DIR).
     protocolosDir:
       process.env.MIGRACAO_PROTOCOLOS_DIR ??
       'C:\\SEG-EVE\\OneDrive - rech.com.br\\PortalImplantacao\\Treinamentos',
     protocolosPollMin: Number(process.env.MIGRACAO_PROTOCOLOS_POLL_MIN ?? 10),
-    // Gmail API (bypass de SMTP bloqueado): fluxo OAuth "Web application" com callback
-    // real (decisão deliberada, diferente do "Desktop app" do Flask original — ver
-    // GmailService e docs/migracao/03-documento-conversao.md). Precisa bater com o
-    // redirect URI autorizado cadastrado no Google Cloud Console.
-    gmailRedirectUri:
-      process.env.MIGRACAO_GMAIL_REDIRECT_URI ??
-      `http://localhost:${Number(process.env.MIGRACAO_PORT ?? 3000)}/api/config/gmail/callback`,
     // Robô da caixa de entrada (fechamento automático via IMAP) — mesmo padrão do
     // PROTOCOLOS_POLL_MIN (piso real de 2 min), env IMAP_POLL_MIN no Flask original.
     imapPollMin: Number(process.env.MIGRACAO_IMAP_POLL_MIN ?? 10),
@@ -155,6 +185,13 @@ export default (): AppConfig => {
     // `digest_para.txt` do Flask não foi portado (sem UI que o gerencie; só o env var).
     digestHora: Number(process.env.MIGRACAO_DIGEST_HORA ?? 8),
     digestPara: process.env.MIGRACAO_DIGEST_PARA ?? '',
+    // Teto diário de gasto de IA (USD). 0 = desligado. Number('') e Number(undefined) viram
+    // NaN — normalizamos para 0 (desligado) para um valor mal digitado não virar teto zero
+    // acidental que barra toda IA.
+    iaTetoDiarioUsd: Math.max(
+      0,
+      Number(process.env.MIGRACAO_IA_TETO_DIARIO_USD ?? 0) || 0,
+    ),
     // Pasta de operação: zips do dump do MariaDB (`painel_novo_mariadb_*.zip`, gerados por
     // tools/Painel_Novo_Backup_MariaDB.ps1) e os logs do backup e do Guardião. O painel só
     // LÊ daqui — é o que permite responder "o backup de ontem saiu?" sem abrir o servidor.

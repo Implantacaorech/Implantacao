@@ -38,6 +38,7 @@
   <symbol id="ic-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></symbol>
   <symbol id="ic-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
   <symbol id="ic-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></symbol>
+  <symbol id="ic-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
 </defs></svg>
 
 <div class="app" [class.side-open]="sideAberta()" id="app">
@@ -49,21 +50,23 @@
     <button class="side-toggle" type="button" (click)="toggleSide()" aria-label="Abrir menu">
       <svg class="svgi svgi-xl" aria-hidden="true"><use href="#ic-menu"/></svg>
     </button>
-    <a class="topbar-marca" routerLink="/home">
+    <a class="topbar-marca" [routerLink]="rotaInicial()">
       <img src="logo-portal-rech-branco.png" alt="Portal Rech" />
-      <small>Implantação SIGER®</small>
+      <small>{{ portalApi() ? 'Portal API' : 'Implantação SIGER®' }}</small>
     </a>
     <!-- Sem largura máxima: era o corte do título ("Matriz por Menu - Funç…"). Quem cede
          espaço quando a janela aperta é a busca, não o nome da tela. -->
     <div class="topbar-title" [title]="tituloPagina()">{{ tituloPagina() }}</div>
-    <form class="topbar-busca" (submit)="$event.preventDefault(); buscar()" role="search">
-      <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>
-      <input name="busca" placeholder="Buscar cliente…" aria-label="Buscar cliente" [ngModel]="busca()" (ngModelChange)="busca.set($event)" />
-    </form>
-    <a class="topbar-ico" routerLink="/coordenacao" title="Alertas" aria-label="Alertas">
-      <svg class="svgi" aria-hidden="true"><use href="#ic-bell"/></svg>
-    </a>
-    <a class="topbar-perfil" routerLink="/perfil">
+    @if (!portalApi()) {
+      <form class="topbar-busca" (submit)="$event.preventDefault(); buscar()" role="search">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>
+        <input name="busca" placeholder="Buscar cliente…" aria-label="Buscar cliente" [ngModel]="busca()" (ngModelChange)="busca.set($event)" />
+      </form>
+      <a class="topbar-ico" routerLink="/coordenacao" title="Alertas" aria-label="Alertas">
+        <svg class="svgi" aria-hidden="true"><use href="#ic-bell"/></svg>
+      </a>
+    }
+    <a class="topbar-perfil" [class.empurra]="portalApi()" routerLink="/perfil">
       <span class="avatar">{{ iniciais() }}</span>
       @if (auth.usuario(); as u) {
         <span class="topbar-perfil-txt">{{ u.nome }}<small>{{ u.login }}</small></span>
@@ -76,6 +79,32 @@
 
   <aside class="side">
     <nav class="side-nav">
+      @if (portalApi()) {
+        <!-- PORTAL API (instância interna). Só existem três coisas aqui, e é de propósito:
+             conexão com o banco, criação da consulta que vira API e geração do token. Tudo
+             o mais do Painel não está montado neste processo. -->
+        <div class="side-grp">Portal API</div>
+        <a class="side-link" routerLink="/config/conexoes" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-link"/></svg>Conexões
+          <span class="side-tip">Dados de acesso aos bancos</span>
+        </a>
+        <a class="side-link" routerLink="/config/api-dados" routerLinkActive="on"
+          [routerLinkActiveOptions]="{ exact: true }">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg>Consultas da API
+          <span class="side-tip">O que a API entrega, e com quais parâmetros</span>
+        </a>
+        <a class="side-link" routerLink="/config/api-dados/consulta" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg>Nova consulta
+        </a>
+        <a class="side-link" routerLink="/config/consultas-bd" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg>Consultas BD
+          <span class="side-tip">Texto do SQL e apresentação nos Dashboards</span>
+        </a>
+        <a class="side-link" routerLink="/config/tokens" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg>Tokens
+          <span class="side-tip">Gerar e revogar o acesso de cada consumidor</span>
+        </a>
+      } @else {
       <div class="side-grp">Execução</div>
       @if (podeNovoCliente()) {
         <a class="side-link" routerLink="/clientes/novo" routerLinkActive="on">
@@ -122,6 +151,36 @@
         <a class="side-link" routerLink="/dicionario" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>Dicionário Inteligente
           <span class="side-tip">Consulta técnica do SIGER</span>
+        </a>
+      }
+      @if (podeProtocolo()) {
+        <a class="side-link" routerLink="/protocolo" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-link"/></svg>Protocolo
+          <span class="side-tip">Portal Rech</span>
+        </a>
+      }
+      @if (podeRechEdu()) {
+        <a class="side-link" routerLink="/rechedu" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-book"/></svg>RechEdu
+          <span class="side-tip">Portal de educação</span>
+        </a>
+      }
+      @if (podeAgenda()) {
+        <a class="side-link" routerLink="/agenda" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-calendar"/></svg>Agenda
+          <span class="side-tip">Agendas e compromissos</span>
+        </a>
+      }
+      @if (podeRns()) {
+        <a class="side-link" routerLink="/rns" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>RNS
+          <span class="side-tip">Consulta de assuntos (SICLA)</span>
+        </a>
+      }
+      @if (podeConsultorSiger()) {
+        <a class="side-link" routerLink="/consultor-siger" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-compass"/></svg>Consultor SIGER
+          <span class="side-tip">Base de conhecimento do SIGER</span>
         </a>
       }
       @if (temGestao()) {
@@ -171,15 +230,24 @@
         <a class="side-link" [routerLink]="['/cadastros', 'modelos']" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>Modelos de Docs
         </a>
-        <a class="side-link" routerLink="/config/consultas-bd" routerLinkActive="on">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-table"/></svg>Consultas BD
+        <!-- Consultas BD e API de Dados saíram daqui em 2026-08-26: administrar a API é
+             exclusivo do Portal API. O que resta neste portal é COLAR o token gerado lá. -->
+        <a class="side-link" routerLink="/config/tokens-api" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-lock"/></svg>Tokens da API de Dados
+          <span class="side-tip">Tokens do Portal API que este Painel usa</span>
         </a>
         <a class="side-link" routerLink="/legado" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg>Assistente (legado)
         </a>
+        @if (podeProntidao()) {
+          <a class="side-link" routerLink="/prontidao" routerLinkActive="on">
+            <svg class="svgi" aria-hidden="true"><use href="#ic-heart-pulse"/></svg>Prontidão do Sistema
+          </a>
+        }
+      }
       }
     </nav>
-    <div class="side-rod">v1.1 · jul/2026</div>
+    <div class="side-rod">{{ portalApi() ? 'Portal API · instância interna' : 'v1.1 · jul/2026' }}</div>
   </aside>
 
   <div class="main">
@@ -189,6 +257,6 @@
     <main class="conteudo">
       <router-outlet />
     </main>
-    <footer class="rodape">Painel de Implantação · Rech Sistemas de Gestão · v1.1</footer>
+    <footer class="rodape">{{ nomeInstancia() }} · Rech Sistemas de Gestão · v1.1</footer>
   </div>
 </div>

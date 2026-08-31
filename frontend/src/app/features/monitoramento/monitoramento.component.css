@@ -1,1 +1,35 @@
-/* Estilos globais em src/styles.css (espelho de webapp/static/style.css). */
+/* A maior parte do visual vem dos estilos globais em src/styles.css (espelho de
+   webapp/static/style.css). Aqui ficam só os KPIs da seção "Custo de IA" (A9). */
+
+.ia-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+.ia-kpi {
+  flex: 1 1 130px;
+  min-width: 130px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+}
+.ia-kpi.alerta {
+  border-color: var(--err-border);
+  background: var(--err-bg);
+}
+.ia-kpi-num {
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+.ia-kpi-rot {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+.ia-teto-atingido {
+  color: var(--err);
+}

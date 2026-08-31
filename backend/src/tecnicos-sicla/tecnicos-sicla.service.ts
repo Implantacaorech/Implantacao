@@ -1,16 +1,12 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Usuario } from '../database/entities/usuario.entity';
-import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
-import { ConsultaBdService } from '../disponibilidade/consulta-bd.service';
+import { DadosService } from '../dados/dados.service';
 import {
-  NOME_LISTA_TECNICOS,
   ResultadoImportacao,
   SENHA_PADRAO_TECNICO,
-  SLUG_LISTA_TECNICOS,
-  SQL_LISTA_TECNICOS_PADRAO,
   TecnicoSicla,
 } from './tecnicos-sicla.constants';
 
@@ -24,47 +20,18 @@ export interface ResultadoListaTecnicos {
 
 /** Cadastro de Usuários alimentado por `SICLA.LISTA_TECNICOS`.
  *
- * Reusa o motor Oracle da Disponibilidade (`executarSql`) — mesma conexão das consultas de
- * cliente e de módulo — e grava na tabela `usuarios` do Painel. O SQL é editável pelo
- * Administrador (consulta nomeada) e tem default embutido. */
+ * Pede a consulta `sicla.tecnicos.listar` à API de Dados (ADR-0003) e grava na tabela
+ * `usuarios` do Painel. */
 @Injectable()
-export class TecnicosSiclaService implements OnModuleInit {
+export class TecnicosSiclaService {
+  // Continua usado no laço de importação: falha ao gravar UM técnico não aborta a rodada,
+  // só é registrada e o técnico entra em `ignorados`.
   private readonly logger = new Logger('TecnicosSiclaService');
 
   constructor(
     @InjectRepository(Usuario) private readonly usuarios: Repository<Usuario>,
-    private readonly disponibilidade: DisponibilidadeService,
-    private readonly consultas: ConsultaBdService,
+    private readonly dados: DadosService,
   ) {}
-
-  /** Semeia o SQL (idempotente) para o Administrador editar na tela de Consultas BD.
-   * Não sobrescreve se já existir — respeita edição manual. */
-  async onModuleInit(): Promise<void> {
-    if (process.env.NODE_ENV === 'test') return;
-    try {
-      const existe = await this.consultas.porSlug(SLUG_LISTA_TECNICOS);
-      if (!existe) {
-        await this.consultas.salvar(SLUG_LISTA_TECNICOS, {
-          nome: NOME_LISTA_TECNICOS,
-          sql: SQL_LISTA_TECNICOS_PADRAO,
-          ordem: 97,
-          mostrarGrafico: false,
-        });
-      }
-    } catch (e) {
-      this.logger.error(
-        'Falha ao semear a consulta da lista de técnicos do SICLA',
-        e instanceof Error ? e.stack : String(e),
-      );
-    }
-  }
-
-  /** SQL vigente: a versão editada pelo Administrador, ou o default embutido. */
-  private async sqlLista(): Promise<string> {
-    const c = await this.consultas.porSlug(SLUG_LISTA_TECNICOS);
-    const sql = (c?.sql ?? '').trim();
-    return sql || SQL_LISTA_TECNICOS_PADRAO;
-  }
 
   /** Técnicos do SICLA. `termo` filtra EM MEMÓRIA (nome, código, e-mail, setor ou módulo) —
    * a lista é pequena e assim um SQL editado sem bind de filtro nunca quebra.
@@ -75,8 +42,7 @@ export class TecnicosSiclaService implements OnModuleInit {
     termoBruto = '',
     somenteNovos = false,
   ): Promise<ResultadoListaTecnicos> {
-    const sql = await this.sqlLista();
-    const r = await this.disponibilidade.executarSql(sql, {}, undefined, 1000);
+    const r = await this.dados.consultar('sicla.tecnicos.listar');
     if (!r.ok) return { ok: false, mensagem: r.mensagem, tecnicos: [] };
 
     // Um único SELECT nos usuários resolve o `jaCadastrado` de todas as linhas — o cadastro

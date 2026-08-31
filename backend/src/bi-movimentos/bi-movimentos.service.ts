@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
+import { DadosService } from '../dados/dados.service';
 import { hojeIso } from '../cronograma/datas.util';
 import { textoAparado } from '../common/utils/texto.util';
 import {
@@ -7,7 +7,6 @@ import {
   LinhaMovimentoAgrupado,
   MAX_MESES_JANELA_MOVIMENTOS,
   MESES_PADRAO_MOVIMENTOS,
-  SQL_MOVIMENTOS_AGRUPADOS,
   TotaisMovimentos,
 } from './bi-movimentos.constants';
 
@@ -44,7 +43,7 @@ export interface ResultadoMovimentos {
  * técnico × tipo de movimento × cobrança. */
 @Injectable()
 export class BiMovimentosService {
-  constructor(private readonly disponibilidade: DisponibilidadeService) {}
+  constructor(private readonly dados: DadosService) {}
 
   private numero(v: unknown): number {
     const n = Number(v);
@@ -205,24 +204,17 @@ export class BiMovimentosService {
 
   async movimentos(query: QueryMovimentos): Promise<ResultadoMovimentos> {
     const periodo = this.periodo(query);
-    if (!this.disponibilidade.configurado()) {
-      return this.vazio(
-        periodo,
-        'Conexão com o SICLA não configurada ou inativa (Ferramentas → Disponibilidade).',
-      );
-    }
+    // Sem checagem prévia de conexão: `consultar` já devolve {ok:false} com a
+    // mensagem que diz onde configurar — uma fonte só para o mesmo aviso.
 
-    const r = await this.disponibilidade.executarSql(
-      SQL_MOVIMENTOS_AGRUPADOS,
-      // O SQL já agrega no Oracle — o filtro de período é o único que precisa ir ao banco;
-      // técnico/tipo de movimento/cobrança filtram em memória sobre o resultado agregado.
-      { data_ini: periodo.inicio, data_fim: this.somaDias(periodo.fim, 1) },
-      undefined,
-      // Teto de segurança generoso: numa janela de 12 meses o agrupado já deu 431 linhas
-      // (técnico × tipo de movimento × cobrança) — 2.000 cobre com folga sem repetir o
-      // problema de escala que esta página existe para evitar.
-      2000,
-    );
+    // O SQL já agrega no Oracle — o filtro de período é o único que precisa ir ao banco;
+    // técnico/tipo de movimento/cobrança filtram em memória sobre o resultado agregado.
+    // `data_fim` é EXCLUSIVO (o SQL compara `<`), daí o +1 dia — está declarado assim no
+    // contrato da consulta, para nenhum consumidor externo perder o último dia.
+    const r = await this.dados.consultar('sicla.bi.movimentos', {
+      data_ini: periodo.inicio,
+      data_fim: this.somaDias(periodo.fim, 1),
+    });
     if (!r.ok) return this.vazio(periodo, r.mensagem);
 
     const todas = r.linhas.map((l) => this.normalizar(l));

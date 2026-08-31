@@ -5,6 +5,8 @@ import { AtividadeService } from '../../core/services/atividade.service';
 import { ResultadoMonitoramento } from '../../core/models/monitoramento.model';
 import { SaudeService } from '../../core/services/saude.service';
 import { ResultadoSaude } from '../../core/models/saude.model';
+import { IaTelemetriaService } from '../../core/services/ia-telemetria.service';
+import { TelemetriaIa } from '../../core/models/ia-telemetria.model';
 
 function resultado(over: Partial<ResultadoMonitoramento> = {}): ResultadoMonitoramento {
   return {
@@ -53,6 +55,22 @@ function resultado(over: Partial<ResultadoMonitoramento> = {}): ResultadoMonitor
   };
 }
 
+function telemetriaOk(over: Partial<TelemetriaIa> = {}): TelemetriaIa {
+  return {
+    custoHojeUsd: 0.12,
+    custo7diasUsd: 1.5,
+    execucoesHoje: 4,
+    execucoes7dias: 30,
+    errosHoje: 0,
+    porFinalidade: [
+      { finalidade: 'protocolos', execucoes: 3, tokensEntrada: 1000, tokensSaida: 400, custoUsd: 0.1 },
+    ],
+    ultimas: [],
+    teto: { diarioUsd: 0, atingido: false },
+    ...over,
+  };
+}
+
 function saudeOk(over: Partial<ResultadoSaude> = {}): ResultadoSaude {
   return {
     nivel: 'ok',
@@ -74,6 +92,10 @@ describe('MonitoramentoComponent', () => {
         {
           provide: SaudeService,
           useValue: { diagnostico: () => Promise.resolve(saudeOk()), ...saude },
+        },
+        {
+          provide: IaTelemetriaService,
+          useValue: { resumo: () => Promise.resolve(telemetriaOk()) },
         },
       ],
     });

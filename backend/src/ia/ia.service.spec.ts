@@ -1,4 +1,5 @@
 import { IaService } from './ia.service';
+import { killSwitch } from '../common/automacao/kill-switch';
 import { existsSync, rmSync } from 'fs';
 import { join } from 'path';
 
@@ -30,11 +31,13 @@ describe('IaService', () => {
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.MIGRACAO_ANTHROPIC_MODELO;
     limparConfig();
+    killSwitch._resetar();
     service = new IaService();
   });
 
   afterEach(() => {
     limparConfig();
+    killSwitch._resetar();
     process.env = { ...envAntigo };
   });
 
@@ -44,17 +47,37 @@ describe('IaService', () => {
     expect(service.statusTodas().every((s) => !s.ativa)).toBe(true);
   });
 
+  // Usa `dicionario` (finalidade NÃO sensível) para os testes de provedor externo: desde a
+  // trava de privacidade A1, `protocolos`/`levantamento` só aceitam o provedor `local`.
   it('salva chave por finalidade de forma independente', () => {
-    service.salvar('protocolos', {
+    service.salvar('dicionario', {
       provider: 'anthropic',
-      apiKey: 'sk-ant-proto',
+      apiKey: 'sk-ant-dic',
       modelo: '',
     });
-    expect(service.disponivel('protocolos')).toBe(true);
-    expect(service.disponivel('dicionario')).toBe(false);
-    const st = service.status('protocolos');
+    expect(service.disponivel('dicionario')).toBe(true);
+    expect(service.disponivel('protocolos')).toBe(false);
+    const st = service.status('dicionario');
     expect(st.provider).toBe('anthropic');
     expect(st.modelo).toBe('claude-opus-4-8'); // default aplicado
+  });
+
+  it('com a automação pausada, completar recusa a chamada (eixo 4 — kill switch)', async () => {
+    service.salvar('dicionario', {
+      provider: 'anthropic',
+      apiKey: 'sk-ant-dic',
+      modelo: '',
+    });
+    killSwitch.pausar('gasto de IA disparou', 'adm');
+    await expect(
+      service.completar('dicionario', {
+        system: 's',
+        messages: [{ role: 'user', content: 'oi' }],
+        maxTokens: 10,
+      }),
+    ).rejects.toThrow(/pausada/i);
+    // O freio age ANTES de qualquer provedor: o SDK do Anthropic nem é chamado.
+    expect(createMock).not.toHaveBeenCalled();
   });
 
   it('aceita provedor openrouter com modelo próprio', () => {
@@ -70,14 +93,14 @@ describe('IaService', () => {
   });
 
   it('chave vazia remove a configuração da finalidade', () => {
-    service.salvar('protocolos', {
+    service.salvar('dicionario', {
       provider: 'anthropic',
       apiKey: 'sk-ant',
       modelo: '',
     });
-    expect(service.disponivel('protocolos')).toBe(true);
-    service.salvar('protocolos', { apiKey: '' });
-    expect(service.disponivel('protocolos')).toBe(false);
+    expect(service.disponivel('dicionario')).toBe(true);
+    service.salvar('dicionario', { apiKey: '' });
+    expect(service.disponivel('dicionario')).toBe(false);
   });
 
   it('env var Anthropic é fallback global (viaEnv) para finalidades sem config própria', () => {
@@ -97,7 +120,7 @@ describe('IaService', () => {
   });
 
   it('completar despacha para o Anthropic SDK quando o provedor é anthropic', async () => {
-    service.salvar('protocolos', {
+    service.salvar('dicionario', {
       provider: 'anthropic',
       apiKey: 'sk-ant',
       modelo: 'claude-opus-4-8',
@@ -105,7 +128,7 @@ describe('IaService', () => {
     createMock.mockResolvedValue({
       content: [{ type: 'text', text: 'olá do claude' }],
     });
-    const texto = await service.completar('protocolos', {
+    const texto = await service.completar('dicionario', {
       system: 'sys',
       messages: [{ role: 'user', content: 'oi' }],
       maxTokens: 100,
@@ -149,6 +172,8 @@ describe('IaService', () => {
     };
     expect(body.model).toBe('anthropic/claude-sonnet-4');
     expect(body.messages[0]).toEqual({ role: 'system', content: 'sys' });
+    // A14: a chamada remota tem teto de tempo (AbortSignal), senão fica pendurada.
+    expect((init as RequestInit).signal).toBeInstanceOf(AbortSignal);
     fetchMock.mockRestore();
   });
 
@@ -291,6 +316,187 @@ describe('IaService', () => {
       ).rejects.toThrow('http://192.168.1.50:11434/v1');
       fetchMock.mockRestore();
     });
+
+    /** Regressão do defeito de 2026-08-14 (protocolo 76): o teto de CABEÇALHOS padrão do
+     * fetch do Node (undici, 5 min) matava a geração local como "fetch failed" — Ollama sem
+     * streaming só manda os cabeçalhos DEPOIS de gerar o corpo inteiro, e em CPU isso passa
+     * de 5 min. O conserto entrega à chamada um dispatcher com esse teto zerado; sem o
+     * dispatcher, o defeito volta silencioso (o teto de 30 min nunca chega a valer). */
+    it('entrega um dispatcher sem teto de cabeçalhos ao fetch', async () => {
+      configurarLocal();
+      /** O symbol do undici vive no global do realm do NODE, que a sandbox do Jest não
+       * enxerga — semeia um Agent de mentira onde o serviço procura. Em produção a
+       * inicialização é real (fetch de data-URL no load do módulo, conferido à mão). */
+      class AgenteFalso {
+        constructor(
+          public readonly opts: {
+            headersTimeout?: number;
+            bodyTimeout?: number;
+          } = {},
+        ) {}
+      }
+      const simbolo = Symbol.for('undici.globalDispatcher.1');
+      const g = globalThis as Record<symbol, unknown>;
+      const anterior = g[simbolo];
+      g[simbolo] = new AgenteFalso();
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ choices: [{ message: { content: 'ok' } }] }),
+      } as Response);
+
+      await service.completar('protocolos', {
+        system: '',
+        messages: [],
+        maxTokens: 10,
+      });
+
+      const init = fetchMock.mock.calls[0][1] as RequestInit & {
+        dispatcher?: AgenteFalso;
+      };
+      expect(init.dispatcher).toBeInstanceOf(AgenteFalso);
+      // Tetos zerados: o único relógio da chamada é o AbortSignal do `despachar`.
+      expect(init.dispatcher?.opts).toMatchObject({
+        headersTimeout: 0,
+        bodyTimeout: 0,
+      });
+      g[simbolo] = anterior;
+      fetchMock.mockRestore();
+    });
+
+    /** Estourar a janela SEM NENHUM texto ainda NÃO é "servidor fora do ar": o modelo pode
+     * estar lendo um prompt gigante. Dizer "não respondeu" mandaria o operador caçar um
+     * servidor de pé. */
+    it('janela de inatividade sem nenhum texto vira mensagem de lentidão, em minutos', async () => {
+      configurarLocal();
+      const fetchMock = jest
+        .spyOn(global, 'fetch')
+        .mockRejectedValue(
+          new DOMException(
+            'The operation was aborted due to timeout',
+            'TimeoutError',
+          ),
+        );
+
+      await expect(
+        service.completar('protocolos', {
+          system: '',
+          messages: [],
+          maxTokens: 10,
+        }),
+      ).rejects.toThrow('não começou a responder em 30 min');
+      fetchMock.mockRestore();
+    });
+
+    /** Regressão do erro de 2026-08-19: a resposta local é lida em STREAMING e o relógio de
+     * inatividade zera a cada delta — sem isso, um teto TOTAL de 30 min matava gerações que
+     * estavam andando (4 tokens/s em CPU não terminam uma resposta longa em meia hora). */
+    it('pede streaming ao serviço local e junta os deltas do SSE', async () => {
+      configurarLocal();
+      const enc = new TextEncoder();
+      const corpo = (async function* () {
+        yield enc.encode(
+          'data: {"choices":[{"delta":{"content":"olá "}}]}\n\n',
+        );
+        // Evento partido na fronteira de dois chunks: só pode ser interpretado inteiro.
+        yield enc.encode('data: {"choices":[{"delta":{"con');
+        yield enc.encode('tent":"do stream"}}]}\n\n');
+        yield enc.encode(
+          'data: {"choices":[],"usage":{"prompt_tokens":12,"completion_tokens":5}}\n\n',
+        );
+        yield enc.encode('data: [DONE]\n\n');
+      })();
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        headers: new Headers({ 'content-type': 'text/event-stream' }),
+        body: corpo,
+      } as unknown as Response);
+
+      const texto = await service.completar('protocolos', {
+        system: 'sys',
+        messages: [{ role: 'user', content: 'oi' }],
+        maxTokens: 300,
+      });
+
+      expect(texto).toBe('olá do stream');
+      const body = JSON.parse(
+        (fetchMock.mock.calls[0][1] as RequestInit).body as string,
+      ) as { stream?: boolean; stream_options?: { include_usage?: boolean } };
+      expect(body.stream).toBe(true);
+      // Sem include_usage o streaming perderia os tokens da telemetria (A9).
+      expect(body.stream_options?.include_usage).toBe(true);
+      fetchMock.mockRestore();
+    });
+
+    /** Servidor que RESPONDEU mas ignorou o `stream` (proxy, versão antiga): a resposta de
+     * uma vez continua aceita — streaming é otimização, não pré-requisito. */
+    it('serviço local que ignora o stream cai na resposta de uma vez', async () => {
+      configurarLocal();
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: () =>
+          Promise.resolve({ choices: [{ message: { content: 'sem sse' } }] }),
+      } as unknown as Response);
+      await expect(
+        service.completar('protocolos', {
+          system: '',
+          messages: [],
+          maxTokens: 10,
+        }),
+      ).resolves.toBe('sem sse');
+      fetchMock.mockRestore();
+    });
+
+    /** Parar NO MEIO da geração é outro caso: já havia texto andando, o servidor engasgou.
+     * A mensagem diz isso — e não manda caçar um servidor "fora do ar" que está de pé. */
+    it('stream que para no meio vira mensagem de servidor engasgado', async () => {
+      configurarLocal();
+      const enc = new TextEncoder();
+      const corpo = (async function* () {
+        yield enc.encode(
+          'data: {"choices":[{"delta":{"content":"começou"}}]}\n\n',
+        );
+        // O abort da janela de inatividade derruba a leitura do body com AbortError.
+        throw new DOMException('This operation was aborted', 'AbortError');
+      })();
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        headers: new Headers({ 'content-type': 'text/event-stream' }),
+        body: corpo,
+      } as unknown as Response);
+      await expect(
+        service.completar('protocolos', {
+          system: '',
+          messages: [],
+          maxTokens: 10,
+        }),
+      ).rejects.toThrow('parou no meio da resposta');
+      fetchMock.mockRestore();
+    });
+
+    /** Erro embutido no MEIO do stream (o status 200 já foi): sem esta checagem a resposta
+     * voltaria truncada com cara de completa. */
+    it('evento de erro no meio do stream derruba a chamada com o detalhe', async () => {
+      configurarLocal();
+      const enc = new TextEncoder();
+      const corpo = (async function* () {
+        yield enc.encode('data: {"error":{"message":"out of memory"}}\n\n');
+      })();
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        headers: new Headers({ 'content-type': 'text/event-stream' }),
+        body: corpo,
+      } as unknown as Response);
+      await expect(
+        service.completar('protocolos', {
+          system: '',
+          messages: [],
+          maxTokens: 10,
+        }),
+      ).rejects.toThrow('out of memory');
+      fetchMock.mockRestore();
+    });
   });
 
   it('completar lança quando a finalidade não está configurada', async () => {
@@ -343,5 +549,355 @@ describe('IaService', () => {
       .mockRejectedValue(new Error('rede caiu'));
     expect(await service.listarModelosOpenRouter()).toEqual([]);
     fetchMock.mockRestore();
+  });
+
+  /** Trava de privacidade/LGPD (A1, 2026-08-12): finalidade que lê dado de cliente só pode
+   * usar o provedor `local` — o texto não pode sair da rede. */
+  describe('trava de privacidade (só provedor local em finalidade sensível)', () => {
+    it.each(['protocolos', 'levantamento'] as const)(
+      'recusa salvar %s com provedor externo (anthropic)',
+      (finalidade) => {
+        expect(() =>
+          service.salvar(finalidade, {
+            provider: 'anthropic',
+            apiKey: 'sk-ant',
+            modelo: '',
+          }),
+        ).toThrow(/só pode usar o provedor local/);
+        expect(service.disponivel(finalidade)).toBe(false);
+      },
+    );
+
+    it('recusa salvar protocolos com openrouter', () => {
+      expect(() =>
+        service.salvar('protocolos', {
+          provider: 'openrouter',
+          apiKey: 'sk-or',
+          modelo: 'openai/gpt-4o-mini',
+        }),
+      ).toThrow(/só pode usar o provedor local/);
+    });
+
+    it('aceita provedor local em finalidade sensível', () => {
+      service.salvar('protocolos', {
+        provider: 'local',
+        apiKey: '',
+        modelo: 'qwen2.5:14b',
+        baseUrl: 'http://127.0.0.1:11434/v1',
+      });
+      expect(service.disponivel('protocolos')).toBe(true);
+      expect(service.status('protocolos').provider).toBe('local');
+    });
+
+    it('limpar a finalidade sensível (chave em branco) continua permitido', () => {
+      expect(() => service.salvar('protocolos', { apiKey: '' })).not.toThrow();
+    });
+  });
+
+  // A9/A10: quando a telemetria é injetada, cada chamada registra tokens/custo/quem, e o teto
+  // diário pode interromper. Em produção o Nest injeta o IaTelemetriaService; aqui usamos um
+  // dublê.
+  describe('telemetria (A9/A10)', () => {
+    function comTelemetria(over: Record<string, unknown> = {}) {
+      const telemetria = {
+        registrar: jest.fn().mockResolvedValue(undefined),
+        tetoAtingido: jest.fn().mockResolvedValue(false),
+        ...over,
+      };
+      const s = new IaService(telemetria as never);
+      return { s, telemetria };
+    }
+
+    it('registra a execução com os tokens do OpenRouter', async () => {
+      const { s, telemetria } = comTelemetria();
+      s.salvar('dicionario', {
+        provider: 'openrouter',
+        apiKey: 'sk-or',
+        modelo: 'openai/gpt-4o-mini',
+      });
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: 'oi' } }],
+            usage: { prompt_tokens: 100, completion_tokens: 40 },
+          }),
+      } as Response);
+
+      await s.completar(
+        'dicionario',
+        { system: '', messages: [], maxTokens: 10 },
+        { solicitante: 'Ana', contexto: 'dicionário' },
+      );
+
+      expect(telemetria.registrar).toHaveBeenCalledTimes(1);
+      const arg = telemetria.registrar.mock.calls[0][0];
+      expect(arg.tokensEntrada).toBe(100);
+      expect(arg.tokensSaida).toBe(40);
+      expect(arg.solicitante).toBe('Ana');
+      expect(arg.status).toBe('ok');
+      expect(arg.provider).toBe('openrouter');
+      fetchMock.mockRestore();
+    });
+
+    it('registra status erro quando a chamada falha, e propaga o erro', async () => {
+      const { s, telemetria } = comTelemetria();
+      s.salvar('dicionario', {
+        provider: 'openrouter',
+        apiKey: 'sk-or',
+        modelo: 'openai/gpt-4o-mini',
+      });
+      const fetchMock = jest
+        .spyOn(global, 'fetch')
+        .mockRejectedValue(new Error('rede caiu'));
+
+      await expect(
+        s.completar('dicionario', { system: '', messages: [], maxTokens: 10 }),
+      ).rejects.toThrow();
+      expect(telemetria.registrar.mock.calls[0][0].status).toBe('erro');
+      fetchMock.mockRestore();
+    });
+
+    it('teto diário atingido interrompe provedor externo antes de chamar', async () => {
+      const { s } = comTelemetria({
+        tetoAtingido: jest.fn().mockResolvedValue(true),
+      });
+      s.salvar('dicionario', {
+        provider: 'openrouter',
+        apiKey: 'sk-or',
+        modelo: 'openai/gpt-4o-mini',
+      });
+      const fetchMock = jest.spyOn(global, 'fetch');
+      await expect(
+        s.completar('dicionario', { system: '', messages: [], maxTokens: 10 }),
+      ).rejects.toThrow(/Teto diário/);
+      expect(fetchMock).not.toHaveBeenCalled();
+      fetchMock.mockRestore();
+    });
+
+    it('teto NÃO barra o provedor local (sem custo por token)', async () => {
+      const { s } = comTelemetria({
+        tetoAtingido: jest.fn().mockResolvedValue(true),
+      });
+      s.salvar('protocolos', {
+        provider: 'local',
+        apiKey: '',
+        modelo: 'qwen2.5:14b',
+        baseUrl: 'http://127.0.0.1:11434/v1',
+      });
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ choices: [{ message: { content: 'ok' } }] }),
+      } as Response);
+      await expect(
+        s.completar('protocolos', { system: '', messages: [], maxTokens: 10 }),
+      ).resolves.toBe('ok');
+      fetchMock.mockRestore();
+    });
+
+    /** A9 no modo streaming: os tokens vêm no ÚLTIMO evento (include_usage) e têm de chegar
+     * à telemetria do mesmo jeito que na resposta de uma vez. */
+    it('registra os tokens do último evento do stream local', async () => {
+      const { s, telemetria } = comTelemetria();
+      s.salvar('protocolos', {
+        provider: 'local',
+        apiKey: '',
+        modelo: 'qwen2.5:7b',
+        baseUrl: 'http://127.0.0.1:11434/v1',
+      });
+      const enc = new TextEncoder();
+      const corpo = (async function* () {
+        yield enc.encode('data: {"choices":[{"delta":{"content":"ok"}}]}\n\n');
+        yield enc.encode(
+          'data: {"choices":[],"usage":{"prompt_tokens":900,"completion_tokens":70}}\n\n',
+        );
+        yield enc.encode('data: [DONE]\n\n');
+      })();
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        headers: new Headers({ 'content-type': 'text/event-stream' }),
+        body: corpo,
+      } as unknown as Response);
+
+      await s.completar('protocolos', {
+        system: '',
+        messages: [],
+        maxTokens: 10,
+      });
+
+      const arg = telemetria.registrar.mock.calls[0][0];
+      expect(arg.tokensEntrada).toBe(900);
+      expect(arg.tokensSaida).toBe(70);
+      expect(arg.status).toBe('ok');
+      fetchMock.mockRestore();
+    });
+  });
+
+  describe('eixo 6 — temperatura factual', () => {
+    it('manda temperatura baixa e fixa (0.2) por padrão ao provedor', async () => {
+      service.salvar('dicionario', {
+        provider: 'openrouter',
+        apiKey: 'sk-or',
+        modelo: 'openai/gpt-4o-mini',
+      });
+      const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ choices: [{ message: { content: 'x' } }] }),
+      } as Response);
+      await service.completar('dicionario', {
+        system: 's',
+        messages: [{ role: 'user', content: 'oi' }],
+        maxTokens: 10,
+      });
+      const body = JSON.parse(
+        (fetchMock.mock.calls[0][1] as RequestInit).body as string,
+      ) as { temperature: number };
+      expect(body.temperature).toBe(0.2);
+      fetchMock.mockRestore();
+    });
+  });
+
+  describe('eixo 7 — roteamento por custo', () => {
+    function fetchOk() {
+      return jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ choices: [{ message: { content: 'x' } }] }),
+      } as Response);
+    }
+    function modeloEnviado(f: jest.SpyInstance): string {
+      return (
+        JSON.parse((f.mock.calls[0][1] as RequestInit).body as string) as {
+          model: string;
+        }
+      ).model;
+    }
+
+    it('tarefa PEQUENA usa o modelo econômico quando configurado', async () => {
+      service.salvar('dicionario', {
+        provider: 'openrouter',
+        apiKey: 'sk-or',
+        modelo: 'modelo-caro',
+        modeloEconomico: 'modelo-barato',
+      });
+      const f = fetchOk();
+      await service.completar('dicionario', {
+        system: 'oi',
+        messages: [{ role: 'user', content: 'curto' }],
+        maxTokens: 10,
+      });
+      expect(modeloEnviado(f)).toBe('modelo-barato');
+      f.mockRestore();
+    });
+
+    it('tarefa GRANDE usa o modelo pleno', async () => {
+      service.salvar('dicionario', {
+        provider: 'openrouter',
+        apiKey: 'sk-or',
+        modelo: 'modelo-caro',
+        modeloEconomico: 'modelo-barato',
+      });
+      const f = fetchOk();
+      await service.completar('dicionario', {
+        system: 'x'.repeat(5000),
+        messages: [],
+        maxTokens: 10,
+      });
+      expect(modeloEnviado(f)).toBe('modelo-caro');
+      f.mockRestore();
+    });
+
+    it('sem modelo econômico configurado, nada muda (usa o pleno)', async () => {
+      service.salvar('dicionario', {
+        provider: 'openrouter',
+        apiKey: 'sk-or',
+        modelo: 'modelo-caro',
+      });
+      const f = fetchOk();
+      await service.completar('dicionario', {
+        system: 'oi',
+        messages: [],
+        maxTokens: 10,
+      });
+      expect(modeloEnviado(f)).toBe('modelo-caro');
+      f.mockRestore();
+    });
+  });
+
+  describe('eixo 8 — failover entre provedores', () => {
+    it('provedor externo falha → cai para o fallback Anthropic (finalidade não sensível)', async () => {
+      process.env.MIGRACAO_ANTHROPIC_API_KEY = 'sk-ant-env';
+      service.salvar('dicionario', {
+        provider: 'openrouter',
+        apiKey: 'sk-or',
+        modelo: 'openai/gpt-4o-mini',
+      });
+      const f = jest
+        .spyOn(global, 'fetch')
+        .mockRejectedValue(new Error('openrouter caiu'));
+      createMock.mockResolvedValue({
+        content: [{ type: 'text', text: 'resposta do fallback' }],
+        usage: { input_tokens: 1, output_tokens: 1 },
+      });
+      const texto = await service.completar('dicionario', {
+        system: '',
+        messages: [],
+        maxTokens: 10,
+      });
+      expect(texto).toBe('resposta do fallback');
+      expect(createMock).toHaveBeenCalled();
+      f.mockRestore();
+    });
+
+    it('finalidade SENSÍVEL nunca faz failover externo — o texto não sai da rede', async () => {
+      process.env.MIGRACAO_ANTHROPIC_API_KEY = 'sk-ant-env';
+      service.salvar('protocolos', {
+        provider: 'local',
+        apiKey: '',
+        modelo: 'qwen2.5:14b',
+        baseUrl: 'http://127.0.0.1:11434/v1',
+      });
+      const f = jest
+        .spyOn(global, 'fetch')
+        .mockRejectedValue(new Error('serviço local caiu'));
+      await expect(
+        service.completar('protocolos', {
+          system: '',
+          messages: [],
+          maxTokens: 10,
+        }),
+      ).rejects.toThrow();
+      // O Anthropic (fallback) NÃO pode ter sido chamado: privacidade acima de disponibilidade.
+      expect(createMock).not.toHaveBeenCalled();
+      f.mockRestore();
+    });
+  });
+
+  describe('avisosPrivacidade', () => {
+    it('vazio quando não há finalidade sensível saindo da rede', () => {
+      expect(service.avisosPrivacidade()).toEqual([]);
+    });
+
+    it('denuncia o fallback global por variável de ambiente numa finalidade sensível', () => {
+      process.env.MIGRACAO_ANTHROPIC_API_KEY = 'sk-ant-env';
+      const avisos = service.avisosPrivacidade();
+      const proto = avisos.find((a) => a.finalidade === 'protocolos');
+      expect(proto).toBeDefined();
+      expect(proto?.provider).toBe('anthropic');
+      expect(proto?.viaEnv).toBe(true);
+    });
+
+    it('não denuncia o dicionário (finalidade NÃO sensível) em provedor externo', () => {
+      service.salvar('dicionario', {
+        provider: 'openrouter',
+        apiKey: 'sk-or',
+        modelo: 'x/y',
+      });
+      expect(
+        service.avisosPrivacidade().some((a) => a.finalidade === 'dicionario'),
+      ).toBe(false);
+    });
   });
 });

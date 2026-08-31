@@ -8,7 +8,10 @@ uvicorn[standard]>=0.32
 pydantic>=2.9
 python-docx>=1.1
 openpyxl>=3.1
-Pillow>=10.0
-python-multipart>=0.0.12
+Pillow>=10.0   # exigido em runtime pelo openpyxl ao embutir a logo no .xlsx (gerador/gl_xlsx.py)
 faster-whisper>=1.0   # transcricao local de videos (Protocolos de Treinamento) — CPU int8
+numpy>=1.26   # janelas de energia do anti-alucinação (transcricao/antialucinacao.py)
 pywin32>=306   # Word COM (Windows) — pré-visualização .docx->PDF fiel (ver docview.py)
+# sherpa-onnx é OPCIONAL (separação de locutores): sem ele a diarização se desliga sozinha
+# (transcricao/diarizacao.disponivel() → False). Instalar à parte se for usar; os modelos
+# ficam em docservice/modelos/ — ver docs/gravacao-reuniao.md.

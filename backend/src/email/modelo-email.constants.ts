@@ -177,4 +177,22 @@ export const MODELOS_EMAIL_PADRAO: ModeloEmailPadrao[] = [
       'Atenciosamente,\n{{CONSULTOR_RESPONSAVEL}} — Implantação Rech',
     etapa: 'Designação',
   },
+  {
+    // Texto padrão do "Enviar por e-mail" do painel Visitas do Portal Rech (BI Implantação
+    // Clientes SIGER → Resumo). Sem variáveis {{...}} de propósito: o e-mail não é atrelado
+    // a um projeto — o recorte (período/filtros) vai descrito dentro do PDF anexo, e o
+    // usuário ajusta o texto na caixa de envio antes de mandar.
+    slug: 'bi-visitas-portal',
+    nome: 'BI — Visitas do Portal Rech (envio do painel)',
+    assunto:
+      'Protocolos de visita do Portal Rech — acompanhamento de aprovação',
+    corpo:
+      'Olá,\n\n' +
+      'Segue em anexo o relatório de protocolos de visita do Portal Rech (PDF), com o ' +
+      'gráfico de aprovados × não aprovados por contato e a listagem detalhada dos ' +
+      'protocolos, no recorte de período e filtros descrito no próprio documento.\n\n' +
+      'Qualquer dúvida, estamos à disposição.\n\n' +
+      'Atenciosamente,\nEquipe de Implantação — Rech Sistemas de Gestão',
+    etapa: 'Execução',
+  },
 ];

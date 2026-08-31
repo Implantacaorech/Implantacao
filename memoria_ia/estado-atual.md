@@ -45,6 +45,13 @@ stack novo.
   `webapp/`) + a ponte `legado_cli` para o assistente administrativo.
 - Importação do e-mail de fechamento (IMAP), notificações por e-mail, robô da caixa — agora
   em `backend/src/email/`, `backend/src/fluxo/`.
+- **Consulta Wall-e** (2026-08-18): Execução → Wall-e (chave `walle`, abaixo do RNS) —
+  base de conhecimento sobre o acervo dos chats do bot Wall-e (`R:\GRM\CHAT_WALLE\`,
+  **fonte SOMENTE LEITURA**, indexada nas tabelas `walle_*`). Busca híbrida em memória,
+  visão por chat, SQLs documentais (nunca executados) e síntese por IA com finalidade
+  `walle` **só-local** (§21-A.10) que degrada para busca-guiada. Fonte B (metadados de
+  `SICLA.CHAT_WALLE`) editável em Consultas BD, slug `walle_chats_sicla`. Módulo:
+  `backend/src/walle/` (6 docs em `docs/`); tela: `frontend/src/app/features/walle/`.
 
 ## Processo de 21 passos (2026-07-30)
 
@@ -222,8 +229,15 @@ OpenRouter já era um `fetch` no dialeto da OpenAI, então virou um método só
   `Bearer ` vazio faz alguns servidores responderem 401 em vez de ignorar.
 - Modelo é **obrigatório** no `local` (não há padrão possível: é o nome carregado naquele
   servidor) e a URL é validada ao salvar, não na primeira chamada horas depois.
-- Timeout de **10 min** por chamada: generoso para modelo grande em CPU, mas existe — sem
-  teto, um servidor engasgado penduraria o pipeline de transcrição.
+- Espera (revisto 2026-08-19): resposta em **streaming** com **janela de inatividade de
+  30 min** que zera a cada texto gerado + teto-backstop total de 3 h. O teto total fixo
+  (10 e depois 30 min) matava geração legítima em CPU (~3 tok/s) com o erro "não terminou
+  em 30 min"; agora só cai servidor realmente mudo — engasgado continua caindo (A14).
+- Transcrição longa (também 2026-08-19): acima de ~38 mil caracteres o `ProtocoloIaService`
+  **condensa em partes** (map-reduce, prompt `SISTEMA_MAPA`, cache por transcrição) antes da
+  análise/resumo. Sem isso, prompt de 43.959 tokens fez o Ollama truncar o COMEÇO (as
+  instruções) e a resposta veio em prosa — "A IA não devolveu o JSON esperado". O mesmo
+  risco existe, ainda sem tratamento, na `sugestao-levantamento` (transcrição de reunião).
 - ⚠️ A máquina de desenvolvimento (i7-1255U) **não** é a de produção — o servidor oficial terá
   recursos melhores, e é lá que o modelo local faz sentido de verdade.
 

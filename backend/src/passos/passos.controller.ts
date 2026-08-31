@@ -14,6 +14,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { LIMITE_UPLOAD_DOC } from '../common/upload.constants';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -122,6 +123,23 @@ export class PassosController {
     return new ApiEnvelope(await this.passos.historicoDeEmails(id));
   }
 
+  @Post('emails/:emailId/reenviar')
+  @Roles()
+  @Permissao('carteira', 'alteracao')
+  @ApiOperation({
+    summary:
+      'Reenvia um e-mail de passo que falhou (A13) — grava uma nova linha no histórico com o resultado',
+  })
+  async reenviarEmail(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('emailId', ParseIntPipe) emailId: number,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return new ApiEnvelope(
+      await this.passos.reenviarEmail(id, emailId, user.nome),
+    );
+  }
+
   @Post('passos/:numero/conferir')
   @Roles()
   @Permissao('carteira', 'alteracao')
@@ -153,7 +171,9 @@ export class PassosController {
   @Post('passos/:numero/anexar-email')
   @Roles()
   @Permissao('carteira', 'alteracao')
-  @UseInterceptors(FileInterceptor('arquivo'))
+  @UseInterceptors(
+    FileInterceptor('arquivo', { limits: { fileSize: LIMITE_UPLOAD_DOC } }),
+  )
   @ApiOperation({
     summary:
       'Anexa o e-mail encaminhado do Outlook (.msg/.eml) — registro dos passos 4 e 6',
@@ -177,7 +197,9 @@ export class PassosController {
   @Post('passos/:numero/anexo-email')
   @Roles()
   @Permissao('carteira', 'alteracao')
-  @UseInterceptors(FileInterceptor('arquivo'))
+  @UseInterceptors(
+    FileInterceptor('arquivo', { limits: { fileSize: LIMITE_UPLOAD_DOC } }),
+  )
   @ApiOperation({
     summary:
       'Anexa um arquivo AO E-MAIL que o passo vai enviar (passo 16) — some do e-mail, não é ' +
@@ -207,6 +229,10 @@ export class PassosController {
 
   @Patch('pessoas')
   @Roles('ADM', 'Coordenador', 'Administrativo')
+  // M2 (auditoria 2026-08-12): rota de ESCRITA — exige nível de alteração em `carteira`, não só
+  // consulta. Os três papéis do @Roles já têm `carteira: alteracao` no padrão, então isto é
+  // defesa em profundidade (o gate de menu acompanha o gate de papel), não uma restrição nova.
+  @Permissao('carteira', 'alteracao')
   @ApiOperation({
     summary: 'Define a lista de levantadores ou de consultores (aceita vários)',
   })
@@ -237,6 +263,7 @@ export class PassosController {
 
   @Post('rns')
   @Roles(...PERFIS_AGENDAMENTO)
+  @Permissao('carteira', 'alteracao') // M2: escrita → nível de alteração
   @ApiOperation({ summary: 'Acrescenta uma RNS (a quantidade é livre)' })
   async criarRns(@Param('id', ParseIntPipe) id: number, @Body() dto: RnsDto) {
     return new ApiEnvelope(await this.rns.acrescentar(id, dto));
@@ -244,6 +271,7 @@ export class PassosController {
 
   @Patch('rns/:rnsId')
   @Roles(...PERFIS_AGENDAMENTO)
+  @Permissao('carteira', 'alteracao') // M2: escrita → nível de alteração
   @ApiOperation({ summary: 'Altera uma RNS do projeto' })
   async atualizarRns(
     @Param('id', ParseIntPipe) id: number,
@@ -255,6 +283,7 @@ export class PassosController {
 
   @Delete('rns/:rnsId')
   @Roles(...PERFIS_AGENDAMENTO)
+  @Permissao('carteira', 'alteracao') // M2: escrita → nível de alteração
   @ApiOperation({ summary: 'Remove uma RNS do projeto' })
   async removerRns(
     @Param('id', ParseIntPipe) id: number,

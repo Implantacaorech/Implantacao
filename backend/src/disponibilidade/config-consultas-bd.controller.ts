@@ -16,8 +16,8 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { PERFIS_SISTEMA } from '../common/constants/perfis';
 import { ApiEnvelope } from '../common/dto/api-envelope';
-import { DisponibilidadeService } from './disponibilidade.service';
-import { ConsultaBdService } from './consulta-bd.service';
+import { ConsultaBdService } from '../dados/consulta-bd.service';
+import { DadosService } from '../dados/dados.service';
 import { SalvarConsultaBdDto } from './dto/salvar-consulta-bd.dto';
 
 /** Consultas BD (SQLs nomeadas contra a conexão externa) — exclusivo do Administrador,
@@ -33,7 +33,7 @@ import { SalvarConsultaBdDto } from './dto/salvar-consulta-bd.dto';
 export class ConfigConsultasBdController {
   constructor(
     private readonly consultas: ConsultaBdService,
-    private readonly disponibilidade: DisponibilidadeService,
+    private readonly dados: DadosService,
   ) {}
 
   @Get()
@@ -105,10 +105,15 @@ export class ConfigConsultasBdController {
     const daquiUmAno = new Date(hoje);
     daquiUmAno.setDate(daquiUmAno.getDate() + 365);
     const iso = (d: Date) => d.toISOString().slice(0, 10);
-    const r = await this.disponibilidade.executarSql(consulta.sql, {
-      data_ini: iso(hoje),
-      data_fim: iso(daquiUmAno),
-    });
+    const binds = { data_ini: iso(hoje), data_fim: iso(daquiUmAno) };
+    // Cada consulta roda na SUA conexão (campo `conexao`): 'portal' = banco do Portal
+    // Rech (MySQL, ignora binds não referenciados); default = Oracle da Disponibilidade,
+    // que EXIGE os dois binds no texto (contrato de sempre desta tela).
+    const r = await this.dados.executarSqlDeAdministrador(
+      consulta.conexao === 'portal' ? 'portal_rech' : 'sicla',
+      consulta.sql,
+      binds,
+    );
     return new ApiEnvelope(r);
   }
 }

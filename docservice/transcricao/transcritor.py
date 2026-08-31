@@ -49,7 +49,9 @@ sequência de sons mais provável do português geral, não a do vocabulário de
 import os
 import sys
 import json
+import wave
 
+import antialucinacao
 import diarizacao
 
 MODELO = os.environ.get("PROTOCOLOS_WHISPER", "small")
@@ -63,6 +65,23 @@ def _fmt_ts(seg):
     m, s = divmod(int(seg or 0), 60)
     h, m = divmod(m, 60)
     return ("%d:%02d:%02d" % (h, m, s)) if h else ("%d:%02d" % (m, s))
+
+
+def _entrada_normalizada(video_path):
+    """Áudio no formato da gravação ao vivo (WAV 16 kHz mono 16 bits — ver vivo.py) é
+    carregado como array e passa pela defesa de áudio baixo (antialucinacao.normalizar):
+    é a retranscrição do áudio inteiro de uma reunião que o microfone captou baixíssimo.
+    Qualquer outro formato segue como caminho de arquivo — o faster-whisper decodifica
+    sozinho, e mexer no nível de um vídeo de treinamento normal não tem motivo."""
+    try:
+        if str(video_path).lower().endswith(".wav"):
+            with wave.open(video_path, "rb") as w:
+                if (w.getnchannels(), w.getsampwidth(), w.getframerate()) == (1, 2, 16000):
+                    pcm = w.readframes(w.getnframes())
+                    return antialucinacao.normalizar(antialucinacao.amostras_float(pcm))
+    except Exception:  # noqa: BLE001 — WAV estranho não derruba: o modelo tenta pelo caminho
+        pass
+    return video_path
 
 
 def transcrever(video_path, progress_cb=None, vocabulario=None, pessoas=0):
@@ -91,7 +110,7 @@ def transcrever(video_path, progress_cb=None, vocabulario=None, pessoas=0):
     # um na fala do outro.
     if pessoas and pessoas >= 2:
         opcoes["word_timestamps"] = True
-    segments, info = model.transcribe(video_path, **opcoes)
+    segments, info = model.transcribe(_entrada_normalizada(video_path), **opcoes)
     dur_total = int(getattr(info, "duration", 0) or 0)
 
     coletados, dur = [], 0
@@ -132,10 +151,16 @@ def _montar_texto(segmentos, trechos):
     Os rótulos são P1, P2...; os nomes reais entram depois, pelo mapa do painel, sem
     reescrever o texto."""
     if not trechos:
-        return "\n".join(
-            "[%s] %s" % (_fmt_ts(s.start), (s.text or "").strip())
+        itens = [
+            {"inicio": s.start, "texto": (s.text or "").strip()}
             for s in segmentos
             if (s.text or "").strip()
+        ]
+        # Mesmo texto em 3+ segmentos seguidos é loop de alucinação (áudio baixo/ruído),
+        # não fala real — ver antialucinacao.py.
+        itens = antialucinacao.colapsar_repeticoes(itens)
+        return "\n".join(
+            "[%s] %s" % (_fmt_ts(i["inicio"]), i["texto"]) for i in itens
         )
 
     turnos, anterior = [], None

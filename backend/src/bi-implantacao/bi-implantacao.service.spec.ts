@@ -1,7 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException } from '@nestjs/common';
 import { BiImplantacaoService } from './bi-implantacao.service';
-import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
-import { ESPECIES_CALENDARIO, SQL_AGENDAS } from './bi-implantacao.constants';
+import { DadosService } from '../dados/dados.service';
+import { MailerService } from '../email/mailer.service';
+import { ModeloEmailService } from '../email/modelo-email.service';
+import {} from './bi-implantacao.constants';
+import { SQL_AGENDAS } from '../dados/catalogo/sql/sicla-agenda.sql';
+import { ESPECIES_CALENDARIO } from '../dados/catalogo/sql/sicla-agenda.sql';
 
 /** Linhas no formato CRU que o driver Oracle devolve (colunas MAIÚSCULAS), como em
  * POWERBI.POWERBI_IMPLANTACAO_RESUMO. */
@@ -76,23 +81,44 @@ const LINHAS_ORACLE = [
 
 describe('BiImplantacaoService', () => {
   let service: BiImplantacaoService;
-  const disponibilidade = { configurado: jest.fn(), executarSql: jest.fn() };
+  // Um único dublê da API de Dados, roteado pelo NOME da consulta — assim cada teste
+  // continua controlando "o que o SICLA respondeu" e "o que o Portal respondeu"
+  // separadamente, que é a distinção que este painel exercita.
+  const consultaSicla = jest.fn();
+  const consultaPortal = jest.fn();
+  const dados = {
+    consultar: jest.fn((nome: string, params?: unknown) =>
+      nome.startsWith('portal.')
+        ? consultaPortal(nome, params)
+        : consultaSicla(nome, params),
+    ),
+  };
+  const mailer = { enviar: jest.fn() };
+  const modelosEmail = { porSlug: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BiImplantacaoService,
-        { provide: DisponibilidadeService, useValue: disponibilidade },
+        { provide: DadosService, useValue: dados },
+        { provide: MailerService, useValue: mailer },
+        { provide: ModeloEmailService, useValue: modelosEmail },
       ],
     }).compile();
     service = module.get(BiImplantacaoService);
-    disponibilidade.configurado.mockReturnValue(true);
-    disponibilidade.executarSql.mockResolvedValue({
+    consultaSicla.mockResolvedValue({
       ok: true,
       mensagem: '3 linha(s).',
       colunas: [],
       linhas: LINHAS_ORACLE,
+    });
+    // Sem versão editada no Consultas BD → vale o SQL default embutido.
+    consultaPortal.mockResolvedValue({
+      ok: true,
+      mensagem: '0 linha(s).',
+      colunas: [],
+      linhas: [],
     });
   });
 
@@ -135,16 +161,20 @@ describe('BiImplantacaoService', () => {
 
   describe('resumo', () => {
     it('avisa (sem quebrar) quando a conexão com o SICLA não está configurada', async () => {
-      disponibilidade.configurado.mockReturnValue(false);
+      consultaSicla.mockResolvedValue({
+        ok: false,
+        mensagem: 'Conexão com o SICLA não configurada ou inativa.',
+        colunas: [],
+        linhas: [],
+      });
       const r = await service.resumo({});
       expect(r.erro).toContain('não configurada');
       expect(r.linhas).toEqual([]);
       expect(r.totais.quantidade).toBe(0);
-      expect(disponibilidade.executarSql).not.toHaveBeenCalled();
     });
 
     it('propaga a mensagem quando o SQL falha', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      consultaSicla.mockResolvedValue({
         ok: false,
         mensagem: 'ORA-00942: tabela ou view inexistente',
         colunas: [],
@@ -190,7 +220,7 @@ describe('BiImplantacaoService', () => {
     });
 
     it('expõe o saldo CALCULADO (previstas - realizadas) ao lado do saldo do SICLA', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      consultaSicla.mockResolvedValue({
         ok: true,
         mensagem: '1 linha(s).',
         colunas: [],
@@ -210,7 +240,7 @@ describe('BiImplantacaoService', () => {
     });
 
     it('saldo calculado fica negativo quando estoura as horas previstas', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      consultaSicla.mockResolvedValue({
         ok: true,
         mensagem: '1 linha(s).',
         colunas: [],
@@ -224,7 +254,7 @@ describe('BiImplantacaoService', () => {
     });
 
     it('percentual fica null quando não há horas previstas', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      consultaSicla.mockResolvedValue({
         ok: true,
         mensagem: '1 linha(s).',
         colunas: [],
@@ -313,11 +343,17 @@ describe('BiImplantacaoService', () => {
       expect(r.porTecnico[0].horasRealizadas).toBe(30);
     });
 
-    it('manda o período como bind e respeita o teto de linhas', async () => {
+    it('pede a consulta pelo NOME, com o período', async () => {
       await service.resumo({ dataIni: '2026-01-01', dataFim: '2026-12-31' });
-      const [, binds, , limite] = disponibilidade.executarSql.mock.calls[0];
-      expect(binds).toEqual({ data_ini: '2026-01-01', data_fim: '2026-12-31' });
-      expect(limite).toBe(5000);
+      // O teto de linhas saiu daqui: é do catálogo (`sicla.bi.resumo-implantacao`), onde
+      // um teste de contrato o trava.
+      expect(dados.consultar).toHaveBeenCalledWith(
+        'sicla.bi.resumo-implantacao',
+        {
+          data_ini: '2026-01-01',
+          data_fim: '2026-12-31',
+        },
+      );
     });
   });
 
@@ -365,7 +401,7 @@ describe('BiImplantacaoService', () => {
     ];
 
     beforeEach(() => {
-      disponibilidade.executarSql.mockResolvedValue({
+      consultaSicla.mockResolvedValue({
         ok: true,
         mensagem: '2 linha(s).',
         colunas: [],
@@ -407,7 +443,7 @@ describe('BiImplantacaoService', () => {
     });
 
     it('saldo atual é null quando o recorte não devolve nada', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      consultaSicla.mockResolvedValue({
         ok: true,
         mensagem: '0',
         colunas: [],
@@ -491,7 +527,7 @@ describe('BiImplantacaoService', () => {
     });
 
     it('avisa quando bate no teto de linhas', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      consultaSicla.mockResolvedValue({
         ok: true,
         mensagem: 'muitas',
         colunas: [],
@@ -502,7 +538,7 @@ describe('BiImplantacaoService', () => {
     });
 
     it('propaga erro do banco sem quebrar', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      consultaSicla.mockResolvedValue({
         ok: false,
         mensagem: 'ORA-01652',
         colunas: [],
@@ -564,7 +600,7 @@ describe('BiImplantacaoService', () => {
     ];
 
     beforeEach(() => {
-      disponibilidade.executarSql.mockResolvedValue({
+      consultaSicla.mockResolvedValue({
         ok: true,
         mensagem: '2 linha(s).',
         colunas: [],
@@ -666,7 +702,7 @@ describe('BiImplantacaoService', () => {
     });
 
     it('propaga erro do banco sem quebrar', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      consultaSicla.mockResolvedValue({
         ok: false,
         mensagem: 'ORA-00942',
         colunas: [],
@@ -679,10 +715,14 @@ describe('BiImplantacaoService', () => {
     });
 
     it('avisa quando o SICLA não está configurado', async () => {
-      disponibilidade.configurado.mockReturnValue(false);
+      consultaSicla.mockResolvedValue({
+        ok: false,
+        mensagem: 'Conexão com o SICLA não configurada ou inativa.',
+        colunas: [],
+        linhas: [],
+      });
       const r = await service.rnsVinculadas({});
       expect(r.erro).toContain('não configurada');
-      expect(disponibilidade.executarSql).not.toHaveBeenCalled();
     });
   });
 
@@ -715,7 +755,7 @@ describe('BiImplantacaoService', () => {
     }
 
     beforeEach(() => {
-      disponibilidade.executarSql.mockResolvedValue({
+      consultaSicla.mockResolvedValue({
         ok: true,
         mensagem: '1',
         colunas: [],
@@ -747,13 +787,13 @@ describe('BiImplantacaoService', () => {
     it('fevereiro tem 28 dias (e o SQL recebe o mês seguinte como fronteira)', async () => {
       const r = await service.agendas({ mes: '2026-02' });
       expect(r.dias).toHaveLength(28);
-      const [, binds] = disponibilidade.executarSql.mock.calls[0];
+      const [, binds] = consultaSicla.mock.calls[0];
       expect(binds).toEqual({ mes_ini: '2026-02-01', mes_fim: '2026-03-01' });
     });
 
     it('dezembro vira para janeiro do ano seguinte', async () => {
       await service.agendas({ mes: '2026-12' });
-      const [, binds] = disponibilidade.executarSql.mock.calls[0];
+      const [, binds] = consultaSicla.mock.calls[0];
       expect(binds).toEqual({ mes_ini: '2026-12-01', mes_fim: '2027-01-01' });
     });
 
@@ -764,7 +804,7 @@ describe('BiImplantacaoService', () => {
 
     // Regra do DAX: visita apontada sobrepõe o STATUSDES.
     it('VISITA preenchida força o status para Realizada', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      consultaSicla.mockResolvedValue({
         ok: true,
         mensagem: '1',
         colunas: [],
@@ -790,7 +830,7 @@ describe('BiImplantacaoService', () => {
     });
 
     it('classifica o turno pelo horário de início', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      consultaSicla.mockResolvedValue({
         ok: true,
         mensagem: '3',
         colunas: [],
@@ -810,7 +850,7 @@ describe('BiImplantacaoService', () => {
 
     describe('prioridade do dia (regra do DAX)', () => {
       it('havendo agendada, o dia mostra SÓ as agendadas', async () => {
-        disponibilidade.executarSql.mockResolvedValue({
+        consultaSicla.mockResolvedValue({
           ok: true,
           mensagem: '3',
           colunas: [],
@@ -828,7 +868,7 @@ describe('BiImplantacaoService', () => {
       });
 
       it('sem agendada mas com solicitada, oculta apenas as canceladas', async () => {
-        disponibilidade.executarSql.mockResolvedValue({
+        consultaSicla.mockResolvedValue({
           ok: true,
           mensagem: '3',
           colunas: [],
@@ -844,7 +884,7 @@ describe('BiImplantacaoService', () => {
       });
 
       it('sem agendada nem solicitada, mostra tudo (inclusive canceladas)', async () => {
-        disponibilidade.executarSql.mockResolvedValue({
+        consultaSicla.mockResolvedValue({
           ok: true,
           mensagem: '2',
           colunas: [],
@@ -860,7 +900,7 @@ describe('BiImplantacaoService', () => {
     });
 
     it('ordena o dia por turno e horário', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      consultaSicla.mockResolvedValue({
         ok: true,
         mensagem: '3',
         colunas: [],
@@ -894,7 +934,7 @@ describe('BiImplantacaoService', () => {
     });
 
     it('resume por status com percentual e cor pastel do relatório', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      consultaSicla.mockResolvedValue({
         ok: true,
         mensagem: '4',
         colunas: [],
@@ -924,7 +964,7 @@ describe('BiImplantacaoService', () => {
     });
 
     it('o resumo conta o VISÍVEL, não o bruto (senão diverge da grade)', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      consultaSicla.mockResolvedValue({
         ok: true,
         mensagem: '2',
         colunas: [],
@@ -939,7 +979,7 @@ describe('BiImplantacaoService', () => {
     });
 
     it('propaga erro do banco e avisa se o SICLA não está configurado', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      consultaSicla.mockResolvedValue({
         ok: false,
         mensagem: 'ORA-00942',
         colunas: [],
@@ -949,7 +989,12 @@ describe('BiImplantacaoService', () => {
         'ORA-00942',
       );
 
-      disponibilidade.configurado.mockReturnValue(false);
+      consultaSicla.mockResolvedValue({
+        ok: false,
+        mensagem: 'Conexão com o SICLA não configurada ou inativa.',
+        colunas: [],
+        linhas: [],
+      });
       const r = await service.agendas({ mes: '2026-07' });
       expect(r.erro).toContain('não configurada');
       expect(r.dias).toEqual([]);
@@ -958,7 +1003,7 @@ describe('BiImplantacaoService', () => {
 
   describe('descricaoCompleta', () => {
     it('busca pelo par protocolo + data/hora', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      consultaSicla.mockResolvedValue({
         ok: true,
         mensagem: '1',
         colunas: [],
@@ -967,7 +1012,7 @@ describe('BiImplantacaoService', () => {
       const r = await service.descricaoCompleta(1435877, '2026-07-29 10:35');
       expect(r.descricao).toBe('texto completo');
       expect(r.erro).toBeNull();
-      const [, binds] = disponibilidade.executarSql.mock.calls[0];
+      const [, binds] = consultaSicla.mock.calls[0];
       expect(binds).toEqual({
         protocolo: 1435877,
         datahora: '2026-07-29 10:35',
@@ -975,7 +1020,7 @@ describe('BiImplantacaoService', () => {
     });
 
     it('avisa quando o lançamento não existe', async () => {
-      disponibilidade.executarSql.mockResolvedValue({
+      consultaSicla.mockResolvedValue({
         ok: true,
         mensagem: '0',
         colunas: [],
@@ -985,11 +1030,226 @@ describe('BiImplantacaoService', () => {
       expect(r.erro).toContain('não encontrado');
     });
 
-    it('não vai ao banco se a conexão não está configurada', async () => {
-      disponibilidade.configurado.mockReturnValue(false);
+    it('avisa quando a conexão não está configurada', async () => {
+      consultaSicla.mockResolvedValue({
+        ok: false,
+        mensagem: 'Conexão com o SICLA não configurada ou inativa.',
+        colunas: [],
+        linhas: [],
+      });
       const r = await service.descricaoCompleta(1, '2026-01-01 00:00');
       expect(r.erro).toContain('não configurada');
-      expect(disponibilidade.executarSql).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('visitasPortal (painel abaixo do CONTROLE DE HORAS — banco do Portal)', () => {
+    const VISITA_MYSQL = {
+      EMPRESA: 'MELBROS CALCADOS',
+      CODIGO_CLIENTE: 3631,
+      CONTATO: 'Ernani Martini',
+      CONSULTOR: 'Everton',
+      PROTOCOLO: 135089,
+      DATA: '2026-08-06',
+      HORARIO: '08:30:00',
+      TURNO: 'MANHÃ',
+      APROVADO: 'Sim',
+    };
+
+    beforeEach(() => {
+      consultaPortal.mockResolvedValue({
+        ok: true,
+        mensagem: '1 linha(s).',
+        colunas: [],
+        linhas: [VISITA_MYSQL],
+      });
+    });
+
+    it('pede a consulta do PORTAL, não a do SICLA', async () => {
+      const r = await service.visitasPortal({
+        dataIni: '2026-08-01',
+        dataFim: '2026-08-31',
+      });
+      expect(r.erro).toBeNull();
+      expect(dados.consultar).toHaveBeenCalledWith('portal.visitas.listar', {
+        data_ini: '2026-08-01',
+        data_fim: '2026-08-31',
+      });
+      // O painel NÃO passa pelo Oracle: o roteamento por conexão é do catálogo.
+      expect(consultaSicla).not.toHaveBeenCalled();
+    });
+
+    // "usa a versão EDITADA do Consultas BD, só com os binds que ela referencia" saiu para
+    // dados.service.spec.ts — escolher o texto vigente e filtrar bind é do catálogo.
+
+    it('normaliza os aliases da consulta para o formato do frontend', async () => {
+      const r = await service.visitasPortal({});
+      expect(r.total).toBe(1);
+      expect(r.linhas[0]).toEqual({
+        empresa: 'MELBROS CALCADOS',
+        cliente: 3631,
+        contato: 'Ernani Martini',
+        consultor: 'Everton',
+        protocolo: 135089,
+        data: '2026-08-06',
+        horario: '08:30:00',
+        turno: 'MANHÃ',
+        aprovado: 'Sim',
+      });
+    });
+
+    it('valores nulos viram texto vazio / cliente e protocolo nulos', async () => {
+      consultaPortal.mockResolvedValue({
+        ok: true,
+        mensagem: '1 linha(s).',
+        colunas: [],
+        linhas: [
+          {
+            EMPRESA: null,
+            CODIGO_CLIENTE: null,
+            CONTATO: null,
+            CONSULTOR: null,
+            PROTOCOLO: null,
+            DATA: null,
+            HORARIO: null,
+            TURNO: null,
+            APROVADO: 'Não',
+          },
+        ],
+      });
+      const r = await service.visitasPortal({});
+      expect(r.linhas[0]).toEqual({
+        empresa: '',
+        cliente: null,
+        contato: '',
+        consultor: '',
+        protocolo: null,
+        data: '',
+        horario: '',
+        turno: '',
+        aprovado: 'Não',
+      });
+    });
+
+    it('sem a conexão do banco do Portal cadastrada, avisa onde cadastrar', async () => {
+      consultaPortal.mockResolvedValue({
+        ok: false,
+        mensagem:
+          'Conexão com o banco do Portal Rech não configurada ou inativa (Sistema → Consultas BD).',
+        colunas: [],
+        linhas: [],
+      });
+      const r = await service.visitasPortal({});
+      expect(r.erro).toContain('Consultas BD');
+      expect(r.linhas).toEqual([]);
+    });
+
+    it('erro do banco do Portal vira o erro do painel, sem derrubar a tela', async () => {
+      consultaPortal.mockResolvedValue({
+        ok: false,
+        mensagem: "Banco do Portal Rech: Access denied for user 'x'",
+        colunas: [],
+        linhas: [],
+      });
+      const r = await service.visitasPortal({});
+      expect(r.erro).toContain('Access denied');
+      expect(r.linhas).toEqual([]);
+    });
+  });
+
+  describe('enviar visitas por e-mail (PDF anexo)', () => {
+    const LINHA_TELA = {
+      empresa: 'MELBROS CALCADOS',
+      cliente: 3631,
+      contato: 'Ernani Martini',
+      consultor: 'Everton',
+      protocolo: 135089,
+      data: '2026-08-06',
+      horario: '08:30:00',
+      turno: 'MANHÃ',
+      aprovado: 'Sim',
+    };
+
+    beforeEach(() => {
+      mailer.enviar.mockResolvedValue({ ok: true, erro: null });
+      modelosEmail.porSlug.mockResolvedValue(null);
+    });
+
+    it('modelo da caixa: a versão salva em Modelos de E-mail prevalece; sem ela, o padrão', async () => {
+      modelosEmail.porSlug.mockResolvedValue({
+        assunto: 'ASSUNTO EDITADO',
+        corpo: 'CORPO EDITADO',
+      });
+      expect(await service.modeloEmailVisitas()).toEqual({
+        assunto: 'ASSUNTO EDITADO',
+        corpo: 'CORPO EDITADO',
+      });
+
+      modelosEmail.porSlug.mockResolvedValue(null);
+      const padrao = await service.modeloEmailVisitas();
+      expect(padrao.assunto).toContain('Portal Rech');
+      expect(padrao.corpo).toContain('anexo');
+    });
+
+    it('recusa destinatário inválido com aviso claro (400)', async () => {
+      await expect(
+        service.enviarVisitasPorEmail({
+          para: 'nao-e-email',
+          assunto: 'x',
+          corpo: 'y',
+          recorte: [],
+          linhas: [],
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(mailer.enviar).not.toHaveBeenCalled();
+    });
+
+    it('gera o PDF e envia para os destinatários (separados por ;) com o anexo', async () => {
+      const r = await service.enviarVisitasPorEmail({
+        para: 'coord@rech.com.br; gci@rech.com.br',
+        assunto: 'Protocolos',
+        corpo: 'Segue anexo.',
+        recorte: ['Período: 01/08 a 17/08'],
+        linhas: [LINHA_TELA, { ...LINHA_TELA, protocolo: 1, aprovado: 'Não' }],
+      });
+      expect(r.ok).toBe(true);
+      const [destinos, assunto, corpo, anexos] = mailer.enviar.mock.calls[0];
+      expect(destinos).toEqual(['coord@rech.com.br', 'gci@rech.com.br']);
+      expect(assunto).toBe('Protocolos');
+      expect(corpo).toBe('Segue anexo.');
+      expect(anexos).toHaveLength(1);
+      expect(anexos[0].nomeArquivo).toBe('visitas-portal-rech.pdf');
+      // o arquivo temporário do anexo é apagado depois do envio
+      const { existsSync } = jest.requireActual<typeof import('fs')>('fs');
+      expect(existsSync(anexos[0].caminho)).toBe(false);
+    });
+
+    it('gráfico com data URL inválida é ignorado (envia sem imagem, não quebra)', async () => {
+      const r = await service.enviarVisitasPorEmail({
+        para: 'a@rech.com.br',
+        assunto: 'x',
+        corpo: 'y',
+        graficoPng: 'data:image/png;base64,%%%não-é-base64-de-png%%%',
+        recorte: [],
+        linhas: [LINHA_TELA],
+      });
+      expect(r.ok).toBe(true);
+      expect(mailer.enviar).toHaveBeenCalled();
+    });
+
+    it('falha do envio volta como { ok: false, erro } — a tela mostra o motivo', async () => {
+      mailer.enviar.mockResolvedValue({
+        ok: false,
+        erro: 'Nenhum meio de envio configurado',
+      });
+      const r = await service.enviarVisitasPorEmail({
+        para: 'a@rech.com.br',
+        assunto: 'x',
+        corpo: 'y',
+        recorte: [],
+        linhas: [],
+      });
+      expect(r.ok).toBe(false);
+      expect(r.erro).toContain('meio de envio');
     });
   });
 });

@@ -1,18 +1,12 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Projeto } from '../database/entities/projeto.entity';
-import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
-import { ConsultaBdService } from '../disponibilidade/consulta-bd.service';
+import { DadosService } from '../dados/dados.service';
 import { PassosService } from '../passos/passos.service';
 import { hojeIso } from '../cronograma/datas.util';
 import type { Perfil } from '../common/constants/perfis';
-import {
-  ClienteSicla,
-  NOME_BUSCA_CLIENTE,
-  SLUG_BUSCA_CLIENTE,
-  SQL_BUSCA_CLIENTE_PADRAO,
-} from './clientes-sicla.constants';
+import { ClienteSicla } from './clientes-sicla.constants';
 import { CadastrarClienteDto } from './dto/cadastrar-cliente.dto';
 
 export interface ResultadoBusca {
@@ -28,49 +22,17 @@ export interface ResultadoCadastro {
 
 /** Passo 1 do processo: consulta o cliente no SICLA e cadastra a ficha.
  *
- * Substitui o antigo robô de leitura de e-mail. A consulta reusa o motor Oracle da
- * Disponibilidade (`executarSql`, mesma conexão configurada); o SQL é editável pelo
- * Administrador (consulta nomeada), com um default embutido. O cadastro cria a ficha e
- * conclui o passo 1 — o que dispara o aviso ao Administrativo. */
+ * Substitui o antigo robô de leitura de e-mail. A busca pede a consulta
+ * `sicla.clientes.buscar` à API de Dados (ADR-0003) — o SQL continua editável pelo
+ * Administrador em Consultas BD, mas isso é assunto do catálogo, não deste módulo. O
+ * cadastro cria a ficha e conclui o passo 1 — o que dispara o aviso ao Administrativo. */
 @Injectable()
-export class ClientesSiclaService implements OnModuleInit {
-  private readonly logger = new Logger('ClientesSiclaService');
-
+export class ClientesSiclaService {
   constructor(
     @InjectRepository(Projeto) private readonly projetos: Repository<Projeto>,
-    private readonly disponibilidade: DisponibilidadeService,
-    private readonly consultas: ConsultaBdService,
+    private readonly dados: DadosService,
     private readonly passos: PassosService,
   ) {}
-
-  /** Semeia o SQL de busca (idempotente) para o Administrador poder editá-lo na tela de
-   * Consultas BD. Não sobrescreve se já existir — respeita edição manual. */
-  async onModuleInit(): Promise<void> {
-    if (process.env.NODE_ENV === 'test') return;
-    try {
-      const existe = await this.consultas.porSlug(SLUG_BUSCA_CLIENTE);
-      if (!existe) {
-        await this.consultas.salvar(SLUG_BUSCA_CLIENTE, {
-          nome: NOME_BUSCA_CLIENTE,
-          sql: SQL_BUSCA_CLIENTE_PADRAO,
-          ordem: 99,
-          mostrarGrafico: false,
-        });
-      }
-    } catch (e) {
-      this.logger.error(
-        'Falha ao semear a consulta de busca de cliente no SICLA',
-        e instanceof Error ? e.stack : String(e),
-      );
-    }
-  }
-
-  /** SQL vigente: a versão editada pelo Administrador, ou o default embutido. */
-  private async sqlBusca(): Promise<string> {
-    const c = await this.consultas.porSlug(SLUG_BUSCA_CLIENTE);
-    const sql = (c?.sql ?? '').trim();
-    return sql || SQL_BUSCA_CLIENTE_PADRAO;
-  }
 
   async buscar(termoBruto: string): Promise<ResultadoBusca> {
     const termo = (termoBruto ?? '').trim();
@@ -81,13 +43,8 @@ export class ClientesSiclaService implements OnModuleInit {
         clientes: [],
       };
     }
-    const sql = await this.sqlBusca();
-    const r = await this.disponibilidade.executarSql(
-      sql,
-      { termo: `%${termo}%` },
-      undefined,
-      50,
-    );
+    // Termo CRU: o curinga `%` do LIKE é do catálogo (parâmetro `texto_busca`).
+    const r = await this.dados.consultar('sicla.clientes.buscar', { termo });
     if (!r.ok) {
       return { ok: false, mensagem: r.mensagem, clientes: [] };
     }

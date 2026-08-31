@@ -26,6 +26,14 @@ export class RefreshToken {
   @Column({ default: false })
   revogado: boolean;
 
+  /** Por que foi revogado (M11 — detecção de reuso). `''` = ativo; `rotacao` = usado num
+   * refresh (rotacionado); `logout` = saída explícita; `replay` = derrubado por reuso.
+   * Distinguir `rotacao` de `logout` evita que uma aba velha reapresentando um token de
+   * LOGOUT derrube os outros dispositivos do usuário — só o reuso de um token ROTACIONADO
+   * (sinal de vazamento) escala para revogar a família. */
+  @Column({ name: 'motivo_revogacao', length: 20, default: '' })
+  motivoRevogacao: string;
+
   @CreateDateColumn({ name: 'criado_em' })
   criadoEm: Date;
 }

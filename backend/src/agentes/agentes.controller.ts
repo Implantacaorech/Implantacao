@@ -12,7 +12,6 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
 import { PermissaoGuard } from '../permissoes/permissao.guard';
 import { Permissao } from '../common/decorators/permissao.decorator';
 import { ApiEnvelope } from '../common/dto/api-envelope';
@@ -32,7 +31,10 @@ export class AgentesController {
   constructor(private readonly service: AgentesService) {}
 
   @Post('execucoes')
-  @Roles() // qualquer autenticado — é o próprio agente (via curl) reportando início
+  // M4 (auditoria 2026-08-12): antes `@Roles()` vazio deixava QUALQUER autenticado injetar
+  // telemetria falsa, contrariando a garantia "não é simulação". Passa a exigir alteração no
+  // Centro Operacional — o agente reporta com token ADM, que tem essa permissão.
+  @Permissao('centro_operacional', 'alteracao')
   @ApiOperation({
     summary: 'Registra o início real de uma execução de agente/subagente',
   })
@@ -41,7 +43,7 @@ export class AgentesController {
   }
 
   @Patch('execucoes/:id')
-  @Roles() // qualquer autenticado — idem
+  @Permissao('centro_operacional', 'alteracao')
   @ApiOperation({
     summary: 'Conclui (ou marca falha) uma execução em andamento',
   })

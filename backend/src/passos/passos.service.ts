@@ -568,6 +568,11 @@ export class PassosService {
     return this.notificacao.historico(projetoId);
   }
 
+  /** Reenvia um e-mail de passo que falhou (A13). */
+  async reenviarEmail(projetoId: number, emailId: number, autor: string) {
+    return this.notificacao.reenviar(projetoId, emailId, autor);
+  }
+
   /** Em que passo cada projeto está, para montar o quadro (Kanban) por fase.
    *
    * O "passo atual" é o primeiro PENDENTE — é onde o trabalho parou e, portanto, a coluna em

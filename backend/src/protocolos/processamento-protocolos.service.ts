@@ -18,7 +18,9 @@ import { EXTS, STATUS_EM_PROCESSAMENTO } from './protocolos.constants';
 import { StatusProtocolo } from '../database/entities/protocolo.entity';
 import { montarVocabulario } from './vocabulario';
 import { aplicarNomes, lerMapa } from './locutores';
+import { avisoAudioIncompleto } from './cobertura-audio';
 import { formatarParaPrompt, menusMencionados } from './menus-mencionados';
+import { codigosValidosDoCatalogo } from './validar-menus';
 import { MenusSigerService } from '../matriz-detalhada/menus-siger.service';
 
 const ESTAVEL_SEG = 90; // arquivo precisa estar sem modificação há N s (OneDrive ainda copiando)
@@ -250,9 +252,14 @@ export class ProcessamentoProtocolosService implements OnApplicationBootstrap {
   private async resumoCompleto(
     transcricao: string,
     videoNome: string,
+    menusReconhecidos = '',
   ): Promise<string> {
     try {
-      return await this.ia.resumirCompleto(transcricao, videoNome);
+      return await this.ia.resumirCompleto(
+        transcricao,
+        videoNome,
+        menusReconhecidos,
+      );
     } catch (e) {
       this.logger.error(
         `Resumo completo do protocolo "${videoNome}" falhou`,
@@ -272,7 +279,15 @@ export class ProcessamentoProtocolosService implements OnApplicationBootstrap {
    * É ENRIQUECIMENTO, não etapa do fluxo: se o Dicionário não estiver ingerido, ou a leitura
    * falhar, o pipeline segue e a IA extrai o que conseguir do texto — exatamente como antes.
    * Deixar isto derrubar o processamento seria trocar uma melhoria por um risco. */
-  private async reconhecerMenus(texto: string, id: number): Promise<string> {
+  /** Consulta o catálogo do SIGER UMA vez e devolve as duas coisas que o pipeline precisa dele:
+   * o `prompt` com os menus reconhecidos na transcrição (enriquecimento entregue à IA) e o
+   * conjunto `validos` de códigos reais (para a validação pós-geração, A15). Best-effort: sem
+   * Dicionário ingerido, ou falha de leitura, devolve prompt vazio e conjunto vazio — nenhum
+   * dos dois derruba o pipeline, e a validação, por contrato, não faz nada com catálogo vazio. */
+  private async reconhecerMenus(
+    texto: string,
+    id: number,
+  ): Promise<{ prompt: string; validos: Set<string> }> {
     try {
       const taxonomia = await this.menus.taxonomia();
       const catalogo = taxonomia.flatMap((m) =>
@@ -285,13 +300,16 @@ export class ProcessamentoProtocolosService implements OnApplicationBootstrap {
             `transcrição (${achados.map((a) => a.codigo).join(', ')}).`,
         );
       }
-      return formatarParaPrompt(achados);
+      return {
+        prompt: formatarParaPrompt(achados),
+        validos: codigosValidosDoCatalogo(catalogo),
+      };
     } catch (e) {
       this.logger.warn(
         `Protocolo ${id}: não deu para reconhecer os menus contra o Dicionário ` +
           `(${this.erroAmigavel(e)}) — a IA vai extrair só do texto.`,
       );
-      return '';
+      return { prompt: '', validos: new Set() };
     }
   }
 
@@ -590,6 +608,9 @@ export class ProcessamentoProtocolosService implements OnApplicationBootstrap {
     }
 
     let texto = (p.transcricao || '').trim();
+    // Duração da mídia para o aviso de áudio incompleto: no reprocessamento vem do banco;
+    // na transcrição nova, do que o transcritor mediu (atribuída mais abaixo).
+    let duracaoSeg = p.duracaoSeg || 0;
     if (!texto && !existsSync(p.videoCaminho || '')) {
       await this.protocolos.atualizarStatus(
         id,
@@ -618,6 +639,7 @@ export class ProcessamentoProtocolosService implements OnApplicationBootstrap {
           duracaoSeg: t.duracaoSeg,
         });
         texto = t.transcricao.trim();
+        duracaoSeg = t.duracaoSeg || 0;
         if (!texto) {
           throw new Error('Transcrição vazia (vídeo sem fala reconhecível?).');
         }
@@ -635,17 +657,48 @@ export class ProcessamentoProtocolosService implements OnApplicationBootstrap {
       const textoIa = aplicarNomes(texto, lerMapa(atual?.mapaLocutores));
       // Descobre, contra o catálogo REAL do SIGER, quais menus foram citados na gravação.
       // Sem isto a IA precisa adivinhar o código a partir de um texto onde ele chegou
-      // mastigado ("um ponto quatro i") — e o resultado era menu sumido no resumo, que foi
-      // a queixa do usuário em 2026-08-11. Falhar aqui não pode derrubar o pipeline: é
-      // enriquecimento, não etapa obrigatória.
+      // mastigado ("um ponto quatro i") — e o resultado era menu sumido, que foi a queixa do
+      // usuário em 2026-08-11. Falhar aqui não pode derrubar o pipeline: é enriquecimento,
+      // não etapa obrigatória.
+      //
+      // Calculado UMA vez e entregue às DUAS chamadas de IA. Em 2026-08-11 ele ia só para a
+      // análise, e o resumo completo — que é o que o revisor lê — continuou sem menu nenhum,
+      // intitulando os blocos por assunto genérico em caixa alta. Mesma lista, mesmo
+      // catálogo: se os dois textos citam menus, têm de citar OS MESMOS.
+      // UMA consulta ao catálogo entrega as duas coisas: o prompt de menus reconhecidos
+      // (enriquecimento) e o conjunto de códigos válidos (validação pós-geração, A15).
+      const { prompt: menus, validos: codigosValidos } =
+        await this.reconhecerMenus(textoIa, id);
       const { campos, bruto } = await this.ia.analisar(
         textoIa,
         p.videoNome || '',
-        await this.reconhecerMenus(textoIa, id),
+        menus,
+        codigosValidos,
       );
+      // Gravação com microfone morto no meio (caso do protocolo 76): a análise sai fiel ao
+      // pouco que havia, e sem este aviso o protocolo magro passa com cara de normal — o
+      // revisor precisa saber que o resto da mídia está sem fala ANTES de aprovar (e de
+      // decidir se dá para regravar). Mesmo formato/lugar dos avisos da validação A15.
+      const avisoAudio = avisoAudioIncompleto(texto, duracaoSeg);
+      if (avisoAudio) {
+        campos.pendencias = [campos.pendencias, avisoAudio]
+          .filter((s) => (s || '').trim())
+          .join('\n');
+      }
       await this.protocolos.atualizar(id, { ...campos, textoIa: bruto });
+      if (avisoAudio) {
+        await this.protocolos.salvarHistorico(
+          id,
+          'Áudio possivelmente incompleto (fala termina muito antes do fim da mídia) — ver pendências.',
+          autor,
+        );
+      }
       await this.protocolos.atualizar(id, {
-        resumoCompleto: await this.resumoCompleto(textoIa, p.videoNome || ''),
+        resumoCompleto: await this.resumoCompleto(
+          textoIa,
+          p.videoNome || '',
+          menus,
+        ),
       });
 
       await this.protocolos.atualizarStatus(id, 'Em revisão', undefined, autor);

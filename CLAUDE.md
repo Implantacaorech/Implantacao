@@ -89,6 +89,35 @@ administrativo legado (roles/cliente/criar-templates/verbal/saúde). **`tools/` 
 vivo por completo** — é dependência real dessa ponte e do `docservice/`. Nada em `webapp/`
 ou `tools/` que sobrou é código morto; não mover/apagar sem checar `import` primeiro.
 
+## Consulta a banco EXTERNO — só pela API de Dados
+
+Regra do usuário (2026-08-25, [ADR-0003](<vault/17 - ADR/ADR-0003 - API de Dados como fronteira unica de banco.md>)):
+**toda e qualquer consulta a banco de dados externo passa por uma API.** Migração
+**concluída** nas 3 fases: 19 consultas no catálogo, nenhum módulo fala com driver.
+
+Na prática: escreva o SQL em `backend/src/dados/catalogo/sql/`, declare a consulta em
+`catalogo/catalogo.ts` (nome estável, parâmetros tipados, teto de linhas) e chame
+`DadosService.consultar(nome, parametros)` — que **não lança**: devolve
+`{ok, mensagem, colunas, linhas}` e a tela degrada com aviso. **Não** importe
+`oracledb`/`mysql2` nem chame `executarSql` em lugar nenhum fora de `src/dados/` — o teste
+`backend/src/common/conformidade-api-dados.spec.ts` falha o CI. Contrato e uso em
+[backend/src/dados/docs/](backend/src/dados/docs/README.md); tela em Sistema → API de Dados.
+Consulta nova pode nascer **pela tela** (Sistema → API de Dados → Nova consulta), com o
+contrato extraído do banco pelo "Testar" — o SQL continua nunca vindo de quem consome.
+A instância INTERNA que segura a credencial (**Portal API**, porta 5110,
+`Iniciar_Portal_Conexoes.bat`) está em [docs/portal-conexoes.md](docs/portal-conexoes.md). Ela
+serve o mesmo build do Angular, com **menu reduzido a 4 itens** (conexões, consultas, nova
+consulta, tokens) — quem decide isso é `GET /api/instancia`. Do lado do Painel, os tokens
+gerados lá são colados em **Sistema → Tokens da API de Dados**; com token ativo, a execução
+das consultas que ele cobre passa a ir para o Portal API (`src/dados/consumo/`).
+
+O escopo é o dado de **terceiro**: Oracle do SICLA e MySQL do Portal Rech. Fora dele, por
+decisão: o `painel_novo` (camada Repository/TypeORM, ADR-0002) e a base do Consultor SIGER
+(artefato derivado, local, readonly — o módulo já é a API dela).
+
+⚠️ **Pendente em produção:** rodar `cd backend && npm run migration:run` (tabela
+`api_clientes`). Até lá a tela abre, mas sem a parte de clientes de máquina.
+
 ## Papéis (agentes) — detalhe no guia operacional
 `coordenador-implantacao` · `setor-adm` · `consultor-implantacao` (GCI) · `gerente-projeto` ·
 `equipe-conversao` · `gestao-mudanca`. Definições em `.claude/agents/`.
@@ -148,6 +177,11 @@ encontrado em 2026-08-05 — se um falhar, a brecha voltou. Exige a **instância
 porta 5199** (SQLite descartável, `cwd` fora de `backend/` para o `smtp.json` não ser
 encontrado). ⚠️ **Nunca aponte o e2e para a 5100** — é produção, e os testes concluem passos
 e disparam e-mail; o `playwright.config.ts` recusa essa porta no boot.
+
+Desde 2026-08-21 o e2e também roda **em todo PR**, por `.github/workflows/e2e.yml`. Lá o caso
+que GERA documento aparece pulado: os layouts oficiais não vão para o git, e o caso pergunta à
+instância se ela os tem antes de rodar (`e2e/apoio/insumo-local.ts`). Rodar local continua
+valendo — é onde a geração é de fato exercitada.
 
 **Auditoria 360° do sistema** (antes de uma entrega/virada, ou quando pedirem "auditoria
 geral"/"testar tudo"): skill **`auditoria-geral-sistema`** — percorre frontend, backend,

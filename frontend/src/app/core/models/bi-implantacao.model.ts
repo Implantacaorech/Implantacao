@@ -90,6 +90,61 @@ export interface FiltroResumoBi {
   rns?: string[];
 }
 
+// ── Painel "Visitas do Portal Rech" (Resumo, abaixo do CONTROLE DE HORAS) ─────────────
+
+/** Uma visita do Portal Rech com o status de aprovação — os campos seguem os ALIASES da
+ * consulta `bi_visitas_portal` (editável em Sistema → Consulta BD). */
+export interface LinhaVisitaPortalBi {
+  empresa: string;
+  /** Código do cliente no SICLA (`empresa.CODIGO_CLIENTE` do Portal) — é por ele que o
+   * painel respeita o cliente filtrado nos demais filtros do Resumo. */
+  cliente: number | null;
+  contato: string;
+  consultor: string;
+  protocolo: number | null;
+  data: string;
+  horario: string;
+  /** MANHÃ | TARDE | NOITE | FORA DO TURNO (calculado no SQL). */
+  turno: string;
+  /** 'Sim'/'Não', como a consulta devolve. */
+  aprovado: string;
+}
+
+export interface ResultadoVisitasPortalBi {
+  periodo: { inicio: string; fim: string };
+  linhas: LinhaVisitaPortalBi[];
+  total: number;
+  limite: number;
+  truncado: boolean;
+  erro: string | null;
+}
+
+export interface FiltroVisitasPortalBi {
+  dataIni?: string;
+  dataFim?: string;
+}
+
+/** Texto padrão da caixa "Enviar por e-mail" (modelo `bi-visitas-portal`, editável em
+ * Modelos de E-mail). */
+export interface ModeloEmailVisitasBi {
+  assunto: string;
+  corpo: string;
+}
+
+/** Payload do envio do painel por e-mail — a tela manda o que ESTÁ MOSTRANDO (linhas
+ * filtradas + gráfico como PNG + descrição do recorte); o backend gera o PDF e envia. */
+export interface EnvioVisitasEmailBi {
+  /** Um ou mais e-mails separados por ; ou , */
+  para: string;
+  assunto: string;
+  corpo: string;
+  /** PNG do canvas do gráfico (data URL) — ausente quando não há gráfico. */
+  graficoPng?: string;
+  /** Linhas descritivas do recorte aplicado (período, visão, filtros). */
+  recorte: string[];
+  linhas: LinhaVisitaPortalBi[];
+}
+
 // ── Página "Extrato de Protocolo/Horas" ───────────────────────────────────────────────
 
 export interface LinhaExtratoBi {

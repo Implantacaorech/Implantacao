@@ -1,6 +1,6 @@
 <div class="acesso-cartao">
   <img class="acesso-logo" src="logo-portal-rech-azul.png" alt="Portal Rech" />
-  <h1 class="pagina-titulo acesso-sub">Implantação SIGER®</h1>
+  <h1 class="pagina-titulo acesso-sub">{{ subtitulo() }}</h1>
 
   <form [formGroup]="form" (ngSubmit)="enviar()">
     @if (erro()) {

@@ -105,9 +105,11 @@ jobs:
       # suba). faster-whisper, PyAV e sherpa-onnx ficam de fora de propósito: são importados
       # DENTRO das funções que transcrevem, e nenhuma delas roda aqui (o transcritor é
       # substituído por dublê). pywin32 idem — é Windows-only, e o docview só o toca ao
-      # converter .docx pelo Word.
+      # converter .docx pelo Word. numpy É necessário: `transcricao/antialucinacao.py` o
+      # importa no nível do módulo (janelas de energia) e o teste o alcança pela cadeia de
+      # imports — sem ele o job morre em ImportError na coleta, o que vinha acontecendo.
       - name: Instalar dependências
-        run: pip install pytest httpx "fastapi>=0.115" "pydantic>=2.9" "python-docx>=1.1" "openpyxl>=3.1" "Pillow>=10.0" "python-multipart>=0.0.12"
+        run: pip install pytest httpx "fastapi>=0.115" "pydantic>=2.9" "python-docx>=1.1" "openpyxl>=3.1" "Pillow>=10.0" "python-multipart>=0.0.12" "numpy>=1.26"
       - name: Job de transcrição (fila, cancelamento, poda)
         run: python -X utf8 -m pytest tests/test_transcricao.py -v
 

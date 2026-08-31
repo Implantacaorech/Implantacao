@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { mkdirSync, unlinkSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { basename, join } from 'path';
 import { Repository } from 'typeorm';
 import {
   Documento,
@@ -22,6 +22,26 @@ import {
 } from '../metricas/metricas.service';
 import { PassosService } from '../passos/passos.service';
 import type { Perfil } from '../common/constants/perfis';
+
+/** Torna seguro um nome de arquivo vindo do usuário (o `originalname` do upload) antes de
+ * concatenar num caminho de disco. Achado C2 da auditoria de 2026-08-12 (path traversal):
+ * `salvarArquivoGerado` montava `${id}_${ts}_${nomeSugerido}` com o nome CRU, e um
+ * `originalname` como `a/../../../../evil.js` escapava da pasta ao passar por `join` —
+ * escrita de arquivo arbitrária com o privilégio do processo Node.
+ *
+ * Defesa em duas camadas: `basename` (após normalizar `\` → `/`, para valer igual no Windows
+ * e no Linux do CI) remove qualquer componente de diretório; em seguida tudo que não for
+ * `[A-Za-z0-9._-]` vira `_`, o que elimina QUALQUER separador remanescente e neutraliza `..`
+ * (não sobra separador para subir de pasta). Ponto e nomes ocultos no início são removidos, e
+ * o tamanho é limitado. Nome vazio após a limpeza vira `arquivo`. */
+export function nomeArquivoSeguro(nome: string): string {
+  const semDiretorio = basename(String(nome ?? '').replace(/\\/g, '/'));
+  const limpo = semDiretorio
+    .replace(/[^A-Za-z0-9._-]/g, '_')
+    .replace(/^\.+/, '')
+    .slice(0, 180);
+  return limpo || 'arquivo';
+}
 
 // Precedência dos documentos no fluxo — a exclusão respeita as dependências: um documento
 // só pode ser excluído se nenhum documento POSTERIOR existir (ex.: exclua o Projeto antes
@@ -197,7 +217,10 @@ export class DocumentosService {
     nomeSugerido: string,
     buffer: Buffer,
   ): { arquivo: string; caminho: string } {
-    const arquivo = `${projetoId}_${Date.now()}_${nomeSugerido}`;
+    // nomeArquivoSeguro é o que impede path traversal (ver C2). O prefixo id+timestamp evita
+    // colisão entre gerações repetidas; a sanitização garante que o resultado nunca saia do
+    // store, por mais malicioso que seja o originalname enviado.
+    const arquivo = `${projetoId}_${Date.now()}_${nomeArquivoSeguro(nomeSugerido)}`;
     const caminho = join(this.store(), arquivo);
     writeFileSync(caminho, buffer);
     return { arquivo, caminho };
@@ -309,18 +332,6 @@ export class DocumentosService {
 
   async buscarDocumento(id: number): Promise<Documento | null> {
     return this.documentos.findOne({ where: { id } });
-  }
-
-  /** Levantamento (.docx) importado mais recente do projeto, se houver — equivalente a
-   * webapp/db.py:levantamento_importado. Usado por "Projeto origem" (fonte "importado":
-   * reusar o último Levantamento já enviado, sem pedir upload de novo). */
-  async ultimoLevantamentoImportado(
-    projetoId: number,
-  ): Promise<Documento | null> {
-    return this.documentos.findOne({
-      where: { projetoId, tipo: 'levantamento', origem: 'importado' },
-      order: { id: 'DESC' },
-    });
   }
 
   /** Chamado por `ProjetosService.excluir` — sem isso, excluir um projeto deixaria

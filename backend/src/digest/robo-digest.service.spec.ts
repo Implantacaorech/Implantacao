@@ -42,6 +42,22 @@ describe('RoboDigestService', () => {
       expect(digest.enviar).not.toHaveBeenCalled();
     });
 
+    it('avisa no log (uma vez por dia) quando não há destinatários na hora certa (A11)', async () => {
+      config.get.mockReturnValue(new Date().getHours());
+      digest.destinos.mockReturnValue([]);
+      const warn = jest
+        .spyOn(
+          (service as unknown as { logger: { warn: (m: string) => void } })
+            .logger,
+          'warn',
+        )
+        .mockImplementation(() => undefined);
+      await service.tick();
+      await service.tick(); // mesmo dia -> não repete o aviso
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0][0]).toContain('MIGRACAO_DIGEST_PARA');
+    });
+
     it('envia na hora certa e não envia de novo no mesmo dia', async () => {
       config.get.mockReturnValue(new Date().getHours());
       digest.destinos.mockReturnValue(['a@x.com']);

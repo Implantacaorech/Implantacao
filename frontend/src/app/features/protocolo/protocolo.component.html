@@ -1,0 +1,29 @@
+<div class="proto-head">
+  <div>
+    <h1 class="pagina-titulo">Protocolo <small>Portal Rech</small></h1>
+    <p class="dica">Abertura e acompanhamento de protocolos no Portal Rech — a página abre aqui dentro.</p>
+  </div>
+  <div class="proto-acoes">
+    <button class="btn primario" type="button" (click)="mostrarPreencher.set(true)">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Preencher protocolo
+    </button>
+    <a class="btn" [href]="urlPortal" target="_blank" rel="noopener">
+      <svg class="svgi" aria-hidden="true"><use href="#ic-link"/></svg> Abrir em nova guia
+    </a>
+  </div>
+</div>
+
+@if (mostrarPreencher()) {
+  <app-preencher-protocolo
+    (fechar)="mostrarPreencher.set(false)"
+    (criada)="onProtocoloCriado()"
+  />
+}
+
+<iframe
+  #portalFrame
+  class="proto-frame"
+  src="https://portalrech.com.br/login"
+  title="Portal Rech — Protocolo"
+  referrerpolicy="no-referrer"
+></iframe>

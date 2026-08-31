@@ -79,10 +79,22 @@ describe('Agentes — telemetria de execução (e2e)', () => {
     await app.close();
   });
 
-  it('Consultor (qualquer autenticado) inicia uma execução real', async () => {
+  // Registrar telemetria exige `centro_operacional:alteracao` desde o achado M4 da auditoria
+  // de 2026-08-12 — antes, QUALQUER autenticado podia injetar execução falsa, o que
+  // contraria a garantia de que o painel de agentes mostra só execução real. Quem reporta é
+  // o agente, com token ADM.
+  it('quem não tem alteração no Centro Operacional NÃO registra execução', async () => {
     const res = await request(server())
       .post('/api/agentes/execucoes')
       .set('Authorization', `Bearer ${tokenConsultor}`)
+      .send({ agente: 'painel-core', tarefa: 'Telemetria falsa' });
+    expect(res.status).toBe(403);
+  });
+
+  it('inicia uma execução real', async () => {
+    const res = await request(server())
+      .post('/api/agentes/execucoes')
+      .set('Authorization', `Bearer ${tokenAdm}`)
       .send({ agente: 'painel-core', tarefa: 'Teste e2e de telemetria' });
     expect(res.status).toBe(201);
     expect(res.body.data.status).toBe('em_execucao');
@@ -92,7 +104,7 @@ describe('Agentes — telemetria de execução (e2e)', () => {
   it('grafo mostra painel-core ativo enquanto a execução não foi concluída', async () => {
     await request(server())
       .post('/api/agentes/execucoes')
-      .set('Authorization', `Bearer ${tokenConsultor}`)
+      .set('Authorization', `Bearer ${tokenAdm}`)
       .send({ agente: 'documentacao-contexto', tarefa: 'Outro teste e2e' });
 
     const grafo = await request(server())
@@ -114,13 +126,13 @@ describe('Agentes — telemetria de execução (e2e)', () => {
   it('conclui a execução e ela deixa de aparecer como ativa', async () => {
     const iniciada = await request(server())
       .post('/api/agentes/execucoes')
-      .set('Authorization', `Bearer ${tokenConsultor}`)
+      .set('Authorization', `Bearer ${tokenAdm}`)
       .send({ agente: 'seguranca-permissoes', tarefa: 'Revisão de teste' });
     const id = iniciada.body.data.id as number;
 
     const concluida = await request(server())
       .patch(`/api/agentes/execucoes/${id}`)
-      .set('Authorization', `Bearer ${tokenConsultor}`)
+      .set('Authorization', `Bearer ${tokenAdm}`)
       .send({ status: 'concluido', resultado: '2 achados, ambos corrigidos' });
     expect(concluida.status).toBe(200);
     expect(concluida.body.data.status).toBe('concluido');

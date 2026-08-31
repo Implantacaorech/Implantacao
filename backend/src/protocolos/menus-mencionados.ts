@@ -48,15 +48,25 @@ export interface MenuMencionado {
 }
 
 /**
- * Formato de um código de menu do SIGER: `2.3-N`, `1.2-M/I/A`.
+ * Formato de um código de menu do SIGER: `2.3-N`, `1.2-M/I/A` — e também `1.1`, sem letra.
  *
  * O filtro NÃO é preciosismo. A tabela "Caminho | Opção | Programa" dos documentos do
  * Dicionário também é usada para listar FONTES (`BDA001.CBL`), e sem esta checagem o catálogo
  * vinha com 1.724 entradas em vez de ~360 — a maioria nome de arquivo COBOL, que casaria com
  * qualquer conversa e encheria o prompt de lixo. Descoberto ao validar contra a base real de
  * produção, em 2026-08-11; os testes sintéticos não pegavam porque usavam só códigos válidos.
+ *
+ * ⚠️ O sufixo de letra passou a ser OPCIONAL em 2026-08-12. Exigi-lo descartava do catálogo
+ * todos os menus de primeiro nível (`1.1`, `2.1`, `3.4`), que são a maioria das linhas dos
+ * documentos — e com eles ia embora o NOME da tela, que é o único jeito de reconhecer o menu
+ * numa transcrição (o consultor fala "geração de necessidades", não "três ponto quatro").
+ *
+ * Isso NÃO afrouxa a busca por código no texto: aquela continua exigindo a forma com letra
+ * (ver `menusMencionados`, etapa 1), justamente porque "1.1" solto casaria com qualquer
+ * número dito numa conversa. O código sem letra entra no catálogo para ser achado pelo NOME,
+ * e para que a IA possa citá-lo depois de reconhecido.
  */
-const CODIGO_MENU = /^\d+\.\d+-[A-Za-z](?:\/[A-Za-z])*$/;
+export const CODIGO_MENU = /^\d{1,2}\.\d{1,2}(?:-[A-Za-z](?:\/[A-Za-z])*)?$/;
 
 /** Só o que é código de menu de verdade entra na busca. */
 export function apenasMenusValidos(catalogo: MenuCatalogo[]): MenuCatalogo[] {
@@ -234,7 +244,41 @@ export function menusMencionados(
     }
   }
 
-  return [...achados.values()].slice(0, limite);
+  return semRedundantes([...achados.values()]).slice(0, limite);
+}
+
+/**
+ * Tira a entrada genérica quando a específica do MESMO menu já entrou: `2.5` sai se `2.5-I`
+ * está lá, desde que o nome seja o mesmo.
+ *
+ * Os dois vêm de linhas diferentes do Dicionário para a mesma tela ("Integracao com
+ * Estoque"), casam pelo mesmo trecho da transcrição e viram duas linhas quase idênticas na
+ * lista entregue à IA — que então trata como se fossem duas telas distintas.
+ */
+export function semRedundantes(menus: MenuMencionado[]): MenuMencionado[] {
+  const comLetra = menus.filter((m) => m.codigo.includes('-'));
+  const semGenerico = menus.filter((m) => {
+    if (m.codigo.includes('-')) return true;
+    return !comLetra.some(
+      (e) =>
+        e.codigo.startsWith(`${m.codigo}-`) &&
+        normalizar(e.opcao) === normalizar(m.opcao),
+    );
+  });
+
+  // E o mesmo NOME no mesmo módulo, em códigos diferentes, vale uma entrada só. O documento
+  // do GIN repete "Servicos externos" em 6.1, 6.2, 6.3 e 6.4; os quatro casam no mesmo trecho
+  // da transcrição e produziriam quatro linhas idênticas no prompt, como se fossem quatro
+  // telas. Do texto não há como distinguir qual é — quem sabe é o Dicionário, e ele não diz.
+  const vistos = new Set<string>();
+  return semGenerico.filter((m) => {
+    const nome = normalizar(m.opcao);
+    if (!nome) return true;
+    const chave = `${m.siglas.join('/')}|${nome}`;
+    if (vistos.has(chave)) return false;
+    vistos.add(chave);
+    return true;
+  });
 }
 
 /** Formata os candidatos para dentro do prompt da IA — uma linha por menu, curta. */
@@ -252,7 +296,13 @@ export function formatarParaPrompt(menus: MenuMencionado[]): string {
         m.siglas.length > 1
           ? ' [existe em vários módulos — confirme pelo contexto]'
           : '';
-      return `- ${m.codigo} (${modulos}${prog})${nome}${aviso}`;
+      // O TRECHO em que casou vai junto, e isso não é enfeite: um nome de menu pode ser
+      // termo corrente do domínio ("Ordem de producao"), e aí a citação na transcrição não
+      // significa que a tela foi aberta. Com o trecho à vista, a IA confirma ou descarta em
+      // vez de aceitar o candidato como fato — foi o falso positivo achado em 2026-08-12,
+      // que casou nos três protocolos da base.
+      const onde = m.trecho ? `\n    citado em: "…${m.trecho}…"` : '';
+      return `- ${m.codigo} (${modulos}${prog})${nome}${aviso}${onde}`;
     })
     .join('\n');
 }

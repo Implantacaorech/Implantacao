@@ -66,6 +66,9 @@ export class FluxoController {
 
   @Post('inbox')
   @HttpCode(HttpStatus.OK)
+  // M3 (auditoria 2026-08-12): ler a caixa IMAP corporativa é ação privilegiada — exige a
+  // MESMA permissão do onboarding (quem abre novo cliente). Antes qualquer autenticado lia.
+  @Permissao('novo_cliente', 'alteracao')
   @ApiOperation({
     summary:
       'Busca o e-mail de fechamento mais recente não lido via IMAP (não marca como lido)',

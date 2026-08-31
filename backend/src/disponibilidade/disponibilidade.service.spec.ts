@@ -3,6 +3,12 @@ import { rmSync } from 'fs';
 import { join } from 'path';
 import oracledb from 'oracledb';
 import { DisponibilidadeService } from './disponibilidade.service';
+import { ConsultaBdService } from '../dados/consulta-bd.service';
+import { DadosService } from '../dados/dados.service';
+import { ConexoesService } from '../dados/conexoes/conexoes.service';
+import { ConexaoSiclaService } from '../dados/conexoes/conexao-sicla.service';
+import { ConexaoPortalService } from '../dados/conexoes/conexao-portal.service';
+import { CatalogoService } from '../dados/catalogo/catalogo.service';
 
 jest.mock('oracledb', () => ({
   __esModule: true,
@@ -10,11 +16,19 @@ jest.mock('oracledb', () => ({
     getConnection: jest.fn(),
     initOracleClient: jest.fn(),
     OUT_FORMAT_OBJECT: 4002,
+    // O serviço configura `fetchAsString = [CLOB]` ao carregar (CLOB → texto).
+    CLOB: 2017,
   },
 }));
 
+/** DOMÍNIO da disponibilidade, montado sobre a PILHA REAL da API de Dados (catálogo →
+ * conexões → driver Oracle mockado). É de propósito: depois da fase 2 do ADR-0003 estas
+ * consultas passaram a ir pelo catálogo, e o que precisa ficar provado é que o caminho
+ * inteiro chega ao banco com o SQL e os binds certos — inclusive a expansão de `:tecnicos`,
+ * que mudou de casa (era `expandirTecnicos` aqui, virou o tipo `lista_texto` do catálogo). */
 describe('DisponibilidadeService', () => {
   let service: DisponibilidadeService;
+  let conexao: ConexaoSiclaService;
   const mockedOracledb = oracledb as unknown as {
     getConnection: jest.Mock;
     initOracleClient: jest.Mock;
@@ -30,9 +44,29 @@ describe('DisponibilidadeService', () => {
     jest.clearAllMocks();
     rmSync(dirTeste, { recursive: true, force: true });
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DisponibilidadeService],
+      providers: [
+        DisponibilidadeService,
+        DadosService,
+        // O catálogo efetivo entra inteiro: é ele que resolve `sicla.disponibilidade.*`,
+        // cujo SQL vem da CONFIGURAÇÃO da conexão.
+        CatalogoService,
+        ConexoesService,
+        ConexaoSiclaService,
+        ConexaoPortalService,
+        // As duas consultas de disponibilidade vêm da CONFIGURAÇÃO da conexão, não de
+        // Consultas BD — este dublê existe só para satisfazer a injeção.
+        {
+          provide: ConsultaBdService,
+          useValue: {
+            porSlug: jest.fn().mockResolvedValue(null),
+            // O CatalogoService lê as consultas publicadas pela tela; aqui não há nenhuma.
+            listar: jest.fn().mockResolvedValue([]),
+          },
+        },
+      ],
     }).compile();
     service = module.get(DisponibilidadeService);
+    conexao = module.get(ConexaoSiclaService);
   });
 
   afterAll(() => {
@@ -43,90 +77,7 @@ describe('DisponibilidadeService', () => {
     return { execute, close: jest.fn().mockResolvedValue(undefined) };
   }
 
-  describe('config', () => {
-    it('carrega valores vazios/falsos por padrão', () => {
-      const cfg = service.carregarConfig();
-      expect(cfg.host).toBe('');
-      expect(cfg.ativo).toBe(false);
-    });
-
-    it('salva e recarrega, preservando a senha quando reenviada em branco', () => {
-      service.salvarConfig({
-        host: 'db.exemplo',
-        banco: 'SICLA',
-        senha: 'segredo',
-        ativo: true,
-      });
-      service.salvarConfig({
-        host: 'db.exemplo',
-        banco: 'SICLA',
-        senha: '',
-        ativo: true,
-      });
-      const cfg = service.carregarConfig();
-      expect(cfg.senha).toBe('segredo');
-      expect(cfg.host).toBe('db.exemplo');
-    });
-
-    it('configurado exige ativo + select + conexão montável', () => {
-      service.salvarConfig({
-        host: 'db.exemplo',
-        banco: 'S',
-        select: 'SELECT 1',
-        ativo: false,
-      });
-      expect(service.configurado()).toBe(false);
-      // salvarConfig sobrescreve o registro inteiro (exceto senha) a cada chamada — mesmo
-      // contrato de "reenvio do form inteiro" do Flask original (webapp/disponibilidade.py:
-      // salvar_cfg) e de MailerService/ImapIntakeService nesta mesma migração; por isso os
-      // campos de texto precisam ser reenviados aqui, não é um PATCH parcial.
-      service.salvarConfig({
-        host: 'db.exemplo',
-        banco: 'S',
-        select: 'SELECT 1',
-        ativo: true,
-      });
-      expect(service.configurado()).toBe(true);
-    });
-
-    it('configurado é falso sem host nem url mesmo com ativo+select', () => {
-      service.salvarConfig({ select: 'SELECT 1', ativo: true });
-      expect(service.configurado()).toBe(false);
-    });
-
-    it('salvarConfig sobrescreve campos de texto não reenviados (não é um PATCH parcial)', () => {
-      service.salvarConfig({ host: 'db.exemplo', banco: 'S', ativo: true });
-      service.salvarConfig({ ativo: true }); // reenvio "vazio" apaga host/banco, como no Flask
-      const cfg = service.carregarConfig();
-      expect(cfg.host).toBe('');
-      expect(cfg.banco).toBe('');
-    });
-  });
-
-  describe('filtraPorTecnico', () => {
-    it('detecta :tecnicos como token isolado, não como prefixo de outro nome', () => {
-      expect(
-        service.filtraPorTecnico({
-          ...service.carregarConfig(),
-          select: 'WHERE cod IN :tecnicos',
-        }),
-      ).toBe(true);
-      expect(
-        service.filtraPorTecnico({
-          ...service.carregarConfig(),
-          select: 'WHERE cod IN :tecnicos_outros',
-        }),
-      ).toBe(false);
-      expect(
-        service.filtraPorTecnico({
-          ...service.carregarConfig(),
-          select: 'SELECT 1',
-        }),
-      ).toBe(false);
-    });
-  });
-
-  describe('consultar / executarSql — binds e expansão de :tecnicos', () => {
+  describe('consultar — o SELECT da configuração, com :tecnicos expandido pelo catálogo', () => {
     it('consultar expande :tecnicos em binds nomeados e normaliza a linha (case-insensitive)', async () => {
       const execute = jest.fn().mockResolvedValue({
         rows: [
@@ -134,11 +85,15 @@ describe('DisponibilidadeService', () => {
         ],
       });
       mockedOracledb.getConnection.mockResolvedValue(conexaoFake(execute));
-      service.salvarConfig({
+      conexao.salvarConfig({
         host: 'db.exemplo',
         banco: 'S',
+        // SELECT realista: cita as datas E `:tecnicos`. Se citasse só `:tecnicos`, o
+        // catálogo descartaria os binds de data — comportamento correto e mais seguro que
+        // o anterior, que os mandava sempre (bind sobrando é ORA-01036 no Oracle).
         select:
-          'SELECT t AS tecnico, d AS data, tu AS turno FROM x WHERE cod IN :tecnicos',
+          'SELECT t AS tecnico, d AS data, tu AS turno FROM x ' +
+          'WHERE d BETWEEN :data_ini AND :data_fim AND cod IN :tecnicos',
         ativo: true,
       });
 
@@ -163,11 +118,15 @@ describe('DisponibilidadeService', () => {
     it('lista de técnicos vazia vira (NULL) — nunca casa, sem binds extras', async () => {
       const execute = jest.fn().mockResolvedValue({ rows: [] });
       mockedOracledb.getConnection.mockResolvedValue(conexaoFake(execute));
-      service.salvarConfig({
+      conexao.salvarConfig({
         host: 'db.exemplo',
         banco: 'S',
+        // SELECT realista: cita as datas E `:tecnicos`. Se citasse só `:tecnicos`, o
+        // catálogo descartaria os binds de data — comportamento correto e mais seguro que
+        // o anterior, que os mandava sempre (bind sobrando é ORA-01036 no Oracle).
         select:
-          'SELECT t AS tecnico, d AS data, tu AS turno FROM x WHERE cod IN :tecnicos',
+          'SELECT t AS tecnico, d AS data, tu AS turno FROM x ' +
+          'WHERE d BETWEEN :data_ini AND :data_fim AND cod IN :tecnicos',
         ativo: true,
       });
       await service.consultar('2026-08-01', '2026-08-31', []);
@@ -177,50 +136,6 @@ describe('DisponibilidadeService', () => {
         data_ini: '2026-08-01',
         data_fim: '2026-08-31',
       });
-    });
-
-    it('executarSql rejeita comandos que não são SELECT/WITH', async () => {
-      const r = await service.executarSql('DELETE FROM algo');
-      expect(r.ok).toBe(false);
-      expect(r.mensagem).toContain('SELECT');
-      expect(mockedOracledb.getConnection).not.toHaveBeenCalled();
-    });
-
-    it('executarSql ignora comentários iniciais ao validar SELECT/WITH', async () => {
-      const execute = jest.fn().mockResolvedValue({ rows: [], metaData: [] });
-      mockedOracledb.getConnection.mockResolvedValue(conexaoFake(execute));
-      service.salvarConfig({
-        host: 'db.exemplo',
-        banco: 'S',
-        select: 'SELECT 1',
-        ativo: true,
-      });
-      const r = await service.executarSql(
-        '-- comentário\n/* bloco */\nSELECT 1 FROM dual',
-      );
-      expect(r.ok).toBe(true);
-    });
-
-    it('executarSql aceita consulta vazia com mensagem própria, sem tentar conectar', async () => {
-      const r = await service.executarSql('   ');
-      expect(r.ok).toBe(false);
-      expect(r.mensagem).toContain('vazia');
-      expect(mockedOracledb.getConnection).not.toHaveBeenCalled();
-    });
-
-    it('executarSql traduz erro DPY-3015 (verificador de senha antigo) numa mensagem amigável', async () => {
-      mockedOracledb.getConnection.mockRejectedValue(
-        new Error('DPY-3015: password verifier type is not supported'),
-      );
-      service.salvarConfig({
-        host: 'db.exemplo',
-        banco: 'S',
-        select: 'SELECT 1',
-        ativo: true,
-      });
-      const r = await service.executarSql('SELECT 1 FROM dual');
-      expect(r.ok).toBe(false);
-      expect(r.mensagem).toContain('Modo thick');
     });
   });
 
@@ -235,11 +150,15 @@ describe('DisponibilidadeService', () => {
       mockedOracledb.getConnection
         .mockResolvedValueOnce(conexaoFake(executeTecnicos))
         .mockResolvedValueOnce(conexaoFake(executeOcupacao));
-      service.salvarConfig({
+      conexao.salvarConfig({
         host: 'db.exemplo',
         banco: 'S',
+        // SELECT realista: cita as datas E `:tecnicos`. Se citasse só `:tecnicos`, o
+        // catálogo descartaria os binds de data — comportamento correto e mais seguro que
+        // o anterior, que os mandava sempre (bind sobrando é ORA-01036 no Oracle).
         select:
-          'SELECT t AS tecnico, d AS data, tu AS turno FROM x WHERE cod IN :tecnicos',
+          'SELECT t AS tecnico, d AS data, tu AS turno FROM x ' +
+          'WHERE d BETWEEN :data_ini AND :data_fim AND cod IN :tecnicos',
         ativo: true,
       });
 
@@ -257,7 +176,7 @@ describe('DisponibilidadeService', () => {
     it('não repete a consulta dentro do TTL, mesmo com técnicos em ordem diferente', async () => {
       const execute = jest.fn().mockResolvedValue({ rows: [] });
       mockedOracledb.getConnection.mockResolvedValue(conexaoFake(execute));
-      service.salvarConfig({
+      conexao.salvarConfig({
         host: 'db.exemplo',
         banco: 'S',
         select: 'SELECT t AS tecnico, d AS data, tu AS turno FROM x',
@@ -290,7 +209,7 @@ describe('DisponibilidadeService', () => {
       }));
       const execute = jest.fn().mockResolvedValue({ rows: linhas });
       mockedOracledb.getConnection.mockResolvedValue(conexaoFake(execute));
-      service.salvarConfig({
+      conexao.salvarConfig({
         host: 'db.exemplo',
         banco: 'S',
         select: 'SELECT t AS tecnico, d AS data, tu AS turno FROM x',
@@ -305,7 +224,7 @@ describe('DisponibilidadeService', () => {
       mockedOracledb.getConnection.mockRejectedValue(
         new Error('ORA-12154: TNS could not resolve'),
       );
-      service.salvarConfig({
+      conexao.salvarConfig({
         host: 'db.exemplo',
         banco: 'S',
         select: 'SELECT 1',

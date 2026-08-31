@@ -1,0 +1,171 @@
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  <h1 class="pagina-titulo">
+    <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-flow"/></svg>
+    Tokens da API de Dados
+  </h1>
+  <p class="dica">
+    Onde se colam os tokens gerados no <strong>Portal API</strong> (a instância interna, a
+    única que tem credencial de banco). Com um token ativo, as consultas que
+    <strong>ele autoriza</strong> passam a ser pedidas ao Portal API pelo nome, em vez de
+    abrir conexão com o banco daqui. As demais continuam locais — a virada é por consulta.
+  </p>
+
+  <div class="resultado" [class.ok]="painel().consumoRemotoAtivo">
+    @if (painel().consumoRemotoAtivo) {
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+      Consumo pelo Portal API <strong>ativo</strong>.
+    } @else {
+      Nenhum token ativo — este Painel consulta os bancos <strong>diretamente</strong>,
+      como sempre fez. Cadastrar o primeiro token é o que vira a chave.
+    }
+  </div>
+
+  @if (aviso()) {
+    <div class="resultado ok linha">
+      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg> {{ aviso() }}
+    </div>
+  }
+  @if (erro()) {
+    <div class="resultado erro">{{ erro() }}</div>
+  }
+
+  <!-- ── Cadastro ─────────────────────────────────────────────────────────────── -->
+  <section class="painel">
+    <h2>{{ editando() === null ? 'Novo token' : 'Editando o token #' + editando() }}</h2>
+    <form [formGroup]="form" (ngSubmit)="salvar()">
+      <div class="grade2">
+        <label class="campo"><span>Nome</span>
+          <input formControlName="nome" placeholder="Portal API — rede interna" />
+        </label>
+        <label class="campo"><span>Endereço do Portal API</span>
+          <input formControlName="url" placeholder="http://I7M1700-01-EVE:5110" />
+        </label>
+      </div>
+      <label class="campo"><span>Token</span>
+        <input formControlName="chave" type="password" autocomplete="new-password"
+          [placeholder]="editando() === null ? 'rd_… (cole o token gerado no Portal API)' : 'em branco mantém o token atual'" />
+      </label>
+      <label class="campo"><span>Observação</span>
+        <input formControlName="observacao" placeholder="Para que serve / quem pediu" />
+      </label>
+
+      <div class="acoes">
+        <button class="btn" type="button" (click)="testar()" [disabled]="sondando()">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-flow"/></svg>
+          {{ sondando() ? 'Testando…' : 'Testar' }}
+        </button>
+      </div>
+
+      @if (sondagem(); as s) {
+        <div class="resultado" [class.ok]="s.ok" [class.erro]="!s.ok">{{ s.mensagem }}</div>
+      }
+
+      @if (consultas().length) {
+        <h3>Consultas que este token autoriza</h3>
+        <p class="dica">
+          Vieram do próprio Portal API — o catálogo dele já chega recortado pelo que o token
+          alcança. Para mudar esta lista, edite o token <strong>lá</strong>.
+        </p>
+        <p>
+          @for (c of consultas(); track c) {
+            <span class="tag-param">{{ c }}</span>
+          }
+        </p>
+      }
+
+      <label class="escopo-item">
+        <input type="checkbox" formControlName="ativo" />
+        <span>Token ativo — desmarcar faz as consultas dele voltarem ao banco local.</span>
+      </label>
+
+      <div class="acoes">
+        <button class="btn primario" type="submit" [disabled]="salvando()">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+          {{ salvando() ? 'Salvando…' : 'Salvar' }}
+        </button>
+        @if (editando() !== null) {
+          <button class="btn" type="button" (click)="novo()">Cancelar edição</button>
+        }
+      </div>
+    </form>
+  </section>
+
+  <!-- ── Cadastrados ──────────────────────────────────────────────────────────── -->
+  <section class="painel">
+    <h2>Tokens cadastrados</h2>
+    <div class="tabela-wrap">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Nome</th><th>Portal API</th><th>Prefixo</th><th>Consultas</th>
+            <th>Situação</th><th>Último uso</th><th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (t of painel().itens; track t.id) {
+            <tr [class.inativo]="!t.ativo">
+              <td>{{ t.nome }}<br /><span class="dica">{{ t.observacao }}</span></td>
+              <td class="col-origem">{{ t.url }}</td>
+              <td class="col-prefixo">
+                <code>{{ prefixoAberto() === t.id ? t.prefixo : prefixoMascarado(t.prefixo) }}</code>
+                <button class="btn-olho" type="button" (click)="alternarPrefixo(t.id)"
+                  [attr.aria-label]="prefixoAberto() === t.id ? 'Ocultar prefixo' : 'Mostrar prefixo'">
+                  {{ prefixoAberto() === t.id ? 'ocultar' : 'mostrar' }}
+                </button>
+              </td>
+              <td>
+                @for (c of t.consultas; track c) {
+                  <span class="tag-param">{{ c }}</span>
+                } @empty {
+                  <span class="dica">—</span>
+                }
+              </td>
+              <td>
+                {{ t.ativo ? 'Ativo' : 'Desligado' }}
+                @if (t.ultimoErro) {
+                  <br /><span class="erro-inline">{{ t.ultimoErro }}</span>
+                }
+              </td>
+              <td>{{ t.ultimoUsoEm ? (t.ultimoUsoEm | date: 'dd/MM/yyyy HH:mm') : 'nunca' }}</td>
+              <td>
+                <div class="acoes">
+                  <button class="btn" type="button" (click)="editar(t)">Editar</button>
+                  @if (t.ativo) {
+                    <button class="btn" type="button" (click)="definirAtivo(t, false)">Desligar</button>
+                  } @else {
+                    <button class="btn" type="button" (click)="definirAtivo(t, true)">Ligar</button>
+                  }
+                  <button class="btn" type="button" (click)="excluir(t)">Apagar</button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="dica">Nenhum token cadastrado.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── O que ainda vai pelo banco local ─────────────────────────────────────── -->
+  <section class="painel">
+    <h2>Consultas sem token — {{ painel().descobertas.length }}</h2>
+    <p class="dica">
+      Estas ainda são feitas no banco <strong>daqui</strong>. Enquanto houver alguma na lista,
+      este Painel continua precisando de credencial de banco — e não pode ser publicado fora
+      da rede. Para cobrir uma, marque-a no cadastro do token, no Portal API, e clique em
+      Testar de novo.
+    </p>
+    <p>
+      @for (c of painel().descobertas; track c) {
+        <span class="tag-param">{{ c }}</span>
+      } @empty {
+        <span class="dica">Nenhuma — todas as consultas do catálogo passam pelo Portal API.</span>
+      }
+    </p>
+  </section>
+
+  <a class="btn btn-voltar" routerLink="/config/api-dados">← API de Dados</a>
+}

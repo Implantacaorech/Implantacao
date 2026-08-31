@@ -1,4 +1,12 @@
-import { Component, WritableSignal, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  ViewChild,
+  WritableSignal,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ChartConfiguration } from 'chart.js/auto';
 import { ChartDirective } from '../../core/directives/chart.directive';
@@ -7,12 +15,20 @@ import { BiImplantacaoService } from '../../core/services/bi-implantacao.service
 import {
   AgrupamentoBi,
   LinhaResumoBi,
+  LinhaVisitaPortalBi,
   OpcaoRnsBi,
   ResultadoResumoBi,
+  ResultadoVisitasPortalBi,
 } from '../../core/models/bi-implantacao.model';
 import { opcoesVisiveis } from './bi-filtros.util';
 import { mensagemErroBi } from './bi-erro.util';
 import { BiFiltrosStore } from './bi-filtros.store';
+import {
+  TOP_CONTATOS_GRAFICO,
+  VisaoVisitas,
+  dentroDaVisao,
+} from './visitas-portal.util';
+import { ROTULOS_NAS_BARRAS } from './chart-rotulos.util';
 
 /** Cores por status — as MESMAS do relatório original (medida DAX do calendário do
  * `BI_clientes.pbix`), para quem vem do Power BI reconhecer a tela de imediato. */
@@ -54,6 +70,14 @@ export class BiImplantacaoComponent {
   readonly carregando = signal(true);
   readonly erro = signal<string | null>(null);
   readonly resultado = signal<ResultadoResumoBi | null>(null);
+
+  // ── Painel "Visitas do Portal Rech" (abaixo do CONTROLE DE HORAS) ──────────────────
+  readonly visitasResultado = signal<ResultadoVisitasPortalBi | null>(null);
+  readonly carregandoVisitas = signal(false);
+  readonly erroVisitas = signal<string | null>(null);
+  /** Período já buscado — evita reconsultar o banco a cada clique de filtro (os filtros
+   * de cliente são aplicados em memória; só o De/Até muda o recorte que vai ao banco). */
+  private periodoVisitas = '';
 
   // Filtros vindos do STORE compartilhado: o que se marca aqui vale nas outras abas.
   private readonly store = inject(BiFiltrosStore);
@@ -131,6 +155,314 @@ export class BiImplantacaoComponent {
       horasBonificadas: s((x) => x.horasBonificadas),
     };
   });
+
+  /** Visitas do Portal Rech restritas aos CLIENTES visíveis na tabela — assim TODOS os
+   * filtros da tela (grupo, RNS, consultor, busca…) valem também neste painel, sempre
+   * respeitando o cliente filtrado. O casamento é pelo código do cliente no SICLA
+   * (`CODIGO_CLIENTE` do Portal), com fallback pelo nome fantasia quando a consulta
+   * editada não devolver o código.
+   *
+   * A ordem de exibição (empresa → contato → consultor → data/hora) é aplicada AQUI, não no
+   * SQL: lá o ORDER BY é a política de corte do teto de linhas (INICIO DESC, para um
+   * período grande demais descartar as visitas mais antigas — na ordem alfabética original,
+   * o corte engolia clientes inteiros do fim do alfabeto e o filtro parecia ignorado). */
+  readonly visitasVisiveis = computed<LinhaVisitaPortalBi[]>(() => {
+    const r = this.visitasResultado();
+    if (!r) return [];
+    const codigos = new Set<number>();
+    const nomes = new Set<string>();
+    for (const l of this.linhas()) {
+      if (l.cliente !== null && l.cliente !== undefined) codigos.add(l.cliente);
+      const nome = (l.fantasia || '').trim().toUpperCase();
+      if (nome) nomes.add(nome);
+    }
+    return r.linhas
+      .filter(
+        (v) =>
+          (v.cliente !== null && codigos.has(v.cliente)) ||
+          nomes.has((v.empresa || '').trim().toUpperCase()),
+      )
+      .sort(
+        (a, b) =>
+          a.empresa.localeCompare(b.empresa, 'pt-BR') ||
+          a.contato.localeCompare(b.contato, 'pt-BR') ||
+          a.consultor.localeCompare(b.consultor, 'pt-BR') ||
+          a.data.localeCompare(b.data) ||
+          a.horario.localeCompare(b.horario),
+      );
+  });
+
+  // ── Filtros locais do painel de visitas ─────────────────────────────────────────────
+  // Agem SOBRE as visitas já recortadas por cliente/período (`visitasVisiveis`): tabela,
+  // contadores do título, gráfico e exportação enxergam o mesmo conjunto filtrado.
+  readonly vpEmpresa = signal('');
+  readonly vpContato = signal('');
+  readonly vpConsultor = signal('');
+  readonly vpTurno = signal('');
+  readonly vpAprovado = signal('');
+  readonly vpProtocolo = signal('');
+  /** Recorte temporal do PAINEL INTEIRO (tabela, contadores, gráfico e exportação):
+   * geral | mês atual | semana atual. */
+  readonly visaoVisitas = signal<VisaoVisitas>('geral');
+
+  /** Aplica a VISÃO (geral/mês/semana — vale para o painel INTEIRO: tabela, contadores,
+   * gráfico e exportação) e os filtros locais, opcionalmente ignorando UMA dimensão — é o
+   * que faz as opções de cada select cascatearem (mesma regra `emCascata` dos filtros da
+   * tela: sem ignorar a própria dimensão, marcar um contato encolheria a lista para só
+   * ele). */
+  private filtrarVisitas(ignorar = ''): LinhaVisitaPortalBi[] {
+    const protocolo = this.vpProtocolo().trim();
+    const visao = this.visaoVisitas();
+    const hoje = this.hojeLocal();
+    const casa = (dim: string, sel: string, valor: string) =>
+      ignorar === dim || !sel || sel === valor;
+    return this.visitasVisiveis().filter(
+      (v) =>
+        dentroDaVisao(v.data, visao, hoje) &&
+        casa('empresa', this.vpEmpresa(), v.empresa) &&
+        casa('contato', this.vpContato(), v.contato) &&
+        casa('consultor', this.vpConsultor(), v.consultor) &&
+        casa('turno', this.vpTurno(), v.turno) &&
+        casa('aprovado', this.vpAprovado(), v.aprovado) &&
+        (ignorar === 'protocolo' ||
+          !protocolo ||
+          String(v.protocolo ?? '').includes(protocolo)),
+    );
+  }
+
+  readonly visitasFiltradas = computed(() => this.filtrarVisitas());
+
+  private opcoesVisitasDe(
+    dim: string,
+    valor: (v: LinhaVisitaPortalBi) => string,
+  ): string[] {
+    const s = new Set<string>();
+    for (const v of this.filtrarVisitas(dim)) {
+      const x = valor(v);
+      if (x) s.add(x);
+    }
+    return [...s].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }
+
+  readonly opcoesVisitasEmpresa = computed(() => this.opcoesVisitasDe('empresa', (v) => v.empresa));
+  readonly opcoesVisitasContato = computed(() => this.opcoesVisitasDe('contato', (v) => v.contato));
+  readonly opcoesVisitasConsultor = computed(() => this.opcoesVisitasDe('consultor', (v) => v.consultor));
+  readonly opcoesVisitasTurno = computed(() => this.opcoesVisitasDe('turno', (v) => v.turno));
+  readonly opcoesVisitasAprovado = computed(() => this.opcoesVisitasDe('aprovado', (v) => v.aprovado));
+
+  readonly visitasAprovadas = computed(
+    () => this.visitasFiltradas().filter((v) => this.aprovadoSim(v.aprovado)).length,
+  );
+
+  limparFiltrosVisitas(): void {
+    this.vpEmpresa.set('');
+    this.vpContato.set('');
+    this.vpConsultor.set('');
+    this.vpTurno.set('');
+    this.vpAprovado.set('');
+    this.vpProtocolo.set('');
+  }
+
+  aprovadoSim(aprovado: string): boolean {
+    return (aprovado || '').trim().toLowerCase() === 'sim';
+  }
+
+  /** AAAA-MM-DD LOCAL (`toISOString` é UTC — à noite, no fuso de Brasília, viraria
+   * "amanhã"). Método, e não constante, para o teste poder fixar a data. */
+  protected hojeLocal(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  /** Protocolos por CONTATO (aprovados × não aprovados), os mais volumosos primeiro —
+   * alimenta o gráfico e o aviso de contatos fora do top. A visão e os filtros já vêm
+   * aplicados por `visitasFiltradas` (o gráfico enxerga o MESMO conjunto da tabela). */
+  private readonly contatosDoGrafico = computed(() => {
+    const mapa = new Map<string, { aprovados: number; naoAprovados: number }>();
+    for (const v of this.visitasFiltradas()) {
+      const k = v.contato || '(sem contato)';
+      const c = mapa.get(k) ?? { aprovados: 0, naoAprovados: 0 };
+      if (this.aprovadoSim(v.aprovado)) c.aprovados += 1;
+      else c.naoAprovados += 1;
+      mapa.set(k, c);
+    }
+    return [...mapa.entries()]
+      .map(([contato, c]) => ({ contato, ...c, total: c.aprovados + c.naoAprovados }))
+      .sort((a, b) => b.total - a.total || a.contato.localeCompare(b.contato, 'pt-BR'));
+  });
+
+  readonly topContatosGrafico = TOP_CONTATOS_GRAFICO;
+  readonly contatosOcultosGrafico = computed(() =>
+    Math.max(0, this.contatosDoGrafico().length - TOP_CONTATOS_GRAFICO),
+  );
+
+  /** Barras empilhadas por contato: verde = aprovados, vermelho = não aprovados. Os
+   * valores ficam escritos nas barras (plugin `ROTULOS_NAS_BARRAS`), não só no tooltip. */
+  readonly graficoVisitasContato = computed<ChartConfiguration | null>(() => {
+    const top = this.contatosDoGrafico().slice(0, TOP_CONTATOS_GRAFICO);
+    if (top.length === 0) return null;
+    return {
+      type: 'bar',
+      data: {
+        labels: top.map((c) => c.contato),
+        datasets: [
+          { label: 'Aprovados', data: top.map((c) => c.aprovados), backgroundColor: '#10b981' },
+          { label: 'Não aprovados', data: top.map((c) => c.naoAprovados), backgroundColor: '#ef4444' },
+        ],
+      },
+      plugins: [ROTULOS_NAS_BARRAS],
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        scales: {
+          x: { stacked: true },
+          y: {
+            stacked: true,
+            beginAtZero: true,
+            // Folga no topo para o TOTAL escrito acima da pilha não ser cortado.
+            grace: '10%',
+            ticks: { precision: 0 },
+            title: { display: true, text: 'protocolos' },
+          },
+        },
+      },
+    };
+  });
+
+  // ── "Enviar por e-mail" (PDF com o recorte, o gráfico e a tabela) ───────────────────
+  @ViewChild('canvasVisitas')
+  private canvasVisitas?: ElementRef<HTMLCanvasElement>;
+
+  readonly emailAberto = signal(false);
+  readonly emailPara = signal('');
+  readonly emailAssunto = signal('');
+  readonly emailCorpo = signal('');
+  readonly enviandoEmail = signal(false);
+  readonly emailErro = signal<string | null>(null);
+  readonly emailOk = signal<string | null>(null);
+  /** O modelo só é buscado uma vez — depois a caixa preserva o que o usuário digitou. */
+  private modeloEmailCarregado = false;
+
+  async abrirEnvioEmail(): Promise<void> {
+    this.emailErro.set(null);
+    this.emailOk.set(null);
+    this.emailAberto.set(true);
+    if (this.modeloEmailCarregado) return;
+    try {
+      const m = await this.service.modeloEmailVisitas();
+      if (!this.emailAssunto().trim()) this.emailAssunto.set(m.assunto);
+      if (!this.emailCorpo().trim()) this.emailCorpo.set(m.corpo);
+      this.modeloEmailCarregado = true;
+    } catch {
+      // Sem o modelo (ex.: backend antigo no ar), a caixa abre em branco — dá para digitar.
+    }
+  }
+
+  fecharEnvioEmail(): void {
+    if (!this.enviandoEmail()) this.emailAberto.set(false);
+  }
+
+  private rotuloVisao(): string {
+    const v = this.visaoVisitas();
+    return v === 'mensal'
+      ? 'Mês atual'
+      : v === 'semanal'
+        ? 'Semana atual (segunda a domingo)'
+        : 'Geral (todo o período)';
+  }
+
+  /** Descrição legível do recorte em vigor — vira o bloco "Recorte aplicado" do PDF. */
+  private descreverRecorte(): string[] {
+    const r: string[] = [
+      `Período: ${this.dataBr(this.dataIni)} a ${this.dataBr(this.dataFim)}`,
+      `Visão: ${this.rotuloVisao()}`,
+    ];
+    const se = (nome: string, valor: string) => {
+      if (valor) r.push(`${nome}: ${valor}`);
+    };
+    se('Empresa', this.vpEmpresa());
+    se('Contato', this.vpContato());
+    se('Consultor', this.vpConsultor());
+    se('Turno', this.vpTurno());
+    se('Aprovado', this.vpAprovado());
+    if (this.vpProtocolo().trim()) r.push(`Protocolo contém: ${this.vpProtocolo().trim()}`);
+    if (this.qtdFiltrosAtivos() > 0) {
+      r.push(
+        `Filtros da tela do Resumo ativos: ${this.qtdFiltrosAtivos()} ` +
+          '(o painel considera só os clientes visíveis na tabela de implantações)',
+      );
+    }
+    return r;
+  }
+
+  /** PNG do canvas do gráfico — indisponível (sem gráfico / navegador sem canvas) vira
+   * ausência: o PDF sai só com o recorte e a tabela. */
+  private capturarGrafico(): string | undefined {
+    try {
+      const dataUrl = this.canvasVisitas?.nativeElement?.toDataURL('image/png');
+      return dataUrl && dataUrl.startsWith('data:image/png') ? dataUrl : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  async enviarEmailVisitas(): Promise<void> {
+    if (this.enviandoEmail()) return;
+    if (!this.emailPara().trim()) {
+      this.emailErro.set('Informe o e-mail de destino.');
+      return;
+    }
+    this.enviandoEmail.set(true);
+    this.emailErro.set(null);
+    try {
+      const r = await this.service.enviarVisitasEmail({
+        para: this.emailPara().trim(),
+        assunto: this.emailAssunto().trim(),
+        corpo: this.emailCorpo(),
+        graficoPng: this.capturarGrafico(),
+        recorte: this.descreverRecorte(),
+        linhas: this.visitasFiltradas(),
+      });
+      if (r.ok) {
+        this.emailOk.set('E-mail enviado com o PDF em anexo.');
+        this.emailAberto.set(false);
+      } else {
+        this.emailErro.set(r.erro || 'Falha no envio.');
+      }
+    } catch (e) {
+      this.emailErro.set(mensagemErroBi(e, 'o envio do e-mail'));
+    } finally {
+      this.enviandoEmail.set(false);
+    }
+  }
+
+  /** Exporta as visitas FILTRADAS para Excel (CSV com BOM — mesma receita do Resumo, que o
+   * Excel pt-BR abre direto com acentos corretos). */
+  exportarVisitasCsv(): void {
+    const cab = [
+      'Empresa', 'Código cliente', 'Contato', 'Consultor', 'Protocolo',
+      'Data', 'Horário', 'Turno', 'Aprovado',
+    ];
+    const escapar = (v: string | number): string => {
+      const s = String(v ?? '');
+      return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const linhas = this.visitasFiltradas().map((v) =>
+      [
+        v.empresa, v.cliente ?? '', v.contato, v.consultor, v.protocolo ?? '',
+        v.data, v.horario, v.turno, v.aprovado,
+      ].map(escapar).join(';'),
+    );
+    // BOM na frente: faz o Excel abrir como UTF-8 — sem ele, acento sai trocado.
+    const csv = `\uFEFF${cab.join(';')}\n${linhas.join('\n')}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `visitas-portal_${this.dataIni}_a_${this.dataFim}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   /** Painel "CONTROLE DE HORAS" — porte fiel da medida DAX `Grafico_Horas_HTML` do
    * `BI_clientes.pbix`, reescrita em Angular (o original montava HTML dentro do DAX).
@@ -222,7 +554,8 @@ export class BiImplantacaoComponent {
   readonly porStatusVisivel = computed(() => this.agruparVisiveis((l) => l.statusRns, true));
   readonly porTecnicoVisivel = computed(() => this.agruparVisiveis((l) => l.tecnico));
 
-  /** Previsto × realizado por status. */
+  /** Previsto × realizado por status. Os valores ficam escritos acima das barras
+   * (plugin `ROTULOS_NAS_BARRAS`), não só no tooltip. */
   readonly graficoStatus = computed<ChartConfiguration | null>(() => {
     const dados = this.porStatusVisivel();
     if (dados.length === 0) return null;
@@ -245,6 +578,7 @@ export class BiImplantacaoComponent {
           },
         ],
       },
+      plugins: [ROTULOS_NAS_BARRAS],
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -259,7 +593,14 @@ export class BiImplantacaoComponent {
             },
           },
         },
-        scales: { y: { beginAtZero: true, title: { display: true, text: 'horas' } } },
+        scales: {
+          y: {
+            beginAtZero: true,
+            // Folga no topo para o valor escrito acima da barra não ser cortado.
+            grace: '10%',
+            title: { display: true, text: 'horas' },
+          },
+        },
       },
     };
   });
@@ -288,10 +629,32 @@ export class BiImplantacaoComponent {
       if (r.erro) this.erro.set(r.erro);
       this.dataIni = r.periodo.inicio;
       this.dataFim = r.periodo.fim;
+      void this.carregarVisitas(r.periodo.inicio, r.periodo.fim);
     } catch (e) {
       this.erro.set(mensagemErroBi(e, 'o Resumo de Implantação'));
     } finally {
       this.carregando.set(false);
+    }
+  }
+
+  /** Busca as visitas do Portal Rech do período — só volta ao banco quando o De/Até muda;
+   * o recorte por cliente é aplicado em memória (`visitasVisiveis`). */
+  private async carregarVisitas(inicio: string, fim: string): Promise<void> {
+    const chave = `${inicio}|${fim}`;
+    if (chave === this.periodoVisitas) return;
+    this.periodoVisitas = chave;
+    this.carregandoVisitas.set(true);
+    this.erroVisitas.set(null);
+    try {
+      const r = await this.service.visitasPortal({ dataIni: inicio, dataFim: fim });
+      this.visitasResultado.set(r);
+      if (r.erro) this.erroVisitas.set(r.erro);
+    } catch (e) {
+      this.visitasResultado.set(null);
+      this.erroVisitas.set(mensagemErroBi(e, 'as Visitas do Portal Rech'));
+      this.periodoVisitas = ''; // permite tentar de novo no próximo carregar()
+    } finally {
+      this.carregandoVisitas.set(false);
     }
   }
 

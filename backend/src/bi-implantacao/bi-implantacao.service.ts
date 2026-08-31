@@ -1,7 +1,15 @@
-import { Injectable } from '@nestjs/common';
-import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { DadosService } from '../dados/dados.service';
+import { MailerService } from '../email/mailer.service';
+import { ModeloEmailService } from '../email/modelo-email.service';
+import { MODELOS_EMAIL_PADRAO } from '../email/modelo-email.constants';
 import { hojeIso } from '../cronograma/datas.util';
 import { textoAparado } from '../common/utils/texto.util';
+import { EnviarVisitasEmailDto } from './dto/enviar-visitas-email.dto';
+import { gerarPdfVisitasPortal } from './visitas-portal-pdf';
 import {
   AgrupamentoResumo,
   COR_STATUS_AGENDA,
@@ -10,20 +18,18 @@ import {
   LinhaExtrato,
   LinhaResumo,
   LinhaRns,
-  LIMITE_LINHAS,
+  LinhaVisitaPortal,
   LIMITE_LINHAS_EXTRATO,
+  LIMITE_VISITAS_PORTAL,
   MESES_PADRAO,
   ResumoStatusAgenda,
-  SQL_AGENDAS,
-  SQL_EXTRATO_DESCRICAO,
-  SQL_EXTRATO_HORAS,
-  SQL_RESUMO_IMPLANTACAO,
-  SQL_RNS_VINCULADAS,
   TotaisExtrato,
   TotaisResumo,
   TotaisRns,
-  TRECHO_DESCRICAO,
 } from './bi-implantacao.constants';
+// O teto do trecho mora junto do SQL que TRUNCA (catálogo da API de Dados): é ele quem
+// corta em 300 caracteres, e a tela só sinaliza que cortou.
+import { TRECHO_DESCRICAO } from '../dados/catalogo/sql/sicla-bi.sql';
 
 export interface QueryResumo {
   dataIni?: string;
@@ -198,6 +204,22 @@ export interface ResultadoResumo {
   erro: string | null;
 }
 
+export interface QueryVisitasPortal {
+  dataIni?: string;
+  dataFim?: string;
+}
+
+export interface ResultadoVisitasPortal {
+  periodo: { inicio: string; fim: string };
+  /** As visitas do período, já na ordem do SQL (empresa → contato → consultor → data). */
+  linhas: LinhaVisitaPortal[];
+  total: number;
+  limite: number;
+  /** A consulta bateu no teto de linhas — há mais visitas no período do que o que veio. */
+  truncado: boolean;
+  erro: string | null;
+}
+
 /** Tela "Resumo de Implantação" — porte da página homônima do BI `BI_clientes.pbix` para
  * dentro do Painel, lendo a MESMA view Oracle que o Power BI lia
  * (`POWERBI.POWERBI_IMPLANTACAO_RESUMO`) pela conexão já configurada em Disponibilidade.
@@ -207,7 +229,13 @@ export interface ResultadoResumo {
  * uma segunda ida ao banco — mesmo desenho já usado em `DashboardsService`. */
 @Injectable()
 export class BiImplantacaoService {
-  constructor(private readonly disponibilidade: DisponibilidadeService) {}
+  private readonly logger = new Logger('BiImplantacaoService');
+
+  constructor(
+    private readonly dados: DadosService,
+    private readonly mailer: MailerService,
+    private readonly modelosEmail: ModeloEmailService,
+  ) {}
 
   private somaMeses(iso: string, n: number): string {
     const [ano, mes, dia] = iso.split('-').map(Number);
@@ -421,19 +449,13 @@ export class BiImplantacaoService {
 
   async resumo(query: QueryResumo): Promise<ResultadoResumo> {
     const periodo = this.periodo(query);
-    if (!this.disponibilidade.configurado()) {
-      return this.vazio(
-        periodo,
-        'Conexão com o SICLA não configurada ou inativa (Ferramentas → Disponibilidade).',
-      );
-    }
+    // Sem checagem prévia de conexão: `consultar` já devolve {ok:false} com a
+    // mensagem que diz onde configurar — uma fonte só para o mesmo aviso.
 
-    const r = await this.disponibilidade.executarSql(
-      SQL_RESUMO_IMPLANTACAO,
-      { data_ini: periodo.inicio, data_fim: periodo.fim },
-      undefined,
-      LIMITE_LINHAS,
-    );
+    const r = await this.dados.consultar('sicla.bi.resumo-implantacao', {
+      data_ini: periodo.inicio,
+      data_fim: periodo.fim,
+    });
     if (!r.ok) return this.vazio(periodo, r.mensagem);
 
     const todas = r.linhas.map((l) => this.normalizar(l));
@@ -501,6 +523,187 @@ export class BiImplantacaoService {
       },
       erro: null,
     };
+  }
+
+  // ── Painel "Visitas do Portal Rech" (Resumo, abaixo do CONTROLE DE HORAS) ────────────
+
+  private normalizarVisita(bruta: Record<string, unknown>): LinhaVisitaPortal {
+    const l: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(bruta)) l[(k || '').toUpperCase()] = v;
+    return {
+      empresa: this.texto(l.EMPRESA),
+      cliente:
+        l.CODIGO_CLIENTE === null || l.CODIGO_CLIENTE === undefined
+          ? null
+          : this.numero(l.CODIGO_CLIENTE),
+      contato: this.texto(l.CONTATO),
+      consultor: this.texto(l.CONSULTOR),
+      protocolo:
+        l.PROTOCOLO === null || l.PROTOCOLO === undefined
+          ? null
+          : this.numero(l.PROTOCOLO),
+      data: this.texto(l.DATA).slice(0, 10),
+      horario: this.texto(l.HORARIO).slice(0, 8),
+      turno: this.texto(l.TURNO),
+      aprovado: this.texto(l.APROVADO),
+    };
+  }
+
+  private vazioVisitas(
+    periodo: { inicio: string; fim: string },
+    erro: string | null,
+  ): ResultadoVisitasPortal {
+    return {
+      periodo,
+      linhas: [],
+      total: 0,
+      limite: LIMITE_VISITAS_PORTAL,
+      truncado: false,
+      erro,
+    };
+  }
+
+  /** TODOS os protocolos de visita do Portal (de todos os consultores), com a aprovação
+   * real — o SQL vive no **Consultas BD** (slug `bi_visitas_portal`, semeado no boot,
+   * editável sem deploy) e roda no **banco do Portal Rech** (`conexao = 'portal'`,
+   * cadastrado na mesma tela).
+   *
+   * Nem SICLA nem API do Portal servem aqui (2026-08-17): o SICLA não espelha protocolo/
+   * aprovação, e a listagem da API é escopada por usuário — o painel precisa de todos os
+   * protocolos do cliente filtrado. */
+  async visitasPortal(
+    query: QueryVisitasPortal,
+  ): Promise<ResultadoVisitasPortal> {
+    const periodo = this.periodo(query);
+    // Única consulta do Painel que roda no banco do PORTAL — o roteamento por conexão é do
+    // catálogo. Descartar o bind que o SQL vigente não cita (o Administrador pode editá-lo
+    // sem :data_ini/:data_fim) também: aqui só se informa o período.
+    const r = await this.dados.consultar('portal.visitas.listar', {
+      data_ini: periodo.inicio,
+      data_fim: periodo.fim,
+    });
+    if (!r.ok) return this.vazioVisitas(periodo, r.mensagem);
+
+    const linhas = r.linhas.map((l) => this.normalizarVisita(l));
+    return {
+      periodo,
+      linhas,
+      total: linhas.length,
+      limite: LIMITE_VISITAS_PORTAL,
+      truncado: linhas.length >= LIMITE_VISITAS_PORTAL,
+      erro: null,
+    };
+  }
+
+  /** Slug do texto padrão do "Enviar por e-mail" do painel — editável em Modelos de
+   * E-mail; o fallback embutido cobre banco recém-criado antes do seed. */
+  private static readonly SLUG_MODELO_EMAIL_VISITAS = 'bi-visitas-portal';
+
+  /** Assunto + corpo padrão da caixa de envio (a versão editada no Modelos de E-mail
+   * prevalece sobre o constante embutido). */
+  async modeloEmailVisitas(): Promise<{ assunto: string; corpo: string }> {
+    const slug = BiImplantacaoService.SLUG_MODELO_EMAIL_VISITAS;
+    const salvo = await this.modelosEmail.porSlug(slug);
+    if (salvo) return { assunto: salvo.assunto, corpo: salvo.corpo };
+    const padrao = MODELOS_EMAIL_PADRAO.find((m) => m.slug === slug);
+    return {
+      assunto: padrao?.assunto ?? 'Protocolos de visita do Portal Rech',
+      corpo: padrao?.corpo ?? '',
+    };
+  }
+
+  /** Uma linha vinda da TELA (camelCase, já filtrada) re-sancionada campo a campo — o
+   * payload é do navegador, então nada entra no PDF sem passar por texto/número. */
+  private linhaVisitaDaTela(bruta: Record<string, unknown>): LinhaVisitaPortal {
+    const num = (v: unknown): number | null => {
+      if (v === null || v === undefined || v === '') return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+    return {
+      empresa: this.texto(bruta.empresa),
+      cliente: num(bruta.cliente),
+      contato: this.texto(bruta.contato),
+      consultor: this.texto(bruta.consultor),
+      protocolo: num(bruta.protocolo),
+      data: this.texto(bruta.data).slice(0, 10),
+      horario: this.texto(bruta.horario).slice(0, 8),
+      turno: this.texto(bruta.turno).slice(0, 20),
+      aprovado: this.texto(bruta.aprovado).slice(0, 10),
+    };
+  }
+
+  /** PNG do canvas (data URL) → Buffer, validando a assinatura do formato — o campo vem do
+   * navegador e não pode virar anexo sem conferência. Inválido = sem gráfico no PDF. */
+  private pngDe(dataUrl?: string): Buffer | null {
+    const m = /^data:image\/png;base64,(.+)$/.exec((dataUrl ?? '').trim());
+    if (!m) return null;
+    try {
+      const buf = Buffer.from(m[1], 'base64');
+      const ehPng =
+        buf.length > 8 &&
+        buf[0] === 0x89 &&
+        buf[1] === 0x50 &&
+        buf[2] === 0x4e &&
+        buf[3] === 0x47;
+      return ehPng ? buf : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Gera o PDF (recorte + gráfico + tabela) e envia por e-mail pelo meio configurado do
+   * Painel (Microsoft 365/SMTP) — o botão "Enviar por e-mail" do painel de visitas. */
+  async enviarVisitasPorEmail(
+    dto: EnviarVisitasEmailDto,
+  ): Promise<{ ok: boolean; erro: string | null }> {
+    const destinos = (dto.para || '')
+      .split(/[;,]/)
+      .map((d) => d.trim())
+      .filter(Boolean);
+    const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (destinos.length === 0 || destinos.some((d) => !emailValido.test(d))) {
+      throw new BadRequestException(
+        'Informe um ou mais e-mails válidos, separados por ; ou ,',
+      );
+    }
+
+    const linhas = (dto.linhas ?? []).map((l) => this.linhaVisitaDaTela(l));
+    const aprovados = linhas.filter(
+      (l) => l.aprovado.trim().toLowerCase() === 'sim',
+    ).length;
+    const agora = new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    const pdf = await gerarPdfVisitasPortal({
+      geradoEm:
+        `${p(agora.getDate())}/${p(agora.getMonth() + 1)}/${agora.getFullYear()} ` +
+        `${p(agora.getHours())}:${p(agora.getMinutes())}`,
+      recorte: (dto.recorte ?? []).map((r) => textoAparado(r)).filter(Boolean),
+      totais: {
+        total: linhas.length,
+        aprovados,
+        naoAprovados: linhas.length - aprovados,
+      },
+      graficoPng: this.pngDe(dto.graficoPng),
+      linhas,
+    });
+
+    // O MailerService anexa por CAMINHO de arquivo — o PDF passa por um temporário que
+    // some no finally, dê certo ou errado o envio.
+    const dir = mkdtempSync(join(tmpdir(), 'painel-visitas-'));
+    const caminho = join(dir, 'visitas-portal-rech.pdf');
+    try {
+      writeFileSync(caminho, pdf);
+      const r = await this.mailer.enviar(
+        destinos,
+        textoAparado(dto.assunto) || 'Protocolos de visita do Portal Rech',
+        dto.corpo ?? '',
+        [{ caminho, nomeArquivo: 'visitas-portal-rech.pdf' }],
+      );
+      return { ok: r.ok, erro: r.erro };
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   }
 
   // ── Página "Extrato de Protocolo/Horas" ──────────────────────────────────────────────
@@ -589,19 +792,13 @@ export class BiImplantacaoService {
 
   async extrato(query: QueryExtrato): Promise<ResultadoExtrato> {
     const periodo = this.periodo(query);
-    if (!this.disponibilidade.configurado()) {
-      return this.vazioExtrato(
-        periodo,
-        'Conexão com o SICLA não configurada ou inativa (Ferramentas → Disponibilidade).',
-      );
-    }
+    // Sem checagem prévia de conexão: `consultar` já devolve {ok:false} com a
+    // mensagem que diz onde configurar — uma fonte só para o mesmo aviso.
 
-    const r = await this.disponibilidade.executarSql(
-      SQL_EXTRATO_HORAS,
-      { data_ini: periodo.inicio, data_fim: periodo.fim },
-      undefined,
-      LIMITE_LINHAS_EXTRATO,
-    );
+    const r = await this.dados.consultar('sicla.bi.extrato-horas', {
+      data_ini: periodo.inicio,
+      data_fim: periodo.fim,
+    });
     if (!r.ok) return this.vazioExtrato(periodo, r.mensagem);
 
     const todas = r.linhas.map((l) => this.normalizarExtrato(l));
@@ -758,19 +955,13 @@ export class BiImplantacaoService {
 
   async rnsVinculadas(query: QueryRns): Promise<ResultadoRns> {
     const periodo = this.periodo(query);
-    if (!this.disponibilidade.configurado()) {
-      return this.vazioRns(
-        periodo,
-        'Conexão com o SICLA não configurada ou inativa (Ferramentas → Disponibilidade).',
-      );
-    }
+    // Sem checagem prévia de conexão: `consultar` já devolve {ok:false} com a
+    // mensagem que diz onde configurar — uma fonte só para o mesmo aviso.
 
-    const r = await this.disponibilidade.executarSql(
-      SQL_RNS_VINCULADAS,
-      { data_ini: periodo.inicio, data_fim: periodo.fim },
-      undefined,
-      LIMITE_LINHAS,
-    );
+    const r = await this.dados.consultar('sicla.bi.rns-vinculadas', {
+      data_ini: periodo.inicio,
+      data_fim: periodo.fim,
+    });
     if (!r.ok) return this.vazioRns(periodo, r.mensagem);
 
     const todas = r.linhas.map((l) => this.normalizarRns(l));
@@ -980,19 +1171,13 @@ export class BiImplantacaoService {
 
   async agendas(query: QueryAgendas): Promise<ResultadoAgendas> {
     const { mes, ini, fim } = this.mesReferencia(query.mes);
-    if (!this.disponibilidade.configurado()) {
-      return this.vazioAgendas(
-        mes,
-        'Conexão com o SICLA não configurada ou inativa (Ferramentas → Disponibilidade).',
-      );
-    }
+    // Sem checagem prévia de conexão: `consultar` já devolve {ok:false} com a
+    // mensagem que diz onde configurar — uma fonte só para o mesmo aviso.
 
-    const r = await this.disponibilidade.executarSql(
-      SQL_AGENDAS,
-      { mes_ini: ini, mes_fim: fim },
-      undefined,
-      LIMITE_LINHAS,
-    );
+    const r = await this.dados.consultar('sicla.agendas.listar', {
+      mes_ini: ini,
+      mes_fim: fim,
+    });
     if (!r.ok) return this.vazioAgendas(mes, r.mensagem);
 
     const todas = r.linhas.map((l) => this.normalizarAgenda(l));
@@ -1115,19 +1300,10 @@ export class BiImplantacaoService {
     protocolo: number,
     datahora: string,
   ): Promise<{ descricao: string; tamanho: number; erro: string | null }> {
-    if (!this.disponibilidade.configurado()) {
-      return {
-        descricao: '',
-        tamanho: 0,
-        erro: 'Conexão com o SICLA não configurada.',
-      };
-    }
-    const r = await this.disponibilidade.executarSql(
-      SQL_EXTRATO_DESCRICAO,
-      { protocolo, datahora },
-      undefined,
-      1,
-    );
+    const r = await this.dados.consultar('sicla.bi.extrato-descricao', {
+      protocolo,
+      datahora,
+    });
     if (!r.ok) return { descricao: '', tamanho: 0, erro: r.mensagem };
     if (r.linhas.length === 0) {
       return { descricao: '', tamanho: 0, erro: 'Lançamento não encontrado.' };

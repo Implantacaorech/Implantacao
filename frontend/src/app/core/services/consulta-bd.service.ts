@@ -3,7 +3,11 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiEnvelope } from '../models/api-envelope.model';
-import { ConsultaBD, ResultadoExecucaoSql, SalvarConsultaBdPayload } from '../models/consulta-bd.model';
+import {
+  ConsultaBD,
+  ResultadoExecucaoSql,
+  SalvarConsultaBdPayload,
+} from '../models/consulta-bd.model';
 
 @Injectable({ providedIn: 'root' })
 export class ConsultaBdService {
@@ -40,4 +44,11 @@ export class ConsultaBdService {
     );
     return res.data;
   }
+
+  // ── Conexão com o banco do Portal Rech (as consultas com conexao='portal' rodam nela) ──
+
+
+
+  /** Salva a conexão — senha em branco mantém a atual. */
+
 }

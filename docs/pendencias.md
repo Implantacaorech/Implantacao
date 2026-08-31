@@ -1,7 +1,149 @@
 # Pendências — Evolução do Painel de Implantação
 
 > Backlog vivo dos assuntos em aberto (estratégia de automação, arquitetura e próximos passos).
-> Digite **"Pendências"** a qualquer momento para ver esta lista. — Atualizado em 2026-06-14.
+> Digite **"Pendências"** a qualquer momento para ver esta lista. — Atualizado em 2026-08-12.
+
+## 🛡️ Auditoria de prontidão dos 9 eixos (2026-08-12)
+
+> Auditoria completa (Segurança, Governança, Resiliência, Agentes autônomos, Detecção antes do
+> usuário, Alucinações, Custo por token, Fallback, Observabilidade), com evidência `arquivo:linha`,
+> execução das suítes e e2e na instância isolada (5199) — produção nunca tocada. Cada item traz
+> **dono** e **prazo**. Os itens marcados **[x] (2026-08-12)** já foram corrigidos nesta sessão,
+> com teste de regressão. A visão viva está no módulo **Sistema → Prontidão do Sistema**.
+
+### 🔴 Crítico
+- [x] **C1 — Segredo JWT de dev ativo em produção (corrigido 2026-08-12).** `NODE_ENV` nunca era
+  `production` no boot, então a guarda que exige `MIGRACAO_JWT_SECRET`/`_REFRESH_SECRET` não
+  disparava e o fallback publicado (`configuration.ts:96`) valeria — forja de token ADM.
+  **Correção:** `Iniciar_Painel_Novo.bat` passou a exportar `NODE_ENV=production`, e
+  `ehProducao()` (`configuration.ts`) trata **banco MariaDB configurado** como produção mesmo
+  sem a variável — fecha os caminhos `node dist/main.js`/serviço. Guarda: `configuration.spec.ts`.
+  **Dono:** software. **Prazo:** feito. *Ação humana ainda recomendada:* rotacionar os segredos
+  JWT atuais, já que o fallback esteve exposto no GitHub público. **Dono:** usuário. **Prazo:** 2026-08-19.
+- [x] **C2 — Path traversal na gravação de anexos (corrigido 2026-08-12).** `salvarArquivoGerado`
+  concatenava o `originalname` cru; `a/../../../../evil.js` escapava da pasta. **Correção:**
+  `nomeArquivoSeguro()` (`documentos.service.ts`) + teste `nome-arquivo-seguro.spec.ts`.
+  **Dono:** software. **Prazo:** feito.
+- [ ] **CR-1 — `main` sem branch protection num repositório PÚBLICO.** *(agrava a pendência já
+  aberta da migração ao GitLab, abaixo em §Linguagens.)* `gh api .../branches/main/protection` →
+  404; `private:false`. Contraria o ADR-0001. **Correção:** proteger `main` (status checks +
+  review) e priorizar a migração ao GitLab interno. **Dono:** usuário (precisa de permissão de
+  Administration no remoto). **Prazo:** 2026-08-26.
+
+### 🟠 Alto
+- [x] **A1 — Transcrição de cliente ia ao OpenRouter, sem trava (mitigado 2026-08-12).** A decisão
+  "finalidade sensível só usa provedor local" existia só como comentário; a config real apontava
+  `protocolos` para o OpenRouter. **Correção:** `FINALIDADES_SO_LOCAL` + trava em `IaService.salvar`
+  (recusa provedor externo em `protocolos`/`levantamento`), `avisosPrivacidade()` + aviso de boot e
+  visibilidade no módulo Prontidão. Testes em `ia.service.spec.ts`. **Ação humana pendente:** a
+  config de PRODUÇÃO ainda pode estar em OpenRouter — trocar para um endpoint **local** (provisionar
+  Ollama/LM Studio no servidor). **Dono:** usuário. **Prazo:** 2026-08-19.
+- [x] **A6 — `POST /projetos/:id/email` sem guard (corrigido 2026-08-12).** Qualquer autenticado
+  enviava e-mail arbitrário pela infra do Painel. **Correção:** `@Permissao('carteira', …)` em
+  `projeto-email.controller.ts`. **Dono:** software. **Prazo:** feito.
+- [x] **A7 — Ticket de mídia aceito como token de sessão (corrigido 2026-08-12).** O ticket
+  `escopo:'midia'` virava Bearer válido em rotas só-`JwtAuthGuard`. **Correção:** `JwtStrategy`
+  rejeita qualquer token com `escopo`; o streaming valida o ticket por conta própria. **Dono:**
+  software. **Prazo:** feito.
+- [ ] **A4 — Uploads sem limite de tamanho (DoS por OOM) em 10 rotas.** Nenhum `FileInterceptor`
+  declara `limits`, sem `MulterModule`. **Correção:** `limits.fileSize` por rota (generoso para
+  vídeo, apertado para anexo). **Dono:** software. **Prazo:** 2026-08-26.
+- [ ] **A5 — Auto-cadastro público cria conta ativa com acesso a dado de cliente.**
+  `cadastro.controller.ts:34,69-79` sem verificação de domínio corporativo nem aprovação.
+  **Correção:** allowlist de domínio + aprovação, ou desativar o auto-cadastro. **Dono:** usuário
+  (decisão de processo) + software. **Prazo:** 2026-08-26.
+- [ ] **A8 — ADM/Coordenador leem toda transcrição de todo cliente** (`protocolos.acesso.ts:31-35`),
+  contra a regra de privacidade declarada. **Correção:** decidir se a aprovação exige leitura
+  integral ou só metadados. **Dono:** usuário + software. **Prazo:** 2026-09-02.
+- [x] **A9 — Custo de IA invisível e ilimitado (corrigido 2026-08-13).** Novo módulo
+  `ia-telemetria`: o `usage` do provedor vira tokens/custo por execução (tabela de preços por
+  modelo); **teto diário** que interrompe chamadas externas ao estourar (`MIGRACAO_IA_TETO_DIARIO_USD`,
+  opt-in); custo (hoje/7 dias) e execuções **visíveis** na seção "Custo de IA" do Centro de
+  Monitoramento. Guarda: `ia-telemetria.service.spec.ts`, `precos-ia.spec.ts`, bloco de telemetria
+  em `ia.service.spec.ts`. **Falta:** roteamento por custo (item novo, abaixo). **Dono:** software.
+- [x] **A10 — Sem trilha de auditoria de IA (corrigido 2026-08-13).** A tabela `execucoes_ia`
+  grava cada chamada (finalidade, provedor, modelo, quem, quando, tokens, custo, status) — só
+  metadados, nunca o conteúdo (LGPD). `@CurrentUser` adicionado em `/levantamento/sugerir` e
+  `/dicionario/perguntar`. O pipeline automático de protocolos registra como robô/sistema.
+  **Dono:** software.
+- [x] **A9-b — Roteamento de IA por custo (corrigido 2026-08-13).** `ConfigFinalidade.modeloEconomico`
+  (opt-in por finalidade) + `OpcoesCompletar.tarefaSimples`: tarefa pequena (entrada < ~1k tokens)
+  ou marcada vai ao **modelo econômico**; a telemetria (A9) registra o modelo real usado. Eixo Custo
+  3→4. Guarda: bloco "eixo 7" em `ia.service.spec.ts`. **Dono:** software.
+- [~] **A11 — Canal de alerta (digest) nunca funcionou em produção.** 0 envios em 7,5 MB de log;
+  `MIGRACAO_DIGEST_PARA` não definida. **Feito (2026-08-12):** o `tick()` passou a **logar 1×/dia**
+  que não enviou por falta de destinatário (a ausência deixou de ser silenciosa).
+  **Falta (usuário):** definir `MIGRACAO_DIGEST_PARA`. **Prazo:** 2026-08-19.
+- [x] **A12 — 5xx só iam para o log (corrigido 2026-08-12).** Contador de 5xx de 24 h alimentado
+  pelo `HttpExceptionFilter` e exposto como checagem `erros_5xx` no `/api/saude` (sai no digest).
+  Guarda: `contador-5xx.spec.ts` e `saude.service.spec.ts`. **Dono:** software.
+- [x] **A13 — E-mail de passo sem reenvio (corrigido 2026-08-13).** `POST /projetos/:id/emails/:emailId/reenviar`
+  (`@Permissao('carteira','alteracao')`) + botão **Reenviar** nos e-mails com status `falhou` no
+  histórico do passo. Reusa o mesmo envio (reanexa os arquivos atuais) e, respeitando o
+  append-only da tabela, grava uma **nova linha** com o resultado + evento na timeline. Guarda:
+  bloco `reenviar` em `passos-notificacao.service.spec.ts`. Eixo Fallback 2→3. *Fila persistida
+  (retry automático) fica como evolução futura.* **Dono:** software.
+- [x] **A14 — Oracle e OpenRouter sem timeout (corrigido 2026-08-12).** `callTimeout` de 15 s na
+  conexão Oracle; timeout de 2 min no OpenRouter/Anthropic e 10 s no catálogo de modelos.
+  Guarda: `ia.service.spec.ts`. **Dono:** software.
+- [x] **A15 — Sem validação pós-geração da saída de IA (corrigido 2026-08-13).** `validar-menus.ts`
+  confere a saída da análise contra o catálogo real do SIGER (Dicionário): o menu **principal**
+  inexistente é rebaixado a "revisar manualmente" e os códigos inventados citados no texto viram
+  **nota ao revisor** no campo `pendencias`. Catálogo vazio (dev/Dicionário não ingerido) não
+  valida nada, por contrato. Guarda: `validar-menus.spec.ts` + bloco A15 em
+  `protocolo-ia.service.spec.ts`. Eixo Alucinações 3→4. **Dono:** software.
+- [x] **A16 — docservice sem log (corrigido 2026-08-12).** `docservice/iniciar.bat` passou a gravar
+  a saída em `C:\PainelBackups\docservice_stdout.log`. **Dono:** software.
+- [ ] **A17 — Backup nunca restaurado + runbook aponta para Postgres/Docker extinto.** **Correção:**
+  restore cronometrado num banco descartável, corrigir o runbook, cópia off-site. **Dono:** usuário
+  (executar o restore) + software (runbook). **Prazo:** 2026-08-26.
+- [x] **A18 — Catraca do ADR-0002 (corrigido 2026-08-13).** `conformidade-arquitetura.spec.ts`
+  passou a contar os Services que injetam `@InjectRepository` e falha se o número **passar do
+  baseline (43)** — Service novo violador quebra o CI; portar um módulo baixa o baseline. Não
+  exige zerar já (fase 2), exige **não piorar**. **Dono:** software.
+- [~] **A19 — Suíte e2e/Playwright fora do CI.** **Feito (2026-08-13):** `.github/workflows/e2e.yml`
+  sobe a instância descartável (SQLite/5199), semeia os usuários (`seed:admin --senha` mais o
+  `e2e/apoio/semear-usuarios.mjs`) e roda o Playwright. Começa em `workflow_dispatch` (manual) até a 1ª
+  execução verde; depois habilitar o gatilho `pull_request`. **Dono:** software. **Prazo:** 2026-09-16.
+- [x] **Eixo 6 — Temperatura factual + regressão de prompt (corrigido 2026-08-13).** Temperatura
+  baixa e fixa (0.2) nas duas rotas de provedor (tarefa factual, criatividade é defeito) e
+  `prompts-regressao.spec.ts`, que trava a remoção das cláusulas anti-alucinação do prompt. Eixo
+  Alucinações 4→5. **Dono:** software.
+- [x] **Eixo 9 — Log estruturado (JSON) + latência por rota (corrigido 2026-08-13).**
+  `MetricasInterceptor` global mede a duração por TEMPLATE de rota (`metricas-latencia`, p95 em
+  `/api/saude/metricas`) e, com `MIGRACAO_LOG_JSON=1`, emite linha JSON por requisição
+  (requestId/rota/status/ms). Eixo Observabilidade 3→4. Guarda: `metricas-latencia.spec.ts`. **Dono:** software.
+
+### 🟡 Médio (seleção — lista completa no relatório da sessão)
+
+- [x] **M1 — Swagger `/api/docs` público (corrigido 2026-08-12).** Sobe só fora de produção (mesmo sinal do C1). **Dono:** software.
+- [x] **M2 — Rotas de escrita atrás de permissão de `consulta` (corrigido 2026-08-13).** Escrita passa a exigir `@Permissao(menu,'alteracao')` em passos (RNS/pessoas), protocolos, matriz e projetos; `concluir` e `perguntar` seguem em consulta de propósito (gate real no serviço/RAG só-ADM). Guarda: `conformidade-permissoes-escrita.spec.ts` trava rota nova em consulta. **Dono:** software.
+- [x] **M3 — `POST /fluxo/inbox` sem `@Permissao` (corrigido 2026-08-12).** Exige `@Permissao('novo_cliente','alteracao')` como a rota irmã `criar`. **Dono:** software.
+- [x] **M4 — `POST/PATCH /agentes/execucoes` com `@Roles()` vazio (corrigido 2026-08-13).** Passou a exigir `@Permissao('centro_operacional','alteracao')` — só quem opera o Centro (ou o agente com token ADM) grava telemetria. **Dono:** software.
+- [~] **M5 — Credenciais em claro em `backend/dados/`.** **Feito (2026-08-13, software):** `tools/Proteger_Dados_ACL.ps1` (icacls por SID) tranca a pasta ao SYSTEM/Admins/dono, e o boot denuncia no log se a pasta seguir aberta a grupos amplos (`checar-acl-dados.ts`, guarda `checar-acl-dados.spec.ts`). **Falta (usuário):** rodar o script e avaliar cifra. **Prazo:** 2026-09-02.
+- [x] **M6 — Robôs sem heartbeat (corrigido 2026-08-13).** `heartbeatRobos`: cada robô (digest, caixa, protocolos) registra e bate a cada ciclo; `SaudeService` alarma robô ativo que parou de bater (folga por `process.uptime`), saindo na tela e no digest. Guarda: `heartbeat-robos.spec.ts` + bloco M6 em `saude.service.spec.ts`. **Dono:** software.
+- [x] **M7 — Log de integridade ilegível (corrigido 2026-08-12).** A saída do `npm test` passou a ser capturada e anexada em UTF-8 sem BOM (o mesmo helper do resto do script), em `Verificar_Integridade_Novo.ps1`. **Dono:** software.
+- [ ] **M8 — Leitor de log de saúde decide encoding pelo BOM do arquivo inteiro** e descarta as linhas novas de erro do backup. **Dono:** software. **Prazo:** 2026-08-26.
+- [x] **M9 — Correlation-id ponta a ponta (corrigido 2026-08-13).** Middleware
+  (`common/observabilidade/correlacao.ts`) dá a cada requisição um `x-request-id` (aceito da
+  entrada se são, ou gerado), via `AsyncLocalStorage`; ecoa na resposta, entra no log de erro do
+  `HttpExceptionFilter` e no corpo do erro, e é propagado ao **docservice** (interceptor axios nos
+  3 clientes) e à **IA** (header do fetch). Guarda: `correlacao.spec.ts`. Eixo Observabilidade 2→3.
+  **Dono:** software.
+- [x] **M10 — Kill switch de runtime (corrigido 2026-08-13).** `killSwitch` (persistido em `dados/`, sobrevive a restart) pausa IA e robôs de fundo sem redeploy — endpoint `/api/automacao` e toggle em Sistema → Prontidão. O failover de IA (eixo 8) respeita a privacidade: finalidade sensível NUNCA cai para provedor externo. Guarda: `kill-switch.spec.ts` + blocos eixo 4/8 em `ia.service.spec.ts`. **Dono:** software.
+- [x] **M11 — Detecção de reuso de refresh token (corrigido 2026-08-13).** O `refresh` distingue revogação por **rotação** × **logout**: reapresentar um token já ROTACIONADO (sinal de vazamento) revoga toda a família do usuário (motivo `replay`) e recusa; reapresentar um token de logout (aba velha) não escala. Coluna `motivo_revogacao` (migration `RefreshTokenMotivo`). Guarda em `auth.service.spec.ts`. **Dono:** software.
+- [ ] **M12 — `recuperarPresos` re-dispara IA a cada boot sem contador de tentativas.** **Dono:** software. **Prazo:** 2026-09-09.
+
+### 🔵 Baixo
+- [ ] Login sem throttle dedicado; `MIGRACAO_RATE_LIMIT=0` sem piso; tokens em `localStorage`;
+  `dias=7` hardcoded no registro de refresh; resposta de IA logada; log do painel sem rotação;
+  `webapp/_uploads/` sem retenção; comentário do `.bat` documenta URL `postgresql://` rejeitada.
+  **Dono:** software. **Prazo:** oportunístico.
+
+### Não verificado (exige o host, não o repositório)
+- Por qual comando o backend sobe hoje em produção e se os `MIGRACAO_*` estão populados; exposição
+  de rede da 5100 e firewall da 8001; se o HTTPS opcional está ligado; se as Tarefas Agendadas
+  estão ativas; DPA/retenção do OpenRouter; matriz real de permissões (está no banco).
 
 ## 🔑 Decisão que destrava a arquitetura
 - [x] **Onde os dados moram?** → **DECIDIDO: rede INTERNA** (servidor na rede; app agnóstico de
@@ -38,6 +180,23 @@
     clique, e a gravação sai pelo mesmo PATCH de sempre, com a autoria de quem aceitou.
     Finalidade de IA própria (`levantamento`), chave separada em Config → IA.
   - [ ] Os demais: próximo passo, rascunho de e-mail e riscos (RAID).
+- [~] **Consulta Wall-e (base de conhecimento)** *(2026-08-18)* — módulo `backend/src/walle/`
+  com a tela Execução → Wall-e (chave `walle`): indexa o acervo documental dos chats do bot
+  Wall-e (`R:\GRM\CHAT_WALLE\`, **fonte somente leitura — regra inegociável**) nas tabelas
+  `walle_*`, com busca híbrida (identificadores + lexical + expansão semântica), visão por
+  chat, "também pode ser útil", SQLs documentais e síntese por IA (finalidade `walle`,
+  **só-local** por §21-A.10, com degradação para fontes). O que resta:
+  - [ ] **Embeddings/RAG completo** — o roadmap do Vault já registra "RAG de verdade: não
+    iniciado (decisão de hospedagem/custo)". Caminho natural: endpoint `/embeddings` no
+    docservice (Python local, privacidade por construção) + coluna vetorial. Com ~20
+    documentos a busca lexical resolve; reavaliar quando o acervo crescer uma ordem de
+    grandeza. Decisão de arquitetura relevante ⇒ exige ADR (§21-A.2).
+  - [ ] **Validar a Fonte B contra o Oracle real** — o SQL semeado (`walle_chats_sicla`,
+    editável em Consultas BD) usa as colunas da DDL oficial de `SICLA.CHAT_WALLE`; falta
+    rodar contra produção e, se o DBA liberar `LISTA_CHAT_WALLE`/`DIALOGO`, expandir para
+    os diálogos (§23 da especificação — reconstruir pergunta→resposta→arquivo).
+  - [ ] **Configurar o provedor local da finalidade `walle`** em Config → IA (sem isso a
+    síntese degrada para busca-guiada — funcional, mas sem resposta redigida).
 - [ ] **Pipeline de Conversão + gate de virada** (reconciliação origem×destino, SIT/UAT, pendências, docs obrigatórios).
 - [ ] **Disparadores de fim de fluxo** (critério de saída do hypercare → Termo + e-mails + RNS para manutenção).
 - [x] **Feito:** **Alertas proativos** — uso oficial vencido, SLA de 5 dias úteis do Cronograma, Em risco, Hypercare prolongado e projeto parado; painel no Coordenação + badge no menu (respeita o perfil).
@@ -375,6 +534,248 @@ feita; o que ela revelou em volta, não.
   portado sai com teste do repository e do service, como no piloto.
 - [ ] Frontend: 440 testes em 58 arquivos, **sem gate de cobertura ainda** — o builder
   `@angular/build:unit-test` precisa de configuração própria; avaliar junto da fase 2.
+
+## 🔌 API de Dados — fronteira única de banco externo (ADR-0003 — 2026-08-25)
+> **A regra, definida pelo usuário:** *"Toda e qualquer consulta realizada em banco de dados
+> terá uma API para comunicação."* Escopo acertado: os bancos **externos** (Oracle do SICLA,
+> MySQL do Portal Rech, SQLite do Consultor SIGER). O `painel_novo` continua pela camada
+> Repository/TypeORM do ADR-0002.
+> Decisão e alternativas descartadas no
+> [ADR-0003](<../vault/17 - ADR/ADR-0003 - API de Dados como fronteira unica de banco.md>);
+> contrato e uso em [`backend/src/dados/docs/`](../backend/src/dados/docs/README.md).
+> Aplicação **faseada**, com catraca no CI (`backend/src/common/conformidade-api-dados.spec.ts`):
+> os números de exceção só podem CAIR. **As sete fases foram concluídas (as cinco primeiras em
+> 2026-08-25; as duas últimas em 2026-08-26).**
+> Estado: 19 consultas de código no catálogo (mais as publicadas pela tela), dívida de
+> `executarSql` zerada, 1 exceção de driver (permanente e justificada), e a instância interna
+> (Portal API) com entrypoint, ROTAS e tela de tokens próprios. Suítes verdes: backend
+> 144/1498, frontend 72/598, e2e 94.
+>
+> As **duas instâncias** (interna com a credencial × Painel na nuvem consumindo por token)
+> estão descritas em [docs/portal-conexoes.md](portal-conexoes.md).
+
+### Fase 0 — fronteira, catálogo e contrato *(concluída em 2026-08-25)*
+- [x] **Módulo `backend/src/dados/`** — catálogo de consultas nomeadas, executor, roteador de
+  conexões, os 6 documentos do Guia Mestre.
+- [x] **Catálogo com as 17 consultas que o Painel já rodava** (`catalogo/catalogo.ts`), com
+  os MESMOS textos de SQL, binds e tetos dos módulos donos — fase 0 não muda comportamento em
+  produção, de propósito. (Viraram 19 na fase 2, com as duas da Disponibilidade.)
+- [x] **Contrato `/api/dados/v1`** — `GET /consultas`, `GET /consultas/{nome}`,
+  `POST /consultas/{nome}/executar`, `GET /conexoes`. Nenhum endpoint aceita SQL, conexão ou
+  limite do consumidor.
+- [x] **Duas autenticações**: JWT de pessoa (gate por **menu** do painel de Permissões) e
+  `X-API-Key` de máquina (gate por **escopo**), com `api_clientes` (chave em bcrypt,
+  revogável, rotacionável) e administração só por ADM.
+- [x] **Guarda no CI** — proíbe import de driver fora de `src/dados/` e `executarSql` fora
+  dele; 10 casos, verificados contra uma violação real.
+- [x] **Tela Sistema → API de Dados** (só ADM): catálogo, conexões, clientes de máquina
+  (criar/revogar/rotacionar, chave exibida uma vez) e uso por consulta.
+- [x] **e2e `08-api-dados.spec.ts`** — 15 casos contra instância real, atacando o contorno da
+  fronteira (401/403/404/400, catálogo sem SQL, ciclo de vida da chave).
+
+### Fase 1 — virar a chave nos 10 módulos *(concluída em 2026-08-25)*
+- [x] Os **10 módulos** passaram a `dados.consultar('nome', parametros)`: `modulos-sicla`,
+  `clientes-sicla`, `tecnicos-sicla`, `matriz-funcoes`, `agenda`, `bi-indicadores`,
+  `bi-movimentos`, `rns`, `bi-agenda-alocacao`, `bi-implantacao`. Nenhum conhece mais SQL,
+  bind, teto de linhas ou tratamento de erro de conexão.
+- [x] **O SQL mudou de casa**: saiu dos `*.constants.ts` dos módulos para
+  `backend/src/dados/catalogo/sql/` — o catálogo passou a ser o dono, e a seta invertida
+  (`dados/` importando dos módulos) sumiu.
+- [x] **Semeadura centralizada**: `CatalogoSeedService` cria em Consultas BD as consultas
+  editáveis, derivando-as do catálogo. Antes eram 5 cópias do mesmo `onModuleInit`, e a
+  lista que o Administrador via dependia de quais módulos tinham subido.
+- [x] `DadosService.consultar` (não-lançante) para módulo × `executar` (lança HTTP) para o
+  controller — é o que preserva a tela degradando com aviso em vez de estourar.
+- [x] `DIVIDA_EXECUTAR_SQL` **zerou** na guarda de CI.
+
+### Fase 2 — mudar os drivers de casa *(concluída em 2026-08-25)*
+- [x] `oracledb` → `dados/conexoes/conexao-sicla.service.ts`; `mysql2` →
+  `dados/conexoes/conexao-portal.service.ts`. `PortalDbService` deixou de existir.
+- [x] `ConsultaBdService` veio para `dados/` — sem isso, `dados/` e `disponibilidade/`
+  ficariam em dependência circular.
+- [x] **`DisponibilidadeService` virou domínio puro** (ocupação por slot, mapa de técnicos,
+  caches). Não fala Oracle: pede as consultas ao catálogo.
+- [x] **Achado da migração:** a Disponibilidade tinha uma SEGUNDA porta ao Oracle
+  (`consultar`/`mapaTecnicos`/`ocupacaoPorSlot`), usada por `cronograma`,
+  `painel/capacidade` e `plano-cronograma`, que o levantamento inicial não pegou — ele
+  contou só quem chamava `executarSql`. Era a última consulta a banco externo fora da
+  fronteira; entrou no catálogo.
+- [x] Duas extensões do catálogo para acomodá-la: origem **`config_conexao`** (SQL guardado
+  na configuração da conexão) e tipo de parâmetro **`lista_texto`** (expande `:tecnicos`
+  numa lista de binds).
+- [x] **Escape hatch explícito**: `DadosService.executarSqlDeAdministrador`, para as duas
+  telas em que o ADM é o autor do SQL (Testar de Consultas BD e motor de Dashboards).
+  Restrito a `PERFIS_SISTEMA` e auditado.
+- [x] `PODEM_IMPORTAR_DRIVER` caiu de **3 para 1**.
+
+> ⚠️ **A exceção que ficou é decisão, não dívida.** `consultor-siger` continua abrindo o
+> SQLite dele: a base não é um banco vinculado, é um artefato DERIVADO (gerado por indexador
+> externo a partir do código-fonte), arquivo local em readonly, sem credencial, sem rede e
+> sem outro consumidor — e o módulo já é a API dele. Suas 7 consultas são busca full-text
+> com aridade variável; forçá-las num catálogo de consultas *nomeadas* distorceria os dois
+> lados sem fechar risco nenhum. Está declarada, com o motivo, dentro da guarda de CI.
+
+### Fase 3 — as DUAS INSTÂNCIAS (Portal de Conexões) *(concluída em 2026-08-25)*
+> **Por que existe:** o usuário quer publicar o Painel fora da rede da empresa —
+> *"não poderei deixar no portal e em lugar nenhum os dados de conexão com o banco"*. A
+> resposta não é guardar melhor o segredo, é **não tê-lo lá**. Desenho completo em
+> [docs/portal-conexoes.md](portal-conexoes.md).
+
+- [x] **Token por CONSULTA** (decisão do usuário) — `api_clientes.escopos` virou `consultas`:
+  um token autoriza exatamente os nomes marcados, não a conexão inteira. Migration
+  `1788000000000-TokenPorConsulta`. Caso e2e prova que outra consulta **da mesma conexão** dá
+  403.
+- [x] **Consulta criada pela TELA, sem release** (decisão do usuário) — `consultas_bd` ganhou
+  `nome_api`, `publicada`, `parametros`, `colunas`, `limite_linhas`, `cache_segundos`
+  (migration `1788010000000-ConsultaBdPublicada`, aditiva: `publicada` nasce `false`, então
+  nada muda para as 8 consultas que já existiam).
+- [x] **"Testar" tira o contrato do próprio banco**: roda com limite 1 e devolve os `:binds`
+  que o SQL cita (`catalogo/binds.util.ts`) e as colunas que voltaram. Ninguém digita a lista
+  de campos; ao operador resta escolher o tipo de cada parâmetro e o teto.
+- [x] **Publicar valida como o CI valida** (`ConsultasPublicadasService`): só leitura, nome no
+  padrão `<origem>.<assunto>.<ação>`, sem colidir com o catálogo de código (**o código
+  vence**), bind × parâmetro casando nos dois sentidos, teto presente e ≤ 5.000. Não passou,
+  não salva — e a recusa chega ao operador como LISTA, não um erro por vez.
+- [x] **`CatalogoService`** — catálogo EFETIVO = código + publicadas pela tela, com cache de
+  30 s. Banco fora do ar não derruba o catálogo; linha malformada é ignorada, não quebra.
+- [x] **Tela `/config/api-dados/consulta`** (só ADM) — criar/editar/apagar, com Testar.
+- [x] **Instância 1 — Portal de Conexões**: `src/dados/dados-app.module.ts` +
+  `src/main-dados.ts` + `Iniciar_Portal_Conexoes.bat`, porta **5110**. Mesmo binário, outra
+  raiz de módulos: só API de Dados, autenticação, permissões e health.
+- [x] **Catraca da superfície** (`dados/dados-app.module.spec.ts`): a lista de módulos da
+  instância 1 é fechada e não cresce em silêncio — cada módulo a mais é rota exposta na
+  máquina que tem a senha do banco.
+
+### Fase 4 — o menu de cada instância e a tela de tokens *(concluída em 2026-08-25)*
+> **Ajuste pedido pelo usuário:** *"Quando falamos em Portal API, para conexão banco, criação
+> da API e geração do TOKEN, é apenas isso que deve ter dentro do painel. Nada mais é
+> preciso."* e *"Quando falamos no Portal Implantação, preciso que tenha a tela onde eu insira
+> os TOKENS gerados."*
+
+- [x] **Perfil da instância** (`common/instancia.ts` + `GET /api/instancia`, público): o mesmo
+  build do Angular monta um menu no Painel e outro no **Portal API**. Perfil desconhecido cai
+  no Painel — esconder o menu de todos é bem pior que o contrário.
+- [x] **Menu do Portal API reduzido a 4 itens** — Conexões · Consultas da API · Nova consulta ·
+  Tokens. A barra superior perde busca de cliente e sino de alertas, que não existem lá.
+- [x] **Conexão de banco cadastrável no Portal API** (`/dados/v1/admin/conexoes`): a senha
+  nunca volta (`temSenha`), em branco mantém a atual, e o "Testar" roda um `SELECT 1` — prova
+  a CREDENCIAL, não o privilégio nas views.
+- [x] **Tela Sistema → Tokens da API de Dados** no Portal Implantação: cola-se o token gerado
+  no Portal API; o **Testar** pergunta lá o catálogo QUE AQUELE TOKEN ENXERGA (já recortado) e
+  é dele que sai a lista de consultas — ninguém digita nome de consulta. A tela também mostra
+  **o que ainda não tem token**, que é o que falta para o Painel poder sair da rede.
+- [x] **Consumo remoto de verdade** (`dados/consumo/`): com token ativo, `DadosService`
+  delega a execução ao Portal API — paginando até o fim, para não truncar em silêncio as
+  consultas de teto maior que 5.000. Migration `1788020000000-TokensApiDados`.
+- [x] **A virada é por CONSULTA e sem janela**: sem token, nada muda; com token, muda só o que
+  ele cobre; falha ao decidir cai no caminho local. Degrada o novo, nunca o que já funcionava.
+- [x] **Catraca ampliada**: `dados-app.module.spec.ts` recusa também o módulo de consumo no
+  Portal API — aquela ponta executa, não consome.
+- [x] **Guardião passou a vigiar a 5110** *(2026-08-26)* — a instância caiu na primeira noite
+  e ninguém a reergueu, porque o `Guardiao_Painel_Novo.vbs` só conhecia o Painel e o
+  docservice. Mesma falha do docservice em 2026-08-04. `instancia.spec.ts` trava isso.
+
+### Fase 5 — o Portal API não CONTÉM o resto *(concluída em 2026-08-26)*
+> **Ajuste do usuário:** *"Que tenha apenas a parte conexão, API e TOKEN dentro dele. Os
+> demais módulos não importa e não queremos que tenha dentro do portal."* e *"o lado usuário
+> ... ao invés de conexão com o banco que tenha o módulo de vinculação dos tokens"*.
+
+- [x] **Defeito corrigido:** a fase 4 escondia o menu, mas **não escondia coisa nenhuma na
+  prática** — `InstanciaService` lia `perfil` da RAIZ da resposta, e o backend embrulha tudo
+  no envelope `{success, data, …}`. Vinha `undefined`, caía no padrão, e o Portal API servia o
+  menu inteiro. O teste que existia mockava o próprio serviço: afirmava o template, nunca a
+  fiação. Agora há `instancia.service.spec.ts` sobre o serviço REAL.
+- [x] **A instância é resolvida ANTES do Angular subir** (`src/main.ts`), e escolhe a
+  **tabela de rotas** (`ROTAS_PORTAL_API`). O que não está nela não existe no Portal API: não
+  abre digitando o endereço (cai em `/config/api-dados`) e o chunk nem é baixado.
+- [x] **Painel sem conexão de banco**: a rota `/config/disponibilidade` e o componente dela
+  foram removidos, e as abas de conexão de Consultas BD (Disponibilidade e Banco do Portal
+  Rech) só aparecem no Portal API. No lugar delas, **Sistema → Tokens da API de Dados**.
+- [x] **Os dois SELECTs da Disponibilidade** (ocupação e mapa de técnicos) passaram a ser
+  editáveis no formulário de conexão do Portal API — senão ficariam sem lugar nenhum.
+- [x] **`app.routes.spec.ts`** trava as duas tabelas: nenhum módulo de negócio no Portal API,
+  nenhuma tela de conexão no Painel.
+- [x] Verificado em navegador real, nas duas instâncias: o Portal API entra em
+  `/config/api-dados`, mostra 4 itens de menu, e `/projetos`, `/usuarios`, `/bi` e
+  `/config/consultas-bd` todos caem de volta na tela da API.
+
+### Fase 6 — administrar a API é exclusivo do Portal API *(concluída em 2026-08-26)*
+> *"Preciso que no Portal Implantação sejam desativadas as Consultas BD e retirados os módulos
+> Consultas BD e também API de Dados deste portal. O uso será único e exclusivo no Portal API."*
+
+- [x] **Painel perdeu** `config/consultas-bd[/:slug]` e `config/api-dados[/consulta]` — rotas e
+  itens de menu. Ficou só `config/tokens-api`, o lado consumidor.
+- [x] **Portal API ganhou** `config/consultas-bd[/:slug]`, com item de menu próprio. Para isso,
+  `ConfigConsultasBdController` mudou de `disponibilidade/` para `dados/`: é o `DadosModule`
+  que a instância interna monta.
+- [x] **As abas de conexão de Consultas BD foram REMOVIDAS** (não escondidas) — a tela
+  Conexões já cobre os dois bancos e os dois SELECTs. Junto saíram
+  `ConfigDisponibilidadeController`, `ConfigPortalDbController`, os DTOs deles e o
+  `ConfigDisponibilidadeService` do frontend: dois lugares para a mesma verdade, um deles
+  já sem tela.
+- [x] **Os Dashboards continuam no Painel** e continuam funcionando — mudou onde a consulta é
+  *editada*, não onde é *usada*.
+- [x] **Os ENDPOINTS também saíram**, não só as telas: `DadosAdminController` e
+  `ConfigConsultasBdController` são declarados no `DadosAppModule`. No Painel respondem 404 —
+  antes ficavam alcançáveis por qualquer ADM com um JWT, sem tela mas vivos.
+- [x] **O e2e passou a exigir DUAS instâncias**: `08-api-dados.spec.ts` administra contra a
+  5198 (Portal API) e consome contra a 5199 (Painel). Sem a 5198 no ar, os casos de
+  administração PULAM com o motivo no relatório (`apoio/portal-api.ts`); o workflow
+  `e2e.yml` sobe as duas.
+- [x] **Tabela de permissões acertada**: `consulta_bd` deixou de ser tela do Painel — a chave
+  FICA (é o portão de quem chama, por JWT, uma consulta publicada pela tela; apagá-la
+  desligaria liberações já gravadas em `permissoes_menu`), mas o rótulo passou a dizer o que
+  ela controla. Entrou `tokens_api`, a tela nova do lado consumidor.
+- [x] **`menus.spec.ts`** passou a comparar o catálogo com o MENU DE VERDADE (o shell), nos
+  dois grupos dirigidos por `podeVer` e no grupo Sistema, que é fixo. Foi essa correspondência
+  que faltou desta vez: a tabela ficou oferecendo uma tela que saiu e sem a que entrou.
+- [x] **`consulta_bd` deixou de ser `fixaAdm`** *(2026-08-27)* — enquanto era fixa, só o
+  Administrador conseguia CHAMAR por login uma consulta publicada pela tela, o que esvaziava o
+  caminho: publica-se para o time usar e o time não alcança. O padrão continua só ADM; quem
+  abre é o Administrador, no painel. ⚠️ A liberação é por MENU, não por consulta — quem recebe
+  alcança todas as publicadas pela tela.
+- [x] Ratchets atualizados (`app.routes.spec.ts`, `shell.component.spec.ts`,
+  `conformidade-api-dados.spec.ts`) e varredura e2e ajustada.
+
+### Ainda aberto — por decisão, não por falta
+- [ ] **Usuário Oracle de leitura mínima (`painel_ro`)** — pedido ao TI. A credencial em uso
+  (`powerbi`) tem `SELECT ANY TABLE`, `SELECT ANY DICTIONARY`, `DROP ANY VIEW` e
+  `CREATE PROCEDURE/TRIGGER/TABLE`, alcançando **4.980 objetos em 39 schemas**; o catálogo
+  precisa de **16**. É **pré-requisito duro** da criação de consulta pela tela: o nosso código
+  garante que só se executa SELECT, mas *qual tabela* o SELECT lê é privilégio do banco.
+- [ ] **Cadastrar o primeiro token** em Sistema → Tokens da API de Dados e cobrir as 19
+  consultas. Enquanto "Consultas sem token" não zerar, o Painel ainda precisa de credencial de
+  banco e não pode ser publicado fora da rede. O código está pronto e testado; o que falta é a
+  operação (e o `painel_ro` antes dela).
+- [ ] **Túnel + TLS** entre nuvem e rede interna (decisão do TI). A 5110 nunca fica exposta.
+- [ ] **Inversão de confiança** — hoje a instância interna lê chaves *e SQL editável* do mesmo
+  `painel_novo`. Se a nuvem compartilhar esse banco, um comprometimento lá poderia reescrever
+  `consultas_bd` e a instância interna executaria. Ou o `painel_novo` fica na rede interna, ou
+  a instância 1 ganha banco próprio para catálogo e tokens.
+- [ ] **Auditoria em tabela, com retenção** — hoje é log estruturado (com correlation-id). O
+  volume é de BI e cresceria sem teto no `painel_novo`; entra quando houver política de
+  retenção definida.
+- [ ] **Rate limit e cota por cliente de máquina** — hoje vale só o rate limit global.
+- [ ] **Paginação no banco** (`OFFSET/FETCH`) para as 4 consultas cujo teto passa de uma
+  página. Só entra se `truncadoNoLimite` começar a aparecer de verdade.
+- [ ] **Exposição fora da rede interna** — se algum consumidor for externo à rede, a decisão
+  de HTTPS/publicação vem antes (ver §Migração para servidor dedicado).
+- [ ] **O caminho remoto nunca devolveu dado REAL** — o e2e prova a fiação até a conexão
+  (503 na instância isolada, que não tem banco cadastrado) e os testes de unidade provam a
+  paginação e as mensagens de falha. O que ainda não aconteceu foi uma consulta de verdade
+  saindo do Painel, passando pelo Portal API e voltando com linha do Oracle. Depende de
+  cadastrar o primeiro token — é o mesmo item acima, visto do lado do risco.
+- [ ] **Duas telas editam a mesma tabela** — `consultas_bd` é escrita pela *Nova consulta*
+  (contrato de API: nome público, parâmetros, colunas, teto) e pelo *Consultas BD* (texto do
+  SQL e apresentação nos Dashboards). Nenhuma mostra os campos da outra. Não é defeito — cada
+  uma nasceu para um público —, mas é confusão esperando acontecer. Unificar é decisão de UX,
+  não urgência.
+- [ ] **Consulta em linguagem natural** *(ideia, 2026-08-26)* — o catálogo já é, na prática,
+  um esquema de ferramentas para um modelo: a IA escolheria a consulta e preencheria os
+  parâmetros, sem nunca escrever SQL. Precisa de descrições em linguagem de negócio, um
+  endpoint que interpreta sem executar, uma finalidade nova no `IaModule` e a tela. A decisão
+  que vem antes: se a IA só monta a consulta, nenhum dado sai da rede e vale provedor externo;
+  se ela também comenta o resultado, cai em `FINALIDADES_SO_LOCAL` e vira pedido de hardware.
 
 ## 🔁 Processo de 18 passos (revisão de 2026-07-22)
 - [x] Mapa dos 18 passos, vínculo pessoa×papel (vários levantadores/consultores), RNS de

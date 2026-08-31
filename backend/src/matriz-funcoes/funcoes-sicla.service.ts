@@ -1,60 +1,25 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
-import { ConsultaBdService } from '../disponibilidade/consulta-bd.service';
+import { Injectable } from '@nestjs/common';
+import { DadosService } from '../dados/dados.service';
 import {
   FuncaoSicla,
   GRUPO_SEM_MODULO,
   ModuloFuncoes,
-  NOME_LISTA_FUNCOES,
   siglaDoToken,
-  SLUG_LISTA_FUNCOES,
-  SQL_LISTA_FUNCOES_PADRAO,
 } from './funcoes-sicla.constants';
 
-/** Taxonomia da Matriz por Menu — Funções SICLA: lê `SICLA.LISTA_FUNCOES` (mesma conexão
- * Oracle da Disponibilidade) e agrupa pela coluna STRMENUS.
+/** Taxonomia da Matriz por Menu — Funções SICLA: pede `sicla.funcoes.listar` à API de
+ * Dados (ADR-0003) e agrupa pela coluna STRMENUS.
  *
  * Equivale ao `MenusSigerService` da Matriz por Menu do Dicionário, com a mesma estratégia
  * de cache em memória — a base muda raramente e a consulta é remota. */
 @Injectable()
-export class FuncoesSiclaService implements OnModuleInit {
-  private readonly logger = new Logger('FuncoesSiclaService');
+export class FuncoesSiclaService {
   private cache: ModuloFuncoes[] | null = null;
 
-  constructor(
-    private readonly disponibilidade: DisponibilidadeService,
-    private readonly consultas: ConsultaBdService,
-  ) {}
-
-  /** Semeia o SQL (idempotente) para o Administrador editar em Consultas BD. */
-  async onModuleInit(): Promise<void> {
-    if (process.env.NODE_ENV === 'test') return;
-    try {
-      const existe = await this.consultas.porSlug(SLUG_LISTA_FUNCOES);
-      if (!existe) {
-        await this.consultas.salvar(SLUG_LISTA_FUNCOES, {
-          nome: NOME_LISTA_FUNCOES,
-          sql: SQL_LISTA_FUNCOES_PADRAO,
-          ordem: 96,
-          mostrarGrafico: false,
-        });
-      }
-    } catch (e) {
-      this.logger.error(
-        'Falha ao semear a consulta da lista de funções do SICLA',
-        e instanceof Error ? e.stack : String(e),
-      );
-    }
-  }
+  constructor(private readonly dados: DadosService) {}
 
   limparCache(): void {
     this.cache = null;
-  }
-
-  private async sqlLista(): Promise<string> {
-    const c = await this.consultas.porSlug(SLUG_LISTA_FUNCOES);
-    const sql = (c?.sql ?? '').trim();
-    return sql || SQL_LISTA_FUNCOES_PADRAO;
   }
 
   private texto(v: unknown): string {
@@ -68,8 +33,7 @@ export class FuncoesSiclaService implements OnModuleInit {
   async taxonomia(force = false): Promise<ModuloFuncoes[]> {
     if (this.cache && !force) return this.cache;
 
-    const sql = await this.sqlLista();
-    const r = await this.disponibilidade.executarSql(sql, {}, undefined, 5000);
+    const r = await this.dados.consultar('sicla.funcoes.listar');
     if (!r.ok) {
       // Erro de conexão/SQL não vira cache — a próxima chamada tenta de novo.
       throw new Error(r.mensagem);

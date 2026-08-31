@@ -12,7 +12,10 @@ import { assetsEstaticos } from './common/assets-estaticos';
 import { erroDeMiddleware } from './common/filters/erro-de-middleware';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
-import { AppConfig } from './config/configuration';
+import { MetricasInterceptor } from './common/interceptors/metricas.interceptor';
+import { AppConfig, ehProducao } from './config/configuration';
+import { correlacaoMiddleware } from './common/observabilidade/correlacao';
+import { avisarSeDadosExpostos } from './common/seguranca/checar-acl-dados';
 import { httpsPainel } from './config/https';
 
 /** Teto do corpo JSON/urlencoded — o mesmo padrão do Express/Nest. Os DTOs já limitam cada
@@ -38,8 +41,20 @@ async function bootstrap(): Promise<void> {
     : await NestFactory.create(AppModule, { bodyParser: false });
   const config = app.get(ConfigService<AppConfig, true>);
 
+  // PRIMEIRO middleware: dá a cada requisição um correlation-id (M9), disponível para todo o
+  // resto do ciclo (parsers, guards, handler, filtro de erro) e ecoado na resposta.
+  app.use(correlacaoMiddleware);
+
   // Mesmos parsers e o mesmo limite padrão que o Nest usaria (100 kb) — o que muda é só
   // quem os registra. Uploads continuam por multipart/multer, que não passa por aqui.
+  //
+  // EXCEÇÃO consciente, ANTES do parser global (o primeiro que parseia ganha): o envio do
+  // painel de visitas por e-mail carrega o PNG do gráfico (data URL) e as linhas filtradas
+  // — não cabe nos 100 kb. Só esta rota aceita mais.
+  app.use(
+    '/api/bi-implantacao/visitas-portal/enviar-email',
+    express.json({ limit: '6mb' }),
+  );
   app.use(express.json({ limit: LIMITE_CORPO }));
   app.use(express.urlencoded({ extended: true, limit: LIMITE_CORPO }));
   app.use(erroDeMiddleware());
@@ -77,11 +92,25 @@ async function bootstrap(): Promise<void> {
       // página "Este conteúdo está bloqueado. Entre em contato com o proprietário do
       // site", sem erro nenhum no backend. O blob nasce da própria página; liberá-lo aqui
       // não abre a moldura para origem externa (isso é `frame-ancestors`, intocado).
+      //
+      // `https://portalrech.com.br`: a tela Execução → Protocolo embute o Portal Rech num
+      // iframe — sem esta origem no `frame-src`, o navegador mostrava a MESMA página de
+      // conteúdo bloqueado (achado de 2026-08-13; o bloqueio era do NOSSO CSP, o site não
+      // envia X-Frame-Options/CSP). Libera só este domínio, e só como MOLDURA embutida —
+      // quem pode nos emoldurar continua sendo `frame-ancestors`, intocado.
+      //
+      // `https://www.rechedu.com.br`: mesma situação na tela Execução → RechEdu (o site
+      // também não envia X-Frame-Options/CSP — verificado em 2026-08-14).
       contentSecurityPolicy: {
         useDefaults: true,
         directives: {
           'upgrade-insecure-requests': null,
-          'frame-src': ["'self'", 'blob:'],
+          'frame-src': [
+            "'self'",
+            'blob:',
+            'https://portalrech.com.br',
+            'https://www.rechedu.com.br',
+          ],
         },
       },
     }),
@@ -105,25 +134,48 @@ async function bootstrap(): Promise<void> {
     }),
   );
   app.useGlobalFilters(new HttpExceptionFilter());
-  app.useGlobalInterceptors(new ResponseInterceptor());
+  // MetricasInterceptor PRIMEIRO: envolve os demais, então mede a duração total da requisição
+  // (eixo 9). O ResponseInterceptor transforma o payload; a métrica não transforma nada.
+  app.useGlobalInterceptors(
+    new MetricasInterceptor(),
+    new ResponseInterceptor(),
+  );
   app.setGlobalPrefix('api');
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('Painel de Implantação — API')
-    .setDescription(
-      'API NestJS do Painel de Implantação (migração do backend Flask)',
-    )
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document);
+  // M1 (auditoria 2026-08-12): o Swagger em `/api/docs` era público e sem condicional de
+  // ambiente — expunha o mapa inteiro da API (rotas, DTOs, exemplos) a qualquer um que
+  // alcançasse a porta, um reconhecimento pronto para atacante. Passa a subir só FORA de
+  // produção (mesmo sinal do C1: NODE_ENV=production OU banco MariaDB real configurado).
+  const emProducao = ehProducao(
+    config.get('env', { infer: true }),
+    process.env.MIGRACAO_DB_URL,
+  );
+  if (!emProducao) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('Painel de Implantação — API')
+      .setDescription(
+        'API NestJS do Painel de Implantação (migração do backend Flask)',
+      )
+      .setVersion('1.0')
+      .addBearerAuth()
+      // Cliente de MÁQUINA da API de Dados (ADR-0003) — outro sistema da Rech, agente de
+      // IA ou ferramenta de BI autentica por chave, não por JWT de pessoa.
+      .addApiKey({ type: 'apiKey', name: 'X-API-Key', in: 'header' }, 'api-key')
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document);
+  }
+  const sufixoDocs = emProducao ? '' : ' — docs em /api/docs';
+
+  // M5 (auditoria 2026-08-12): denuncia no log se a pasta de credenciais (backend/dados) estiver
+  // aberta a grupos amplos (Everyone/Users). Best-effort e só em produção Windows.
+  avisarSeDadosExpostos();
 
   const port = config.get('port', { infer: true });
   if (!tls || !servidorExpress) {
     await app.listen(port);
     console.log(
-      `Painel API rodando em http://localhost:${port}/api — docs em /api/docs`,
+      `Painel API rodando em http://localhost:${port}/api${sufixoDocs}`,
     );
     return;
   }
@@ -135,7 +187,7 @@ async function bootstrap(): Promise<void> {
   criarServidorHttps(tls.opcoes, servidorExpress).listen(tls.porta);
   console.log(
     `Painel API rodando em http://localhost:${port}/api e ` +
-      `https://localhost:${tls.porta}/api (${tls.origem}) — docs em /api/docs`,
+      `https://localhost:${tls.porta}/api (${tls.origem})${sufixoDocs}`,
   );
 }
 

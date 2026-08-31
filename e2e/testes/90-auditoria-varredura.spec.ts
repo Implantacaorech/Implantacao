@@ -26,10 +26,11 @@ const ROTAS_ESTATICAS = [
   '/protocolos',
   '/protocolos/gravar',
   '/dicionario',
+  '/agenda',
+  '/rns',
   '/matriz',
   '/matriz-detalhada',
   '/matriz-funcoes',
-  '/config/disponibilidade',
   '/config/email',
   '/config/imap',
   '/config/gmail',
@@ -37,7 +38,9 @@ const ROTAS_ESTATICAS = [
   '/cadastros',
   '/config/modelos-email',
   '/config/destinatarios-passo',
-  '/config/consultas-bd',
+  // Consultas BD e API de Dados saíram do Painel em 2026-08-26 — são exclusivas do Portal
+  // API, que tem tabela de rotas própria. Aqui resta o lado consumidor.
+  '/config/tokens-api',
   '/bi/implantacao',
   '/bi/implantacao/contratacao',
   '/bi/implantacao/conclusao',
@@ -144,7 +147,7 @@ test.describe('Auditoria — varredura de rotas', () => {
     coletar(page, achados, () => atual);
 
     await entrarComSucesso(page, USUARIOS.adm);
-    for (const sufixo of ['', '/dados', '/passos', '/levantamento', '/cronograma', '/checklist', '/agenda', '/email', '/projeto/origem']) {
+    for (const sufixo of ['', '/dados', '/passos', '/levantamento', '/cronograma', '/checklist', '/agenda', '/email']) {
       atual = `/projetos/${id}${sufixo}`;
       await visitar(page, atual, achados);
     }

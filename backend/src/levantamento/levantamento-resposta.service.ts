@@ -160,56 +160,6 @@ export class LevantamentoRespostaService {
     return n;
   }
 
-  /** Casa cada tópico já semeado com a frase do Levantamento (.docx) que o menciona —
-   * a resposta é o texto que vem DEPOIS do tópico na mesma linha. Não apaga respostas já
-   * preenchidas manualmente (só sobrescreve quando encontra algo no documento). Devolve o
-   * nº de respostas preenchidas a partir do arquivo. Recebe os parágrafos já extraídos
-   * (não lê o .docx aqui — quem lê é o gerador legado via subprocesso, ver
-   * LegadoCliService; esta camada nunca toca em arquivo, só nas próprias linhas).
-   * Equivalente a webapp/db.py:levantamento_importar_respostas.
-   *
-   * Perguntas marcadas como "Não será utilizado." são puladas: a decisão de descartar é do
-   * técnico e vale mais que o que veio do arquivo. */
-  async importarDeParagrafos(
-    projetoId: number,
-    paragrafos: string[],
-  ): Promise<number> {
-    const linhas = await this.repo.find({ where: { projetoId } });
-    const agora = new Date();
-    let n = 0;
-    for (const r of linhas) {
-      const topico = (r.topico || '').trim();
-      if (!topico || r.naoUtilizado) continue;
-      let resposta = '';
-      for (const bruta of paragrafos) {
-        resposta = this.depoisDoTopico(bruta, topico);
-        if (resposta) break;
-      }
-      if (resposta) {
-        r.resposta = resposta;
-        r.versao += 1;
-        r.atualizadoEm = agora;
-        n++;
-      }
-    }
-    if (n > 0) await this.repo.save(linhas);
-    return n;
-  }
-
-  private depoisDoTopico(bruta: string, topico: string): string {
-    const brutaMin = bruta.toLowerCase();
-    const topicoMin = topico.toLowerCase();
-    const i = brutaMin.indexOf(topicoMin);
-    if (i < 0) return '';
-    const resto = bruta
-      .slice(i + topico.length)
-      .replace(/^[\s\t:;\-–—•·]+/, '')
-      .trim();
-    // ignora placeholders do modelo em branco (ex.: "<xxxx>")
-    if (!resto || (resto.startsWith('<') && resto.endsWith('>'))) return '';
-    return resto;
-  }
-
   async resumo(
     projetoId: number,
   ): Promise<{ respondidas: number; total: number }> {

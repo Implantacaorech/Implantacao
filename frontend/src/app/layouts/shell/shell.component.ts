@@ -6,6 +6,7 @@ import { filter, map, startWith } from 'rxjs';
 import { BarraGravacaoComponent } from '../../features/protocolos/barra-gravacao.component';
 import { AuthService } from '../../core/services/auth.service';
 import { PermissoesService } from '../../core/services/permissoes.service';
+import { InstanciaService } from '../../core/services/instancia.service';
 
 @Component({
   selector: 'app-shell',
@@ -17,6 +18,7 @@ import { PermissoesService } from '../../core/services/permissoes.service';
 export class ShellComponent {
   readonly auth = inject(AuthService);
   private readonly perm = inject(PermissoesService);
+  private readonly instancia = inject(InstanciaService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -24,6 +26,18 @@ export class ShellComponent {
     // Carrega o mapa de permissões do usuário logado (menu só existe autenticado).
     void this.perm.garantirCarregado();
   }
+
+  /** Este front-end está sendo servido pelo **Portal API** (instância interna)?
+   *
+   * Lá o menu é OUTRO — só conexão de banco, criação de consulta e geração de token, que é
+   * tudo o que aquela instância monta. E não é só o menu: a TABELA DE ROTAS daquele portal
+   * também é outra (ver `app.routes.ts`), então o que não aparece aqui também não existe lá.
+   *
+   * O valor já vem resolvido do boot (`main.ts` pergunta antes de a aplicação subir), então
+   * não há espera nem estado intermediário. */
+  readonly portalApi = computed(() => this.instancia.portalApi());
+  readonly nomeInstancia = computed(() => this.instancia.atual().nome);
+  readonly rotaInicial = computed(() => this.instancia.atual().rotaInicial);
 
   readonly busca = signal('');
   readonly sideAberta = signal(false);
@@ -54,6 +68,11 @@ export class ShellComponent {
   readonly podeMatrizDetalhada = computed(() => this.perm.podeVer('matriz_detalhada'));
   readonly podeMatrizFuncoes = computed(() => this.perm.podeVer('matriz_funcoes'));
   readonly podeDicionario = computed(() => this.perm.podeVer('dicionario'));
+  readonly podeProtocolo = computed(() => this.perm.podeVer('protocolo'));
+  readonly podeRechEdu = computed(() => this.perm.podeVer('rechedu'));
+  readonly podeAgenda = computed(() => this.perm.podeVer('agenda'));
+  readonly podeRns = computed(() => this.perm.podeVer('rns'));
+  readonly podeConsultorSiger = computed(() => this.perm.podeVer('consultor_siger'));
   readonly podeCoordenacao = computed(() => this.perm.podeVer('coordenacao'));
   readonly podeCentroOp = computed(() =>
     this.perm.podeVer('centro_operacional'),
@@ -65,6 +84,7 @@ export class ShellComponent {
   readonly podeBi = computed(() => this.podeDashboards() || this.podeClientesSiger());
   readonly podePermissoes = computed(() => this.perm.podeVer('permissoes'));
   readonly veSistema = computed(() => this.perm.podeVer('usuarios'));
+  readonly podeProntidao = computed(() => this.perm.podeVer('prontidao'));
   /** Mostra o cabeçalho do grupo Gestão se houver ao menos um item visível nele. */
   readonly temGestao = computed(
     () =>

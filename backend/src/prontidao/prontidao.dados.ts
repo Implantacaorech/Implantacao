@@ -1,0 +1,474 @@
+/**
+ * Dados da Auditoria de Prontidão dos 9 eixos (2026-08-12) — fonte única do módulo
+ * `Sistema → Prontidão do Sistema`. É a versão estruturada e navegável do relatório em
+ * `docs/pendencias.md` §"Auditoria de prontidão dos 9 eixos".
+ *
+ * Por que os dados vivem aqui, em código, e não no banco: a auditoria é um retrato datado,
+ * revisado por pessoas, e cada correção conclui com um commit — versioná-la junto do código é
+ * o que mantém "achado × status × correção" honesto ao longo do tempo. O status de cada achado
+ * é atualizado À MÃO quando a correção entra (com o commit), nunca por rotina automática — um
+ * "corrigido" que ninguém verificou seria pior que nenhum status. A parte AO VIVO (ex.: se uma
+ * finalidade de IA sensível está saindo da rede agora) é calculada em tempo de request pelo
+ * service, não fica congelada aqui.
+ */
+
+/** Severidade do achado — mesma escala do relatório. */
+export type Severidade = 'critico' | 'alto' | 'medio' | 'baixo';
+
+/** Situação da correção. `corrigido` = feito e coberto por teste nesta base; `mitigado` =
+ * defesa parcial no lugar, ainda depende de ação humana; `aberto` = pendente. */
+export type StatusAchado = 'corrigido' | 'mitigado' | 'aberto';
+
+export interface EixoProntidao {
+  numero: number;
+  nome: string;
+  /** 1 = ausente · 3 = funciona mas frágil · 5 = melhor prática com verificação automática. */
+  maturidade: number;
+  resumo: string;
+}
+
+export interface AchadoProntidao {
+  codigo: string;
+  titulo: string;
+  severidade: Severidade;
+  /** Número do eixo (1..9) a que o achado pertence. */
+  eixo: number;
+  /** Onde foi comprovado — `arquivo:linha` ou saída de comando. */
+  evidencia: string;
+  /** Correção proposta (ou aplicada, quando `status !== 'aberto'`). */
+  correcao: string;
+  status: StatusAchado;
+  dono: string;
+  prazo?: string;
+}
+
+/** Data da auditoria — retrato datado, não "agora". */
+export const PRONTIDAO_DATA_AUDITORIA = '2026-08-12';
+
+export const PRONTIDAO_EIXOS: EixoProntidao[] = [
+  {
+    numero: 1,
+    nome: 'Segurança',
+    maturidade: 3,
+    resumo:
+      'Fundamentos bons (Helmet, CSP, RBAC dinâmico, rotação de refresh) com detecção de reuso de refresh (M11); rotas de escrita passam a exigir nível de alteração (M2, com teste de conformidade) e o boot denuncia a pasta de credenciais aberta (M5). Faltam ações do usuário: rotacionar segredos e trancar dados/ por ACL.',
+  },
+  {
+    numero: 2,
+    nome: 'Governança',
+    maturidade: 3,
+    resumo:
+      'Conformidade travada no CI (stack, arquitetura, ADR-0002/A18 e agora rotas de escrita/M2) e trilha de auditoria de IA; a suíte e2e ganhou job de CI (A19, manual até a 1ª validação). Falta proteger a main (repositório público) e migrar ao GitLab.',
+  },
+  {
+    numero: 3,
+    nome: 'Resiliência',
+    maturidade: 2,
+    resumo:
+      'Recuperação de transcrição e IMAP exemplares; backup nunca restaurado, runbook aponta para infra extinta, faltam timeouts em Oracle/OpenRouter.',
+  },
+  {
+    numero: 4,
+    nome: 'Agentes autônomos',
+    maturidade: 4,
+    resumo:
+      'Salvaguardas reais (nada é gravado sozinho, dedup) e agora um kill switch de runtime (Sistema → Automação) que pausa IA e robôs sem redeploy — persistido, sobrevive a restart; o robô de protocolos grava execução autônoma real na telemetria de agentes.',
+  },
+  {
+    numero: 5,
+    nome: 'Detecção antes do usuário',
+    maturidade: 3,
+    resumo:
+      'Diagnóstico (/api/saude) bom, contador de 5xx (A12) e agora heartbeat por robô (M6): um robô que parou de rodar vira alerta. Falta o usuário definir o destinatário do digest (A11) para o canal de alerta enfim enviar.',
+  },
+  {
+    numero: 6,
+    nome: 'Alucinações',
+    maturidade: 5,
+    resumo:
+      'Grounding real, invariante "IA não escreve no documento oficial", validação pós-geração dos menus contra o catálogo (A15), temperatura factual fixa e teste de regressão que trava a remoção das cláusulas anti-alucinação do prompt.',
+  },
+  {
+    numero: 7,
+    nome: 'Custo por token',
+    maturidade: 4,
+    resumo:
+      'Telemetria de tokens/custo por execução, teto diário que interrompe e custo visível no Monitoramento; agora com roteamento por custo (modelo econômico para tarefa simples, opt-in por finalidade).',
+  },
+  {
+    numero: 8,
+    nome: 'Fallback',
+    maturidade: 4,
+    resumo:
+      'docservice e SMTP degradam bem, o e-mail de passo falho é reenviável (A13) e agora há failover automático entre provedores de IA — respeitando a privacidade (finalidade sensível nunca sai da rede).',
+  },
+  {
+    numero: 9,
+    nome: 'Observabilidade',
+    maturidade: 4,
+    resumo:
+      'Log persiste e sobrevive a restart (A16), correlation-id ponta a ponta (M9) e contador de 5xx; agora com log estruturado JSON (opt-in via MIGRACAO_LOG_JSON) e métricas de latência por rota (p95) em /api/saude/metricas.',
+  },
+];
+
+export const PRONTIDAO_ACHADOS: AchadoProntidao[] = [
+  // ---- Crítico ----
+  {
+    codigo: 'C1',
+    titulo: 'Segredo JWT de desenvolvimento ativo em produção',
+    severidade: 'critico',
+    eixo: 1,
+    evidencia: 'configuration.ts:87,96 — NODE_ENV nunca era production',
+    correcao:
+      'NODE_ENV=production no boot + ehProducao() trata banco MariaDB como produção; guarda em configuration.spec.ts.',
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito (rotacionar segredos: usuário, 2026-08-19)',
+  },
+  {
+    codigo: 'C2',
+    titulo: 'Path traversal na gravação de anexos',
+    severidade: 'critico',
+    eixo: 1,
+    evidencia: 'documentos.service.ts:200 — originalname cru no caminho',
+    correcao:
+      'nomeArquivoSeguro() sanitiza o nome; teste nome-arquivo-seguro.spec.ts.',
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
+  },
+  {
+    codigo: 'CR-1',
+    titulo: 'main sem branch protection em repositório público',
+    severidade: 'critico',
+    eixo: 2,
+    evidencia: 'gh api .../branches/main/protection → 404; private:false',
+    correcao:
+      'Proteger main (status checks + review) e priorizar a migração ao GitLab interno.',
+    status: 'aberto',
+    dono: 'usuário',
+    prazo: '2026-08-26',
+  },
+  // ---- Alto ----
+  {
+    codigo: 'A1',
+    titulo: 'Transcrição de cliente ia ao OpenRouter, sem trava',
+    severidade: 'alto',
+    eixo: 1,
+    evidencia:
+      'ia.constants.ts + config real: protocolos=openrouter; a regra era só comentário',
+    correcao:
+      'FINALIDADES_SO_LOCAL + trava em IaService.salvar + avisosPrivacidade(); trocar a config de produção para local (usuário).',
+    status: 'mitigado',
+    dono: 'software + usuário',
+    prazo: '2026-08-19',
+  },
+  {
+    codigo: 'A6',
+    titulo: 'POST /projetos/:id/email sem guard de permissão',
+    severidade: 'alto',
+    eixo: 1,
+    evidencia: 'projeto-email.controller.ts — só JwtAuthGuard',
+    correcao: '@Permissao(carteira, …) adicionado.',
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
+  },
+  {
+    codigo: 'A7',
+    titulo: 'Ticket de mídia aceito como token de sessão',
+    severidade: 'alto',
+    eixo: 1,
+    evidencia: 'jwt.strategy.ts — escopo não conferido',
+    correcao:
+      'JwtStrategy rejeita token com escopo; streaming valida o ticket à parte.',
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
+  },
+  {
+    codigo: 'A4',
+    titulo: 'Uploads sem limite de tamanho (DoS por OOM) em 10 rotas',
+    severidade: 'alto',
+    eixo: 1,
+    evidencia: 'Nenhum FileInterceptor com limits; sem MulterModule',
+    correcao:
+      'limits.fileSize em todos os 12 interceptores (mídia 2 GB, doc 25 MB); MulterError vira 413.',
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
+  },
+  {
+    codigo: 'A5',
+    titulo: 'Auto-cadastro público cria conta com acesso a dado de cliente',
+    severidade: 'alto',
+    eixo: 1,
+    evidencia: 'cadastro.controller.ts:34,69 — sem domínio corporativo',
+    correcao: 'Allowlist de domínio + aprovação, ou desativar o auto-cadastro.',
+    status: 'aberto',
+    dono: 'usuário + software',
+    prazo: '2026-08-26',
+  },
+  {
+    codigo: 'A8',
+    titulo: 'ADM/Coordenador leem toda transcrição de todo cliente',
+    severidade: 'alto',
+    eixo: 1,
+    evidencia: 'protocolos.acesso.ts:31-35',
+    correcao: 'Decidir se a aprovação exige leitura integral ou só metadados.',
+    status: 'aberto',
+    dono: 'usuário + software',
+    prazo: '2026-09-02',
+  },
+  {
+    codigo: 'A9',
+    titulo: 'Custo de IA invisível e ilimitado',
+    severidade: 'alto',
+    eixo: 7,
+    evidencia: 'ia.service.ts:326-329,388-391 — usage descartado; sem teto',
+    correcao:
+      'Módulo ia-telemetria: capta o usage → tokens/custo por execução; teto diário que interrompe (MIGRACAO_IA_TETO_DIARIO_USD); custo visível no Monitoramento.',
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
+  },
+  {
+    codigo: 'A10',
+    titulo: 'Sem trilha de auditoria de IA',
+    severidade: 'alto',
+    eixo: 2,
+    evidencia:
+      'levantamento.controller.ts:114 — sem @CurrentUser; nada persistido',
+    correcao:
+      'Tabela execucoes_ia grava cada chamada (quem, quando, finalidade, provedor, modelo, tokens, custo, status); @CurrentUser adicionado no levantamento/dicionário. Metadados apenas (LGPD).',
+    status: 'corrigido',
+    dono: 'software',
+    prazo: '2026-09-09',
+  },
+  {
+    codigo: 'A11',
+    titulo: 'Canal de alerta (digest) nunca funcionou em produção',
+    severidade: 'alto',
+    eixo: 5,
+    evidencia: '0 envios em 7,5 MB de log; MIGRACAO_DIGEST_PARA não definida',
+    correcao:
+      'Software: o digest agora LOGA (1×/dia) que não enviou por falta de destinatário. Falta: definir MIGRACAO_DIGEST_PARA (usuário).',
+    status: 'mitigado',
+    dono: 'usuário + software',
+    prazo: '2026-08-19',
+  },
+  {
+    codigo: 'A12',
+    titulo: '5xx e falhas só vão para o log, sem notificação',
+    severidade: 'alto',
+    eixo: 5,
+    evidencia: 'http-exception.filter.ts:63-68',
+    correcao:
+      'Contador de 5xx (24h) alimentado pelo filtro e exposto como checagem no /api/saude (sai no digest).',
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
+  },
+  {
+    codigo: 'A13',
+    titulo: 'E-mail de passo sem fila, sem retry, sem reenvio',
+    severidade: 'alto',
+    eixo: 8,
+    evidencia: 'passos.service.ts:551 (void); sem endpoint de reenvio',
+    correcao:
+      'POST /projetos/:id/emails/:emailId/reenviar + botão "Reenviar" no histórico do passo; reanexa os arquivos atuais e grava nova linha (append-only) com o resultado.',
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
+  },
+  {
+    codigo: 'A14',
+    titulo: 'Oracle e OpenRouter sem timeout',
+    severidade: 'alto',
+    eixo: 3,
+    evidencia: 'disponibilidade.service.ts:217; ia.service.ts:299-301',
+    correcao:
+      'callTimeout na conexão Oracle e timeout de 2 min no OpenRouter/Anthropic (catálogo 10s).',
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
+  },
+  {
+    codigo: 'A15',
+    titulo: 'Sem validação pós-geração da saída de IA',
+    severidade: 'alto',
+    eixo: 6,
+    evidencia: 'protocolo-ia.service.ts:314-328,363 — só enum de módulo',
+    correcao:
+      'validar-menus.ts confere a saída contra o catálogo do SIGER: menu principal inexistente é rebaixado a "revisar manualmente" e códigos inventados viram nota ao revisor. Catálogo vazio não valida.',
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
+  },
+  {
+    codigo: 'A16',
+    titulo: 'docservice sem log',
+    severidade: 'alto',
+    eixo: 9,
+    evidencia: 'docservice/iniciar.bat:10 — uvicorn sem redirecionamento',
+    correcao:
+      'iniciar.bat passou a gravar em C:\\PainelBackups\\docservice_stdout.log.',
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
+  },
+  {
+    codigo: 'A17',
+    titulo:
+      'Backup nunca restaurado + runbook aponta para Postgres/Docker extinto',
+    severidade: 'alto',
+    eixo: 3,
+    evidencia:
+      'PLANO_DE_BACKUP_E_RECUPERACAO.md:43; runbooks-operacao.md:124-128',
+    correcao:
+      'Restore cronometrado num banco descartável, corrigir o runbook, cópia off-site.',
+    status: 'aberto',
+    dono: 'usuário + software',
+    prazo: '2026-08-26',
+  },
+  {
+    codigo: 'A18',
+    titulo:
+      'Guarda do ADR-0002 não trava os 43 services que injetam Repository<T>',
+    severidade: 'alto',
+    eixo: 2,
+    evidencia: 'conformidade-arquitetura.spec.ts — sem asserção sobre Services',
+    correcao:
+      'Catraca no CI: nº de Services com @InjectRepository não passa do baseline (43); Service novo violador quebra o teste. Portar módulo baixa o baseline.',
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
+  },
+  {
+    codigo: 'A19',
+    titulo: 'Suíte e2e/Playwright fora do CI',
+    severidade: 'alto',
+    eixo: 2,
+    evidencia: 'ci.yml não referencia e2e/',
+    correcao:
+      'Workflow .github/workflows/e2e.yml sobe instância descartável (SQLite/5199), semeia ' +
+      'usuários (semear-usuarios.mjs + seed:admin --senha) e roda o Playwright. Começa em ' +
+      'workflow_dispatch (manual); habilitar o gatilho de PR após a 1ª execução verde.',
+    status: 'mitigado',
+    dono: 'software',
+    prazo: '2026-09-16',
+  },
+  // ---- Médio (seleção) ----
+  {
+    codigo: 'M1',
+    titulo: 'Swagger /api/docs público',
+    severidade: 'medio',
+    eixo: 1,
+    evidencia: 'main.ts:111-120',
+    correcao: 'Swagger sobe só fora de produção (mesmo sinal do C1).',
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
+  },
+  {
+    codigo: 'M2',
+    titulo: 'Rotas de escrita atrás de permissão de consulta',
+    severidade: 'medio',
+    eixo: 1,
+    evidencia: 'passos/protocolos/matriz/projetos — escrita herdando consulta',
+    correcao:
+      'Escrita passa a exigir @Permissao(menu, alteracao) em passos (RNS/pessoas), protocolos, ' +
+      'matriz e projetos; `concluir` e `perguntar` seguem em consulta de propósito (documentado). ' +
+      'Teste de conformidade conformidade-permissoes-escrita.spec.ts trava rota nova em consulta.',
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
+  },
+  {
+    codigo: 'M3',
+    titulo: 'POST /fluxo/inbox sem @Permissao (lê a caixa IMAP)',
+    severidade: 'medio',
+    eixo: 1,
+    evidencia: 'fluxo.controller.ts:67',
+    correcao: "@Permissao('novo_cliente','alteracao') como na rota irmã criar.",
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
+  },
+  {
+    codigo: 'M5',
+    titulo: 'Credenciais em claro em backend/dados/',
+    severidade: 'medio',
+    eixo: 1,
+    evidencia: 'ia_config.json, mariadb.env, smtp.json, imap.json, CSV',
+    correcao:
+      'Software: script tools/Proteger_Dados_ACL.ps1 (icacls, SIDs) tranca a pasta ao SYSTEM/' +
+      'Admins/dono, e o boot denuncia no log se a pasta seguir aberta a grupos amplos. ' +
+      'Falta: rodar o script (e avaliar cifra) — usuário.',
+    status: 'mitigado',
+    dono: 'usuário + software',
+    prazo: '2026-09-02',
+  },
+  {
+    codigo: 'M6',
+    titulo: 'Detecção de ausência só para backup (robôs sem heartbeat)',
+    severidade: 'medio',
+    eixo: 5,
+    evidencia: 'saude.service.ts — sem heartbeat de digest/robôs',
+    correcao:
+      'heartbeatRobos: cada robô (digest, caixa, protocolos) registra e bate a cada ciclo; o ' +
+      'SaudeService alarma robô ativo que parou de bater (com folga por process.uptime). Sai no ' +
+      'digest e na tela, como as demais checagens.',
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
+  },
+  {
+    codigo: 'M7',
+    titulo: 'Log de integridade ilegível (UTF-16 por Out-File sem -Encoding)',
+    severidade: 'medio',
+    eixo: 9,
+    evidencia: 'Verificar_Integridade_Novo.ps1:49',
+    correcao:
+      'npm test capturado e anexado em UTF-8 sem BOM (mesmo helper do resto do script).',
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
+  },
+  {
+    codigo: 'M9',
+    titulo: 'Sem correlation-id ponta a ponta',
+    severidade: 'medio',
+    eixo: 9,
+    evidencia: 'busca no repo = 0; só response.interceptor.ts',
+    correcao:
+      'Middleware de correlation-id (x-request-id) via AsyncLocalStorage: aceita/gera, ecoa na resposta, entra no log de erro e é propagado ao docservice (interceptor axios) e à IA.',
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
+  },
+  {
+    codigo: 'M11',
+    titulo: 'Sem detecção de reuso de refresh token',
+    severidade: 'medio',
+    eixo: 1,
+    evidencia: 'auth.service.ts:71-76',
+    correcao:
+      'refresh distingue revogação por rotação × logout; reuso de um token ROTACIONADO revoga a família (motivo replay) e recusa; logout reapresentado não escala. Migration RefreshTokenMotivo.',
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
+  },
+  {
+    codigo: 'M4',
+    titulo: 'POST/PATCH /agentes/execucoes com @Roles() vazio',
+    severidade: 'medio',
+    eixo: 2,
+    evidencia: 'agentes.controller.ts:35,44 — qualquer autenticado gravava',
+    correcao:
+      "@Permissao('centro_operacional','alteracao') no registro de telemetria (o agente reporta com token ADM, que tem a permissão).",
+    status: 'corrigido',
+    dono: 'software',
+    prazo: 'feito',
+  },
+];

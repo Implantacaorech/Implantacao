@@ -1,0 +1,136 @@
+<div class="rns-head">
+  <div>
+    <h1 class="pagina-titulo">RNS <small>SICLA</small></h1>
+    <p class="dica">Pesquise um assunto e veja as RNS relacionadas — a lista traz Pedido + Item e o clique na linha abre todos os dados.</p>
+  </div>
+  @if (resultado(); as r) {
+    <div class="rns-stat">
+      <strong>{{ visiveis().length | number: '1.0-0' }}</strong> de {{ r.total | number: '1.0-0' }} RNS ·
+      {{ clientesVisiveis() }} cliente(s)
+      <span class="dica"> · criadas {{ dataBr(r.ini) }} – {{ dataBr(r.fim) }}</span>
+    </div>
+  }
+</div>
+
+@if (erro()) {
+  <div class="resultado erro">{{ erro() }}</div>
+}
+
+<div class="barra-filtros">
+  <label class="campo largo">
+    <span>Pesquisar assunto</span>
+    <input type="search" [ngModel]="busca()" (ngModelChange)="busca.set($event)" name="busca"
+           placeholder="assunto, cliente, módulo, consultor, nº do pedido…" autocomplete="off" />
+  </label>
+  <label class="campo estreito">
+    <span>Cliente</span>
+    <select [ngModel]="clienteSel()" (ngModelChange)="clienteSel.set($event)" name="cliente">
+      <option value="">(todos)</option>
+      @for (c of clienteOpcoes(); track c) { <option [value]="c">{{ c }}</option> }
+    </select>
+  </label>
+  <label class="campo estreito">
+    <span>Status</span>
+    <select [ngModel]="statusSel()" (ngModelChange)="statusSel.set($event)" name="status">
+      <option value="">(todos)</option>
+      @for (s of statusOpcoes(); track s) { <option [value]="s">{{ s }}</option> }
+    </select>
+  </label>
+  <label class="campo estreito">
+    <span>Tipo</span>
+    <select [ngModel]="tipoSel()" (ngModelChange)="tipoSel.set($event)" name="tipo">
+      <option value="">(todos)</option>
+      @for (t of tipoOpcoes(); track t) { <option [value]="t">{{ t }}</option> }
+    </select>
+  </label>
+  <label class="campo estreito">
+    <span>Criadas de</span>
+    <input type="date" [ngModel]="ini()" (ngModelChange)="definirPeriodo('ini', $event)" name="ini" />
+  </label>
+  <label class="campo estreito">
+    <span>até</span>
+    <input type="date" [ngModel]="fim()" (ngModelChange)="definirPeriodo('fim', $event)" name="fim" />
+  </label>
+  <button class="btn ghost" type="button" (click)="limparFiltros()" [disabled]="!temFiltro()">Limpar</button>
+  <button class="btn ghost rns-btn-grafico" type="button" [class.on]="graficoAberto()"
+          [attr.aria-pressed]="graficoAberto()" (click)="graficoAberto.set(!graficoAberto())"
+          title="Distribuição das RNS por tipo (gráfico de pizza)">
+    {{ graficoAberto() ? 'Ocultar gráfico' : 'Gráfico por tipo' }}
+  </button>
+</div>
+
+@if (carregando()) {
+  <p>Carregando…</p>
+} @else {
+  @if (resultado()?.truncado) {
+    <p class="dica rns-aviso">
+      O período tem mais RNS do que o teto de {{ resultado()?.limite | number: '1.0-0' }} linhas —
+      a busca enxerga só o que veio. Estreite as datas para cobrir tudo.
+    </p>
+  }
+  @if (graficoAberto()) {
+    <div class="cercado rns-grafico">
+      <div class="rns-grafico-cab">
+        <span class="rns-grafico-tit">RNS por tipo</span>
+        <span class="dica">o gráfico segue a busca e os filtros · clique numa fatia para filtrar a lista pelo tipo (clique de novo para desfazer)</span>
+      </div>
+      @if (graficoTipos(); as cfg) {
+        <div class="rns-grafico-area"><canvas [appChart]="cfg"></canvas></div>
+      } @else {
+        <p class="dica">— nenhuma RNS no recorte atual —</p>
+      }
+    </div>
+  }
+  <div class="tabela-wrap cercado">
+    <table class="tabela rns-tab">
+      <thead>
+        <tr>
+          <th>Pedido</th>
+          <th>Item</th>
+          <th>Criação</th>
+          <th>Tipo</th>
+          <th>Status</th>
+          <th>Assunto</th>
+          <th>Cliente</th>
+          <th>Consultor</th>
+          <th>Previsão</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (l of visiveis(); track chaveDe(l)) {
+          <tr class="rns-linha" [class.on]="estaAberta(l)" (click)="alternarDetalhe(l)"
+              [title]="estaAberta(l) ? 'Fechar detalhe' : 'Abrir detalhe'">
+            <td class="rns-num">{{ ou(l.pedido) }}</td>
+            <td class="rns-num">{{ ou(l.item) }}</td>
+            <td>{{ dataBr(l.dataCri) }}</td>
+            <td>{{ ou(l.tipoDes) }}</td>
+            <td>{{ ou(l.statusDes) }}</td>
+            <td class="rns-assunto" [title]="l.sugestao || l.visaoGeral">{{ l.sugestao || l.visaoGeral || '—' }}</td>
+            <td [title]="l.sigla">{{ ou(l.fantasia) }}</td>
+            <td>{{ ou(l.resNome) }}</td>
+            <td>{{ dataBr(l.dataPrevista) }}</td>
+          </tr>
+          @if (estaAberta(l)) {
+            <tr class="rns-det">
+              <td colspan="9">
+                <!-- A ficha (resumo completo) é o componente compartilhado com o modal do
+                     calendário da Agenda — um só desenho de ficha para o sistema. -->
+                <app-rns-detalhe [linha]="l" />
+              </td>
+            </tr>
+          }
+        } @empty {
+          <tr>
+            <td colspan="9" class="tabela-vazia">
+              @if (temFiltro()) {
+                — nenhuma RNS para a busca/filtros atuais no período carregado —
+              } @else {
+                — nenhuma RNS criada no período —
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

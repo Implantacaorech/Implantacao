@@ -19,23 +19,6 @@ export const NOME_LISTA_FUNCOES = 'Lista de Funções (SICLA) — Matriz por Men
  * balde próprio para alguém classificar depois. */
 export const GRUPO_SEM_MODULO = 'Classificar';
 
-/** SQL padrão — o `SELECT * FROM LISTA_FUNCOES WHERE ATIVO = 1 ORDER BY CODIGO DESC`
- * informado pelo usuário, com as colunas explicitadas e o schema `SICLA.` na frente.
- * Validado em 2026-07-29: **o prefixo é obrigatório** (sem ele, ORA-00942 nesta conexão);
- * 966 linhas na tabela, 894 com ATIVO = 1.
- *
- * Contrato de apelidos (case-insensitive): CODIGO, DESCRICAO, STRMENUS. */
-export const SQL_LISTA_FUNCOES_PADRAO = `-- Funções implantáveis do SIGER que alimentam a Matriz por Menu (Funções SICLA).
--- Origem informada pelo usuário: SELECT * FROM LISTA_FUNCOES WHERE ATIVO = 1 ORDER BY CODIGO DESC
--- O agrupamento por módulo é feito no Painel, quebrando STRMENUS por ";".
-SELECT
-  lf.CODIGO    AS CODIGO,
-  lf.DESCRICAO AS DESCRICAO,
-  lf.STRMENUS  AS STRMENUS
-FROM SICLA.LISTA_FUNCOES lf
-WHERE lf.ATIVO = 1
-ORDER BY lf.CODIGO DESC`;
-
 /** Uma função dentro de um módulo. `menus` são os tokens de STRMENUS que puseram a função
  * naquele grupo (ex.: `CTB94A`) — o "caminho" do menu, equivalente à coluna Caminho da
  * Matriz por Menu do Dicionário. */

@@ -1,12 +1,6 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
-import { ConsultaBdService } from '../disponibilidade/consulta-bd.service';
-import {
-  ModuloSicla,
-  NOME_BUSCA_MODULO,
-  SLUG_BUSCA_MODULO,
-  SQL_BUSCA_MODULO_PADRAO,
-} from './modulos-sicla.constants';
+import { Injectable } from '@nestjs/common';
+import { DadosService } from '../dados/dados.service';
+import { ModuloSicla } from './modulos-sicla.constants';
 
 export interface ResultadoBuscaModulo {
   ok: boolean;
@@ -14,43 +8,14 @@ export interface ResultadoBuscaModulo {
   modulos: ModuloSicla[];
 }
 
-/** Busca de módulos/adicionais no SICLA para o passo 1. Reusa o motor Oracle da
- * Disponibilidade (`executarSql`); o SQL é editável (consulta nomeada) com default embutido. */
+/** Busca de módulos/adicionais no SICLA para o passo 1.
+ *
+ * Pede a consulta `sicla.modulos.buscar` à API de Dados (ADR-0003) — não conhece SQL,
+ * conexão nem teto de linhas. O que resta aqui é a REGRA: validar o termo e resolver o
+ * código efetivo (adicional quando há, senão módulo). */
 @Injectable()
-export class ModulosSiclaService implements OnModuleInit {
-  private readonly logger = new Logger('ModulosSiclaService');
-
-  constructor(
-    private readonly disponibilidade: DisponibilidadeService,
-    private readonly consultas: ConsultaBdService,
-  ) {}
-
-  /** Semeia o SQL (idempotente) para o Administrador editar na tela de Consultas BD. */
-  async onModuleInit(): Promise<void> {
-    if (process.env.NODE_ENV === 'test') return;
-    try {
-      const existe = await this.consultas.porSlug(SLUG_BUSCA_MODULO);
-      if (!existe) {
-        await this.consultas.salvar(SLUG_BUSCA_MODULO, {
-          nome: NOME_BUSCA_MODULO,
-          sql: SQL_BUSCA_MODULO_PADRAO,
-          ordem: 98,
-          mostrarGrafico: false,
-        });
-      }
-    } catch (e) {
-      this.logger.error(
-        'Falha ao semear a consulta de busca de módulo no SICLA',
-        e instanceof Error ? e.stack : String(e),
-      );
-    }
-  }
-
-  private async sqlBusca(): Promise<string> {
-    const c = await this.consultas.porSlug(SLUG_BUSCA_MODULO);
-    const sql = (c?.sql ?? '').trim();
-    return sql || SQL_BUSCA_MODULO_PADRAO;
-  }
+export class ModulosSiclaService {
+  constructor(private readonly dados: DadosService) {}
 
   async buscar(termoBruto: string): Promise<ResultadoBuscaModulo> {
     const termo = (termoBruto ?? '').trim();
@@ -61,13 +26,8 @@ export class ModulosSiclaService implements OnModuleInit {
         modulos: [],
       };
     }
-    const sql = await this.sqlBusca();
-    const r = await this.disponibilidade.executarSql(
-      sql,
-      { termo: `%${termo}%` },
-      undefined,
-      200,
-    );
+    // Termo CRU: o curinga `%` do LIKE é aplicado pelo catálogo (parâmetro `texto_busca`).
+    const r = await this.dados.consultar('sicla.modulos.buscar', { termo });
     if (!r.ok) {
       return { ok: false, mensagem: r.mensagem, modulos: [] };
     }

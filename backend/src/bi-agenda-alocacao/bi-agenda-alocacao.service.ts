@@ -1,20 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { DisponibilidadeService } from '../disponibilidade/disponibilidade.service';
+import { DadosService } from '../dados/dados.service';
 import { hojeIso } from '../cronograma/datas.util';
 import { textoAparado } from '../common/utils/texto.util';
 import {
   COR_STATUS_ALOCACAO,
   CompromissoHoras,
   DiaAlocacao,
-  LIMITE_CALENDARIO,
-  LIMITE_HORAS_APLICADAS,
   LinhaAlocacao,
   LinhaHorasAplicadas,
   ResumoStatusAlocacao,
-  SQL_CALENDARIO_ALOCACAO,
-  SQL_HORAS_APLICADAS,
-  STATUS_ALOCACAO,
   TotaisHorasAplicadas,
+  normalizarLinhaAlocacao,
 } from './bi-agenda-alocacao.constants';
 
 export interface QueryCalendarioAlocacao {
@@ -78,7 +74,7 @@ const MESES_PADRAO_HORAS = 24;
  * por isso um serviço só, mas sem estado/helpers compartilhados entre as duas páginas. */
 @Injectable()
 export class BiAgendaAlocacaoService {
-  constructor(private readonly disponibilidade: DisponibilidadeService) {}
+  constructor(private readonly dados: DadosService) {}
 
   private numero(v: unknown): number {
     const n = Number(v);
@@ -136,32 +132,6 @@ export class BiAgendaAlocacaoService {
     return { mes: m, ini, fim: proximo };
   }
 
-  private normalizarAlocacao(bruta: Record<string, unknown>): LinhaAlocacao {
-    const l: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(bruta)) l[(k || '').toUpperCase()] = v;
-
-    return {
-      codigo: this.numero(l.CODIGO),
-      dia: this.texto(l.DIA).slice(0, 10),
-      horaIni: this.texto(l.HORA_INI),
-      horaFim: this.texto(l.HORA_FIM),
-      status: STATUS_ALOCACAO[this.numero(l.STATUS)] ?? this.texto(l.STATUS),
-      assunto: this.texto(l.ASSUNTO),
-      minutos: this.numero(l.MINUTOS),
-      rns:
-        l.PEDIDOIMP === null || l.PEDIDOIMP === undefined
-          ? null
-          : this.numero(l.PEDIDOIMP),
-      especie: this.numero(l.ESPECIE),
-      especieDes: this.texto(l.ESPECIEDES),
-      tecnico: this.texto(l.TECNICO),
-      tipoSuporte: this.texto(l.TIPO_SUPORTE),
-      fantasia: this.texto(l.FANTASIA),
-      rnsDescricao: this.texto(l.RNS_DESCRICAO),
-      grupoEconomico: this.texto(l.GRUPO_ECONOMICO),
-    };
-  }
-
   private vazioCalendario(
     mes: string,
     erro: string | null,
@@ -187,22 +157,15 @@ export class BiAgendaAlocacaoService {
     query: QueryCalendarioAlocacao,
   ): Promise<ResultadoCalendarioAlocacao> {
     const { mes, ini, fim } = this.mesReferencia(query.mes);
-    if (!this.disponibilidade.configurado()) {
-      return this.vazioCalendario(
-        mes,
-        'Conexão com o SICLA não configurada ou inativa (Ferramentas → Disponibilidade).',
-      );
-    }
-
-    const r = await this.disponibilidade.executarSql(
-      SQL_CALENDARIO_ALOCACAO,
-      { mes_ini: ini, mes_fim: fim },
-      undefined,
-      LIMITE_CALENDARIO,
-    );
+    // Sem checagem prévia de conexão: `consultar` já devolve {ok:false} com a mensagem que
+    // diz onde configurar — uma fonte só para o mesmo aviso.
+    const r = await this.dados.consultar('sicla.agenda.calendario', {
+      mes_ini: ini,
+      mes_fim: fim,
+    });
     if (!r.ok) return this.vazioCalendario(mes, r.mensagem);
 
-    const todas = r.linhas.map((l) => this.normalizarAlocacao(l));
+    const todas = r.linhas.map((l) => normalizarLinhaAlocacao(l));
 
     const preds = [
       {
@@ -402,23 +365,11 @@ export class BiAgendaAlocacaoService {
     query: QueryHorasAplicadas,
   ): Promise<ResultadoHorasAplicadas> {
     const competencias = this.periodo(query);
-    if (!this.disponibilidade.configurado()) {
-      return this.vazioHoras(
-        competencias,
-        'Conexão com o SICLA não configurada ou inativa (Ferramentas → Disponibilidade).',
-      );
-    }
-
-    const r = await this.disponibilidade.executarSql(
-      SQL_HORAS_APLICADAS,
-      {
-        data_ini: `${competencias.inicio}-01`,
-        // Exclusivo — primeiro dia do mês SEGUINTE ao fim.
-        data_fim: this.somaMeses(competencias.fim, 1) + '-01',
-      },
-      undefined,
-      LIMITE_HORAS_APLICADAS,
-    );
+    const r = await this.dados.consultar('sicla.agenda.horas-aplicadas', {
+      data_ini: `${competencias.inicio}-01`,
+      // Exclusivo — primeiro dia do mês SEGUINTE ao fim.
+      data_fim: this.somaMeses(competencias.fim, 1) + '-01',
+    });
     if (!r.ok) return this.vazioHoras(competencias, r.mensagem);
 
     const todos = r.linhas.map((l) => this.normalizarCompromissoHoras(l));

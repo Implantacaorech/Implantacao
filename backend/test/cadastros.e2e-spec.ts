@@ -358,11 +358,25 @@ describe('Cadastros (e2e)', () => {
         software_atual: 'Planilhas',
       });
 
-      // "projeto" é um doc diferente — não compartilha valores com "levantamento".
+      // "projeto" é um doc diferente e tem armazenamento próprio, MAS não abre em branco:
+      // desde 2026-08-20 a etapa 10 herda a etapa 3 (HerancaProjetoService), então os campos
+      // com equivalente no Levantamento já vêm preenchidos para o GCI revisar. O que NÃO tem
+      // equivalente continua fora — `software_atual` é do Levantamento e não existe no
+      // layout do Projeto.
       const outroDoc = await auth(
         request(server()).get(`/api/projetos/${pid}/doc-conteudo/projeto`),
       );
-      expect(outroDoc.body.data).toEqual({});
+      expect(outroDoc.body.data.objetivos).toBe('Reduzir retrabalho');
+      expect(outroDoc.body.data.software_atual).toBeUndefined();
+
+      // A herança é leitura: gravar no Projeto não mexe no Levantamento.
+      await auth(
+        request(server()).put(`/api/projetos/${pid}/doc-conteudo/projeto`),
+      ).send({ objetivos: 'Objetivos revisados no Projeto' });
+      const levantamentoDepois = await auth(
+        request(server()).get(`/api/projetos/${pid}/doc-conteudo/levantamento`),
+      );
+      expect(levantamentoDepois.body.data.objetivos).toBe('Reduzir retrabalho');
     });
   });
 });

@@ -1,5 +1,10 @@
 # Painel de Implantação — Documentação do Sistema
 
+> ⚠️ **Documento HISTÓRICO** — descreve o painel **Flask legado**, desligado em 2026-07-19 e
+> removido do repositório em 2026-07-29. O sistema em produção é o NestJS + Angular
+> (porta 5100). A visão atual, em nível de usuário, está em
+> **[manual-usuario-painel.md](manual-usuario-painel.md)**.
+>
 > Aplicação web (Flask) que conduz, controla e automatiza a implantação do ERP **SIGER®**
 > na Rech Informática. Centraliza a carteira de projetos por cliente, o fluxo de etapas,
 > a geração fiel de documentos, o agendamento de visitas e o monitoramento da operação.
@@ -187,18 +192,30 @@ assunto aparece — para conferir a origem em um clique.
   própria, separada de Protocolos e Dicionário). Sem ela, a tela explica o que fazer em vez
   de oferecer o botão.
 
-### 5.5 Gate de origem do Projeto (`/projetos/<id>/projeto/origem`)
-O Projeto **nasce do Levantamento**. A tela oferece três origens:
-- **Dados em tela** — usa as respostas preenchidas no painel;
-- **Levantamento importado (.docx)** — importa um documento e extrai as respostas;
-- **Modelo manual** — gera um Projeto pré-preenchido pelos cadastros/Índice, para completar à mão.
+### 5.5 Criação do Projeto (`/projetos/<id>/editar/projeto`)
+O Projeto **nasce do Levantamento** — não é redigido do zero. É o **passo 10**: a tela abre
+já preenchida com o que foi levantado na **etapa 3** (objetivos, empresas, usuários-chave e o
+Detalhamento de Rotinas montado das respostas do questionário), o GCI revisa e ajusta o que
+for necessário, e gera o documento ali mesmo. Gerar é o que **conclui o passo 10** e libera o
+**11**, em que o Administrativo confere e envia ao cliente para assinatura.
+
+A herança é um **fallback vivo**: enquanto o campo do Projeto estiver vazio, o valor é
+recalculado da etapa 3 a cada leitura, então correção feita no Levantamento depois ainda
+chega ao Projeto; assim que o GCI salva, o valor dele vence. Detalhe em
+`backend/src/levantamento/heranca-projeto.service.ts`.
+
+> A tela **"Gerar Projeto"** (`/projeto/origem`), que escolhia entre dados em tela, um
+> Levantamento `.docx` importado ou um modelo em branco, **foi removida em 2026-08-21** junto
+> com os endpoints de importação: com o Projeto montado a partir da etapa 3, ela deixou de
+> ter função. Gerar o layout **em branco**, para preencher à mão, continua possível por
+> `/gerar-layout/projeto?modo=modelo`.
 
 ### 5.6 Geração fiel de documentos
 Os documentos de fase são gerados **fielmente pelos layouts oficiais cadastrados** (troca só
 os marcadores/placeholders, preservando o template Rech). Atalhos:
 - `/projetos/<id>/gerar/<tipo>` — gera respeitando o gate de etapa;
 - `/projetos/<id>/gerar-layout/<slug>` — gera pelo layout vigente, independente da fase;
-- O **Projeto** sempre passa pelo gate de origem (5.5).
+- O **Projeto** é gerado pela tela de edição do passo 10 (5.5), que é o que conclui o passo.
 
 ### 5.7 Cronograma e Check-list editáveis
 Planos em tabela editável, com histórico de modificações:
@@ -548,9 +565,21 @@ O **Dicionário** é outro caso: lê documentação do SIGER, conteúdo nosso �
 externo é uma escolha razoável. É exatamente para permitir essa separação que as chaves são
 por finalidade.
 
-Espera do serviço local: teto de **10 minutos** por chamada. Generoso porque um modelo grande
-em CPU lendo 13 mil tokens leva minutos; existe porque sem teto um servidor engasgado
-penduraria o pipeline de transcrição.
+Espera do serviço local: a resposta é lida em **streaming**, e o relógio é uma **janela de
+inatividade de 30 min** que zera a cada pedaço de texto gerado — não um teto total. Em CPU a
+~3 tokens/s, uma resposta longa passa de 30 min *trabalhando*, e um teto total matava
+geração legítima (erro de 2026-08-19). Geração viva termina (limitada por `maxTokens` e por
+um teto-backstop de 3 h); servidor que fica meia hora sem emitir nada é travamento de
+verdade e cai do mesmo jeito.
+
+Transcrição longa: acima de ~38 mil caracteres, o `ProtocoloIaService` **condensa em
+partes** antes de analisar (map-reduce). Motivo, medido no mesmo 2026-08-19: um vídeo longo
+virou um prompt de 43.959 tokens e o Ollama **truncou o começo** — as instruções — e a
+resposta veio em prosa ("A IA não devolveu o JSON esperado"). Cada parte (~30 mil
+caracteres, quebrada em fim de linha para preservar os timestamps) vira um registro
+detalhado pelo prompt `SISTEMA_MAPA`; a análise e o resumo finais leem o consolidado. A
+condensação roda **uma vez** por transcrição (cache) — o resumo e o "Processar agora"
+reaproveitam; parte que falha ganha uma nova tentativa antes de derrubar o pipeline.
 
 ---
 
@@ -616,7 +645,7 @@ Apoio: `db.py` (dados), `gerar_layout.py` + `gl_*` (geração fiel), `mailer.py`
 `/anexar` · `/nota` · `/doc/<id>/ver`
 
 **Etapas:** `/definir_gci` · `/agendar` · `/designar` · `/consultores` · `/levantamento` ·
-`/projeto/origem` · `/gerar/<tipo>` · `/gerar-layout/<slug>` · `/gerar_pendentes` · `/editar/<doc>`
+`/gerar/<tipo>` · `/gerar-layout/<slug>` · `/gerar_pendentes` · `/editar/<doc>`
 
 **Planos:** `/cronograma` (+`/seed`,`/gerar`) · `/checklist` (+`/seed`)
 

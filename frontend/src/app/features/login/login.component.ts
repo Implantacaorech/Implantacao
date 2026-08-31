@@ -1,8 +1,9 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../../core/services/auth.service';
+import { InstanciaService } from '../../core/services/instancia.service';
 import { soComercial } from '../../core/constants/perfis';
 import { CHAVE_LOGIN_LEMBRADO } from '../../core/constants/sessao';
 import {
@@ -21,6 +22,14 @@ export class LoginComponent {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly instancia = inject(InstanciaService);
+
+  /** O que aparece sob o logo no cartão de acesso. A tela de login já pertence a uma das
+   * duas instâncias, e quem entra precisa saber em qual está antes de digitar a senha —
+   * são portais diferentes, com finalidades diferentes. */
+  readonly subtitulo = computed(() =>
+    this.instancia.portalApi() ? 'Portal API' : 'Implantação SIGER®',
+  );
 
   readonly enviando = signal(false);
   readonly erro = signal<string | null>(null);

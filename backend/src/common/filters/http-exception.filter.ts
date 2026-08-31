@@ -7,12 +7,26 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { contador5xx } from '../observabilidade/contador-5xx';
+import { requestIdAtual } from '../observabilidade/correlacao';
 
 /** Status HTTP que um erro CRU de middleware carrega (body-parser/multer usam `status`;
- * alguns pacotes usam `statusCode`). `null` quando não é um desses. */
+ * alguns pacotes usam `statusCode`). `null` quando não é um desses.
+ *
+ * O `MulterError` de limite de tamanho (A4) é um caso à parte: NÃO traz `status`/`statusCode`,
+ * só `name==='MulterError'` e `code`. Sem este mapeamento, um upload grande demais viraria 500
+ * genérico em vez do 413 que diz ao usuário o que aconteceu. */
 function statusDeErroCru(e: unknown): number | null {
   if (typeof e !== 'object' || e === null) return null;
-  const bruto = e as { status?: unknown; statusCode?: unknown };
+  const bruto = e as {
+    status?: unknown;
+    statusCode?: unknown;
+    name?: unknown;
+    code?: unknown;
+  };
+  if (bruto.name === 'MulterError') {
+    return bruto.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+  }
   const valor = bruto.status ?? bruto.statusCode;
   return typeof valor === 'number' && valor >= 400 && valor < 600
     ? valor
@@ -60,11 +74,22 @@ export class HttpExceptionFilter implements ExceptionFilter {
     // "Not Found") é texto em inglês pensado para debug, não o contrato estável da API.
     const errorCode = this.codigoParaStatus(statusCode);
 
+    const requestId = requestIdAtual();
+
     if (!isHttp && statusDeMiddleware === null) {
       // Erros não tratados nunca vazam detalhe interno para o cliente — só no log do servidor.
+      // O requestId no início amarra este stack ao "o usuário viu um erro" reportado (M9).
       this.logger.error(
-        exception instanceof Error ? exception.stack : String(exception),
+        `[req ${requestId || '-'}] ${request.method} ${request.url}\n${
+          exception instanceof Error ? exception.stack : String(exception)
+        }`,
       );
+    }
+
+    // A12: alimenta o contador de 5xx que o /api/saude expõe e o digest diário reporta —
+    // um erro interno deixa de ser invisível até o usuário reclamar.
+    if (statusCode >= 500) {
+      contador5xx.registrar(statusCode, request.url);
     }
 
     response.status(statusCode).json({
@@ -77,6 +102,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
       details,
       timestamp: new Date().toISOString(),
       path: request.url,
+      // M9: devolve o correlation-id ao cliente — quem relata um erro pode citá-lo, e o
+      // suporte acha o stack exato no log. Também vai no cabeçalho x-request-id da resposta.
+      requestId,
     });
   }
 

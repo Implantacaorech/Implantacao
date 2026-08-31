@@ -37,6 +37,15 @@ if "%MIGRACAO_JWT_REFRESH_SECRET%"=="" (
   exit /b 1
 )
 
+REM --- Ambiente de PRODUCAO (auditoria 2026-08-12, achado C1) ---------
+REM     Sem isto, o backend resolvia NODE_ENV=development e a trava que
+REM     EXIGE os segredos JWT nao disparava: um boot sem MIGRACAO_JWT_*
+REM     cairia no segredo fraco publicado no repositorio (forja de token
+REM     ADM). O configuration.ts tambem trata "MariaDB configurado" como
+REM     producao, mas definir aqui deixa a intencao explicita e cobre
+REM     qualquer caminho de subida.
+set "NODE_ENV=production"
+
 REM --- Porta do painel novo (diferente da porta 5000 do Flask antigo,
 REM     os dois podem ficar no ar em paralelo durante a virada) --------
 if "%MIGRACAO_PORT%"=="" set "MIGRACAO_PORT=5100"

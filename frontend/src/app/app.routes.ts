@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { PerfilInstancia } from './core/services/instancia.service';
 import { authGuard } from './core/guards/auth.guard';
 import { perfilGuard } from './core/guards/perfil.guard';
 import { permissaoGuard } from './core/guards/permissao.guard';
@@ -91,15 +92,15 @@ export const routes: Routes = [
       },
       {
         path: 'projetos/:id/editar/:doc',
-        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'GCI')],
+        // Mesma lista de PERFIS_GERA_LEVANTAMENTO no backend, que é o @Roles do
+        // LevantamentoController (onde moram os endpoints de doc-conteudo) e o
+        // PERFIS_TELA_DO_PASSO do passo 10. O 'Levantador' faltava aqui: desde que o passo
+        // 10 passou a abrir esta tela, ele veria o botão "Abrir" que o backend autoriza e
+        // esbarraria no guard da rota — o defeito que PERFIS_TELA_DO_PASSO existe para
+        // evitar ("o botão não prometer o que a tela recusa").
+        canActivate: [perfilGuard('ADM', 'Coordenador', 'Administrativo', 'GCI', 'Levantador')],
         data: { titulo: 'Edição estruturada' },
         loadComponent: () => import('./features/doc-editar/doc-editar.component').then((m) => m.DocEditarComponent),
-      },
-      {
-        path: 'projetos/:id/projeto/origem',
-        data: { titulo: 'Gerar Projeto' },
-        loadComponent: () =>
-          import('./features/projeto-origem/projeto-origem.component').then((m) => m.ProjetoOrigemComponent),
       },
       {
         path: 'projetos/:id/documentos/:docId/ver',
@@ -214,6 +215,54 @@ export const routes: Routes = [
           import('./features/dicionario/dicionario-documento.component').then((m) => m.DicionarioDocumentoComponent),
       },
       {
+        // Execução → Protocolo: moldura do Portal Rech (portalrech.com.br) dentro do
+        // Painel. Singular de propósito — 'protocolos' (plural) é a Transcrição.
+        path: 'protocolo',
+        canActivate: [permissaoGuard('protocolo')],
+        data: { titulo: 'Protocolo' },
+        loadComponent: () =>
+          import('./features/protocolo/protocolo.component').then((m) => m.ProtocoloComponent),
+      },
+      {
+        // Execução → RechEdu: moldura do portal de educação (www.rechedu.com.br) —
+        // irmã da tela Protocolo logo acima, com credencial própria por consultor.
+        path: 'rechedu',
+        canActivate: [permissaoGuard('rechedu')],
+        data: { titulo: 'RechEdu' },
+        loadComponent: () =>
+          import('./features/rechedu/rechedu.component').then((m) => m.RecheduComponent),
+      },
+      {
+        // Execução → Agenda: calendário de compromissos dos técnicos (origem SICLA),
+        // aberto já filtrado no usuário logado e em visão semanal por padrão.
+        path: 'agenda',
+        canActivate: [permissaoGuard('agenda')],
+        data: { titulo: 'Agenda' },
+        loadComponent: () =>
+          import('./features/agenda-calendario/agenda-calendario.component').then(
+            (m) => m.AgendaCalendarioComponent,
+          ),
+      },
+      {
+        // Execução → RNS: consulta de assuntos nas RNS do SICLA (LISTA_ITEMPED) — o
+        // consultor pesquisa um assunto e vê as RNS relacionadas (Pedido + Item).
+        path: 'rns',
+        canActivate: [permissaoGuard('rns')],
+        data: { titulo: 'RNS' },
+        loadComponent: () => import('./features/rns/rns.component').then((m) => m.RnsComponent),
+      },
+      {
+        // Execução → Consultor SIGER: base inteligente de conhecimento do código-fonte do
+        // SIGER — pergunta em linguagem natural, resposta com evidência (arquivo:linha).
+        path: 'consultor-siger',
+        canActivate: [permissaoGuard('consultor_siger')],
+        data: { titulo: 'Consultor SIGER' },
+        loadComponent: () =>
+          import('./features/consultor-siger/consultor-siger.component').then(
+            (m) => m.ConsultorSigerComponent,
+          ),
+      },
+      {
         path: 'protocolos/:id',
         canActivate: [permissaoGuard('protocolos')],
         data: { titulo: 'Transcrição Áudio/Vídeo — revisão' },
@@ -248,15 +297,10 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/matriz/matriz-funcoes.component').then((m) => m.MatrizFuncoesComponent),
       },
-      {
-        path: 'config/disponibilidade',
-        canActivate: [perfilGuard('ADM')],
-        data: { titulo: 'Disponibilidade dos Consultores' },
-        loadComponent: () =>
-          import('./features/config/config-disponibilidade.component').then(
-            (m) => m.ConfigDisponibilidadeComponent,
-          ),
-      },
+      // `config/disponibilidade` (a tela de CONEXÃO com o Oracle) saiu do Painel em
+      // 2026-08-26, a pedido do usuário: dado de conexão com banco vive no Portal API, e
+      // aqui entra, no lugar dele, a vinculação dos tokens (`config/tokens-api`). O
+      // componente foi removido junto — estava órfão no menu e só era alcançável por URL.
       {
         path: 'config/email',
         canActivate: [perfilGuard('ADM')],
@@ -272,11 +316,11 @@ export const routes: Routes = [
           import('./features/config/config-imap.component').then((m) => m.ConfigImapComponent),
       },
       {
-        path: 'config/gmail',
+        path: 'config/graph',
         canActivate: [perfilGuard('ADM')],
-        data: { titulo: 'Config — Gmail API' },
+        data: { titulo: 'Config — E-mail (Microsoft 365)' },
         loadComponent: () =>
-          import('./features/config/config-gmail.component').then((m) => m.ConfigGmailComponent),
+          import('./features/config/config-graph.component').then((m) => m.ConfigGraphComponent),
       },
       {
         path: 'config/ia',
@@ -320,19 +364,21 @@ export const routes: Routes = [
             (m) => m.DestinatariosPassoComponent,
           ),
       },
+      // `config/consultas-bd` e `config/api-dados` saíram do Painel em 2026-08-26, a pedido
+      // do usuário: "o uso será único e exclusivo no Portal API". Estão em
+      // `ROTAS_PORTAL_API`, no fim deste arquivo. O que fica aqui é o lado CONSUMIDOR —
+      // `config/tokens-api`, onde se cola o token gerado lá.
+      // Lado CONSUMIDOR: os tokens com que ESTE Painel consulta o Portal API. É a única
+      // tela de API de Dados que resta aqui — a administração (catálogo, conexões,
+      // consultas, geração de token) é exclusiva do Portal API.
       {
-        path: 'config/consultas-bd',
+        path: 'config/tokens-api',
         canActivate: [perfilGuard('ADM')],
-        data: { titulo: 'Consultas BD' },
+        data: { titulo: 'Tokens da API de Dados' },
         loadComponent: () =>
-          import('./features/config/consultas-bd.component').then((m) => m.ConsultasBdComponent),
-      },
-      {
-        path: 'config/consultas-bd/:slug',
-        canActivate: [perfilGuard('ADM')],
-        data: { titulo: 'Consultas BD' },
-        loadComponent: () =>
-          import('./features/config/consultas-bd.component').then((m) => m.ConsultasBdComponent),
+          import('./features/config/tokens-api.component').then(
+            (m) => m.TokensApiComponent,
+          ),
       },
       // ── Área BI ─────────────────────────────────────────────────────────────────
       // Uma entrada só no menu ("BI"), com duas abas de 1º nível — cada uma um BI — e
@@ -470,6 +516,16 @@ export const routes: Routes = [
           ),
       },
       {
+        // Sistema → Prontidão do Sistema: Auditoria de Prontidão dos 9 eixos (fixo-ADM).
+        path: 'prontidao',
+        canActivate: [permissaoGuard('prontidao')],
+        data: { titulo: 'Prontidão do Sistema' },
+        loadComponent: () =>
+          import('./features/prontidao/prontidao.component').then(
+            (m) => m.ProntidaoComponent,
+          ),
+      },
+      {
         path: 'permissoes',
         canActivate: [permissaoGuard('permissoes')],
         data: { titulo: 'Permissões' },
@@ -569,3 +625,114 @@ export const routes: Routes = [
   },
   { path: '**', redirectTo: '' },
 ];
+
+/** ROTAS DO **PORTAL API** — a instância interna (porta 5110).
+ *
+ * Decisão do usuário em 2026-08-26: *"Que tenha apenas a parte conexão, API e TOKEN dentro
+ * dele. Os demais módulos não importa e não queremos que tenha dentro do portal."*
+ *
+ * Por isso esta é uma tabela SEPARADA, e não a de cima filtrada: o que não está aqui **não
+ * existe** naquele portal — não abre digitando o endereço, e o chunk nem é baixado. Esconder
+ * o item de menu (a primeira tentativa) não atendia ao pedido.
+ *
+ * As três telas correspondem, na ordem, ao que o usuário listou:
+ * - **conexão** e **TOKEN** vivem na mesma tela (`/config/api-dados`, com âncoras);
+ * - **criação da API** é `/config/api-dados/consulta`.
+ *
+ * `perfil` fica porque é da PESSOA logada, não um módulo: sem ela o cartão do usuário na
+ * barra levaria a lugar nenhum. */
+export const ROTAS_PORTAL_API: Routes = [
+  { path: 'login', component: LoginComponent },
+  {
+    path: 'esqueci-senha',
+    loadComponent: () =>
+      import('./features/esqueci-senha/esqueci-senha.component').then(
+        (m) => m.EsqueciSenhaComponent,
+      ),
+  },
+  {
+    path: '',
+    component: ShellComponent,
+    canActivate: [authGuard],
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'config/api-dados' },
+      // Três telas, não três âncoras na mesma página: com âncora, clicar em qualquer item do
+      // menu mostrava exatamente o mesmo conteúdo (relatado pelo usuário em 2026-08-26).
+      // O componente é o mesmo; `secao` diz qual parte ele renderiza.
+      {
+        path: 'config/conexoes',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Conexões com os bancos', secao: 'conexoes' },
+        loadComponent: () =>
+          import('./features/config/api-dados.component').then((m) => m.ApiDadosComponent),
+      },
+      {
+        path: 'config/api-dados',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Consultas da API', secao: 'consultas' },
+        loadComponent: () =>
+          import('./features/config/api-dados.component').then((m) => m.ApiDadosComponent),
+      },
+      {
+        path: 'config/tokens',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Tokens de acesso', secao: 'tokens' },
+        loadComponent: () =>
+          import('./features/config/api-dados.component').then((m) => m.ApiDadosComponent),
+      },
+      {
+        path: 'config/api-dados/consulta',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Nova consulta da API' },
+        loadComponent: () =>
+          import('./features/config/api-dados-consulta.component').then(
+            (m) => m.ApiDadosConsultaComponent,
+          ),
+      },
+      // Consultas BD veio do Painel em 2026-08-26 — "o uso será único e exclusivo no Portal
+      // API". É a mesma tabela que a tela acima edita, por outro ângulo: aqui ficam o texto
+      // do SQL e os campos de apresentação nos Dashboards.
+      {
+        path: 'config/consultas-bd',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Consultas BD' },
+        loadComponent: () =>
+          import('./features/config/consultas-bd.component').then(
+            (m) => m.ConsultasBdComponent,
+          ),
+      },
+      {
+        path: 'config/consultas-bd/:slug',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Consultas BD' },
+        loadComponent: () =>
+          import('./features/config/consultas-bd.component').then(
+            (m) => m.ConsultasBdComponent,
+          ),
+      },
+      {
+        path: 'config/api-dados/consulta/:slug',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Consulta da API' },
+        loadComponent: () =>
+          import('./features/config/api-dados-consulta.component').then(
+            (m) => m.ApiDadosConsultaComponent,
+          ),
+      },
+      {
+        path: 'perfil',
+        data: { titulo: 'Meu perfil' },
+        loadComponent: () =>
+          import('./features/perfil/perfil.component').then((m) => m.PerfilComponent),
+      },
+    ],
+  },
+  // Qualquer outro endereço cai na tela da API de Dados — inclusive os do Painel, que aqui
+  // não existem.
+  { path: '**', redirectTo: '' },
+];
+
+/** A tabela que vale para ESTA instância. Escolhida uma vez, no boot (`app.config.ts`). */
+export function rotasDe(perfil: PerfilInstancia): Routes {
+  return perfil === 'portal-api' ? ROTAS_PORTAL_API : routes;
+}

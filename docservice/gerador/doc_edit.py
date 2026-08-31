@@ -2,7 +2,7 @@
 """Especificação das telas de edição estruturadas (espelham as seções dos layouts).
 
 Cada doc: lista de seções; cada seção tem campos (chave, label, tipo, origem):
-  - tipo: "texto" | "textarea" | "ro" (somente leitura, vem do projeto/fechamento)
+  - tipo: "texto" | "textarea" | "data" | "ro" (somente leitura, vem do projeto/fechamento)
   - origem: campo do projeto para pré-preencher (ou "")
 
 As telas gravam em DocConteudo; a geração fiel lê esses valores para preencher o .docx.
@@ -46,23 +46,36 @@ SPEC = {
                 ("empresas", "Empresas contempladas no projeto", "textarea", ""),
                 ("conversoes", "Conversões — detalhamento", "textarea", ""),
             ]},
+            # Bloco "Cadastros" do layout. Não herda a etapa 3: são definições alinhadas COM O
+            # CLIENTE no projeto (compartilhamento, codificação, campos além do padrão), que
+            # não existem como pergunta no Levantamento. Sem estes campos o bloco saía vazio
+            # em todo Projeto — o layout tem o marcador, mas nada o preenchia.
+            {"titulo": "Cadastros", "campos": [
+                ("cad_clientes", "Clientes e Fornecedores", "textarea", ""),
+                ("cad_produtos", "Produtos/Serviços", "textarea", ""),
+                ("cad_outros", "Outros pontos gerais do projeto", "textarea", ""),
+            ]},
             {"titulo": "Equipes", "campos": [
                 ("gerente_contas", "Gerente de Contas (GCI)", "texto", "gci"),
                 ("redator", "Redator do Projeto", "texto", ""),
                 ("consultor", "Consultor / Implantador", "texto", "consultor"),
                 ("encarregado", "Encarregado pelo Projeto (cliente)", "texto", "contato_nome"),
             ]},
-            {"titulo": "Tabela de Usuários", "tipo": "tabela", "prefixo": "usu", "linhas": 4,
+            # 5 linhas, iguais às de Usuários-chave do Levantamento (a etapa 10 herda a
+            # etapa 3) — com 4, o 5º usuário levantado sumia sem aviso.
+            {"titulo": "Tabela de Usuários", "tipo": "tabela", "prefixo": "usu", "linhas": 5,
              "colunas": [("nome", "Nome"), ("email", "E-mail"),
                          ("area", "Área de Atuação no SIGER"), ("assina", "Assina Protocolo")]},
+            # Campos de DATA (decisão do usuário, 2026-08-20) — eram texto livre. Valor em
+            # ISO (aaaa-mm-dd), como manda o <input type="date">; vira dd/mm/aaaa no .docx.
             {"titulo": "Cronograma Macro", "campos": [
-                ("crono_levantamento", "Levantamento de requisitos — período", "texto", ""),
-                ("crono_cronograma", "Elaboração do Cronograma — período", "texto", ""),
-                ("crono_parametrizacao", "Parametrização — período", "texto", ""),
-                ("crono_treinamento", "Treinamento — período", "texto", ""),
-                ("crono_simulacao", "Simulação — período", "texto", ""),
-                ("crono_inicio", "Início do Uso oficial — período", "texto", ""),
-                ("crono_finalizacao", "Data estimada para Finalização — período", "texto", ""),
+                ("crono_levantamento", "Levantamento de requisitos", "data", ""),
+                ("crono_cronograma", "Elaboração do Cronograma", "data", ""),
+                ("crono_parametrizacao", "Parametrização", "data", ""),
+                ("crono_treinamento", "Treinamento", "data", ""),
+                ("crono_simulacao", "Simulação", "data", ""),
+                ("crono_inicio", "Início do Uso oficial", "data", ""),
+                ("crono_finalizacao", "Data estimada para Finalização", "data", ""),
             ]},
             {"titulo": "Tempo estimado", "campos": [
                 ("horas_cobradas", "Horas cobradas", "ro", "horas_cobradas"),
