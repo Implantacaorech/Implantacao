@@ -31,10 +31,16 @@ default:
 # ------------------------------------------------------------------ test ----
 backend-test:
   stage: test
+  # TZ: o runner roda em UTC, o Painel é usado no Brasil — sem o fuso o teste da virada
+  # noturna de hojeIso() quebra (mesma decisão do ci.yml do GitHub, onde está o histórico).
+  variables:
+    TZ: America/Sao_Paulo
   script:
     - cd backend
     - npm ci
-    - npm test
+    # --coverage porque o coverageThreshold do package.json só é avaliado quando a cobertura
+    # é COLETADA — sem isso o gate existiria no arquivo e nunca rodaria (idem ci.yml).
+    - npm test -- --ci --coverage
     # e2e sobe o AppModule inteiro com SQLite em memória — sem MIGRACAO_DB_URL de propósito,
     # para não tocar em banco real (ver backend/src/database/data-source.ts).
     - MIGRACAO_DB_URL= npm run test:e2e

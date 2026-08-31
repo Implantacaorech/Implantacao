@@ -227,7 +227,24 @@ export interface LinhaVisitaPortal {
   horario: string;
   /** MANHÃ | TARDE | NOITE | FORA DO TURNO (calculado no SQL). */
   turno: string;
-  /** 'Sim'/'Não' como o SQL devolve — texto, não boolean, para a edição da consulta no
-   * Consultas BD poder mudar o rótulo sem quebrar a tela. */
+  /** 'Sim' | 'Com ressalva' | 'Não', como o SQL devolve — texto, não boolean, para a
+   * edição da consulta no Consultas BD poder mudar o rótulo sem quebrar a tela.
+   * Interpretado por `situacaoVisita`. */
   aprovado: string;
+}
+
+/** As três situações de aprovação, como o Portal registra em `visita_aprovacao.APROVADO`:
+ * `1` = aprovada · `0` = aprovada COM RESSALVA (lá a justificativa é obrigatória) ·
+ * `NULL` = o cliente ainda não respondeu. */
+export type SituacaoVisita = 'sim' | 'ressalva' | 'nao';
+
+/** Lê o RÓTULO que a consulta devolveu (e não o código do banco — o texto é escolhido no
+ * Consultas BD, e o Administrador pode reescrevê-lo). Só 'Sim' e 'Com ressalva' são
+ * reconhecidos nominalmente; qualquer outro valor — inclusive a visita ainda sem resposta
+ * do cliente — cai em 'nao', que é o que mantém o painel vivo se o rótulo mudar. */
+export function situacaoVisita(aprovado: string): SituacaoVisita {
+  const s = (aprovado || '').trim().toLowerCase();
+  if (s === 'sim') return 'sim';
+  if (s === 'com ressalva') return 'ressalva';
+  return 'nao';
 }

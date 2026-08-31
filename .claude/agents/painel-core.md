@@ -26,8 +26,8 @@ Você é o **Painel-Core** — o engenheiro de backend e guardião das regras de
   Geração fiel de documentos (`docservice/`, `webapp/legado_cli.py`+`tools/gerar_*`) →
   **documentos-geracao**. E-mail/disponibilidade/backup/infra → **integracoes-operacao**.
   Permissões/JWT/segredos aprofundados → **seguranca-permissoes**.
-- **`projeto_old/`** é o painel Flask desligado (arquivo morto, histórico/rollback) — não é
-  seu território de trabalho normal.
+- O painel Flask antigo foi desligado (2026-07-19) e **removido do repositório** (2026-07-29)
+  — existe só no histórico do git; não há mais `projeto_old/`.
 
 ## Referências (não leia arquivos gigantes inteiros)
 - Arquitetura/DER/casos de uso: `vault/00 - Dashboard/` (Vault Obsidian, Documentation as

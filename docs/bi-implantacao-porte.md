@@ -209,10 +209,22 @@ aprovação), na tela Resumo, logo abaixo do CONTROLE DE HORAS.
   em `visitas-portal.util.ts`, testável com data fixa). Filtros E visão valem para o painel
   **inteiro**: contadores do título, gráfico, tabela e "Exportar Excel" (CSV com BOM, o
   mesmo formato do Resumo) enxergam o mesmo conjunto. O gráfico de barras empilhadas mostra
-  **protocolos por contato** (verde = aprovados, vermelho = não aprovados; top 15 por
-  volume) com os **valores escritos nas barras** e o total sobre cada pilha
+  **protocolos por contato** (verde = aprovados, **amarelo = com ressalva**, vermelho =
+  não aprovados; top 15 por volume) com os **valores escritos nas barras** e o total sobre
+  cada pilha
   (`chart-rotulos.util.ts`, plugin inline do Chart.js — também aplicado ao "Horas por
   status").
+- **Três situações de aprovação** (2026-08-31): o Portal grava em
+  `visita_aprovacao.APROVADO` (tinyint) `1` = aprovada, `0` = **aprovada COM RESSALVA** e
+  `NULL` = o cliente ainda não respondeu. O `0` **não é reprovação**: é o cliente aprovando
+  com uma justificativa — que lá é obrigatória (na conferência de 2026-08-31, todos os 14
+  registros com `0` tinham `OBSERVACAO` preenchida, contra 23 de 2.556 no `1`). O SQL
+  devolve `'Sim'` / `'Com ressalva'` / `'Não'` (o `NULL` segue caindo em `'Não'`, como
+  antes), e tela e PDF leem o RÓTULO, não o código — `situacaoVisita` no backend,
+  `corAprovado` no componente; rótulo desconhecido cai em "não aprovada" para o painel
+  sobreviver a uma reescrita da consulta. ⚠️ A semeadura é **não destrutiva**: mudar o
+  `sqlPadrao` no código NÃO altera a consulta já gravada — em produção o texto tem de ser
+  atualizado em Sistema → Consultas BD.
 - **Enviar por e-mail** (2026-08-17): botão ao lado do Exportar abre a caixa de envio
   (destinatários separados por `;`, assunto e texto pré-preenchidos pelo modelo
   **`bi-visitas-portal`**, editável em Gestão → Modelos de E-mail). O backend gera um

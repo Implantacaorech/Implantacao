@@ -45,13 +45,12 @@ stack novo.
   `webapp/`) + a ponte `legado_cli` para o assistente administrativo.
 - Importação do e-mail de fechamento (IMAP), notificações por e-mail, robô da caixa — agora
   em `backend/src/email/`, `backend/src/fluxo/`.
-- **Consulta Wall-e** (2026-08-18): Execução → Wall-e (chave `walle`, abaixo do RNS) —
-  base de conhecimento sobre o acervo dos chats do bot Wall-e (`R:\GRM\CHAT_WALLE\`,
-  **fonte SOMENTE LEITURA**, indexada nas tabelas `walle_*`). Busca híbrida em memória,
-  visão por chat, SQLs documentais (nunca executados) e síntese por IA com finalidade
-  `walle` **só-local** (§21-A.10) que degrada para busca-guiada. Fonte B (metadados de
-  `SICLA.CHAT_WALLE`) editável em Consultas BD, slug `walle_chats_sicla`. Módulo:
-  `backend/src/walle/` (6 docs em `docs/`); tela: `frontend/src/app/features/walle/`.
+- **Consulta Wall-e — REMOVIDO** (2026-08-19, decisão do usuário): o módulo inteiro
+  (backend `src/walle/`, tela, chave de menu `walle`, finalidade de IA, tabelas `walle_*`)
+  saiu do sistema 1 dia depois de entrar — código recuperável no histórico do git (entrou
+  em `d643c89`). A migration `1787270400000-RemoveWalle` derruba as tabelas e limpa a
+  consulta `walle_chats_sicla` e as permissões em produção. O acervo-fonte
+  `R:\GRM\CHAT_WALLE\` nunca foi alterado pelo Painel e segue intacto.
 
 ## Processo de 21 passos (2026-07-30)
 
@@ -285,8 +284,9 @@ Centro de Monitoramento — sem chave de RBAC nova). Seis checagens: banco, **ba
   atravessa o histórico corrompido.
 - Config: `MIGRACAO_BACKUP_DIR` (padrão `C:\PainelBackups`). Docs do módulo em
   `backend/src/saude/docs/` (os 6 do Guia Mestre).
-- ⚠️ `tools/Painel_Novo_Backup.ps1` é **histórico** (Postgres `painel-db-novo`, que não existe
-  mais) — o backup em uso é o `Painel_Novo_Backup_MariaDB.ps1`.
+- O antigo `tools/Painel_Novo_Backup.ps1` (Postgres `painel-db-novo`) foi **removido do
+  repositório em 2026-08-19** (recuperável no histórico do git) — o backup em uso é o
+  `Painel_Novo_Backup_MariaDB.ps1`, agendado como "Painel Novo - Backup MariaDB".
 
 ## Filtros salvos por usuário (2026-07-29)
 

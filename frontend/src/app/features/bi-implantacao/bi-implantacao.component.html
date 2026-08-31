@@ -200,7 +200,8 @@
   <div class="bi-card">
     <div class="bi-card-tit">
       Visitas do Portal Rech — aprovação
-      ({{ visitasFiltradas().length }} · {{ visitasAprovadas() }} aprovada(s))
+      ({{ visitasFiltradas().length }} · {{ visitasAprovadas() }} aprovada(s) ·
+      {{ visitasComRessalva() }} com ressalva)
     </div>
     @if (erroVisitas()) {
       <p class="dica">{{ erroVisitas() }}</p>
@@ -270,9 +271,12 @@
         @if (emailOk()) { <span class="vp-email-ok">{{ emailOk() }}</span> }
       </div>
 
-      <!-- Protocolos por contato: aprovados × não aprovados (mesmo conjunto da tabela). -->
+      <!-- Protocolos por contato: aprovados × com ressalva × não aprovados (mesmo
+           conjunto da tabela). -->
       <div class="vp-grafico-cab">
-        <span class="vp-grafico-tit">Protocolos por contato — aprovados × não aprovados</span>
+        <span class="vp-grafico-tit">
+          Protocolos por contato — aprovados × com ressalva × não aprovados
+        </span>
       </div>
       <div class="bi-canvas">
         @if (graficoVisitasContato(); as cfg) {
@@ -320,7 +324,7 @@
                 <td>{{ v.turno || '—' }}</td>
                 <td>
                   <span class="bi-ponto"
-                        [style.background]="aprovadoSim(v.aprovado) ? '#10b981' : '#ef4444'"></span>{{ v.aprovado || '—' }}
+                        [style.background]="corAprovado(v.aprovado)"></span>{{ v.aprovado || '—' }}
                 </td>
               </tr>
             } @empty {
@@ -360,7 +364,8 @@
             <p class="dica" style="margin:6px 0 0">
               Será anexado um PDF com o recorte aplicado, o gráfico e a tabela
               ({{ visitasFiltradas().length }} protocolo(s) ·
-              {{ visitasAprovadas() }} aprovado(s)).
+              {{ visitasAprovadas() }} aprovado(s) ·
+              {{ visitasComRessalva() }} com ressalva).
             </p>
             @if (emailErro()) { <div class="resultado erro">{{ emailErro() }}</div> }
             <div class="vp-modal-acoes">

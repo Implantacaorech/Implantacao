@@ -92,15 +92,6 @@ export class MatrizDetalhadaController {
     });
   }
 
-  @Get('medias-gerais')
-  @ApiOperation({
-    summary:
-      'Média GERAL (todos os técnicos) por módulo/adicional — alimenta o gráfico',
-  })
-  async mediasGerais() {
-    return new ApiEnvelope({ modulos: await this.service.mediasGerais() });
-  }
-
   @Get(':id')
   @ApiOperation({ summary: 'Ficha detalhada: módulos/menus + notas + médias' })
   async ficha(

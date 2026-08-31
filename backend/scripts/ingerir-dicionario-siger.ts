@@ -18,8 +18,6 @@ import { parseDocumentoMarkdown } from '../src/dicionario/markdown-parser';
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join, basename } from 'path';
 
-const RAIZ_PADRAO =
-  'C:\\SEG-EVE\\OneDrive - rech.com.br\\Everton\\SIGER - Código Documentação\\Documentacao-Fonte';
 const REPO_URL =
   'https://github.com/Implantacaorech/Documentacao-Fonte-P/blob/main';
 
@@ -35,7 +33,17 @@ function listarMarkdown(pasta: string): string[] {
 }
 
 async function main(): Promise<void> {
-  const raiz = process.argv[2] ?? RAIZ_PADRAO;
+  // Sem default: o caminho era um hardcoded pessoal da máquina de desenvolvimento (F1 da
+  // migração p/ servidor dedicado — docs/migracao-servidor.md). Sempre passe a raiz.
+  const raiz = process.argv[2];
+  if (!raiz) {
+    console.error(
+      'Uso: npm run ingerir:dicionario -- <raiz da Documentacao-Fonte>\n' +
+        'Ex.:  npm run ingerir:dicionario -- "D:\\Documentacao-Fonte"',
+    );
+    process.exitCode = 1;
+    return;
+  }
   const grupos: { tipo: 'modulo' | 'adicional'; pasta: string }[] = [
     { tipo: 'modulo', pasta: join(raiz, 'modulos') },
     { tipo: 'adicional', pasta: join(raiz, 'adicionais') },

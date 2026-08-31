@@ -22,7 +22,8 @@
 #   & "C:\Program Files\MariaDB 12.2\bin\mariadb.exe" -u painel -p painel_novo < painel_novo_mariadb_AAAAMMDD_HHMMSS.sql
 
 $ErrorActionPreference = "Stop"
-$dest = "C:\PainelBackups"
+# F1 da migracao p/ servidor dedicado: respeita MIGRACAO_BACKUP_DIR quando definida.
+$dest = if ($env:MIGRACAO_BACKUP_DIR) { $env:MIGRACAO_BACKUP_DIR } else { "C:\PainelBackups" }
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
 $logFile = Join-Path $dest "backup_novo_mariadb.log"
 

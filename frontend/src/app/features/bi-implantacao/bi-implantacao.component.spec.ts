@@ -470,12 +470,32 @@ describe('BiImplantacaoComponent', () => {
       expect(comp.aprovadoSim('')).toBe(false);
     });
 
+    // Terceira situação do Portal (`visita_aprovacao.APROVADO = 0`): o cliente aprovou,
+    // mas registrou uma ressalva. Não é aprovada limpa nem reprovada — faixa amarela.
+    it('"Com ressalva" é situação própria, e não conta como aprovada', async () => {
+      const comp = await pronto({ resumo: () => Promise.resolve(resultado()) });
+      expect(comp.aprovadoRessalva('Com ressalva')).toBe(true);
+      expect(comp.aprovadoRessalva('  COM RESSALVA ')).toBe(true);
+      expect(comp.aprovadoSim('Com ressalva')).toBe(false);
+      expect(comp.aprovadoRessalva('Sim')).toBe(false);
+      expect(comp.aprovadoRessalva('Não')).toBe(false);
+    });
+
+    it('a cor da situação: verde aprovada, AMARELO com ressalva, vermelho o resto', async () => {
+      const comp = await pronto({ resumo: () => Promise.resolve(resultado()) });
+      expect(comp.corAprovado('Sim')).toBe('#10b981');
+      expect(comp.corAprovado('Com ressalva')).toBe('#fbbf24');
+      expect(comp.corAprovado('Não')).toBe('#ef4444');
+      // rótulo desconhecido não fica sem cor
+      expect(comp.corAprovado('')).toBe('#ef4444');
+    });
+
     // ── Filtros locais, gráfico por contato e visões ─────────────────────────────────
     async function comFiltraveis() {
       const linhas = [linha({ codigo: 1, cliente: 10, fantasia: 'ALFA' })];
       const visitas = [
         visita({ cliente: 10, contato: 'Ana', consultor: 'Silva', protocolo: 1, aprovado: 'Sim' }),
-        visita({ cliente: 10, contato: 'Ana', consultor: 'Rocha', protocolo: 2, aprovado: 'Não' }),
+        visita({ cliente: 10, contato: 'Ana', consultor: 'Rocha', protocolo: 2, aprovado: 'Com ressalva' }),
         visita({ cliente: 10, contato: 'Beto', consultor: 'Silva', protocolo: 3, aprovado: 'Sim' }),
       ];
       const comp = await pronto({
@@ -494,6 +514,7 @@ describe('BiImplantacaoComponent', () => {
       // ordem de exibição: consultor Rocha < Silva dentro do mesmo contato
       expect(comp.visitasFiltradas().map((v) => v.protocolo)).toEqual([2, 1]);
       expect(comp.visitasAprovadas()).toBe(1);
+      expect(comp.visitasComRessalva()).toBe(1);
       // a PRÓPRIA dimensão não se restringe (senão não daria para trocar a escolha)…
       expect(comp.opcoesVisitasContato()).toEqual(['Ana', 'Beto']);
       // …mas as demais encolhem para o recorte
@@ -513,12 +534,13 @@ describe('BiImplantacaoComponent', () => {
       expect(comp.visitasFiltradas().map((v) => v.protocolo)).toEqual([3]);
     });
 
-    it('gráfico soma protocolos por contato (aprovados × não), mais volumosos primeiro', async () => {
+    it('gráfico soma por contato (aprovados × com ressalva × não), mais volumosos primeiro', async () => {
       const linhas = [linha({ codigo: 1, cliente: 10, fantasia: 'ALFA' })];
       const visitas = [
         visita({ cliente: 10, contato: 'Ana', aprovado: 'Sim' }),
         visita({ cliente: 10, contato: 'Ana', aprovado: 'Não' }),
         visita({ cliente: 10, contato: 'Ana', aprovado: 'Sim' }),
+        visita({ cliente: 10, contato: 'Ana', aprovado: 'Com ressalva' }),
         visita({ cliente: 10, contato: 'Beto', aprovado: 'Não' }),
       ];
       const comp = await pronto({
@@ -531,7 +553,10 @@ describe('BiImplantacaoComponent', () => {
       const cfg = comp.graficoVisitasContato();
       expect(cfg?.data.labels).toEqual(['Ana', 'Beto']);
       expect(cfg?.data.datasets[0].data).toEqual([2, 0]); // aprovados
-      expect(cfg?.data.datasets[1].data).toEqual([1, 1]); // não aprovados
+      expect(cfg?.data.datasets[1].data).toEqual([1, 0]); // com ressalva
+      expect(cfg?.data.datasets[2].data).toEqual([1, 1]); // não aprovados
+      // a barra da ressalva é AMARELA (pedido do usuário)
+      expect(cfg?.data.datasets[1].backgroundColor).toBe('#fbbf24');
     });
 
     it('visão mensal/semanal recorta o PAINEL INTEIRO (tabela, contadores e gráfico)', async () => {

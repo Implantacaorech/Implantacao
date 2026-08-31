@@ -15,17 +15,9 @@ import {
   indiceVazio,
 } from '../../core/models/cadastros.model';
 import { deSignal, filtrosSalvos } from '../../core/utils/filtros-salvos';
+import { baixarArquivo } from '../../core/utils/baixar-arquivo';
 
 type Aba = 'checklist' | 'indice' | 'modelos';
-
-function baixarNoNavegador(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 @Component({
   selector: 'app-cadastros',
@@ -359,7 +351,7 @@ export class CadastrosComponent {
     if (!modelo) return;
     try {
       const arquivo = await this.service.modeloBaixar(modelo.id, `${modelo.slug}.${modelo.tipo}`, versaoId);
-      baixarNoNavegador(arquivo.blob, arquivo.filename);
+      baixarArquivo(arquivo.blob, arquivo.filename);
     } catch {
       this.erro.set('Não foi possível baixar o arquivo.');
     }

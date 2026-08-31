@@ -99,10 +99,6 @@ export class PermissoesComponent {
     return this.mapaPapel()[`${papel}|${menu}`] ?? 'nada';
   }
 
-  ehFixa(menu: string): boolean {
-    return !!this.menus().find((m) => m.chave === menu)?.fixaAdm;
-  }
-
   async mudarPapel(
     papel: string,
     menu: string,

@@ -1,15 +1,5 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
-export const INDICE_CAMPOS = [
-  'moduloNum',
-  'moduloSigla',
-  'modulo',
-  'adicionalNum',
-  'adicionalSigla',
-  'adicional',
-  'topico',
-] as const;
-
 /** Tópico do "Índice de Tópicos para Mapeamento de Processos" — catálogo editável, fonte
  * do seed de LevantamentoResposta por projeto. Espelha webapp/db.py:IndiceTopico. */
 @Entity({ name: 'indice_topicos' })

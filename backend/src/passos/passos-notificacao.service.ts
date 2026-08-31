@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { existsSync } from 'fs';
+import { caminhoAbsolutoDocumento } from '../documentos/caminho-documento.util';
 import { Projeto } from '../database/entities/projeto.entity';
 import { Evento } from '../database/entities/evento.entity';
 import {
@@ -103,9 +104,10 @@ export class PassosNotificacaoService {
       order: { criadoEm: 'ASC' },
     });
     for (const doc of manuais) {
-      if (doc.caminho && existsSync(doc.caminho)) {
+      const caminho = doc.caminho && caminhoAbsolutoDocumento(doc.caminho);
+      if (caminho && existsSync(caminho)) {
         anexos.push({
-          caminho: doc.caminho,
+          caminho,
           nomeArquivo: doc.arquivo || undefined,
         });
       }
@@ -117,10 +119,11 @@ export class PassosNotificacaoService {
         where: { projetoId, tipo },
         order: { criadoEm: 'DESC' },
       });
-      if (doc?.caminho && existsSync(doc.caminho)) {
+      const caminho = doc?.caminho && caminhoAbsolutoDocumento(doc.caminho);
+      if (caminho && existsSync(caminho)) {
         anexos.push({
-          caminho: doc.caminho,
-          nomeArquivo: doc.arquivo || undefined,
+          caminho,
+          nomeArquivo: doc?.arquivo || undefined,
         });
       }
     }

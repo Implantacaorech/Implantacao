@@ -1,6 +1,15 @@
 ---
 name: codigo-para-regra
-description: Lê o código de uma tela ou funcionalidade e transcreve o comportamento que ele implementa para linguagem de regra de negócio, gerando uma descrição que um analista ou solicitante entende sem ler código. Use sempre que o usuário pedir para "entender o que essa tela faz", "transcrever o código em regra de negócio", "documentar o comportamento atual", "extrair as regras de negócio do código", ou quando precisar levantar o "como a regra é hoje" antes de uma análise de mudança. Dispare também quando o usuário anexar o arquivo de uma tela/funcionalidade e pedir para descrever o que ela faz em termos de negócio. A skill é autocontida e pensada para código vivo: regenera as regras a partir do código atual, sob demanda, em vez de depender de uma base de regras mantida à parte.
+description: >-
+  Lê o código de uma tela ou funcionalidade e transcreve o comportamento que ele implementa
+  para linguagem de regra de negócio, gerando uma descrição que um analista ou solicitante
+  entende sem ler código. Use sempre que o usuário pedir para "entender o que essa tela faz",
+  "transcrever o código em regra de negócio", "documentar o comportamento atual", "extrair as
+  regras de negócio do código", ou quando precisar levantar o "como a regra é hoje" antes de
+  uma análise de mudança. Dispare também quando o usuário anexar o arquivo de uma
+  tela/funcionalidade e pedir para descrever o que ela faz em termos de negócio. A skill é
+  autocontida e pensada para código vivo: regenera as regras a partir do código atual, sob
+  demanda, em vez de depender de uma base de regras mantida à parte.
 ---
 
 # Código para regra de negócio

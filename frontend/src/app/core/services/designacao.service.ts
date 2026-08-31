@@ -54,11 +54,4 @@ export class DesignacaoService {
     );
     return res.data;
   }
-
-  async designarConsultores(projetoId: number, designacoes: Record<string, string>): Promise<Projeto> {
-    const res = await firstValueFrom(
-      this.http.post<ApiEnvelope<Projeto>>(`${this.base(projetoId)}/consultores`, { designacoes }),
-    );
-    return res.data;
-  }
 }

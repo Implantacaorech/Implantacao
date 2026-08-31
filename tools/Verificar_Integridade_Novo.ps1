@@ -4,9 +4,10 @@
 # Resultado em C:\PainelBackups\integridade_novo.log. Agendar via Tarefa do Windows
 # (diaria, mesmo horario 07:30 sugerido para o guardiao antigo).
 $ErrorActionPreference = "Continue"
-$dest = "C:\PainelBackups"
+# F1 da migracao p/ servidor dedicado: pasta e porta vem do ambiente quando definidas.
+$dest = if ($env:MIGRACAO_BACKUP_DIR) { $env:MIGRACAO_BACKUP_DIR } else { "C:\PainelBackups" }
 $logFile = Join-Path $dest "integridade_novo.log"
-$porta = 5100
+$porta = if ($env:MIGRACAO_PORT) { $env:MIGRACAO_PORT } else { 5100 }
 $falhas = @()
 
 # UTF-8 sem BOM pelo .NET: `Out-File -Append` na PowerShell 5.1 grava UTF-16 quando nao se

@@ -40,6 +40,16 @@ export class RoboProtocolosService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit(): void {
     if (process.env.NODE_ENV === 'test') return;
+    // F1 da migração p/ servidor dedicado: `configurado()` devolvendo false desligava o
+    // robô EM SILÊNCIO (pasta inexistente = nenhum vídeo processado, nenhum erro, nenhum
+    // aviso). Denuncia no boot, uma vez, com o caminho resolvido.
+    if (!this.processamento.configurado()) {
+      this.logger.error(
+        `Pasta de vídeos não encontrada: "${this.config.get('protocolosDir', { infer: true })}" — ` +
+          'o robô de protocolos fica DESATIVADO até ela existir ' +
+          '(defina MIGRACAO_PROTOCOLOS_DIR; ver docs/migracao-servidor.md).',
+      );
+    }
     const mins = this.config.get('protocolosPollMin', { infer: true });
     const ms = Math.max(120, mins * 60) * 1000;
     const intervalo = setInterval(() => {

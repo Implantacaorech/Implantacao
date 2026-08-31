@@ -18,9 +18,18 @@ cd /d "%~dp0"
 
 REM --- Variaveis obrigatorias (defina como variavel de USUARIO do
 REM     Windows antes de rodar - NUNCA hardcode segredo aqui):
-REM   MIGRACAO_DB_URL           postgresql://usuario:senha@host/painel_novo
+REM   MIGRACAO_DB_URL           mysql://usuario:senha@localhost:3306/painel_novo
 REM   MIGRACAO_JWT_SECRET       string aleatoria longa (ex.: openssl rand -hex 32)
 REM   MIGRACAO_JWT_REFRESH_SECRET  outra string aleatoria (diferente da acima)
+REM
+REM --- Variaveis OPCIONAIS de e-mail (Microsoft 365 / API do Graph):
+REM     valores fornecidos pelo TI a partir do registro de aplicativo no
+REM     Entra ID. Sao herdadas daqui pelo backend; se ausentes, valem os
+REM     valores gravados na tela Ferramentas > E-mail (Microsoft 365).
+REM   EMAIL_GRAPH_TENANT_ID      ID do diretorio (tenant)
+REM   EMAIL_GRAPH_CLIENT_ID      ID do aplicativo (cliente)
+REM   EMAIL_GRAPH_CLIENT_SECRET  segredo do aplicativo (tem validade!)
+REM   EMAIL_REMETENTE            implantacao@rech.com.br
 if "%MIGRACAO_DB_URL%"=="" (
   echo [ERRO] Falta a variavel de usuario MIGRACAO_DB_URL. Configure antes de rodar.
   pause
@@ -50,6 +59,10 @@ REM --- Porta do painel novo (diferente da porta 5000 do Flask antigo,
 REM     os dois podem ficar no ar em paralelo durante a virada) --------
 if "%MIGRACAO_PORT%"=="" set "MIGRACAO_PORT=5100"
 
+REM --- Pasta de logs/backups: respeita MIGRACAO_BACKUP_DIR (F1 da migracao p/ servidor
+REM     dedicado — docs/migracao-servidor.md); sem a variavel, o padrao de sempre. --------
+if "%MIGRACAO_BACKUP_DIR%"=="" set "MIGRACAO_BACKUP_DIR=C:\PainelBackups"
+
 echo.
 echo ===============================================================
 echo   PAINEL DE IMPLANTACAO NOVO - MODO SERVIDOR
@@ -78,8 +91,8 @@ REM     Saida (stdout+stderr) gravada em log -- o guardiao roda isto
 REM     oculto (sem janela visivel), entao sem isso nao ha como ver
 REM     o motivo de uma queda/crash depois.
 cd /d "%~dp0backend"
-if not exist "C:\PainelBackups" mkdir "C:\PainelBackups"
-echo. >> "C:\PainelBackups\painel_novo_stdout.log"
-echo ===== %date% %time% - iniciando ===== >> "C:\PainelBackups\painel_novo_stdout.log"
-node dist\main.js >> "C:\PainelBackups\painel_novo_stdout.log" 2>&1
-echo ===== %date% %time% - processo encerrou (errorlevel %errorlevel%) ===== >> "C:\PainelBackups\painel_novo_stdout.log"
+if not exist "%MIGRACAO_BACKUP_DIR%" mkdir "%MIGRACAO_BACKUP_DIR%"
+echo. >> "%MIGRACAO_BACKUP_DIR%\painel_novo_stdout.log"
+echo ===== %date% %time% - iniciando ===== >> "%MIGRACAO_BACKUP_DIR%\painel_novo_stdout.log"
+node dist\main.js >> "%MIGRACAO_BACKUP_DIR%\painel_novo_stdout.log" 2>&1
+echo ===== %date% %time% - processo encerrou (errorlevel %errorlevel%) ===== >> "%MIGRACAO_BACKUP_DIR%\painel_novo_stdout.log"

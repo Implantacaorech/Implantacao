@@ -52,8 +52,6 @@
 .ag-side-h{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--navy)}
 .ag-badge{margin-left:auto;background:var(--brand);color:#fff;border-radius:10px;padding:0 8px;font-size:.78rem;font-weight:700}
 .ag-pendzone{min-height:60px;border-radius:8px}
-.ag-side-tools{display:flex;gap:6px;margin:6px 0}
-.ag-mini{background:#fff;border:1px solid var(--line);border-radius:6px;font-size:.72rem;padding:2px 8px;color:var(--navy);cursor:pointer}
 .ag-mod{border:1px solid var(--line);border-radius:8px;margin-bottom:8px;background:var(--surface-2,#f3f6fb);overflow:hidden}
 .ag-mod>summary{cursor:pointer;list-style:none;font-weight:800;color:var(--navy);padding:6px 10px;display:flex;align-items:center;gap:6px}
 .ag-mod>summary::-webkit-details-marker{display:none}
@@ -72,7 +70,6 @@
 .ag-card{display:flex;flex-direction:column;gap:3px;background:#fff;border:1px solid var(--line);border-left:3px solid var(--brand);
   border-radius:7px;padding:6px 8px;margin-bottom:6px;cursor:grab;box-shadow:var(--sh-1,0 1px 2px rgba(0,0,0,.05))}
 .ag-card:active{cursor:grabbing}
-.ag-card.dragging{opacity:.45}
 .ag-card.ag-st-post{background:#fff8e1;border-left-color:#f5a623}
 .ag-card.ag-st-canc{background:#fdecec;border-left-color:var(--err,#d33);text-decoration:line-through;opacity:.8}
 .ag-card.ag-st-real{border-left-color:var(--ok,#2e7d32)}
@@ -105,8 +102,6 @@
 .ag-passado .ag-bloq-l{color:#8a94a3}
 .ag-bloq-l{font-size:.66rem;font-weight:700;color:var(--err,#d33);margin-bottom:4px;line-height:1.1}
 .ag-conflito{background:repeating-linear-gradient(45deg,#fff5f5,#fff5f5 7px,#fde8e8 7px,#fde8e8 14px)}
-.ag-modo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px}
-.ag-modo select{font-size:.8rem;padding:3px 6px;border:1px solid var(--line);border-radius:5px;background:#fff}
 .ag-visao{display:inline-flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap}
 .ag-visao select{font-size:.8rem;padding:3px 6px;border:1px solid var(--line);border-radius:5px;background:#fff}
 /* O modal de postergar usa as primitivas globais .modal-fundo/.modal-cx (styles.css) */

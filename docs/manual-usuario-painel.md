@@ -160,8 +160,9 @@ O painel de controle de acesso: uma grade **papel × menu** onde o ADM libera ca
 
 ## 6. Menu Sistema (Administrador)
 
-- **Ferramentas** — hub das configurações: **E-mail (SMTP)**, **Caixa de entrada (IMAP)**,
-  **Gmail API**, **Modo IA** (escolher o provedor e o modelo — OpenRouter ou **IA local**
+- **Ferramentas** — hub das configurações: **E-mail (Microsoft 365)** — a conta de envio
+  oficial —, **E-mail (SMTP)**, **Caixa de entrada (IMAP)**,
+  **Modo IA** (escolher o provedor e o modelo — OpenRouter ou **IA local**
   na própria rede via Ollama/LM Studio — e as chaves por finalidade), **Disponibilidade
   dos Consultores** (base externa Oracle), **Modelos de E-mail** (editar o texto de cada
   e-mail automático), **Destinatários por Passo** (quem recebe cada aviso) e **Consultas

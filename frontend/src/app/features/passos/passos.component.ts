@@ -18,6 +18,7 @@ import {
 } from '../../core/models/passo.model';
 import { Documento } from '../../core/models/documento.model';
 import { Projeto } from '../../core/models/projeto.model';
+import { baixarArquivo } from '../../core/utils/baixar-arquivo';
 
 /** Tipo de formulário que um passo abre antes de concluir. */
 type FormPasso = 'agendar' | 'designar' | 'registro' | 'rns';
@@ -201,12 +202,7 @@ export class PassosComponent {
     this.erro.set(null);
     try {
       const { blob, filename } = await this.docs.baixar(doc.id, doc.arquivo);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
+      baixarArquivo(blob, filename);
     } catch (e) {
       this.erro.set(this.mensagem(e));
     }

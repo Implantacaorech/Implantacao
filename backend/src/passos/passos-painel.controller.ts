@@ -11,7 +11,6 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { ApiEnvelope } from '../common/dto/api-envelope';
 import { PassosService } from './passos.service';
-import { PASSOS } from './passos.constants';
 import { PERFIS, Perfil } from '../common/constants/perfis';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
@@ -30,16 +29,6 @@ export class PassosPainelController {
     private readonly passos: PassosService,
     private readonly users: UsersService,
   ) {}
-
-  @Get('definicoes')
-  @Roles()
-  @ApiOperation({
-    summary:
-      'Os 21 passos do processo (número, título, macro-etapa, responsável)',
-  })
-  definicoes() {
-    return new ApiEnvelope(PASSOS);
-  }
 
   @Get('pessoas-por-papel/:papel')
   @Roles()

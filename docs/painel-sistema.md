@@ -509,8 +509,8 @@ destinatários do digest):
 | `encerrado` | Implantação encerrada |
 
 Além desses, **Designação/Agendamento/Consultores** notificam diretamente os GCIs e
-consultores envolvidos. Todo envio é registrado na timeline do projeto (mesmo quando o SMTP
-não está configurado, fica registrado como pendente).
+consultores envolvidos. Todo envio é registrado na timeline do projeto (mesmo quando não há
+meio de envio configurado, fica registrado como pendente).
 
 ---
 
@@ -534,11 +534,62 @@ Todas restritas ao ADM:
 | Tela | O que configura |
 |---|---|
 | `/config` | Parâmetros de IA |
-| `/config/email` | SMTP (envio) |
+| `/config/graph` | **E-mail (Microsoft 365)** — envio oficial pela API do Graph |
+| `/config/email` | SMTP (envio alternativo) |
 | `/config/imap` | Caixa de entrada (robô de fechamentos) |
-| `/config/gmail` | Integração Gmail |
 | `/config/disponibilidade` | Conexão + SELECT da base externa de ocupação dos técnicos |
 | `/config/modelos-email` | CRUD de modelos de e-mail (assunto/corpo com variáveis) |
+
+### 10.0 Envio de e-mail — qual meio o Painel usa *(2026-08-17)*
+
+O **Microsoft Graph é o caminho oficial** da caixa `implantacao@rech.com.br`. O
+`MailerService` usa o `GraphService` sempre que ele estiver configurado e, só se não estiver,
+cai no SMTP — que fica como alternativa para o caso de o TI entregar um **relay interno** em
+vez do registro de aplicativo (nesse caso o campo Usuário fica **em branco**: o envio sai sem
+autenticação, que é como um relay liberado por IP funciona). Quem chama `enviar()` não
+escolhe nem sabe qual foi usado.
+
+Por que o Graph e não o SMTP de sempre: a Microsoft aposentou a autenticação básica no
+Exchange Online, então usuário e senha no SMTP do 365 deixaram de autenticar — nenhuma
+configuração daquela tela resolveria.
+
+> **O envio pela API do Gmail saiu do projeto em 2026-08-17.** Ele existia como saída para o
+> SMTP bloqueado na rede; com a caixa oficial na Microsoft, virou código morto e foi
+> removido (`GmailService`, `/config/gmail` e a dependência `google-auth-library`). Está no
+> histórico do git se algum dia precisar do fluxo OAuth delegado que ele usava.
+
+**Como o Graph autentica.** Fluxo **app-only** (client credentials): o backend autentica
+como aplicativo, sem consentimento interativo, sem navegador e sem refresh token — por isso
+`GraphService` não tem rota de callback. O único estado é o access token em memória.
+
+**As quatro entradas** vêm do registro de aplicativo no Entra ID, criado pelo TI. Nomes de
+variável definidos por eles; o arquivo local `dados/graph.json` (gravado pela tela) é o
+fallback, e o ambiente sempre vence:
+
+| Variável | Campo na tela |
+|---|---|
+| `EMAIL_GRAPH_TENANT_ID` | Tenant ID |
+| `EMAIL_GRAPH_CLIENT_ID` | Client ID |
+| `EMAIL_GRAPH_CLIENT_SECRET` | Client Secret |
+| `EMAIL_REMETENTE` | Remetente (From) |
+
+Os apelidos `MIGRACAO_GRAPH_*`/`MIGRACAO_EMAIL_REMETENTE` também são aceitos, pela
+consistência com o prefixo do resto do backend. O segredo nunca volta numa resposta da API,
+nunca vai para o banco e não é versionado — mesmo contrato da senha do SMTP.
+
+**Duas armadilhas conhecidas**, ambas com mensagem de erro própria no Painel:
+
+- **O segredo do aplicativo expira.** Quando isso acontece o envio para sem aviso; o erro
+  que aparece na tela diz para pedir um novo ao TI (código `AADSTS7000215`).
+- **A permissão `Mail.Send` de aplicação alcança todas as caixas do tenant**, e por isso o
+  TI restringiu o aplicativo por `ApplicationAccessPolicy`. Enviar com qualquer outro
+  remetente devolve 403 — o erro na tela aponta exatamente isso.
+
+**Limite de anexo:** ~2,5 MB por mensagem. O `sendMail` do Graph embute os anexos no JSON em
+base64 e a Microsoft recusa a requisição acima de ~4 MB. Passar disso exigiria o fluxo de
+rascunho + `createUploadSession`, não implementado porque os documentos gerados pelo Painel
+ficam na casa das centenas de KB. Acima do teto o envio é barrado **antes** de sair, com uma
+mensagem que sugere mandar o arquivo por link.
 
 ### 10.1 IA por finalidade — e onde o dado vai parar *(2026-08-11)*
 

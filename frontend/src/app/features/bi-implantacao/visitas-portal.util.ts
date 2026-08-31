@@ -4,6 +4,15 @@
 
 export type VisaoVisitas = 'geral' | 'mensal' | 'semanal';
 
+/** Tintas das três situações de aprovação do Portal (`visita_aprovacao.APROVADO`):
+ * `1` = aprovada, `0` = aprovada COM RESSALVA (lá a justificativa é obrigatória) e
+ * `NULL` = o cliente ainda não respondeu, que segue contando como não aprovada.
+ * O amarelo é o mesmo dos demais gráficos do BI. Espelhadas no PDF do "Enviar por
+ * e-mail" (`backend/src/bi-implantacao/visitas-portal-pdf.ts`). */
+export const COR_APROVADO = '#10b981';
+export const COR_RESSALVA = '#fbbf24';
+export const COR_NAO_APROVADO = '#ef4444';
+
 /** Quantos contatos o gráfico mostra (os mais volumosos) — o eixo vira ilegível com
  * dezenas de barras; os demais ficam ao alcance dos filtros do painel. */
 export const TOP_CONTATOS_GRAFICO = 15;

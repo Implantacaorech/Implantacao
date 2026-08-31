@@ -86,11 +86,11 @@ describe('ProjetoEmailService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('SMTP não configurado: não tenta enviar', async () => {
+    it('e-mail não configurado: não tenta enviar', async () => {
       projetos.findOne.mockResolvedValue({ id: 1 });
       mailer.configurado.mockReturnValue(false);
       const r = await service.enviar(1, 'a@x.com', 'Oi', 'Corpo', 'ana');
-      expect(r).toEqual({ enviado: false, erro: 'SMTP não configurado.' });
+      expect(r).toEqual({ enviado: false, erro: 'E-mail não configurado.' });
       expect(mailer.enviar).not.toHaveBeenCalled();
     });
 
