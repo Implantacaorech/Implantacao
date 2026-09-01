@@ -172,6 +172,12 @@
           <span class="side-tip">Agendas e compromissos</span>
         </a>
       }
+      @if (podeControleAtividades()) {
+        <a class="side-link" routerLink="/atividades" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg>Controle de Atividades
+          <span class="side-tip">Quadro por cliente</span>
+        </a>
+      }
       @if (podeRns()) {
         <a class="side-link" routerLink="/rns" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>RNS
@@ -258,4 +264,9 @@
     </main>
     <footer class="rodape">{{ nomeInstancia() }} · Rech Sistemas de Gestão · v1.1</footer>
   </div>
+
+  <!-- Avisos do Controle de Atividades: pilha fixa no canto inferior direito, que fica na
+       tela até o consultor fechar. Mora aqui, e não na tela do quadro, justamente porque
+       precisa alcançar quem está em qualquer outra tela. -->
+  <app-avisos-atividades />
 </div>

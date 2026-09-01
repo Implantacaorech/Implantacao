@@ -4,6 +4,7 @@ import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, Ro
 import { FormsModule } from '@angular/forms';
 import { filter, map, startWith } from 'rxjs';
 import { BarraGravacaoComponent } from '../../features/protocolos/barra-gravacao.component';
+import { AvisosAtividadesComponent } from '../../features/controle-atividades/avisos-atividades.component';
 import { AuthService } from '../../core/services/auth.service';
 import { PermissoesService } from '../../core/services/permissoes.service';
 import { InstanciaService } from '../../core/services/instancia.service';
@@ -12,7 +13,14 @@ import { temPapel } from '../../core/constants/perfis';
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, BarraGravacaoComponent],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    FormsModule,
+    BarraGravacaoComponent,
+    AvisosAtividadesComponent,
+  ],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.css',
 })
@@ -72,6 +80,9 @@ export class ShellComponent {
   readonly podeRechEdu = computed(() => this.perm.podeVer('rechedu'));
   readonly podeAgenda = computed(() => this.perm.podeVer('agenda'));
   readonly podeRns = computed(() => this.perm.podeVer('rns'));
+  readonly podeControleAtividades = computed(() =>
+    this.perm.podeVer('controle_atividades'),
+  );
   readonly podeCoordenacao = computed(() => this.perm.podeVer('coordenacao'));
   readonly podeCentroOp = computed(() =>
     this.perm.podeVer('centro_operacional'),

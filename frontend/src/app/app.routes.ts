@@ -214,6 +214,27 @@ export const routes: Routes = [
           import('./features/protocolo/protocolo.component').then((m) => m.ProtocoloComponent),
       },
       {
+        // Execução → Controle de Atividades: quadro de atividades por cliente
+        // (docs/controle-atividades.md). `:codigo` é o código do cliente no SICLA — a
+        // mesma chave do quadro, para o link do aviso abrir direto no cliente certo.
+        path: 'atividades',
+        canActivate: [permissaoGuard('controle_atividades')],
+        data: { titulo: 'Controle de Atividades' },
+        loadComponent: () =>
+          import('./features/controle-atividades/controle-atividades.component').then(
+            (m) => m.ControleAtividadesComponent,
+          ),
+      },
+      {
+        path: 'atividades/:codigo',
+        canActivate: [permissaoGuard('controle_atividades')],
+        data: { titulo: 'Controle de Atividades' },
+        loadComponent: () =>
+          import('./features/controle-atividades/controle-atividades.component').then(
+            (m) => m.ControleAtividadesComponent,
+          ),
+      },
+      {
         // Execução → RechEdu: moldura do portal de educação (www.rechedu.com.br) —
         // irmã da tela Protocolo logo acima, com credencial própria por consultor.
         path: 'rechedu',

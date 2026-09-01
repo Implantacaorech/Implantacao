@@ -38,6 +38,16 @@ import { EmailPasso } from './email-passo.entity';
 import { ExecucaoIa } from './execucao-ia.entity';
 import { ClienteApi } from './cliente-api.entity';
 import { TokenApiDados } from './token-api-dados.entity';
+import { AtividadeQuadro } from './atividade-quadro.entity';
+import { AtividadeQuadroResponsavel } from './atividade-quadro-responsavel.entity';
+import { AtividadeLista } from './atividade-lista.entity';
+import { AtividadeCartao } from './atividade-cartao.entity';
+import { AtividadeMembro } from './atividade-membro.entity';
+import { AtividadeChecklistItem } from './atividade-checklist-item.entity';
+import { AtividadeAnexo } from './atividade-anexo.entity';
+import { AtividadeComentario } from './atividade-comentario.entity';
+import { AtividadeEvento } from './atividade-evento.entity';
+import { AtividadeNotificacao } from './atividade-notificacao.entity';
 
 export * from './usuario.entity';
 export * from './projeto.entity';
@@ -121,4 +131,14 @@ export const ENTITIES = [
   ExecucaoIa,
   ClienteApi,
   TokenApiDados,
+  AtividadeQuadro,
+  AtividadeQuadroResponsavel,
+  AtividadeLista,
+  AtividadeCartao,
+  AtividadeMembro,
+  AtividadeChecklistItem,
+  AtividadeAnexo,
+  AtividadeComentario,
+  AtividadeEvento,
+  AtividadeNotificacao,
 ];

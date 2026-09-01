@@ -68,6 +68,15 @@ export const MENUS: DefinicaoMenu[] = [
   // RNS: consulta de assuntos nas RNS do SICLA (LISTA_ITEMPED) — o consultor pesquisa um
   // assunto e vê as RNS relacionadas (Pedido + Item), no molde do Dicionário Inteligente.
   { chave: 'rns', rotulo: 'RNS', grupo: 'Execução' },
+  // Controle de Atividades: quadro de atividades por cliente (docs/controle-atividades.md).
+  // A chave é `controle_atividades`, e NÃO `atividades`: `atividade` (singular) já existe
+  // logo abaixo, no grupo Gestão, e é outra tela — o feed/KPIs de uso da operação. Duas
+  // chaves diferindo por uma letra seriam armadilha em `permissoes_menu`.
+  {
+    chave: 'controle_atividades',
+    rotulo: 'Controle de Atividades',
+    grupo: 'Execução',
+  },
   { chave: 'coordenacao', rotulo: 'Coordenação', grupo: 'Gestão' },
   {
     chave: 'centro_operacional',
@@ -284,6 +293,25 @@ export const PADRAO_PERMISSOES: Record<
   // Consultor SIGER: consulta à base de conhecimento do código-fonte — só leitura (a tela
   // toda é pesquisa; o feedback 👍/👎 conta como uso). O Comercial fica de fora por padrão,
   // ajustável em Gestão → Permissões.
+  // Controle de Atividades. Todo o time interno em `alteracao` — mas o nível do MENU não é
+  // o que separa escrita de consulta aqui: a leitura é geral (todo interno lê todos os
+  // quadros) e a ESCRITA depende de ser responsável PELO QUADRO, o que o menu não sabe e
+  // por isso é decidido no service. O Comercial fica em `consulta`: acompanha, não mexe.
+  //
+  // O `Cliente` entra em `alteracao` de propósito. Não é contradição com o recorte: ele só
+  // alcança o próprio quadro e só os cartões compartilhados, e o que pode fazer lá dentro
+  // (mover, marcar checklist, comentar, anexar, abrir solicitação) é limitado no service.
+  // Em `consulta` ele não conseguiria sequer concluir uma tarefa designada a ele.
+  controle_atividades: {
+    ADM: 'alteracao',
+    Coordenador: 'alteracao',
+    Administrativo: 'alteracao',
+    GCI: 'alteracao',
+    Consultor: 'alteracao',
+    Levantador: 'alteracao',
+    Comercial: 'consulta',
+    Cliente: 'alteracao',
+  },
   coordenacao: { ADM: 'alteracao', Coordenador: 'alteracao', GCI: 'alteracao' },
   centro_operacional: {
     ADM: 'alteracao',
