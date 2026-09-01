@@ -48,6 +48,7 @@ import { AtividadeAnexo } from './atividade-anexo.entity';
 import { AtividadeComentario } from './atividade-comentario.entity';
 import { AtividadeEvento } from './atividade-evento.entity';
 import { AtividadeNotificacao } from './atividade-notificacao.entity';
+import { PresencaSessao } from './presenca-sessao.entity';
 
 export * from './usuario.entity';
 export * from './projeto.entity';
@@ -141,4 +142,5 @@ export const ENTITIES = [
   AtividadeComentario,
   AtividadeEvento,
   AtividadeNotificacao,
+  PresencaSessao,
 ];

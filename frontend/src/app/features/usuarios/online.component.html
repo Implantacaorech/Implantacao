@@ -1,0 +1,101 @@
+<h1 class="pagina-titulo">
+  <svg class="svgi svgi-xl ic-brand" aria-hidden="true"><use href="#ic-users"/></svg>
+  Quem está online
+</h1>
+
+<div class="acoes on-barra">
+  <button class="btn" type="button" (click)="voltar()">
+    <svg class="svgi" aria-hidden="true"><use href="#ic-arrow-right"/></svg> Voltar a Usuários
+  </button>
+  <button class="btn" type="button" (click)="carregar()">
+    <svg class="svgi" aria-hidden="true"><use href="#ic-activity"/></svg> Atualizar agora
+  </button>
+  @if (panorama(); as p) {
+    <span class="on-resumo">
+      <b>{{ p.totalUsuarios }}</b> pessoa(s) · <b>{{ p.totalSessoes }}</b> aba(s) ·
+      {{ ativos() }} ativa(s), {{ ociosos() }} ociosa(s)
+      <em>· atualiza sozinho a cada 15s</em>
+    </span>
+  }
+</div>
+
+@if (erro()) { <div class="erro">{{ erro() }}</div> }
+
+@if (carregando()) {
+  <p class="on-vazio">Carregando…</p>
+} @else if (!usuarios().length) {
+  <p class="on-vazio">Ninguém no Painel neste momento.</p>
+} @else {
+  <div class="tabela-wrap">
+    <table class="tabela">
+      <thead>
+        <tr>
+          <th>Pessoa</th>
+          <th>Perfil</th>
+          <th>Onde está agora</th>
+          <th>Última atividade</th>
+          <th>Abas</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (u of usuarios(); track u.usuarioId) {
+          <tr [class.ocioso]="u.ocioso">
+            <td>
+              <span class="on-dot" [class.off]="u.ocioso"
+                    [title]="u.ocioso ? 'Ociosa ou em segundo plano' : 'Ativa'"></span>
+              {{ u.nome }}
+            </td>
+            <td>{{ u.perfil }}</td>
+            <td>
+              <b>{{ u.telaAtual || '—' }}</b>
+              <small class="on-rota">{{ u.rotaAtual }}</small>
+            </td>
+            <td>{{ desde(u.inativoSegundos) }}</td>
+            <td>{{ u.sessoes.length }}</td>
+            <td class="col-acoes">
+              @if (u.sessoes.length > 1 || expandido() === u.usuarioId) {
+                <button class="btn" type="button" (click)="alternar(u.usuarioId)">
+                  {{ expandido() === u.usuarioId ? 'Ocultar' : 'Detalhar' }}
+                </button>
+              } @else {
+                <button class="btn" type="button" (click)="alternar(u.usuarioId)">Detalhar</button>
+              }
+            </td>
+          </tr>
+          @if (expandido() === u.usuarioId) {
+            <tr class="on-detalhe">
+              <td colspan="6">
+                <div class="on-sessoes">
+                  @for (s of u.sessoes; track s.sessao) {
+                    <div class="on-sessao">
+                      <div class="on-sessao-t">
+                        <span class="on-dot" [class.off]="!s.visivel"></span>
+                        {{ s.titulo || '—' }}
+                      </div>
+                      <div class="on-sessao-m">
+                        <span>{{ s.rota }}</span>
+                        <span>IP {{ s.ip || '—' }}</span>
+                        <span>{{ navegador(s.navegador) }}</span>
+                        <span>aberta {{ desde(s.desdeSegundos) }}</span>
+                        <span>ativa {{ desde(s.inativoSegundos) }}</span>
+                        @if (!s.visivel) { <span class="on-tag">segundo plano</span> }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <p class="on-nota">
+    A presença é medida por batida do navegador a cada
+    {{ panorama()?.intervaloPingSegundos }}s; some da lista quem fica
+    {{ panorama()?.janelaSegundos }}s sem dar sinal. <b>Não há histórico</b> — esta tela mostra
+    só o momento, e nada de por onde cada pessoa passou fica gravado.
+  </p>
+}

@@ -626,6 +626,15 @@ export const routes: Routes = [
           ),
       },
       {
+        // Precisa vir ANTES de 'usuarios', não porque colidiria (são caminhos distintos),
+        // mas para ficar junto dela na leitura — as duas telas são a mesma função.
+        path: 'usuarios/online',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Quem está online' },
+        loadComponent: () =>
+          import('./features/usuarios/online.component').then((m) => m.OnlineComponent),
+      },
+      {
         path: 'usuarios',
         canActivate: [perfilGuard('ADM')],
         data: { titulo: 'Usuários' },

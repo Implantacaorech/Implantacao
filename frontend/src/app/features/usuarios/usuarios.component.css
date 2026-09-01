@@ -20,3 +20,10 @@
   line-height: 1.45;
   color: var(--muted);
 }
+
+/* Botão "Online" — o ponto verde é o sinal de vida; o número, quantas pessoas. */
+.usr-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);
+  box-shadow:0 0 0 3px var(--ok-bg)}
+.usr-dot.off{background:var(--faint);box-shadow:0 0 0 3px var(--surface-2)}
+.usr-online-n{background:var(--ok-bg);color:var(--ok);border-radius:10px;padding:0 7px;
+  font-size:.75rem;font-weight:700}

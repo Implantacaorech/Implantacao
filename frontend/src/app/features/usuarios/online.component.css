@@ -1,0 +1,16 @@
+.on-barra{margin:var(--sp-4) 0 var(--sp-3);flex-wrap:wrap;align-items:center}
+.on-resumo{font-size:.85rem;color:var(--muted);margin-left:auto}
+.on-resumo em{font-style:normal;color:var(--faint)}
+.on-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);
+  margin-right:7px;vertical-align:middle;box-shadow:0 0 0 3px var(--ok-bg)}
+.on-dot.off{background:var(--faint);box-shadow:0 0 0 3px var(--surface-2)}
+tr.ocioso{color:var(--muted)}
+.on-rota{display:block;font-size:.72rem;color:var(--faint);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.on-detalhe > td{background:var(--surface-2)}
+.on-sessoes{display:flex;flex-direction:column;gap:8px;padding:4px 0}
+.on-sessao{border-left:3px solid var(--line-2);padding-left:11px}
+.on-sessao-t{font-size:.85rem;font-weight:600;color:var(--ink)}
+.on-sessao-m{display:flex;gap:14px;flex-wrap:wrap;font-size:.74rem;color:var(--muted);margin-top:3px}
+.on-tag{background:var(--warn-bg);color:var(--warn);border-radius:5px;padding:1px 7px;font-weight:700}
+.on-vazio{color:var(--muted);font-size:.9rem;padding:var(--sp-5) 0}
+.on-nota{font-size:.78rem;color:var(--faint);margin-top:var(--sp-4);max-width:70ch;line-height:1.55}
