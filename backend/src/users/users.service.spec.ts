@@ -17,13 +17,25 @@ describe('UsersService', () => {
     getCount: jest.fn(),
     getOne: jest.fn(),
   };
+  // QB próprio do `manager` (checagem de designações do excluir) — separado do `qb` do
+  // repositório para os asserts de um não vazarem no outro.
+  const qbManager = {
+    where: jest.fn().mockReturnThis(),
+    getCount: jest.fn(),
+  };
+  const manager = {
+    createQueryBuilder: jest.fn(() => qbManager),
+    delete: jest.fn(),
+  };
   const repo = {
     findOne: jest.fn(),
     find: jest.fn(),
     save: jest.fn((e) => Promise.resolve({ id: e.id ?? 1, ...e })),
     create: jest.fn((dto) => dto),
     count: jest.fn(),
+    delete: jest.fn(),
     createQueryBuilder: jest.fn(() => qb),
+    manager,
   };
 
   beforeEach(async () => {
@@ -129,6 +141,7 @@ describe('UsersService', () => {
           email: 'outro@teste.com',
           senha: 'segredo1',
           perfil: 'Consultor',
+          codigoSicla: '008',
         }),
       ).rejects.toThrow(ConflictException);
     });
@@ -143,6 +156,7 @@ describe('UsersService', () => {
           email: 'novo@teste.com',
           senha: 'segredo1',
           perfil: 'Consultor',
+          codigoSicla: '009',
         }),
       ).resolves.toBeDefined();
     });
@@ -231,6 +245,54 @@ describe('UsersService', () => {
       await expect(
         service.atualizar(1, { email: 'ocupado@teste.com' }),
       ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('excluir', () => {
+    const alvo = { id: 7, nome: 'Beto Consultor', login: 'beto' };
+
+    it('lança NotFoundException quando o usuário não existe', async () => {
+      repo.findOne.mockResolvedValue(null);
+      await expect(service.excluir(999, 1)).rejects.toThrow(NotFoundException);
+    });
+
+    it('recusa excluir o próprio usuário logado (também garante que sempre sobra um ADM)', async () => {
+      repo.findOne.mockResolvedValue({ id: 1, nome: 'Admin' });
+      await expect(service.excluir(1, 1)).rejects.toThrow(ConflictException);
+      expect(repo.delete).not.toHaveBeenCalled();
+    });
+
+    it('recusa excluir quem tem designação em projeto — o caminho é desativar', async () => {
+      repo.findOne.mockResolvedValue(alvo);
+      qbManager.getCount.mockResolvedValue(3);
+      await expect(service.excluir(7, 1)).rejects.toThrow(ConflictException);
+      expect(repo.delete).not.toHaveBeenCalled();
+      expect(manager.delete).not.toHaveBeenCalled();
+    });
+
+    it('exclui e remove os satélites (sessões, recuperação, preferências, exceções de permissão)', async () => {
+      repo.findOne.mockResolvedValue(alvo);
+      qbManager.getCount.mockResolvedValue(0);
+      await service.excluir(7, 1);
+      // 4 satélites, todos filtrados pelo usuário excluído — sem FK física no schema,
+      // é aqui que os órfãos são evitados.
+      expect(manager.delete).toHaveBeenCalledTimes(4);
+      for (const chamada of manager.delete.mock.calls) {
+        expect(chamada[1]).toEqual({ usuarioId: 7 });
+      }
+      expect(repo.delete).toHaveBeenCalledWith(7);
+    });
+
+    it('a checagem de designação cobre vínculo antigo sem usuarioId (casado pelo nome)', async () => {
+      repo.findOne.mockResolvedValue(alvo);
+      qbManager.getCount.mockResolvedValue(0);
+      await service.excluir(7, 1);
+      expect(qbManager.where).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'pp.usuarioId IS NULL AND LOWER(TRIM(pp.pessoa))',
+        ),
+        { id: 7, nome: 'beto consultor' },
+      );
     });
   });
 

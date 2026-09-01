@@ -77,12 +77,11 @@ describe('PermissoesService.nivelEfetivo', () => {
     expect(svc.nivelEfetivo(u('Consultor', 8), 'matriz')).toBe('alteracao');
   });
 
-  it('podeVer/podeAlterar refletem o nível', async () => {
+  it('podeAlterar reflete o nível', async () => {
     const svc = await montar([
       { papel: 'Comercial', menu: 'carteira', nivel: 'consulta' },
     ]);
-    expect(svc.podeVer(u('Comercial'), 'carteira')).toBe(true);
     expect(svc.podeAlterar(u('Comercial'), 'carteira')).toBe(false);
-    expect(svc.podeVer(u('Comercial'), 'matriz')).toBe(false);
+    expect(svc.nivelEfetivo(u('Comercial'), 'matriz')).toBe('nada');
   });
 });

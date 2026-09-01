@@ -9,8 +9,7 @@ import { DocumentosService } from '../../core/services/documentos.service';
 import { DesignacaoService } from '../../core/services/designacao.service';
 import { AuthService } from '../../core/services/auth.service';
 import { Cabecalho } from '../../core/models/painel.model';
-import { Documento, DOC_TIPOS, EventoProjeto, SlugDocumentoFiel } from '../../core/models/documento.model';
-import { podeGerar, temPapel, PERFIS_DESIGNA_CONSULTORES } from '../../core/constants/perfis';
+import { Documento, EventoProjeto } from '../../core/models/documento.model';
 
 type Aba = 'resumo' | 'dados' | 'com' | 'hist';
 
@@ -21,15 +20,6 @@ const ICONE_EVENTO: Record<string, string> = {
   email: '#ic-mail',
   alerta: '#ic-bell',
 };
-
-function baixarNoNavegador(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 @Component({
   selector: 'app-projeto-form',
@@ -48,16 +38,12 @@ export class ProjetoFormComponent {
   private readonly router = inject(Router);
 
   readonly situacoes = SITUACOES;
-  readonly docTipos = DOC_TIPOS;
   readonly iconeEvento = ICONE_EVENTO;
 
   readonly salvando = signal(false);
   readonly carregando = signal(true);
   readonly erro = signal<string | null>(null);
-  readonly aviso = signal<string | null>(null);
   readonly salvo = signal(false);
-  readonly avancando = signal(false);
-  readonly gerando = signal<string | null>(null);
 
   readonly projetoId = signal<number | null>(null);
   /** Levantamento ou Demonstração (passo 1). Fora do formulário de propósito: quem grava é o
@@ -68,24 +54,14 @@ export class ProjetoFormComponent {
   readonly eventos = signal<EventoProjeto[]>([]);
   readonly designacoesAtuais = signal<Record<string, string>>({});
   readonly aba = signal<Aba>('dados');
-  readonly mostrarHistoricoResumo = signal(false);
 
   novaNota = '';
-  tipoAnexo = 'levantamento';
-  enviandoAnexo = false;
 
   readonly perfil = computed(() => this.auth.usuario()?.perfil);
-  readonly podeDesignarConsultores = computed(() =>
-    temPapel(this.auth.usuario(), ...PERFIS_DESIGNA_CONSULTORES),
-  );
 
   readonly designacoesLista = computed(() =>
     Object.entries(this.designacoesAtuais()).map(([modulo, consultor]) => ({ modulo, consultor })),
   );
-
-  readonly temCronograma = computed(() => this.documentos().some((d) => d.tipo === 'cronograma'));
-  readonly temChecklist = computed(() => this.documentos().some((d) => d.tipo === 'checklist'));
-  readonly temTermo = computed(() => this.documentos().some((d) => d.tipo === 'termo'));
 
   readonly form = this.fb.nonNullable.group({
     cliente: ['', Validators.required],
@@ -182,61 +158,6 @@ export class ProjetoFormComponent {
     }
   }
 
-  podeGerar(tipo: string): boolean {
-    return podeGerar(tipo, this.auth.usuario());
-  }
-
-  async gerarDocumento(slug: SlugDocumentoFiel): Promise<void> {
-    const id = this.projetoId();
-    if (!id || this.gerando()) return;
-    this.gerando.set(slug);
-    this.erro.set(null);
-    this.aviso.set(null);
-    try {
-      const arquivo = await this.documentosService.gerarLayout(id, slug);
-      baixarNoNavegador(arquivo.blob, arquivo.filename);
-      this.aviso.set(`${arquivo.filename} gerado e anexado à ficha.`);
-      await this.carregarTudo(id);
-    } catch (e) {
-      this.erro.set(this.mensagemErro(e, 'Não foi possível gerar o documento.'));
-    } finally {
-      this.gerando.set(null);
-    }
-  }
-
-  /** Gera, em sequência, todo documento obrigatório do gate da etapa atual que ainda não
-   * existe — equivalente ao botão "Preparar N doc(s) pendente(s)" de projeto_ficha.html
-   * (lá é uma rota própria; aqui é o mesmo resultado via chamadas sequenciais ao endpoint
-   * de geração já existente). 'projeto' fica de fora — precisa passar pela escolha de
-   * origem (Gerar Projeto), igual webapp/routes_geracao.py:projeto_gerar_pendentes. */
-  async gerarPendentes(): Promise<void> {
-    const id = this.projetoId();
-    const cab = this.cabecalho();
-    if (!id || !cab || this.gerando()) return;
-    const tiposBulk: SlugDocumentoFiel[] = ['levantamento', 'cronograma', 'termo'];
-    const pendentes = cab.gate.itens
-      .filter((i) => !i.ok && tiposBulk.includes(i.tipo as SlugDocumentoFiel))
-      .map((i) => i.tipo as SlugDocumentoFiel);
-    for (const tipo of pendentes) {
-      await this.gerarDocumento(tipo);
-    }
-  }
-
-  async avancarEtapa(): Promise<void> {
-    const id = this.projetoId();
-    if (!id || this.avancando()) return;
-    this.avancando.set(true);
-    this.erro.set(null);
-    try {
-      await this.documentosService.avancar(id);
-      await this.carregarTudo(id);
-    } catch (e) {
-      this.erro.set(this.mensagemErro(e, 'Não foi possível avançar a etapa.'));
-    } finally {
-      this.avancando.set(false);
-    }
-  }
-
   async adicionarNota(): Promise<void> {
     const id = this.projetoId();
     if (!id || !this.novaNota.trim()) return;
@@ -246,51 +167,6 @@ export class ProjetoFormComponent {
       await this.carregarTudo(id);
     } catch (e) {
       this.erro.set(this.mensagemErro(e, 'Não foi possível registrar a nota.'));
-    }
-  }
-
-  async anexarDocumento(evento: Event): Promise<void> {
-    const id = this.projetoId();
-    const input = evento.target as HTMLInputElement;
-    const arquivo = input.files?.[0];
-    if (!id || !arquivo) return;
-    this.enviandoAnexo = true;
-    try {
-      await this.documentosService.anexar(id, this.tipoAnexo, arquivo);
-      await this.carregarTudo(id);
-    } catch (e) {
-      this.erro.set(this.mensagemErro(e, 'Não foi possível anexar o documento.'));
-    } finally {
-      this.enviandoAnexo = false;
-      input.value = '';
-    }
-  }
-
-  async baixarDocumento(doc: Documento): Promise<void> {
-    try {
-      const arquivo = await this.documentosService.baixar(doc.id, doc.arquivo);
-      baixarNoNavegador(arquivo.blob, arquivo.filename);
-    } catch {
-      this.erro.set('Não foi possível baixar o documento.');
-    }
-  }
-
-  ehExcluivel(doc: Documento): boolean {
-    // Mesma regra de webapp/db.py:tipo_excluivel — só bloqueia se algo POSTERIOR existir.
-    const ordem: Record<string, number> = { levantamento: 0, projeto: 1, cronograma: 2, checklist: 2, termo: 3 };
-    const rank = ordem[doc.tipo];
-    if (rank === undefined) return true;
-    return !this.documentos().some((d) => (ordem[d.tipo] ?? -1) > rank);
-  }
-
-  async excluirDocumento(doc: Documento): Promise<void> {
-    const id = this.projetoId();
-    if (!id || !confirm('Excluir este documento para gerá-lo novamente?')) return;
-    try {
-      await this.documentosService.excluirDocumento(doc.id);
-      await this.carregarTudo(id);
-    } catch (e) {
-      this.erro.set(this.mensagemErro(e, 'Não foi possível excluir o documento.'));
     }
   }
 

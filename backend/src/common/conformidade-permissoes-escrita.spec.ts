@@ -35,13 +35,6 @@ const ESCRITA_CONSULTA_PERMITIDA: {
       'designação, RN-10). Exigir alteração aqui rebreakearia o achado de 2026-08-05.',
   },
   {
-    arquivo: 'dicionario/dicionario.controller.ts',
-    rota: 'perguntar',
-    motivo:
-      'POST de CONSULTA (pergunta ao RAG) — não persiste estado do cliente; o menu ' +
-      'dicionário é só-ADM por padrão. É um POST por carregar corpo, não uma escrita.',
-  },
-  {
     arquivo: 'protocolos/protocolos.controller.ts',
     rota: 'portal/credencial',
     motivo:
@@ -56,15 +49,6 @@ const ESCRITA_CONSULTA_PERMITIDA: {
       'Salvar/remover a PRÓPRIA credencial do RechEdu é configuração pessoal, não escrita em ' +
       'dados do sistema — mesma decisão da credencial do Portal Rech acima. Quem enxerga a ' +
       'tela RechEdu (consulta) precisa poder cadastrar o próprio login do portal de educação.',
-  },
-  {
-    arquivo: 'consultor-siger/consultor-siger.controller.ts',
-    rota: 'feedback',
-    motivo:
-      'Avaliar a resposta (👍/👎 + observação) é parte de USAR a tela de consulta — o registro ' +
-      'vai para um JSONL ao lado da base derivada, fora do banco do Painel e fora da fonte ' +
-      'F:\\SIGER. Exigir alteração deixaria só o ADM avaliar e mataria o propósito do feedback ' +
-      '(mesma família do POST perguntar do Dicionário: corpo grande, não escrita de sistema).',
   },
   {
     arquivo: 'protocolos/protocolos.controller.ts',

@@ -8,6 +8,11 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { mkdirSync, unlinkSync, writeFileSync } from 'fs';
 import { basename, join } from 'path';
+import {
+  caminhoAbsolutoDocumento,
+  caminhoParaPersistir,
+  storeDocumentos,
+} from './caminho-documento.util';
 import { Repository } from 'typeorm';
 import {
   Documento,
@@ -189,7 +194,7 @@ export class DocumentosService {
     }
     await this.documentos.delete({ id });
     try {
-      unlinkSync(doc.caminho);
+      unlinkSync(caminhoAbsolutoDocumento(doc.caminho));
     } catch {
       // Arquivo físico já ausente/inacessível — não bloqueia a exclusão do registro
       // (mesmo comportamento tolerante do Flask original, que só usa o caminho para
@@ -204,7 +209,7 @@ export class DocumentosService {
   }
 
   private store(): string {
-    const dir = join(process.cwd(), 'dados', 'documentos_gerados');
+    const dir = storeDocumentos();
     mkdirSync(dir, { recursive: true });
     return dir;
   }
@@ -273,7 +278,15 @@ export class DocumentosService {
   ): Promise<Documento> {
     const { usuario, concluiPasso = true } = opcoes;
     const doc = await this.documentos.save(
-      this.documentos.create({ projetoId, tipo, arquivo, caminho, origem }),
+      this.documentos.create({
+        projetoId,
+        tipo,
+        arquivo,
+        // Relativo ao store quando o arquivo mora lá — portável entre máquinas; registros
+        // antigos seguem absolutos e são resolvidos por caminhoAbsolutoDocumento().
+        caminho: caminhoParaPersistir(caminho),
+        origem,
+      }),
     );
     const passo = concluiPasso
       ? DocumentosService.passoDoTipo(tipo)

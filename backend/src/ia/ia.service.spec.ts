@@ -21,6 +21,24 @@ function limparConfig(): void {
   }
 }
 
+/** ⚠️ **13 casos abaixo estão `it.skip` desde 2026-09-01, e o motivo não é flakiness.**
+ *
+ * Eles exercitam os PROVEDORES EXTERNOS (Anthropic e OpenRouter) usando a finalidade
+ * `dicionario` — a única que os aceitava, por ler documentação do SIGER® (conteúdo nosso,
+ * sem dado de cliente). Com a saída do módulo Dicionário Inteligente, restaram duas
+ * finalidades, e ambas leem transcrição de reunião de cliente: pela trava de privacidade A1,
+ * **só aceitam o provedor `local`**.
+ *
+ * Ou seja: hoje nenhuma finalidade real alcança o caminho externo. Reescrever estes testes
+ * com uma finalidade fictícia não funciona (`status()` resolve o rótulo pela lista real e
+ * quebra), e reescrevê-los para o `local` seria duplicar o que o bloco "provedor local" já
+ * cobre — em ambos os casos, testes que não provam o que dizem provar.
+ *
+ * O código de despacho externo CONTINUA no `IaService`. A decisão pendente é do usuário:
+ * remover o suporte a provedor externo (e então estes casos saem junto) ou criar uma
+ * finalidade sem dado de cliente que volte a usá-lo (e então voltam a rodar, trocando
+ * `dicionario` por ela). Enquanto a decisão não vem, `skip` com motivo é mais honesto do que
+ * apagar a cobertura de um código vivo. */
 describe('IaService', () => {
   let service: IaService;
   const envAntigo = { ...process.env };
@@ -43,44 +61,45 @@ describe('IaService', () => {
 
   it('sem nenhuma configuração, todas as finalidades ficam inativas', () => {
     expect(service.disponivel('protocolos')).toBe(false);
-    expect(service.disponivel('dicionario')).toBe(false);
+    expect(service.disponivel('levantamento')).toBe(false);
     expect(service.statusTodas().every((s) => !s.ativa)).toBe(true);
   });
 
-  // Usa `dicionario` (finalidade NÃO sensível) para os testes de provedor externo: desde a
-  // trava de privacidade A1, `protocolos`/`levantamento` só aceitam o provedor `local`.
-  it('salva chave por finalidade de forma independente', () => {
-    service.salvar('dicionario', {
-      provider: 'anthropic',
-      apiKey: 'sk-ant-dic',
-      modelo: '',
+  it('salva a configuração por finalidade de forma independente', () => {
+    service.salvar('protocolos', {
+      provider: 'local',
+      apiKey: '',
+      modelo: 'qwen2.5:14b',
+      baseUrl: 'http://192.168.1.50:11434/v1',
     });
-    expect(service.disponivel('dicionario')).toBe(true);
-    expect(service.disponivel('protocolos')).toBe(false);
-    const st = service.status('dicionario');
-    expect(st.provider).toBe('anthropic');
-    expect(st.modelo).toBe('claude-opus-4-8'); // default aplicado
+    expect(service.disponivel('protocolos')).toBe(true);
+    expect(service.disponivel('levantamento')).toBe(false);
+    const st = service.status('protocolos');
+    expect(st.provider).toBe('local');
+    expect(st.modelo).toBe('qwen2.5:14b');
   });
 
   it('com a automação pausada, completar recusa a chamada (eixo 4 — kill switch)', async () => {
-    service.salvar('dicionario', {
-      provider: 'anthropic',
-      apiKey: 'sk-ant-dic',
-      modelo: '',
+    service.salvar('protocolos', {
+      provider: 'local',
+      apiKey: '',
+      modelo: 'qwen2.5:14b',
+      baseUrl: 'http://192.168.1.50:11434/v1',
     });
     killSwitch.pausar('gasto de IA disparou', 'adm');
     await expect(
-      service.completar('dicionario', {
+      service.completar('protocolos', {
         system: 's',
         messages: [{ role: 'user', content: 'oi' }],
         maxTokens: 10,
       }),
     ).rejects.toThrow(/pausada/i);
-    // O freio age ANTES de qualquer provedor: o SDK do Anthropic nem é chamado.
+    // O freio age ANTES de qualquer provedor: nem o SDK do Anthropic nem o fetch do local
+    // são chamados.
     expect(createMock).not.toHaveBeenCalled();
   });
 
-  it('aceita provedor openrouter com modelo próprio', () => {
+  it.skip('aceita provedor openrouter com modelo próprio', () => {
     service.salvar('dicionario', {
       provider: 'openrouter',
       apiKey: 'sk-or-xyz',
@@ -92,15 +111,16 @@ describe('IaService', () => {
     expect(st.modelo).toBe('anthropic/claude-sonnet-4');
   });
 
-  it('chave vazia remove a configuração da finalidade', () => {
-    service.salvar('dicionario', {
-      provider: 'anthropic',
-      apiKey: 'sk-ant',
-      modelo: '',
+  it('configuração em branco remove a finalidade', () => {
+    service.salvar('protocolos', {
+      provider: 'local',
+      apiKey: '',
+      modelo: 'qwen2.5:14b',
+      baseUrl: 'http://192.168.1.50:11434/v1',
     });
-    expect(service.disponivel('dicionario')).toBe(true);
-    service.salvar('dicionario', { apiKey: '' });
-    expect(service.disponivel('dicionario')).toBe(false);
+    expect(service.disponivel('protocolos')).toBe(true);
+    service.salvar('protocolos', { provider: 'local', baseUrl: '' });
+    expect(service.disponivel('protocolos')).toBe(false);
   });
 
   it('env var Anthropic é fallback global (viaEnv) para finalidades sem config própria', () => {
@@ -109,17 +129,18 @@ describe('IaService', () => {
     expect(st.ativa).toBe(true);
     expect(st.viaEnv).toBe(true);
     // config própria de outra finalidade tem prioridade e não é viaEnv
-    service.salvar('dicionario', {
-      provider: 'openrouter',
-      apiKey: 'sk-or',
-      modelo: 'x/y',
+    service.salvar('levantamento', {
+      provider: 'local',
+      apiKey: '',
+      modelo: 'qwen2.5:14b',
+      baseUrl: 'http://192.168.1.50:11434/v1',
     });
-    const stDic = service.status('dicionario');
-    expect(stDic.viaEnv).toBe(false);
-    expect(stDic.provider).toBe('openrouter');
+    const stLev = service.status('levantamento');
+    expect(stLev.viaEnv).toBe(false);
+    expect(stLev.provider).toBe('local');
   });
 
-  it('completar despacha para o Anthropic SDK quando o provedor é anthropic', async () => {
+  it.skip('completar despacha para o Anthropic SDK quando o provedor é anthropic', async () => {
     service.salvar('dicionario', {
       provider: 'anthropic',
       apiKey: 'sk-ant',
@@ -143,7 +164,7 @@ describe('IaService', () => {
     );
   });
 
-  it('completar despacha para o OpenRouter (fetch, formato OpenAI) quando o provedor é openrouter', async () => {
+  it.skip('completar despacha para o OpenRouter (fetch, formato OpenAI) quando o provedor é openrouter', async () => {
     service.salvar('dicionario', {
       provider: 'openrouter',
       apiKey: 'sk-or',
@@ -509,7 +530,7 @@ describe('IaService', () => {
     ).rejects.toThrow('IA não configurada');
   });
 
-  it('openrouter sem modelo informado falha com mensagem clara', async () => {
+  it.skip('openrouter sem modelo informado falha com mensagem clara', async () => {
     service.salvar('dicionario', {
       provider: 'openrouter',
       apiKey: 'sk-or',
@@ -608,7 +629,7 @@ describe('IaService', () => {
       return { s, telemetria };
     }
 
-    it('registra a execução com os tokens do OpenRouter', async () => {
+    it.skip('registra a execução com os tokens do OpenRouter', async () => {
       const { s, telemetria } = comTelemetria();
       s.salvar('dicionario', {
         provider: 'openrouter',
@@ -640,7 +661,7 @@ describe('IaService', () => {
       fetchMock.mockRestore();
     });
 
-    it('registra status erro quando a chamada falha, e propaga o erro', async () => {
+    it.skip('registra status erro quando a chamada falha, e propaga o erro', async () => {
       const { s, telemetria } = comTelemetria();
       s.salvar('dicionario', {
         provider: 'openrouter',
@@ -658,7 +679,7 @@ describe('IaService', () => {
       fetchMock.mockRestore();
     });
 
-    it('teto diário atingido interrompe provedor externo antes de chamar', async () => {
+    it.skip('teto diário atingido interrompe provedor externo antes de chamar', async () => {
       const { s } = comTelemetria({
         tetoAtingido: jest.fn().mockResolvedValue(true),
       });
@@ -735,7 +756,7 @@ describe('IaService', () => {
   });
 
   describe('eixo 6 — temperatura factual', () => {
-    it('manda temperatura baixa e fixa (0.2) por padrão ao provedor', async () => {
+    it.skip('manda temperatura baixa e fixa (0.2) por padrão ao provedor', async () => {
       service.salvar('dicionario', {
         provider: 'openrouter',
         apiKey: 'sk-or',
@@ -775,7 +796,7 @@ describe('IaService', () => {
       ).model;
     }
 
-    it('tarefa PEQUENA usa o modelo econômico quando configurado', async () => {
+    it.skip('tarefa PEQUENA usa o modelo econômico quando configurado', async () => {
       service.salvar('dicionario', {
         provider: 'openrouter',
         apiKey: 'sk-or',
@@ -792,7 +813,7 @@ describe('IaService', () => {
       f.mockRestore();
     });
 
-    it('tarefa GRANDE usa o modelo pleno', async () => {
+    it.skip('tarefa GRANDE usa o modelo pleno', async () => {
       service.salvar('dicionario', {
         provider: 'openrouter',
         apiKey: 'sk-or',
@@ -809,7 +830,7 @@ describe('IaService', () => {
       f.mockRestore();
     });
 
-    it('sem modelo econômico configurado, nada muda (usa o pleno)', async () => {
+    it.skip('sem modelo econômico configurado, nada muda (usa o pleno)', async () => {
       service.salvar('dicionario', {
         provider: 'openrouter',
         apiKey: 'sk-or',
@@ -827,7 +848,7 @@ describe('IaService', () => {
   });
 
   describe('eixo 8 — failover entre provedores', () => {
-    it('provedor externo falha → cai para o fallback Anthropic (finalidade não sensível)', async () => {
+    it.skip('provedor externo falha → cai para o fallback Anthropic (finalidade não sensível)', async () => {
       process.env.MIGRACAO_ANTHROPIC_API_KEY = 'sk-ant-env';
       service.salvar('dicionario', {
         provider: 'openrouter',
@@ -889,7 +910,7 @@ describe('IaService', () => {
       expect(proto?.viaEnv).toBe(true);
     });
 
-    it('não denuncia o dicionário (finalidade NÃO sensível) em provedor externo', () => {
+    it.skip('não denuncia o dicionário (finalidade NÃO sensível) em provedor externo', () => {
       service.salvar('dicionario', {
         provider: 'openrouter',
         apiKey: 'sk-or',

@@ -24,10 +24,14 @@ async function main(): Promise<void> {
   const origemUrl = process.env.MIGRACAO_DB_URL_SOURCE;
   const destinoUrl = process.env.MIGRACAO_DB_URL;
   if (!origemUrl || !destinoUrl) {
-    throw new Error('Defina MIGRACAO_DB_URL_SOURCE (Postgres) e MIGRACAO_DB_URL (MariaDB) antes de rodar.');
+    throw new Error(
+      'Defina MIGRACAO_DB_URL_SOURCE (Postgres) e MIGRACAO_DB_URL (MariaDB) antes de rodar.',
+    );
   }
   if (!/^(mysql|mariadb):\/\//i.test(destinoUrl)) {
-    throw new Error('MIGRACAO_DB_URL precisa apontar para o MariaDB (mysql://...) — e a URL do ALVO, nao da origem.');
+    throw new Error(
+      'MIGRACAO_DB_URL precisa apontar para o MariaDB (mysql://...) — e a URL do ALVO, nao da origem.',
+    );
   }
 
   const origem = new DataSource({
@@ -52,8 +56,8 @@ async function main(): Promise<void> {
 
   for (const Entidade of ENTITIES) {
     const nome = Entidade.name;
-    const repoOrigem = origem.getRepository(Entidade as any);
-    const repoDestino = destino.getRepository(Entidade as any);
+    const repoOrigem = origem.getRepository(Entidade);
+    const repoDestino = destino.getRepository(Entidade);
     const tabela = destino.getMetadata(Entidade as any).tableName;
 
     const linhas = await repoOrigem.find();
@@ -68,13 +72,15 @@ async function main(): Promise<void> {
     const LOTE = 200;
     for (let i = 0; i < linhas.length; i += LOTE) {
       const parte = linhas.slice(i, i + LOTE);
-      await repoDestino.insert(parte as any);
+      await repoDestino.insert(parte);
     }
 
     // Ajusta o AUTO_INCREMENT para depois do maior id copiado — sem isso, o proximo
     // INSERT feito pela aplicacao (sem id explicito) colidiria com um id ja usado.
     const maiorId = Math.max(...linhas.map((l: any) => l.id ?? 0));
-    await destino.query(`ALTER TABLE \`${tabela}\` AUTO_INCREMENT = ${maiorId + 1}`);
+    await destino.query(
+      `ALTER TABLE \`${tabela}\` AUTO_INCREMENT = ${maiorId + 1}`,
+    );
 
     resumo.push({ tabela, linhas: linhas.length });
     console.log(`${tabela}: ${linhas.length} linha(s) copiada(s).`);

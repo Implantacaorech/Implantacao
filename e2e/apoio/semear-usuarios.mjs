@@ -32,6 +32,12 @@ const USUARIOS = [
   { login: 'gabriel.gci', nome: 'Gabriel GCI', perfil: 'GCI', codigoSicla: '9104' },
   { login: 'cesar.consultor', nome: 'Cesar Consultor', perfil: 'Consultor', codigoSicla: '9105' },
   { login: 'lucia.levantadora', nome: 'Lucia Levantadora', perfil: 'Levantador', codigoSicla: '9106' },
+  // Dois CLIENTES (papel externo, 2026-08-31): cada um amarrado a um código de cliente do
+  // SICLA diferente. São dois de propósito — o que o e2e precisa provar é que um não alcança
+  // o outro, e isso exige dois. `codigoSicla` fica vazio: cliente não é técnico, e o backend
+  // recusa o cadastro que misturar os dois códigos.
+  { login: 'cliente.acme', nome: 'Contato ACME', perfil: 'Cliente', codigoClienteSicla: '3180' },
+  { login: 'cliente.outro', nome: 'Contato CONCORRENTE', perfil: 'Cliente', codigoClienteSicla: '3729' },
 ];
 
 const desembrulhar = (j) => (j && typeof j === 'object' && 'data' in j ? j.data : j);
@@ -66,7 +72,10 @@ async function criar(token, u) {
       email: `${u.login}@teste.local`,
       senha: SENHA,
       perfil: u.perfil,
-      codigoSicla: u.codigoSicla,
+      // Os dois códigos são excludentes: o do TÉCNICO no cadastro interno, o do CLIENTE no
+      // externo. Mandar os dois faz o backend recusar (e é o certo).
+      codigoSicla: u.codigoSicla ?? '',
+      codigoClienteSicla: u.codigoClienteSicla ?? '',
     }),
   });
   return r.ok;

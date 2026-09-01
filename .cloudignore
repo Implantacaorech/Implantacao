@@ -48,7 +48,6 @@ tools/data/modelos_documento/**/*.docx
 tools/data/modelos_documento/**/*.xlsx
 
 # --- JS minificado / vendor / gerado (não é contexto útil) ---
-webapp/static/chart.umd.min.js
 ia_admin/dados.js
 
 # ============================================================
@@ -67,9 +66,8 @@ entrada_ia/**
 
 # ============================================================
 # PRESERVAR como contexto útil (texto leve) — não são ignorados:
-#   webapp/**/*.py · webapp/templates/**/*.html · webapp/static/style.css
-#   tools/**/*.py · tools/data/*.yaml · docs/**/*.md · templates/**/*.md
-#   memoria_ia/** · ia_admin/*.md · ia_admin/*.yaml
-#   README.md · CLAUDE.md · AGENTS.md · build_painel_exe.py
-#   docker-compose.yml · *.bat
+#   backend/src/**/*.ts · frontend/src/** · docservice/**/*.py
+#   webapp/**/*.py · tools/**/*.py · tools/data/*.yaml
+#   docs/**/*.md · templates/**/*.md · memoria_ia/** · ia_admin/*.md · ia_admin/*.yaml
+#   README.md · CLAUDE.md · AGENTS.md · *.bat
 # ============================================================

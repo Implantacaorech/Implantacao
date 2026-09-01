@@ -3,6 +3,7 @@ import {
   SQL_BUSCA_MODULO_PADRAO,
   SQL_LISTA_TECNICOS_PADRAO,
   SQL_LISTA_FUNCOES_PADRAO,
+  SQL_LISTA_CONTATOS_PADRAO,
 } from './sql/sicla-cadastros.sql';
 import { SQL_CONSULTA_RNS_PADRAO } from './sql/sicla-rns.sql';
 import {
@@ -20,6 +21,10 @@ import {
   SQL_PREVISAO_INICIO_OFICIAL,
 } from './sql/sicla-bi.sql';
 import { SQL_VISITAS_PORTAL_PADRAO } from './sql/portal-rech.sql';
+import {
+  NOME_LISTA_CONTATOS,
+  SLUG_LISTA_CONTATOS,
+} from '../../contatos-sicla/contatos-sicla.constants';
 import { SELECT_TECNICOS_PADRAO } from './sql/sicla-disponibilidade.sql';
 import { ConsultaCatalogo, ParametroConsulta } from './catalogo.types';
 
@@ -49,6 +54,11 @@ const LIMITE = {
   visitasPortal: 20000,
   ocupacao: 20000,
   tecnicosSicla: 5000,
+  // Contatos liberados no portal. Cabe no teto de uma página (TAMANHO_PAGINA_MAX) de
+  // propósito: o recorte é `PORTAL_RECH_CLIENTES = 1`, ou seja, só quem a Rech já autorizou
+  // a entrar no portal — não a agenda de contatos inteira. Se um dia estourar, o caminho é
+  // paginar, não subir o teto em silêncio.
+  contatosSicla: 5000,
 } as const;
 
 /** Teto absoluto de linhas por página, independente do que a consulta declare — protege o
@@ -70,6 +80,16 @@ const P: Record<string, ParametroConsulta> = {
     tipo: 'data',
     obrigatorio: false,
     descricao: 'Fim do período (AAAA-MM-DD).',
+  },
+  /** Recorte por CLIENTE do BI (docs/acesso-cliente-bi.md §7). Quem informa é o Painel, a
+   * partir do vínculo do usuário logado — NUNCA o navegador. Nulo em todo usuário interno.
+   * É defesa em profundidade: a garantia do recorte continua no serviço; este bind evita
+   * que o dado alheio saia do Oracle. */
+  cliente: {
+    nome: 'cliente',
+    tipo: 'inteiro',
+    obrigatorio: false,
+    descricao: 'Código do cliente no SICLA (LISTA_CLIENTES.CODIGO).',
   },
   mesIni: {
     nome: 'mes_ini',
@@ -297,7 +317,7 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao: 'Agendas do SICLA na janela mensal — painel de agendas do BI.',
     conexao: 'sicla',
     menus: ['bi_implantacao'],
-    parametros: [P.mesIni, P.mesFim],
+    parametros: [P.mesIni, P.mesFim, P.cliente],
     origem: { tipo: 'fixo', sql: SQL_AGENDAS },
     limiteLinhas: LIMITE.biLinhas,
     cacheSegundos: 300,
@@ -313,7 +333,7 @@ export const CATALOGO: ConsultaCatalogo[] = [
       'RNS de implantação por data de contratação — painel principal do BI de Implantação.',
     conexao: 'sicla',
     menus: ['bi_implantacao'],
-    parametros: [P.dataIni, P.dataFim],
+    parametros: [P.dataIni, P.dataFim, P.cliente],
     origem: { tipo: 'fixo', sql: SQL_RESUMO_IMPLANTACAO },
     limiteLinhas: LIMITE.biLinhas,
     cacheSegundos: 300,
@@ -326,7 +346,7 @@ export const CATALOGO: ConsultaCatalogo[] = [
     descricao: 'Lançamentos de hora do SICLA na janela informada.',
     conexao: 'sicla',
     menus: ['bi_implantacao'],
-    parametros: [P.dataIni, P.dataFim],
+    parametros: [P.dataIni, P.dataFim, P.cliente],
     origem: { tipo: 'fixo', sql: SQL_EXTRATO_HORAS },
     limiteLinhas: LIMITE.biExtrato,
     cacheSegundos: 300,
@@ -369,7 +389,7 @@ export const CATALOGO: ConsultaCatalogo[] = [
       'RNS filhas (conversão, desenvolvimento, BI) criadas na janela informada.',
     conexao: 'sicla',
     menus: ['bi_implantacao'],
-    parametros: [P.dataIni, P.dataFim],
+    parametros: [P.dataIni, P.dataFim, P.cliente],
     origem: { tipo: 'fixo', sql: SQL_RNS_VINCULADAS },
     limiteLinhas: LIMITE.biLinhas,
     cacheSegundos: 300,
@@ -509,6 +529,33 @@ export const CATALOGO: ConsultaCatalogo[] = [
     limiteLinhas: LIMITE.tecnicosSicla,
     cacheSegundos: 600,
     donoAtual: 'disponibilidade',
+    desde: 'v1',
+  },
+
+  {
+    nome: 'sicla.contatos.listar',
+    titulo: 'Contatos de cliente liberados no Portal Rech',
+    descricao:
+      'Contatos com PORTAL_RECH_CLIENTES = 1 — quem o SICLA autoriza a acessar o portal. Fonte do acesso externo ao Painel.',
+    conexao: 'sicla',
+    // Duas telas: o cadastro de acesso (onde o ADM libera) e o BI, porque o login do
+    // usuário-cliente revalida contra esta consulta a cada entrada.
+    menus: ['acesso_clientes', 'bi_implantacao'],
+    parametros: [P.cliente],
+    origem: {
+      tipo: 'consulta_salva',
+      slug: SLUG_LISTA_CONTATOS,
+      sqlPadrao: SQL_LISTA_CONTATOS_PADRAO,
+      semente: {
+        nome: NOME_LISTA_CONTATOS,
+        ordem: 95,
+      },
+    },
+    limiteLinhas: LIMITE.contatosSicla,
+    // Cache curto: é autorização, não relatório. Revogar no SICLA precisa valer rápido, e o
+    // login do cliente passa por aqui.
+    cacheSegundos: 60,
+    donoAtual: 'contatos-sicla',
     desde: 'v1',
   },
 

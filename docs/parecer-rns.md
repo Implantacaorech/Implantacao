@@ -55,7 +55,7 @@ O Painel de Implantação é uma aplicação web interna que centraliza, control
 
 **11. Cadastros e configurações**
 - Cadastros de referência (Check-list, Índice de Tópicos, Modelos de Documentos com versões).
-- Configurações de envio/recebimento (SMTP, IMAP, Gmail), de IA, de disponibilidade e de modelos de e-mail.
+- Configurações de envio/recebimento (Microsoft 365, SMTP, IMAP), de IA, de disponibilidade e de modelos de e-mail.
 
 **12. Segurança e acesso**
 - Login por usuário com 5 perfis (ADM, Coordenador, Administrativo, GCI, Consultor) e permissões aplicadas também no backend; autocadastro com validação por e-mail; senha mestra de contingência; download de arquivos restrito a diretórios autorizados; filtro de visão por perfil.

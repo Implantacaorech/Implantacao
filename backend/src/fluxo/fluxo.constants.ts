@@ -41,10 +41,6 @@ export const LABELS: Array<[string[], string]> = [
   ],
 ];
 
-// Marcador no assunto, para exibição (comparado sem acento/caixa na busca real, que usa
-// "IMPLANTA" — ver ImapIntakeService). Espelha webapp/fluxo.py:MARCADOR.
-export const MARCADOR_ASSUNTO = '[IMPLANTAÇÃO]';
-
 // Espelha webapp/fluxo.py:MODELO_FECHAMENTO — instrução exibida ao Comercial para
 // formatar o e-mail de fechamento (não é enviado pelo sistema, só exibido na tela).
 export const MODELO_FECHAMENTO = `Assunto: [IMPLANTAÇÃO] Fechamento - <Razão Social>

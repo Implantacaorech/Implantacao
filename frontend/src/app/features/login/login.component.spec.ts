@@ -70,14 +70,18 @@ describe('LoginComponent', () => {
     );
   });
 
-  it('traz o logo Portal Rech e "Implantação SIGER®" abaixo', () => {
+  // O cartão de login ficou só com o logo (pedido do usuário em 2026-09-01): a tela é a
+  // porta de entrada também do CLIENTE, e "Implantação SIGER®" é vocabulário interno da
+  // Rech — não diz nada ao contato de um cliente.
+  it('traz o logo Portal Rech, e NADA de subtítulo no Painel', () => {
     const fixture = montar();
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
     expect(el.querySelector('img.acesso-logo')?.getAttribute('src')).toBe(
       'logo-portal-rech-azul.png',
     );
-    expect(el.querySelector('.acesso-sub')?.textContent).toBe('Implantação SIGER®');
+    expect(el.querySelector('.acesso-sub')).toBeNull();
+    expect(el.textContent).not.toContain('Implantação SIGER');
   });
 
   it('não oferece mais "Criar conta" e mostra "Esqueci minha senha"', () => {
@@ -90,12 +94,17 @@ describe('LoginComponent', () => {
     expect(link.getAttribute('href')).toBe('/esqueci-senha');
   });
 
-  it('oferece a apresentação dos recursos, alcançável sem login', () => {
+  // O link saiu do login (2026-09-01). A ROTA continua existindo: quem tem o endereço
+  // alcança a apresentação; o que deixou de haver é o convite a quem só quer entrar.
+  it('não oferece mais a apresentação na tela de login', () => {
     const fixture = montar();
     fixture.detectChanges();
-    const botao: HTMLAnchorElement = fixture.nativeElement.querySelector('.login-apresentacao');
-    expect(botao.textContent?.trim()).toBe('Conheça os recursos do Painel');
-    expect(botao.getAttribute('href')).toBe('/apresentacao');
+    expect(
+      fixture.nativeElement.querySelector('.login-apresentacao'),
+    ).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'Conheça os recursos',
+    );
   });
 
   it('"Lembrar-me" guarda só o e-mail, e só depois do login dar certo', async () => {

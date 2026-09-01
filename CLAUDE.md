@@ -112,11 +112,13 @@ gerados lá são colados em **Sistema → Tokens da API de Dados**; com token at
 das consultas que ele cobre passa a ir para o Portal API (`src/dados/consumo/`).
 
 O escopo é o dado de **terceiro**: Oracle do SICLA e MySQL do Portal Rech. Fora dele, por
-decisão: o `painel_novo` (camada Repository/TypeORM, ADR-0002) e a base do Consultor SIGER
-(artefato derivado, local, readonly — o módulo já é a API dela).
+decisão: o `painel_novo` (camada Repository/TypeORM, ADR-0002). A exceção do Consultor SIGER
+deixou de existir em 2026-09-01, com a retirada do módulo — hoje NADA fora de `src/dados/`
+importa driver de banco.
 
-⚠️ **Pendente em produção:** rodar `cd backend && npm run migration:run` (tabela
-`api_clientes`). Até lá a tela abre, mas sem a parte de clientes de máquina.
+A migration `api_clientes` **já rodou em produção** (verificado em 2026-08-31: a última
+executada era `TokensApiDados1788020000000`, posterior a ela) — a nota de pendência que
+existia aqui estava vencida.
 
 ## Papéis (agentes) — detalhe no guia operacional
 `coordenador-implantacao` · `setor-adm` · `consultor-implantacao` (GCI) · `gerente-projeto` ·

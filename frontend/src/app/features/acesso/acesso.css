@@ -36,9 +36,20 @@
   margin: 0 auto;
 }
 
+/* O respiro antes do formulário é do FORM, não do subtítulo.
+ *
+ * Era do `h1.acesso-sub` (`margin: 14px 0 28px`), e quando ele saiu do Painel em 2026-09-01
+ * sobrou um vão no lugar de um texto que não existe mais. Pendurar o espaço no elemento que
+ * SEMPRE existe resolve nos dois casos — com subtítulo (Portal API) e sem (Painel) — sem
+ * depender de `:has()` nem de classe condicional no template. */
+.acesso-cartao form {
+  margin-top: 26px;
+}
+
 /* Subtítulo discreto: o cartão precisa dizer QUAL sistema é, sem competir com a marca. */
 h1.acesso-sub {
-  margin: 14px 0 28px;
+  /* Só o respiro de cima: o de baixo é do form (ver acima). */
+  margin: 14px 0 0;
   font-size: .78rem;
   font-weight: 600;
   letter-spacing: .08em;

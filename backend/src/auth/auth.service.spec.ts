@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { AuthService } from './auth.service';
+import { ContatosSiclaService } from '../contatos-sicla/contatos-sicla.service';
 import { UsersService } from '../users/users.service';
 import { RefreshToken } from '../database/entities/refresh-token.entity';
 import { Usuario } from '../database/entities/usuario.entity';
@@ -79,6 +80,12 @@ describe('AuthService.refresh — papéis vêm do cadastro, não do token antigo
           useValue: { get: (chave: string) => CONFIG[chave] },
         },
         { provide: getRepositoryToken(RefreshToken), useValue: refreshRepo },
+        // O login revalida o usuário-CLIENTE no SICLA. Aqui os casos são de papel interno,
+        // que não passa por essa checagem; o mock existe só para o módulo compilar.
+        {
+          provide: ContatosSiclaService,
+          useValue: { liberadoNoSicla: jest.fn().mockResolvedValue(true) },
+        },
       ],
     }).compile();
     service = module.get(AuthService);

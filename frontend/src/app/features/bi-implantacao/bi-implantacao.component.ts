@@ -24,6 +24,9 @@ import { opcoesVisiveis } from './bi-filtros.util';
 import { mensagemErroBi } from './bi-erro.util';
 import { BiFiltrosStore } from './bi-filtros.store';
 import {
+  COR_APROVADO,
+  COR_NAO_APROVADO,
+  COR_RESSALVA,
   TOP_CONTATOS_GRAFICO,
   VisaoVisitas,
   dentroDaVisao,
@@ -254,6 +257,10 @@ export class BiImplantacaoComponent {
     () => this.visitasFiltradas().filter((v) => this.aprovadoSim(v.aprovado)).length,
   );
 
+  readonly visitasComRessalva = computed(
+    () => this.visitasFiltradas().filter((v) => this.aprovadoRessalva(v.aprovado)).length,
+  );
+
   limparFiltrosVisitas(): void {
     this.vpEmpresa.set('');
     this.vpContato.set('');
@@ -267,6 +274,20 @@ export class BiImplantacaoComponent {
     return (aprovado || '').trim().toLowerCase() === 'sim';
   }
 
+  /** `APROVADO = 0` no Portal: o cliente aprovou, mas registrou uma ressalva (lá a
+   * justificativa é obrigatória). Nem aprovada limpa, nem reprovada — faixa própria. */
+  aprovadoRessalva(aprovado: string): boolean {
+    return (aprovado || '').trim().toLowerCase() === 'com ressalva';
+  }
+
+  /** Verde = aprovada · amarelo = com ressalva · vermelho = o resto (não aprovada, ou
+   * ainda sem resposta do cliente). Mesmas tintas do PDF do "Enviar por e-mail". */
+  corAprovado(aprovado: string): string {
+    if (this.aprovadoSim(aprovado)) return COR_APROVADO;
+    if (this.aprovadoRessalva(aprovado)) return COR_RESSALVA;
+    return COR_NAO_APROVADO;
+  }
+
   /** AAAA-MM-DD LOCAL (`toISOString` é UTC — à noite, no fuso de Brasília, viraria
    * "amanhã"). Método, e não constante, para o teste poder fixar a data. */
   protected hojeLocal(): string {
@@ -278,16 +299,24 @@ export class BiImplantacaoComponent {
    * alimenta o gráfico e o aviso de contatos fora do top. A visão e os filtros já vêm
    * aplicados por `visitasFiltradas` (o gráfico enxerga o MESMO conjunto da tabela). */
   private readonly contatosDoGrafico = computed(() => {
-    const mapa = new Map<string, { aprovados: number; naoAprovados: number }>();
+    const mapa = new Map<
+      string,
+      { aprovados: number; comRessalva: number; naoAprovados: number }
+    >();
     for (const v of this.visitasFiltradas()) {
       const k = v.contato || '(sem contato)';
-      const c = mapa.get(k) ?? { aprovados: 0, naoAprovados: 0 };
+      const c = mapa.get(k) ?? { aprovados: 0, comRessalva: 0, naoAprovados: 0 };
       if (this.aprovadoSim(v.aprovado)) c.aprovados += 1;
+      else if (this.aprovadoRessalva(v.aprovado)) c.comRessalva += 1;
       else c.naoAprovados += 1;
       mapa.set(k, c);
     }
     return [...mapa.entries()]
-      .map(([contato, c]) => ({ contato, ...c, total: c.aprovados + c.naoAprovados }))
+      .map(([contato, c]) => ({
+        contato,
+        ...c,
+        total: c.aprovados + c.comRessalva + c.naoAprovados,
+      }))
       .sort((a, b) => b.total - a.total || a.contato.localeCompare(b.contato, 'pt-BR'));
   });
 
@@ -296,8 +325,9 @@ export class BiImplantacaoComponent {
     Math.max(0, this.contatosDoGrafico().length - TOP_CONTATOS_GRAFICO),
   );
 
-  /** Barras empilhadas por contato: verde = aprovados, vermelho = não aprovados. Os
-   * valores ficam escritos nas barras (plugin `ROTULOS_NAS_BARRAS`), não só no tooltip. */
+  /** Barras empilhadas por contato: verde = aprovados, AMARELO = com ressalva, vermelho
+   * = não aprovados. Os valores ficam escritos nas barras (plugin `ROTULOS_NAS_BARRAS`),
+   * não só no tooltip. */
   readonly graficoVisitasContato = computed<ChartConfiguration | null>(() => {
     const top = this.contatosDoGrafico().slice(0, TOP_CONTATOS_GRAFICO);
     if (top.length === 0) return null;
@@ -306,8 +336,9 @@ export class BiImplantacaoComponent {
       data: {
         labels: top.map((c) => c.contato),
         datasets: [
-          { label: 'Aprovados', data: top.map((c) => c.aprovados), backgroundColor: '#10b981' },
-          { label: 'Não aprovados', data: top.map((c) => c.naoAprovados), backgroundColor: '#ef4444' },
+          { label: 'Aprovados', data: top.map((c) => c.aprovados), backgroundColor: COR_APROVADO },
+          { label: 'Com ressalva', data: top.map((c) => c.comRessalva), backgroundColor: COR_RESSALVA },
+          { label: 'Não aprovados', data: top.map((c) => c.naoAprovados), backgroundColor: COR_NAO_APROVADO },
         ],
       },
       plugins: [ROTULOS_NAS_BARRAS],

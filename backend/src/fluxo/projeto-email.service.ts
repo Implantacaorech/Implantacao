@@ -70,7 +70,7 @@ export class ProjetoEmailService {
   ): Promise<ResultadoEnvioEmailProjeto> {
     await this.buscar(projetoId);
     if (!this.mailer.configurado())
-      return { enviado: false, erro: 'SMTP não configurado.' };
+      return { enviado: false, erro: 'E-mail não configurado.' };
     const destinoLimpo = (destino || '').trim();
     if (!destinoLimpo)
       return { enviado: false, erro: 'Informe o destinatário.' };

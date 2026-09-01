@@ -53,9 +53,6 @@
       <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-check-circle"/></svg> Dados salvos com sucesso.
     </div>
   }
-  @if (aviso()) {
-    <div class="resultado ok">{{ aviso() }}</div>
-  }
   @if (erro()) {
     <div class="resultado erro">
       <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-bell"/></svg> {{ erro() }}

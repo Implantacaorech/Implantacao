@@ -10,6 +10,7 @@ import { Usuario } from '../database/entities/usuario.entity';
 import { UsersService } from '../users/users.service';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 import { papeisDoUsuario } from '../users/papeis.util';
+import { ContatosSiclaService } from '../contatos-sicla/contatos-sicla.service';
 
 export interface TokenPair {
   accessToken: string;
@@ -24,6 +25,7 @@ export class AuthService {
     private readonly config: ConfigService<AppConfig, true>,
     @InjectRepository(RefreshToken)
     private readonly refreshRepo: Repository<RefreshToken>,
+    private readonly contatos: ContatosSiclaService,
   ) {}
 
   async login(
@@ -34,7 +36,39 @@ export class AuthService {
     if (!usuario) throw new UnauthorizedException('Login ou senha inválidos');
     const senhaOk = await this.users.validarSenha(usuario, senha);
     if (!senhaOk) throw new UnauthorizedException('Login ou senha inválidos');
+    await this.exigirContatoLiberadoNoSicla(usuario);
     return this.emitirParaUsuario(usuario);
+  }
+
+  /** Revalida o usuário-cliente contra o SICLA a cada entrada (decisão do usuário em
+   * 2026-08-31: "o SICLA manda" — docs/acesso-cliente-bi.md §10).
+   *
+   * Quem autoriza um contato a usar o portal é `LISTA_CONTATOS.PORTAL_RECH_CLIENTES = 1`. Se
+   * a Rech tirar essa marcação, o acesso ao Painel tem de cair junto — sem depender de
+   * alguém lembrar de revogar na tela. É o que evita o acesso do cliente sobreviver ao fim
+   * do projeto, que era o furo conhecido do fluxo manual.
+   *
+   * **Fail-closed quando a conexão existe e falha** (`indisponivel`), e isso é deliberado:
+   * deixar entrar sem conseguir conferir seria abrir a porta justamente quando não se sabe
+   * quem está do outro lado. Não tira nada de ninguém — o BI do cliente lê o SICLA, então
+   * sem ele a tela viria vazia de qualquer forma.
+   *
+   * **Aberto quando não há integração** (`sem-integracao`): instância que não fala com o
+   * SICLA é dev ou teste, não produção. Ali não há dado de cliente para proteger, e recusar
+   * tornaria o acesso do cliente impossível de exercitar fora de produção.
+   *
+   * Só afeta papel `Cliente`: usuário interno entra normalmente com o Oracle fora do ar. */
+  private async exigirContatoLiberadoNoSicla(usuario: Usuario): Promise<void> {
+    if (!papeisDoUsuario(usuario).includes('Cliente')) return;
+    const situacao = await this.contatos.situacaoNoSicla(
+      usuario.email || usuario.login,
+    );
+    if (situacao === 'liberado' || situacao === 'sem-integracao') return;
+    throw new UnauthorizedException(
+      situacao === 'indisponivel'
+        ? 'Não foi possível confirmar seu acesso agora. Tente novamente em alguns minutos.'
+        : 'Seu acesso ao portal não está mais liberado. Procure seu contato na Rech.',
+    );
   }
 
   /** Emite um par de tokens para um `Usuario` já resolvido/autenticado por outro meio
@@ -154,10 +188,5 @@ export class AuthService {
 
   private hash(token: string): string {
     return createHash('sha256').update(token).digest('hex');
-  }
-
-  /** Só para o seed inicial (primeiro boot sem usuários) — nunca reaproveitar em runtime normal. */
-  static gerarSenhaTemporaria(): string {
-    return randomBytes(9).toString('base64url');
   }
 }

@@ -80,9 +80,16 @@ async function bootstrap(): Promise<void> {
   // Strict-Transport-Security vale por HOST e IGNORA a porta — ligá-lo na 5443 faria o
   // navegador passar a exigir HTTPS também em http://host:5100, derrubando o acesso HTTP
   // que continua publicado para os favoritos antigos.
+  //
+  // Exceção: MIGRACAO_HTTPS_SOMENTE=1 (estado final do servidor dedicado — F1/F5 de
+  // docs/migracao-servidor.md). Aí o HTTP nem abre (ver o listen no fim deste arquivo),
+  // só existe uma origem, e o cache de HSTS do navegador ajuda em vez de derrubar.
+  const httpsSomente = ['1', 'true'].includes(
+    (process.env.MIGRACAO_HTTPS_SOMENTE ?? '').trim().toLowerCase(),
+  );
   app.use(
     helmet({
-      hsts: false,
+      hsts: httpsSomente ? undefined : false,
       crossOriginOpenerPolicy: false,
       originAgentCluster: false,
       // `frame-src` com `blob:`: a pré-visualização de documento (Projeto, Conferência,
@@ -171,8 +178,37 @@ async function bootstrap(): Promise<void> {
   // aberta a grupos amplos (Everyone/Users). Best-effort e só em produção Windows.
   avisarSeDadosExpostos();
 
+  // F1 da migração p/ servidor dedicado (docs/migracao-servidor.md): estes defaults apontam
+  // para caminhos da máquina de desenvolvimento. Nela funcionam; num servidor sem as envs o
+  // efeito é SILENCIOSO (robô de protocolos desligado, Saúde
+  // vigiando pasta vazia). O aviso torna o esquecimento visível no primeiro boot.
+  if (emProducao) {
+    const defaultsLocais: [string, string][] = [
+      [
+        'MIGRACAO_PROTOCOLOS_DIR',
+        'robô e tela de Protocolos (pasta de vídeos)',
+      ],
+      ['MIGRACAO_BACKUP_DIR', 'vigilância de backup da tela Saúde'],
+    ];
+    for (const [env, uso] of defaultsLocais) {
+      if (!process.env[env]) {
+        console.warn(
+          `[AVISO] ${env} não definida — usando o caminho padrão da máquina de ` +
+            `desenvolvimento para ${uso}. Em servidor dedicado, defina a variável ` +
+            `(docs/migracao-servidor.md).`,
+        );
+      }
+    }
+  }
+
   const port = config.get('port', { infer: true });
   if (!tls || !servidorExpress) {
+    if (httpsSomente) {
+      console.warn(
+        '[AVISO] MIGRACAO_HTTPS_SOMENTE=1, mas o HTTPS não está configurado ' +
+          '(MIGRACAO_HTTPS_PFX/CERT) — servindo em HTTP mesmo, para não derrubar o painel.',
+      );
+    }
     await app.listen(port);
     console.log(
       `Painel API rodando em http://localhost:${port}/api${sufixoDocs}`,
@@ -181,13 +217,16 @@ async function bootstrap(): Promise<void> {
   }
 
   // `init()` no lugar de `listen()`: quem abre as portas aqui somos nós, para o mesmo
-  // handler atender os dois protocolos.
+  // handler atender os dois protocolos. Com MIGRACAO_HTTPS_SOMENTE=1 o HTTP nem abre —
+  // estado final do servidor dedicado, quando os favoritos antigos já migraram.
   await app.init();
-  criarServidorHttp(servidorExpress).listen(port);
+  if (!httpsSomente) criarServidorHttp(servidorExpress).listen(port);
   criarServidorHttps(tls.opcoes, servidorExpress).listen(tls.porta);
   console.log(
-    `Painel API rodando em http://localhost:${port}/api e ` +
-      `https://localhost:${tls.porta}/api (${tls.origem})${sufixoDocs}`,
+    (httpsSomente
+      ? `Painel API rodando SÓ em https://localhost:${tls.porta}/api`
+      : `Painel API rodando em http://localhost:${port}/api e ` +
+        `https://localhost:${tls.porta}/api`) + ` (${tls.origem})${sufixoDocs}`,
   );
 }
 

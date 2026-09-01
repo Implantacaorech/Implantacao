@@ -30,14 +30,18 @@ describe('gerarPdfVisitasPortal', () => {
       'Visão: geral',
       'Empresa: MELBROS',
     ],
-    totais: { total: 2, aprovados: 1, naoAprovados: 1 },
+    totais: { total: 3, aprovados: 1, comRessalva: 1, naoAprovados: 1 },
   };
 
   it('gera um PDF válido com gráfico e tabela', async () => {
     const pdf = await gerarPdfVisitasPortal({
       ...base,
       graficoPng: PNG_1PX,
-      linhas: [linha(), linha({ protocolo: 135090, aprovado: 'Não' })],
+      linhas: [
+        linha(),
+        linha({ protocolo: 135090, aprovado: 'Com ressalva' }),
+        linha({ protocolo: 135091, aprovado: 'Não' }),
+      ],
     });
     expect(pdf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
     expect(pdf.length).toBeGreaterThan(1000);
@@ -46,7 +50,7 @@ describe('gerarPdfVisitasPortal', () => {
   it('sem gráfico e sem linhas, ainda sai um PDF válido (só o recorte)', async () => {
     const pdf = await gerarPdfVisitasPortal({
       ...base,
-      totais: { total: 0, aprovados: 0, naoAprovados: 0 },
+      totais: { total: 0, aprovados: 0, comRessalva: 0, naoAprovados: 0 },
       graficoPng: null,
       linhas: [],
     });
@@ -59,7 +63,7 @@ describe('gerarPdfVisitasPortal', () => {
     );
     const pdf = await gerarPdfVisitasPortal({
       ...base,
-      totais: { total: 300, aprovados: 300, naoAprovados: 0 },
+      totais: { total: 300, aprovados: 300, comRessalva: 0, naoAprovados: 0 },
       graficoPng: null,
       linhas: muitas,
     });

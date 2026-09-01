@@ -1,6 +1,8 @@
 <div class="acesso-cartao">
   <img class="acesso-logo" src="logo-portal-rech-azul.png" alt="Portal Rech" />
-  <h1 class="pagina-titulo acesso-sub">{{ subtitulo() }}</h1>
+  @if (subtitulo()) {
+    <h1 class="pagina-titulo acesso-sub">{{ subtitulo() }}</h1>
+  }
 
   <form [formGroup]="form" (ngSubmit)="enviar()">
     @if (erro()) {
@@ -31,9 +33,4 @@
       {{ enviando() ? 'Entrando…' : 'Entrar' }}
     </button>
   </form>
-
-  <!-- Porta de entrada da apresentação pública: dá para conhecer o Painel sem ter login. -->
-  <a class="acesso-secundario login-apresentacao" routerLink="/apresentacao">
-    Conheça os recursos do Painel
-  </a>
 </div>

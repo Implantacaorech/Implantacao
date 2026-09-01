@@ -71,6 +71,13 @@
       @if (auth.usuario(); as u) {
         <span class="topbar-perfil-txt">{{ u.nome }}<small>{{ u.login }}</small></span>
       }
+      <!-- De que LADO do Painel a pessoa está. O cliente da Rech entra pelo mesmo endereço
+           que o consultor, com o BI recortado nele; a faixa deixa isso explícito para os
+           dois lados — o consultor sabe em que modo abriu, e o cliente entende que está no
+           portal da Rech. -->
+      <span class="topbar-lado" [class.cliente]="ehCliente()">
+        {{ ehCliente() ? 'Cliente' : 'Consultor' }}
+      </span>
     </a>
     <button class="topbar-sair" type="button" (click)="sair()" title="Sair" aria-label="Sair">
       <svg class="svgi" aria-hidden="true"><use href="#ic-logout"/></svg>
@@ -147,12 +154,6 @@
           <span class="side-tip">Notas por função implantável (LISTA_FUNCOES do SICLA)</span>
         </a>
       }
-      @if (podeDicionario()) {
-        <a class="side-link" routerLink="/dicionario" routerLinkActive="on">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-search"/></svg>Dicionário Inteligente
-          <span class="side-tip">Consulta técnica do SIGER</span>
-        </a>
-      }
       @if (podeProtocolo()) {
         <a class="side-link" routerLink="/protocolo" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-link"/></svg>Protocolo
@@ -175,12 +176,6 @@
         <a class="side-link" routerLink="/rns" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>RNS
           <span class="side-tip">Consulta de assuntos (SICLA)</span>
-        </a>
-      }
-      @if (podeConsultorSiger()) {
-        <a class="side-link" routerLink="/consultor-siger" routerLinkActive="on">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-compass"/></svg>Consultor SIGER
-          <span class="side-tip">Base de conhecimento do SIGER</span>
         </a>
       }
       @if (temGestao()) {
@@ -220,6 +215,10 @@
         </a>
         <a class="side-link" routerLink="/usuarios" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg>Usuários
+        </a>
+        <a class="side-link" routerLink="/acesso-clientes" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-users"/></svg>Acesso de Clientes
+          <span class="side-tip">Contatos do cliente que entram no Painel</span>
         </a>
         <a class="side-link" [routerLink]="['/cadastros', 'checklist']" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-check-circle"/></svg>Cad. Checklist

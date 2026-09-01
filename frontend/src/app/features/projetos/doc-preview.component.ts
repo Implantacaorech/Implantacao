@@ -3,15 +3,7 @@ import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-brows
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DocumentosService } from '../../core/services/documentos.service';
 import { Documento } from '../../core/models/documento.model';
-
-function baixarBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+import { baixarArquivo } from '../../core/utils/baixar-arquivo';
 
 @Component({
   selector: 'app-doc-preview',
@@ -70,10 +62,10 @@ export class DocPreviewComponent implements OnDestroy {
   async baixar(): Promise<void> {
     const nomeSugerido = this.documento?.arquivo ?? 'documento';
     if (this.blobPdf) {
-      baixarBlob(this.blobPdf, nomeSugerido);
+      baixarArquivo(this.blobPdf, nomeSugerido);
       return;
     }
     const arquivo = await this.service.baixar(this.docId, nomeSugerido);
-    baixarBlob(arquivo.blob, arquivo.filename);
+    baixarArquivo(arquivo.blob, arquivo.filename);
   }
 }

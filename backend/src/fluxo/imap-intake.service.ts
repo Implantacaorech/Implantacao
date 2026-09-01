@@ -78,10 +78,10 @@ export class ImapIntakeService {
     pasta?: string;
     senha?: string;
   }): ConfigImap {
-    // replace, não só trim: senha de app do Gmail vem formatada com espaços internos
-    // ("abcd efgh ijkl mnop") quando copiada da tela do Google — o servidor IMAP rejeita
-    // com espaço (achado real: "Invalid credentials" numa senha de 19 caracteres em vez
-    // dos 16 esperados). Remove todo espaço, não só as pontas.
+    // replace, não só trim: senha de app costuma ser exibida em grupos ("abcd efgh ijkl
+    // mnop") e é colada com os espaços internos — o servidor IMAP rejeita assim (achado
+    // real: "Invalid credentials" numa senha de 19 caracteres em vez dos 16 esperados).
+    // Remove todo espaço, não só as pontas.
     const senha = (dados.senha || '').replace(/\s+/g, '');
     const cfg: ConfigImap = {
       host: (dados.host || '').trim(),
@@ -138,16 +138,16 @@ export class ImapIntakeService {
     // deixava passar justamente o caso mais comum, e o operador via um erro genérico.
     if ((e as { authenticationFailed?: boolean })?.authenticationFailed) {
       return (
-        'Usuário ou senha recusados pelo servidor de e-mail. Gmail e Outlook/365 exigem ' +
-        'uma SENHA DE APP (não a senha normal da conta) e o IMAP habilitado na conta. ' +
-        'Se a senha de app foi trocada ou revogada, gere outra e salve em ' +
-        'Config → Caixa de entrada.'
+        'Usuário ou senha recusados pelo servidor de e-mail. O Microsoft 365 não aceita ' +
+        'mais usuário e senha no IMAP (a autenticação básica foi desativada), então esta ' +
+        'leitura só funciona em um servidor que ainda a aceite. Confira o usuário e a ' +
+        'senha em Config → Caixa de entrada.'
       );
     }
     if (codigo === 'ENOTFOUND' || codigo === 'EAI_AGAIN') {
       return (
         `Servidor IMAP não encontrado (${host}). Confira o host em Config → Caixa de ` +
-        'entrada — ex.: imap.gmail.com ou outlook.office365.com.'
+        'entrada — ex.: outlook.office365.com.'
       );
     }
     if (
@@ -155,9 +155,8 @@ export class ImapIntakeService {
       texto.toLowerCase().includes('login')
     ) {
       return (
-        'Falha de autenticação (usuário/senha rejeitados). Gmail e Outlook/365 exigem ' +
-        'uma SENHA DE APP (não a senha normal da conta) e o IMAP habilitado. Confira o ' +
-        'usuário e a senha em Config → Caixa de entrada.'
+        'Falha de autenticação (usuário/senha rejeitados). Confira o usuário, a senha e ' +
+        'se o IMAP está habilitado na conta, em Config → Caixa de entrada.'
       );
     }
     return texto;

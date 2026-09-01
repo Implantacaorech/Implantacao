@@ -1,5 +1,5 @@
 import PDFDocument from 'pdfkit';
-import { LinhaVisitaPortal } from './bi-implantacao.constants';
+import { LinhaVisitaPortal, situacaoVisita } from './bi-implantacao.constants';
 
 /** Dados do PDF do painel "Visitas do Portal Rech" — o anexo do "Enviar por e-mail".
  * Tudo chega PRONTO da tela (o recorte descrito, as linhas já filtradas e o gráfico como
@@ -9,7 +9,13 @@ export interface DadosPdfVisitas {
   geradoEm: string;
   /** Linhas descritivas do recorte aplicado (período, visão, filtros ativos). */
   recorte: string[];
-  totais: { total: number; aprovados: number; naoAprovados: number };
+  totais: {
+    total: number;
+    aprovados: number;
+    /** `APROVADO = 0` no Portal — aprovada, mas com justificativa do cliente. */
+    comRessalva: number;
+    naoAprovados: number;
+  };
   /** PNG do gráfico (canvas da tela) — ausente quando a visão não tem barras. */
   graficoPng: Buffer | null;
   linhas: LinhaVisitaPortal[];
@@ -17,6 +23,8 @@ export interface DadosPdfVisitas {
 
 const NAVY = '#1e3a5f';
 const VERDE = '#10b981';
+/** Mesmo amarelo dos demais gráficos do BI — a faixa "com ressalva". */
+const AMARELO = '#fbbf24';
 const VERMELHO = '#ef4444';
 const CINZA = '#6b7280';
 const ZEBRA = '#f3f6fb';
@@ -27,14 +35,14 @@ const COLUNAS: {
   campo: keyof LinhaVisitaPortal;
   largura: number;
 }[] = [
-  { titulo: 'Empresa', campo: 'empresa', largura: 200 },
+  { titulo: 'Empresa', campo: 'empresa', largura: 175 },
   { titulo: 'Contato', campo: 'contato', largura: 130 },
   { titulo: 'Consultor', campo: 'consultor', largura: 90 },
   { titulo: 'Protocolo', campo: 'protocolo', largura: 60 },
   { titulo: 'Data', campo: 'data', largura: 65 },
   { titulo: 'Horário', campo: 'horario', largura: 55 },
   { titulo: 'Turno', campo: 'turno', largura: 90 },
-  { titulo: 'Aprovado', campo: 'aprovado', largura: 55 },
+  { titulo: 'Aprovado', campo: 'aprovado', largura: 80 },
 ];
 const ALTURA_LINHA = 16;
 
@@ -42,6 +50,13 @@ function dataBr(iso: string): string {
   return iso
     ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`
     : '—';
+}
+
+/** Verde = aprovada · amarelo = aprovada COM RESSALVA · vermelho = o resto (não
+ * aprovada, ou ainda sem resposta do cliente). Espelha `corAprovado` da tela. */
+function corDaSituacao(aprovado: string): string {
+  const s = situacaoVisita(aprovado);
+  return s === 'sim' ? VERDE : s === 'ressalva' ? AMARELO : VERMELHO;
 }
 
 function valorCelula(
@@ -95,13 +110,19 @@ export function gerarPdfVisitasPortal(d: DadosPdfVisitas): Promise<Buffer> {
       .fillColor(VERDE)
       .text(`${d.totais.aprovados} aprovado(s)`, { continued: true });
     doc.fillColor(NAVY).text('  ·  ', { continued: true });
+    doc
+      .fillColor(AMARELO)
+      .text(`${d.totais.comRessalva} com ressalva`, { continued: true });
+    doc.fillColor(NAVY).text('  ·  ', { continued: true });
     doc.fillColor(VERMELHO).text(`${d.totais.naoAprovados} não aprovado(s)`);
     doc.moveDown(0.6);
 
     // ── Gráfico (o canvas da tela, como imagem) ──────────────────────────────────────
     if (d.graficoPng) {
       doc.font('Helvetica-Bold').fontSize(10).fillColor(NAVY);
-      doc.text('Protocolos por contato — aprovados × não aprovados');
+      doc.text(
+        'Protocolos por contato — aprovados × com ressalva × não aprovados',
+      );
       doc.moveDown(0.3);
       const alturaGrafico = Math.min(240, fimPagina() - doc.y - 40);
       if (alturaGrafico > 80) {
@@ -151,11 +172,7 @@ export function gerarPdfVisitasPortal(d: DadosPdfVisitas): Promise<Buffer> {
       const yTexto = doc.y + 4;
       for (const c of COLUNAS) {
         doc.fillColor(
-          c.campo === 'aprovado'
-            ? l.aprovado.trim().toLowerCase() === 'sim'
-              ? VERDE
-              : VERMELHO
-            : '#111827',
+          c.campo === 'aprovado' ? corDaSituacao(l.aprovado) : '#111827',
         );
         doc.text(valorCelula(l, c.campo), x + 4, yTexto, {
           width: c.largura - 8,

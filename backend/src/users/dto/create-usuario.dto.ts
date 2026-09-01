@@ -4,7 +4,6 @@ import {
   IsBoolean,
   IsEmail,
   IsIn,
-  IsNotEmpty,
   IsOptional,
   IsString,
   MinLength,
@@ -35,9 +34,23 @@ export class CreateUsuarioDto {
   @IsIn(PERFIS, { each: true })
   perfis?: Perfil[];
 
-  // Obrigatório em todo perfil — elo com a agenda externa (SICLA). Espelha a validação
-  // de webapp/app.py:usuarios ("Informe o Código SICLA do usuário — é obrigatório.").
-  @ApiProperty() @IsString() @IsNotEmpty() codigoSicla: string;
+  // Obrigatório em todo perfil INTERNO — elo com a agenda externa (SICLA). Espelha a
+  // validação de webapp/app.py:usuarios ("Informe o Código SICLA do usuário — é
+  // obrigatório.").
+  //
+  // Deixou de ser `@IsNotEmpty()` aqui em 2026-08-31 porque o papel `Cliente` não tem
+  // código de técnico — exigi-lo obrigaria a inventar um. A obrigatoriedade não sumiu: ela
+  // passou para `UsersService.exigirVinculoCoerente`, que sabe quais são os papéis do
+  // usuário e cobra o código CERTO de cada lado (técnico p/ interno, cliente p/ `Cliente`).
+  @ApiPropertyOptional() @IsOptional() @IsString() codigoSicla?: string;
+
+  /** Código do CLIENTE no SICLA (`LISTA_CLIENTES.CODIGO`) — obrigatório no papel `Cliente`
+   * e vazio em todo papel interno. É o recorte de tudo o que esse usuário enxerga no BI
+   * (docs/acesso-cliente-bi.md). Aceita mais de um código separado por vírgula. */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  codigoClienteSicla?: string;
 
   /** Vêm de `SICLA.LISTA_TECNICOS` (MODULOCAPACITADO / SETORDES) na importação de técnicos,
    * mas continuam editáveis à mão pelo Administrador. */

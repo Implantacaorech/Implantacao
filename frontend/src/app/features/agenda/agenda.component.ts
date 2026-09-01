@@ -5,10 +5,10 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { CronogramaService } from '../../core/services/cronograma.service';
 import { AuthService } from '../../core/services/auth.service';
 import { temPapel } from '../../core/constants/perfis';
+import { baixarArquivo } from '../../core/utils/baixar-arquivo';
 import {
   AtividadeCronograma,
   CronogramaConfigDto,
-  CRONO_STATUS_AGENDA,
   Designacao,
   HorariosPorTurno,
   NOMES_DIA_SEMANA,
@@ -58,15 +58,6 @@ function parseDiasExcluidos(s: string): { diaSemana: number; turno: string }[] {
   return out;
 }
 
-function baixarBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 @Component({
   selector: 'app-agenda',
   standalone: true,
@@ -79,7 +70,6 @@ export class AgendaComponent {
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
 
-  readonly statusOpcoes = CRONO_STATUS_AGENDA;
   readonly nomesDiaSemana = NOMES_DIA_SEMANA;
   readonly diasSemanaIdx = [0, 1, 2, 3, 4];
   readonly projetoId = Number(this.route.snapshot.paramMap.get('id'));
@@ -379,7 +369,7 @@ export class AgendaComponent {
     this.erro.set(null);
     try {
       const arquivo = await this.service.gerarXlsx(this.projetoId);
-      baixarBlob(arquivo.blob, arquivo.filename);
+      baixarArquivo(arquivo.blob, arquivo.filename);
       this.aviso.set(`${arquivo.filename} gerado e anexado à ficha.`);
     } catch (e) {
       this.erro.set(this.mensagemErro(e, 'Aloque ao menos uma atividade no calendário antes de gerar o cronograma.'));

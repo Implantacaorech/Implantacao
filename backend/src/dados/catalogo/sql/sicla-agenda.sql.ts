@@ -135,4 +135,9 @@ LEFT JOIN SICLA.LISTA_CLIENTES c ON c.CODIGO = a.CLIENTE
 WHERE a.DATAINI >= TO_DATE(:mes_ini, 'YYYY-MM-DD')
   AND a.DATAINI <  TO_DATE(:mes_fim, 'YYYY-MM-DD')
   AND a.ESPECIE IN (${ESPECIES_CALENDARIO.join(', ')})
+-- Recorte por CLIENTE (docs/acesso-cliente-bi.md §7). Quem manda o bind é o Painel, a partir
+-- do vínculo do usuário logado — nunca o navegador. É defesa em PROFUNDIDADE: a garantia
+-- continua sendo o filtro do serviço, que roda sobre o resultado; este bind existe para o
+-- dado alheio não sair do Oracle. Nulo = sem recorte (todo usuário interno).
+  AND (:cliente IS NULL OR a.CLIENTE = :cliente)
 ORDER BY a.DATAINI, a.HORAINI`;

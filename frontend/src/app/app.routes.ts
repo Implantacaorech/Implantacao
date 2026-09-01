@@ -3,6 +3,7 @@ import { PerfilInstancia } from './core/services/instancia.service';
 import { authGuard } from './core/guards/auth.guard';
 import { perfilGuard } from './core/guards/perfil.guard';
 import { permissaoGuard } from './core/guards/permissao.guard';
+import { rotaInicialGuard } from './core/guards/rota-inicial.guard';
 import { LoginComponent } from './features/login/login.component';
 import { ShellComponent } from './layouts/shell/shell.component';
 
@@ -37,6 +38,8 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'home' },
       {
         path: 'home',
+        // O usuário-cliente cai direto no BI dele — a Visão Geral é tela de quem é da casa.
+        canActivate: [rotaInicialGuard],
         data: { titulo: 'Visão Geral' },
         loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent),
       },
@@ -128,9 +131,10 @@ export const routes: Routes = [
           ),
       },
       // As 3 telas de Designação (definir-gci, agendar, consultores) foram DESATIVADAS em
-      // 2026-07-24: a função delas vive inteira nos formulários dos passos 2 e 6. Os
-      // componentes e o DesignacaoService seguem no repositório (o serviço é reaproveitado
-      // pelos passos); só não há mais porta de entrada dupla. Reativar é repor as rotas.
+      // 2026-07-24 — a função delas vive inteira nos formulários dos passos 2 e 6 — e os
+      // COMPONENTES foram removidos em 2026-08-19 (estavam órfãos: sem rota, sem selector
+      // em template nenhum, e navegando para rotas que já não existiam). Estão no histórico
+      // do git. O DesignacaoService CONTINUA aqui, reaproveitado pelos passos.
       {
         // Sem perfilGuard: todo autenticado VÊ os 18 passos; quem pode CONCLUIR cada um é
         // decidido pelo backend, passo a passo (ver PERFIS_POR_RESPONSAVEL).
@@ -201,20 +205,6 @@ export const routes: Routes = [
         loadComponent: () => import('./features/protocolos/gravacao.component').then((m) => m.GravacaoComponent),
       },
       {
-        path: 'dicionario',
-        canActivate: [permissaoGuard('dicionario')],
-        data: { titulo: 'Dicionário Inteligente' },
-        loadComponent: () =>
-          import('./features/dicionario/dicionario.component').then((m) => m.DicionarioComponent),
-      },
-      {
-        path: 'dicionario/:slug',
-        canActivate: [permissaoGuard('dicionario')],
-        data: { titulo: 'Documento — Dicionário Inteligente' },
-        loadComponent: () =>
-          import('./features/dicionario/dicionario-documento.component').then((m) => m.DicionarioDocumentoComponent),
-      },
-      {
         // Execução → Protocolo: moldura do Portal Rech (portalrech.com.br) dentro do
         // Painel. Singular de propósito — 'protocolos' (plural) é a Transcrição.
         path: 'protocolo',
@@ -250,17 +240,6 @@ export const routes: Routes = [
         canActivate: [permissaoGuard('rns')],
         data: { titulo: 'RNS' },
         loadComponent: () => import('./features/rns/rns.component').then((m) => m.RnsComponent),
-      },
-      {
-        // Execução → Consultor SIGER: base inteligente de conhecimento do código-fonte do
-        // SIGER — pergunta em linguagem natural, resposta com evidência (arquivo:linha).
-        path: 'consultor-siger',
-        canActivate: [permissaoGuard('consultor_siger')],
-        data: { titulo: 'Consultor SIGER' },
-        loadComponent: () =>
-          import('./features/consultor-siger/consultor-siger.component').then(
-            (m) => m.ConsultorSigerComponent,
-          ),
       },
       {
         path: 'protocolos/:id',
@@ -309,18 +288,18 @@ export const routes: Routes = [
           import('./features/config/config-email.component').then((m) => m.ConfigEmailComponent),
       },
       {
-        path: 'config/imap',
-        canActivate: [perfilGuard('ADM')],
-        data: { titulo: 'Config — Caixa de entrada' },
-        loadComponent: () =>
-          import('./features/config/config-imap.component').then((m) => m.ConfigImapComponent),
-      },
-      {
         path: 'config/graph',
         canActivate: [perfilGuard('ADM')],
         data: { titulo: 'Config — E-mail (Microsoft 365)' },
         loadComponent: () =>
           import('./features/config/config-graph.component').then((m) => m.ConfigGraphComponent),
+      },
+      {
+        path: 'config/imap',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Config — Caixa de entrada' },
+        loadComponent: () =>
+          import('./features/config/config-imap.component').then((m) => m.ConfigImapComponent),
       },
       {
         path: 'config/ia',
@@ -614,6 +593,16 @@ export const routes: Routes = [
         canActivate: [perfilGuard('ADM')],
         data: { titulo: 'Gerar documento' },
         loadComponent: () => import('./features/legado/gerar.component').then((m) => m.GerarComponent),
+      },
+      {
+        // Acesso de Clientes: quem, do lado do cliente, entra no Painel. Só ADM, como Usuários.
+        path: 'acesso-clientes',
+        canActivate: [permissaoGuard('acesso_clientes')],
+        data: { titulo: 'Acesso de Clientes' },
+        loadComponent: () =>
+          import('./features/acesso-clientes/acesso-clientes.component').then(
+            (m) => m.AcessoClientesComponent,
+          ),
       },
       {
         path: 'usuarios',

@@ -1,33 +1,3 @@
-// Variáveis dinâmicas disponíveis para uso nos modelos de e-mail — espelha
-// webapp/db.py:VARIAVEIS_EMAIL (rótulo exibido no seletor "clique para inserir").
-export const VARIAVEIS_EMAIL: Record<string, string> = {
-  '{{CLIENTE}}': 'Razão Social do cliente',
-  '{{CNPJ}}': 'CNPJ do cliente',
-  '{{NUMERO_PROJETO}}': 'Número do projeto',
-  '{{NUMERO_PROPOSTA}}': 'Número da proposta',
-  '{{GCI}}': 'GCI responsável pelo levantamento',
-  '{{CONSULTOR}}': 'Consultor(es) designado(s)',
-  '{{CONSULTOR_A}}': 'Primeiro consultor designado',
-  '{{CONSULTOR_B}}': 'Segundo consultor designado',
-  '{{CONSULTOR_X}}': 'Primeiro consultor (implantação)',
-  '{{CONSULTOR_Y}}': 'Segundo consultor (implantação)',
-  '{{CONSULTOR_RESPONSAVEL}}': 'Consultor responsável principal',
-  '{{DATA_LEVANTAMENTO}}': 'Data do levantamento agendado',
-  '{{DATA_INICIO}}': 'Data de início do projeto',
-  '{{DATA_USO_OFICIAL}}': 'Data de go-live (uso oficial)',
-  '{{DATA_ENCERRAMENTO}}': 'Data de encerramento',
-  '{{MODULOS}}': 'Módulos contratados',
-  '{{HORAS_COBRADAS}}': 'Horas cobradas',
-  '{{HORAS_BONIFICADAS}}': 'Horas bonificadas',
-  '{{CONTATO_NOME}}': 'Nome do contato no cliente',
-  '{{CONTATO_EMAIL}}': 'E-mail do contato no cliente',
-  '{{CONTATO_TEL}}': 'Telefone do contato no cliente',
-  '{{RESPONSAVEL}}': 'Responsável administrativo',
-  '{{RAMO}}': 'Ramo de atividade',
-  '{{NOME_CONTATO}}': 'Nome do contato (alias de {{CONTATO_NOME}})',
-  '{{FONE_CONTATO}}': 'Telefone do contato (alias de {{CONTATO_TEL}})',
-};
-
 // Variável -> campo do projeto (camelCase — nomes da entidade Projeto). `_consultorA`/
 // `_consultorB` são derivados em runtime (split de `consultor` por vírgula), não colunas
 // reais — mesmo padrão de webapp/db.py:_VAR_CAMPO.

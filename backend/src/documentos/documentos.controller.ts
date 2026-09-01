@@ -28,6 +28,7 @@ import {
 } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { existsSync } from 'fs';
+import { caminhoAbsolutoDocumento } from './caminho-documento.util';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissaoGuard } from '../permissoes/permissao.guard';
 import { Permissao } from '../common/decorators/permissao.decorator';
@@ -205,9 +206,10 @@ export class DocumentosController {
   @ApiOperation({ summary: 'Baixa um documento gerado/anexado' })
   async baixar(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     const doc = await this.documentos.buscarDocumento(id);
-    if (!doc || !existsSync(doc.caminho))
+    const caminho = doc && caminhoAbsolutoDocumento(doc.caminho);
+    if (!doc || !caminho || !existsSync(caminho))
       throw new NotFoundException('Documento não encontrado.');
-    res.download(doc.caminho, doc.arquivo);
+    res.download(caminho, doc.arquivo);
   }
 
   @Get('documentos/:id/preview')
@@ -218,13 +220,14 @@ export class DocumentosController {
   })
   async preview(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     const doc = await this.documentos.buscarDocumento(id);
-    if (!doc || !existsSync(doc.caminho))
+    const caminho = doc && caminhoAbsolutoDocumento(doc.caminho);
+    if (!doc || !caminho || !existsSync(caminho))
       throw new NotFoundException('Documento não encontrado.');
     const cabecalhos = {
       'X-Documento-Arquivo': encodeURIComponent(doc.arquivo),
       'X-Documento-Tipo': encodeURIComponent(doc.tipo),
     };
-    const resultado = await this.geracaoDocumentos.preview(doc.caminho);
+    const resultado = await this.geracaoDocumentos.preview(caminho);
     if (resultado.tipo === 'pdf') {
       res.set({ ...cabecalhos, 'Content-Type': 'application/pdf' });
       res.send(resultado.buffer);

@@ -1,3 +1,12 @@
+/* ⚠️ A TELA "Dicionário Inteligente" foi removida do Painel em 2026-09-01, mas ESTE SCRIPT
+ * continua valendo — e é justamente por isso que ele ficou.
+ *
+ * A tabela `dicionario_documentos` que ele alimenta deixou de ser a base de uma tela e passou
+ * a ser INSUMO: é a fonte única da taxonomia de menus do SIGER (`MenusSigerService`), lida
+ * pela Matriz por Menu (SIGER) e pelo reconhecimento de menus na transcrição dos protocolos.
+ * Sem reingerir aqui, as duas envelhecem em silêncio — continuam respondendo, com o catálogo
+ * de menus da última ingestão. */
+
 /**
  * Ingestão da base de conhecimento curada do SIGER® (repositório Documentacao-Fonte-P:
  * pastas `modulos/` e `adicionais/` com os .md revisados) para a tabela
@@ -18,8 +27,6 @@ import { parseDocumentoMarkdown } from '../src/dicionario/markdown-parser';
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join, basename } from 'path';
 
-const RAIZ_PADRAO =
-  'C:\\SEG-EVE\\OneDrive - rech.com.br\\Everton\\SIGER - Código Documentação\\Documentacao-Fonte';
 const REPO_URL =
   'https://github.com/Implantacaorech/Documentacao-Fonte-P/blob/main';
 
@@ -35,7 +42,17 @@ function listarMarkdown(pasta: string): string[] {
 }
 
 async function main(): Promise<void> {
-  const raiz = process.argv[2] ?? RAIZ_PADRAO;
+  // Sem default: o caminho era um hardcoded pessoal da máquina de desenvolvimento (F1 da
+  // migração p/ servidor dedicado — docs/migracao-servidor.md). Sempre passe a raiz.
+  const raiz = process.argv[2];
+  if (!raiz) {
+    console.error(
+      'Uso: npm run ingerir:dicionario -- <raiz da Documentacao-Fonte>\n' +
+        'Ex.:  npm run ingerir:dicionario -- "D:\\Documentacao-Fonte"',
+    );
+    process.exitCode = 1;
+    return;
+  }
   const grupos: { tipo: 'modulo' | 'adicional'; pasta: string }[] = [
     { tipo: 'modulo', pasta: join(raiz, 'modulos') },
     { tipo: 'adicional', pasta: join(raiz, 'adicionais') },

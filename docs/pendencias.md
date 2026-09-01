@@ -180,23 +180,12 @@
     clique, e a gravação sai pelo mesmo PATCH de sempre, com a autoria de quem aceitou.
     Finalidade de IA própria (`levantamento`), chave separada em Config → IA.
   - [ ] Os demais: próximo passo, rascunho de e-mail e riscos (RAID).
-- [~] **Consulta Wall-e (base de conhecimento)** *(2026-08-18)* — módulo `backend/src/walle/`
-  com a tela Execução → Wall-e (chave `walle`): indexa o acervo documental dos chats do bot
-  Wall-e (`R:\GRM\CHAT_WALLE\`, **fonte somente leitura — regra inegociável**) nas tabelas
-  `walle_*`, com busca híbrida (identificadores + lexical + expansão semântica), visão por
-  chat, "também pode ser útil", SQLs documentais e síntese por IA (finalidade `walle`,
-  **só-local** por §21-A.10, com degradação para fontes). O que resta:
-  - [ ] **Embeddings/RAG completo** — o roadmap do Vault já registra "RAG de verdade: não
-    iniciado (decisão de hospedagem/custo)". Caminho natural: endpoint `/embeddings` no
-    docservice (Python local, privacidade por construção) + coluna vetorial. Com ~20
-    documentos a busca lexical resolve; reavaliar quando o acervo crescer uma ordem de
-    grandeza. Decisão de arquitetura relevante ⇒ exige ADR (§21-A.2).
-  - [ ] **Validar a Fonte B contra o Oracle real** — o SQL semeado (`walle_chats_sicla`,
-    editável em Consultas BD) usa as colunas da DDL oficial de `SICLA.CHAT_WALLE`; falta
-    rodar contra produção e, se o DBA liberar `LISTA_CHAT_WALLE`/`DIALOGO`, expandir para
-    os diálogos (§23 da especificação — reconstruir pergunta→resposta→arquivo).
-  - [ ] **Configurar o provedor local da finalidade `walle`** em Config → IA (sem isso a
-    síntese degrada para busca-guiada — funcional, mas sem resposta redigida).
+- [x] ~~Consulta Wall-e (base de conhecimento)~~ **REMOVIDO em 2026-08-19 por decisão do
+  usuário** — o módulo inteiro (entregue em 2026-08-18) saiu do sistema: backend
+  `src/walle/`, tela, chave de menu, finalidade de IA e tabelas `walle_*` (migration
+  `1787270400000-RemoveWalle` faz o drop e limpa consulta/permissões semeadas em produção).
+  Código no histórico do git (`d643c89`); as sub-pendências dele (embeddings/RAG, Fonte B
+  no Oracle, provedor local) morreram junto. O acervo `R:\GRM\CHAT_WALLE\` segue intacto.
 - [ ] **Pipeline de Conversão + gate de virada** (reconciliação origem×destino, SIT/UAT, pendências, docs obrigatórios).
 - [ ] **Disparadores de fim de fluxo** (critério de saída do hypercare → Termo + e-mails + RNS para manutenção).
 - [x] **Feito:** **Alertas proativos** — uso oficial vencido, SLA de 5 dias úteis do Cronograma, Em risco, Hypercare prolongado e projeto parado; painel no Coordenação + badge no menu (respeita o perfil).
@@ -210,12 +199,23 @@
   - **F3 · Home "Visão geral":** dashboard de entrada — KPIs + projeto em foco (stepper) + próximas ações + alertas.
   - **F4 · Kanban por fase:** carteira com vista Kanban (4 colunas) ⇄ Tabela, filtro nas duas vistas.
 
+## 🚚 Migração para servidor dedicado (frente aberta em 2026-08-19)
+- [ ] **Tirar a produção da máquina pessoal** — plano completo em
+  [migracao-servidor.md](migracao-servidor.md) (inventário de acoplamentos, decisões D1-D7,
+  fases F0-F5). Especificação de hardware/software para a TI:
+  [servidor-producao.md](servidor-producao.md). Bloqueio atual: decisões D1-D7 + provisionamento
+  pela TI (F0). Antes da virada, executar os 5 ajustes de código da fase F1 (defaults
+  machine-specific, `MIGRACAO_BACKUP_DIR` nos scripts, caminho relativo em
+  `documentos.caminho`, Helmet para HTTPS).
+
 ## 🖥️ Infra / Banco em Docker
 - [x] **Feito:** suporte a **Postgres em Docker** (`docker-compose.yml` + `psycopg2` no build) — app agnóstico via `PAINEL_DB_URL`.
 - [x] **Feito:** **Docker Engine no WSL2** instalado; Postgres 16 (container `painel-db`) no ar; painel cria as tabelas; auto-start via pasta de Inicialização + keep-alive da VM (`painel-keepalive.sh`).
 - [x] **Feito:** persistência do keep-alive validada (VM viva 8 min ociosa) e **dados reais migrados** SQLite → Postgres. Painel aponta para o Postgres via `PAINEL_DB_URL` (variável de usuário); `.exe` confirmado lendo do banco.
 - [x] **Feito:** **backup automático** do Postgres — `pg_dump` diário (22:00) via cron do WSL para `C:\PainelBackups` (gzip, mantém 14 dias). Restauração documentada em `tools/painel-backup.sh`.
-- [ ] **Trocar a senha padrão** do Postgres (`painel2026`) no `docker run`, na `PAINEL_DB_URL` e no `painel-backup.sh`.
+- [x] ~~Trocar a senha padrão do Postgres~~ **Obsoleto** (2026-08-19): o Postgres, o Docker e
+  os scripts `painel-backup*.sh`/`painel-keepalive.sh` não existem mais — a produção é MariaDB
+  nativo desde 2026-07-19 e os scripts saíram do repositório na revisão de limpeza.
 
 ## 🚀 Evolução — visual, tecnologia e observabilidade (jun/2026)
 - [x] **Robustez:** servidor de produção **waitress**, `secret_key` por env/token, rota **/health**, logging em arquivo.
@@ -229,7 +229,7 @@
 - [x] **F1 — Perfis + permissões:** login por usuário (senha hash), 4 perfis (ADM/Coordenador/GCI/Consultor), gestão de usuários (`/usuarios`, só ADM), permissões por perfil (UI + backend 403), filtro de visão (GCI/Consultor veem os seus).
 - [x] **F2 — 4 etapas:** Levantamento → Projeto → Cronograma e Check-list → Encerramento (gates encadeados + migração automática das etapas antigas).
 - [x] **F3 — Designação:** Coordenador designa GCI e Consultores **por módulo** (selects de usuários) → notifica os designados + timeline.
-- [x] **F4 — Notificações por evento:** os 10 eventos disparam e-mail à Coordenação (fechamento, conclusões de etapa, documentos gerados, encerramento) — usa o envio configurado (Gmail/SMTP).
+- [x] **F4 — Notificações por evento:** os 10 eventos disparam e-mail à Coordenação (fechamento, conclusões de etapa, documentos gerados, encerramento) — usa o envio configurado (Microsoft 365/SMTP).
 - [x] **A — Robô da caixa:** thread em segundo plano (a cada `IMAP_POLL_MIN`, default 10 min) lê os e-mails NÃO LIDOS marcados `[IMPLANTA…]`, **cria a ficha automaticamente**, marca o e-mail como lido (não reprocessa) e notifica a Coordenação. Liga sozinho no modo servidor quando o IMAP está configurado.
 - [x] **B — Levantamento ao designar:** ao designar o **GCI**, o sistema **gera o Levantamento automaticamente** (documento para o GCI preencher) e anexa à ficha.
 - [x] **C — Auto-avanço de etapa:** ao gerar o deliverable da etapa, o projeto **avança sozinho** (Projeto→Cronograma, Cronograma+Check-list→Encerramento). O **Levantamento** é a única conclusão confirmada pelo humano (botão Avançar), pois o documento é preenchido fora do sistema.
@@ -237,10 +237,19 @@
 - [x] **E — Pré-visualização (WYSIWYG):** visualizador embutido (`/projetos/<id>/doc/<doc_id>/ver`) renderiza o documento gerado (.docx/.xlsx) como **folha A4 na tela** — botão **👁 Ver** em cada documento da ficha. Serve para Projeto, Levantamento, Cronograma e Termo; sem precisar baixar/abrir o Office.
 - [x] **F — Cronograma e Check-list editáveis + histórico:** tabelas editáveis no painel (`/projetos/<id>/cronograma` e `/checklist`) — adicionar/remover/editar linhas, **seed** pelo plano automático/roteiro dos módulos, **histórico de modificações linha-a-linha** (quem mudou o quê, de→para) e botão **gerar o .docx do cronograma editado** (anexa e satisfaz o gate).
 
-## ✉️ E-mail / Integração Gmail
-- [x] **Feito:** envio pela **API do Gmail (OAuth/HTTPS)** — contorna o bloqueio de SMTP da rede (porta 443). Config → Gmail API.
-- [x] **Feito:** IMAP do Gmail (entrada) funcionando com senha de app; SMTP da rede bloqueado (usar a API).
-- [ ] *Você:* autorizar a API do Gmail (criar credencial OAuth + Autorizar) para o envio sair de verdade.
+## ✉️ E-mail / Integração Microsoft 365
+- [x] **Feito (2026-08-17):** envio pela **API do Microsoft Graph** (OAuth2 app-only, HTTPS/443)
+  — caminho oficial da caixa `implantacao@rech.com.br`. Tela Ferramentas → E-mail (Microsoft 365).
+- [x] **Feito (2026-08-17):** o envio pela **API do Gmail foi REMOVIDO** do projeto (a caixa
+  passou a ser Microsoft). Saíram `GmailService`, `/config/gmail` e `google-auth-library`.
+- [ ] *TI:* entregar Tenant/Client ID, segredo e o consentimento de `Mail.Send` restrito à caixa
+  (`ApplicationAccessPolicy`), mais a liberação de saída na 443 para `login.microsoftonline.com`
+  e `graph.microsoft.com`. Sem isso o envio não sai.
+- [ ] *Atenção:* o segredo do aplicativo **expira** — quando isso acontecer, o envio para sem
+  aviso e é preciso pedir um novo ao TI (ver `docs/runbooks-operacao.md` §2a).
+- [ ] **IMAP (entrada) em xeque:** o robô da caixa autentica com usuário e senha, e o Microsoft
+  365 não aceita mais autenticação básica no IMAP. Se a leitura automática voltar a ser
+  necessária, ela exige OAuth (Graph) — hoje a entrada do processo é a consulta ao SICLA.
 
 ## ⚙️ Dependências / pré-requisitos honestos
 - [ ] Acesso ao SICLA/SIGER (API ou banco) para a integração.
@@ -393,8 +402,8 @@ feita; o que ela revelou em volta, não.
   `/gerar/cronograma-visitas`, `/preview`, `/transcrever`) e a ponte `webapp/legado_cli.py`
   (chamada por `documentos.controller.ts` e `fluxo.service.ts`). Ou seja: o item "14 de 14
   portados" abaixo é verdade quanto ao **código escrito**, não quanto ao **código em uso**.
-- Python que resta hoje, por pasta: `docservice/` (20 arquivos versionados), `tools/` (29),
-  `webapp/` (4), `ia_admin/` (1 — o mais barato de portar) e `projeto_old/` (39, morto).
+- Python que resta hoje, por pasta: `docservice/` (20 arquivos versionados), `tools/` (28),
+  `webapp/` (4) e `ia_admin/` (1 — o mais barato de portar).
 
 - [ ] **Migrar o repositório para o GitLab interno** (`rech/javascript`) — **adiado por decisão
   do usuário em 2026-07-21, a tratar depois.** Hoje o remoto é
@@ -608,12 +617,9 @@ feita; o que ela revelou em volta, não.
   Restrito a `PERFIS_SISTEMA` e auditado.
 - [x] `PODEM_IMPORTAR_DRIVER` caiu de **3 para 1**.
 
-> ⚠️ **A exceção que ficou é decisão, não dívida.** `consultor-siger` continua abrindo o
-> SQLite dele: a base não é um banco vinculado, é um artefato DERIVADO (gerado por indexador
-> externo a partir do código-fonte), arquivo local em readonly, sem credencial, sem rede e
-> sem outro consumidor — e o módulo já é a API dele. Suas 7 consultas são busca full-text
-> com aridade variável; forçá-las num catálogo de consultas *nomeadas* distorceria os dois
-> lados sem fechar risco nenhum. Está declarada, com o motivo, dentro da guarda de CI.
+> ✅ **A exceção que existia acabou.** `consultor-siger` era o único módulo a abrir um
+> driver fora de `src/dados/` (SQLite da base derivada, readonly). O módulo foi retirado do
+> Painel em 2026-09-01, a pedido do usuário — hoje a fronteira do ADR-0003 não tem exceção.
 
 ### Fase 3 — as DUAS INSTÂNCIAS (Portal de Conexões) *(concluída em 2026-08-25)*
 > **Por que existe:** o usuário quer publicar o Painel fora da rede da empresa —

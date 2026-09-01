@@ -130,11 +130,22 @@
       <label class="campo"><span>Nome</span><input formControlName="nome" /></label>
       <label class="campo"><span>E-mail</span><input type="email" formControlName="email" /></label>
       <label class="campo"><span>Login</span><input formControlName="login" placeholder="(em branco usa o e-mail)" /></label>
-      <label class="campo"><span>Código SICLA *</span><input formControlName="codigoSicla" placeholder="código do técnico no SICLA" /></label>
-      <label class="campo"><span>Setor Atuação</span><input formControlName="setorAtuacao" placeholder="SETORDES (SICLA)" /></label>
-      <label class="campo largura-total"><span>Módulos capacitados</span><input formControlName="modulosCapacitados" placeholder="MODULOCAPACITADO (SICLA)" /></label>
+      @if (ehCliente()) {
+        <label class="campo"><span>Código do Cliente no SICLA *</span><input formControlName="codigoClienteSicla" placeholder="LISTA_CLIENTES.CODIGO — ex.: 3180" /></label>
+      } @else {
+        <label class="campo"><span>Código SICLA *</span><input formControlName="codigoSicla" placeholder="código do técnico no SICLA" /></label>
+        <label class="campo"><span>Setor Atuação</span><input formControlName="setorAtuacao" placeholder="SETORDES (SICLA)" /></label>
+        <label class="campo largura-total"><span>Módulos capacitados</span><input formControlName="modulosCapacitados" placeholder="MODULOCAPACITADO (SICLA)" /></label>
+      }
       <div class="campo largura-total">
         <span>Papéis <small style="color:var(--muted);font-weight:400">— pode marcar mais de um; a mesma pessoa costuma ser GCI e Levantador</small></span>
+        @if (ehCliente()) {
+          <p class="aviso-cliente">
+            <strong>Usuário externo.</strong> O papel <em>Cliente</em> é exclusivo e enxerga
+            apenas o BI “Implantação Clientes SIGER”, sempre filtrado no cliente vinculado
+            abaixo. Sem o código do cliente, o acesso é negado — nunca liberado por inteiro.
+          </p>
+        }
         <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:6px">
           @for (p of perfis; track p) {
             <label style="display:flex;align-items:center;gap:6px;font-weight:500;cursor:pointer">
@@ -198,19 +209,29 @@
 
   <div class="tabela-wrap">
     <table class="form-tab">
-      <thead><tr><th>Nome</th><th>E-mail</th><th>Login</th><th>Cód. SICLA</th><th>Setor Atuação</th><th>Módulos capacitados</th><th>Hierarquia</th><th>Ativo</th><th></th></tr></thead>
+      <thead><tr><th>Nome</th><th>E-mail</th><th>Login</th><th title="Código do técnico no SICLA — no usuário externo, o código do CLIENTE">Cód. SICLA</th><th>Setor Atuação</th><th>Módulos capacitados</th><th>Hierarquia</th><th>Ativo</th><th></th></tr></thead>
       <tbody>
         @for (u of usuariosFiltrados(); track u.id) {
           <tr [class.em-edicao]="usuarioId() === u.id">
             <td>{{ u.nome }}</td>
             <td>{{ u.email }}</td>
             <td>{{ u.login }}</td>
-            <td>{{ u.codigoSicla }}</td>
+            <td>{{ u.perfil === 'Cliente' ? u.codigoClienteSicla : u.codigoSicla }}</td>
             <td>{{ u.setorAtuacao }}</td>
             <td>{{ u.modulosCapacitados }}</td>
             <td>{{ u.perfis || u.perfil }}</td>
             <td>{{ u.ativo ? '🟢' : '⚪' }}</td>
-            <td><button class="btn" type="button" (click)="editar(u)"><svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Editar</button></td>
+            <td style="white-space:nowrap">
+              <button class="btn" type="button" (click)="editar(u)"><svg class="svgi" aria-hidden="true"><use href="#ic-pencil"/></svg> Editar</button>
+              @if (podeExcluir() && u.id !== idLogado()) {
+                <button class="btn perigo" type="button" style="margin-left:6px"
+                        [disabled]="excluindoId() === u.id" (click)="excluir(u)"
+                        title="Exclusão definitiva (só Administrador) — para afastar mantendo o histórico, desmarque o campo Ativo">
+                  <svg class="svgi" aria-hidden="true"><use href="#ic-trash"/></svg>
+                  {{ excluindoId() === u.id ? 'Excluindo…' : 'Excluir' }}
+                </button>
+              }
+            </td>
           </tr>
         }
       </tbody>

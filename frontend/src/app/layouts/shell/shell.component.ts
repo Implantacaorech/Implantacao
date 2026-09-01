@@ -7,6 +7,7 @@ import { BarraGravacaoComponent } from '../../features/protocolos/barra-gravacao
 import { AuthService } from '../../core/services/auth.service';
 import { PermissoesService } from '../../core/services/permissoes.service';
 import { InstanciaService } from '../../core/services/instancia.service';
+import { temPapel } from '../../core/constants/perfis';
 
 @Component({
   selector: 'app-shell',
@@ -67,12 +68,10 @@ export class ShellComponent {
   readonly podeMatriz = computed(() => this.perm.podeVer('matriz'));
   readonly podeMatrizDetalhada = computed(() => this.perm.podeVer('matriz_detalhada'));
   readonly podeMatrizFuncoes = computed(() => this.perm.podeVer('matriz_funcoes'));
-  readonly podeDicionario = computed(() => this.perm.podeVer('dicionario'));
   readonly podeProtocolo = computed(() => this.perm.podeVer('protocolo'));
   readonly podeRechEdu = computed(() => this.perm.podeVer('rechedu'));
   readonly podeAgenda = computed(() => this.perm.podeVer('agenda'));
   readonly podeRns = computed(() => this.perm.podeVer('rns'));
-  readonly podeConsultorSiger = computed(() => this.perm.podeVer('consultor_siger'));
   readonly podeCoordenacao = computed(() => this.perm.podeVer('coordenacao'));
   readonly podeCentroOp = computed(() =>
     this.perm.podeVer('centro_operacional'),
@@ -96,6 +95,11 @@ export class ShellComponent {
   );
 
   readonly iniciais = computed(() => (this.auth.usuario()?.nome ?? 'P').slice(0, 2).toUpperCase());
+
+  /** O usuário logado é um CLIENTE da Rech (papel externo), e não gente de casa? Só muda a
+   * faixa do cabeçalho: o que ele PODE ver já é decidido pelas permissões (menu) e pelo
+   * recorte por cliente (backend). */
+  readonly ehCliente = computed(() => temPapel(this.auth.usuario(), 'Cliente'));
 
   async buscar(): Promise<void> {
     const q = this.busca().trim();

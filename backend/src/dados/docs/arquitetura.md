@@ -75,14 +75,8 @@ driver ou chame `executarSql` quebra o build.
 
 ### A exceção que sobrou, e por quê
 
-`consultor-siger/consultor-siger.service.ts` continua importando `better-sqlite3`. Não é
-dívida — é decisão. A base dele não é um banco *vinculado*: é um artefato **derivado**
-(SQLite gerado por um indexador externo a partir do código-fonte do SIGER), um arquivo local
-aberto em readonly, sem credencial, sem rede e sem outro consumidor. O módulo já **é** a API
-dele, e suas 7 consultas são busca full-text com aridade variável — encaixá-las num catálogo
-de consultas *nomeadas* distorceria os dois lados sem fechar risco nenhum. Os riscos que o
-ADR-0003 endereça (credencial circulando, SQL solto contra sistema de terceiro, execução sem
-auditoria) não existem ali.
+> Desde 2026-09-01 **não há exceção**: o Consultor SIGER, o único módulo que importava um
+> driver fora de `src/dados/`, foi retirado do Painel a pedido do usuário.
 
 ## Decisões e o porquê
 

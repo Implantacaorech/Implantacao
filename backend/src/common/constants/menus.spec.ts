@@ -50,6 +50,7 @@ const shell = so('painel');
 const SISTEMA: Record<string, string | null> = {
   ferramentas: 'routerLink="/ferramentas"',
   usuarios: 'routerLink="/usuarios"',
+  acesso_clientes: 'routerLink="/acesso-clientes"',
   checklist: "['/cadastros', 'checklist']",
   indice_topicos: "['/cadastros', 'indice']",
   modelos_docs: "['/cadastros', 'modelos']",

@@ -1,6 +1,10 @@
 import { Projeto } from '../../database/entities/projeto.entity';
 import type { AuthUser } from '../decorators/current-user.decorator';
-import { PERFIS_VEEM_TODOS_PROJETOS, temPapel } from '../constants/perfis';
+import {
+  PERFIS_VEEM_TODOS_PROJETOS,
+  ehCliente,
+  temPapel,
+} from '../constants/perfis';
 
 /** `Projeto.gci` e `Projeto.consultor` guardam LISTAS de nomes separadas por ", " (mesma
  * convenção de `filtrarCarteiraPorPerfil`). Comparar com `===` deixava de fora quem não
@@ -25,6 +29,12 @@ function nomeNaLista(campo: string | null | undefined, nome: string): boolean {
  * NÃO é usado pelos painéis de GESTÃO (Coordenação/Atividade/Centro Operacional): lá o
  * escopo é a carteira inteira e quem entra já passou pelo gate do painel de Permissões. */
 export function soMeus(projetos: Projeto[], user: AuthUser): Projeto[] {
+  // Usuário-cliente (papel externo) não tem projeto NENHUM nesta visão: a carteira de
+  // implantação é assunto interno da Rech. Na prática ele já cairia no filtro por
+  // designação abaixo (nunca é designado), mas esse filtro casa por NOME — um cliente
+  // homônimo de um consultor designado passaria. Hoje o cadastro recusa homônimos ativos;
+  // esta linha não depende disso continuar valendo.
+  if (ehCliente(user)) return [];
   if (temPapel(user, ...PERFIS_VEEM_TODOS_PROJETOS)) return projetos;
   return projetos.filter(
     (p) => nomeNaLista(p.gci, user.nome) || nomeNaLista(p.consultor, user.nome),

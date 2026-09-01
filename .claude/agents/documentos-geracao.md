@@ -35,8 +35,8 @@ duas pontes Python distintas, chamadas pelo `backend/` NestJS.
 ## NÃO é seu
 - Endpoints/rotas do backend (`*.controller.ts`) → **painel-core** (você cuida do
   CONTEÚDO/fidelidade do documento, ele cuida da rota/orquestração). HTML/SCSS do Angular →
-  **painel-core**. Testes → **qualidade**. `projeto_old/webapp/gl_*.py` (a versão Flask antiga,
-  desligada) não é mais seu — o `docservice/gerador/` é a versão viva.
+  **painel-core**. Testes → **qualidade**. Os `gl_*.py` da era Flask saíram do repositório
+  junto com o painel antigo (2026-07-29) — o `docservice/gerador/` é a versão viva.
 
 ## Princípios de fidelidade
 - O documento gerado deve ser **idêntico ao modelo oficial**, mudando apenas os

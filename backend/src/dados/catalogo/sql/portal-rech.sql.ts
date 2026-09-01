@@ -10,6 +10,11 @@
  * o painel ao cliente filtrado, exigência do usuário) e os binds `:data_ini`/`:data_fim`
  * (o De/Até da tela, fim inclusive).
  *
+ * Revisão de 2026-08-31: a aprovação deixou de ser Sim/Não e passou a ter TRÊS situações —
+ * `APROVADO = 0` é **aprovada com ressalva** (o Portal exige justificativa; por isso todo
+ * registro com 0 tem `OBSERVACAO`), não reprovação. `NULL` (cliente ainda não respondeu)
+ * continua caindo em 'Não', como antes.
+ *
  * Por que o banco do Portal (e não o SICLA nem a API): o SICLA não espelha nem o nº do
  * protocolo nem a aprovação (`VISITAS.PROTOCOLOVIS` ≠ `LISTA_VISITAS.PROTOCOLOVIS` ≠ id do
  * Portal — protocolos reais 135089/135096 provaram; `RECEBIDA` não é a aprovação), e a
@@ -49,9 +54,18 @@ SELECT
         ELSE 'FORA DO TURNO'
     END AS TURNO,
 
+    -- Três situações, como o Portal registra em \`visita_aprovacao.APROVADO\` (tinyint):
+    --   1    = aprovada;
+    --   0    = APROVADA COM RESSALVA — o cliente aprova e é obrigado a justificar (os
+    --          registros com 0 sempre têm OBSERVACAO preenchida);
+    --   NULL = o cliente ainda não respondeu — segue contando como não aprovada.
     CASE
         WHEN va.APROVADO = 1
             THEN 'Sim'
+
+        WHEN va.APROVADO = 0
+            THEN 'Com ressalva'
+
         ELSE 'Não'
     END AS APROVADO
 

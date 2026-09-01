@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -8,7 +9,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Usuario } from '../database/entities/usuario.entity';
-import { Perfil } from '../common/constants/perfis';
+import { ProjetoPessoa } from '../database/entities/projeto-pessoa.entity';
+import { RefreshToken } from '../database/entities/refresh-token.entity';
+import { RecuperacaoSenha } from '../database/entities/recuperacao-senha.entity';
+import { PreferenciaUsuario } from '../database/entities/preferencia-usuario.entity';
+import { PermissaoUsuario } from '../database/entities/permissao-usuario.entity';
+import { Perfil, papeisConflitantes } from '../common/constants/perfis';
 import { normalizarPapeis, papeisDoUsuario } from './papeis.util';
 
 const SALT_ROUNDS = 12;
@@ -141,6 +147,73 @@ export class UsersService {
     );
   }
 
+  /** Guarda das duas regras do papel `Cliente` (docs/acesso-cliente-bi.md §3).
+   *
+   * 1. **`Cliente` não se acumula.** O acúmulo de papéis existe para quem é GCI e Levantador
+   *    ao mesmo tempo; aplicado ao `Cliente`, ele viraria a porta de saída do recorte —
+   *    quem também fosse `Consultor` cairia no ramo "interno vê tudo" de toda verificação.
+   * 2. **Cada papel exige o SEU código.** Interno sem `codigoSicla` não se liga à agenda;
+   *    `Cliente` sem `codigoClienteSicla` não tem escopo — e a regra do recorte é negar,
+   *    nunca mostrar tudo. Cobrar na gravação é o que torna "usuário-cliente sem escopo"
+   *    inexistente, em vez de um caso a tratar depois em cada consulta.
+   *
+   * Recebe o estado FINAL (já mesclado, na edição), porque é ele que precisa ser coerente —
+   * não o punhado de campos que veio no pedido.
+   *
+   * `exigirCodigoSiclaInterno` é falso na EDIÇÃO de propósito. O código do técnico sempre foi
+   * cobrado apenas na criação (`UpdateUsuarioDto` é `PartialType`, logo o campo nunca foi
+   * obrigatório ao editar), e há cadastros antigos sem ele — passar a cobrá-lo aqui
+   * impediria de editar qualquer um desses, que é endurecer uma regra que ninguém pediu.
+   * As regras do `Cliente`, ao contrário, valem nos dois caminhos: "usuário-cliente sem
+   * escopo" não é um cadastro incompleto, é uma falha de isolamento. */
+  private exigirVinculoCoerente(
+    estado: {
+      perfil: Perfil;
+      perfis: Perfil[];
+      codigoSicla: string;
+      codigoClienteSicla: string;
+    },
+    exigirCodigoSiclaInterno: boolean,
+  ): void {
+    if (papeisConflitantes(estado.perfis)) {
+      throw new BadRequestException(
+        'O papel "Cliente" é exclusivo: um usuário cliente não pode acumular papéis ' +
+          'internos da Rech. Deixe "Cliente" como papel principal e desmarque os demais.',
+      );
+    }
+    const cliente = estado.perfis.includes('Cliente');
+    if (cliente && !(estado.codigoClienteSicla ?? '').trim()) {
+      throw new BadRequestException(
+        'Informe o Código do Cliente no SICLA — é obrigatório no papel "Cliente" e é o ' +
+          'que limita o que essa pessoa enxerga no BI.',
+      );
+    }
+    if (
+      !cliente &&
+      exigirCodigoSiclaInterno &&
+      !(estado.codigoSicla ?? '').trim()
+    ) {
+      throw new BadRequestException(
+        'Informe o Código SICLA do usuário — é obrigatório.',
+      );
+    }
+  }
+
+  /** Papéis finais a partir do que veio no pedido.
+   *
+   * Inclui o `perfil` principal de propósito, espelhando `papeisDoUsuario` — é assim que a
+   * permissão é lida em runtime. Sem isso, gravar `perfil: 'Consultor'` com
+   * `perfis: ['Cliente']` passaria pela checagem de exclusividade e produziria exatamente o
+   * usuário misto que ela existe para impedir. */
+  private papeisFinais(perfil: Perfil, perfis?: Perfil[]): Perfil[] {
+    // `filter(Boolean)`: o principal pode chegar vazio em cadastro antigo (e nos mocks de
+    // teste), e `normalizarPapeis` faz `.trim()` em cada item — um `undefined` na lista
+    // derrubaria a gravação inteira.
+    return normalizarPapeis(
+      [perfil, ...(perfis ?? [])].filter((p): p is Perfil => Boolean(p)),
+    );
+  }
+
   async criar(dados: {
     login: string;
     nome: string;
@@ -149,9 +222,20 @@ export class UsersService {
     perfil: Perfil;
     perfis?: Perfil[];
     codigoSicla?: string;
+    codigoClienteSicla?: string;
     modulosCapacitados?: string;
     setorAtuacao?: string;
   }): Promise<Usuario> {
+    const papeis = this.papeisFinais(dados.perfil, dados.perfis);
+    this.exigirVinculoCoerente(
+      {
+        perfil: dados.perfil,
+        perfis: papeis,
+        codigoSicla: dados.codigoSicla ?? '',
+        codigoClienteSicla: dados.codigoClienteSicla ?? '',
+      },
+      true,
+    );
     const login = (dados.login || '').trim() || dados.email.trim(); // login em branco usa o e-mail
     if (await this.existeUsuario(login, dados.email)) {
       throw new ConflictException(
@@ -171,8 +255,9 @@ export class UsersService {
       email: dados.email,
       senhaHash,
       perfil: dados.perfil,
-      perfis: normalizarPapeis(dados.perfis ?? [dados.perfil]).join(', '),
+      perfis: papeis.join(', '),
       codigoSicla: dados.codigoSicla ?? '',
+      codigoClienteSicla: dados.codigoClienteSicla ?? '',
       modulosCapacitados: dados.modulosCapacitados ?? '',
       setorAtuacao: dados.setorAtuacao ?? '',
       ativo: true,
@@ -193,12 +278,30 @@ export class UsersService {
       perfil?: Perfil;
       perfis?: Perfil[];
       codigoSicla?: string;
+      codigoClienteSicla?: string;
       modulosCapacitados?: string;
       setorAtuacao?: string;
       ativo?: boolean;
     },
   ): Promise<Usuario> {
     const usuario = await this.buscarPorId(id);
+    // Estado FINAL (o que já está gravado + o que veio no pedido) — é ele que precisa ser
+    // coerente. Validar só os campos enviados deixaria passar a edição que troca o papel
+    // para `Cliente` sem informar o código do cliente, ou o contrário.
+    const papeis = this.papeisFinais(
+      dados.perfil ?? usuario.perfil,
+      dados.perfis ?? papeisDoUsuario(usuario),
+    );
+    this.exigirVinculoCoerente(
+      {
+        perfil: dados.perfil ?? usuario.perfil,
+        perfis: papeis,
+        codigoSicla: dados.codigoSicla ?? usuario.codigoSicla,
+        codigoClienteSicla:
+          dados.codigoClienteSicla ?? usuario.codigoClienteSicla,
+      },
+      false,
+    );
     const loginNovo =
       dados.login !== undefined
         ? dados.login.trim() || (dados.email ?? usuario.email).trim()
@@ -227,11 +330,13 @@ export class UsersService {
     if (dados.nome !== undefined) usuario.nome = dados.nome;
     usuario.email = emailNovo;
     if (dados.perfil !== undefined) usuario.perfil = dados.perfil;
-    if (dados.perfis !== undefined) {
-      usuario.perfis = normalizarPapeis(dados.perfis).join(', ');
+    if (dados.perfis !== undefined || dados.perfil !== undefined) {
+      usuario.perfis = papeis.join(', ');
     }
     if (dados.codigoSicla !== undefined)
       usuario.codigoSicla = dados.codigoSicla;
+    if (dados.codigoClienteSicla !== undefined)
+      usuario.codigoClienteSicla = dados.codigoClienteSicla;
     if (dados.modulosCapacitados !== undefined)
       usuario.modulosCapacitados = dados.modulosCapacitados;
     if (dados.setorAtuacao !== undefined)
@@ -240,6 +345,48 @@ export class UsersService {
     if (dados.senha)
       usuario.senhaHash = await bcrypt.hash(dados.senha, SALT_ROUNDS);
     return this.repo.save(usuario);
+  }
+
+  /** Exclusão DEFINITIVA de um usuário (rota exclusiva do ADM).
+   *
+   * Guardas:
+   * - o ADM não exclui a si mesmo — de quebra, como só ADM chega aqui, sempre sobra ao
+   *   menos um ADM no cadastro;
+   * - quem tem designação em projeto (`projeto_pessoas`, por `usuarioId` ou, nos vínculos
+   *   antigos sem id, pelo nome) não pode ser excluído: o vínculo é histórico do processo
+   *   (passos, e-mails, documentos). Para afastar a pessoa, o caminho continua sendo
+   *   desativar (`ativo = false`).
+   *
+   * O schema não tem FK física (integridade é da aplicação — convenção registrada no
+   * vault/05), então os registros satélites do usuário — sessões, códigos de recuperação
+   * de senha, preferências de tela e exceções de permissão — são removidos aqui junto,
+   * para não virarem órfãos. */
+  async excluir(id: number, idLogado: number): Promise<void> {
+    const usuario = await this.buscarPorId(id);
+    if (id === idLogado) {
+      throw new ConflictException(
+        'Você não pode excluir o próprio usuário logado.',
+      );
+    }
+    const nome = (usuario.nome || '').trim().toLowerCase();
+    const designacoes = await this.repo.manager
+      .createQueryBuilder(ProjetoPessoa, 'pp')
+      .where(
+        '(pp.usuarioId = :id OR (pp.usuarioId IS NULL AND LOWER(TRIM(pp.pessoa)) = :nome))',
+        { id, nome },
+      )
+      .getCount();
+    if (designacoes > 0) {
+      throw new ConflictException(
+        `"${usuario.nome}" tem ${designacoes} designação(ões) em projetos e não pode ser ` +
+          'excluído — desmarque o campo Ativo para afastá-lo sem perder o histórico.',
+      );
+    }
+    await this.repo.manager.delete(RefreshToken, { usuarioId: id });
+    await this.repo.manager.delete(RecuperacaoSenha, { usuarioId: id });
+    await this.repo.manager.delete(PreferenciaUsuario, { usuarioId: id });
+    await this.repo.manager.delete(PermissaoUsuario, { usuarioId: id });
+    await this.repo.delete(id);
   }
 
   async validarSenha(usuario: Usuario, senha: string): Promise<boolean> {

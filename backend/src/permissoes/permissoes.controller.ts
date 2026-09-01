@@ -14,7 +14,7 @@ import { Permissao } from '../common/decorators/permissao.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { ApiEnvelope } from '../common/dto/api-envelope';
-import { MENUS, NIVEIS, PAPEIS_PERMISSAO } from '../common/constants/menus';
+import { NIVEIS } from '../common/constants/menus';
 import { PermissoesService } from './permissoes.service';
 import { UsersService } from '../users/users.service';
 import {
@@ -83,16 +83,5 @@ export class PermissoesController {
       dto.nivel === 'herdar' ? null : dto.nivel,
     );
     return new ApiEnvelope({ salvo: true });
-  }
-
-  @Get('catalogo')
-  @Permissao('permissoes')
-  @ApiOperation({ summary: 'Menus, papéis e níveis disponíveis' })
-  catalogo() {
-    return new ApiEnvelope({
-      menus: MENUS,
-      papeis: PAPEIS_PERMISSAO,
-      niveis: NIVEIS,
-    });
   }
 }

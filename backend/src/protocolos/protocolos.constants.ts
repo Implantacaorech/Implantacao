@@ -10,19 +10,6 @@ import { StatusProtocolo } from '../database/entities/protocolo.entity';
  * constante era privada do controller, as duas regras se contradiziam em silêncio. */
 export const PERFIS_APROVA_PROTOCOLO: Perfil[] = ['ADM', 'Coordenador'];
 
-// Espelha webapp/db.py:PROTO_STATUS/PROTO_MODULOS/PROTO_CAMPOS_TEXTO — mais 'Gravando',
-// que só existe no stack novo (reunião sendo gravada e transcrita ao vivo).
-export const PROTO_STATUS: StatusProtocolo[] = [
-  'Gravando',
-  'Pendente',
-  'Transcrevendo',
-  'Analisando',
-  'Em revisão',
-  'Aprovado',
-  'Reprovado / Ajustar',
-  'Erro',
-];
-
 /** Status em que existe trabalho em curso — é onde cancelar faz sentido e é de onde o
  * protocolo não conseguia sair sozinho (ver ProcessamentoProtocolosService.cancelar e
  * .recuperarPresos).
@@ -77,15 +64,12 @@ export const PROTO_CAMPOS_TEXTO = [
   'pendenciasTreinamento',
   'proximosPassos',
   'resumoTecnico',
-  // Sai de uma chamada de IA separada (não do JSON da análise) — ver PROTO_CAMPO_RESUMO.
+  // Sai de uma chamada de IA separada (não do JSON da análise), por isso não entra no
+  // mapa CHAVE_IA de protocolo-ia.service.ts.
   'resumoCompleto',
   'assuntosRemovidos',
   'pendencias',
 ] as const;
-
-/** Campo preenchido pela 2ª chamada de IA (resumo completo em texto corrido), fora do
- * JSON da análise — por isso não entra no mapa CHAVE_IA de protocolo-ia.service.ts. */
-export const PROTO_CAMPO_RESUMO = 'resumoCompleto';
 
 export type CampoTextoProtocolo = (typeof PROTO_CAMPOS_TEXTO)[number];
 

@@ -6,3 +6,17 @@
   background: #e8eef8;
   box-shadow: inset 2px 0 0 var(--brand);
 }
+
+/* Aviso do papel Cliente (externo) no formulário de usuário — o cadastro dele muda de
+   natureza: não é gente da Rech, e o campo obrigatório passa a ser o código do cliente. */
+.aviso-cliente {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--brand);
+  background: var(--surface-2, rgba(0, 0, 0, 0.03));
+  border-radius: 4px;
+  font-size: 0.82rem;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--muted);
+}

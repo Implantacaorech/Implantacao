@@ -204,6 +204,42 @@
     height: 100vh;
     padding-top: 14px;
   }
+
+  /* O nome da tela sai da barra já aqui (antes, só em 620px) — pelo mesmo motivo de sempre:
+     a página já traz o próprio título. O que mudou foi a barra ficar com um item a mais, a
+     faixa Consultor/Cliente; em 768px ela empurrava o botão Sair 45px para fora em
+     `/clientes/novo` (pego pelo e2e de responsividade). Some o título, que é redundante, e
+     não o rótulo do lado, que é justamente o que o cliente precisa enxergar. */
+  .topbar-title {
+    display: none;
+  }
+
+  .topbar-lado {
+    margin-left: 6px;
+    padding: 3px 7px;
+    font-size: 0.63rem;
+    letter-spacing: 0.02em;
+  }
+}
+
+/* Faixa "Consultor"/"Cliente" do cabeçalho: de que lado do Painel a pessoa está. O cliente
+   da Rech entra pelo MESMO endereço do consultor, então o rótulo não é decoração — é o que
+   evita a dúvida de quem abre a tela. */
+.topbar-lado {
+  margin-left: 8px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.topbar-lado.cliente {
+  border-color: var(--brand);
+  color: var(--brand);
 }
 
 @media (max-width: 620px) {
@@ -212,10 +248,8 @@
     gap: 8px;
   }
 
-  /* Espaço curto: fica só o logo, menor, e o nome da tela sai da barra (a página já traz o
-     próprio título). */
-  .topbar-marca small,
-  .topbar-title {
+  /* Espaço curto: fica só o logo, menor. (O nome da tela já saiu na media de 980px.) */
+  .topbar-marca small {
     display: none;
   }
 
@@ -236,6 +270,17 @@
 
   .topbar-perfil {
     padding: 5px;
+  }
+
+  /* A faixa Consultor/Cliente encolhe junto, pelo mesmo motivo do bloco acima: em 390px a
+     barra não tem folga nenhuma, e ela sozinha estourava 5px (pego pelo e2e de
+     responsividade). Encolher em vez de esconder é a escolha certa aqui — é para o CLIENTE,
+     que tende a abrir no celular, que o rótulo mais importa. */
+  .topbar-lado {
+    margin-left: 4px;
+    padding: 2px 6px;
+    font-size: 0.6rem;
+    letter-spacing: 0;
   }
 }
 

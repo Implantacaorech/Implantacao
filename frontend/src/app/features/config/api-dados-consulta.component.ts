@@ -176,10 +176,31 @@ export class ApiDadosConsultaComponent {
     } catch (e: unknown) {
       // O backend devolve a LISTA de problemas de contrato; mostrar todos de uma vez evita
       // o vaivém de corrigir um por vez.
-      const corpo = (e as { error?: { message?: string | string[] } })?.error
-        ?.message;
-      if (Array.isArray(corpo)) this.erros.set(corpo);
-      else this.erro.set(corpo ?? 'Não foi possível salvar a consulta.');
+      //
+      // A lista vem em `details`, NÃO em `message`: o HttpExceptionFilter troca a `message`
+      // por "Os dados informados são inválidos" sempre que ela é um array, e move os itens
+      // para `details`. Enquanto esta tela lia só `message`, todo erro de validação virava
+      // aquela frase genérica — sem dizer QUAL campo estava errado, que é a única coisa que
+      // interessa a quem está preenchendo o formulário (achado em 2026-09-01, publicando a
+      // consulta de contatos).
+      const corpo = (
+        e as {
+          error?: { message?: string | string[]; details?: string[] };
+        }
+      )?.error;
+      const lista = Array.isArray(corpo?.details)
+        ? corpo.details
+        : Array.isArray(corpo?.message)
+          ? corpo.message
+          : null;
+      if (lista?.length) this.erros.set(lista);
+      else {
+        this.erro.set(
+          typeof corpo?.message === 'string'
+            ? corpo.message
+            : 'Não foi possível salvar a consulta.',
+        );
+      }
     } finally {
       this.salvando.set(false);
     }

@@ -13,6 +13,9 @@ clientes/
 *.local.md
 *-cliente-*.md
 *-confidencial*
+# Exceção: documentação de ARQUITETURA sobre o acesso do cliente ao Painel — casa com o
+# padrão acima por coincidência de nome, mas não tem dado de cliente nenhum dentro.
+!docs/acesso-cliente-bi.md
 
 # Ambiente / credenciais
 .env
@@ -25,6 +28,7 @@ clientes/
 # Python
 __pycache__/
 *.pyc
+.pytest_cache/
 
 # Saídas geradas pelos geradores (reproduzíveis)
 exemplos/
@@ -43,9 +47,10 @@ tools/data/anthropic_key.txt
 # Credenciais SMTP/IMAP do e-mail interno — NUNCA versionar (senha em texto local)
 tools/data/smtp.json
 tools/data/imap.json
+# Credenciais OAuth do Gmail (client_secret e refresh_token) — NUNCA versionar
 tools/data/gmail_client.json
-tools/data/disponibilidade.json
 tools/data/gmail_token.json
+tools/data/disponibilidade.json
 tools/data/secret.key
 tools/data/acesso.txt
 tools/data/digest_para.txt

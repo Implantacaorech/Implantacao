@@ -144,7 +144,7 @@ documentos gerados (Levantamento e Projeto). **Status: aguardando o usuário VAL
 - Flask (`webapp/`), waitress, `http://127.0.0.1:5000`; PostgreSQL via `PAINEL_DB_URL` (Docker/WSL2); SQLite local em dev/testes.
 - SQLAlchemy 2.0 ORM; `_auto_migrar` (ALTER TABLE ADD COLUMN + create_all); código DB-agnóstico.
 - Layouts/.docx/.xlsx e dados sensíveis são **gitignored**; cadastro "Modelos de Documentos" serve os vigentes.
-- **Conta GitHub = `Implantacaorech`** (NÃO a pessoal). Credenciais (senha mestra `PAINEL_SENHA`, smtp/imap/gmail)
+- **Conta GitHub = `Implantacaorech`** (NÃO a pessoal). Credenciais (senha mestra `PAINEL_SENHA`, graph/smtp/imap)
   ficam em **env/arquivos locais gitignored** ou nas telas do painel — **nunca no chat nem neste arquivo**.
 
 ---

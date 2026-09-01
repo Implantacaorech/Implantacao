@@ -107,7 +107,11 @@ describe('validarParametros', () => {
     expect(r.erros[0]).toContain('5 caracteres');
   });
 
-  it('exige o obrigatório e ignora o opcional ausente', () => {
+  // Mudança de contrato em 2026-09-01: o opcional ausente deixou de ser IGNORADO e passou a
+  // ir como NULL, porque o SQL continua citando o bind e omiti-lo derrubava a execução
+  // inteira com ORA-01008. O nome do teste dizia "ignora", e era exatamente esse "ignora"
+  // que quebrava as consultas com filtro opcional.
+  it('exige o obrigatório; o opcional ausente vai como NULL', () => {
     const c = consulta([
       {
         nome: 'pedido',
@@ -127,7 +131,8 @@ describe('validarParametros', () => {
     ]);
     const r = validarParametros(c, { pedido: 5001 }, SQL_TUDO);
     expect(r.ok).toBe(true);
-    expect(r.binds).toEqual({ pedido: 5001 });
+    // `data_ini` é citado por SQL_TUDO: vai NULL para o driver não recusar a execução.
+    expect(r.binds).toEqual({ pedido: 5001, data_ini: null });
   });
 
   it('recusa parâmetro que não existe no contrato', () => {
@@ -204,5 +209,66 @@ describe('validarParametros', () => {
     expect(
       validarParametros(c, { pedido: '5001' }, SQL_TUDO).binds.pedido,
     ).toBe(5001);
+  });
+
+  /** ORA-01008 na veia: o SQL cita `:bind`, o valor não vem, e o driver recusa a execução
+   * INTEIRA — não a linha, não o filtro: a consulta toda. Todo filtro opcional do catálogo é
+   * escrito como `(:bind IS NULL OR coluna = :bind)`, e esse desenho só funciona se o NULL
+   * chegar ao driver. Ficou latente até 2026-09-01, quando `:cliente` foi o primeiro bind
+   * opcional a chegar nulo de verdade e derrubou as consultas do BI. */
+  describe('bind opcional ausente vai como NULL, não é omitido', () => {
+    const comCliente = {
+      nome: 'x.y.z',
+      parametros: [
+        { nome: 'cliente', tipo: 'inteiro', obrigatorio: false, descricao: '' },
+      ],
+    } as never;
+    const SQL = 'SELECT 1 FROM T WHERE (:cliente IS NULL OR T.C = :cliente)';
+
+    it('null vira bind NULL', () => {
+      const r = validarParametros(comCliente, { cliente: null }, SQL);
+      expect(r.ok).toBe(true);
+      expect(r.binds).toEqual({ cliente: null });
+    });
+
+    it('undefined (chave ausente) também', () => {
+      const r = validarParametros(comCliente, {}, SQL);
+      expect(r.ok).toBe(true);
+      expect(r.binds).toEqual({ cliente: null });
+    });
+
+    it('valor informado continua indo como valor', () => {
+      const r = validarParametros(comCliente, { cliente: 3180 }, SQL);
+      expect(r.ok).toBe(true);
+      expect(r.binds).toEqual({ cliente: 3180 });
+    });
+
+    // O outro lado da moeda: bind que o SQL NÃO cita não pode ser enviado, senão o driver
+    // recusa com ORA-01036 (bind sobrando).
+    it('não inventa bind que o SQL não cita', () => {
+      const r = validarParametros(
+        comCliente,
+        { cliente: null },
+        'SELECT 1 FROM DUAL',
+      );
+      expect(r.ok).toBe(true);
+      expect(r.binds).toEqual({});
+    });
+
+    it('obrigatório ausente continua sendo erro, não NULL', () => {
+      const obrigatorio = {
+        nome: 'x.y.z',
+        parametros: [
+          { nome: 'termo', tipo: 'texto', obrigatorio: true, descricao: '' },
+        ],
+      } as never;
+      const r = validarParametros(
+        obrigatorio,
+        {},
+        'SELECT 1 FROM T WHERE C = :termo',
+      );
+      expect(r.ok).toBe(false);
+      expect(r.binds).toEqual({});
+    });
   });
 });

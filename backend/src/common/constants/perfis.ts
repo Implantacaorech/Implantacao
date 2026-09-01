@@ -11,19 +11,39 @@ export const PERFIS = [
   'GCI',
   'Consultor',
   'Comercial',
+  'Cliente',
 ] as const;
 export type Perfil = (typeof PERFIS)[number];
 
-/** Rótulo de cada papel na tela — 'ADM' é gravado assim no banco desde o Flask. */
-export const ROTULO_PERFIL: Record<Perfil, string> = {
-  ADM: 'Administrador',
-  Coordenador: 'Coordenador',
-  Administrativo: 'Administrativo',
-  Levantador: 'Levantador',
-  GCI: 'GCI',
-  Consultor: 'Consultor',
-  Comercial: 'Comercial',
-};
+/** Papéis INTERNOS da Rech — todos, menos o `Cliente`.
+ *
+ * `Cliente` (2026-08-31) é o primeiro papel EXTERNO do sistema: é o cliente da Rech
+ * entrando no Painel para ver o BI "Implantação Clientes SIGER" recortado nele próprio
+ * (docs/acesso-cliente-bi.md). Todas as constantes `PERFIS_*` abaixo descrevem quem faz o
+ * quê DENTRO da Rech e, por isso, nenhuma delas o inclui.
+ *
+ * A lista é derivada de `PERFIS` de propósito: papel novo entra automaticamente como
+ * interno, que é o padrão certo — quem cria um papel externo tem que dizer isso
+ * explicitamente aqui, e o teste em `perfis.spec.ts` cobra a decisão. */
+export const PERFIS_INTERNOS: Perfil[] = PERFIS.filter((p) => p !== 'Cliente');
+
+/** O usuário é um CLIENTE (papel externo)? Vale por acumular o papel, não só por tê-lo
+ * como principal — mas veja `ehPapelExclusivo`: `Cliente` não se acumula com papel interno. */
+export function ehCliente(
+  usuario: { perfil: Perfil; perfis?: Perfil[] } | undefined | null,
+): boolean {
+  return temPapel(usuario, 'Cliente');
+}
+
+/** `Cliente` é papel EXCLUSIVO: quem o tem não tem nenhum outro.
+ *
+ * Sem isso, um usuário marcado como `Cliente` **e** `Consultor` cairia no ramo "interno vê
+ * tudo" de cada verificação de escopo — o acúmulo de papéis, que existe para a pessoa que é
+ * GCI e Levantador ao mesmo tempo, viraria a porta de saída do recorte por cliente. */
+export function papeisConflitantes(papeis: Perfil[]): boolean {
+  const tem = new Set(papeis);
+  return tem.has('Cliente') && papeis.some((p) => p !== 'Cliente');
+}
 
 /** Um usuário TEM o papel se ele está na lista de papéis dele. Usar sempre isto no lugar
  * de comparar com um único `perfil` — a pessoa acumula cargos. */
@@ -77,51 +97,20 @@ export type Situacao = (typeof SITUACOES)[number];
 export const TIPOS_DEMANDA = ['Levantamento', 'Demonstração'] as const;
 export type TipoDemanda = (typeof TIPOS_DEMANDA)[number];
 
-// pode_ver("gestao") no Flask — mantido para telas que ainda incluem o Administrativo.
-export const PERFIS_GESTAO: Perfil[] = [
-  'ADM',
-  'Coordenador',
-  'Administrativo',
-  'GCI',
-];
 // pode_ver("sistema") no Flask
 export const PERFIS_SISTEMA: Perfil[] = ['ADM'];
 
-// ===== Liberação por item de menu/tela (definição do usuário em 2026-07-28) =====
-// Espelha frontend/src/app/core/constants/perfis.ts (MENU_*). Aqui é a regra de verdade,
-// aplicada como @Roles nos controllers.
-/** Protocolos: todo o time de implantação, menos o Comercial. */
-export const PERFIS_MENU_PROTOCOLOS: Perfil[] = [
-  'ADM',
-  'Coordenador',
-  'Administrativo',
-  'Levantador',
-  'GCI',
-  'Consultor',
-];
-/** Dicionário Inteligente: só o Administrador. */
-export const PERFIS_MENU_DICIONARIO: Perfil[] = ['ADM'];
-/** Matriz de Conhecimento: todo o time, menos o Comercial (que não entra nessa tela). */
-export const PERFIS_MENU_MATRIZ: Perfil[] = [
-  'ADM',
-  'Coordenador',
-  'Administrativo',
-  'Levantador',
-  'GCI',
-  'Consultor',
-];
-/** Gestão (Coordenação, Centro Operacional, Atividade) — SEM o Administrativo. Não confundir
- * com PERFIS_GESTAO (que ainda inclui o Administrativo, usado por outras telas). */
-export const PERFIS_MENU_GESTAO: Perfil[] = ['ADM', 'Coordenador', 'GCI'];
+// A liberação por item de menu/tela deixou de morar em constantes: é dirigida pelo banco
+// via Gestão → Permissões (permissoes_menu + @Permissao nos controllers).
 // pode_designar() no Flask
 export const PERFIS_DESIGNA: Perfil[] = [
   'ADM',
   'Coordenador',
   'Administrativo',
 ];
-// Grupo que "vê tudo" em _so_meus() — não confundir com PERFIS_GESTAO (aquele controla
-// visibilidade de MENU/tela e inclui GCI; este controla FILTRO DE LINHAS na lista de
-// projetos, onde GCI só vê os projetos em que é o próprio GCI).
+// Grupo que "vê tudo" em _so_meus() — controla o FILTRO DE LINHAS na lista de projetos,
+// onde GCI só vê os projetos em que é o próprio GCI (a visibilidade de MENU/tela é outra
+// coisa: vive no banco, via Gestão → Permissões).
 export const PERFIS_VEEM_TODOS_PROJETOS: Perfil[] = [
   'ADM',
   'Coordenador',

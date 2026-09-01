@@ -11,8 +11,10 @@ REM A16 (auditoria 2026-08-12): grava a saida do docservice em log. Sem isto, o 
 REM o uvicorn numa janela minimizada que morre no reinicio, entao uma falha de start (venv
 REM corrompida, porta ocupada, modelo faltando) nao deixava rastro em lugar nenhum. Mesmo
 REM padrao do painel_novo_stdout.log.
-if not exist "C:\PainelBackups" mkdir "C:\PainelBackups"
-echo. >> "C:\PainelBackups\docservice_stdout.log"
-echo ===== %date% %time% - iniciando docservice ===== >> "C:\PainelBackups\docservice_stdout.log"
-".venv\Scripts\python.exe" -m uvicorn main:app --host 127.0.0.1 --port 8001 >> "C:\PainelBackups\docservice_stdout.log" 2>&1
-echo ===== %date% %time% - docservice encerrou (errorlevel %errorlevel%) ===== >> "C:\PainelBackups\docservice_stdout.log"
+REM Respeita MIGRACAO_BACKUP_DIR (F1 da migracao p/ servidor dedicado).
+if "%MIGRACAO_BACKUP_DIR%"=="" set "MIGRACAO_BACKUP_DIR=C:\PainelBackups"
+if not exist "%MIGRACAO_BACKUP_DIR%" mkdir "%MIGRACAO_BACKUP_DIR%"
+echo. >> "%MIGRACAO_BACKUP_DIR%\docservice_stdout.log"
+echo ===== %date% %time% - iniciando docservice ===== >> "%MIGRACAO_BACKUP_DIR%\docservice_stdout.log"
+".venv\Scripts\python.exe" -m uvicorn main:app --host 127.0.0.1 --port 8001 >> "%MIGRACAO_BACKUP_DIR%\docservice_stdout.log" 2>&1
+echo ===== %date% %time% - docservice encerrou (errorlevel %errorlevel%) ===== >> "%MIGRACAO_BACKUP_DIR%\docservice_stdout.log"

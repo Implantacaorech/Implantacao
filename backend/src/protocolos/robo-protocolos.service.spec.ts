@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { RoboProtocolosService } from './robo-protocolos.service';
@@ -66,6 +67,9 @@ describe('RoboProtocolosService', () => {
 
     it('registra um intervalo com piso de 2 minutos fora de teste', () => {
       process.env.NODE_ENV = 'production';
+      // clearAllMocks não limpa mockImplementation — sem isto, o throw do teste de tick
+      // vaza para a checagem de pasta que o onModuleInit passou a fazer (F1 da migração).
+      processamento.configurado.mockReset().mockReturnValue(true);
       service.onModuleInit();
       expect(scheduler.addInterval).toHaveBeenCalledWith(
         'robo-protocolos',
@@ -73,6 +77,19 @@ describe('RoboProtocolosService', () => {
       );
       const intervalo = scheduler.addInterval.mock.calls[0][1];
       clearInterval(intervalo); // evita handle pendurado no processo do teste
+    });
+
+    it('denuncia no boot quando a pasta de vídeos não existe — a falha era silenciosa', () => {
+      process.env.NODE_ENV = 'production';
+      processamento.configurado.mockReset().mockReturnValue(false);
+      const erro = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+      service.onModuleInit();
+      expect(erro).toHaveBeenCalledWith(expect.stringContaining('DESATIVADO'));
+      erro.mockRestore();
+      const intervalo = scheduler.addInterval.mock.calls[0][1];
+      clearInterval(intervalo);
     });
 
     it('remove o intervalo registrado ao destruir o módulo', () => {

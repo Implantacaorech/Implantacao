@@ -2,8 +2,11 @@
 
 Este repositório modela o **time de implantação** da Rech como uma estrutura de
 **agentes** (papéis), **skills** (etapas do processo) e **documentação** (processo,
-glossário e templates). O objetivo é permitir que o Codex execute, oriente e
+glossário e templates). O objetivo é permitir que um assistente de IA execute, oriente e
 padronize as tarefas de cada etapa do processo de implantação do ERP **SIGER®**.
+As definições canônicas vivem em **`.claude/agents/`** e **`.claude/skills/`** (as cópias
+`.agents/`/`.codex/` de outros runtimes foram removidas em 2026-08-19 — estavam congeladas
+desde junho e idênticas às de `.claude/`).
 
 > Fonte de verdade do processo: [docs/processo-implantacao.md](docs/processo-implantacao.md)
 > (transcrição organizada do GRM:Implantação).
@@ -15,7 +18,7 @@ padrão em qualquer arquivo novo (agentes, skills, docs, e-mails, templates).
 
 ## Como o time está organizado
 
-### Papéis → Agentes (`.Codex/agents/`)
+### Papéis → Agentes (`.claude/agents/`)
 
 Cada papel do processo é um subagente especializado. Use o agente certo para a tarefa:
 
@@ -28,7 +31,7 @@ Cada papel do processo é um subagente especializado. Use o agente certo para a 
 | `equipe-conversao` | Equipe de Conversão | Tratar RNS de conversão redigidas, layouts, de/para, prévia e conversão oficial |
 | `gestao-mudanca` | Gestão da Mudança (OCM) | **Gerador.** Adoção, stakeholders, comunicação, prontidão (ADKAR), treino por papel, indicadores |
 
-### Etapas → Skills (`.Codex/skills/`)
+### Etapas → Skills (`.claude/skills/`)
 
 Cada etapa numerada do processo é uma skill acionável (passo a passo + templates):
 
@@ -90,7 +93,7 @@ Implantacao/
 ├── templates/                 # e-mails, termos e checklists prontos para uso
 ├── tools/                     # geradores Office (.xlsx/.docx) + dados (YAML)
 ├── exemplos/                  # artefatos gerados (não versionado)
-└── .Codex/
+└── .claude/
     ├── agents/                # papéis do time (subagentes)
     └── skills/                # etapas do processo (skills)
 ```

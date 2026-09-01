@@ -97,3 +97,51 @@ SELECT
 FROM SICLA.LISTA_FUNCOES lf
 WHERE lf.ATIVO = 1
 ORDER BY lf.CODIGO DESC`;
+
+/** SQL padrão dos CONTATOS de cliente liberados no Portal Rech — a fonte do acesso externo
+ * ao Painel (docs/acesso-cliente-bi.md).
+ *
+ * Origem informada pelo usuário (2026-08-31):
+ *
+ *     SELECT * FROM LISTA_CONTATOS lc
+ *     --WHERE cliente = 3631
+ *      WHERE lc.PORTAL_RECH_CLIENTES = 1
+ *
+ * `PORTAL_RECH_CLIENTES = 1` é o que o SICLA usa para dizer que aquele contato pode entrar
+ * no portal — é a AUTORIZAÇÃO, não uma marcação qualquer. Por isso ela fica no SQL, e não
+ * num filtro de tela: uma consulta que devolvesse contato não liberado convidaria a liberar
+ * quem o SICLA não liberou.
+ *
+ * `:cliente` é opcional e recorta um cliente só (o `--WHERE cliente = 3631` comentado do
+ * original) — é o que a tela usa ao abrir a lista de UM cliente.
+ *
+ * Colunas confirmadas pelo usuário em 2026-08-31. Note que **não há código de contato**: a
+ * identidade é o E-MAIL, que também é o login no Painel. Contato sem e-mail não vira acesso.
+ *
+ * Contrato de apelidos (case-insensitive), que o Painel mapeia por NOME:
+ *   CLIENTE                 = código do cliente (`LISTA_CLIENTES.CODIGO`) — vínculo e recorte do BI
+ *   NOME                    = nome do contato
+ *   CARGO                   = cargo, para o ADM saber quem está liberando
+ *   EMAIL                   = e-mail — LOGIN do contato no Painel
+ *   ATIVODES                = situação do contato no SICLA (descrição)
+ *   STATUSDES               = status do contato (descrição)
+ *   PORTAL_RECH_CLIENTES_DES = a própria liberação, por extenso — o que a tela mostra
+ * Coluna extra é ignorada sem erro; coluna que falte deixa o campo vazio.
+ *
+ * O prefixo `SICLA.` é obrigatório nesta conexão: sem ele, ORA-00942 (provado com
+ * `LISTA_TECNICOS` em 2026-07-29). */
+export const SQL_LISTA_CONTATOS_PADRAO = `-- Contatos de cliente liberados no Portal Rech — quem pode receber acesso ao Painel.
+-- Origem informada pelo usuário: SELECT * FROM LISTA_CONTATOS lc WHERE lc.PORTAL_RECH_CLIENTES = 1
+-- :cliente é opcional: nulo lista todos os contatos liberados; preenchido, só os de um cliente.
+SELECT
+  lc.CLIENTE                  AS CLIENTE,
+  lc.NOME                     AS NOME,
+  lc.CARGO                    AS CARGO,
+  lc.EMAIL                    AS EMAIL,
+  lc.ATIVODES                 AS ATIVODES,
+  lc.STATUSDES                AS STATUSDES,
+  lc.PORTAL_RECH_CLIENTES_DES AS PORTAL_RECH_CLIENTES_DES
+FROM SICLA.LISTA_CONTATOS lc
+WHERE lc.PORTAL_RECH_CLIENTES = 1
+  AND (:cliente IS NULL OR lc.CLIENTE = :cliente)
+ORDER BY lc.NOME`;

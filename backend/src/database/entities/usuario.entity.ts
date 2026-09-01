@@ -45,6 +45,21 @@ export class Usuario {
   @Column({ name: 'codigo_sicla', length: 40, default: '' })
   codigoSicla: string;
 
+  /** Código do CLIENTE no SICLA (`SICLA.LISTA_CLIENTES.CODIGO`) — o recorte de dados do
+   * usuário com papel `Cliente`, que só enxerga o BI dele (docs/acesso-cliente-bi.md).
+   *
+   * Não confundir com `codigoSicla`, logo acima: aquele é o código do TÉCNICO, e diz quem a
+   * pessoa é na agenda interna; este diz de QUEM são os dados que ela pode ver. Vazio em
+   * todo usuário interno; obrigatório no `Cliente` — um papel `Cliente` sem este código não
+   * tem escopo, e a regra é negar, nunca mostrar tudo.
+   *
+   * Texto, e não inteiro, pelo mesmo motivo de `codigoSicla`: é código de sistema externo,
+   * e comparar como texto evita depender do formato do SICLA. Guardado como lista separada
+   * por vírgula para o dia em que um cliente tiver mais de uma empresa — hoje o cadastro
+   * grava um só (ver `escopo-cliente.service.ts`, que já lê uma lista). */
+  @Column({ name: 'codigo_cliente_sicla', length: 200, default: '' })
+  codigoClienteSicla: string;
+
   /** Módulos em que o técnico é capacitado, como vêm de `SICLA.LISTA_TECNICOS.MODULOCAPACITADO`
    * (texto livre do SICLA, geralmente uma lista separada por vírgula). Alimentado pela
    * importação de técnicos — ver `tecnicos-sicla/`. */

@@ -39,6 +39,12 @@ export class UsuariosService {
     return res.data;
   }
 
+  /** Exclusão DEFINITIVA (rota exclusiva do ADM). O backend recusa autoexclusão e usuário
+   * com designação em projeto — nesses casos a resposta manda desativar. */
+  async excluir(id: number): Promise<void> {
+    await firstValueFrom(this.http.delete<ApiEnvelope<null>>(`${this.base}/${id}`));
+  }
+
   /** Técnicos do SICLA (LISTA_TECNICOS) — a fonte do cadastro de Usuários.
    * `somenteNovos` traz só quem ainda não tem cadastro no Painel. */
   async listarTecnicosSicla(termo = '', somenteNovos = false): Promise<ListaTecnicosSicla> {

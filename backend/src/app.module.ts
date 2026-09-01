@@ -18,7 +18,6 @@ import { ProtocolosModule } from './protocolos/protocolos.module';
 import { RecheduModule } from './rechedu/rechedu.module';
 import { AgendaModule } from './agenda/agenda.module';
 import { RnsModule } from './rns/rns.module';
-import { ConsultorSigerModule } from './consultor-siger/consultor-siger.module';
 import { EmailModule } from './email/email.module';
 import { FluxoModule } from './fluxo/fluxo.module';
 import { DisponibilidadeModule } from './disponibilidade/disponibilidade.module';
@@ -30,11 +29,11 @@ import { DigestModule } from './digest/digest.module';
 import { PlanoCronogramaModule } from './plano-cronograma/plano-cronograma.module';
 import { LegadoModule } from './legado/legado.module';
 import { AgentesModule } from './agentes/agentes.module';
-import { DicionarioModule } from './dicionario/dicionario.module';
 import { PassosModule } from './passos/passos.module';
 import { ClientesSiclaModule } from './clientes-sicla/clientes-sicla.module';
 import { ModulosSiclaModule } from './modulos-sicla/modulos-sicla.module';
 import { TecnicosSiclaModule } from './tecnicos-sicla/tecnicos-sicla.module';
+import { ContatosSiclaModule } from './contatos-sicla/contatos-sicla.module';
 import { PermissoesModule } from './permissoes/permissoes.module';
 import { PreferenciasModule } from './preferencias/preferencias.module';
 import { MatrizDetalhadaModule } from './matriz-detalhada/matriz-detalhada.module';
@@ -100,7 +99,6 @@ import { DadosConsumoModule } from './dados/consumo/dados-consumo.module';
     RecheduModule,
     AgendaModule,
     RnsModule,
-    ConsultorSigerModule,
     EmailModule,
     FluxoModule,
     DisponibilidadeModule,
@@ -117,11 +115,11 @@ import { DadosConsumoModule } from './dados/consumo/dados-consumo.module';
     PlanoCronogramaModule,
     LegadoModule,
     AgentesModule,
-    DicionarioModule,
     PassosModule,
     ClientesSiclaModule,
     ModulosSiclaModule,
     TecnicosSiclaModule,
+    ContatosSiclaModule,
     PermissoesModule,
     PreferenciasModule,
     MatrizDetalhadaModule,

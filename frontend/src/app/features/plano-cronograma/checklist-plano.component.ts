@@ -31,7 +31,6 @@ export class ChecklistPlanoComponent {
   readonly aviso = signal<string | null>(null);
   readonly linhas = signal<LinhaChecklist[]>([]);
   readonly historico = signal<Modificacao[]>([]);
-  readonly mostrarHistorico = signal(false);
 
   readonly concluidos = computed(() => this.linhas().filter((l) => l.status === 'Concluído').length);
 

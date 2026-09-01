@@ -25,7 +25,7 @@ class ImapFlowFalsoComErro extends EventEmitter {
   async logout(): Promise<void> {}
 }
 
-/** Reproduz a recusa de credencial do Gmail: o imapflow rejeita com a PROPRIEDADE
+/** Reproduz a recusa de credencial pelo servidor: o imapflow rejeita com a PROPRIEDADE
  * `authenticationFailed` e a mensagem genérica "Command failed" — foi por isso que a
  * detecção por texto não pegava o caso mais comum. */
 class ImapFlowFalsoAuthRecusada extends EventEmitter {
@@ -130,7 +130,7 @@ describe('ImapIntakeService', () => {
       // Antes, `catch { return n; }` fazia o robô devolver "0 processados" para sempre,
       // sem log e sem nada na tela — para quem usa, o Painel só "não lia e-mail".
       service.salvarConfig({
-        host: 'imap.gmail.com',
+        host: 'outlook.office365.com',
         user: 'u@x.com',
         senha: 'abcd',
       });
@@ -138,14 +138,15 @@ describe('ImapIntakeService', () => {
       expect(n).toBe(0);
       const erro = service.ultimoErroLeitura();
       expect(erro).not.toBeNull();
-      expect(erro?.mensagem).toContain('SENHA DE APP');
+      // O que importa aqui é o motivo chegar à tela, não o texto exato da orientação.
+      expect(erro?.mensagem).toContain('recusados');
     });
 
     it('reconhece a recusa pela PROPRIEDADE, não pelo texto da mensagem', async () => {
       // A mensagem do imapflow é só "Command failed"; a detecção antiga procurava
       // "authenticate"/"login" no texto e caía no erro genérico.
       service.salvarConfig({
-        host: 'imap.gmail.com',
+        host: 'outlook.office365.com',
         user: 'u@x.com',
         senha: 'abcd',
       });

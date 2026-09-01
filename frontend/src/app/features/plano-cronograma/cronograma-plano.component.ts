@@ -8,18 +8,10 @@ import { DocumentosService } from '../../core/services/documentos.service';
 import { AuthService } from '../../core/services/auth.service';
 import { podeGerar } from '../../core/constants/perfis';
 import { CRONO_STATUS, LinhaCronograma, Modificacao } from '../../core/models/plano-cronograma.model';
+import { baixarArquivo } from '../../core/utils/baixar-arquivo';
 
 function linhaVazia(): LinhaCronograma {
   return { etapa: '', topicos: '', horas: '', data: '', modalidade: '', status: 'Previsto' };
-}
-
-function baixarBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 @Component({
@@ -46,7 +38,6 @@ export class CronogramaPlanoComponent {
   readonly aviso = signal<string | null>(null);
   readonly linhas = signal<LinhaCronograma[]>([]);
   readonly historico = signal<Modificacao[]>([]);
-  readonly mostrarHistorico = signal(false);
 
   readonly podeGerarDocumento = computed(() => podeGerar('cronograma', this.auth.usuario()));
 
@@ -139,7 +130,7 @@ export class CronogramaPlanoComponent {
     this.aviso.set(null);
     try {
       const arquivo = await this.documentosService.gerarLayout(this.projetoId, 'cronograma');
-      baixarBlob(arquivo.blob, arquivo.filename);
+      baixarArquivo(arquivo.blob, arquivo.filename);
       this.aviso.set(`${arquivo.filename} gerado e anexado à ficha.`);
     } catch (e) {
       this.erro.set(this.mensagemErro(e, 'Não foi possível gerar o documento.'));

@@ -1,7 +1,7 @@
 ---
 name: integracoes-operacao
 description: >
-  Integrações externas e operação do Painel: e-mail (SMTP/IMAP/Gmail API), disponibilidade dos
+  Integrações externas e operação do Painel: e-mail (Microsoft 365/Graph, SMTP, IMAP), disponibilidade dos
   consultores (base externa/Oracle), banco em produção (MariaDB/Docker/backup), robôs
   (digest/caixa), /api/health e a futura integração SICLA/RNS. Aciona em falha de e-mail, erro
   de conexão de disponibilidade, ajuste de deploy/backup, incidente de operação ou nova
@@ -15,8 +15,8 @@ que mantém o Painel no ar. Produção desde 2026-07-19: `backend/` NestJS na po
 máquina `I7M1700-01-EVE`.
 
 ## Seu território
-- E-mail: `backend/src/email/mailer.service.ts` (SMTP), `gmail.service.ts` (OAuth/HTTPS),
-  `modelo-email.service.ts`.
+- E-mail: `backend/src/email/graph.service.ts` (Microsoft 365, caminho oficial),
+  `mailer.service.ts` (SMTP alternativo + escolha do meio), `modelo-email.service.ts`.
 - Disponibilidade: `backend/src/disponibilidade/disponibilidade.service.ts` (Oracle externo;
   coluna `tecnico` = **Código SICLA** do cadastro de usuário; modos thin/thick do driver
   `oracledb` continuam relevantes — mesmo comportamento do Flask).
@@ -36,9 +36,9 @@ máquina `I7M1700-01-EVE`.
 - Regras de fluxo/rotas → **painel-core** (ele apenas CONSOME seus conectores). Geração de
   documentos/transcrição → **documentos-geracao** (`docservice/`). Visual do Angular →
   **painel-core** (era do MANUS IA, que saiu em 2026-08-07).
-  Testes → **qualidade**. Operação do **Flask legado** (`projeto_old/`) não é mais rotina —
-  ele está desligado; só entra em cena num rollback de emergência (ver
-  `docs/migracao/05-plano-de-virada.md` §"Registro real da virada").
+  Testes → **qualidade**. O **Flask legado** não existe mais nem como pasta — foi desligado
+  (2026-07-19) e removido do repositório (2026-07-29, só no histórico do git); o rollback que
+  o justificava já não é possível (ver `docs/migracao/05-plano-de-virada.md`).
 
 ## Runbooks e diagnóstico
 Procedimentos completos: **`docs/runbooks-operacao.md`** — consulte e mantenha atualizado a
@@ -51,7 +51,8 @@ aproveite para atualizar a parte que tocar). Smoke geral de produção:
   Client) — mesma causa/correção de antes, agora em `disponibilidade.service.ts`.
 - **DPI-1047 / erro 126:** falta o Visual C++ Redistributable x64, ou o client não é 64-bit,
   ou a pasta não tem `oci.dll`.
-- **SMTP da rede bloqueado** → usar a **API do Gmail** (porta 443).
+- **SMTP da rede bloqueado** → o envio oficial é pela **API do Graph** (porta 443), que não
+  usa porta SMTP nenhuma. Ver `docs/runbooks-operacao.md` §2a.
 - **Guardião reinicia sem nunca resolver:** ele só checa `/api/health` — se a causa for o
   banco (não o processo), reiniciar o processo não ajuda. Achado real em 2026-07-19: o
   Postgres do Flask ficou 2 dias fora do ar e o guardião correspondente ficou tentando

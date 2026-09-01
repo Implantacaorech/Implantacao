@@ -7,9 +7,10 @@ on:
 
 jobs:
   tools-smoke:
-    # webapp/ (Flask) foi retirado de produção em 2026-07-19 e arquivado em projeto_old/
-    # (ver vault/18 - Histórico/). tools/ continua vivo: é usado pela ponte
-    # webapp/legado_cli.py, chamada em subprocesso pelo backend novo (LegadoCliService).
+    # O painel Flask foi retirado de produção em 2026-07-19 e removido do repositório em
+    # 2026-07-29 (histórico do git; ver vault/18 - Histórico/). webapp/ e tools/ continuam
+    # vivos: são a ponte webapp/legado_cli.py, chamada em subprocesso pelo backend novo
+    # (LegadoCliService).
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -105,11 +106,9 @@ jobs:
       # suba). faster-whisper, PyAV e sherpa-onnx ficam de fora de propósito: são importados
       # DENTRO das funções que transcrevem, e nenhuma delas roda aqui (o transcritor é
       # substituído por dublê). pywin32 idem — é Windows-only, e o docview só o toca ao
-      # converter .docx pelo Word. numpy É necessário: `transcricao/antialucinacao.py` o
-      # importa no nível do módulo (janelas de energia) e o teste o alcança pela cadeia de
-      # imports — sem ele o job morre em ImportError na coleta, o que vinha acontecendo.
+      # converter .docx pelo Word. httpx é o client de teste do FastAPI (TestClient).
       - name: Instalar dependências
-        run: pip install pytest httpx "fastapi>=0.115" "pydantic>=2.9" "python-docx>=1.1" "openpyxl>=3.1" "Pillow>=10.0" "python-multipart>=0.0.12" "numpy>=1.26"
+        run: pip install pytest httpx "fastapi>=0.115" "pydantic>=2.9" "python-docx>=1.1" "openpyxl>=3.1" "Pillow>=10.0" "numpy>=1.26"
       - name: Job de transcrição (fila, cancelamento, poda)
         run: python -X utf8 -m pytest tests/test_transcricao.py -v
 

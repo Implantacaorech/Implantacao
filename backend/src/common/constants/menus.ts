@@ -56,7 +56,6 @@ export const MENUS: DefinicaoMenu[] = [
     rotulo: 'Matriz por Menu - Funções SICLA',
     grupo: 'Execução',
   },
-  { chave: 'dicionario', rotulo: 'Dicionário Inteligente', grupo: 'Execução' },
   // Protocolo: moldura do Portal Rech (portalrech.com.br) dentro do Painel. A chave é o
   // singular porque 'protocolos' (plural) já pertence à Transcrição Áudio/Vídeo.
   { chave: 'protocolo', rotulo: 'Protocolo', grupo: 'Execução' },
@@ -69,11 +68,6 @@ export const MENUS: DefinicaoMenu[] = [
   // RNS: consulta de assuntos nas RNS do SICLA (LISTA_ITEMPED) — o consultor pesquisa um
   // assunto e vê as RNS relacionadas (Pedido + Item), no molde do Dicionário Inteligente.
   { chave: 'rns', rotulo: 'RNS', grupo: 'Execução' },
-  // Consultor SIGER: base inteligente de conhecimento do CÓDIGO-FONTE do SIGER (F:\SIGER,
-  // fonte SOMENTE LEITURA que o Painel nem acessa — consome a base derivada gerada pelo
-  // indexador externo). O consultor pergunta em linguagem natural e vê telas, parâmetros,
-  // cadastros, validações e menus com arquivo:linha citados.
-  { chave: 'consultor_siger', rotulo: 'Consultor SIGER', grupo: 'Execução' },
   { chave: 'coordenacao', rotulo: 'Coordenação', grupo: 'Gestão' },
   {
     chave: 'centro_operacional',
@@ -97,6 +91,15 @@ export const MENUS: DefinicaoMenu[] = [
     fixaAdm: true,
   },
   { chave: 'usuarios', rotulo: 'Usuários', grupo: 'Sistema', fixaAdm: true },
+  // Acesso de Clientes: quem, do lado do CLIENTE, entra no Painel. Irmã da tela de Usuários
+  // e fixa em ADM pelo mesmo motivo — conceder acesso EXTERNO é decisão de sistema. Quem
+  // autoriza continua sendo o SICLA (`PORTAL_RECH_CLIENTES = 1`); aqui se dá a conta.
+  {
+    chave: 'acesso_clientes',
+    rotulo: 'Acesso de Clientes',
+    grupo: 'Sistema',
+    fixaAdm: true,
+  },
   {
     chave: 'checklist',
     rotulo: 'Cad. Checklist',
@@ -237,7 +240,6 @@ export const PADRAO_PERMISSOES: Record<
     Consultor: 'alteracao',
     Levantador: 'alteracao',
   },
-  dicionario: { ADM: 'alteracao' },
   // Protocolo (Portal Rech): mesma liberação da Transcrição Áudio/Vídeo — todo o time
   // interno; o Comercial fica de fora por padrão (ajustável em Gestão → Permissões).
   protocolo: {
@@ -282,14 +284,6 @@ export const PADRAO_PERMISSOES: Record<
   // Consultor SIGER: consulta à base de conhecimento do código-fonte — só leitura (a tela
   // toda é pesquisa; o feedback 👍/👎 conta como uso). O Comercial fica de fora por padrão,
   // ajustável em Gestão → Permissões.
-  consultor_siger: {
-    ADM: 'alteracao',
-    Coordenador: 'consulta',
-    Administrativo: 'consulta',
-    GCI: 'consulta',
-    Consultor: 'consulta',
-    Levantador: 'consulta',
-  },
   coordenacao: { ADM: 'alteracao', Coordenador: 'alteracao', GCI: 'alteracao' },
   centro_operacional: {
     ADM: 'alteracao',
@@ -308,6 +302,11 @@ export const PADRAO_PERMISSOES: Record<
   },
   // BI de Implantação: leitura de dado do SICLA (horas, status, grupo econômico). Mesma
   // liberação dos Dashboards, mas sem o Comercial — a tela expõe saldo de horas por cliente.
+  // O `Cliente` (papel externo) entra aqui, e SÓ aqui: esta é a única tela do Painel que ele
+  // enxerga, e em 'consulta' — o BI é leitura. O que ele vê dentro dela é recortado no
+  // próprio cliente pelo EscopoClienteService (docs/acesso-cliente-bi.md); esta linha é a
+  // permissão de TELA, não a de linha. Note que `dashboards` (o BI Interno, logo acima)
+  // deliberadamente NÃO o inclui.
   bi_implantacao: {
     ADM: 'alteracao',
     Coordenador: 'alteracao',
@@ -315,10 +314,12 @@ export const PADRAO_PERMISSOES: Record<
     GCI: 'alteracao',
     Consultor: 'consulta',
     Levantador: 'consulta',
+    Cliente: 'consulta',
   },
   permissoes: { ADM: 'alteracao' },
   ferramentas: { ADM: 'alteracao' },
   usuarios: { ADM: 'alteracao' },
+  acesso_clientes: { ADM: 'alteracao' },
   checklist: { ADM: 'alteracao' },
   indice_topicos: { ADM: 'alteracao' },
   modelos_docs: { ADM: 'alteracao' },
