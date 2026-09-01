@@ -246,7 +246,11 @@ describe('validarParametros', () => {
     // O outro lado da moeda: bind que o SQL NÃO cita não pode ser enviado, senão o driver
     // recusa com ORA-01036 (bind sobrando).
     it('não inventa bind que o SQL não cita', () => {
-      const r = validarParametros(comCliente, { cliente: null }, 'SELECT 1 FROM DUAL');
+      const r = validarParametros(
+        comCliente,
+        { cliente: null },
+        'SELECT 1 FROM DUAL',
+      );
       expect(r.ok).toBe(true);
       expect(r.binds).toEqual({});
     });
@@ -258,7 +262,11 @@ describe('validarParametros', () => {
           { nome: 'termo', tipo: 'texto', obrigatorio: true, descricao: '' },
         ],
       } as never;
-      const r = validarParametros(obrigatorio, {}, 'SELECT 1 FROM T WHERE C = :termo');
+      const r = validarParametros(
+        obrigatorio,
+        {},
+        'SELECT 1 FROM T WHERE C = :termo',
+      );
       expect(r.ok).toBe(false);
       expect(r.binds).toEqual({});
     });

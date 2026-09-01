@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { Usuario } from '../database/entities/usuario.entity';
 import { DadosService } from '../dados/dados.service';
@@ -10,7 +9,7 @@ import {
   ContatoSicla,
   ResultadoLiberacao,
   ResultadoRevogacao,
-  SENHA_ALEATORIA_BYTES,
+  SENHA_PADRAO_CONTATO,
 } from './contatos-sicla.constants';
 
 const SALT_ROUNDS = 12;
@@ -238,13 +237,13 @@ export class ContatosSiclaService {
           continue;
         }
 
-        // Senha aleatória, nunca exibida: o contato define a dele pelo "Esqueci minha senha".
-        const senha = randomBytes(SENHA_ALEATORIA_BYTES).toString('base64url');
+        // Senha PADRÃO e conhecida, para os testes internos (ver a constante: antes de
+        // publicar para fora, tem de voltar a ser aleatória).
         await this.usuarios.criar({
           login: c.email,
           nome: c.nome || c.email,
           email: c.email,
-          senhaHash: await bcrypt.hash(senha, SALT_ROUNDS),
+          senhaHash: await bcrypt.hash(SENHA_PADRAO_CONTATO, SALT_ROUNDS),
           perfil: 'Cliente',
           perfis: 'Cliente',
           codigoSicla: '',

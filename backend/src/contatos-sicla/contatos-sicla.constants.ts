@@ -21,16 +21,19 @@ export const SLUG_LISTA_CONTATOS = 'contatos_sicla_lista';
 export const NOME_LISTA_CONTATOS =
   'Contatos liberados no Portal (SICLA) — Acesso de Clientes';
 
-/** Tamanho da senha aleatória do contato recém-liberado (bytes de entropia).
+/** Senha do contato recém-liberado.
  *
- * Decisão do usuário (2026-08-31): a senha NÃO é escolhida por ninguém da Rech e nunca é
- * exibida. O contato define a dele pelo "Esqueci minha senha" que o Painel já tem (código
- * de 6 dígitos por e-mail) — o mesmo caminho de quem esquece a senha, sem mecanismo novo,
- * e sem a senha trafegar por WhatsApp ou telefone.
+ * ⚠️ **É uma senha PADRÃO, conhecida — decisão do usuário em 2026-09-01, para destravar os
+ * testes internos.** Espelha `SENHA_PADRAO_TECNICO` do módulo de técnicos, mas o risco aqui
+ * NÃO é o mesmo: o técnico é gente de casa, numa rede interna; o contato é EXTERNO. Quem
+ * souber o padrão e o e-mail de um contato liberado entra como ele — e vê o BI daquele
+ * cliente.
  *
- * Consequência prática: o e-mail do contato no SICLA precisa estar certo, porque é por ele
- * que o acesso se completa. Contato sem e-mail não vira usuário — entra em `ignorados`. */
-export const SENHA_ALEATORIA_BYTES = 24;
+ * Hoje isso é aceitável porque o Painel não está publicado para fora (§11 do
+ * docs/acesso-cliente-bi.md): só alcança quem já está na rede da Rech. **Antes de publicar,
+ * isto tem de virar senha aleatória + "Esqueci minha senha"** — que era o desenho anterior e
+ * continua sendo o certo para acesso externo. Está registrado como pendência no §13. */
+export const SENHA_PADRAO_CONTATO = 'Rech@2026';
 
 /** Um contato do SICLA já normalizado. `bruto` traz a linha original (todas as colunas),
  * para a tela mostrar o que quiser sem depender do mapeamento.

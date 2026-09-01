@@ -21,11 +21,19 @@
     Contatos liberados no Portal
     <small style="color:var(--muted);font-weight:400">— tabela <code>LISTA_CONTATOS</code></small>
   </h3>
-  <p class="dica">Informe o <strong>código do cliente</strong> no SICLA para ver os contatos dele.
-    Ao liberar, o contato recebe um usuário cujo <strong>login é o e-mail</strong>, com senha
-    aleatória que <strong>ninguém vê</strong>: ele define a dele pelo
-    <em>“Esqueci minha senha”</em> da tela de login. Contato sem e-mail no SICLA não pode ser
-    liberado. O SQL da consulta é editável em <em>Sistema → Consultas BD</em>.</p>
+  <p class="dica">Deixe o <strong>código do cliente</strong> em branco para ver <strong>todos</strong>
+    os contatos liberados, ou informe um para ver só os dele. Ao liberar, o contato recebe um
+    usuário cujo <strong>login é o e-mail</strong> e entra pelo <strong>mesmo endereço</strong>
+    do consultor. Contato sem e-mail no SICLA não pode ser liberado. O SQL da consulta é
+    editável em <em>Sistema → Consultas BD</em>.</p>
+
+  <p class="resultado erro" style="margin-bottom:10px">
+    ⚠️ <strong>Senha padrão de teste:</strong> quem for liberado entra com
+    <code>Rech&#64;2026</code>. É uma senha <strong>conhecida</strong> e vale para acesso
+    EXTERNO — aceitável só enquanto o Painel não está publicado fora da rede da Rech. Antes
+    de abrir para a internet, ela precisa virar senha aleatória com
+    <em>“Esqueci minha senha”</em>.
+  </p>
 
   <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
     <input

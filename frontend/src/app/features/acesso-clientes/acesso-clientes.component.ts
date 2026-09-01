@@ -108,7 +108,7 @@ export class AcessoClientesComponent {
       this.ignorados.set(r.ignorados ?? []);
       if (r.ok) {
         this.aviso.set(
-          `${r.mensagem} O contato define a senha pelo "Esqueci minha senha" da tela de login.`,
+          `${r.mensagem} Quem foi liberado entra com o e-mail e a senha padrão Rech@2026.`,
         );
         await this.buscar();
       } else {

@@ -3,6 +3,8 @@ import { DadosService } from '../dados/dados.service';
 import { ContatosSiclaService } from './contatos-sicla.service';
 import { AcessoClienteRepository } from './repositories/acesso-cliente.repository';
 import { ConexoesService } from '../dados/conexoes/conexoes.service';
+import * as bcrypt from 'bcrypt';
+import { SENHA_PADRAO_CONTATO } from './contatos-sicla.constants';
 
 /** Acesso de Clientes: contatos do SICLA (`LISTA_CONTATOS`) viram usuários com papel
  * `Cliente`. Quem AUTORIZA é o SICLA (`PORTAL_RECH_CLIENTES = 1`); o Painel só dá a conta. */
@@ -182,17 +184,19 @@ describe('ContatosSiclaService', () => {
       });
     });
 
-    // A senha nunca é escolhida nem exibida: o contato define a dele pelo "Esqueci minha
-    // senha". Duas liberações não podem gerar o mesmo hash.
-    it('a senha é aleatória e não sai em lugar nenhum', async () => {
+    // Senha PADRÃO e conhecida (decisão de 2026-09-01, para testes internos). O teste fixa
+    // o valor porque quem vai testar precisa saber qual é — e porque trocá-la sem querer
+    // deixaria os contatos já liberados sem conseguir entrar.
+    it('nasce com a senha padrão de teste', async () => {
       await service.liberar('3180', ['fulano@acme.com.br']);
-      await service.liberar('3180', ['sicrana@acme.com.br']);
-      const a = repo.criar.mock.calls[0][0] as { senhaHash: string };
-      const b = repo.criar.mock.calls[1][0] as { senhaHash: string };
-      expect(a.senhaHash).toBeTruthy();
-      expect(a.senhaHash).not.toBe(b.senhaHash);
+      const criado = repo.criar.mock.calls[0][0] as { senhaHash: string };
+      expect(criado.senhaHash).toBeTruthy();
+      expect(await bcrypt.compare(SENHA_PADRAO_CONTATO, criado.senhaHash)).toBe(
+        true,
+      );
+      // O hash é hash: a senha em claro não pode sair no retorno da liberação.
       expect(JSON.stringify(await service.liberar('3180', []))).not.toContain(
-        a.senhaHash,
+        SENHA_PADRAO_CONTATO,
       );
     });
 

@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { extrairBinds } from './catalogo/binds.util';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -102,24 +103,47 @@ export class ConfigConsultasBdController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
-      'Roda a consulta numa janela genérica de 1 ano à frente (:data_ini/:data_fim sempre supridos)',
+      'Roda a consulta suprindo os binds que ELA cita (janela de 1 ano para :data_ini/:data_fim)',
   })
   async testar(@Param('slug') slug: string) {
     const consulta = await this.consultas.porSlug(slug);
     if (!consulta) throw new NotFoundException('Consulta não encontrada.');
-    const hoje = new Date();
-    const daquiUmAno = new Date(hoje);
-    daquiUmAno.setDate(daquiUmAno.getDate() + 365);
-    const iso = (d: Date) => d.toISOString().slice(0, 10);
-    const binds = { data_ini: iso(hoje), data_fim: iso(daquiUmAno) };
-    // Cada consulta roda na SUA conexão (campo `conexao`): 'portal' = banco do Portal
-    // Rech (MySQL, ignora binds não referenciados); default = Oracle da Disponibilidade,
-    // que EXIGE os dois binds no texto (contrato de sempre desta tela).
+    // Cada consulta roda na SUA conexão (campo `conexao`): 'portal' = banco do Portal Rech
+    // (MySQL), default = Oracle da Disponibilidade.
     const r = await this.dados.executarSqlDeAdministrador(
       consulta.conexao === 'portal' ? 'portal_rech' : 'sicla',
       consulta.sql,
-      binds,
+      bindsDeTeste(consulta.sql),
     );
     return new ApiEnvelope(r);
   }
+}
+
+/** Binds para o "Testar" de uma consulta salva: os que o SQL CITA, e só eles.
+ *
+ * Até 2026-09-01 mandava `data_ini`/`data_fim` fixos, sempre — o contrato tácito era que
+ * toda consulta do SICLA filtrava por período. A primeira consulta salva que não filtra
+ * (contatos liberados no Portal, que usa só `:cliente`) fez o Oracle recusar com ORA-01036,
+ * "unrecognized bind variable": bind enviado que o SQL não usa derruba a execução inteira,
+ * exatamente como o bind faltando (ORA-01008).
+ *
+ * Quem não é data recebe NULL: todo filtro opcional do catálogo é escrito como
+ * `(:bind IS NULL OR coluna = :bind)`, então nulo significa "sem recorte" — que é o que se
+ * quer de um teste, ver a consulta inteira. Data recebe uma janela de um ano à frente, como
+ * antes, porque `TO_DATE(NULL)` não serviria de recorte e a intenção ali é ver dado real. */
+export function bindsDeTeste(sql: string): Record<string, string | null> {
+  const hoje = new Date();
+  const daquiUmAno = new Date(hoje);
+  daquiUmAno.setDate(daquiUmAno.getDate() + 365);
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const binds: Record<string, string | null> = {};
+  for (const nome of extrairBinds(sql)) {
+    binds[nome] =
+      nome === 'data_ini'
+        ? iso(hoje)
+        : nome === 'data_fim'
+          ? iso(daquiUmAno)
+          : null;
+  }
+  return binds;
 }
