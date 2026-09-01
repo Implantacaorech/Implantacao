@@ -32,19 +32,10 @@ const DRIVERS = ['oracledb', 'mysql2', 'better-sqlite3'];
  * o TETO: acrescentar item aqui é decisão de arquitetura (e contraria o ADR-0003), não
  * conveniência de implementação.
  *
- * **Na fase 2 caiu de 3 para 1.** Os executores do SICLA (Oracle) e do Portal Rech (MySQL)
- * mudaram para `dados/conexoes/`. Sobrou UMA exceção, e ela é PERMANENTE por decisão, não
- * dívida — o motivo está no item. */
-const PODEM_IMPORTAR_DRIVER: Record<string, string> = {
-  'consultor-siger/consultor-siger.service.ts':
-    'EXCEÇÃO PERMANENTE. A base do Consultor SIGER não é um banco VINCULADO: é um artefato ' +
-    'DERIVADO (SQLite gerado por um indexador externo a partir do código-fonte), um arquivo ' +
-    'local aberto em READONLY, sem credencial, sem rede e sem outro consumidor. O módulo já ' +
-    'É a API dele (/api/consultor-siger/*), e suas 7 consultas são busca full-text com ' +
-    'aridade variável — encaixá-las num catálogo de consultas NOMEADAS distorceria os dois ' +
-    'lados sem fechar risco nenhum. O risco que o ADR-0003 endereça (credencial circulando, ' +
-    'SQL solto contra sistema de terceiro, execução sem auditoria) não existe aqui.',
-};
+ * **Na fase 2 caiu de 3 para 1**, e em 2026-09-01 para ZERO: a última exceção era o
+ * Consultor SIGER, que abria uma base SQLite derivada em readonly — módulo retirado a
+ * pedido do usuário. Nenhum arquivo fora de `src/dados/` importa driver de banco. */
+const PODEM_IMPORTAR_DRIVER: Record<string, string> = {};
 
 /** Módulos que ainda chamam o executor direto em vez de pedir a consulta pelo nome.
  *

@@ -256,17 +256,6 @@ export const routes: Routes = [
         loadComponent: () => import('./features/rns/rns.component').then((m) => m.RnsComponent),
       },
       {
-        // Execução → Consultor SIGER: base inteligente de conhecimento do código-fonte do
-        // SIGER — pergunta em linguagem natural, resposta com evidência (arquivo:linha).
-        path: 'consultor-siger',
-        canActivate: [permissaoGuard('consultor_siger')],
-        data: { titulo: 'Consultor SIGER' },
-        loadComponent: () =>
-          import('./features/consultor-siger/consultor-siger.component').then(
-            (m) => m.ConsultorSigerComponent,
-          ),
-      },
-      {
         path: 'protocolos/:id',
         canActivate: [permissaoGuard('protocolos')],
         data: { titulo: 'Transcrição Áudio/Vídeo — revisão' },

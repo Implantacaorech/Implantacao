@@ -69,11 +69,6 @@ export const MENUS: DefinicaoMenu[] = [
   // RNS: consulta de assuntos nas RNS do SICLA (LISTA_ITEMPED) — o consultor pesquisa um
   // assunto e vê as RNS relacionadas (Pedido + Item), no molde do Dicionário Inteligente.
   { chave: 'rns', rotulo: 'RNS', grupo: 'Execução' },
-  // Consultor SIGER: base inteligente de conhecimento do CÓDIGO-FONTE do SIGER (F:\SIGER,
-  // fonte SOMENTE LEITURA que o Painel nem acessa — consome a base derivada gerada pelo
-  // indexador externo). O consultor pergunta em linguagem natural e vê telas, parâmetros,
-  // cadastros, validações e menus com arquivo:linha citados.
-  { chave: 'consultor_siger', rotulo: 'Consultor SIGER', grupo: 'Execução' },
   { chave: 'coordenacao', rotulo: 'Coordenação', grupo: 'Gestão' },
   {
     chave: 'centro_operacional',
@@ -291,14 +286,6 @@ export const PADRAO_PERMISSOES: Record<
   // Consultor SIGER: consulta à base de conhecimento do código-fonte — só leitura (a tela
   // toda é pesquisa; o feedback 👍/👎 conta como uso). O Comercial fica de fora por padrão,
   // ajustável em Gestão → Permissões.
-  consultor_siger: {
-    ADM: 'alteracao',
-    Coordenador: 'consulta',
-    Administrativo: 'consulta',
-    GCI: 'consulta',
-    Consultor: 'consulta',
-    Levantador: 'consulta',
-  },
   coordenacao: { ADM: 'alteracao', Coordenador: 'alteracao', GCI: 'alteracao' },
   centro_operacional: {
     ADM: 'alteracao',

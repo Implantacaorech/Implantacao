@@ -180,7 +180,7 @@ async function bootstrap(): Promise<void> {
 
   // F1 da migração p/ servidor dedicado (docs/migracao-servidor.md): estes defaults apontam
   // para caminhos da máquina de desenvolvimento. Nela funcionam; num servidor sem as envs o
-  // efeito é SILENCIOSO (robô de protocolos desligado, Consultor SIGER "fora do ar", Saúde
+  // efeito é SILENCIOSO (robô de protocolos desligado, Saúde
   // vigiando pasta vazia). O aviso torna o esquecimento visível no primeiro boot.
   if (emProducao) {
     const defaultsLocais: [string, string][] = [
@@ -188,7 +188,6 @@ async function bootstrap(): Promise<void> {
         'MIGRACAO_PROTOCOLOS_DIR',
         'robô e tela de Protocolos (pasta de vídeos)',
       ],
-      ['MIGRACAO_CONSULTOR_SIGER_DB', 'Consultor SIGER (base derivada)'],
       ['MIGRACAO_BACKUP_DIR', 'vigilância de backup da tela Saúde'],
     ];
     for (const [env, uso] of defaultsLocais) {

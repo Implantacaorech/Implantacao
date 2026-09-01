@@ -49,7 +49,6 @@ describe('tabela de rotas por instância', () => {
       'bi',
       'usuarios',
       'permissoes',
-      'consultor-siger',
       // O lado CONSUMIDOR é do Painel: o Portal API não consome, ele executa.
       'config/tokens-api',
     ]) {

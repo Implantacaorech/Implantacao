@@ -21,10 +21,6 @@ export interface AppConfig {
    * descontrolado/abuso, não policiar o uso normal. */
   rateLimit: { ttlSegundos: number; limite: number };
   docserviceUrl: string;
-  /** Base DERIVADA do Consultor SIGER (SQLite gerado pelo indexador externo em
-   * F:\CONSULTOR-SIGER — a fonte F:\SIGER é somente leitura e o Painel nem a acessa).
-   * O service abre este arquivo em readonly; ausente, a tela degrada com aviso. */
-  consultorSiger: { dbPath: string };
   protocolosDir: string;
   protocolosPollMin: number;
   imapPollMin: number;
@@ -158,13 +154,6 @@ export default (): AppConfig => {
     // roda no mesmo host (ver docservice/ e docs/migracao/02-decisao-arquitetura.md).
     docserviceUrl:
       process.env.MIGRACAO_DOCSERVICE_URL ?? 'http://127.0.0.1:8001',
-    // Consultor SIGER: caminho da base derivada (ver interface acima). O default aponta
-    // para onde o indexador do protótipo grava (F:\CONSULTOR-SIGER\data).
-    consultorSiger: {
-      dbPath:
-        process.env.MIGRACAO_CONSULTOR_SIGER_DB ??
-        'F:\\CONSULTOR-SIGER\\data\\consultor.db',
-    },
     // Protocolos de Treinamento: pasta raiz sincronizada pelo OneDrive (Videos Pendentes/
     // Processados/Com Erro) — mesmo padrão de webapp/protocolos.py (env PROTOCOLOS_DIR).
     protocolosDir:

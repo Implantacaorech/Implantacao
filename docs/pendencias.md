@@ -617,12 +617,9 @@ feita; o que ela revelou em volta, não.
   Restrito a `PERFIS_SISTEMA` e auditado.
 - [x] `PODEM_IMPORTAR_DRIVER` caiu de **3 para 1**.
 
-> ⚠️ **A exceção que ficou é decisão, não dívida.** `consultor-siger` continua abrindo o
-> SQLite dele: a base não é um banco vinculado, é um artefato DERIVADO (gerado por indexador
-> externo a partir do código-fonte), arquivo local em readonly, sem credencial, sem rede e
-> sem outro consumidor — e o módulo já é a API dele. Suas 7 consultas são busca full-text
-> com aridade variável; forçá-las num catálogo de consultas *nomeadas* distorceria os dois
-> lados sem fechar risco nenhum. Está declarada, com o motivo, dentro da guarda de CI.
+> ✅ **A exceção que existia acabou.** `consultor-siger` era o único módulo a abrir um
+> driver fora de `src/dados/` (SQLite da base derivada, readonly). O módulo foi retirado do
+> Painel em 2026-09-01, a pedido do usuário — hoje a fronteira do ADR-0003 não tem exceção.
 
 ### Fase 3 — as DUAS INSTÂNCIAS (Portal de Conexões) *(concluída em 2026-08-25)*
 > **Por que existe:** o usuário quer publicar o Painel fora da rede da empresa —
