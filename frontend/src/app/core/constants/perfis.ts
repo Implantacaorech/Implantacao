@@ -36,8 +36,6 @@ export const MENU_PROTOCOLOS: Perfil[] = [
   'GCI',
   'Consultor',
 ];
-/** Dicionário Inteligente: só o Administrador. */
-export const MENU_DICIONARIO: Perfil[] = ['ADM'];
 /** Gestão (Coordenação, Centro Operacional, Atividade). */
 export const MENU_GESTAO: Perfil[] = ['ADM', 'Coordenador', 'GCI'];
 /** Matriz de Conhecimento: todo o time, menos o Comercial. */

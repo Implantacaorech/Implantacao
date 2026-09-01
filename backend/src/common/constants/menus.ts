@@ -56,7 +56,6 @@ export const MENUS: DefinicaoMenu[] = [
     rotulo: 'Matriz por Menu - Funções SICLA',
     grupo: 'Execução',
   },
-  { chave: 'dicionario', rotulo: 'Dicionário Inteligente', grupo: 'Execução' },
   // Protocolo: moldura do Portal Rech (portalrech.com.br) dentro do Painel. A chave é o
   // singular porque 'protocolos' (plural) já pertence à Transcrição Áudio/Vídeo.
   { chave: 'protocolo', rotulo: 'Protocolo', grupo: 'Execução' },
@@ -241,7 +240,6 @@ export const PADRAO_PERMISSOES: Record<
     Consultor: 'alteracao',
     Levantador: 'alteracao',
   },
-  dicionario: { ADM: 'alteracao' },
   // Protocolo (Portal Rech): mesma liberação da Transcrição Áudio/Vídeo — todo o time
   // interno; o Comercial fica de fora por padrão (ajustável em Gestão → Permissões).
   protocolo: {

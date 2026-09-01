@@ -35,13 +35,6 @@ const ESCRITA_CONSULTA_PERMITIDA: {
       'designação, RN-10). Exigir alteração aqui rebreakearia o achado de 2026-08-05.',
   },
   {
-    arquivo: 'dicionario/dicionario.controller.ts',
-    rota: 'perguntar',
-    motivo:
-      'POST de CONSULTA (pergunta ao RAG) — não persiste estado do cliente; o menu ' +
-      'dicionário é só-ADM por padrão. É um POST por carregar corpo, não uma escrita.',
-  },
-  {
     arquivo: 'protocolos/protocolos.controller.ts',
     rota: 'portal/credencial',
     motivo:

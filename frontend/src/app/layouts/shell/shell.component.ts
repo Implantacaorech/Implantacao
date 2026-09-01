@@ -68,7 +68,6 @@ export class ShellComponent {
   readonly podeMatriz = computed(() => this.perm.podeVer('matriz'));
   readonly podeMatrizDetalhada = computed(() => this.perm.podeVer('matriz_detalhada'));
   readonly podeMatrizFuncoes = computed(() => this.perm.podeVer('matriz_funcoes'));
-  readonly podeDicionario = computed(() => this.perm.podeVer('dicionario'));
   readonly podeProtocolo = computed(() => this.perm.podeVer('protocolo'));
   readonly podeRechEdu = computed(() => this.perm.podeVer('rechedu'));
   readonly podeAgenda = computed(() => this.perm.podeVer('agenda'));

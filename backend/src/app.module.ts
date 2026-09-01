@@ -29,7 +29,6 @@ import { DigestModule } from './digest/digest.module';
 import { PlanoCronogramaModule } from './plano-cronograma/plano-cronograma.module';
 import { LegadoModule } from './legado/legado.module';
 import { AgentesModule } from './agentes/agentes.module';
-import { DicionarioModule } from './dicionario/dicionario.module';
 import { PassosModule } from './passos/passos.module';
 import { ClientesSiclaModule } from './clientes-sicla/clientes-sicla.module';
 import { ModulosSiclaModule } from './modulos-sicla/modulos-sicla.module';
@@ -116,7 +115,6 @@ import { DadosConsumoModule } from './dados/consumo/dados-consumo.module';
     PlanoCronogramaModule,
     LegadoModule,
     AgentesModule,
-    DicionarioModule,
     PassosModule,
     ClientesSiclaModule,
     ModulosSiclaModule,

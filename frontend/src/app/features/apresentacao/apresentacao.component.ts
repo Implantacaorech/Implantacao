@@ -148,7 +148,7 @@ export class ApresentacaoComponent {
       titulo: 'Quem domina o quê — e o que cada termo do SIGER® quer dizer',
       texto:
         'A Matriz de Conhecimento guarda a nota de cada técnico por competência, e cada um mantém ' +
-        'a própria linha atualizada. Ao lado dela, o Dicionário responde dúvidas de termo, sigla e ' +
+        'a própria linha atualizada. ' +
         'menu em linguagem de negócio, alimentado pelos treinamentos já revisados.',
       itens: [
         'Enxerga rápido onde o time é forte e onde precisa de apoio',

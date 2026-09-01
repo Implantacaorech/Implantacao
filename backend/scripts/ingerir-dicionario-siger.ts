@@ -1,3 +1,12 @@
+/* ⚠️ A TELA "Dicionário Inteligente" foi removida do Painel em 2026-09-01, mas ESTE SCRIPT
+ * continua valendo — e é justamente por isso que ele ficou.
+ *
+ * A tabela `dicionario_documentos` que ele alimenta deixou de ser a base de uma tela e passou
+ * a ser INSUMO: é a fonte única da taxonomia de menus do SIGER (`MenusSigerService`), lida
+ * pela Matriz por Menu (SIGER) e pelo reconhecimento de menus na transcrição dos protocolos.
+ * Sem reingerir aqui, as duas envelhecem em silêncio — continuam respondendo, com o catálogo
+ * de menus da última ingestão. */
+
 /**
  * Ingestão da base de conhecimento curada do SIGER® (repositório Documentacao-Fonte-P:
  * pastas `modulos/` e `adicionais/` com os .md revisados) para a tabela

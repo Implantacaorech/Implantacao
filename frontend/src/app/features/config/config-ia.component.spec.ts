@@ -23,7 +23,6 @@ function status(over: Partial<StatusConfigIa> = {}): StatusConfigIa {
     provedores: ['anthropic', 'openrouter', 'local'],
     finalidades: [
       finalidade(),
-      finalidade({ finalidade: 'dicionario', rotulo: 'Dicionário Inteligente' }),
     ],
     ...over,
   };
@@ -47,17 +46,16 @@ describe('ConfigIaComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(fixture.componentInstance.finalidades()).toHaveLength(2);
-    expect(fixture.componentInstance.itens.length).toBe(2);
+    expect(fixture.componentInstance.finalidades()).toHaveLength(1);
+    expect(fixture.componentInstance.itens.length).toBe(1);
     expect(fixture.nativeElement.textContent).toContain('Protocolos de Treinamento');
-    expect(fixture.nativeElement.textContent).toContain('Dicionário Inteligente');
   });
 
   it('salva a chave OpenRouter da finalidade escolhida', async () => {
     const salvar = vi
       .fn()
       .mockResolvedValue(
-        status({ finalidades: [finalidade({ ativa: true, provider: 'openrouter', modelo: 'anthropic/claude-sonnet-4' }), finalidade({ finalidade: 'dicionario', rotulo: 'Dicionário Inteligente' })] }),
+        status({ finalidades: [finalidade({ ativa: true, provider: 'openrouter', modelo: 'anthropic/claude-sonnet-4' })] }),
       );
     const fixture = montar({ status: () => Promise.resolve(status()), salvar });
     fixture.detectChanges();
@@ -108,7 +106,6 @@ describe('ConfigIaComponent', () => {
               modelo: 'qwen2.5:14b',
               baseUrl: 'http://192.168.1.50:11434/v1',
             }),
-            finalidade({ finalidade: 'dicionario' }),
           ],
         }),
       );
@@ -183,7 +180,7 @@ describe('ConfigIaComponent', () => {
   it('não salva quando a finalidade usa chave via variável de ambiente', async () => {
     const salvar = vi.fn();
     const fixture = montar({
-      status: () => Promise.resolve(status({ finalidades: [finalidade({ ativa: true, viaEnv: true }), finalidade({ finalidade: 'dicionario' })] })),
+      status: () => Promise.resolve(status({ finalidades: [finalidade({ ativa: true, viaEnv: true })] })),
       salvar,
     });
     fixture.detectChanges();

@@ -18,7 +18,7 @@ export const PROVEDORES_IA: ProvedorIa[] = ['anthropic', 'openrouter', 'local'];
 
 /** Cada uso de IA no Painel é uma "finalidade" com chave/provedor/modelo PRÓPRIOS — o usuário
  * pediu campos separados por finalidade, não uma chave global compartilhada. */
-export type FinalidadeIa = 'protocolos' | 'dicionario' | 'levantamento';
+export type FinalidadeIa = 'protocolos' | 'levantamento';
 
 export interface DefinicaoFinalidade {
   id: FinalidadeIa;
@@ -32,12 +32,6 @@ export const FINALIDADES_IA: DefinicaoFinalidade[] = [
     rotulo: 'Transcrição Áudio/Vídeo',
     descricao:
       'Reconferência do texto transcrito (2ª revisão) e estruturação do protocolo.',
-  },
-  {
-    id: 'dicionario',
-    rotulo: 'Dicionário Inteligente',
-    descricao:
-      'Resposta em linguagem natural fundamentada nos documentos do SIGER® (RAG).',
   },
   {
     id: 'levantamento',
@@ -60,8 +54,10 @@ export const FINALIDADE_IDS: FinalidadeIa[] = FINALIDADES_IA.map((f) => f.id);
  * `IaService.avisosPrivacidade()` denuncia qualquer configuração legada que já esteja violando
  * a política (surge no aviso de boot e no módulo Prontidão do Sistema).
  *
- * `dicionario` fica de fora de propósito: é documentação do SIGER® (conteúdo NOSSO), sem dado
- * de cliente — aceita bem um modelo externo. */
+ * Desde 2026-09-01 as DUAS finalidades restantes são só-local: a terceira (`dicionario`) era
+ * a única que aceitava provedor externo, por ser documentação do SIGER® (conteúdo nosso, sem
+ * dado de cliente), e saiu junto com o módulo. Se entrar uma finalidade nova sem dado de
+ * cliente, ela pode ficar fora desta lista — a regra é sobre o CONTEÚDO, não sobre o número. */
 export const FINALIDADES_SO_LOCAL: FinalidadeIa[] = [
   'protocolos',
   'levantamento',

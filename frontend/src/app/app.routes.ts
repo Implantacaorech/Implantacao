@@ -205,20 +205,6 @@ export const routes: Routes = [
         loadComponent: () => import('./features/protocolos/gravacao.component').then((m) => m.GravacaoComponent),
       },
       {
-        path: 'dicionario',
-        canActivate: [permissaoGuard('dicionario')],
-        data: { titulo: 'Dicionário Inteligente' },
-        loadComponent: () =>
-          import('./features/dicionario/dicionario.component').then((m) => m.DicionarioComponent),
-      },
-      {
-        path: 'dicionario/:slug',
-        canActivate: [permissaoGuard('dicionario')],
-        data: { titulo: 'Documento — Dicionário Inteligente' },
-        loadComponent: () =>
-          import('./features/dicionario/dicionario-documento.component').then((m) => m.DicionarioDocumentoComponent),
-      },
-      {
         // Execução → Protocolo: moldura do Portal Rech (portalrech.com.br) dentro do
         // Painel. Singular de propósito — 'protocolos' (plural) é a Transcrição.
         path: 'protocolo',
