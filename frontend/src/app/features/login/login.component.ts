@@ -24,11 +24,18 @@ export class LoginComponent {
   private readonly router = inject(Router);
   private readonly instancia = inject(InstanciaService);
 
-  /** O que aparece sob o logo no cartão de acesso. A tela de login já pertence a uma das
-   * duas instâncias, e quem entra precisa saber em qual está antes de digitar a senha —
+  /** O que aparece sob o logo no cartão de acesso.
+   *
+   * No Painel, NADA: o logo já diz onde a pessoa está, e a tela passou a ser a porta de
+   * entrada também do CLIENTE — "Implantação SIGER®" é vocabulário interno da Rech, que não
+   * significa nada para o contato de um cliente (retirado a pedido do usuário em
+   * 2026-09-01, junto com o link da apresentação).
+   *
+   * No Portal API, SIM: ali o subtítulo não é enfeite. As duas instâncias servem o mesmo
+   * cartão de login, e quem abre a interna precisa saber disso ANTES de digitar a senha —
    * são portais diferentes, com finalidades diferentes. */
   readonly subtitulo = computed(() =>
-    this.instancia.portalApi() ? 'Portal API' : 'Implantação SIGER®',
+    this.instancia.portalApi() ? 'Portal API' : '',
   );
 
   readonly enviando = signal(false);
