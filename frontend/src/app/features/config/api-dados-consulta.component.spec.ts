@@ -181,6 +181,43 @@ describe('ApiDadosConsultaComponent', () => {
     expect(comp.erro()).toBeNull();
   });
 
+  // Este é o formato que o backend REALMENTE devolve: o HttpExceptionFilter troca a
+  // `message` pela frase genérica quando ela é um array e move os itens para `details`. O
+  // teste acima (que mocka `message` como array) passava sem provar nada do caso real — e
+  // por isso a tela ficou mostrando só "Os dados informados são inválidos", sem dizer qual
+  // campo estava errado (achado em 2026-09-01, publicando a consulta de contatos).
+  it('a lista vem em `details`, como o filtro de exceção a envia', async () => {
+    const salvarConsulta = vi.fn().mockRejectedValue({
+      error: {
+        message: 'Os dados informados são inválidos',
+        details: [
+          'nomeApi must be a string',
+          'limiteLinhas must not be less than 0',
+        ],
+      },
+    });
+    const comp = (await pronto(servicoPadrao({ salvarConsulta }))).componentInstance;
+    comp.form.patchValue({ slug: 'x', nome: 'X', sql: 'SELECT 1 FROM DUAL' });
+    await comp.salvar();
+
+    expect(comp.erros()).toHaveLength(2);
+    expect(comp.erros()[0]).toContain('nomeApi');
+    // A frase genérica não pode ocupar o lugar do detalhe: ela não diz nada a quem preenche.
+    expect(comp.erro()).toBeNull();
+  });
+
+  it('erro sem lista mostra a mensagem do backend', async () => {
+    const salvarConsulta = vi.fn().mockRejectedValue({
+      error: { message: 'Conexão com o SICLA não configurada.' },
+    });
+    const comp = (await pronto(servicoPadrao({ salvarConsulta }))).componentInstance;
+    comp.form.patchValue({ slug: 'x', nome: 'X', sql: 'SELECT 1 FROM DUAL' });
+    await comp.salvar();
+
+    expect(comp.erro()).toContain('SICLA');
+    expect(comp.erros()).toHaveLength(0);
+  });
+
   it('apagar pede confirmação', async () => {
     const excluirConsulta = vi.fn().mockResolvedValue(undefined);
     const comp = (await pronto(servicoPadrao({ excluirConsulta }), 'rns_por_cliente'))
