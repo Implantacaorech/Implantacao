@@ -38,6 +38,14 @@ function dataValida(valor: string): boolean {
   );
 }
 
+/** O SQL cita `:nome`?
+ *
+ * Fronteira à direita feita à mão: `\b` casaria `:data_ini` seguido de `_`. A checagem usa
+ * o nome seguido de qualquer coisa que não seja letra, dígito ou sublinhado. */
+function bindReferenciado(nome: string, sql: string): boolean {
+  return new RegExp(`:${nome}(?![A-Za-z0-9_])`).test(sql);
+}
+
 function converter(
   p: ParametroConsulta,
   bruto: unknown,
@@ -142,7 +150,22 @@ export function validarParametros(
 
     const ausente = bruto === undefined || bruto === null || bruto === '';
     if (ausente) {
-      if (p.obrigatorio) erros.push(`"${p.nome}" é obrigatório.`);
+      if (p.obrigatorio) {
+        erros.push(`"${p.nome}" é obrigatório.`);
+      } else if (bindReferenciado(p.nome, sql)) {
+        // Opcional ausente, mas o SQL CITA o bind: ele vai como NULL, não é omitido.
+        //
+        // Omitir fazia o driver recusar a execução inteira com ORA-01008 ("value for bind
+        // variable not provided") — o mesmo motivo pelo qual `expandirLista` acima expande
+        // até a lista vazia. Todo filtro opcional do catálogo é escrito como
+        // `(:bind IS NULL OR coluna = :bind)`, e esse desenho só funciona se o NULL
+        // realmente chegar ao driver.
+        //
+        // Ficou latente porque os binds opcionais existentes (`data_ini`/`data_fim`) sempre
+        // recebiam valor na prática; o primeiro a chegar nulo de verdade foi `:cliente`, em
+        // 2026-09-01, e derrubou todas as consultas que o citam.
+        binds[p.nome] = null;
+      }
       continue;
     }
 
@@ -151,11 +174,7 @@ export function validarParametros(
       erros.push(erro);
       continue;
     }
-    // `\b` não serve como fronteira à direita de um bind (`:data_ini` seguido de `_`
-    // casaria); a checagem usa o nome seguido de qualquer coisa que não seja letra,
-    // dígito ou `_`.
-    const referenciado = new RegExp(`:${p.nome}(?![A-Za-z0-9_])`).test(sql);
-    if (referenciado) binds[p.nome] = valor as ValorBind;
+    if (bindReferenciado(p.nome, sql)) binds[p.nome] = valor as ValorBind;
   }
 
   return { ok: erros.length === 0, erros, binds, sql };
