@@ -405,13 +405,47 @@ feita; o que ela revelou em volta, não.
 - Python que resta hoje, por pasta: `docservice/` (20 arquivos versionados), `tools/` (28),
   `webapp/` (4) e `ia_admin/` (1 — o mais barato de portar).
 
-- [ ] **Migrar o repositório para o GitLab interno** (`rech/javascript`) — **adiado por decisão
-  do usuário em 2026-07-21, a tratar depois.** Hoje o remoto é
-  `github.com/Implantacaorech/Implantacao`, o que viola §3/§3.3/§3.4 (GitHub só para open source
-  aprovado pela direção). É o achado de maior risco de governança: código corporativo fora do
-  repositório oficial, sem o backup e a auditoria corporativos.
-  Procedimento (§3.6): criar o projeto no GitLab, depois
-  `git remote set-url origin https://gitlab.rech.com.br/gitlab/rech/javascript/<projeto>.git && git push -u origin --all`.
+- [x] **Migrar o repositório para o GitLab interno** — **PARCIALMENTE RESOLVIDO em
+  2026-09-01.** O projeto existe no GitLab da Rech, em
+  `gitlab.rech.com.br/gitlab/rech/web/nriimplantacao` (caminho `rech/web/`, não
+  `rech/javascript/` como o procedimento previa), e **todo push passou a ir para os dois
+  remotos ao mesmo tempo** — ver §Push duplo abaixo. O achado de governança §3/§3.3/§3.4
+  deixa de valer para "código corporativo fora do repositório oficial": ele está lá, com o
+  backup e a auditoria corporativos.
+
+  **O que ainda falta para fechar de vez:** decidir se o GitHub sai de cena. Enquanto os dois
+  existirem, há duas verdades possíveis sobre "qual é o código aprovado" — e hoje elas
+  divergem (ver a nota de divergência em §Push duplo).
+
+### Push duplo — GitHub + GitLab (2026-09-01)
+
+Decisão do usuário: **todo `git push` vai para os dois remotos**. Feito com dois `pushurl` no
+mesmo `origin`, e não com dois remotos separados, para que ninguém precise lembrar de empurrar
+duas vezes:
+
+```bash
+git remote set-url --add --push origin https://Implantacaorech@github.com/Implantacaorech/Implantacao.git
+git remote set-url --add --push origin https://gitlab.rech.com.br/gitlab/rech/web/nriimplantacao.git
+```
+
+> ⚠️ **Os dois precisam ser declarados.** Assim que um `pushurl` é acrescentado, o Git para de
+> usar a URL de *fetch* para empurrar — declarar só o GitLab faria o GitHub deixar de receber
+> push em silêncio.
+
+`git remote -v` deve mostrar **três** linhas de `origin`: uma de fetch (GitHub) e duas de push.
+O remoto `gitlab` continua existindo à parte, para consultar aquele lado sem passar pelo
+`origin`.
+
+**Isto é configuração de CLONE, não de repositório** — não viaja no git. Um clone novo (ou
+outra máquina) precisa repetir os dois comandos acima.
+
+**Divergência conhecida entre os dois lados (2026-09-01):** o `master` do GitLab está **86
+commits à frente** do `main` do GitHub, porque no GitHub o trabalho está represado numa pilha
+de PRs abertos (#27→#33) e no GitLab ele foi direto para a branch padrão. Some-se a isso que
+os nomes da branch padrão diferem — `master` no GitLab, `main` no GitHub. Na prática: **o
+`master` do GitLab é o que corresponde à produção**, já que o Painel é buildado da árvore de
+trabalho. Fechar isso é decisão do usuário: mesclar a pilha no GitHub, ou assumir o GitLab
+como oficial e aposentar o GitHub.
 - [ ] **Exceção §4.3 para a transcrição** (`docservice/transcricao`, faster-whisper) — validar com
   o **DevTools**, declarando a verificação das alternativas em Rust (`whisper-rs`, `candle`, `ort`)
   e registrando a justificativa no README.

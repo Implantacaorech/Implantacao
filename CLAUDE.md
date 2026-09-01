@@ -28,8 +28,10 @@ docs continuam valendo. `MD Padrao desenv/Padrao_Rech.md` e
 >
 > **Este projeto é uma aplicação web** e está sujeito à §4.8 (Angular · NestJS + TypeORM ·
 > MariaDB · entrega em processo único). Não conformidades conhecidas e o plano de adequação
-> estão em [docs/pendencias.md](docs/pendencias.md) — a principal é o repositório ainda estar
-> no GitHub, não no GitLab interno (§3).
+> estão em [docs/pendencias.md](docs/pendencias.md). Desde **2026-09-01** o repositório
+> também vive no **GitLab interno**
+> (`gitlab.rech.com.br/gitlab/rech/web/nriimplantacao`) e **todo push vai para os dois**
+> remotos — o que restava da §3 é decidir se o GitHub sai de cena.
 
 **Leitura aplicada a este repositório** (como cada camada se chama no backend/frontend/
 docservice, guardas do CI e desvios com prazo): [Guia Mestre de Arquitetura](<vault/23 - Padrões/Guia Mestre de Arquitetura de Desenvolvimento.md>).
@@ -144,7 +146,10 @@ NestJS serve o build do Angular direto (`@nestjs/serve-static`) — um único pr
 (**5100**, máquina `I7M1700-01-EVE`). Sobe via `Iniciar_Painel_Novo.bat` (valida
 `MIGRACAO_DB_URL`/`MIGRACAO_JWT_SECRET`/`MIGRACAO_JWT_REFRESH_SECRET` antes); guardião
 (`Guardiao_Painel_Novo.vbs`) e verificação de integridade rodam como Tarefas Agendadas.
-Entrega = código no GitHub (commit + push). `docs/runbooks-operacao.md` e
+Entrega = commit + push. **O `push` sai para os DOIS remotos** (GitHub e GitLab interno)
+porque `origin` tem dois `pushurl` — configuração de clone, que um clone novo precisa repetir;
+os comandos estão em [docs/pendencias.md](docs/pendencias.md) §Push duplo.
+`docs/runbooks-operacao.md` e
 [vault/12 - DevOps/](<vault/12 - DevOps/12 - DevOps.md>) têm o detalhe operacional.
 **`projeto_old/` não existe mais** — o painel Flask desligado foi removido do repositório em
 2026-07-29 (recuperável pelo histórico do git; contexto em
