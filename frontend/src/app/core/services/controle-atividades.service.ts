@@ -11,8 +11,10 @@ import {
   Etiqueta,
   ListaDeQuadros,
   ProjetoDisponivel,
+  PreviaTrello,
   QuadroCompleto,
   ResultadoBuscaAtividades,
+  ResultadoImportacao,
 } from '../models/controle-atividades.model';
 
 /** Integração da tela Execução → Controle de Atividades. Quem conhece rota, verbo e
@@ -251,6 +253,42 @@ export class ControleAtividadesService {
     await firstValueFrom(
       this.http.post(`${this.base}/notificacoes/lidas`, { ids: ids ?? [] }),
     );
+  }
+
+  // ------------------------------------------------------- importar do Trello
+
+  /** Lê o arquivo e devolve o que ENTRARIA. Não grava nada — a confirmação é outra chamada. */
+  async previaTrello(codigo: string, arquivo: File): Promise<PreviaTrello> {
+    const form = new FormData();
+    form.append('arquivo', arquivo);
+    const res = await firstValueFrom(
+      this.http.post<ApiEnvelope<PreviaTrello>>(
+        `${this.base}/quadros/${encodeURIComponent(codigo)}/importar/trello/previa`,
+        form,
+      ),
+    );
+    const d = res.data;
+    return { ...d, listas: d.listas ?? [], avisos: d.avisos ?? [], colunasDoQuadro: d.colunasDoQuadro ?? [] };
+  }
+
+  /** Importa de verdade, com o de/para de colunas confirmado na prévia. */
+  async importarTrello(
+    codigo: string,
+    arquivo: File,
+    destinos: { idListaTrello: string; listaId?: number }[],
+  ): Promise<ResultadoImportacao> {
+    const form = new FormData();
+    form.append('arquivo', arquivo);
+    // JSON num campo ÚNICO: num multipart, campo repetido com notação de colchetes chega ao
+    // backend como chave literal (o multer não interpreta), e o de/para viria vazio.
+    form.append('destinos', JSON.stringify(destinos));
+    const res = await firstValueFrom(
+      this.http.post<ApiEnvelope<ResultadoImportacao>>(
+        `${this.base}/quadros/${encodeURIComponent(codigo)}/importar/trello`,
+        form,
+      ),
+    );
+    return res.data;
   }
 
   // ------------------------------------------------------------------- apoio

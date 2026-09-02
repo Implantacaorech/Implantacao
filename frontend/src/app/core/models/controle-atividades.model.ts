@@ -166,3 +166,39 @@ export interface ContatoCliente {
   cargo: string;
   email: string;
 }
+
+// ── Importação do Trello ───────────────────────────────────────────────────
+
+export interface ListaTrello {
+  idTrello: string;
+  titulo: string;
+  ordem: number;
+}
+
+export interface PreviaTrello {
+  nomeQuadro: string;
+  listas: ListaTrello[];
+  membros: string[];
+  resumo: {
+    listas: number;
+    cartoes: number;
+    cartoesArquivados: number;
+    listasArquivadas: number;
+    checklistItens: number;
+    comentarios: number;
+    anexosLink: number;
+    anexosArquivo: number;
+    etiquetasNaoMapeadas: string[];
+  };
+  avisos: string[];
+  colunasDoQuadro: { id: number; titulo: string; visivelCliente: boolean }[];
+}
+
+export interface ResultadoImportacao {
+  colunasCriadas: number;
+  cartoes: number;
+  checklistItens: number;
+  comentarios: number;
+  anexos: number;
+  avisos: string[];
+}

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -33,6 +34,8 @@ import { CartoesService } from './cartoes.service';
 import { AnexosService } from './anexos.service';
 import { BuscaService } from './busca.service';
 import { NotificacoesAtividadeService } from './notificacoes-atividade.service';
+import { ImportacaoTrelloService } from './importacao/importacao-trello.service';
+import { ImportarTrelloDto } from './dto/importacao-trello.dto';
 import { ClientesSiclaService } from '../clientes-sicla/clientes-sicla.service';
 import { ContatosSiclaService } from '../contatos-sicla/contatos-sicla.service';
 import {
@@ -75,6 +78,7 @@ export class ControleAtividadesController {
     private readonly anexos: AnexosService,
     private readonly busca: BuscaService,
     private readonly avisos: NotificacoesAtividadeService,
+    private readonly importacao: ImportacaoTrelloService,
     private readonly clientesSicla: ClientesSiclaService,
     private readonly contatosSicla: ContatosSiclaService,
   ) {}
@@ -438,6 +442,53 @@ export class ControleAtividadesController {
     return new ApiEnvelope(null, 'Avisos fechados.');
   }
 
+  // -------------------------------------------------------- importar do Trello
+
+  @Post('quadros/:codigo/importar/trello/previa')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(
+    FileInterceptor('arquivo', { limits: { fileSize: LIMITE_UPLOAD_DOC } }),
+  )
+  @ApiOperation({
+    summary:
+      'Lê a exportação JSON do Trello e mostra o que entraria — NÃO grava nada',
+  })
+  async previaTrello(
+    @CurrentUser() user: AuthUser,
+    @Param('codigo') codigo: string,
+    @UploadedFile() arquivo: { buffer?: Buffer },
+  ) {
+    return new ApiEnvelope(
+      await this.importacao.previa(user, codigo, conteudoDe(arquivo)),
+    );
+  }
+
+  @Post('quadros/:codigo/importar/trello')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(
+    FileInterceptor('arquivo', { limits: { fileSize: LIMITE_UPLOAD_DOC } }),
+  )
+  @ApiOperation({
+    summary: 'Importa o quadro do Trello — cartões entram INTERNOS',
+  })
+  async importarTrello(
+    @CurrentUser() user: AuthUser,
+    @Param('codigo') codigo: string,
+    @UploadedFile() arquivo: { buffer?: Buffer },
+    @Body() dto: ImportarTrelloDto,
+  ) {
+    const destinos = destinosDe(dto.destinos);
+    return new ApiEnvelope(
+      await this.importacao.importar(
+        user,
+        codigo,
+        conteudoDe(arquivo),
+        destinos,
+      ),
+      'Importação concluída.',
+    );
+  }
+
   // ------------------------------------------------------------------ apoio
 
   @Get('etiquetas')
@@ -469,4 +520,50 @@ export class ControleAtividadesController {
     await this.quadros.exigirLegivel(user, codigo);
     return new ApiEnvelope(await this.contatosSicla.listar(codigo));
   }
+}
+
+/** Texto do arquivo enviado.
+ *
+ * O JSON do Trello é UTF-8; ler como tal (e não com a codificação padrão do sistema) é o que
+ * preserva acento em título de cartão — que é a regra, não a exceção, num quadro em português. */
+function conteudoDe(arquivo: { buffer?: Buffer } | undefined): string {
+  const buffer = arquivo?.buffer;
+  if (!buffer?.length) {
+    throw new BadRequestException(
+      'Envie o arquivo .json exportado do Trello (menu do quadro → Compartilhar → ' +
+        'Exportar como JSON).',
+    );
+  }
+  return buffer.toString('utf8');
+}
+
+/** De/para das listas, lido do campo de texto do multipart.
+ *
+ * Tolerante de propósito: o pior caso de um de/para ilegível é criar colunas novas em vez de
+ * reaproveitar as existentes — irritante, mas reversível. Derrubar a importação inteira por
+ * causa dele seria pior. */
+function destinosDe(bruto: string | undefined): {
+  idListaTrello: string;
+  listaId: number | null;
+}[] {
+  if (!bruto?.trim()) return [];
+  let lido: unknown;
+  try {
+    lido = JSON.parse(bruto);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(lido)) return [];
+  return lido
+    .map((d) => {
+      const item = (d ?? {}) as Record<string, unknown>;
+      const id =
+        typeof item['idListaTrello'] === 'string' ? item['idListaTrello'] : '';
+      const lista = Number(item['listaId']);
+      return {
+        idListaTrello: id,
+        listaId: Number.isInteger(lista) && lista > 0 ? lista : null,
+      };
+    })
+    .filter((d) => d.idListaTrello);
 }

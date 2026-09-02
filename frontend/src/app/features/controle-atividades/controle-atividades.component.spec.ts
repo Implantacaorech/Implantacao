@@ -214,6 +214,85 @@ describe('ControleAtividadesComponent', () => {
     expect(f.nativeElement.textContent).toContain('Abrir solicitação');
   });
 
+  describe('edição do cartão (o defeito de 2026-09-01: descrição não era editável)', () => {
+    it('quem pode editar recebe CAMPOS, não texto fixo', async () => {
+      const f = await montar();
+      f.componentInstance.abrirCartao(100);
+      f.detectChanges();
+      const area = f.nativeElement.querySelector('textarea[aria-label="Descrição"]');
+      const titulo = f.nativeElement.querySelector('input[aria-label="Título do cartão"]');
+      const prazo = f.nativeElement.querySelector('input[aria-label="Prazo"]');
+      expect(area).not.toBeNull();
+      expect(titulo).not.toBeNull();
+      expect(prazo).not.toBeNull();
+    });
+
+    it('o botão Salvar só aparece quando há mudança', async () => {
+      const f = await montar();
+      f.componentInstance.abrirCartao(100);
+      f.detectChanges();
+      expect(f.componentInstance.cartaoMudou()).toBe(false);
+      f.componentInstance.rascDescricao.set('Agora tem descrição.');
+      f.detectChanges();
+      expect(f.componentInstance.cartaoMudou()).toBe(true);
+      expect(f.nativeElement.textContent).toContain('Salvar cartão');
+    });
+
+    it('salva descrição, título, prazo e etiquetas de uma vez', async () => {
+      const editar = vi.fn(() => Promise.resolve());
+      const f = await montar(
+        servico({ editarCartao: editar } as unknown as Partial<ControleAtividadesService>),
+      );
+      f.componentInstance.abrirCartao(100);
+      f.componentInstance.rascDescricao.set('Conferir os 137 itens sem NCM.');
+      f.componentInstance.rascPrazo.set('2026-09-30');
+      f.componentInstance.alternarEtiqueta('conv');
+      await f.componentInstance.salvarCartao();
+      expect(editar).toHaveBeenCalledWith(100, {
+        titulo: 'Conferir NCM',
+        descricao: 'Conferir os 137 itens sem NCM.',
+        prazo: '2026-09-30',
+        etiquetas: ['conv'],
+      });
+    });
+
+    it('recusa título vazio — é a identidade do cartão no quadro', async () => {
+      const editar = vi.fn(() => Promise.resolve());
+      const f = await montar(
+        servico({ editarCartao: editar } as unknown as Partial<ControleAtividadesService>),
+      );
+      f.componentInstance.abrirCartao(100);
+      f.componentInstance.rascTitulo.set('   ');
+      await f.componentInstance.salvarCartao();
+      expect(editar).not.toHaveBeenCalled();
+      expect(f.componentInstance.erro()).toContain('não pode ficar vazio');
+    });
+
+    it('descartar volta ao que estava salvo', async () => {
+      const f = await montar();
+      f.componentInstance.abrirCartao(100);
+      f.componentInstance.rascDescricao.set('rascunho perdido');
+      f.componentInstance.descartarEdicao();
+      expect(f.componentInstance.rascDescricao()).toBe('');
+      expect(f.componentInstance.cartaoMudou()).toBe(false);
+    });
+
+    it('quem está em consulta continua vendo texto, sem campo', async () => {
+      const f = await montar(
+        servico({
+          quadro: () =>
+            Promise.resolve(
+              quadro({ podeEditar: false, podeInteragir: false, souResponsavel: false }),
+            ),
+        } as Partial<ControleAtividadesService>),
+      );
+      f.componentInstance.abrirCartao(100);
+      f.detectChanges();
+      expect(f.nativeElement.querySelector('textarea[aria-label="Descrição"]')).toBeNull();
+      expect(f.nativeElement.textContent).toContain('Sem descrição.');
+    });
+  });
+
   it('mostra mensagem quando a carga falha', async () => {
     const f = await montar(
       servico({ quadros: () => Promise.reject(new Error('falhou')) } as Partial<ControleAtividadesService>),

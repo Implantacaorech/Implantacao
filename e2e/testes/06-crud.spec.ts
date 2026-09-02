@@ -26,8 +26,8 @@ async function criarProjeto(request: APIRequestContext, cliente: string) {
   return (await corpo(r)).id as number;
 }
 
-test.describe('CRUD — Projetos', () => {
-  test('ciclo completo: cria, lê, lista, busca, edita e exclui', async ({ request }) => {
+test.describe('CRUD — Projetos', { tag: '@p1' }, () => {
+  test('CT-036 — ciclo completo: cria, lê, lista, busca, edita e exclui', async ({ request }) => {
     const adm = await token(request, USUARIOS.adm);
     const coord = await token(request, USUARIOS.coordenador);
     const id = await criarProjeto(request, 'CRUD e2e LTDA');
@@ -58,7 +58,7 @@ test.describe('CRUD — Projetos', () => {
     expect((await request.delete(`/api/projetos/${id}`, { headers: cab(coord), failOnStatusCode: false })).status()).toBe(404);
   });
 
-  test('acentuação e símbolos sobrevivem à ida e volta', async ({ request }) => {
+  test('CT-037 — acentuação e símbolos sobrevivem à ida e volta', async ({ request }) => {
     const adm = await token(request, USUARIOS.adm);
     const nome = 'Açaí & Cia — Ção Ltda';
     const id = await criarProjeto(request, nome);
@@ -67,7 +67,7 @@ test.describe('CRUD — Projetos', () => {
     expect(lido.cliente).toBe(nome);
   });
 
-  test('validação do CREATE recusa o que não deve entrar', async ({ request }) => {
+  test('CT-038 — validação do CREATE recusa o que não deve entrar', async ({ request }) => {
     const tk = await token(request, USUARIOS.coordenador);
     const casos: [string, any][] = [
       ['corpo vazio', {}],
@@ -81,7 +81,7 @@ test.describe('CRUD — Projetos', () => {
     }
   });
 
-  test('id inválido não vira 500 nem registro fantasma', async ({ request }) => {
+  test('CT-039 — id inválido não vira 500 nem registro fantasma', async ({ request }) => {
     const adm = await token(request, USUARIOS.adm);
     for (const id of ['0', '-1', '999999999999']) {
       expect((await request.get(`/api/projetos/${id}`, { headers: cab(adm), failOnStatusCode: false })).status()).toBe(404);
@@ -90,8 +90,8 @@ test.describe('CRUD — Projetos', () => {
   });
 });
 
-test.describe('CRUD — Usuários', () => {
-  test('cria, lista sem vazar senha, edita sem apagar o resto', async ({ request }) => {
+test.describe('CRUD — Usuários', { tag: '@p1' }, () => {
+  test('CT-040 — cria, lista sem vazar senha, edita sem apagar o resto', async ({ request }) => {
     const adm = await token(request, USUARIOS.adm);
     const s = String(Date.now()).slice(-6);
     const novo = {
@@ -112,7 +112,7 @@ test.describe('CRUD — Usuários', () => {
     expect(dep.nome, 'edição parcial não pode apagar o nome').toBe(novo.nome);
   });
 
-  test('recusa duplicidade e dado inválido', async ({ request }) => {
+  test('CT-041 — recusa duplicidade e dado inválido', async ({ request }) => {
     const adm = await token(request, USUARIOS.adm);
     const s = String(Date.now()).slice(-6);
     const base = { login: `dup${s}`, nome: `Dup ${s}`, email: `dup${s}@teste.local`, senha: 'Teste@123', perfil: 'Consultor', codigoSicla: '1' };
@@ -134,8 +134,8 @@ test.describe('CRUD — Usuários', () => {
   });
 });
 
-test.describe('CRUD — RNS do projeto', () => {
-  test('ciclo completo e validação', async ({ request }) => {
+test.describe('CRUD — RNS do projeto', { tag: '@p1' }, () => {
+  test('CT-042 — ciclo completo e validação', async ({ request }) => {
     const adm = await token(request, USUARIOS.adm);
     const administrativo = await token(request, USUARIOS.administrativo);
     const id = await criarProjeto(request, `CRUD RNS ${Date.now()}`);
@@ -162,8 +162,8 @@ test.describe('CRUD — RNS do projeto', () => {
   });
 });
 
-test.describe('CRUD — Preferências do usuário', () => {
-  test('grava, lê, não vaza para outro usuário e apaga', async ({ request }) => {
+test.describe('CRUD — Preferências do usuário', { tag: '@p1' }, () => {
+  test('CT-043 — grava, lê, não vaza para outro usuário e apaga', async ({ request }) => {
     const consultor = await token(request, USUARIOS.consultor);
     const outro = await token(request, USUARIOS.administrativo);
 
@@ -177,8 +177,8 @@ test.describe('CRUD — Preferências do usuário', () => {
   });
 });
 
-test.describe('CRUD — Modelos de e-mail', () => {
-  test('edita, alterna ativo e o inativo continua visível na tela de administração', async ({ request }) => {
+test.describe('CRUD — Modelos de e-mail', { tag: '@p1' }, () => {
+  test('CT-044 — edita, alterna ativo e o inativo continua visível na tela de administração', async ({ request }) => {
     const adm = await token(request, USUARIOS.adm);
     const todos = async () =>
       (await corpo(await request.get('/api/config/modelos-email?apenasAtivos=false', { headers: cab(adm) }))).itens;
@@ -201,7 +201,7 @@ test.describe('CRUD — Modelos de e-mail', () => {
     await request.post(`/api/config/modelos-email/${alvo.id}`, { headers: cab(adm), data: original });
   });
 
-  test('id inexistente devolve 404, e não-ADM é recusado', async ({ request }) => {
+  test('CT-045 — id inexistente devolve 404, e não-ADM é recusado', async ({ request }) => {
     const adm = await token(request, USUARIOS.adm);
     const consultor = await token(request, USUARIOS.consultor);
     const inex = await request.post('/api/config/modelos-email/99999', {

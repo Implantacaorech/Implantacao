@@ -21,9 +21,9 @@ async function passo(request: any, pid: number, numero: number) {
   return lista.find((p: any) => p.numero === numero);
 }
 
-test.describe('RN-10 — designação por projeto vale em todos os caminhos', () => {
+test.describe('RN-10 — designação por projeto vale em todos os caminhos', { tag: '@p0' }, () => {
   test.describe(() => {
-    test('anexar documento com tipo="termo" não pode concluir o passo 18', async ({ request }) => {
+    test('CT-017 — anexar documento com tipo="termo" não pode concluir o passo 18', async ({ request }) => {
       const pid = await projetoNoPasso(request, 'RN10 Anexo Termo', 17);
       const tk = await token(request, 'consultor2'); // NÃO designado no projeto
 
@@ -38,7 +38,7 @@ test.describe('RN-10 — designação por projeto vale em todos os caminhos', ()
       expect(p18.concluido, `passo 18 concluído por "${p18.concluidoPor}"`).toBe(false);
     });
 
-    test('gerar o Termo não pode fechar o passo 18 de quem não é o consultor designado', async ({ request }) => {
+    test('CT-018 — gerar o Termo não pode fechar o passo 18 de quem não é o consultor designado', async ({ request }) => {
       const pid = await projetoNoPasso(request, 'RN10 Gerar Termo', 17);
       const tk = await token(request, 'consultor2');
       await request.post(`/api/projetos/${pid}/gerar-layout/termo`, {
@@ -48,7 +48,7 @@ test.describe('RN-10 — designação por projeto vale em todos os caminhos', ()
       expect(p18.concluido, `passo 18 concluído por "${p18.concluidoPor}"`).toBe(false);
     });
 
-    test('baixar o Termo EM BRANCO (modo=modelo) não pode concluir o passo 18', async ({ request }) => {
+    test('CT-019 — baixar o Termo EM BRANCO (modo=modelo) não pode concluir o passo 18', async ({ request }) => {
       const pid = await projetoNoPasso(request, 'RN10 Termo Branco', 17);
       const tk = await token(request, USUARIOS.administrativo);
       await request.post(`/api/projetos/${pid}/gerar-layout/termo?modo=modelo`, {
@@ -58,7 +58,7 @@ test.describe('RN-10 — designação por projeto vale em todos os caminhos', ()
       expect(p18.concluido, 'ver o modelo em branco não é entregar o Termo').toBe(false);
     });
 
-    test('PUT /projetos/:id não pode deixar alguém se autodesignar GCI e concluir o passo 10', async ({ request }) => {
+    test('CT-020 — PUT /projetos/:id não pode deixar alguém se autodesignar GCI e concluir o passo 10', async ({ request }) => {
       const pid = await projetoNoPasso(request, 'RN10 Auto GCI', 8);
       const tk = await token(request, 'gci2'); // GCI de outro projeto
 
@@ -73,7 +73,7 @@ test.describe('RN-10 — designação por projeto vale em todos os caminhos', ()
       expect(r.status(), 'quem não é o GCI do projeto não conclui a Criação do Projeto').toBeGreaterThanOrEqual(400);
     });
 
-    test('quem só tem CONSULTA na carteira não pode reescrever a ficha', async ({ request }) => {
+    test('CT-021 — quem só tem CONSULTA na carteira não pode reescrever a ficha', async ({ request }) => {
       const pid = await projetoNoPasso(request, 'RN10 Consulta Escreve', 1);
       const tk = await token(request, USUARIOS.comercial); // nível 'consulta' em carteira
       await request.put(`/api/projetos/${pid}`, {
@@ -84,7 +84,7 @@ test.describe('RN-10 — designação por projeto vale em todos os caminhos', ()
       expect(proj.cliente).not.toBe('REESCRITO');
     });
 
-    test('POST /fluxo/criar não pode concluir o passo 1 para quem não cadastra cliente', async ({ request }) => {
+    test('CT-022 — POST /fluxo/criar não pode concluir o passo 1 para quem não cadastra cliente', async ({ request }) => {
       const tk = await token(request, USUARIOS.consultor);
       const r = await request.post('/api/fluxo/criar', {
         headers: cab(tk), data: { cliente: 'RN10 Fluxo Sem Gate' }, failOnStatusCode: false,
@@ -93,7 +93,7 @@ test.describe('RN-10 — designação por projeto vale em todos os caminhos', ()
     });
   });
 
-  test('o gate de ORDEM continua valendo na auto-conclusão', async ({ request }) => {
+  test('CT-023 — o gate de ORDEM continua valendo na auto-conclusão', async ({ request }) => {
     const pid = await projetoNoPasso(request, 'RN10 Ordem Auto', 8);
     const tk = await token(request, USUARIOS.consultor);
     await request.post(`/api/projetos/${pid}/gerar-layout/termo`, {
@@ -104,8 +104,8 @@ test.describe('RN-10 — designação por projeto vale em todos os caminhos', ()
   });
 });
 
-test.describe('Destinatários dos e-mails do processo', () => {
-  test('com UM GCI, o e-mail do passo 8 chega ao GCI', async ({ request }) => {
+test.describe('Destinatários dos e-mails do processo', { tag: '@p1' }, () => {
+  test('CT-024 — com UM GCI, o e-mail do passo 8 chega ao GCI', async ({ request }) => {
     const pid = await projetoNoPasso(request, 'Email 1 GCI', 8);
     const tk = await token(request, USUARIOS.adm);
     const lista = dados(await (await request.get(`/api/projetos/${pid}/emails`, { headers: cab(tk) })).json());
@@ -113,7 +113,7 @@ test.describe('Destinatários dos e-mails do processo', () => {
     expect(e8?.para ?? '').toContain('gci@teste.local');
   });
 
-  test('com DOIS GCIs, o e-mail do passo 8 ainda tem de chegar a um GCI', async ({ request }) => {
+  test('CT-025 — com DOIS GCIs, o e-mail do passo 8 ainda tem de chegar a um GCI', async ({ request }) => {
     const adm = await token(request, USUARIOS.adm);
     const coord = await token(request, USUARIOS.coordenador);
     const criado = dados(await (await request.post('/api/projetos', {
@@ -143,8 +143,8 @@ test.describe('Destinatários dos e-mails do processo', () => {
   });
 });
 
-test.describe('RN-4 — data da assinatura', () => {
-  test('data inexistente (2026-13-45) não pode fechar o passo 7', async ({ request }) => {
+test.describe('RN-4 — data da assinatura', { tag: '@p0' }, () => {
+  test('CT-026 — data inexistente (2026-13-45) não pode fechar o passo 7', async ({ request }) => {
     const pid = await projetoNoPasso(request, 'RN4 Data Invalida', 6);
     const tk = await token(request, USUARIOS.administrativo);
     const r = await request.post(`/api/projetos/${pid}/passos/7/concluir`, {
@@ -153,7 +153,7 @@ test.describe('RN-4 — data da assinatura', () => {
     expect(r.status(), 'mês 13, dia 45').toBeGreaterThanOrEqual(400);
   });
 
-  test('data de assinatura no futuro não pode fechar o passo 7', async ({ request }) => {
+  test('CT-027 — data de assinatura no futuro não pode fechar o passo 7', async ({ request }) => {
     const pid = await projetoNoPasso(request, 'RN4 Data Futura', 6);
     const tk = await token(request, USUARIOS.administrativo);
     const r = await request.post(`/api/projetos/${pid}/passos/7/concluir`, {
@@ -163,8 +163,8 @@ test.describe('RN-4 — data da assinatura', () => {
   });
 });
 
-test.describe('Cadastro de usuário — homônimo', () => {
-  test('recusa um segundo usuário ativo com o mesmo nome', async ({ request }) => {
+test.describe('Cadastro de usuário — homônimo', { tag: '@p1' }, () => {
+  test('CT-028 — recusa um segundo usuário ativo com o mesmo nome', async ({ request }) => {
     const tk = await token(request, USUARIOS.adm);
     const r = await request.post('/api/usuarios', {
       headers: cab(tk),
@@ -178,8 +178,8 @@ test.describe('Cadastro de usuário — homônimo', () => {
   });
 });
 
-test.describe('Tamanho do corpo da requisição', () => {
-  test('corpo acima do limite responde 413, não um 404 dizendo que a rota não existe', async ({ request }) => {
+test.describe('Tamanho do corpo da requisição', { tag: '@p1' }, () => {
+  test('CT-029 — corpo acima do limite responde 413, não um 404 dizendo que a rota não existe', async ({ request }) => {
     const tk = await token(request, USUARIOS.adm);
     const r = await request.post('/api/projetos', {
       headers: cab(tk), data: { cliente: 'X', observacoes: 'A'.repeat(200_000) },

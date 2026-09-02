@@ -113,15 +113,20 @@
         </a>
       } @else {
       <div class="side-grp">Execução</div>
+      <!-- ORDEM DEFINIDA PELO USUÁRIO em 2026-09-01. Não é alfabética nem por data de
+           entrada: segue o caminho de trabalho do consultor — chegar (Visão Geral), abrir
+           cliente (Novo Cliente, Carteira), tocar o dia a dia (Controle de Atividades),
+           registrar (Protocolo, Agenda, RNS) e, por fim, as ferramentas de apoio
+           (Transcrição, RechEdu). Mexer aqui é mexer no hábito de quem usa. -->
+      @if (podeVisaoGeral()) {
+        <a class="side-link" routerLink="/home" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg>Visão Geral
+        </a>
+      }
       @if (podeNovoCliente()) {
         <a class="side-link" routerLink="/clientes/novo" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg>Novo Cliente
           <span class="side-tip">Consulta SICLA + cadastro</span>
-        </a>
-      }
-      @if (podeVisaoGeral()) {
-        <a class="side-link" routerLink="/home" routerLinkActive="on">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-dashboard"/></svg>Visão Geral
         </a>
       }
       @if (podeCarteira()) {
@@ -130,12 +135,45 @@
           <span class="side-tip">Projetos</span>
         </a>
       }
+      @if (podeControleAtividades()) {
+        <a class="side-link" routerLink="/atividades" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg>Controle de Atividades
+          <span class="side-tip">Quadro por cliente</span>
+        </a>
+      }
+      @if (podeProtocolo()) {
+        <a class="side-link" routerLink="/protocolo" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-link"/></svg>Protocolos
+          <span class="side-tip">Portal Rech</span>
+        </a>
+      }
+      @if (podeAgenda()) {
+        <a class="side-link" routerLink="/agenda" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-calendar"/></svg>Agendas
+          <span class="side-tip">Agendas e compromissos</span>
+        </a>
+      }
+      @if (podeRns()) {
+        <a class="side-link" routerLink="/rns" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>RNS
+          <span class="side-tip">Consulta de assuntos (SICLA)</span>
+        </a>
+      }
       @if (podeProtocolos()) {
         <a class="side-link" routerLink="/protocolos" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-bulb"/></svg>Transcrição Áudio/Vídeo
           <span class="side-tip">Áudio/vídeo → conhecimento</span>
         </a>
       }
+      @if (podeRechEdu()) {
+        <a class="side-link" routerLink="/rechedu" routerLinkActive="on">
+          <svg class="svgi" aria-hidden="true"><use href="#ic-book"/></svg>RechEdu
+          <span class="side-tip">Portal de educação</span>
+        </a>
+      }
+      <!-- As três Matrizes NÃO constavam da ordem que o usuário passou. Ficaram aqui, ao
+           final e na ordem anterior entre si, porque reordenar não é remover — tirá-las do
+           menu seria decisão dele, não consequência de uma reorganização. -->
       @if (podeMatriz()) {
         <a class="side-link" routerLink="/matriz" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg>Matriz
@@ -152,36 +190,6 @@
         <a class="side-link" routerLink="/matriz-funcoes" routerLinkActive="on">
           <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg>Matriz por Menu - Funções
           <span class="side-tip">Notas por função implantável (LISTA_FUNCOES do SICLA)</span>
-        </a>
-      }
-      @if (podeProtocolo()) {
-        <a class="side-link" routerLink="/protocolo" routerLinkActive="on">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-link"/></svg>Protocolo
-          <span class="side-tip">Portal Rech</span>
-        </a>
-      }
-      @if (podeRechEdu()) {
-        <a class="side-link" routerLink="/rechedu" routerLinkActive="on">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-book"/></svg>RechEdu
-          <span class="side-tip">Portal de educação</span>
-        </a>
-      }
-      @if (podeAgenda()) {
-        <a class="side-link" routerLink="/agenda" routerLinkActive="on">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-calendar"/></svg>Agenda
-          <span class="side-tip">Agendas e compromissos</span>
-        </a>
-      }
-      @if (podeControleAtividades()) {
-        <a class="side-link" routerLink="/atividades" routerLinkActive="on">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-layers"/></svg>Controle de Atividades
-          <span class="side-tip">Quadro por cliente</span>
-        </a>
-      }
-      @if (podeRns()) {
-        <a class="side-link" routerLink="/rns" routerLinkActive="on">
-          <svg class="svgi" aria-hidden="true"><use href="#ic-file"/></svg>RNS
-          <span class="side-tip">Consulta de assuntos (SICLA)</span>
         </a>
       }
       @if (temGestao()) {

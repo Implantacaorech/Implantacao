@@ -70,14 +70,14 @@ async function criarCliente(
   return { id: c.id, chave: c.chave };
 }
 
-test.describe('API de Dados — a fronteira recusa quem deve recusar', () => {
+test.describe('API de Dados — a fronteira recusa quem deve recusar', { tag: '@p0' }, () => {
   // A administração da API existe só no Portal API. Sem ele no ar, PULA — um vermelho
   // permanente treina o time a ignorar o CI (ver apoio/portal-api.ts).
   test.beforeEach(async ({ request }) => {
     test.skip(!(await portalApiNoAr(request)), SEM_PORTAL_API);
   });
 
-  test('sem credencial nenhuma: 401 no catálogo e na execução', async ({ request }) => {
+  test('CT-054 — sem credencial nenhuma: 401 no catálogo e na execução', async ({ request }) => {
     const cat = await request.get(`${BASE}/consultas`, { failOnStatusCode: false });
     expect(cat.status()).toBe(401);
 
@@ -88,7 +88,7 @@ test.describe('API de Dados — a fronteira recusa quem deve recusar', () => {
     expect(exec.status()).toBe(401);
   });
 
-  test('o catálogo NUNCA devolve o SQL', async ({ request }) => {
+  test('CT-055 — o catálogo NUNCA devolve o SQL', async ({ request }) => {
     const adm = await admPortalApi(request);
     const r = await request.get(`${BASE}/consultas`, { headers: cab(adm) });
     expect(r.status()).toBe(200);
@@ -106,7 +106,7 @@ test.describe('API de Dados — a fronteira recusa quem deve recusar', () => {
     expect(cat.consultas.every((c: any) => !('origem' in c) && !('sql' in c))).toBe(true);
   });
 
-  test('consulta fora do catálogo: 404, não 500', async ({ request }) => {
+  test('CT-056 — consulta fora do catálogo: 404, não 500', async ({ request }) => {
     const adm = await admPortalApi(request);
     const r = await request.post(`${BASE}/consultas/nao.existe.aqui/executar`, {
       headers: cab(adm),
@@ -116,7 +116,7 @@ test.describe('API de Dados — a fronteira recusa quem deve recusar', () => {
     expect(r.status()).toBe(404);
   });
 
-  test('parâmetro inválido: 400 — e o banco nem é procurado', async ({ request }) => {
+  test('CT-057 — parâmetro inválido: 400 — e o banco nem é procurado', async ({ request }) => {
     const adm = await admPortalApi(request);
     const r = await request.post(`${BASE}/consultas/${CONSULTA}/executar`, {
       headers: cab(adm),
@@ -127,7 +127,7 @@ test.describe('API de Dados — a fronteira recusa quem deve recusar', () => {
     expect(r.status()).toBe(400);
   });
 
-  test('parâmetro que não existe no contrato é recusado', async ({ request }) => {
+  test('CT-058 — parâmetro que não existe no contrato é recusado', async ({ request }) => {
     const adm = await admPortalApi(request);
     const r = await request.post(`${BASE}/consultas/${CONSULTA}/executar`, {
       headers: cab(adm),
@@ -137,7 +137,7 @@ test.describe('API de Dados — a fronteira recusa quem deve recusar', () => {
     expect(r.status()).toBe(400);
   });
 
-  test('SQL, conexão e limite no corpo são ignorados — não há atalho', async ({ request }) => {
+  test('CT-059 — SQL, conexão e limite no corpo são ignorados — não há atalho', async ({ request }) => {
     const adm = await admPortalApi(request);
     const r = await request.post(`${BASE}/consultas/${CONSULTA}/executar`, {
       headers: cab(adm),
@@ -155,7 +155,7 @@ test.describe('API de Dados — a fronteira recusa quem deve recusar', () => {
     expect(await r.text()).not.toContain('SICLA.CLIENTES');
   });
 
-  test('requisição legítima chega até a conexão e para em 503 (nada cadastrado aqui)', async ({
+  test('CT-060 — requisição legítima chega até a conexão e para em 503 (nada cadastrado aqui)', async ({
     request,
   }) => {
     const adm = await admPortalApi(request);
@@ -169,7 +169,7 @@ test.describe('API de Dados — a fronteira recusa quem deve recusar', () => {
     expect((await r.text()).toLowerCase()).toContain('sicla');
   });
 
-  test('quem não enxerga a tela não consulta o dado por baixo dela', async ({ request }) => {
+  test('CT-061 — quem não enxerga a tela não consulta o dado por baixo dela', async ({ request }) => {
     // O Comercial não tem o menu `rns`. Se a API respondesse aqui, ela seria uma porta
     // lateral em volta do painel de Permissões.
     const comercial = await tokenPortalApi(request, USUARIOS.comercial);
@@ -182,14 +182,14 @@ test.describe('API de Dados — a fronteira recusa quem deve recusar', () => {
   });
 });
 
-test.describe('API de Dados — clientes de máquina', () => {
+test.describe('API de Dados — clientes de máquina', { tag: '@p0' }, () => {
   // A administração da API existe só no Portal API. Sem ele no ar, PULA — um vermelho
   // permanente treina o time a ignorar o CI (ver apoio/portal-api.ts).
   test.beforeEach(async ({ request }) => {
     test.skip(!(await portalApiNoAr(request)), SEM_PORTAL_API);
   });
 
-  test('só ADM administra: os demais perfis levam 403', async ({ request }) => {
+  test('CT-062 — só ADM administra: os demais perfis levam 403', async ({ request }) => {
     for (const login of [USUARIOS.coordenador, USUARIOS.consultor, USUARIOS.comercial]) {
       const tk = await tokenPortalApi(request, login);
       const r = await request.get(`${ADMIN}/clientes`, {
@@ -200,7 +200,7 @@ test.describe('API de Dados — clientes de máquina', () => {
     }
   });
 
-  test('uma chave de máquina NÃO administra a API (não emite outra chave)', async ({
+  test('CT-063 — uma chave de máquina NÃO administra a API (não emite outra chave)', async ({
     request,
   }) => {
     const { chave } = await criarCliente(request, 'e2e escalonamento', [CONSULTA]);
@@ -220,7 +220,7 @@ test.describe('API de Dados — clientes de máquina', () => {
     expect(nova.status()).toBe(401);
   });
 
-  test('a chave é exibida uma vez e nunca volta na listagem', async ({ request }) => {
+  test('CT-064 — a chave é exibida uma vez e nunca volta na listagem', async ({ request }) => {
     const { chave } = await criarCliente(request, 'e2e chave única', [CONSULTA]);
     expect(chave).toMatch(/^rd_[0-9a-f]+_[0-9a-f]+$/);
 
@@ -230,7 +230,7 @@ test.describe('API de Dados — clientes de máquina', () => {
     expect(bruto).not.toContain('chaveHash');
   });
 
-  test('chave válida entra; chave inventada, alterada ou revogada não', async ({ request }) => {
+  test('CT-065 — chave válida entra; chave inventada, alterada ou revogada não', async ({ request }) => {
     const { id, chave } = await criarCliente(request, 'e2e ciclo de vida', [CONSULTA]);
 
     const ok = await request.get(`${BASE}/consultas`, { headers: chaveCab(chave) });
@@ -257,7 +257,7 @@ test.describe('API de Dados — clientes de máquina', () => {
     expect(revogada.status(), 'revogar corta o acesso na hora').toBe(401);
   });
 
-  test('rotacionar mata a chave anterior imediatamente', async ({ request }) => {
+  test('CT-066 — rotacionar mata a chave anterior imediatamente', async ({ request }) => {
     const { id, chave: antiga } = await criarCliente(request, 'e2e rotação', [CONSULTA]);
     const adm = await admPortalApi(request);
 
@@ -275,7 +275,7 @@ test.describe('API de Dados — clientes de máquina', () => {
     expect(atual.status()).toBe(200);
   });
 
-  test('o token é um teto POR CONSULTA: fora da lista, 403 — e o catálogo vem recortado', async ({
+  test('CT-067 — o token é um teto POR CONSULTA: fora da lista, 403 — e o catálogo vem recortado', async ({
     request,
   }) => {
     // Autoriza UMA consulta só. É a diferença que o desenho das duas instâncias exige: um
@@ -301,7 +301,7 @@ test.describe('API de Dados — clientes de máquina', () => {
     expect(fora.status()).toBe(403);
   });
 
-  test('uma consulta da MESMA conexão, não autorizada, também dá 403', async ({
+  test('CT-068 — uma consulta da MESMA conexão, não autorizada, também dá 403', async ({
     request,
   }) => {
     // O caso que a autorização por conexão deixava passar: mesmo banco, consulta diferente.
@@ -321,7 +321,7 @@ test.describe('API de Dados — clientes de máquina', () => {
     expect(vizinha.status()).toBe(403);
   });
 
-  test('consulta inexistente não é cadastrável num token', async ({ request }) => {
+  test('CT-069 — consulta inexistente não é cadastrável num token', async ({ request }) => {
     const adm = await admPortalApi(request);
     const r = await request.post(`${ADMIN}/clientes`, {
       headers: cab(adm),
@@ -337,7 +337,7 @@ test.describe('API de Dados — clientes de máquina', () => {
 /** Consulta criada pela TELA (fase 3). A autonomia de publicar sem release só é aceitável
  * porque a publicação valida o contrato inteiro na hora de salvar — é isso que se ataca aqui.
  * Nenhum destes casos precisa de banco externo: a recusa acontece antes de qualquer conexão. */
-test.describe('API de Dados — publicar consulta pela tela', () => {
+test.describe('API de Dados — publicar consulta pela tela', { tag: '@p0' }, () => {
   // A administração da API existe só no Portal API. Sem ele no ar, PULA — um vermelho
   // permanente treina o time a ignorar o CI (ver apoio/portal-api.ts).
   test.beforeEach(async ({ request }) => {
@@ -360,7 +360,7 @@ test.describe('API de Dados — publicar consulta pela tela', () => {
     ...over,
   });
 
-  test('só ADM administra consultas — nem usuário comum, nem chave de máquina', async ({
+  test('CT-070 — só ADM administra consultas — nem usuário comum, nem chave de máquina', async ({
     request,
   }) => {
     const comum = await tokenPortalApi(request, USUARIOS.consultor);
@@ -376,7 +376,7 @@ test.describe('API de Dados — publicar consulta pela tela', () => {
     expect(comChave.status()).toBe(401);
   });
 
-  test('não publica nada que não seja SELECT', async ({ request }) => {
+  test('CT-071 — não publica nada que não seja SELECT', async ({ request }) => {
     const adm = await admPortalApi(request);
     const r = await request.post(NOVA, {
       headers: cab(adm),
@@ -387,7 +387,7 @@ test.describe('API de Dados — publicar consulta pela tela', () => {
     expect(await r.text()).toContain('SELECT');
   });
 
-  test('publicar sem teto de linhas é recusado', async ({ request }) => {
+  test('CT-072 — publicar sem teto de linhas é recusado', async ({ request }) => {
     const adm = await admPortalApi(request);
     const r = await request.post(NOVA, {
       headers: cab(adm),
@@ -397,7 +397,7 @@ test.describe('API de Dados — publicar consulta pela tela', () => {
     expect(r.status()).toBe(400);
   });
 
-  test('bind sem parâmetro declarado é recusado na publicação', async ({ request }) => {
+  test('CT-073 — bind sem parâmetro declarado é recusado na publicação', async ({ request }) => {
     // Deixar passar geraria uma consulta que autentica, entra no catálogo e sempre falha no
     // banco (ORA-01008) — erro que só aparece para quem consome.
     const adm = await admPortalApi(request);
@@ -414,7 +414,7 @@ test.describe('API de Dados — publicar consulta pela tela', () => {
     expect(await r.text()).toContain('cliente');
   });
 
-  test('a tela não sequestra um nome do catálogo de código', async ({ request }) => {
+  test('CT-074 — a tela não sequestra um nome do catálogo de código', async ({ request }) => {
     const adm = await admPortalApi(request);
     const r = await request.post(NOVA, {
       headers: cab(adm),
@@ -424,7 +424,7 @@ test.describe('API de Dados — publicar consulta pela tela', () => {
     expect(r.status()).toBe(400);
   });
 
-  test('rascunho salva, entra na lista e NÃO aparece no catálogo', async ({ request }) => {
+  test('CT-075 — rascunho salva, entra na lista e NÃO aparece no catálogo', async ({ request }) => {
     const adm = await admPortalApi(request);
     const salvo = await request.post(NOVA, { headers: cab(adm), data: consulta() });
     expect(salvo.status(), await salvo.text()).toBe(201);
@@ -440,7 +440,7 @@ test.describe('API de Dados — publicar consulta pela tela', () => {
     await request.delete(`${NOVA}/e2e_consulta`, { headers: cab(adm) });
   });
 
-  test('publicada entra no catálogo e pode ser autorizada num token', async ({ request }) => {
+  test('CT-076 — publicada entra no catálogo e pode ser autorizada num token', async ({ request }) => {
     const adm = await admPortalApi(request);
     const salvo = await request.post(NOVA, {
       headers: cab(adm),
@@ -477,12 +477,12 @@ test.describe('API de Dados — publicar consulta pela tela', () => {
  * A conexão é o que só o **Portal API** tem; o token é o que só o **Portal Implantação**
  * guarda. O que se ataca aqui é o que não pode escapar de cada ponta: a senha do banco de um
  * lado, o token do outro. */
-test.describe('API de Dados — conexões (Portal API)', () => {
+test.describe('API de Dados — conexões (Portal API)', { tag: '@p0' }, () => {
   test.beforeEach(async ({ request }) => {
     test.skip(!(await portalApiNoAr(request)), SEM_PORTAL_API);
   });
 
-  test('a configuração das conexões NUNCA devolve a senha', async ({ request }) => {
+  test('CT-077 — a configuração das conexões NUNCA devolve a senha', async ({ request }) => {
     const adm = await admPortalApi(request);
     const r = await request.get(`${ADMIN}/conexoes`, { headers: cab(adm) });
     expect(r.status()).toBe(200);
@@ -498,7 +498,7 @@ test.describe('API de Dados — conexões (Portal API)', () => {
     expect(corpo).not.toContain('"senha"');
   });
 
-  test('conexão inexistente é 404, não 500', async ({ request }) => {
+  test('CT-078 — conexão inexistente é 404, não 500', async ({ request }) => {
     const adm = await admPortalApi(request);
     const r = await request.post(`${ADMIN}/conexoes/oracle-do-vizinho`, {
       headers: cab(adm),
@@ -508,7 +508,7 @@ test.describe('API de Dados — conexões (Portal API)', () => {
     expect(r.status()).toBe(404);
   });
 
-  test('só ADM administra conexão — nem usuário comum, nem chave de máquina', async ({
+  test('CT-079 — só ADM administra conexão — nem usuário comum, nem chave de máquina', async ({
     request,
   }) => {
     const comum = await tokenPortalApi(request, USUARIOS.consultor);
@@ -530,8 +530,8 @@ test.describe('API de Dados — conexões (Portal API)', () => {
 });
 
 /** Lado CONSUMIDOR — roda no PAINEL, e por isso NÃO depende do Portal API estar no ar. */
-test.describe('API de Dados — tokens do Painel', () => {
-  test('o token do lado consumidor não volta na listagem — só o prefixo', async ({
+test.describe('API de Dados — tokens do Painel', { tag: '@p0' }, () => {
+  test('CT-080 — o token do lado consumidor não volta na listagem — só o prefixo', async ({
     request,
   }) => {
     const adm = await token(request, USUARIOS.adm);
@@ -562,7 +562,7 @@ test.describe('API de Dados — tokens do Painel', () => {
     await request.delete(`${TOKENS_DO_PAINEL}/${id}`, { headers: cab(adm) });
   });
 
-  test('sondar um Portal API inalcançável responde com o endereço, não com stack', async ({
+  test('CT-081 — sondar um Portal API inalcançável responde com o endereço, não com stack', async ({
     request,
   }) => {
     const adm = await token(request, USUARIOS.adm);
@@ -578,7 +578,7 @@ test.describe('API de Dados — tokens do Painel', () => {
     expect(s.mensagem).toContain('127.0.0.1:59999');
   });
 
-  test('token colado pela METADE é diagnosticado, não chamado de revogado', async ({
+  test('CT-082 — token colado pela METADE é diagnosticado, não chamado de revogado', async ({
     request,
   }) => {
     // Caso real de 2026-08-26: a cópia com o mouse levou meio token, o Portal API devolveu
@@ -595,7 +595,7 @@ test.describe('API de Dados — tokens do Painel', () => {
     expect(s.mensagem).not.toContain('revogado');
   });
 
-  test('só ADM mexe nos tokens do Painel', async ({ request }) => {
+  test('CT-083 — só ADM mexe nos tokens do Painel', async ({ request }) => {
     const comum = await token(request, USUARIOS.consultor);
     const r = await request.get(TOKENS_DO_PAINEL, {
       headers: cab(comum),

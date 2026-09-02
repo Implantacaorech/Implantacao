@@ -28,6 +28,7 @@ import { DesignacaoModule } from './designacao/designacao.module';
 import { DigestModule } from './digest/digest.module';
 import { PlanoCronogramaModule } from './plano-cronograma/plano-cronograma.module';
 import { ControleAtividadesModule } from './controle-atividades/controle-atividades.module';
+import { PresencaModule } from './presenca/presenca.module';
 import { LegadoModule } from './legado/legado.module';
 import { AgentesModule } from './agentes/agentes.module';
 import { PassosModule } from './passos/passos.module';
@@ -115,6 +116,7 @@ import { DadosConsumoModule } from './dados/consumo/dados-consumo.module';
     DigestModule,
     PlanoCronogramaModule,
     ControleAtividadesModule,
+    PresencaModule,
     LegadoModule,
     AgentesModule,
     PassosModule,

@@ -11,10 +11,10 @@ const dados = (j: any) => (j && typeof j === 'object' && 'data' in j ? j.data : 
  * devolvia esse corpo já substituído ao concluir. Resultado: o Administrativo recebia
  * "Descrição do Comercial:" em branco — a regra nunca se cumpria pelo caminho da tela.
  */
-test.describe('RN-7 — a descrição do passo 5 chega ao e-mail', () => {
+test.describe('RN-7 — a descrição do passo 5 chega ao e-mail', { tag: '@p1' }, () => {
   const DESCRICAO = 'Fechado em 12x, desconto de 8%, virada em outubro.';
 
-  test('a prévia remontada já contém o que foi escrito', async ({ request }) => {
+  test('CT-030 — a prévia remontada já contém o que foi escrito', async ({ request }) => {
     const pid = await projetoNoPasso(request, 'RN7 Previa', 4);
     const tk = await token(request, USUARIOS.comercial);
     const previa = dados(
@@ -28,7 +28,7 @@ test.describe('RN-7 — a descrição do passo 5 chega ao e-mail', () => {
     expect(previa.corpo).toContain(DESCRICAO);
   });
 
-  test('o e-mail registrado carrega a descrição, tendo sido redigido ou não', async ({ request }) => {
+  test('CT-031 — o e-mail registrado carrega a descrição, tendo sido redigido ou não', async ({ request }) => {
     const adm = await token(request, USUARIOS.adm);
 
     // (a) caminho da TELA: prévia com a descrição -> corpo revisado -> concluir
@@ -69,7 +69,9 @@ test.describe('RN-7 — a descrição do passo 5 chega ao e-mail', () => {
  * que inserisse `{{CONTATO_TEL}}` num modelo `passo-N` mandava o token LITERAL — inclusive
  * nos passos 15, 16 e 21, que vão ao cliente. `TOKENS_PASSO` passou a herdar `VAR_CAMPO`.
  */
-test('nenhum token do seletor de modelos sai literal no e-mail do passo', async ({ request }) => {
+test('CT-032 — nenhum token do seletor de modelos sai literal no e-mail do passo', { tag: '@p1' }, async ({
+  request,
+}) => {
   const adm = await token(request, USUARIOS.adm);
   const coord = await token(request, USUARIOS.coordenador);
 
@@ -117,7 +119,9 @@ test('nenhum token do seletor de modelos sai literal no e-mail do passo', async 
  * "Avançar") leem a ORDEM do array `ETAPAS`. Enquanto `Designação` vinha depois de `Projeto`
  * nesse array — mas antes dele nos passos —, o projeto REGREDIA ao sair da Designação.
  */
-test('a macro-etapa nunca regride enquanto os 21 passos avançam', async ({ request }) => {
+test('CT-033 — a macro-etapa nunca regride enquanto os 21 passos avançam', { tag: '@p0' }, async ({
+  request,
+}) => {
   const ORDEM = ['Agendamento', 'Levantamento', 'Designação', 'Projeto', 'Cronograma e Check-list', 'Encerramento'];
   const adm = await token(request, USUARIOS.adm);
   const pid = await projetoNoPasso(request, 'Ordem das Etapas', 0);
@@ -151,7 +155,7 @@ test('a macro-etapa nunca regride enquanto os 21 passos avançam', async ({ requ
 
 /** O passo 8 é do COORDENADOR, mas a rota que salva a equipe também aceita o Administrativo
  * (que a mantém ao longo do projeto). Salvar a lista não pode fechar o passo dele. */
-test.describe('passo 8 — salvar a equipe só conclui para quem responde pelo passo', () => {
+test.describe('passo 8 — salvar a equipe só conclui para quem responde pelo passo', { tag: '@p0' }, () => {
   async function projetoNoPasso7(request: any, cliente: string) {
     const adm = await token(request, USUARIOS.adm);
     const coord = await token(request, USUARIOS.coordenador);
@@ -175,7 +179,7 @@ test.describe('passo 8 — salvar a equipe só conclui para quem responde pelo p
     return lista.find((p: any) => p.numero === 8);
   }
 
-  test('Administrativo salvando a equipe NÃO conclui o passo 8', async ({ request }) => {
+  test('CT-034 — Administrativo salvando a equipe NÃO conclui o passo 8', async ({ request }) => {
     const pid = await projetoNoPasso7(request, 'Passo8 Adm');
     const tk = await token(request, USUARIOS.administrativo);
     await request.patch(`/api/projetos/${pid}/pessoas`, {
@@ -185,7 +189,7 @@ test.describe('passo 8 — salvar a equipe só conclui para quem responde pelo p
     expect(p8.concluido, `concluído por "${p8.concluidoPor}"`).toBe(false);
   });
 
-  test('Coordenador salvando a equipe conclui o passo 8', async ({ request }) => {
+  test('CT-035 — Coordenador salvando a equipe conclui o passo 8', async ({ request }) => {
     const pid = await projetoNoPasso7(request, 'Passo8 Coord');
     const tk = await token(request, USUARIOS.coordenador);
     await request.patch(`/api/projetos/${pid}/pessoas`, {

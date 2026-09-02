@@ -10,9 +10,11 @@ import {
   ContatoCliente,
   Etiqueta,
   ListaDeQuadros,
+  PreviaTrello,
   ProjetoDisponivel,
   QuadroCompleto,
   QuadroResumo,
+  ResultadoImportacao,
 } from '../../core/models/controle-atividades.model';
 
 /** Execução → Controle de Atividades — quadro de atividades por cliente.
@@ -56,6 +58,16 @@ export class ControleAtividadesComponent {
   readonly textoItem = signal('');
   readonly urlLink = signal('');
 
+  /** Rascunho da edição do cartão. O que está sendo digitado vive AQUI e não no objeto do
+   * quadro: várias ações (marcar checklist, comentar, anexar) recarregam o quadro inteiro, e
+   * se o texto morasse no cartão recarregado, o que a pessoa está escrevendo sumiria no meio
+   * da digitação. */
+  readonly rascTitulo = signal('');
+  readonly rascDescricao = signal('');
+  readonly rascPrazo = signal('');
+  readonly rascEtiquetas = signal<string[]>([]);
+  readonly salvandoCartao = signal(false);
+
   // --- criação
   readonly criandoNaLista = signal<number | null>(null);
   readonly tituloNovo = signal('');
@@ -65,6 +77,14 @@ export class ControleAtividadesComponent {
   readonly projetoEscolhido = signal(0);
   readonly termoCliente = signal('');
   readonly clientesAchados = signal<{ codigo: string; cliente: string }[]>([]);
+
+  // --- importação do Trello
+  readonly importando = signal(false);
+  readonly arquivoTrello = signal<File | null>(null);
+  readonly previaTrello = signal<PreviaTrello | null>(null);
+  readonly destinos = signal<Record<string, number>>({});
+  readonly resultadoImport = signal<ResultadoImportacao | null>(null);
+  readonly ocupadoImport = signal(false);
 
   // --- busca geral
   readonly termoBusca = signal('');
@@ -275,6 +295,7 @@ export class ControleAtividadesComponent {
 
   abrirCartao(id: number): void {
     this.cartaoAberto.set(id);
+    this.semearRascunho();
     this.textoComentario.set('');
     this.textoItem.set('');
     this.urlLink.set('');
@@ -282,6 +303,75 @@ export class ControleAtividadesComponent {
   }
   fecharCartao(): void {
     this.cartaoAberto.set(null);
+  }
+
+  /** Recarrega o rascunho a partir do cartão salvo — ao abrir e depois de gravar. */
+  private semearRascunho(): void {
+    const c = this.cartao();
+    this.rascTitulo.set(c?.titulo ?? '');
+    this.rascDescricao.set(c?.descricao ?? '');
+    this.rascPrazo.set(c?.prazo ?? '');
+    this.rascEtiquetas.set([...(c?.etiquetas ?? [])]);
+  }
+
+  /** Há algo por gravar? É o que faz o botão Salvar aparecer só quando serve para algo. */
+  readonly cartaoMudou = computed(() => {
+    const c = this.cartao();
+    if (!c) return false;
+    const mesmasEtiquetas =
+      [...this.rascEtiquetas()].sort().join(',') === [...c.etiquetas].sort().join(',');
+    return (
+      this.rascTitulo().trim() !== c.titulo ||
+      this.rascDescricao() !== c.descricao ||
+      this.rascPrazo() !== c.prazo ||
+      !mesmasEtiquetas
+    );
+  });
+
+  temEtiqueta(chave: string): boolean {
+    return this.rascEtiquetas().includes(chave);
+  }
+
+  alternarEtiqueta(chave: string): void {
+    const atuais = this.rascEtiquetas();
+    this.rascEtiquetas.set(
+      atuais.includes(chave)
+        ? atuais.filter((e) => e !== chave)
+        : [...atuais, chave],
+    );
+  }
+
+  descartarEdicao(): void {
+    this.semearRascunho();
+  }
+
+  async salvarCartao(): Promise<void> {
+    const c = this.cartao();
+    if (!c || !this.cartaoMudou() || this.salvandoCartao()) return;
+    const titulo = this.rascTitulo().trim();
+    // O título é a identidade do cartão no quadro: um cartão sem título vira uma faixa em
+    // branco que ninguém consegue distinguir das outras.
+    if (!titulo) {
+      this.erro.set('O título do cartão não pode ficar vazio.');
+      return;
+    }
+    this.salvandoCartao.set(true);
+    this.erro.set('');
+    try {
+      await this.api.editarCartao(c.id, {
+        titulo,
+        descricao: this.rascDescricao().trim(),
+        prazo: this.rascPrazo(),
+        etiquetas: this.rascEtiquetas(),
+      });
+      await this.recarregarQuadro();
+      this.semearRascunho();
+      this.aviso.set('Cartão salvo.');
+    } catch (e) {
+      this.falhou(e, 'Não foi possível salvar o cartão.');
+    } finally {
+      this.salvandoCartao.set(false);
+    }
   }
 
   private async carregarContatos(): Promise<void> {
@@ -498,6 +588,85 @@ export class ControleAtividadesComponent {
       await this.recarregarRail();
     } catch (e) {
       this.falhou(e, 'Não foi possível mover o cartão.');
+    }
+  }
+
+  // ------------------------------------------------------- importar do Trello
+
+  abrirImportacao(): void {
+    this.importando.set(true);
+    this.arquivoTrello.set(null);
+    this.previaTrello.set(null);
+    this.resultadoImport.set(null);
+    this.destinos.set({});
+  }
+
+  fecharImportacao(): void {
+    this.importando.set(false);
+  }
+
+  /** Lê o arquivo e mostra o que ENTRARIA. Nada é gravado nesta etapa. */
+  async escolherArquivoTrello(ev: Event): Promise<void> {
+    const input = ev.target as HTMLInputElement;
+    const arquivo = input.files?.[0];
+    if (!arquivo) return;
+    this.arquivoTrello.set(arquivo);
+    this.previaTrello.set(null);
+    this.resultadoImport.set(null);
+    this.ocupadoImport.set(true);
+    this.erro.set('');
+    try {
+      const p = await this.api.previaTrello(this.codigoAtivo(), arquivo);
+      this.previaTrello.set(p);
+      // Sugere o de/para por NOME: uma lista "A fazer" do Trello cai na coluna "A fazer" do
+      // Painel sem ninguém precisar escolher. O que não casar vira coluna nova.
+      const porNome = new Map(
+        p.colunasDoQuadro.map((c) => [c.titulo.trim().toLowerCase(), c.id]),
+      );
+      const sugestao: Record<string, number> = {};
+      for (const l of p.listas) {
+        const id = porNome.get(l.titulo.trim().toLowerCase());
+        if (id) sugestao[l.idTrello] = id;
+      }
+      this.destinos.set(sugestao);
+    } catch (e) {
+      this.falhou(e, 'Não foi possível ler o arquivo do Trello.');
+    } finally {
+      this.ocupadoImport.set(false);
+      input.value = '';
+    }
+  }
+
+  definirDestino(idListaTrello: string, listaId: number): void {
+    const atual = { ...this.destinos() };
+    if (listaId) atual[idListaTrello] = listaId;
+    else delete atual[idListaTrello];
+    this.destinos.set(atual);
+  }
+
+  destinoDe(idListaTrello: string): number {
+    return this.destinos()[idListaTrello] ?? 0;
+  }
+
+  async confirmarImportacao(): Promise<void> {
+    const arquivo = this.arquivoTrello();
+    if (!arquivo || this.ocupadoImport()) return;
+    this.ocupadoImport.set(true);
+    this.erro.set('');
+    try {
+      const destinos = Object.entries(this.destinos()).map(([idListaTrello, listaId]) => ({
+        idListaTrello,
+        listaId,
+      }));
+      this.resultadoImport.set(
+        await this.api.importarTrello(this.codigoAtivo(), arquivo, destinos),
+      );
+      await this.recarregarQuadro();
+      await this.recarregarRail();
+    } catch (e) {
+      this.falhou(e, 'Não foi possível importar.');
+    } finally {
+      this.ocupadoImport.set(false);
     }
   }
 

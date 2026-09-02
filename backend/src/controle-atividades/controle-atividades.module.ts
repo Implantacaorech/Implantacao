@@ -30,6 +30,7 @@ import { AnexosService } from './anexos.service';
 import { BuscaService } from './busca.service';
 import { NotificacoesAtividadeService } from './notificacoes-atividade.service';
 import { RoboPrazosService } from './robo-prazos.service';
+import { ImportacaoTrelloService } from './importacao/importacao-trello.service';
 import { ControleAtividadesService } from './controle-atividades.service';
 import { ControleAtividadesController } from './controle-atividades.controller';
 
@@ -78,6 +79,7 @@ import { ControleAtividadesController } from './controle-atividades.controller';
     NotificacoesAtividadeService,
     RoboPrazosService,
     ControleAtividadesService,
+    ImportacaoTrelloService,
   ],
   exports: [ControleAtividadesService],
 })

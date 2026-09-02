@@ -8,6 +8,7 @@ import { AvisosAtividadesComponent } from '../../features/controle-atividades/av
 import { AuthService } from '../../core/services/auth.service';
 import { PermissoesService } from '../../core/services/permissoes.service';
 import { InstanciaService } from '../../core/services/instancia.service';
+import { PresencaService } from '../../core/services/presenca.service';
 import { temPapel } from '../../core/constants/perfis';
 
 @Component({
@@ -31,9 +32,14 @@ export class ShellComponent {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
+  private readonly presenca = inject(PresencaService);
+
   constructor() {
     // Carrega o mapa de permissões do usuário logado (menu só existe autenticado).
     void this.perm.garantirCarregado();
+    // Anuncia presença enquanto o shell estiver montado — ou seja, enquanto houver sessão.
+    // Fica aqui, e não numa tela, para acompanhar o usuário por TODAS as telas.
+    this.presenca.iniciar();
   }
 
   /** Este front-end está sendo servido pelo **Portal API** (instância interna)?
@@ -121,7 +127,10 @@ export class ShellComponent {
     this.sideAberta.set(forcar ?? !this.sideAberta());
   }
 
-  sair(): void {
+  async sair(): Promise<void> {
+    // Encerra a presença ANTES do logout: depois o token já foi embora e a chamada
+    // voltaria 401, deixando a pessoa "online" na tela por mais dois minutos.
+    await this.presenca.encerrar();
     void this.auth.logout();
   }
 }

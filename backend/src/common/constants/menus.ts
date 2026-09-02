@@ -39,9 +39,32 @@ export interface DefinicaoMenu {
 /** Catálogo dos menus/telas controlados pelo painel de permissões. Espelha o menu do
  * frontend (shell) e as telas que discutimos em 2026-07-28. */
 export const MENUS: DefinicaoMenu[] = [
-  { chave: 'novo_cliente', rotulo: 'Novo Cliente', grupo: 'Execução' },
+  // A ordem do grupo Execução espelha a do menu lateral (shell.component.html),
+  // definida pelo usuário em 2026-09-01. A tela de Permissões lista os menus nesta
+  // sequência, e ver as duas na mesma ordem evita procurar o mesmo item em lugares
+  // diferentes. A chave é a identidade no banco — reordenar aqui não mexe em nada
+  // gravado em `permissoes_menu`.
   { chave: 'visao_geral', rotulo: 'Visão Geral', grupo: 'Execução' },
+  { chave: 'novo_cliente', rotulo: 'Novo Cliente', grupo: 'Execução' },
   { chave: 'carteira', rotulo: 'Carteira', grupo: 'Execução' },
+  // Controle de Atividades: quadro de atividades por cliente (docs/controle-atividades.md).
+  // A chave é `controle_atividades`, e NÃO `atividades`: `atividade` (singular) já existe
+  // logo abaixo, no grupo Gestão, e é outra tela — o feed/KPIs de uso da operação. Duas
+  // chaves diferindo por uma letra seriam armadilha em `permissoes_menu`.
+  {
+    chave: 'controle_atividades',
+    rotulo: 'Controle de Atividades',
+    grupo: 'Execução',
+  },
+  // Protocolo: moldura do Portal Rech (portalrech.com.br) dentro do Painel. A chave é o
+  // singular porque 'protocolos' (plural) já pertence à Transcrição Áudio/Vídeo.
+  { chave: 'protocolo', rotulo: 'Protocolo', grupo: 'Execução' },
+  // Agenda: calendário de compromissos dos técnicos (mesma origem SICLA do BI "Alocação de
+  // Agendas"), aberto já filtrado no usuário logado, em visão semanal por padrão.
+  { chave: 'agenda', rotulo: 'Agenda', grupo: 'Execução' },
+  // RNS: consulta de assuntos nas RNS do SICLA (LISTA_ITEMPED) — o consultor pesquisa um
+  // assunto e vê as RNS relacionadas (Pedido + Item), no molde do Dicionário Inteligente.
+  { chave: 'rns', rotulo: 'RNS', grupo: 'Execução' },
   // Chave mantida como 'protocolos' de propósito: é o que está gravado em
   // permissoes_menu no banco (renomear a chave quebraria as liberações já configuradas).
   { chave: 'protocolos', rotulo: 'Transcrição Áudio/Vídeo', grupo: 'Execução' },
@@ -56,27 +79,9 @@ export const MENUS: DefinicaoMenu[] = [
     rotulo: 'Matriz por Menu - Funções SICLA',
     grupo: 'Execução',
   },
-  // Protocolo: moldura do Portal Rech (portalrech.com.br) dentro do Painel. A chave é o
-  // singular porque 'protocolos' (plural) já pertence à Transcrição Áudio/Vídeo.
-  { chave: 'protocolo', rotulo: 'Protocolo', grupo: 'Execução' },
   // RechEdu: moldura do portal de educação (www.rechedu.com.br), irmã da tela Protocolo —
   // mesmo desenho (iframe + credencial própria do consultor guardada no backend).
   { chave: 'rechedu', rotulo: 'RechEdu', grupo: 'Execução' },
-  // Agenda: calendário de compromissos dos técnicos (mesma origem SICLA do BI "Alocação de
-  // Agendas"), aberto já filtrado no usuário logado, em visão semanal por padrão.
-  { chave: 'agenda', rotulo: 'Agenda', grupo: 'Execução' },
-  // RNS: consulta de assuntos nas RNS do SICLA (LISTA_ITEMPED) — o consultor pesquisa um
-  // assunto e vê as RNS relacionadas (Pedido + Item), no molde do Dicionário Inteligente.
-  { chave: 'rns', rotulo: 'RNS', grupo: 'Execução' },
-  // Controle de Atividades: quadro de atividades por cliente (docs/controle-atividades.md).
-  // A chave é `controle_atividades`, e NÃO `atividades`: `atividade` (singular) já existe
-  // logo abaixo, no grupo Gestão, e é outra tela — o feed/KPIs de uso da operação. Duas
-  // chaves diferindo por uma letra seriam armadilha em `permissoes_menu`.
-  {
-    chave: 'controle_atividades',
-    rotulo: 'Controle de Atividades',
-    grupo: 'Execução',
-  },
   { chave: 'coordenacao', rotulo: 'Coordenação', grupo: 'Gestão' },
   {
     chave: 'centro_operacional',
