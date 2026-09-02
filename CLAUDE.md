@@ -190,6 +190,18 @@ que GERA documento aparece pulado: os layouts oficiais não vão para o git, e o
 instância se ela os tem antes de rodar (`e2e/apoio/insumo-local.ts`). Rodar local continua
 valendo — é onde a geração é de fato exercitada.
 
+**A documentação da suíte é [docs/TESTES-INTEGRADOS.md](docs/TESTES-INTEGRADOS.md)** (desde
+2026-09-02, gerado por [GERARTESTEINTEGRADOPLAYWRIGHT.md](GERARTESTEINTEGRADOPLAYWRIGHT.md)):
+escopo, mapa de superfícies com status de cobertura **medido pelo servidor**, a matriz
+`CT-###` → spec e as lacunas conhecidas. Todo caso tem um **ID `CT-###` estável**, que nunca
+é reaproveitado, e uma **tag de prioridade** — `npm run test:p0` roda só o gate de PR.
+
+> **Regra de perpetuidade (§9 do documento):** *toda nova implementação entra na documentação
+> e, portanto, entra no teste integrado.* Mexeu em `*.controller.ts`, em `app.routes.ts`, numa
+> entity ou em `common/constants/menus.ts`? Então `docs/TESTES-INTEGRADOS.md` tem de mudar no
+> mesmo PR — quem cobra é `.github/workflows/cobertura-teste-integrado.yml`, que também confere
+> que todo `CT-###` do documento tem spec e vice-versa. O checklist está no template de PR.
+
 **Auditoria 360° do sistema** (antes de uma entrega/virada, ou quando pedirem "auditoria
 geral"/"testar tudo"): skill **`auditoria-geral-sistema`** — percorre frontend, backend,
 APIs, banco, permissões, navegação, formulários, layout, responsividade, console, network,

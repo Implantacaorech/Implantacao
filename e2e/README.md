@@ -7,6 +7,13 @@ passos valem de ponta a ponta.
 
 > ⚠️ **Nunca aponte para a porta 5100.** É o Painel em **produção**. Estes testes concluem
 > passos, criam projetos e disparam e-mails. O `playwright.config.ts` recusa a 5100 no boot.
+>
+> 📘 **A documentação da suíte é [`docs/TESTES-INTEGRADOS.md`](../docs/TESTES-INTEGRADOS.md)**
+> — escopo, mapa de superfícies com status de cobertura, a matriz `CT-###` → spec, as lacunas
+> conhecidas e a **regra de atualização** (§9: toda implementação nova entra lá antes de ser
+> considerada pronta). Este README é o *como rodar*; aquele documento é o *o quê e por quê*.
+> O inventário bruto das 306 rotas e 89 telas está em
+> [`docs/_inventario-superficies.md`](../docs/_inventario-superficies.md).
 
 ## No CI
 
@@ -124,6 +131,17 @@ o `e2e/playwright.config.ts` é detectado — dá para rodar e depurar caso a ca
 
 ## O que cada arquivo cobre
 
+Desde 2026-09-02 todo caso tem um **`CT-###` estável** no início do título — o mesmo que
+aparece na matriz da [Seção 4 de `docs/TESTES-INTEGRADOS.md`](../docs/TESTES-INTEGRADOS.md).
+O ID **nunca é reaproveitado**: caso removido vira `CT-0NN — REMOVIDO` no histórico, e o
+número não volta. Assim o relatório do Playwright e a documentação se conversam sem trabalho
+manual, e um relatório antigo nunca aponta para o teste errado.
+
+Cada caso carrega também uma **tag de prioridade** (no `test.describe`): `@p0` é o gate de
+PR — autorização, login, gates dos 21 passos, fronteira Rech↔cliente; `@p1` é
+funcionalidade com alternativa manual; `@p2` é apresentação e varredura ampla. Rode só o
+gate com `npm run test:p0`.
+
 | Arquivo | Cobre |
 | --- | --- |
 | `testes/01-acesso.spec.ts` | login, senha errada, rota protegida, deep link recarregado (fallback de SPA) |
@@ -132,6 +150,12 @@ o `e2e/playwright.config.ts` é detectado — dá para rodar e depurar caso a ca
 | `testes/04-permissoes-fluxo.spec.ts` | RN-10 pelos caminhos que **não** passam pelo `PassosController` (anexo, geração de documento, `PUT /projetos/:id`, `POST /fluxo/criar`), destinatários de e-mail, RN-4, homônimo e tamanho de corpo |
 | `testes/07-projeto-heranca-etapa-10.spec.ts` | etapa 10 herdando a etapa 3: a tela abre preenchida, o GCI edita, gerar conclui o passo 10 e libera o 11; Cronograma Macro como campo de data; alinhamento dos campos; passo 11 sem "Abrir" |
 | `testes/08-api-dados.spec.ts` | **API de Dados** (ADR-0003): 401 sem credencial, 404 fora do catálogo, 400 de parâmetro, 403 por menu e **por consulta** (a autorização do token é nome a nome), o catálogo sem SQL, o ciclo de vida da chave de máquina (exibida uma vez, revogada, rotacionada) — inclusive que uma chave **não** administra a API — a publicação de consulta pela TELA (só SELECT, teto obrigatório, bind × parâmetro, nome que não sequestra o catálogo de código), a configuração das conexões (que nunca devolve senha) e os tokens do lado consumidor (que nunca voltam em claro) |
+| `testes/09-acesso-cliente-bi.spec.ts` | o papel **Cliente** (externo): cai direto no BI, só enxerga a própria fatia, não alcança rota interna nem a sessão de outro cliente; e a tela de Acesso de Clientes do ADM |
+| `testes/10-permissoes-rbac.spec.ts` | o **painel de Permissões** manda no menu **e** na API: fechar o menu para um papel some com o item da tela e devolve 403; a exceção por usuário vence o papel e `herdar` a desfaz; papel/nível inventado é recusado; tela de Sistema continua fixa no ADM |
+| `testes/11-superficies-publicas.spec.ts` | as **10 rotas que um anônimo alcança**: "esqueci minha senha" não denuncia se a conta existe, código errado não troca a senha, sondas públicas não vazam configuração, mídia de protocolo exige token assinado — e o **CT-120 varre o Swagger** e falha se um `GET` novo nascer sem guarda |
+| `testes/12-presenca-online.spec.ts` | **Controle de acessos**: qualquer autenticado bate o ponto, mas **só o ADM vê a lista**; a unidade é a ABA (duas abas, um usuário); aba em segundo plano é ociosa; a tela `/usuarios/online` recusa quem não é ADM |
+| `testes/13-controle-atividades.spec.ts` | **fronteira Rech ↔ cliente** do quadro por cliente: um cliente não alcança o quadro do outro, o cartão interno **nasce fechado** e o do cliente nasce compartilhado, o cliente não empurra cartão para o Bastidor Rech, e interno não designado **lê e não escreve** |
+| `testes/90-auditoria-varredura.spec.ts` | varredura ampla: todas as rotas estáticas sem erro de console/HTTP, responsividade sem overflow horizontal, menu por perfil |
 
 ## De onde vieram estes testes
 
