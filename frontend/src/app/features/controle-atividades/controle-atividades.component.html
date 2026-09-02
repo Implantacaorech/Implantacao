@@ -127,6 +127,11 @@
           </div>
           <div class="acoes">
             @if (podeEditar()) {
+              <button type="button" class="btn" (click)="abrirImportacao()"
+                      title="Trazer um quadro exportado do Trello">
+                <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-download"/></svg>
+                Importar do Trello
+              </button>
               <button type="button" class="btn" (click)="comecarCartao(colunas()[0].id)">
                 <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-plus"/></svg>
                 Novo cartão
@@ -495,6 +500,103 @@
             </div>
           }
         </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ─────────────────────── importar do Trello ──────────────────────────── -->
+@if (importando()) {
+  <div class="modal-fundo" role="presentation" tabindex="-1"
+       (click)="fecharImportacao()" (keydown.escape)="fecharImportacao()">
+    <div class="modal-cx largo" role="dialog" aria-modal="true" aria-label="Importar do Trello"
+         (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">
+      <div class="modal-cab">
+        <div>
+          <h2 class="ca-md-t">Importar do Trello</h2>
+          <div class="ca-md-c">para o quadro de {{ quadro()?.quadro?.nomeCliente }}</div>
+        </div>
+        <button type="button" class="modal-fechar" (click)="fecharImportacao()" aria-label="Fechar">
+          <svg class="svgi svgi-lg" aria-hidden="true"><use href="#ic-x"/></svg>
+        </button>
+      </div>
+
+      <div class="ca-md-l">
+        @if (resultadoImport(); as r) {
+          <div class="ca-sec">
+            <div class="ca-sec-t">Pronto</div>
+            <p class="ca-desc">
+              {{ r.cartoes }} cartão(ões) importado(s), {{ r.colunasCriadas }} coluna(s) nova(s),
+              {{ r.checklistItens }} item(ns) de checklist, {{ r.comentarios }} comentário(s) e
+              {{ r.anexos }} anexo(s).
+            </p>
+            @for (a of r.avisos; track a) { <p class="ca-faixa ca-faixa-info">{{ a }}</p> }
+            <div class="acoes">
+              <button type="button" class="btn primario" (click)="fecharImportacao()">Fechar</button>
+            </div>
+          </div>
+        } @else if (previaTrello(); as p) {
+          <div class="ca-sec">
+            <div class="ca-sec-t">O que vai entrar — quadro "{{ p.nomeQuadro }}"</div>
+            <p class="ca-desc">
+              <b>{{ p.resumo.cartoes }}</b> cartões em <b>{{ p.resumo.listas }}</b> listas ·
+              {{ p.resumo.checklistItens }} itens de checklist ·
+              {{ p.resumo.comentarios }} comentários ·
+              {{ p.resumo.anexosLink + p.resumo.anexosArquivo }} anexos
+            </p>
+          </div>
+
+          <div class="ca-sec">
+            <div class="ca-sec-t">Para onde vai cada lista</div>
+            @for (l of p.listas; track l.idTrello) {
+              <div class="ca-inline">
+                <span class="ca-imp-de">{{ l.titulo }}</span>
+                <select class="campo" [attr.aria-label]="'Destino de ' + l.titulo"
+                        [ngModel]="destinoDe(l.idTrello)"
+                        (ngModelChange)="definirDestino(l.idTrello, +$event)">
+                  <option [value]="0">➕ criar coluna nova</option>
+                  @for (c of p.colunasDoQuadro; track c.id) {
+                    <option [value]="c.id">{{ c.titulo }}</option>
+                  }
+                </select>
+              </div>
+            }
+          </div>
+
+          @for (a of p.avisos; track a) {
+            <p class="ca-faixa ca-faixa-info">{{ a }}</p>
+          }
+          <p class="ca-faixa ca-faixa-ro">
+            <b>Todos os cartões entram como INTERNOS.</b> O Trello não sabe o que é do cliente,
+            então compartilhar continua sendo decisão sua, cartão a cartão.
+          </p>
+
+          <div class="acoes">
+            <button type="button" class="btn primario" [disabled]="ocupadoImport()"
+                    (click)="confirmarImportacao()">
+              {{ ocupadoImport() ? 'Importando…' : 'Importar ' + p.resumo.cartoes + ' cartões' }}
+            </button>
+            <button type="button" class="btn" [disabled]="ocupadoImport()"
+                    (click)="fecharImportacao()">Cancelar</button>
+          </div>
+        } @else {
+          <div class="ca-sec">
+            <div class="ca-sec-t">1. Exporte o quadro no Trello</div>
+            <p class="ca-desc">
+              No Trello, abra o quadro → menu <b>…</b> → <b>Compartilhar, imprimir e exportar</b>
+              → <b>Exportar como JSON</b>. Funciona no plano gratuito e não pede senha nenhuma
+              ao Painel.
+            </p>
+            <div class="ca-sec-t">2. Envie o arquivo aqui</div>
+            <input type="file" class="campo" accept=".json,application/json"
+                   aria-label="Arquivo JSON exportado do Trello"
+                   [disabled]="ocupadoImport()" (change)="escolherArquivoTrello($event)">
+            @if (ocupadoImport()) { <p class="kan-vazio">Lendo o arquivo…</p> }
+            <p class="kan-vazio">
+              Nada é gravado neste passo: você vê antes o que vai entrar e o que fica de fora.
+            </p>
+          </div>
+        }
       </div>
     </div>
   </div>

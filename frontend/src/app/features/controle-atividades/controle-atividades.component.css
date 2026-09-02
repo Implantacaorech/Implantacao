@@ -134,3 +134,4 @@ button.ca-tag{cursor:pointer;font:inherit;font-size:.63rem;font-weight:700;borde
 .ca-tag.sel{background:var(--shr-bg);color:var(--shr);border-color:var(--shr-line)}
 .ca-desc-ed{min-height:82px;resize:vertical}
 .ca-sec .campo{margin-bottom:var(--sp-3)}
+.ca-imp-de{flex:1;font-size:.83rem;font-weight:600;color:var(--ink);padding-top:8px}
