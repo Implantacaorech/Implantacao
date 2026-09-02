@@ -14,8 +14,8 @@ import { entrarComSucesso, projetoNoPasso, token, USUARIOS } from '../apoio/pain
  * A rota passou a exigir só `carteira` (consulta); quem decide é `PassosService.podeExecutar`,
  * que é mais estrito — exige o perfil responsável E a designação naquele projeto (RN-10).
  */
-test.describe('Passo 5 — o Comercial conclui o próprio passo', () => {
-  test('a API aceita a conclusão do passo 5 pelo Comercial', async ({ request }) => {
+test.describe('Passo 5 — o Comercial conclui o próprio passo', { tag: '@p0' }, () => {
+  test('CT-013 — a API aceita a conclusão do passo 5 pelo Comercial', async ({ request }) => {
     const id = await projetoNoPasso(request, 'E2E Comercial API', 4);
     const tk = await token(request, USUARIOS.comercial);
     const r = await request.post(`/api/projetos/${id}/passos/5/concluir`, {
@@ -26,7 +26,7 @@ test.describe('Passo 5 — o Comercial conclui o próprio passo', () => {
     expect(r.status(), await r.text()).toBeLessThan(300);
   });
 
-  test('a tela oferece ao Comercial a ação do passo 5', async ({ page, request }) => {
+  test('CT-014 — a tela oferece ao Comercial a ação do passo 5', async ({ page, request }) => {
     const id = await projetoNoPasso(request, 'E2E Comercial Tela', 4);
     await entrarComSucesso(page, USUARIOS.comercial);
     await page.goto(`/projetos/${id}/passos`);
@@ -39,7 +39,7 @@ test.describe('Passo 5 — o Comercial conclui o próprio passo', () => {
     await expect(acao.first()).toBeEnabled();
   });
 
-  test('quem só consulta NÃO ganha ação num passo que não é seu', async ({ page, request }) => {
+  test('CT-015 — quem só consulta NÃO ganha ação num passo que não é seu', async ({ page, request }) => {
     const id = await projetoNoPasso(request, 'E2E Comercial Alheio', 8);
     await entrarComSucesso(page, USUARIOS.comercial);
     await page.goto(`/projetos/${id}/passos`);
@@ -52,7 +52,9 @@ test.describe('Passo 5 — o Comercial conclui o próprio passo', () => {
 });
 
 /** O que o backend AFIRMA sobre um passo tem de bater com o que ele aceita. */
-test('coerência: "liberado" e a conclusão contam a mesma história', async ({ request }) => {
+test('CT-016 — coerência: "liberado" e a conclusão contam a mesma história', { tag: '@p0' }, async ({
+  request,
+}) => {
   const id = await projetoNoPasso(request, 'E2E Coerencia Passo 5', 4);
   const tk = await token(request, USUARIOS.comercial);
   const cab = { Authorization: `Bearer ${tk}` };

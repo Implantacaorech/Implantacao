@@ -23,7 +23,7 @@ const GCI_DESIGNADO = 'gabriel.gci';
  * é consumido pela diretiva `NgModel` do Angular como input e não chega ao DOM, então um
  * seletor por atributo não acha nada aqui.
  */
-test.describe('Etapa 10 — o Projeto herda o Levantamento da etapa 3', () => {
+test.describe('Etapa 10 — o Projeto herda o Levantamento da etapa 3', { tag: '@p0' }, () => {
   const cab = (t: string) => ({ Authorization: `Bearer ${t}` });
 
   /** Preenche a etapa 3 do projeto pela API — preparar estado não é o que está sob teste. */
@@ -41,7 +41,7 @@ test.describe('Etapa 10 — o Projeto herda o Levantamento da etapa 3', () => {
     });
   }
 
-  test('o passo 10 abre a tela de EDIÇÃO, não a geração direta', async ({ page, request }) => {
+  test('CT-046 — o passo 10 abre a tela de EDIÇÃO, não a geração direta', async ({ page, request }) => {
     const id = await projetoNoPasso(request, 'Cliente Herança Etapa 10', 9);
     await entrarComSucesso(page, USUARIOS.gci);
     await page.goto(`/projetos/${id}/passos`);
@@ -57,7 +57,7 @@ test.describe('Etapa 10 — o Projeto herda o Levantamento da etapa 3', () => {
     await expect(page.getByRole('heading', { level: 1 })).toContainText(/Projeto de Implantação/i);
   });
 
-  test('a tela do passo 10 abre com os dados da etapa 3 e o GCI edita antes de gerar', async ({
+  test('CT-047 — a tela do passo 10 abre com os dados da etapa 3 e o GCI edita antes de gerar', async ({
     page,
     request,
   }) => {
@@ -103,7 +103,7 @@ test.describe('Etapa 10 — o Projeto herda o Levantamento da etapa 3', () => {
     });
   });
 
-  test('gerar pela tela de edição conclui o passo 10 e libera o 11', async ({ page, request }) => {
+  test('CT-048 — gerar pela tela de edição conclui o passo 10 e libera o 11', async ({ page, request }) => {
     // Este é o único caso da suíte que GERA documento, então é o único que depende dos
     // layouts oficiais — que não vão para o git. No CI ele aparece como pulado, com o motivo.
     test.skip(!(await appGeraPeloLayout(request)), SEM_LAYOUTS);
@@ -147,7 +147,7 @@ test.describe('Etapa 10 — o Projeto herda o Levantamento da etapa 3', () => {
     });
   });
 
-  test('o Levantador vê o botão do passo 10 e a tela o aceita (o botão não promete o que a tela recusa)', async ({
+  test('CT-049 — o Levantador vê o botão do passo 10 e a tela o aceita (o botão não promete o que a tela recusa)', async ({
     page,
     request,
   }) => {
@@ -160,7 +160,7 @@ test.describe('Etapa 10 — o Projeto herda o Levantamento da etapa 3', () => {
     await expect(page).toHaveURL(new RegExp(`/projetos/${id}/editar/projeto`), { timeout: 15_000 });
     await expect(page.getByRole('heading', { level: 1 })).toContainText(/Projeto de Implantação/i);
   });
-  test('o Cronograma Macro é preenchido por seletor de data, não texto livre', async ({
+  test('CT-050 — o Cronograma Macro é preenchido por seletor de data, não texto livre', async ({
     page,
     request,
   }) => {
@@ -184,7 +184,29 @@ test.describe('Etapa 10 — o Projeto herda o Levantamento da etapa 3', () => {
     ).toHaveValue('2026-11-03', { timeout: 15_000 });
   });
 
-  test('o rótulo somente-leitura não desalinha o campo vizinho na mesma linha', async ({
+  test('CT-052 — o passo 11 não oferece mais o botão Abrir', async ({ page, request }) => {
+    // A tela "Gerar Projeto" que ele abria foi removida: o Administrativo confere o documento
+    // pelo Visualizar/Baixar do próprio cartão e envia por Redigir e-mail.
+    const id = await projetoNoPasso(request, 'Cliente Passo 11', 9);
+    await entrarComSucesso(page, USUARIOS.administrativo);
+    await page.goto(`/projetos/${id}/passos`);
+
+    const passo11 = page
+      .locator('div.painel')
+      .filter({ hasText: 'Conferência do Projeto' })
+      .first();
+    await expect(passo11).toBeVisible({ timeout: 15_000 });
+    await expect(passo11.getByRole('link', { name: /^Abrir$/ })).toHaveCount(0);
+    // O que o passo precisa continua ali.
+    await expect(passo11.getByRole('button', { name: /Redigir e-mail/i })).toHaveCount(1);
+  });
+});
+
+// Apresentação da tela — separado do grupo acima de propósito: o que se prova aqui é
+// alinhamento, não autorização nem gate de passo. Fica fora do gate de PR (@p2) para a
+// suíte P0 continuar enxuta, mas continua sendo caso de regressão de um defeito real.
+test.describe('Etapa 10 — apresentação da tela', { tag: '@p2' }, () => {
+  test('CT-051 — o rótulo somente-leitura não desalinha o campo vizinho na mesma linha', async ({
     page,
     request,
   }) => {
@@ -204,27 +226,10 @@ test.describe('Etapa 10 — o Projeto herda o Levantamento da etapa 3', () => {
     // para arredondamento de layout).
     expect(Math.abs(razao!.y - cnpj!.y)).toBeLessThanOrEqual(1);
   });
-
-  test('o passo 11 não oferece mais o botão Abrir', async ({ page, request }) => {
-    // A tela "Gerar Projeto" que ele abria foi removida: o Administrativo confere o documento
-    // pelo Visualizar/Baixar do próprio cartão e envia por Redigir e-mail.
-    const id = await projetoNoPasso(request, 'Cliente Passo 11', 9);
-    await entrarComSucesso(page, USUARIOS.administrativo);
-    await page.goto(`/projetos/${id}/passos`);
-
-    const passo11 = page
-      .locator('div.painel')
-      .filter({ hasText: 'Conferência do Projeto' })
-      .first();
-    await expect(passo11).toBeVisible({ timeout: 15_000 });
-    await expect(passo11.getByRole('link', { name: /^Abrir$/ })).toHaveCount(0);
-    // O que o passo precisa continua ali.
-    await expect(passo11.getByRole('button', { name: /Redigir e-mail/i })).toHaveCount(1);
-  });
 });
 
-test.describe('Etapa 10 — senha padrão da instância isolada', () => {
-  test('sanidade: a suíte está na instância descartável, não em produção', async ({ request }) => {
+test.describe('Etapa 10 — senha padrão da instância isolada', { tag: ['@p0', '@smoke'] }, () => {
+  test('CT-053 — sanidade: a suíte está na instância descartável, não em produção', async ({ request }) => {
     expect(SENHA).toBe('Teste@123');
     const r = await request.get('/api/health');
     const j = await r.json();

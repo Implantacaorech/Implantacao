@@ -5,8 +5,12 @@
   "description": "Testes ponta a ponta (Playwright) do Painel de Implantação — interface real, navegador real",
   "scripts": {
     "test": "playwright test",
+    "test:p0": "playwright test --grep @p0",
+    "test:p1": "playwright test --grep @p1",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:tres": "playwright test && playwright test && playwright test",
     "test:ui": "playwright test --ui",
-    "report": "playwright show-report"
+    "report": "playwright show-report relatorio"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1"
