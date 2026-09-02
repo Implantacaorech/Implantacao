@@ -284,10 +284,55 @@
 
       <div class="ca-md-b">
         <div class="ca-md-l">
-          <div class="ca-sec">
-            <div class="ca-sec-t">Descrição</div>
-            <p class="ca-desc">{{ c.descricao || 'Sem descrição.' }}</p>
-          </div>
+          @if (podeEditar()) {
+            <div class="ca-sec">
+              <div class="ca-sec-t">Título</div>
+              <input class="campo" aria-label="Título do cartão"
+                     [ngModel]="rascTitulo()" (ngModelChange)="rascTitulo.set($event)">
+
+              <div class="ca-sec-t">Descrição</div>
+              <textarea class="campo ca-desc-ed" rows="4"
+                        placeholder="Do que se trata este cartão?" aria-label="Descrição"
+                        [ngModel]="rascDescricao()"
+                        (ngModelChange)="rascDescricao.set($event)"></textarea>
+
+              <div class="ca-sec-t">Etiquetas</div>
+              <div class="ca-tags">
+                @for (e of etiquetas(); track e.chave) {
+                  <button type="button" class="ca-tag" [class.sel]="temEtiqueta(e.chave)"
+                          [attr.aria-pressed]="temEtiqueta(e.chave)"
+                          (click)="alternarEtiqueta(e.chave)">{{ e.nome }}</button>
+                }
+              </div>
+
+              <div class="ca-sec-t">Prazo</div>
+              <input class="campo" type="date" aria-label="Prazo"
+                     [ngModel]="rascPrazo()" (ngModelChange)="rascPrazo.set($event)">
+
+              @if (cartaoMudou()) {
+                <div class="acoes">
+                  <button type="button" class="btn primario" [disabled]="salvandoCartao()"
+                          (click)="salvarCartao()">
+                    {{ salvandoCartao() ? 'Salvando…' : 'Salvar cartão' }}
+                  </button>
+                  <button type="button" class="btn" [disabled]="salvandoCartao()"
+                          (click)="descartarEdicao()">Descartar</button>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="ca-sec">
+              <div class="ca-sec-t">Descrição</div>
+              <p class="ca-desc">{{ c.descricao || 'Sem descrição.' }}</p>
+              @if (c.etiquetas.length) {
+                <div class="ca-tags">
+                  @for (e of c.etiquetas; track e) {
+                    <span class="ca-tag">{{ nomeEtiqueta(e) }}</span>
+                  }
+                </div>
+              }
+            </div>
+          }
 
           @if (c.checklist.length || podeEditar()) {
             <div class="ca-sec">
@@ -443,7 +488,7 @@
             </div>
           }
 
-          @if (c.prazo) {
+          @if (c.prazo && !podeEditar()) {
             <div class="ca-fld">
               <div class="ca-fld-t">Prazo</div>
               <span class="ca-prazo" [class.late]="atrasado(c)">{{ c.prazo }}</span>

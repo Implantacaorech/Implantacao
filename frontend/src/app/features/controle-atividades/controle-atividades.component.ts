@@ -56,6 +56,16 @@ export class ControleAtividadesComponent {
   readonly textoItem = signal('');
   readonly urlLink = signal('');
 
+  /** Rascunho da edição do cartão. O que está sendo digitado vive AQUI e não no objeto do
+   * quadro: várias ações (marcar checklist, comentar, anexar) recarregam o quadro inteiro, e
+   * se o texto morasse no cartão recarregado, o que a pessoa está escrevendo sumiria no meio
+   * da digitação. */
+  readonly rascTitulo = signal('');
+  readonly rascDescricao = signal('');
+  readonly rascPrazo = signal('');
+  readonly rascEtiquetas = signal<string[]>([]);
+  readonly salvandoCartao = signal(false);
+
   // --- criação
   readonly criandoNaLista = signal<number | null>(null);
   readonly tituloNovo = signal('');
@@ -275,6 +285,7 @@ export class ControleAtividadesComponent {
 
   abrirCartao(id: number): void {
     this.cartaoAberto.set(id);
+    this.semearRascunho();
     this.textoComentario.set('');
     this.textoItem.set('');
     this.urlLink.set('');
@@ -282,6 +293,75 @@ export class ControleAtividadesComponent {
   }
   fecharCartao(): void {
     this.cartaoAberto.set(null);
+  }
+
+  /** Recarrega o rascunho a partir do cartão salvo — ao abrir e depois de gravar. */
+  private semearRascunho(): void {
+    const c = this.cartao();
+    this.rascTitulo.set(c?.titulo ?? '');
+    this.rascDescricao.set(c?.descricao ?? '');
+    this.rascPrazo.set(c?.prazo ?? '');
+    this.rascEtiquetas.set([...(c?.etiquetas ?? [])]);
+  }
+
+  /** Há algo por gravar? É o que faz o botão Salvar aparecer só quando serve para algo. */
+  readonly cartaoMudou = computed(() => {
+    const c = this.cartao();
+    if (!c) return false;
+    const mesmasEtiquetas =
+      [...this.rascEtiquetas()].sort().join(',') === [...c.etiquetas].sort().join(',');
+    return (
+      this.rascTitulo().trim() !== c.titulo ||
+      this.rascDescricao() !== c.descricao ||
+      this.rascPrazo() !== c.prazo ||
+      !mesmasEtiquetas
+    );
+  });
+
+  temEtiqueta(chave: string): boolean {
+    return this.rascEtiquetas().includes(chave);
+  }
+
+  alternarEtiqueta(chave: string): void {
+    const atuais = this.rascEtiquetas();
+    this.rascEtiquetas.set(
+      atuais.includes(chave)
+        ? atuais.filter((e) => e !== chave)
+        : [...atuais, chave],
+    );
+  }
+
+  descartarEdicao(): void {
+    this.semearRascunho();
+  }
+
+  async salvarCartao(): Promise<void> {
+    const c = this.cartao();
+    if (!c || !this.cartaoMudou() || this.salvandoCartao()) return;
+    const titulo = this.rascTitulo().trim();
+    // O título é a identidade do cartão no quadro: um cartão sem título vira uma faixa em
+    // branco que ninguém consegue distinguir das outras.
+    if (!titulo) {
+      this.erro.set('O título do cartão não pode ficar vazio.');
+      return;
+    }
+    this.salvandoCartao.set(true);
+    this.erro.set('');
+    try {
+      await this.api.editarCartao(c.id, {
+        titulo,
+        descricao: this.rascDescricao().trim(),
+        prazo: this.rascPrazo(),
+        etiquetas: this.rascEtiquetas(),
+      });
+      await this.recarregarQuadro();
+      this.semearRascunho();
+      this.aviso.set('Cartão salvo.');
+    } catch (e) {
+      this.falhou(e, 'Não foi possível salvar o cartão.');
+    } finally {
+      this.salvandoCartao.set(false);
+    }
   }
 
   private async carregarContatos(): Promise<void> {
