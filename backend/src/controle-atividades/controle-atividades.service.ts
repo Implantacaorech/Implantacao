@@ -6,6 +6,7 @@ import { CartoesRepository } from './repositories/cartoes.repository';
 import { DetalhesCartaoRepository } from './repositories/detalhes-cartao.repository';
 import { QuadrosRepository } from './repositories/quadros.repository';
 import { QuadrosService } from './quadros.service';
+import { DesignadosRepository } from './repositories/designados.repository';
 import {
   cartaoVisivel,
   listaVisivel,
@@ -29,17 +30,48 @@ export class ControleAtividadesService {
     private readonly detalhes: DetalhesCartaoRepository,
     private readonly usuarios: UsersService,
     private readonly quadrosSvc: QuadrosService,
+    private readonly designados: DesignadosRepository,
   ) {}
 
   etiquetas() {
     return ETIQUETAS;
   }
 
-  /** Consultores do Painel — para escolher membro interno e responsável. */
-  async consultores() {
+  /** Quem da Rech pode ser designado num cartão DESTE quadro.
+   *
+   * Regra do usuário (2026-09-03): **só quem participa** — os consultores e o GCI designados
+   * no projeto do cliente. Antes isto devolvia o cadastro inteiro de usuários internos, o que
+   * transformava a designação de um cartão numa lista telefônica da empresa e permitia
+   * apontar um cartão para quem não atende aquele cliente.
+   *
+   * A lista é a união de duas fontes, e as duas são "quem participa":
+   *
+   * - os **designados do projeto** (`projeto_pessoas`), exceto o levantador — mesmo recorte
+   *   que `semearResponsaveis` usa para povoar o quadro;
+   * - os **responsáveis do quadro**, que nascem daquela designação mas podem ter recebido
+   *   alguém à mão depois (quem assumiu no meio do caminho). Deixá-los de fora criaria o
+   *   caso absurdo de uma pessoa responder pelo quadro e não poder ser designada num cartão.
+   *
+   * Vale para os DOIS lados: o cliente escolhe a quem endereça a solicitação na mesma lista
+   * que o consultor usa.
+   */
+  async consultores(user: AuthUser, codigoCliente: string) {
+    // Passa pelo gate do quadro: saber quem atende um cliente é dado do cliente.
+    const { quadro } = await this.quadrosSvc.exigirLegivel(user, codigoCliente);
+
+    const ids = new Set<number>();
+    if (quadro.projetoId) {
+      for (const p of await this.designados.doProjeto(quadro.projetoId)) {
+        if (p.usuarioId && p.papel !== 'levantador') ids.add(p.usuarioId);
+      }
+    }
+    for (const v of await this.quadros.responsaveis([quadro.id])) {
+      ids.add(v.usuarioId);
+    }
+
     const todos = await this.usuarios.listar();
     return todos
-      .filter((u) => u.ativo && u.perfil !== 'Cliente')
+      .filter((u) => u.ativo && u.perfil !== 'Cliente' && ids.has(u.id))
       .map((u) => ({ usuarioId: u.id, nome: u.nome, perfil: u.perfil }))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   }

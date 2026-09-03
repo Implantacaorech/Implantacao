@@ -297,8 +297,14 @@ export class ControleAtividadesService {
     return (await this.get<Etiqueta[]>('/etiquetas')) ?? [];
   }
 
-  async consultores(): Promise<ConsultorPainel[]> {
-    return (await this.get<ConsultorPainel[]>('/consultores')) ?? [];
+  /** Quem da Rech atende ESTE cliente. O código é obrigatório desde 2026-09-03: sem ele o
+   * backend devolvia o cadastro inteiro de usuários internos. */
+  async consultores(codigo: string): Promise<ConsultorPainel[]> {
+    return (
+      (await this.get<ConsultorPainel[]>(
+        `/consultores?codigo=${encodeURIComponent(codigo)}`,
+      )) ?? []
+    );
   }
 
   /** Busca de cliente no SICLA — o projeto guarda o NOME, e o quadro é chaveado pelo

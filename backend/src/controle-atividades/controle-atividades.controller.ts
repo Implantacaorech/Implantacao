@@ -498,9 +498,17 @@ export class ControleAtividadesController {
   }
 
   @Get('consultores')
-  @ApiOperation({ summary: 'Consultores do Painel (membros e responsáveis)' })
-  async consultores() {
-    return new ApiEnvelope(await this.atividades.consultores());
+  @ApiOperation({
+    summary:
+      'Quem da Rech atende ESTE cliente (designados do projeto + responsáveis)',
+  })
+  async consultores(
+    @CurrentUser() user: AuthUser,
+    // Obrigatório desde 2026-09-03: sem o quadro, isto devolvia o cadastro inteiro de
+    // usuários internos, e o seletor de designado virava uma lista telefônica da empresa.
+    @Query('codigo') codigo: string,
+  ) {
+    return new ApiEnvelope(await this.atividades.consultores(user, codigo));
   }
 
   @Get('clientes')
