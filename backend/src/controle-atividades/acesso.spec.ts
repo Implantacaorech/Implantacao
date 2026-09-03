@@ -5,6 +5,7 @@ import {
   nasceCompartilhado,
   podeCriarCartao,
   podeDesignarMembro,
+  podeEditarCartao,
   podeEditarQuadro,
   podeInteragirCartao,
   podeLerQuadro,
@@ -71,6 +72,51 @@ describe('acesso do Controle de Atividades', () => {
 
     it('cliente interage com o que alcança', () => {
       expect(podeInteragirCartao(CLIENTE)).toBe(true);
+    });
+  });
+
+  // Regra de 2026-09-03: o cliente edita o cartão que ELE abriu. Nasceu de um defeito
+  // relatado na tela — o cliente abria uma solicitação e a via como texto fixo
+  // "Sem descrição.", sem lugar nenhum para dizer do que se tratava.
+  describe('edição do CONTEÚDO do cartão', () => {
+    const doCliente = { origem: 'cliente' as const };
+    const daRech = { origem: 'consultor' as const };
+
+    it('responsável interno edita qualquer cartão do quadro', () => {
+      const c = ctx({ interno: true, responsavel: true });
+      expect(podeEditarCartao(c, daRech)).toBe(true);
+      expect(podeEditarCartao(c, doCliente)).toBe(true);
+    });
+
+    it('interno NÃO responsável não edita nada — consulta é consulta', () => {
+      const c = ctx({ interno: true, responsavel: false });
+      expect(podeEditarCartao(c, daRech)).toBe(false);
+      expect(podeEditarCartao(c, doCliente)).toBe(false);
+    });
+
+    it('o cliente edita a PRÓPRIA solicitação', () => {
+      const c = ctx({ interno: false, codigosCliente: ['3180'] });
+      expect(podeEditarCartao(c, doCliente)).toBe(true);
+    });
+
+    it('e NÃO reescreve o cartão que a Rech redigiu', () => {
+      const c = ctx({ interno: false, codigosCliente: ['3180'] });
+      expect(podeEditarCartao(c, daRech)).toBe(false);
+    });
+
+    it('sem o nível do menu, ninguém edita', () => {
+      expect(
+        podeEditarCartao(
+          ctx({ interno: true, responsavel: true, podeAlterar: false }),
+          daRech,
+        ),
+      ).toBe(false);
+      expect(
+        podeEditarCartao(
+          ctx({ interno: false, podeAlterar: false }),
+          doCliente,
+        ),
+      ).toBe(false);
     });
   });
 

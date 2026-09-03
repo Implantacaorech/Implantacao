@@ -75,6 +75,24 @@ export function podeDesignarMembro(
   return tipo === 'interno';
 }
 
+/** Pode editar o CONTEÚDO deste cartão — título, descrição, prazo, etiquetas?
+ *
+ * O responsável interno edita qualquer cartão do quadro. O usuário-cliente edita **o que ele
+ * mesmo abriu** (`origem === 'cliente'`), e só isso: reescrever a descrição de um cartão que a
+ * Rech redigiu seria falar pela Rech no quadro dela.
+ *
+ * Sem esta regra, o cliente abria uma solicitação e ficava sem poder descrevê-la — o campo
+ * nascia somente-leitura, com "Sem descrição." (relatado pelo usuário em 2026-09-03). Criar
+ * sem poder dizer do que se trata não é abrir solicitação nenhuma. */
+export function podeEditarCartao(
+  ctx: ContextoAcesso,
+  cartao: Pick<AtividadeCartao, 'origem'>,
+): boolean {
+  if (!ctx.podeAlterar) return false;
+  if (ctx.interno) return ctx.responsavel;
+  return cartao.origem === 'cliente';
+}
+
 /** Pode INTERAGIR com um cartão — mover, marcar checklist, comentar, anexar, concluir?
  *
  * Vale para o responsável interno e para o usuário-cliente (no que ele alcança). O interno

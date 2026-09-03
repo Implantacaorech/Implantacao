@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../../core/services/auth.service';
 import { InstanciaService } from '../../core/services/instancia.service';
@@ -23,6 +23,16 @@ export class LoginComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly instancia = inject(InstanciaService);
+  private readonly rota = inject(ActivatedRoute);
+
+  /** Por que a pessoa voltou para cá. Hoje só a ociosidade se anuncia: quem foi desconectado
+   * por 30 min parado precisa saber que não é defeito nem senha errada — senão tenta de novo
+   * achando que o Painel a expulsou sem razão. */
+  readonly motivo = computed(() =>
+    this.rota.snapshot.queryParamMap.get('motivo') === 'ociosidade'
+      ? 'Sua sessão foi encerrada por 30 minutos sem uso. Entre novamente.'
+      : '',
+  );
 
   /** O que aparece sob o logo no cartão de acesso.
    *

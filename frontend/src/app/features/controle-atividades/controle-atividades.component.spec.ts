@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 import { ControleAtividadesComponent } from './controle-atividades.component';
 import { ControleAtividadesService } from '../../core/services/controle-atividades.service';
 import {
+  CartaoAtividade,
   ListaDeQuadros,
   QuadroCompleto,
 } from '../../core/models/controle-atividades.model';
@@ -289,6 +290,84 @@ describe('ControleAtividadesComponent', () => {
 
       expect(pedidos).toEqual(['10482']);
     });
+  });
+
+  // Três pedidos do usuário em 2026-09-03, todos sobre o lado CLIENTE.
+  describe('lado cliente — solicitação', () => {
+    /** Quadro como o cliente o recebe: sem coluna interna, sem podeEditar, mas podendo criar. */
+    function quadroDoCliente(cartoes: Partial<CartaoAtividade>[] = []) {
+      const base = quadro().cartoes[0];
+      return quadro({
+        interno: false,
+        podeEditar: false,
+        podeInteragir: true,
+        podeCriarCartao: true,
+        listas: [{ id: 10, titulo: 'A fazer', ordem: 1, visivelCliente: true }],
+        ocultos: null,
+        cartoes: cartoes.map((c, i) => ({ ...base, id: 100 + i, ...c })),
+      } as Partial<QuadroCompleto>);
+    }
+
+    it('o cliente EDITA a solicitação que abriu', async () => {
+      const f = await montar(
+        servico({
+          quadro: () =>
+            Promise.resolve(quadroDoCliente([{ origem: 'cliente', descricao: '' }])),
+        } as Partial<ControleAtividadesService>),
+      );
+      f.componentInstance.abrirCartao(100);
+      await drenar(f);
+      expect(f.componentInstance.podeEditarCartao()).toBe(true);
+      // Antes disto o cliente via o texto fixo "Sem descrição." e não tinha onde escrever.
+      expect(f.nativeElement.querySelector('textarea.ca-desc-ed')).not.toBeNull();
+    });
+
+    it('e NÃO reescreve o cartão que a Rech redigiu', async () => {
+      const f = await montar(
+        servico({
+          quadro: () =>
+            Promise.resolve(quadroDoCliente([{ origem: 'consultor', descricao: 'da Rech' }])),
+        } as Partial<ControleAtividadesService>),
+      );
+      f.componentInstance.abrirCartao(100);
+      await drenar(f);
+      expect(f.componentInstance.podeEditarCartao()).toBe(false);
+      expect(f.nativeElement.querySelector('textarea.ca-desc-ed')).toBeNull();
+    });
+
+    it('criar uma solicitação ABRE o cartão, para haver onde descrevê-la', async () => {
+      const criado = { ...quadro().cartoes[0], id: 777, origem: 'cliente' as const };
+      const f = await montar(
+        servico({
+          quadro: () => Promise.resolve(quadroDoCliente([{ id: 777, origem: 'cliente' }])),
+          criarCartao: () => Promise.resolve(criado),
+        } as unknown as Partial<ControleAtividadesService>),
+      );
+      const c = f.componentInstance;
+      c.comecarCartao(10);
+      c.tituloNovo.set('Preciso de ajuda no fiscal');
+      await c.criarCartao();
+      await drenar(f);
+
+      // O campo da coluna pede só o TÍTULO; sem abrir o cartão, a pessoa não descobre onde
+      // dizer do que se trata.
+      expect(c.cartaoAberto()).toBe(777);
+    });
+  });
+
+  it('os consultores oferecidos são pedidos POR QUADRO, não o cadastro inteiro', async () => {
+    const pedidos: string[] = [];
+    const f = await montar(
+      servico({
+        consultores: (codigo: string) => {
+          pedidos.push(codigo);
+          return Promise.resolve([{ usuarioId: 9, nome: 'Marina', perfil: 'GCI' }]);
+        },
+      } as unknown as Partial<ControleAtividadesService>),
+    );
+    await drenar(f);
+    // Quem pode ser designado depende da designação DO PROJETO daquele cliente.
+    expect(pedidos).toContain('10482');
   });
 
   describe('edição do cartão (o defeito de 2026-09-01: descrição não era editável)', () => {

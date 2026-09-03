@@ -5,6 +5,9 @@
   }
 
   <form [formGroup]="form" (ngSubmit)="enviar()">
+    @if (motivo()) {
+      <div class="resultado">{{ motivo() }}</div>
+    }
     @if (erro()) {
       <div class="resultado erro">⚠️ {{ erro() }}</div>
     }

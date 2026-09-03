@@ -20,6 +20,7 @@ import {
   nasceCompartilhado,
   podeCriarCartao,
   podeDesignarMembro,
+  podeEditarCartao,
   podeEditarQuadro,
   podeInteragirCartao,
   podeMoverPara,
@@ -113,6 +114,26 @@ export class CartoesService {
     if (!podeEditarQuadro(alvo.ctx)) {
       throw new ForbiddenException(
         'Somente consulta: você não é responsável por este quadro.',
+      );
+    }
+    return alvo;
+  }
+
+  /** Para editar o CONTEÚDO do cartão (título, descrição, prazo, etiquetas).
+   *
+   * Mais permissivo que `exigirEditavel` num ponto só, e de propósito: o usuário-cliente
+   * edita o cartão que ELE abriu. É o que faltava para "abrir solicitação" significar alguma
+   * coisa — antes ele criava com um título e não tinha onde dizer do que se tratava. */
+  private async exigirConteudoEditavel(
+    user: AuthUser,
+    cartaoId: number,
+  ): Promise<CartaoComContexto> {
+    const alvo = await this.exigirCartao(user, cartaoId);
+    if (!podeEditarCartao(alvo.ctx, alvo.cartao)) {
+      throw new ForbiddenException(
+        alvo.ctx.interno
+          ? 'Somente consulta: você não é responsável por este quadro.'
+          : 'Você só pode editar as solicitações que abriu.',
       );
     }
     return alvo;
@@ -231,7 +252,14 @@ export class CartoesService {
       projetoId?: number | null;
     },
   ): Promise<AtividadeCartao> {
-    const { cartao } = await this.exigirEditavel(user, cartaoId);
+    const { cartao, ctx } = await this.exigirConteudoEditavel(user, cartaoId);
+    // `projetoId` é vínculo administrativo do quadro, não conteúdo: continua só do
+    // responsável interno, mesmo agora que o cliente edita a própria solicitação.
+    if (!ctx.interno && dados.projetoId !== undefined) {
+      throw new ForbiddenException(
+        'O vínculo com o projeto é da equipe da Rech.',
+      );
+    }
     if (dados.titulo !== undefined) cartao.titulo = dados.titulo.trim();
     if (dados.descricao !== undefined)
       cartao.descricao = dados.descricao.trim();

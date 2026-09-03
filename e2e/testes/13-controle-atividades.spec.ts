@@ -272,6 +272,110 @@ test.describe('Controle de Atividades — a fronteira Rech ↔ cliente', { tag: 
     expect(lista.status(), 'criar coluna em quadro alheio').toBe(403);
   });
 
+  test('CT-134 — o cliente edita a solicitação que abriu, e não o cartão da Rech', async ({
+    request,
+  }) => {
+    // Pedido do usuário em 2026-09-03: do lado cliente a descrição vinha somente-leitura, e
+    // quem abria uma solicitação não tinha onde dizer do que ela se tratava.
+    await quadroDoCliente(request, COD_ACME, 'Cliente ACME');
+    const dono = await token(request, RESPONSAVEL);
+    const cliente = await token(request, 'cliente.acme');
+    const visao = desembrulhar(
+      await (await lerQuadro(request, 'cliente.acme', COD_ACME)).json(),
+    );
+    const coluna = (visao.listas as any[])[0];
+
+    // ...a solicitação que o próprio cliente abriu
+    const minha = desembrulhar(
+      await (
+        await request.post('/api/atividades/cartoes', {
+          headers: cab(cliente),
+          data: { listaId: coluna.id, titulo: `Solicitação ${Date.now()}` },
+        })
+      ).json(),
+    );
+    const editar = await request.patch(`/api/atividades/cartoes/${minha.id}`, {
+      headers: cab(cliente),
+      data: { descricao: 'Preciso de ajuda na apuração do ICMS.' },
+    });
+    expect(editar.ok(), `editar a própria solicitação: ${editar.status()}`).toBeTruthy();
+
+    const depois = desembrulhar(
+      await (await lerQuadro(request, 'cliente.acme', COD_ACME)).json(),
+    );
+    expect(
+      (depois.cartoes as any[]).find((c) => c.id === minha.id).descricao,
+    ).toBe('Preciso de ajuda na apuração do ICMS.');
+
+    // ...e um cartão da Rech, compartilhado com ele, continua sendo da Rech
+    const daRech = desembrulhar(
+      await (
+        await request.post('/api/atividades/cartoes', {
+          headers: cab(dono),
+          data: { listaId: coluna.id, titulo: `Da Rech ${Date.now()}` },
+        })
+      ).json(),
+    );
+    await request.patch(`/api/atividades/cartoes/${daRech.id}/visibilidade`, {
+      headers: cab(dono),
+      data: { visivelCliente: true },
+    });
+    const proibido = await request.patch(`/api/atividades/cartoes/${daRech.id}`, {
+      headers: cab(cliente),
+      data: { descricao: 'reescrevendo o que a Rech redigiu' },
+    });
+    expect(
+      proibido.status(),
+      'o cliente não pode falar pela Rech no quadro dela',
+    ).toBe(403);
+
+    // E o vínculo com o projeto continua sendo da Rech, mesmo no cartão dele.
+    const vinculo = await request.patch(`/api/atividades/cartoes/${minha.id}`, {
+      headers: cab(cliente),
+      data: { projetoId: 1 },
+    });
+    expect(vinculo.status(), 'projetoId é administrativo, não conteúdo').toBe(403);
+  });
+
+  test('CT-135 — os consultores oferecidos são só os designados no projeto', async ({
+    request,
+  }) => {
+    // Pedido do usuário em 2026-09-03: antes isto devolvia o cadastro inteiro de usuários
+    // internos, e dava para apontar um cartão para quem não atende aquele cliente.
+    await quadroDoCliente(request, COD_ACME, 'Cliente ACME');
+
+    const lista = async (login: string) => {
+      const r = await request.get(
+        `/api/atividades/consultores?codigo=${COD_ACME}`,
+        { headers: cab(await token(request, login)) },
+      );
+      expect(r.ok(), `consultores para ${login}: ${r.status()}`).toBeTruthy();
+      return (desembrulhar(await r.json()) as any[]).map((x) => x.nome);
+    };
+
+    const paraOConsultor = await lista(RESPONSAVEL);
+    // `projetoNoPasso` designa estes três; o levantador fica de fora por regra.
+    expect(paraOConsultor).toEqual(expect.arrayContaining(['Cesar Consultor', 'Gabriel GCI']));
+    expect(paraOConsultor, 'o levantador não é designável em cartão').not.toContain(
+      'Lucia Levantadora',
+    );
+    // O corte que interessa: gente da casa que NÃO atende este cliente não aparece.
+    expect(paraOConsultor, 'quem não está no projeto não pode ser designado').not.toContain(
+      'Administrativo Teste',
+    );
+    expect(paraOConsultor).not.toContain('Administrador');
+
+    // O cliente escolhe a quem endereça na MESMA lista.
+    expect(await lista('cliente.acme')).toEqual(paraOConsultor);
+
+    // E quem não alcança o quadro não descobre quem atende o cliente por aqui.
+    const decliente = await request.get(
+      `/api/atividades/consultores?codigo=${COD_OUTRO}`,
+      { headers: cab(await token(request, 'cliente.acme')) },
+    );
+    expect([403, 404]).toContain(decliente.status());
+  });
+
   test('CT-133 — sem o menu `controle_atividades`, nem a tela nem a API respondem', async ({
     page,
     request,

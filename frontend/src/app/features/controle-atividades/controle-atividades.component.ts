@@ -167,6 +167,19 @@ export class ControleAtividadesComponent {
     return this.colunas().find((l) => l.id === c?.listaId) ?? null;
   });
 
+  /** O CONTEÚDO deste cartão é editável por quem está olhando?
+   *
+   * Espelha `podeEditarCartao` do backend: o responsável interno edita qualquer cartão do
+   * quadro; o usuário-cliente edita **o que ele mesmo abriu**. Sem isto, o cliente criava uma
+   * solicitação e a via como texto fixo "Sem descrição." (relatado em 2026-09-03). A
+   * autorização de verdade continua sendo revalidada no backend a cada rota — isto é só para
+   * a tela não esconder o que a API aceita, nem oferecer o que ela recusa. */
+  readonly podeEditarCartao = computed(() => {
+    const c = this.cartao();
+    if (!c) return false;
+    return this.podeEditar() || (!this.interno() && c.origem === 'cliente');
+  });
+
   readonly membrosRech = computed(() =>
     (this.cartao()?.membros ?? []).filter((m) => m.tipo === 'interno'),
   );
@@ -203,14 +216,12 @@ export class ControleAtividadesComponent {
 
   private async iniciar(codigo: string): Promise<void> {
     try {
-      const [lista, etiquetas, consultores] = await Promise.all([
+      const [lista, etiquetas] = await Promise.all([
         this.api.quadros(),
         this.api.etiquetas(),
-        this.api.consultores(),
       ]);
       this.quadros.set(lista);
       this.etiquetas.set(etiquetas);
-      this.consultores.set(consultores);
       // "Meus clientes" sempre selecionada na abertura (regra do usuário). Só cai para
       // "Demais" quando a rota já veio apontando um quadro que não é meu.
       const alvo =
@@ -239,6 +250,9 @@ export class ControleAtividadesComponent {
     this.codigoAtivo.set(codigo);
     try {
       this.quadro.set(await this.api.quadro(codigo));
+      // Quem pode ser designado depende do QUADRO (designados do projeto), então a lista
+      // acompanha o cliente aberto — como a de contatos.
+      void this.carregarConsultores();
       void this.router.navigate(['/atividades', codigo], { replaceUrl: true });
     } catch {
       this.quadro.set(null);
@@ -384,6 +398,18 @@ export class ControleAtividadesComponent {
     }
   }
 
+  private async carregarConsultores(): Promise<void> {
+    const codigo = this.codigoAtivo();
+    try {
+      const lista = await this.api.consultores(codigo);
+      if (this.codigoAtivo() !== codigo) return;
+      this.consultores.set(lista);
+    } catch {
+      if (this.codigoAtivo() !== codigo) return;
+      this.consultores.set([]);
+    }
+  }
+
   private async carregarContatos(): Promise<void> {
     const codigo = this.codigoAtivo();
     try {
@@ -411,7 +437,7 @@ export class ControleAtividadesComponent {
     const titulo = this.tituloNovo().trim();
     if (!listaId || !titulo) return;
     try {
-      await this.api.criarCartao({
+      const criado = await this.api.criarCartao({
         listaId,
         titulo,
         designadoUsuarioId: this.designadoNovo() || undefined,
@@ -420,6 +446,10 @@ export class ControleAtividadesComponent {
       this.tituloNovo.set('');
       await this.recarregarQuadro();
       await this.recarregarRail();
+      // Abre o cartão recém-criado. O campo da coluna só pede o TÍTULO — sem isto, quem abre
+      // uma solicitação fica sem lugar para dizer do que ela se trata, e é preciso descobrir
+      // sozinho que o cartão se clica. Relatado pelo usuário em 2026-09-03, do lado cliente.
+      if (criado?.id) this.abrirCartao(criado.id);
     } catch (e) {
       this.falhou(e, 'Não foi possível criar o cartão.');
     }

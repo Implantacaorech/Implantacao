@@ -102,6 +102,20 @@ estará esperando.
 > A da agenda exige `:cliente` (a irmã o tem opcional): sem o filtro de autorização, um código
 > nulo despejaria a agenda de contatos da base inteira.
 
+### 2.4-A O que o CLIENTE pode fazer no cartão (2026-09-03)
+
+Três ajustes pedidos pelo usuário depois de usar a tela, e o fio que liga os três é o mesmo:
+**abrir uma solicitação só significa alguma coisa se houver onde dizer do que ela se trata.**
+
+| Regra | Por quê |
+|---|---|
+| O cliente **edita o cartão que ele abriu** (título, descrição, prazo, etiquetas) | Antes a descrição nascia somente-leitura, com "Sem descrição." — ele criava a solicitação e não tinha onde descrevê-la. Continua **sem** poder reescrever cartão redigido pela Rech: isso seria falar pela Rech no quadro dela. `projetoId` também fica de fora — é vínculo administrativo, não conteúdo. |
+| Criar um cartão **abre o cartão** | O campo da coluna pede só o TÍTULO. Sem abrir, é preciso descobrir sozinho que o cartão se clica. Vale para os dois lados. |
+| O seletor de consultor oferece **só quem participa** | São os designados no projeto (consultores e GCI, sem o levantador) mais os responsáveis do quadro. Antes vinha o cadastro interno inteiro, e dava para apontar um cartão para quem não atende aquele cliente. Vale para os dois lados. |
+
+A regra de edição mora em `podeEditarCartao` (`acesso.ts`), ao lado das demais, e não espalhada
+nos services — é a parte do módulo em que um engano não dá erro, dá vazamento.
+
 ### 2.5 Nada de banco externo fora da API de Dados
 
 Tudo do quadro (quadros, listas, cartões, membros, anexos, comentários) mora no
@@ -279,6 +293,7 @@ por `EscopoClienteService` em **toda** leitura.
 | GET/POST/DELETE | `/quadros/:cod/responsaveis[/:usuarioId]` | Quem responde pelo quadro |
 | GET | `/clientes?termo=` | `sicla.clientes.buscar` (catálogo) |
 | GET | `/contatos/:codigoCliente` | `sicla.contatos.do-cliente` (catálogo) — a AGENDA, não a autorização |
+| GET | `/consultores?codigo=` | designados do projeto + responsáveis do quadro — **não** o cadastro interno inteiro |
 
 ---
 
