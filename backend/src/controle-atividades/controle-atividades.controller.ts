@@ -518,7 +518,10 @@ export class ControleAtividadesController {
     // Passa pelo mesmo gate do quadro: listar os contatos de um cliente é dado de cliente, e
     // não pode ser um atalho para quem não alcança o quadro dele.
     await this.quadros.exigirLegivel(user, codigo);
-    return new ApiEnvelope(await this.contatosSicla.listar(codigo));
+    // `listarDoCliente`, não `listar`: aqui a pergunta é "quem são as pessoas deste cliente?"
+    // (agenda), e não "quem pode ter conta no Painel?" (autorização). Enquanto isto chamava
+    // `listar`, o seletor do cartão só oferecia quem tinha PORTAL_RECH_CLIENTES = 1.
+    return new ApiEnvelope(await this.contatosSicla.listarDoCliente(codigo));
   }
 }
 

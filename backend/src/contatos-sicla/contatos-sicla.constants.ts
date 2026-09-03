@@ -21,6 +21,19 @@ export const SLUG_LISTA_CONTATOS = 'contatos_sicla_lista';
 export const NOME_LISTA_CONTATOS =
   'Contatos liberados no Portal (SICLA) — Acesso de Clientes';
 
+/** A AGENDA de contatos de um cliente — todos, liberados no Portal ou não.
+ *
+ * Irmã da de cima, e a diferença é a pergunta que cada uma responde: aquela é AUTORIZAÇÃO
+ * ("quem pode ter conta no Painel?"), esta é AGENDA ("quem são as pessoas deste cliente?").
+ * Reusar a de autorização para nomear responsável de cartão foi um defeito real
+ * (2026-09-03): o seletor do Controle de Atividades só oferecia os contatos com
+ * `PORTAL_RECH_CLIENTES = 1`, quando o desenho do módulo diz o contrário — um contato pode
+ * ser membro de cartão **mesmo sem conta no Painel**. */
+export const SLUG_CONTATOS_DO_CLIENTE = 'contatos_sicla_do_cliente';
+
+export const NOME_CONTATOS_DO_CLIENTE =
+  'Contatos do cliente (SICLA) — responsáveis de cartão';
+
 /** Senha do contato recém-liberado.
  *
  * ⚠️ **É uma senha PADRÃO, conhecida — decisão do usuário em 2026-09-01, para destravar os
