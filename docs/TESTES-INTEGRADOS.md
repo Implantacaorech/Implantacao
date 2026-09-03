@@ -1,6 +1,6 @@
 # Testes Integrados — Painel de Implantação (Rech · SIGER®)
 
-- **Versão do documento:** 1.0.0
+- **Versão do documento:** 1.0.1
 - **Gerado em:** 2026-09-02
 - **Gerado a partir de:** [`GERARTESTEINTEGRADOPLAYWRIGHT.md`](../GERARTESTEINTEGRADOPLAYWRIGHT.md)
 - **Estado de referência:** `5dcb50f` (branch `feat/controle-acessos`)
@@ -1189,6 +1189,7 @@ Fase 3 aplicada ao que sobrou.
 | Data | Versão | Mudança | Casos afetados |
 | --- | --- | --- | --- |
 | 2026-09-02 | 1.0.0 | **Criação do documento.** Aplicação do gerador sobre a suíte que já existia: inventário completo das 306 rotas e 89 telas, numeração `CT-###` estável para os 109 casos existentes (sem alterar nenhuma asserção), tags de prioridade, e o gate de perpetuidade (§9). | CT-001..CT-109 |
+| 2026-09-03 | 1.0.1 | **Correção de defeito, sem superfície nova.** `GET /api/atividades/contatos/:codigo` passou a chamar a consulta `sicla.contatos.do-cliente` (agenda do cliente) em vez de `sicla.contatos.listar` (autorização, filtrada por `PORTAL_RECH_CLIENTES = 1`) — o seletor "do lado do cliente" do cartão oferecia quase ninguém. A rota é a mesma, o contrato de resposta é o mesmo: a Seção 3 não muda. Coberto por teste **unitário** (5 casos em `contatos-sicla.service.spec.ts` e 2 em `controle-atividades.component.spec.ts`), não por caso e2e — a consulta depende do SICLA, que por decisão não existe na instância isolada (ver Seção 1). | — |
 | 2026-09-02 | 1.0.0 | **Cobertura P0 nova** — os buracos que a varredura encontrou: painel de Permissões (o RBAC dirigido por banco não tinha nenhum caso), superfícies públicas (enumeração de conta e rota nova sem guarda), Controle de Acessos/presença (entregue em 2026-09-01, sem cobertura) e Controle de Atividades (34 rotas, a fronteira Rech↔cliente sem nenhum caso). | CT-110..CT-133 |
 
 ### Registro de IDs removidos

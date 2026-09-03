@@ -81,18 +81,35 @@ O mesmo cartão atende os dois níveis, pela lista de **membros**:
 | Origem | De onde | Como entra |
 |---|---|---|
 | Consultores da Rech | `usuarios` do Painel | Seleção direta |
-| Contatos do cliente | `SICLA.LISTA_CONTATOS`, via API de Dados | Consulta `sicla.contatos.listar`, que **já existe** no catálogo |
+| Contatos do cliente | `SICLA.LISTA_CONTATOS`, via API de Dados | Consulta `sicla.contatos.do-cliente` |
 
 Um contato pode ser membro **mesmo sem conta no Painel** — vira destinatário e responsável
 nominal; quando o ADM liberar o acesso dele em Sistema → Acesso de Clientes, o cartão já
 estará esperando.
 
+> ⚠️ **Corrigido em 2026-09-03.** O desenho original mandava reusar `sicla.contatos.listar`,
+> dizendo que nenhuma consulta nova era necessária — e isso contradizia a própria frase acima.
+> Aquela consulta filtra `PORTAL_RECH_CLIENTES = 1`, ou seja, **exatamente quem PODE ter conta
+> no Painel**; com ela, o seletor "do lado do cliente" só oferecia os contatos já liberados no
+> Portal — num cliente com um liberado só, uma pessoa só. São duas perguntas diferentes e por
+> isso são duas consultas:
+>
+> | Consulta | Pergunta que responde | Quem usa |
+> |---|---|---|
+> | `sicla.contatos.listar` | "quem pode ter conta no Painel?" — **autorização** | Acesso de Clientes, revalidação do login |
+> | `sicla.contatos.do-cliente` | "quem são as pessoas deste cliente?" — **agenda** | membro de cartão, aqui |
+>
+> A da agenda exige `:cliente` (a irmã o tem opcional): sem o filtro de autorização, um código
+> nulo despejaria a agenda de contatos da base inteira.
+
 ### 2.5 Nada de banco externo fora da API de Dados
 
 Tudo do quadro (quadros, listas, cartões, membros, anexos, comentários) mora no
 `painel_novo`, por Repository/TypeORM — ADR-0002. Cliente e contatos vêm do SICLA **só** pelas
-consultas nomeadas do catálogo (ADR-0003): `sicla.clientes.buscar` e `sicla.contatos.listar`,
-ambas já publicadas. **Nenhuma consulta nova é necessária.**
+consultas nomeadas do catálogo (ADR-0003): `sicla.clientes.buscar` e
+`sicla.contatos.do-cliente` — a primeira já existia; a segunda entrou em 2026-09-03, quando
+se descobriu que reusar a consulta de AUTORIZAÇÃO para montar a agenda do cliente escondia
+quase todo mundo (ver o aviso na §2.4).
 
 ### 2.6 Arrastar sem dependência nova
 
@@ -261,7 +278,7 @@ por `EscopoClienteService` em **toda** leitura.
 | GET | `/busca?termo=` | **Consulta geral** — todos os quadros que o usuário pode ler; teto de 50 |
 | GET/POST/DELETE | `/quadros/:cod/responsaveis[/:usuarioId]` | Quem responde pelo quadro |
 | GET | `/clientes?termo=` | `sicla.clientes.buscar` (catálogo) |
-| GET | `/contatos/:codigoCliente` | `sicla.contatos.listar` (catálogo) |
+| GET | `/contatos/:codigoCliente` | `sicla.contatos.do-cliente` (catálogo) — a AGENDA, não a autorização |
 
 ---
 

@@ -99,6 +99,54 @@ export class ContatosSiclaService {
     return { ok: true, mensagem: r.mensagem, contatos };
   }
 
+  /** A AGENDA de contatos de um cliente — TODOS, liberados no Portal Rech ou não.
+   *
+   * Serve para nomear quem, do lado do cliente, responde por um cartão do Controle de
+   * Atividades. **Não confundir com `listar()`**, que é a consulta de AUTORIZAÇÃO
+   * (`PORTAL_RECH_CLIENTES = 1`) e alimenta o Acesso de Clientes e a revalidação do login.
+   *
+   * Reusar `listar()` aqui foi um defeito real (2026-09-03): o seletor do cartão só oferecia
+   * os contatos já liberados no Portal, e num cliente com um único liberado aparecia uma
+   * pessoa só — quando o desenho do módulo diz que um contato pode ser membro **mesmo sem
+   * conta no Painel** (docs/controle-atividades.md §2.4).
+   *
+   * O código do cliente é obrigatório: sem ele a consulta nem é chamada. Um `:cliente` nulo
+   * aqui devolveria a agenda da base inteira, e nenhuma tela precisa disso.
+   */
+  async listarDoCliente(cliente: string): Promise<ResultadoListaContatos> {
+    const codigo = this.texto(cliente);
+    const n = Number(codigo);
+    if (!codigo || !Number.isInteger(n)) {
+      return {
+        ok: false,
+        mensagem: 'Código de cliente inválido.',
+        contatos: [],
+      };
+    }
+    const r = await this.dados.consultar('sicla.contatos.do-cliente', {
+      cliente: n,
+    });
+    if (!r.ok) return { ok: false, mensagem: r.mensagem, contatos: [] };
+
+    const existentes = await this.usuarios.todos();
+    const porEmail = new Map<string, Usuario>();
+    for (const u of existentes) {
+      for (const e of [u.email, u.login]) {
+        const chave = (e || '').trim().toLowerCase();
+        if (chave && !porEmail.has(chave)) porEmail.set(chave, u);
+      }
+    }
+
+    const contatos = r.linhas
+      .map((row) => this.mapear(row, porEmail))
+      // Sem nome E sem e-mail não é contato — é linha de lixo do SELECT.
+      .filter((c) => c.nome !== '' || c.email !== '')
+      // O bind já recorta no banco; isto cobre o SQL editado que tenha perdido o filtro —
+      // e aqui o recorte é a única proteção, porque não há mais o filtro de autorização.
+      .filter((c) => c.cliente === codigo);
+    return { ok: true, mensagem: r.mensagem, contatos };
+  }
+
   private mapear(
     bruta: Record<string, unknown>,
     porEmail: Map<string, Usuario>,

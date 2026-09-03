@@ -3,6 +3,7 @@ import {
   SQL_BUSCA_MODULO_PADRAO,
   SQL_LISTA_TECNICOS_PADRAO,
   SQL_LISTA_FUNCOES_PADRAO,
+  SQL_CONTATOS_DO_CLIENTE_PADRAO,
   SQL_LISTA_CONTATOS_PADRAO,
 } from './sql/sicla-cadastros.sql';
 import { SQL_CONSULTA_RNS_PADRAO } from './sql/sicla-rns.sql';
@@ -22,7 +23,9 @@ import {
 } from './sql/sicla-bi.sql';
 import { SQL_VISITAS_PORTAL_PADRAO } from './sql/portal-rech.sql';
 import {
+  NOME_CONTATOS_DO_CLIENTE,
   NOME_LISTA_CONTATOS,
+  SLUG_CONTATOS_DO_CLIENTE,
   SLUG_LISTA_CONTATOS,
 } from '../../contatos-sicla/contatos-sicla.constants';
 import { SELECT_TECNICOS_PADRAO } from './sql/sicla-disponibilidade.sql';
@@ -555,6 +558,39 @@ export const CATALOGO: ConsultaCatalogo[] = [
     // Cache curto: é autorização, não relatório. Revogar no SICLA precisa valer rápido, e o
     // login do cliente passa por aqui.
     cacheSegundos: 60,
+    donoAtual: 'contatos-sicla',
+    desde: 'v1',
+  },
+
+  {
+    nome: 'sicla.contatos.do-cliente',
+    titulo: 'Contatos de um cliente (agenda)',
+    descricao:
+      'TODOS os contatos de um cliente em SICLA.LISTA_CONTATOS, liberados no Portal Rech ou ' +
+      'não. Serve para nomear quem, do lado do cliente, responde por um cartão do Controle ' +
+      'de Atividades — o que não exige conta no Painel.',
+    conexao: 'sicla',
+    // Só o Controle de Atividades. Deliberadamente FORA de `acesso_clientes`: aquela tela
+    // decide quem ganha conta, e para isso a lista tem de continuar sendo a de AUTORIZAÇÃO
+    // (`sicla.contatos.listar`) — oferecer ali quem o SICLA não liberou convidaria a liberar
+    // quem não podia.
+    menus: ['controle_atividades'],
+    // `cliente` OBRIGATÓRIO, ao contrário da consulta irmã: sem o filtro de autorização, um
+    // código nulo despejaria a agenda de contatos de toda a base.
+    parametros: [obrigatorio(P.cliente)],
+    origem: {
+      tipo: 'consulta_salva',
+      slug: SLUG_CONTATOS_DO_CLIENTE,
+      sqlPadrao: SQL_CONTATOS_DO_CLIENTE_PADRAO,
+      semente: {
+        nome: NOME_CONTATOS_DO_CLIENTE,
+        ordem: 96,
+      },
+    },
+    limiteLinhas: LIMITE.contatosSicla,
+    // Agenda muda pouco e a tela relê a cada cartão aberto; 10 min poupa o Oracle sem
+    // envelhecer nada que importe. A irmã usa 60s porque é autorização — aqui não é.
+    cacheSegundos: 600,
     donoAtual: 'contatos-sicla',
     desde: 'v1',
   },

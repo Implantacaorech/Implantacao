@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { ControleAtividadesComponent } from './controle-atividades.component';
 import { ControleAtividadesService } from '../../core/services/controle-atividades.service';
@@ -113,15 +113,21 @@ async function montar(api = servico()) {
   });
   const fixture = TestBed.createComponent(ControleAtividadesComponent);
   fixture.detectChanges();
-  // A carga inicial encadeia várias promessas (rail → quadro → navegação de deep-link), e
-  // um único `whenStable` resolve só a primeira delas — a tela ainda estaria em
-  // "Carregando…". Alguns ciclos drenam a fila até o quadro estar montado.
+  await drenar(fixture);
+  return fixture;
+}
+
+/** Resolve a fila de promessas encadeadas da tela.
+ *
+ * A carga encadeia várias (rail → quadro → navegação de deep-link → contatos), e um único
+ * `whenStable` resolve só a primeira delas — a tela ainda estaria em "Carregando…". Alguns
+ * ciclos drenam a fila até o quadro estar montado. */
+async function drenar(fixture: ComponentFixture<ControleAtividadesComponent>) {
   for (let i = 0; i < 6; i += 1) {
     await fixture.whenStable();
     await new Promise((r) => setTimeout(r, 0));
     fixture.detectChanges();
   }
-  return fixture;
 }
 
 describe('ControleAtividadesComponent', () => {
@@ -212,6 +218,77 @@ describe('ControleAtividadesComponent', () => {
     expect(f.nativeElement.textContent).not.toContain('Bastidor Rech');
     // O cliente PODE abrir solicitação (decisão do usuário, 2026-09-01).
     expect(f.nativeElement.textContent).toContain('Abrir solicitação');
+  });
+
+  // Defeito real, relatado em 2026-09-03: o seletor "DO LADO DO CLIENTE" oferecia os contatos
+  // do cliente ERRADO. A lista era um cache sem dono — só era buscada quando estava vazia, e
+  // trocar de quadro não a esvaziava. Bastava abrir um cartão do cliente A para que o cartão
+  // do cliente B oferecesse a gente de A, num módulo cuja razão de existir é justamente não
+  // misturar cliente com cliente.
+  describe('contatos do cliente no cartão', () => {
+    function apiComContatos(porCodigo: Record<string, { nome: string; email: string }[]>) {
+      const pedidos: string[] = [];
+      const api = servico({
+        contatos: (codigo: string) => {
+          pedidos.push(codigo);
+          return Promise.resolve(porCodigo[codigo] ?? []);
+        },
+        quadro: (codigo: string) =>
+          Promise.resolve(
+            quadro({
+              quadro: {
+                id: 1,
+                codigoClienteSicla: codigo,
+                nomeCliente: `Cliente ${codigo}`,
+                projetoId: 1,
+                responsaveis: [{ usuarioId: 7, nome: 'Everton', principal: true }],
+              },
+            } as Partial<QuadroCompleto>),
+          ),
+      } as unknown as Partial<ControleAtividadesService>);
+      return { api, pedidos };
+    }
+
+    it('busca os contatos DO cliente aberto, e rebusca ao trocar de quadro', async () => {
+      const { api, pedidos } = apiComContatos({
+        '10482': [{ nome: 'Ana de Vale Verde', email: 'ana@valeverde.com.br' }],
+        '3729': [{ nome: 'Bruno de Outro', email: 'bruno@outro.com.br' }],
+      });
+      const f = await montar(api);
+      const c = f.componentInstance;
+
+      c.abrirCartao(100);
+      await drenar(f);
+      expect(c.contatos().map((x) => x.nome)).toEqual(['Ana de Vale Verde']);
+
+      // troca de cliente e abre um cartão de novo
+      await c.abrirCliente('3729');
+      await drenar(f);
+      c.abrirCartao(100);
+      await drenar(f);
+
+      expect(
+        c.contatos().map((x) => x.nome),
+        // se falhar aqui com "Ana", o cache voltou a atravessar clientes
+      ).toEqual(['Bruno de Outro']);
+      expect(pedidos).toEqual(['10482', '3729']);
+    });
+
+    it('não rebusca ao reabrir cartões do MESMO cliente', async () => {
+      const { api, pedidos } = apiComContatos({
+        '10482': [{ nome: 'Ana de Vale Verde', email: 'ana@valeverde.com.br' }],
+      });
+      const f = await montar(api);
+      const c = f.componentInstance;
+
+      c.abrirCartao(100);
+      await drenar(f);
+      c.fecharCartao();
+      c.abrirCartao(100);
+      await drenar(f);
+
+      expect(pedidos).toEqual(['10482']);
+    });
   });
 
   describe('edição do cartão (o defeito de 2026-09-01: descrição não era editável)', () => {

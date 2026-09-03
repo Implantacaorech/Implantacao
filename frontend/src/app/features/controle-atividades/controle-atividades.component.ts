@@ -51,6 +51,13 @@ export class ControleAtividadesComponent {
   readonly etiquetas = signal<Etiqueta[]>([]);
   readonly consultores = signal<ConsultorPainel[]>([]);
   readonly contatos = signal<ContatoCliente[]>([]);
+  /** De QUAL cliente é a lista de contatos que está em memória.
+   *
+   * Sem isto, `contatos` era um cache sem dono: bastava ter aberto um cartão do cliente A
+   * para que o cartão do cliente B oferecesse os contatos de A — a lista só era buscada
+   * quando estava vazia, e trocar de quadro não a esvaziava. Guardar a origem é o que faz o
+   * "já tenho" significar "já tenho DESTE cliente". */
+  private contatosDe = '';
 
   // --- cartão aberto
   readonly cartaoAberto = signal<number | null>(null);
@@ -299,7 +306,10 @@ export class ControleAtividadesComponent {
     this.textoComentario.set('');
     this.textoItem.set('');
     this.urlLink.set('');
-    if (this.interno() && !this.contatos().length) void this.carregarContatos();
+    // Recarrega quando a lista em memória é de OUTRO cliente (ou ainda não existe).
+    if (this.interno() && this.contatosDe !== this.codigoAtivo()) {
+      void this.carregarContatos();
+    }
   }
   fecharCartao(): void {
     this.cartaoAberto.set(null);
@@ -375,10 +385,18 @@ export class ControleAtividadesComponent {
   }
 
   private async carregarContatos(): Promise<void> {
+    const codigo = this.codigoAtivo();
     try {
-      this.contatos.set(await this.api.contatos(this.codigoAtivo()));
+      const lista = await this.api.contatos(codigo);
+      // O quadro pode ter mudado enquanto a resposta vinha: só aceita o que ainda é do
+      // cliente aberto, senão a resposta lenta de um sobrescreveria a do outro.
+      if (this.codigoAtivo() !== codigo) return;
+      this.contatos.set(lista);
+      this.contatosDe = codigo;
     } catch {
+      if (this.codigoAtivo() !== codigo) return;
       this.contatos.set([]); // sem SICLA a tela segue; só não oferece contato.
+      this.contatosDe = '';
     }
   }
 

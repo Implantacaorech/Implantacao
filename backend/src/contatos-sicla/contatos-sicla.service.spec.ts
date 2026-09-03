@@ -243,6 +243,100 @@ describe('ContatosSiclaService', () => {
     });
   });
 
+  // Defeito real, relatado pelo usuário em 2026-09-03: no Controle de Atividades, o seletor
+  // "DO LADO DO CLIENTE → Incluir contato..." oferecia UMA pessoa só. A causa era este
+  // service ser chamado por `listar()`, cuja consulta filtra `PORTAL_RECH_CLIENTES = 1` —
+  // AUTORIZAÇÃO para ter conta no Painel. Mas o desenho do módulo diz que um contato pode ser
+  // membro de cartão MESMO SEM conta (docs/controle-atividades.md §2.4). São perguntas
+  // diferentes, e por isso são duas consultas. O que estes casos travam é a distinção.
+  describe('listarDoCliente — a AGENDA, não a autorização', () => {
+    it('usa a consulta da agenda, não a de autorização', async () => {
+      await service.listarDoCliente('3180');
+      expect(dados.consultar).toHaveBeenCalledWith(
+        'sicla.contatos.do-cliente',
+        {
+          cliente: 3180,
+        },
+      );
+      expect(dados.consultar).not.toHaveBeenCalledWith(
+        'sicla.contatos.listar',
+        expect.anything(),
+      );
+    });
+
+    it('devolve o contato que NÃO está liberado no Portal — é o ponto', async () => {
+      dados.consultar.mockResolvedValue({
+        ok: true,
+        mensagem: '2 linha(s).',
+        colunas: [],
+        linhas: [
+          {
+            CLIENTE: 3180,
+            NOME: 'Ricardo Liberado',
+            CARGO: 'TI',
+            EMAIL: 'ricardo@acme.com.br',
+            ATIVODES: 'Ativo',
+            STATUSDES: 'Efetivo',
+            PORTAL_RECH_CLIENTES_DES: 'Sim',
+          },
+          {
+            CLIENTE: 3180,
+            NOME: 'Marta Sem Portal',
+            CARGO: 'Fiscal',
+            EMAIL: 'marta@acme.com.br',
+            ATIVODES: 'Ativo',
+            STATUSDES: 'Efetivo',
+            PORTAL_RECH_CLIENTES_DES: 'Não',
+          },
+        ],
+      });
+      const r = await service.listarDoCliente('3180');
+      expect(r.ok).toBe(true);
+      expect(r.contatos.map((c) => c.nome)).toEqual([
+        'Ricardo Liberado',
+        'Marta Sem Portal',
+      ]);
+    });
+
+    it('recorta no cliente pedido, mesmo se o SQL editado perder o filtro', async () => {
+      dados.consultar.mockResolvedValue({
+        ok: true,
+        mensagem: '2 linha(s).',
+        colunas: [],
+        linhas: [
+          { CLIENTE: 3180, NOME: 'Do cliente', EMAIL: 'a@x.com' },
+          { CLIENTE: 3729, NOME: 'De OUTRO cliente', EMAIL: 'b@y.com' },
+        ],
+      });
+      const r = await service.listarDoCliente('3180');
+      expect(r.contatos.map((c) => c.nome)).toEqual(['Do cliente']);
+    });
+
+    it('sem código de cliente não chama o banco — nada de agenda da base inteira', async () => {
+      for (const codigo of ['', '  ', 'abc']) {
+        const r = await service.listarDoCliente(codigo);
+        expect(r.ok).toBe(false);
+        expect(r.contatos).toEqual([]);
+      }
+      expect(dados.consultar).not.toHaveBeenCalled();
+    });
+
+    it('falha da API de Dados degrada com a mensagem, sem lançar', async () => {
+      dados.consultar.mockResolvedValue({
+        ok: false,
+        mensagem: 'Conexão "sicla" não configurada.',
+        colunas: [],
+        linhas: [],
+      });
+      const r = await service.listarDoCliente('3180');
+      expect(r).toEqual({
+        ok: false,
+        mensagem: 'Conexão "sicla" não configurada.',
+        contatos: [],
+      });
+    });
+  });
+
   describe('situacaoNoSicla — a revalidação do login', () => {
     it('liberado para quem está na lista', async () => {
       await expect(service.situacaoNoSicla('fulano@acme.com.br')).resolves.toBe(
