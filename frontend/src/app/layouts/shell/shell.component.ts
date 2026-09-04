@@ -4,15 +4,25 @@ import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, Ro
 import { FormsModule } from '@angular/forms';
 import { filter, map, startWith } from 'rxjs';
 import { BarraGravacaoComponent } from '../../features/protocolos/barra-gravacao.component';
+import { AvisosAtividadesComponent } from '../../features/controle-atividades/avisos-atividades.component';
 import { AuthService } from '../../core/services/auth.service';
 import { PermissoesService } from '../../core/services/permissoes.service';
 import { InstanciaService } from '../../core/services/instancia.service';
+import { PresencaService } from '../../core/services/presenca.service';
+import { InatividadeService } from '../../core/services/inatividade.service';
 import { temPapel } from '../../core/constants/perfis';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, BarraGravacaoComponent],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    FormsModule,
+    BarraGravacaoComponent,
+    AvisosAtividadesComponent,
+  ],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.css',
 })
@@ -23,9 +33,19 @@ export class ShellComponent {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
+  private readonly presenca = inject(PresencaService);
+  private readonly inatividade = inject(InatividadeService);
+
   constructor() {
     // Carrega o mapa de permissões do usuário logado (menu só existe autenticado).
     void this.perm.garantirCarregado();
+    // Anuncia presença enquanto o shell estiver montado — ou seja, enquanto houver sessão.
+    // Fica aqui, e não numa tela, para acompanhar o usuário por TODAS as telas.
+    this.presenca.iniciar();
+    // Derruba a sessão após 30 min sem atividade de gente (regra do usuário, 2026-09-03).
+    // Fica aqui pelo mesmo motivo da presença: acompanha o usuário por todas as telas, e o
+    // shell só existe autenticado.
+    this.inatividade.iniciar();
   }
 
   /** Este front-end está sendo servido pelo **Portal API** (instância interna)?
@@ -72,6 +92,9 @@ export class ShellComponent {
   readonly podeRechEdu = computed(() => this.perm.podeVer('rechedu'));
   readonly podeAgenda = computed(() => this.perm.podeVer('agenda'));
   readonly podeRns = computed(() => this.perm.podeVer('rns'));
+  readonly podeControleAtividades = computed(() =>
+    this.perm.podeVer('controle_atividades'),
+  );
   readonly podeCoordenacao = computed(() => this.perm.podeVer('coordenacao'));
   readonly podeCentroOp = computed(() =>
     this.perm.podeVer('centro_operacional'),
@@ -110,7 +133,14 @@ export class ShellComponent {
     this.sideAberta.set(forcar ?? !this.sideAberta());
   }
 
-  sair(): void {
+  async sair(): Promise<void> {
+    // Encerra a presença ANTES do logout: depois o token já foi embora e a chamada
+    // voltaria 401, deixando a pessoa "online" na tela por mais dois minutos.
+    await this.presenca.encerrar();
+    // Para o vigia de ociosidade junto: um temporizador que sobrevivesse ao logout tentaria
+    // deslogar de novo, já sem sessão, e jogaria a pessoa para o login com "ociosidade"
+    // depois de ela ter saído por vontade própria.
+    this.inatividade.parar();
     void this.auth.logout();
   }
 }

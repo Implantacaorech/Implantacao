@@ -1,0 +1,654 @@
+<h1 class="pagina-titulo">Controle de Atividades</h1>
+
+<div class="ca-topo">
+  <label class="ca-busca">
+    <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-search"/></svg>
+    <input type="search" placeholder="Buscar cartão em todos os quadros…"
+           aria-label="Buscar cartão em todos os quadros"
+           [ngModel]="termoBusca()" (ngModelChange)="termoBusca.set($event)"
+           (keyup.enter)="buscar()" (input)="buscar()">
+    @if (termoBusca()) {
+      <button type="button" class="ca-x" (click)="limparBusca()" aria-label="Limpar busca">
+        <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-x"/></svg>
+      </button>
+    }
+  </label>
+  @if (buscaInfo()) {
+    <div class="ca-res">
+      <div class="ca-res-h">{{ buscaInfo() }}</div>
+      @for (a of resultado(); track a.cartaoId) {
+        <button type="button" class="ca-res-r" (click)="irPara(a)">
+          <div class="ca-res-t">{{ a.titulo }}</div>
+          <div class="ca-res-m">
+            <span class="ca-res-cli">{{ a.nomeCliente }}</span>
+            <span>· {{ a.lista }}</span>
+            @if (a.visivelCliente) { <span class="ca-pin ca-pin-s">cliente</span> }
+            @else { <span class="ca-pin ca-pin-i">interno</span> }
+            @if (a.soConsulta) { <span class="ca-pin ca-pin-r">consulta</span> }
+          </div>
+        </button>
+      }
+    </div>
+  }
+</div>
+
+@if (erro()) { <div class="erro">{{ erro() }}</div> }
+@if (aviso()) { <div class="dica">{{ aviso() }}</div> }
+
+@if (carregando()) {
+  <p class="ca-vazio">Carregando…</p>
+} @else {
+  <div class="ca-app">
+    <!-- ───────────────────────── rail de clientes ───────────────────────── -->
+    <aside class="ca-rail">
+      <div class="ca-rail-h">
+        @if (interno()) {
+          <div class="ca-abas" role="group" aria-label="Quais clientes">
+            <button type="button" [attr.aria-pressed]="aba() === 'meus'"
+                    (click)="trocarAba('meus')">
+              Meus clientes <b>{{ quadros().meus.length }}</b>
+            </button>
+            <button type="button" [attr.aria-pressed]="aba() === 'demais'"
+                    (click)="trocarAba('demais')">
+              Demais consultores <b>{{ quadros().demais.length }}</b>
+            </button>
+          </div>
+
+          <!-- Filtro de consultor: só faz sentido na aba dos outros. -->
+          @if (aba() === 'demais' && quadros().consultores.length) {
+            <select class="campo ca-sel" aria-label="Filtrar por consultor"
+                    [ngModel]="filtroConsultor()"
+                    (ngModelChange)="filtroConsultor.set(+$event)">
+              <option [value]="0">Todos os consultores</option>
+              @for (c of quadros().consultores; track c.usuarioId) {
+                <option [value]="c.usuarioId">{{ c.nome }}</option>
+              }
+            </select>
+          }
+        }
+        <label class="ca-filtro">
+          <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-search"/></svg>
+          <input type="search" placeholder="Filtrar cliente ou código…"
+                 aria-label="Filtrar cliente"
+                 [ngModel]="filtroCliente()" (ngModelChange)="filtroCliente.set($event)">
+        </label>
+      </div>
+
+      <div class="ca-rail-l">
+        @for (c of listaDoRail(); track c.codigoClienteSicla) {
+          <button type="button" class="ca-cli" [class.on]="c.codigoClienteSicla === codigoAtivo()"
+                  (click)="abrirCliente(c.codigoClienteSicla)">
+            <div class="ca-cli-n">{{ c.nomeCliente }}</div>
+            <div class="ca-cli-c">
+              {{ c.codigoClienteSicla }}
+              @if (!c.meu && c.responsaveis.length) { · {{ c.responsaveis[0].nome }} }
+            </div>
+            <div class="ca-cli-m">
+              @if (c.abertosInternos) {
+                <span class="ca-pin ca-pin-i">{{ c.abertosInternos }} interno(s)</span>
+              }
+              @if (c.abertosCompartilhados) {
+                <span class="ca-pin ca-pin-s">{{ c.abertosCompartilhados }} com o cliente</span>
+              }
+              @if (!c.meu) { <span class="ca-pin ca-pin-r">consulta</span> }
+            </div>
+          </button>
+        } @empty {
+          <p class="ca-vazio">
+            @if (naOutraAba()) {
+              {{ naOutraAba() }} cliente(s) na outra aba.
+              <button type="button" class="ca-link"
+                      (click)="trocarAba(aba() === 'meus' ? 'demais' : 'meus')">Ver lá</button>
+            } @else { Nenhum cliente nesta aba. }
+          </p>
+        }
+      </div>
+
+      @if (interno()) {
+        <div class="ca-rail-f">
+          <button type="button" class="btn" (click)="comecarQuadro()">
+            <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-plus"/></svg>
+            Novo quadro
+          </button>
+        </div>
+      }
+    </aside>
+
+    <!-- ───────────────────────────── quadro ─────────────────────────────── -->
+    <section class="ca-bd">
+      @if (quadro(); as q) {
+        <div class="ca-bd-h">
+          <div>
+            <div class="ca-bd-t">{{ q.quadro.nomeCliente }}</div>
+            <div class="ca-bd-s">
+              Código SICLA {{ q.quadro.codigoClienteSicla }}
+              @if (interno() && responsaveisTexto()) { · responsável {{ responsaveisTexto() }} }
+            </div>
+          </div>
+          <div class="acoes">
+            @if (podeEditar()) {
+              <button type="button" class="btn" (click)="abrirImportacao()"
+                      title="Trazer um quadro exportado do Trello">
+                <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-download"/></svg>
+                Importar do Trello
+              </button>
+              <button type="button" class="btn" (click)="comecarCartao(colunas()[0].id)">
+                <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-plus"/></svg>
+                Novo cartão
+              </button>
+            }
+          </div>
+        </div>
+
+        @if (soConsulta()) {
+          <div class="ca-faixa ca-faixa-ro">
+            <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-lock"/></svg>
+            <span><b>Somente consulta.</b> Quem responde por este quadro é
+              {{ responsaveisTexto() }}. Você lê tudo, inclusive os cartões internos — mas não
+              move, não edita e não comenta.</span>
+          </div>
+        }
+        @if (!interno()) {
+          <div class="ca-faixa ca-faixa-cli">
+            <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-lock"/></svg>
+            <span>Você vê aqui só as atividades que a Rech compartilhou com a sua empresa.</span>
+          </div>
+        }
+        @if (q.ocultos && q.ocultos.cartoesInternos) {
+          <div class="ca-faixa ca-faixa-info">
+            <svg class="svgi svgi-md" aria-hidden="true"><use href="#ic-info"/></svg>
+            <span>{{ q.ocultos.cartoesInternos }} cartão(ões) interno(s) e
+              {{ q.ocultos.colunasInternas }} coluna(s) de bastidor
+              ({{ q.ocultos.cartoesEmColunasInternas }} cartões) não aparecem para o cliente.</span>
+          </div>
+        }
+
+        <div class="ca-cols">
+          @for (l of colunas(); track l.id) {
+            <div class="ca-col" [class.interna]="!l.visivelCliente"
+                 [class.alvo]="colunaAlvo() === l.id"
+                 (dragover)="aoSobrevoar($event, l.id)" (dragleave)="aoSair()"
+                 (drop)="aoSoltar($event, l)">
+              <div class="ca-col-h">
+                <span class="ca-col-n">{{ l.titulo }}</span>
+                <span class="ca-col-c">{{ cartoesDa(l).length }}</span>
+                @if (!l.visivelCliente && interno()) { <span class="ca-col-tag">só Rech</span> }
+              </div>
+
+              <div class="ca-col-b">
+                @for (c of cartoesDa(l); track c.id) {
+                  <div class="ca-card" [class.shr]="c.visivelCliente" [class.pronto]="c.concluido"
+                       tabindex="0" role="button" [attr.aria-label]="c.titulo"
+                       [attr.draggable]="podeInteragir()"
+                       (dragstart)="aoArrastar(c.id)"
+                       (click)="abrirCartao(c.id)" (keydown)="aoTeclar($event, c)">
+                    @if (interno()) {
+                      <span class="ca-vis" [class.shr]="c.visivelCliente">
+                        {{ c.visivelCliente ? 'Cliente' : 'Interno' }}
+                      </span>
+                    }
+                    @if (c.origem === 'cliente') { <span class="ca-vis sol">Solicitação</span> }
+                    <p class="ca-card-t">{{ c.titulo }}</p>
+                    @if (c.etiquetas.length) {
+                      <div class="ca-tags">
+                        @for (e of c.etiquetas; track e) {
+                          <span class="ca-tag">{{ nomeEtiqueta(e) }}</span>
+                        }
+                      </div>
+                    }
+                    <div class="ca-card-f">
+                      @if (c.prazo) {
+                        <span class="ca-prazo" [class.late]="atrasado(c)" [class.done]="c.concluido">
+                          {{ dataCurta(c.prazo) }}
+                        </span>
+                      }
+                      @if (c.checklist.length) {
+                        <span class="ca-mini">{{ feitos(c) }}/{{ c.checklist.length }}</span>
+                      }
+                      @if (c.anexos.length) {
+                        <span class="ca-mini">
+                          <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-link"/></svg>
+                          {{ c.anexos.length }}</span>
+                      }
+                      @if (c.comentarios.length) {
+                        <span class="ca-mini">
+                          <svg class="svgi svgi-xs" aria-hidden="true"><use href="#ic-mail"/></svg>
+                          {{ c.comentarios.length }}</span>
+                      }
+                      @if (c.membros.length) {
+                        <span class="ca-avs">
+                          @for (m of c.membros; track m.id) {
+                            <span class="ca-av" [class.cli]="m.tipo === 'cliente'"
+                                  [title]="m.nome">{{ iniciais(m.nome) }}</span>
+                          }
+                        </span>
+                      }
+                    </div>
+                  </div>
+                } @empty {
+                  <p class="kan-vazio">Nada por aqui.</p>
+                }
+              </div>
+
+              @if (podeCriar() && l.visivelCliente) {
+                <div class="ca-col-f">
+                  @if (criandoNaLista() === l.id) {
+                    <input class="campo" placeholder="Título do cartão"
+                           aria-label="Título do cartão"
+                           [ngModel]="tituloNovo()" (ngModelChange)="tituloNovo.set($event)"
+                           (keyup.enter)="criarCartao()">
+                    @if (!interno()) {
+                      <select class="campo" aria-label="Designar ao consultor"
+                              [ngModel]="designadoNovo()"
+                              (ngModelChange)="designadoNovo.set(+$event)">
+                        <option [value]="0">Designar ao consultor…</option>
+                        @for (c of consultores(); track c.usuarioId) {
+                          <option [value]="c.usuarioId">{{ c.nome }}</option>
+                        }
+                      </select>
+                    }
+                    <div class="acoes">
+                      <button type="button" class="btn primario" (click)="criarCartao()">Criar</button>
+                      <button type="button" class="btn" (click)="criandoNaLista.set(null)">Cancelar</button>
+                    </div>
+                  } @else {
+                    <button type="button" class="ca-add" (click)="comecarCartao(l.id)">
+                      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-plus"/></svg>
+                      {{ interno() ? 'Adicionar cartão' : 'Abrir solicitação' }}
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="ca-vazio">Escolha um cliente à esquerda.</p>
+      }
+    </section>
+  </div>
+}
+
+<!-- ─────────────────────────── modal do cartão ─────────────────────────── -->
+@if (cartao(); as c) {
+  <div class="modal-fundo" role="presentation" tabindex="-1"
+       (click)="fecharCartao()" (keydown.escape)="fecharCartao()">
+    <div class="modal-cx largo" role="dialog" aria-modal="true" [attr.aria-label]="c.titulo"
+         (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">
+      <div class="modal-cab">
+        <div>
+          <h2 class="ca-md-t">{{ c.titulo }}</h2>
+          <div class="ca-md-c">
+            na coluna <b>{{ colunaDoCartao()?.titulo }}</b> · {{ quadro()?.quadro?.nomeCliente }}
+          </div>
+        </div>
+        <button type="button" class="modal-fechar" (click)="fecharCartao()" aria-label="Fechar">
+          <svg class="svgi svgi-lg" aria-hidden="true"><use href="#ic-x"/></svg>
+        </button>
+      </div>
+
+      <div class="ca-md-b">
+        <div class="ca-md-l">
+          @if (podeEditarCartao()) {
+            <div class="ca-sec">
+              <div class="ca-sec-t">Título</div>
+              <input class="campo" aria-label="Título do cartão"
+                     [ngModel]="rascTitulo()" (ngModelChange)="rascTitulo.set($event)">
+
+              <div class="ca-sec-t">Descrição</div>
+              <textarea class="campo ca-desc-ed" rows="4"
+                        placeholder="Do que se trata este cartão?" aria-label="Descrição"
+                        [ngModel]="rascDescricao()"
+                        (ngModelChange)="rascDescricao.set($event)"></textarea>
+
+              <div class="ca-sec-t">Etiquetas</div>
+              <div class="ca-tags">
+                @for (e of etiquetas(); track e.chave) {
+                  <button type="button" class="ca-tag" [class.sel]="temEtiqueta(e.chave)"
+                          [attr.aria-pressed]="temEtiqueta(e.chave)"
+                          (click)="alternarEtiqueta(e.chave)">{{ e.nome }}</button>
+                }
+              </div>
+
+              <div class="ca-sec-t">Prazo</div>
+              <input class="campo" type="date" aria-label="Prazo"
+                     [ngModel]="rascPrazo()" (ngModelChange)="rascPrazo.set($event)">
+
+              @if (cartaoMudou()) {
+                <div class="acoes">
+                  <button type="button" class="btn primario" [disabled]="salvandoCartao()"
+                          (click)="salvarCartao()">
+                    {{ salvandoCartao() ? 'Salvando…' : 'Salvar cartão' }}
+                  </button>
+                  <button type="button" class="btn" [disabled]="salvandoCartao()"
+                          (click)="descartarEdicao()">Descartar</button>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="ca-sec">
+              <div class="ca-sec-t">Descrição</div>
+              <p class="ca-desc">{{ c.descricao || 'Sem descrição.' }}</p>
+              @if (c.etiquetas.length) {
+                <div class="ca-tags">
+                  @for (e of c.etiquetas; track e) {
+                    <span class="ca-tag">{{ nomeEtiqueta(e) }}</span>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          @if (c.checklist.length || podeEditar()) {
+            <div class="ca-sec">
+              <div class="ca-sec-t">Checklist · {{ feitos(c) }} de {{ c.checklist.length }}</div>
+              @if (c.checklist.length) {
+                <div class="ca-ckbar"><i [style.width.%]="progresso(c)"></i></div>
+              }
+              @for (i of c.checklist; track i.id) {
+                <label class="ca-ck" [class.done]="i.feito">
+                  <input type="checkbox" [checked]="i.feito" [disabled]="!podeInteragir()"
+                         (change)="marcarItem(i.id, !i.feito)">
+                  <span>{{ i.texto }}
+                    @if (i.feito && i.feitoPor) { <small>marcado por {{ i.feitoPor }}</small> }
+                  </span>
+                </label>
+              }
+              @if (podeEditar()) {
+                <div class="ca-inline">
+                  <input class="campo" placeholder="Novo item" aria-label="Novo item do checklist"
+                         [ngModel]="textoItem()" (ngModelChange)="textoItem.set($event)"
+                         (keyup.enter)="incluirItem()">
+                  <button type="button" class="btn" (click)="incluirItem()">Incluir</button>
+                </div>
+              }
+            </div>
+          }
+
+          <div class="ca-sec">
+            <div class="ca-sec-t">Anexos</div>
+            @for (a of c.anexos; track a.id) {
+              <div class="ca-anx">
+                <div class="ca-anx-n">{{ a.nome }}</div>
+                @if (a.tipo === 'link') {
+                  <a class="ca-anx-a" [href]="a.url" target="_blank" rel="noopener noreferrer">Abrir</a>
+                } @else {
+                  <button type="button" class="ca-anx-a" (click)="baixarAnexo(a.id, a.nome)">Baixar</button>
+                }
+                @if (podeInteragir()) {
+                  <button type="button" class="ca-anx-x" (click)="removerAnexo(a.id)"
+                          aria-label="Remover anexo">
+                    <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-trash"/></svg>
+                  </button>
+                }
+              </div>
+            } @empty { <p class="kan-vazio">Nenhum anexo ainda.</p> }
+
+            @if (podeInteragir()) {
+              <div class="ca-inline">
+                <input type="file" class="campo" aria-label="Anexar arquivo ou foto"
+                       (change)="anexarArquivo($event)">
+              </div>
+              <div class="ca-inline">
+                <input class="campo" placeholder="https://…" aria-label="Anexar link"
+                       [ngModel]="urlLink()" (ngModelChange)="urlLink.set($event)"
+                       (keyup.enter)="anexarLink()">
+                <button type="button" class="btn" (click)="anexarLink()">Link</button>
+              </div>
+            }
+          </div>
+
+          <div class="ca-sec">
+            <div class="ca-sec-t">Conversa</div>
+            @for (m of c.comentarios; track m.id) {
+              <div class="ca-cm" [class.cli]="m.autorTipo === 'cliente'">
+                <div class="ca-cm-w">{{ m.autorNome }}
+                  <em>{{ m.autorTipo === 'cliente' ? 'Cliente' : 'Rech' }}</em></div>
+                <p class="ca-cm-x">{{ m.texto }}</p>
+              </div>
+            } @empty { <p class="kan-vazio">Ninguém comentou ainda.</p> }
+
+            @if (podeInteragir()) {
+              <div class="ca-inline">
+                <textarea class="campo" rows="2" placeholder="Escrever um comentário…"
+                          aria-label="Comentário"
+                          [ngModel]="textoComentario()"
+                          (ngModelChange)="textoComentario.set($event)"></textarea>
+                <button type="button" class="btn primario" (click)="comentar()">Enviar</button>
+              </div>
+            } @else {
+              <p class="kan-vazio">Em consulta não se comenta.</p>
+            }
+          </div>
+        </div>
+
+        <div class="ca-md-r">
+          @if (interno()) {
+            <div class="ca-fld">
+              <div class="ca-fld-t">Visibilidade</div>
+              <div class="ca-vbox" [class.shr]="c.visivelCliente" [class.ro]="!podeEditar()">
+                <div class="ca-vbox-h">
+                  {{ c.visivelCliente ? 'Compartilhado com o cliente' : 'Interno · só a Rech' }}
+                </div>
+                @if (podeEditar()) {
+                  <button type="button" class="btn" (click)="alternarVisibilidade()">
+                    {{ c.visivelCliente ? 'Recolher para interno' : 'Compartilhar com o cliente' }}
+                  </button>
+                } @else {
+                  <p class="ca-vbox-d">Quem altera é o responsável pelo quadro.</p>
+                }
+              </div>
+            </div>
+          }
+
+          <div class="ca-fld">
+            <div class="ca-fld-t">Equipe Rech</div>
+            @for (m of membrosRech(); track m.id) {
+              <div class="ca-mem">
+                <span class="ca-av">{{ iniciais(m.nome) }}</span>
+                <span class="ca-mem-n">{{ m.nome }}</span>
+                @if (podeEditar()) {
+                  <button type="button" class="ca-mem-x" (click)="removerMembro(m.id)"
+                          aria-label="Remover membro">
+                    <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-x"/></svg>
+                  </button>
+                }
+              </div>
+            } @empty { <p class="kan-vazio">Ninguém.</p> }
+            @if (podeEditar() || (!interno() && c.origem === 'cliente')) {
+              <select class="campo" aria-label="Incluir consultor"
+                      (change)="incluirConsultor(+$any($event.target).value)">
+                <option value="0">Incluir consultor…</option>
+                @for (x of consultores(); track x.usuarioId) {
+                  <option [value]="x.usuarioId">{{ x.nome }}</option>
+                }
+              </select>
+            }
+          </div>
+
+          @if (interno()) {
+            <div class="ca-fld">
+              <div class="ca-fld-t">Do lado do cliente</div>
+              @for (m of membrosCliente(); track m.id) {
+                <div class="ca-mem">
+                  <span class="ca-av cli">{{ iniciais(m.nome) }}</span>
+                  <span class="ca-mem-n">{{ m.nome }}</span>
+                  @if (podeEditar()) {
+                    <button type="button" class="ca-mem-x" (click)="removerMembro(m.id)"
+                            aria-label="Remover membro">
+                      <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-x"/></svg>
+                    </button>
+                  }
+                </div>
+              } @empty { <p class="kan-vazio">Sem responsável — é da empresa.</p> }
+              @if (podeEditar() && contatos().length) {
+                <select class="campo" aria-label="Incluir contato do cliente"
+                        (change)="incluirContato($any($event.target).value)">
+                  <option value="">Incluir contato…</option>
+                  @for (x of contatos(); track x.email) {
+                    <option [value]="x.email">{{ x.nome }}</option>
+                  }
+                </select>
+              }
+            </div>
+          }
+
+          @if (c.prazo && !podeEditar()) {
+            <div class="ca-fld">
+              <div class="ca-fld-t">Prazo</div>
+              <span class="ca-prazo" [class.late]="atrasado(c)">{{ c.prazo }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ─────────────────────── importar do Trello ──────────────────────────── -->
+@if (importando()) {
+  <div class="modal-fundo" role="presentation" tabindex="-1"
+       (click)="fecharImportacao()" (keydown.escape)="fecharImportacao()">
+    <div class="modal-cx largo" role="dialog" aria-modal="true" aria-label="Importar do Trello"
+         (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">
+      <div class="modal-cab">
+        <div>
+          <h2 class="ca-md-t">Importar do Trello</h2>
+          <div class="ca-md-c">para o quadro de {{ quadro()?.quadro?.nomeCliente }}</div>
+        </div>
+        <button type="button" class="modal-fechar" (click)="fecharImportacao()" aria-label="Fechar">
+          <svg class="svgi svgi-lg" aria-hidden="true"><use href="#ic-x"/></svg>
+        </button>
+      </div>
+
+      <div class="ca-md-l">
+        @if (resultadoImport(); as r) {
+          <div class="ca-sec">
+            <div class="ca-sec-t">Pronto</div>
+            <p class="ca-desc">
+              {{ r.cartoes }} cartão(ões) importado(s), {{ r.colunasCriadas }} coluna(s) nova(s),
+              {{ r.checklistItens }} item(ns) de checklist, {{ r.comentarios }} comentário(s) e
+              {{ r.anexos }} anexo(s).
+            </p>
+            @for (a of r.avisos; track a) { <p class="ca-faixa ca-faixa-info">{{ a }}</p> }
+            <div class="acoes">
+              <button type="button" class="btn primario" (click)="fecharImportacao()">Fechar</button>
+            </div>
+          </div>
+        } @else if (previaTrello(); as p) {
+          <div class="ca-sec">
+            <div class="ca-sec-t">O que vai entrar — quadro "{{ p.nomeQuadro }}"</div>
+            <p class="ca-desc">
+              <b>{{ p.resumo.cartoes }}</b> cartões em <b>{{ p.resumo.listas }}</b> listas ·
+              {{ p.resumo.checklistItens }} itens de checklist ·
+              {{ p.resumo.comentarios }} comentários ·
+              {{ p.resumo.anexosLink + p.resumo.anexosArquivo }} anexos
+            </p>
+          </div>
+
+          <div class="ca-sec">
+            <div class="ca-sec-t">Para onde vai cada lista</div>
+            @for (l of p.listas; track l.idTrello) {
+              <div class="ca-inline">
+                <span class="ca-imp-de">{{ l.titulo }}</span>
+                <select class="campo" [attr.aria-label]="'Destino de ' + l.titulo"
+                        [ngModel]="destinoDe(l.idTrello)"
+                        (ngModelChange)="definirDestino(l.idTrello, +$event)">
+                  <option [value]="0">➕ criar coluna nova</option>
+                  @for (c of p.colunasDoQuadro; track c.id) {
+                    <option [value]="c.id">{{ c.titulo }}</option>
+                  }
+                </select>
+              </div>
+            }
+          </div>
+
+          @for (a of p.avisos; track a) {
+            <p class="ca-faixa ca-faixa-info">{{ a }}</p>
+          }
+          <p class="ca-faixa ca-faixa-ro">
+            <b>Todos os cartões entram como INTERNOS.</b> O Trello não sabe o que é do cliente,
+            então compartilhar continua sendo decisão sua, cartão a cartão.
+          </p>
+
+          <div class="acoes">
+            <button type="button" class="btn primario" [disabled]="ocupadoImport()"
+                    (click)="confirmarImportacao()">
+              {{ ocupadoImport() ? 'Importando…' : 'Importar ' + p.resumo.cartoes + ' cartões' }}
+            </button>
+            <button type="button" class="btn" [disabled]="ocupadoImport()"
+                    (click)="fecharImportacao()">Cancelar</button>
+          </div>
+        } @else {
+          <div class="ca-sec">
+            <div class="ca-sec-t">1. Exporte o quadro no Trello</div>
+            <p class="ca-desc">
+              No Trello, abra o quadro → menu <b>…</b> → <b>Compartilhar, imprimir e exportar</b>
+              → <b>Exportar como JSON</b>. Funciona no plano gratuito e não pede senha nenhuma
+              ao Painel.
+            </p>
+            <div class="ca-sec-t">2. Envie o arquivo aqui</div>
+            <input type="file" class="campo" accept=".json,application/json"
+                   aria-label="Arquivo JSON exportado do Trello"
+                   [disabled]="ocupadoImport()" (change)="escolherArquivoTrello($event)">
+            @if (ocupadoImport()) { <p class="kan-vazio">Lendo o arquivo…</p> }
+            <p class="kan-vazio">
+              Nada é gravado neste passo: você vê antes o que vai entrar e o que fica de fora.
+            </p>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ───────────────────────── abrir quadro novo ─────────────────────────── -->
+@if (abrindoQuadro()) {
+  <div class="modal-fundo" role="presentation" tabindex="-1"
+       (click)="abrindoQuadro.set(false)" (keydown.escape)="abrindoQuadro.set(false)">
+    <div class="modal-cx estreito" role="dialog" aria-modal="true" aria-label="Novo quadro"
+         (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">
+      <div class="modal-cab">
+        <h2 class="ca-md-t">Novo quadro</h2>
+        <button type="button" class="modal-fechar" (click)="abrindoQuadro.set(false)" aria-label="Fechar">
+          <svg class="svgi svgi-lg" aria-hidden="true"><use href="#ic-x"/></svg>
+        </button>
+      </div>
+      <div class="ca-md-l">
+        <p class="kan-vazio">
+          O quadro nasce da designação: escolha o projeto que você atende e confirme o cliente
+          no SICLA.
+        </p>
+        <div class="ca-sec">
+          <div class="ca-sec-t">Projeto que você atende</div>
+          <select class="campo" aria-label="Projeto"
+                  (change)="escolherProjeto(+$any($event.target).value)">
+            <option value="0">Escolha…</option>
+            @for (p of projetos(); track p.projetoId) {
+              <option [value]="p.projetoId" [disabled]="p.jaTemQuadro">
+                {{ p.cliente }} — {{ p.etapa }}{{ p.jaTemQuadro ? ' (já tem quadro)' : '' }}
+              </option>
+            }
+          </select>
+        </div>
+        @if (projetoEscolhido()) {
+          <div class="ca-sec">
+            <div class="ca-sec-t">Cliente no SICLA</div>
+            <div class="ca-inline">
+              <input class="campo" placeholder="Nome ou código" aria-label="Buscar cliente no SICLA"
+                     [ngModel]="termoCliente()" (ngModelChange)="termoCliente.set($event)"
+                     (keyup.enter)="procurarCliente()">
+              <button type="button" class="btn" (click)="procurarCliente()">Buscar</button>
+            </div>
+            @for (cl of clientesAchados(); track cl.codigo) {
+              <button type="button" class="ca-res-r" (click)="abrirNovoQuadro(cl.codigo, cl.cliente)">
+                <div class="ca-res-t">{{ cl.cliente }}</div>
+                <div class="ca-res-m">código {{ cl.codigo }}</div>
+              </button>
+            } @empty { <p class="kan-vazio">Busque o cliente para confirmar o código.</p> }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}

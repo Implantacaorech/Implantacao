@@ -1,0 +1,113 @@
+# Gate de perpetuidade do teste integrado — §9.4 de GERARTESTEINTEGRADOPLAYWRIGHT.md.
+#
+# O que este job impede: superfície nova entrar no Painel sem entrar no teste integrado.
+# É o mecanismo que faz a Fase 8 valer sem depender de alguém lembrar. Ele NÃO julga se o
+# caso é bom — julga se a documentação foi encarada: mexeu em controller, em tabela de
+# rotas do Angular ou em entity, então `docs/TESTES-INTEGRADOS.md` tem de aparecer no mesmo
+# PR. Falha aqui se conserta acrescentando o caso, não editando o job.
+#
+# Além disso confere as duas invariantes que a suíte não pode perder de vista:
+#   - todo `CT-###` do documento tem spec, e todo spec tem `CT-###` no documento;
+#   - nenhum ID é reaproveitado (a auditoria depende de o ID nunca mudar de significado).
+name: cobertura do teste integrado
+
+on:
+  pull_request:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Superfície nova exige documentação
+        run: |
+          BASE="origin/${{ github.base_ref }}"
+          MUDOU=$(git diff --name-only "$BASE"...HEAD)
+          echo "$MUDOU" | sed 's/^/  /'
+
+          SUPERFICIE=$(echo "$MUDOU" | grep -E \
+            'backend/src/.*\.controller\.ts$|frontend/src/app/app\.routes\.ts$|backend/src/database/entities/.*\.ts$|backend/src/common/constants/menus\.ts$' \
+            | grep -v '\.spec\.ts$' || true)
+
+          if [ -z "$SUPERFICIE" ]; then
+            echo "Nenhuma superfície mexida — gate não se aplica."
+            exit 0
+          fi
+
+          echo ""
+          echo "Arquivos de SUPERFÍCIE alterados:"
+          echo "$SUPERFICIE" | sed 's/^/  /'
+
+          if echo "$MUDOU" | grep -q '^docs/TESTES-INTEGRADOS\.md$'; then
+            echo ""
+            echo "OK — docs/TESTES-INTEGRADOS.md foi atualizado no mesmo PR."
+            exit 0
+          fi
+
+          cat <<'FIM'
+
+          FALHOU — superfície mexida sem atualizar docs/TESTES-INTEGRADOS.md.
+
+          Regra (Fase 8 do gerador): toda nova implementação entra na documentação e,
+          portanto, entra no teste integrado. Antes de considerar isto pronto:
+
+            1. Acrescente a superfície à Seção 3 do documento.
+            2. Se for P0, crie o caso CT-### na Seção 4 e o spec correspondente.
+            3. Registre a mudança na Seção 13 e incremente a versão do documento.
+
+          Se a alteração realmente não cria nem muda superfície (renomear uma variável
+          interna, por exemplo), diga isso na Seção 13 mesmo assim — é uma linha, e é o
+          que mantém a auditoria honesta.
+          FIM
+          exit 1
+
+      - name: CT-### do documento e dos specs têm de bater
+        if: always()
+        run: |
+          node - <<'FIM'
+          const fs = require('fs');
+          const path = require('path');
+
+          const doc = fs.readFileSync('docs/TESTES-INTEGRADOS.md', 'utf8');
+          const naDoc = new Set([...doc.matchAll(/\bCT-(\d{3})\b/g)].map((m) => m[1]));
+
+          const dir = 'e2e/testes';
+          const noSpec = [];
+          for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.spec.ts'))) {
+            const src = fs.readFileSync(path.join(dir, f), 'utf8');
+            for (const m of src.matchAll(/^\s*test(?:\.skip|\.fixme)?\(\s*['`]CT-(\d{3}) — /gm)) {
+              noSpec.push({ id: m[1], arquivo: f });
+            }
+          }
+
+          const ids = noSpec.map((x) => x.id);
+          const repetidos = [...new Set(ids.filter((x, i) => ids.indexOf(x) !== i))];
+          const semDoc = [...new Set(ids)].filter((id) => !naDoc.has(id));
+
+          // O documento pode citar um ID REMOVIDO (Seção 13) — esse não precisa ter spec.
+          const removidos = new Set(
+            [...doc.matchAll(/CT-(\d{3})\s*—\s*REMOVIDO/gi)].map((m) => m[1]),
+          );
+          const semSpec = [...naDoc].filter(
+            (id) => !ids.includes(id) && !removidos.has(id),
+          );
+
+          let falhou = false;
+          if (repetidos.length) {
+            console.error('CT reaproveitado em mais de um spec: ' + repetidos.join(', '));
+            falhou = true;
+          }
+          if (semDoc.length) {
+            console.error('spec sem entrada no documento: CT-' + semDoc.join(', CT-'));
+            falhou = true;
+          }
+          if (semSpec.length) {
+            console.error('documento cita CT sem spec (nem marcado REMOVIDO): CT-' + semSpec.join(', CT-'));
+            falhou = true;
+          }
+          if (falhou) process.exit(1);
+          console.log(`OK — ${ids.length} casos, todos casados com o documento.`);
+          FIM

@@ -10,6 +10,8 @@ import {
   Usuario,
 } from '../../core/models/usuario.model';
 import { UsuariosService } from '../../core/services/usuarios.service';
+import { PresencaService } from '../../core/services/presenca.service';
+import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { temPapel } from '../../core/constants/perfis';
 import {
@@ -29,6 +31,16 @@ export class UsuariosComponent {
   private readonly fb = inject(FormBuilder);
   private readonly service = inject(UsuariosService);
   private readonly auth = inject(AuthService);
+  private readonly presenca = inject(PresencaService);
+  private readonly router = inject(Router);
+
+  /** Quantas pessoas estão no Painel agora — o selo do botão "Online". */
+  readonly online = this.presenca.online;
+
+  /** Abre a tela de acompanhamento. */
+  verOnline(): void {
+    void this.router.navigate(['/usuarios', 'online']);
+  }
 
   readonly perfis = PERFIS;
   readonly rotuloPerfil = ROTULO_PERFIL;
@@ -201,6 +213,10 @@ export class UsuariosComponent {
 
   constructor() {
     void this.carregar();
+    // Contagem do selo "Online". Uma leitura só ao abrir a tela: quem quer acompanhar de
+    // verdade clica no botão e vai para a tela que se atualiza sozinha — repetir aqui só
+    // gastaria requisição para mexer num número no canto.
+    void this.presenca.atualizarContagem();
   }
 
   /** Busca a lista de técnicos no SICLA. É sob demanda (não roda ao abrir a tela) porque

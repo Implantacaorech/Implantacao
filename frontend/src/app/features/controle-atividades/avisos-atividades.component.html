@@ -1,0 +1,22 @@
+@if (visiveis().length) {
+  <div class="av-pilha" role="region" aria-label="Avisos do Controle de Atividades">
+    @for (a of visiveis(); track a.id) {
+      <div class="av-card" [class.prazo]="a.tipo === 'prazo'"
+           [class.solicitacao]="a.tipo === 'solicitacao'">
+        <div class="av-topo">
+          <span class="av-t">{{ a.titulo }}</span>
+          <button type="button" class="av-x" (click)="fechar(a.id)" aria-label="Fechar aviso">
+            <svg class="svgi svgi-sm" aria-hidden="true"><use href="#ic-x"/></svg>
+          </button>
+        </div>
+        <p class="av-x2">{{ a.texto }}</p>
+        <button type="button" class="av-ir" (click)="abrir(a)">Abrir o cartão</button>
+      </div>
+    }
+    @if (restantes()) {
+      <button type="button" class="av-mais" (click)="fecharTodos()">
+        +{{ restantes() }} aviso(s) — fechar todos
+      </button>
+    }
+  </div>
+}

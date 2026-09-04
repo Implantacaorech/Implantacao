@@ -145,3 +145,39 @@ FROM SICLA.LISTA_CONTATOS lc
 WHERE lc.PORTAL_RECH_CLIENTES = 1
   AND (:cliente IS NULL OR lc.CLIENTE = :cliente)
 ORDER BY lc.NOME`;
+
+/** SQL dos contatos de UM cliente — TODOS eles, liberados no Portal Rech ou não.
+ *
+ * Existe separada de `SQL_LISTA_CONTATOS_PADRAO` porque as duas respondem a perguntas
+ * diferentes, e confundi-las foi um defeito real (relatado em 2026-09-03):
+ *
+ * - `sicla.contatos.listar` responde **"quem pode ter conta no Painel?"** — é AUTORIZAÇÃO, e
+ *   por isso filtra `PORTAL_RECH_CLIENTES = 1`. O login do usuário-cliente revalida por ela.
+ * - esta responde **"quem são as pessoas deste cliente?"** — é AGENDA. Serve para nomear, num
+ *   cartão do Controle de Atividades, quem do lado do cliente responde pela tarefa. O próprio
+ *   desenho do módulo diz que "um contato pode ser membro mesmo sem conta no Painel"
+ *   (docs/controle-atividades.md §2.4), o que o filtro de autorização tornava impossível: no
+ *   quadro de um cliente com um único contato liberado, o seletor oferecia uma pessoa só.
+ *
+ * **`:cliente` é OBRIGATÓRIO aqui**, ao contrário da irmã. Sem o filtro de autorização, um
+ * `:cliente` nulo despejaria a agenda de contatos de TODA a base de clientes numa resposta —
+ * e nenhuma tela precisa disso. É o recorte que mantém a consulta proporcional ao seu uso.
+ *
+ * Mesmo contrato de colunas da irmã, para o mapeamento do Painel servir às duas.
+ *
+ * O prefixo `SICLA.` é obrigatório nesta conexão (ORA-00942 sem ele). */
+export const SQL_CONTATOS_DO_CLIENTE_PADRAO = `-- Contatos de UM cliente — todos, liberados no Portal Rech ou não.
+-- Diferente de "contatos_sicla_lista": aquela é AUTORIZAÇÃO (PORTAL_RECH_CLIENTES = 1);
+-- esta é a AGENDA do cliente, para nomear responsável de cartão no Controle de Atividades.
+-- :cliente é OBRIGATÓRIO — sem ele isto viraria um dump da base inteira de contatos.
+SELECT
+  lc.CLIENTE                  AS CLIENTE,
+  lc.NOME                     AS NOME,
+  lc.CARGO                    AS CARGO,
+  lc.EMAIL                    AS EMAIL,
+  lc.ATIVODES                 AS ATIVODES,
+  lc.STATUSDES                AS STATUSDES,
+  lc.PORTAL_RECH_CLIENTES_DES AS PORTAL_RECH_CLIENTES_DES
+FROM SICLA.LISTA_CONTATOS lc
+WHERE lc.CLIENTE = :cliente
+ORDER BY lc.NOME`;

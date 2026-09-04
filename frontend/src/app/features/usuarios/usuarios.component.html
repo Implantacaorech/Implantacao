@@ -120,6 +120,12 @@
   <button class="btn primario" type="button" (click)="novo()" title="Cadastrar um usuário manualmente">
     <svg class="svgi" aria-hidden="true"><use href="#ic-plus"/></svg> Novo usuário
   </button>
+  <button class="btn" type="button" (click)="verOnline()"
+          title="Quem está no Painel agora e em que tela">
+    <span class="usr-dot" [class.off]="!online()"></span>
+    Online
+    @if (online()) { <b class="usr-online-n">{{ online() }}</b> }
+  </button>
 </div>
 
 @if (formAberto()) {

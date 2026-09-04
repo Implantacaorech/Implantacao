@@ -123,8 +123,8 @@ function relatorio(achados: Achado[]): string {
     .join('');
 }
 
-test.describe('Auditoria — varredura de rotas', () => {
-  test('ADM percorre todas as rotas estáticas sem erro de console nem HTTP', async ({ page }) => {
+test.describe('Auditoria — varredura de rotas', { tag: '@p2' }, () => {
+  test('CT-105 — ADM percorre todas as rotas estáticas sem erro de console nem HTTP', async ({ page }) => {
     test.setTimeout(300_000);
     const achados: Achado[] = [];
     let atual = '(login)';
@@ -139,7 +139,7 @@ test.describe('Auditoria — varredura de rotas', () => {
     expect(achados, `Achados na varredura como ADM:${relatorio(achados)}\n`).toEqual([]);
   });
 
-  test('rotas de um PROJETO real abrem sem erro', async ({ page, request }) => {
+  test('CT-106 — rotas de um PROJETO real abrem sem erro', async ({ page, request }) => {
     test.setTimeout(180_000);
     const id = await projetoNoPasso(request, 'Auditoria Varredura', 8);
     const achados: Achado[] = [];
@@ -155,7 +155,7 @@ test.describe('Auditoria — varredura de rotas', () => {
     expect(achados, `Achados nas rotas do projeto:${relatorio(achados)}\n`).toEqual([]);
   });
 
-  test('rota inexistente não quebra — cai no fallback do roteador', async ({ page }) => {
+  test('CT-107 — rota inexistente não quebra — cai no fallback do roteador', async ({ page }) => {
     await entrarComSucesso(page, USUARIOS.adm);
     await page.goto('/rota-que-nao-existe-xyz', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(700);
@@ -165,7 +165,7 @@ test.describe('Auditoria — varredura de rotas', () => {
   });
 });
 
-test.describe('Auditoria — responsividade', () => {
+test.describe('Auditoria — responsividade', { tag: '@p2' }, () => {
   const VIEWPORTS = [
     { nome: 'notebook', width: 1366, height: 768 },
     { nome: 'tablet', width: 768, height: 1024 },
@@ -175,7 +175,7 @@ test.describe('Auditoria — responsividade', () => {
   const AMOSTRA = ['/home', '/projetos', '/clientes/novo', '/bi/implantacao', '/usuarios', '/permissoes'];
 
   for (const vp of VIEWPORTS) {
-    test(`sem overflow horizontal em ${vp.nome} (${vp.width}px)`, async ({ page }) => {
+    test(`CT-108 — sem overflow horizontal em ${vp.nome} (${vp.width}px)`, async ({ page }) => {
       // Guarda do achado da auditoria de 2026-08-07: o Painel estourava 43px em 390px, em
       // TODAS as telas — era o shell, não o conteúdo. `.topbar-perfil` é `flex: none` e
       // media 183px com nome+login dentro; como não encolhia, empurrava o `.topbar-sair`
@@ -203,7 +203,7 @@ test.describe('Auditoria — responsividade', () => {
   }
 });
 
-test.describe('Auditoria — menu por perfil', () => {
+test.describe('Auditoria — menu por perfil', { tag: '@p1' }, () => {
   // O menu é dirigido por PADRAO_PERMISSOES; cada perfil só pode enxergar o que lhe cabe.
   const ESPERADO: Record<string, { ve: string[]; naoVe: string[] }> = {
     comercial: { ve: ['Novo Cliente'], naoVe: ['Usuários', 'Permissões'] },
@@ -215,7 +215,7 @@ test.describe('Auditoria — menu por perfil', () => {
   };
 
   for (const [login, { ve, naoVe }] of Object.entries(ESPERADO)) {
-    test(`menu do ${login} mostra o que deve e esconde o que não deve`, async ({ page }) => {
+    test(`CT-109 — menu do ${login} mostra o que deve e esconde o que não deve`, async ({ page }) => {
       await entrarComSucesso(page, login);
       await page.goto('/home', { waitUntil: 'domcontentloaded' });
       await page.waitForTimeout(900);

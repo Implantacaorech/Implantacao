@@ -174,6 +174,14 @@ muda a categoria do sistema, não só a lista de telas:
 - **LGPD** — o BI expõe nomes de contatos e descrições de visita. Base legal e retenção
   precisam estar claras antes de o primeiro cliente entrar.
 - **Sessão** — access token de vida curta faz mais diferença aqui do que na rede interna.
+  **Resolvido em 2026-09-03:** a sessão cai após **30 minutos sem atividade de gente**, nos
+  dois lados (`InatividadeService`). Antes, o access token durava 15 min mas o refresh renovava
+  sozinho, então uma aba esquecida aberta ficava logada indefinidamente — inclusive numa
+  máquina compartilhada do cliente. O que conta como atividade é gesto (ponteiro, teclado,
+  rolagem, toque) e troca de tela; a batida de presença de 45 s e o resto do tráfego de fundo
+  **não** contam, senão o temporizador nunca venceria e a guarda existiria só no papel. A marca
+  de atividade fica em `localStorage` para ser compartilhada entre as abas: quem trabalha numa
+  não pode ser derrubado na outra.
 
 ## 10. Ciclo de vida do acesso — quem entra, quem libera, quem revoga
 

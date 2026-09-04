@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test';
 import { entrarComSucesso, projetoNoPasso, USUARIOS } from '../apoio/painel';
 
 /** A tela dos 21 passos: o que ela mostra tem de bater com o que o backend aceita. */
-test.describe('Tela dos 21 passos — integridade do que a interface promete', () => {
-  test('mostra os 21 passos, na ordem, com o responsável de cada um', async ({ page, request }) => {
+test.describe('Tela dos 21 passos — integridade do que a interface promete', { tag: '@p0' }, () => {
+  test('CT-006 — mostra os 21 passos, na ordem, com o responsável de cada um', async ({ page, request }) => {
     const id = await projetoNoPasso(request, 'E2E Lista de Passos', 0);
     await entrarComSucesso(page, USUARIOS.adm);
     await page.goto(`/projetos/${id}/passos`);
@@ -28,7 +28,7 @@ test.describe('Tela dos 21 passos — integridade do que a interface promete', (
     }
   });
 
-  test('passo bloqueado tem o botão desabilitado e explica o porquê', async ({ page, request }) => {
+  test('CT-007 — passo bloqueado tem o botão desabilitado e explica o porquê', async ({ page, request }) => {
     const id = await projetoNoPasso(request, 'E2E Passo Bloqueado', 1);
     await entrarComSucesso(page, USUARIOS.adm);
     await page.goto(`/projetos/${id}/passos`);
@@ -40,7 +40,7 @@ test.describe('Tela dos 21 passos — integridade do que a interface promete', (
     if (await botao.count()) await expect(botao).toBeDisabled();
   });
 
-  test('RN-1: concluído o passo 8, o cronograma (13) libera sem esperar o Projeto', async ({ page, request }) => {
+  test('CT-008 — RN-1: concluído o passo 8, o cronograma (13) libera sem esperar o Projeto', async ({ page, request }) => {
     const id = await projetoNoPasso(request, 'E2E Trilhas Paralelas', 8);
     await entrarComSucesso(page, USUARIOS.adm);
     await page.goto(`/projetos/${id}/passos`);
@@ -54,7 +54,7 @@ test.describe('Tela dos 21 passos — integridade do que a interface promete', (
     await expect(passo11, 'RN-3: o 11 espera o 10').toContainText(/Depende do passo 10/);
   });
 
-  test('RN-6: passo definitivo não oferece "Reabrir"; reversível oferece', async ({ page, request }) => {
+  test('CT-009 — RN-6: passo definitivo não oferece "Reabrir"; reversível oferece', async ({ page, request }) => {
     const id = await projetoNoPasso(request, 'E2E Irreversivel', 15);
     await entrarComSucesso(page, USUARIOS.adm);
     await page.goto(`/projetos/${id}/passos`);
@@ -68,7 +68,7 @@ test.describe('Tela dos 21 passos — integridade do que a interface promete', (
     await expect(passo9.getByRole('button', { name: 'Reabrir' })).toHaveCount(1);
   });
 
-  test('RN-5: "Marcar conferido" não aparece antes de o passo 11 ser concluído', async ({ page, request }) => {
+  test('CT-010 — RN-5: "Marcar conferido" não aparece antes de o passo 11 ser concluído', async ({ page, request }) => {
     const id = await projetoNoPasso(request, 'E2E Conferencia Antes', 10);
     await entrarComSucesso(page, USUARIOS.administrativo);
     await page.goto(`/projetos/${id}/passos`);
@@ -84,7 +84,7 @@ test.describe('Tela dos 21 passos — integridade do que a interface promete', (
     await expect(passo8.getByRole('button', { name: /conferido/i })).toHaveCount(0);
   });
 
-  test('RN-5: concluído o 11, a tela oferece "Marcar conferido" — e só nele', async ({ page, request }) => {
+  test('CT-011 — RN-5: concluído o 11, a tela oferece "Marcar conferido" — e só nele', async ({ page, request }) => {
     const id = await projetoNoPasso(request, 'E2E Conferencia Depois', 11);
     await entrarComSucesso(page, USUARIOS.administrativo);
     await page.goto(`/projetos/${id}/passos`);
@@ -101,7 +101,7 @@ test.describe('Tela dos 21 passos — integridade do que a interface promete', (
       .not.toContainText(/Aguardando a conferência/);
   });
 
-  test('nome de cliente com <script> é escapado, não executado', async ({ page, request }) => {
+  test('CT-012 — nome de cliente com <script> é escapado, não executado', async ({ page, request }) => {
     const id = await projetoNoPasso(request, '<script>window.__xss=1</script> E2E XSS', 1);
     await entrarComSucesso(page, USUARIOS.adm);
     await page.goto(`/projetos/${id}/passos`);

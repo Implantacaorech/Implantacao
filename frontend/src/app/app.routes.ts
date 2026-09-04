@@ -214,6 +214,27 @@ export const routes: Routes = [
           import('./features/protocolo/protocolo.component').then((m) => m.ProtocoloComponent),
       },
       {
+        // Execução → Controle de Atividades: quadro de atividades por cliente
+        // (docs/controle-atividades.md). `:codigo` é o código do cliente no SICLA — a
+        // mesma chave do quadro, para o link do aviso abrir direto no cliente certo.
+        path: 'atividades',
+        canActivate: [permissaoGuard('controle_atividades')],
+        data: { titulo: 'Controle de Atividades' },
+        loadComponent: () =>
+          import('./features/controle-atividades/controle-atividades.component').then(
+            (m) => m.ControleAtividadesComponent,
+          ),
+      },
+      {
+        path: 'atividades/:codigo',
+        canActivate: [permissaoGuard('controle_atividades')],
+        data: { titulo: 'Controle de Atividades' },
+        loadComponent: () =>
+          import('./features/controle-atividades/controle-atividades.component').then(
+            (m) => m.ControleAtividadesComponent,
+          ),
+      },
+      {
         // Execução → RechEdu: moldura do portal de educação (www.rechedu.com.br) —
         // irmã da tela Protocolo logo acima, com credencial própria por consultor.
         path: 'rechedu',
@@ -603,6 +624,15 @@ export const routes: Routes = [
           import('./features/acesso-clientes/acesso-clientes.component').then(
             (m) => m.AcessoClientesComponent,
           ),
+      },
+      {
+        // Precisa vir ANTES de 'usuarios', não porque colidiria (são caminhos distintos),
+        // mas para ficar junto dela na leitura — as duas telas são a mesma função.
+        path: 'usuarios/online',
+        canActivate: [perfilGuard('ADM')],
+        data: { titulo: 'Quem está online' },
+        loadComponent: () =>
+          import('./features/usuarios/online.component').then((m) => m.OnlineComponent),
       },
       {
         path: 'usuarios',
