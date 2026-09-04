@@ -62,7 +62,17 @@ export class NotificacoesAtividadeService {
 
   /** Grava o aviso in-app para cada destinatário e manda o e-mail para os que têm endereço.
    *
-   * `exceto` tira o AUTOR da lista: quem fez a ação não precisa ser avisado dela. */
+   * `exceto` tira o AUTOR da lista: quem fez a ação não precisa ser avisado dela.
+   *
+   * **`emailPara` separa os dois canais**, e é o que faz valer a regra do usuário
+   * (2026-09-03): *o e-mail vai só para quem está vinculado ao cartão; nunca para todos os
+   * integrantes da implantação.* Quando informado, o e-mail sai apenas para essa lista — o
+   * aviso na TELA continua indo para `usuarioIds`.
+   *
+   * Os canais são separados porque o custo de errar é diferente. Aviso na tela é passivo:
+   * quem abre o Painel vê, e um a mais não incomoda ninguém. E-mail é ativo: chega na caixa
+   * de entrada de gente que não pediu, e uma equipe inteira recebendo aviso de cartão alheio
+   * aprende a ignorar TODOS os avisos do Painel — inclusive os que importam. */
   async avisar(
     quadro: AtividadeQuadro,
     cartao: AtividadeCartao | null,
@@ -71,6 +81,7 @@ export class NotificacoesAtividadeService {
     texto: string,
     usuarioIds: number[],
     exceto?: number,
+    emailPara?: number[],
   ): Promise<void> {
     const alvos = [...new Set(usuarioIds)].filter((id) => id && id !== exceto);
     if (!alvos.length) return;
@@ -86,7 +97,15 @@ export class NotificacoesAtividadeService {
         texto,
       })),
     );
-    await this.porEmail(alvos, quadro, titulo, texto);
+
+    // Sem `emailPara`, o e-mail acompanha o aviso da tela — comportamento de quem não precisa
+    // do recorte. Com ele, o recorte manda, e uma lista VAZIA significa e-mail nenhum: é o
+    // caso do cartão sem ninguém vinculado, e mandar para o quadro inteiro ali seria
+    // exatamente o que a regra proíbe.
+    const paraEmail = emailPara
+      ? [...new Set(emailPara)].filter((id) => id && id !== exceto)
+      : alvos;
+    await this.porEmail(paraEmail, quadro, titulo, texto);
   }
 
   /** Avisa por e-mail endereços SOLTOS — os contatos do cliente que ainda não têm conta no

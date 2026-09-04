@@ -228,6 +228,11 @@ export class CartoesService {
         }
       }
       const responsaveis = await this.avisos.responsaveisDo(quadro.id);
+      // Regra do usuário (2026-09-03): o E-MAIL de atividade nova sai só para quem está
+      // VINCULADO AO CARTÃO — nunca para todos os integrantes da implantação. Quem responde
+      // pelo quadro continua recebendo o aviso na TELA, para a solicitação não se perder
+      // quando o cliente não designa ninguém; o que não acontece mais é a equipe inteira
+      // receber e-mail de um cartão que não é dela.
       await this.avisos.avisar(
         quadro,
         cartao,
@@ -236,6 +241,7 @@ export class CartoesService {
         `${user.nome} abriu "${cartao.titulo}" no quadro de ${quadro.nomeCliente}.`,
         [...responsaveis, ...designados],
         user.sub,
+        designados,
       );
     }
     return cartao;
@@ -553,6 +559,9 @@ export class CartoesService {
           this.avisos.responsaveisDo(quadro.id),
           this.avisos.internosDoCartao(cartao.id),
         ]);
+        // Mesmo recorte da criação, pela mesma razão: e-mail só para quem está vinculado ao
+        // cartão. Um comentário do cliente num cartão de outro consultor não tem por que
+        // chegar à caixa de entrada da equipe inteira — na tela chega, e basta.
         await this.avisos.avisar(
           quadro,
           cartao,
@@ -561,6 +570,7 @@ export class CartoesService {
           `${user.nome} (${quadro.nomeCliente}): ${trecho}`,
           [...responsaveis, ...internos],
           user.sub,
+          internos,
         );
       }
     }
