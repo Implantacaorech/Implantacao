@@ -116,6 +116,29 @@ Três ajustes pedidos pelo usuário depois de usar a tela, e o fio que liga os t
 A regra de edição mora em `podeEditarCartao` (`acesso.ts`), ao lado das demais, e não espalhada
 nos services — é a parte do módulo em que um engano não dá erro, dá vazamento.
 
+### 2.4-B Para quem o e-mail vai (2026-09-03)
+
+Regra do usuário, e ela é absoluta: **o e-mail de atividade nova sai só para quem está
+vinculado ao cartão. NUNCA para todos os integrantes da implantação.**
+
+Antes, criar uma solicitação avisava por e-mail todos os responsáveis pelo quadro — a equipe
+inteira recebia aviso de cartão que não era dela.
+
+Os dois canais passaram a ter audiências diferentes, porque o custo de errar é diferente:
+
+| Canal | Quem recebe | Por quê |
+|---|---|---|
+| **E-mail** | só quem está **vinculado ao cartão** | é ativo: chega na caixa de entrada de quem não pediu. Equipe recebendo aviso alheio aprende a ignorar TODOS os avisos do Painel, inclusive os que importam. |
+| **Aviso na tela** (sino) | quem responde pelo quadro | é passivo: quem abre o Painel vê, e um a mais não incomoda. É o que impede a solicitação de se perder quando o cliente não designa ninguém. |
+
+**Cartão sem ninguém vinculado não manda e-mail nenhum** — lista vazia é "para ninguém", não
+"para todos". A solicitação continua visível no sino de quem responde pelo quadro.
+
+Vale para os dois eventos que avisavam o quadro inteiro: **criação de solicitação** e
+**comentário do cliente**. O mecanismo é o parâmetro `emailPara` de
+`NotificacoesAtividadeService.avisar()`; quem o remover numa refatoração cai em três testes
+vermelhos (`cartoes.notificacao.spec.ts`), porque o estrago não aparece em tela nenhuma.
+
 ### 2.5 Nada de banco externo fora da API de Dados
 
 Tudo do quadro (quadros, listas, cartões, membros, anexos, comentários) mora no
